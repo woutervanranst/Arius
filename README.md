@@ -1,5 +1,5 @@
 # Arius
- Arius is Greek for... 
+ Arius is Greek for immortal
 
 Auius is a lightweight tiered archival solution for azure blob archive tier
 
