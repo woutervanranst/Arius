@@ -1,16 +1,16 @@
 # Arius
-Auius is a lightweight tiered archival solution for azure blob archive tier
+Auius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier
 
 The name derives from the Greek for 'immortal'
 
 ## Key design objectives
+* Maintain local file structure (files/folders) by creating 'sparse' placeholders
+* Files, folders & filenames are encrypted clientside
+* The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
 * Never delete files on remote
-* Point in time restore
-* Files and filenames are encrypted
-* Local file and folder structure is maintained with 'larger' files moved to blob storage 
-* Restore using common tools / Ie when aurius would no longer exist 
-* No central store / no single point of failure / redolent ad robusg
-* Client side encryption and a flat (obfuscated) structure on the target
+* Point in time restore (FUTURE)
+* No central store to avoid a single point of failure
+* Leverage common tools, to allow restores even when this project would become deprecated
 
 ## CLI
 
@@ -49,3 +49,6 @@ arius restore
 
 ``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
 
+## Restore with common tools
+
+Arius relies on the 7zip command line and Azure blob storage cli.
