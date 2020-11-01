@@ -1,5 +1,9 @@
 ﻿using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Runtime.Intrinsics.X86;
 using System.Security.Permissions;
 using System.Threading.Tasks;
 
@@ -14,6 +18,7 @@ namespace AriusCore
 
         private string _path;
         private static FileSystemWatcher _watcher = new FileSystemWatcher();
+        private ZipUtils _zip = new ZipUtils();
 
         [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
         public void Monitor()
@@ -45,13 +50,33 @@ namespace AriusCore
 
             while (true)
             {
-                var x = _watcher.WaitForChanged(WatcherChangeTypes.All);
+                var cgh = _watcher.WaitForChanged(WatcherChangeTypes.All);
 
-                
+                // TODO IGNORE DIRECTORY
+
+                if (cgh.ChangeType == WatcherChangeTypes.Created)
+                {
+                    var source = Path.Combine(_path, cgh.Name);
+                    var target = Path.Combine(_path, $"{cgh.Name}.7z.arius");
+
+                    try
+                    {
+                        _zip.Compress(source, target, "haha");
+                    }
+                    catch (Exception e)
+                    {
+
+                    }
+                }
 
                 Task.Delay(100);
             }
 
+        }
+
+        private void Proc_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            //throw new NotImplementedException();
         }
 
         // Define the event handlers.
