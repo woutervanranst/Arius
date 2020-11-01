@@ -25,6 +25,8 @@ arius archive
   (--container <containername>) 
   (--keep-local)
   (--tier=(hot/cool/archive))
+  (--min-size=<minsizeinMB>)
+  (--simulate)
 ```
 
 ``--container`` the container name to use. Default: ``arius``
