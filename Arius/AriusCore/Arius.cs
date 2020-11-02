@@ -90,6 +90,9 @@ namespace AriusCore
                     try
                     {
                         File.WriteAllText(localTarget, blobName, System.Text.Encoding.UTF8);
+                        
+                        //Delete the source
+                        File.Delete(source);
                     }
                     catch (Exception e)
                     {
