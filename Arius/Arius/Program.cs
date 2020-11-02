@@ -1,4 +1,5 @@
-﻿using McMaster.Extensions.CommandLineUtils;
+﻿using Azure.Storage.Blobs.Models;
+using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -38,25 +39,54 @@ public class Program
             {
                 archiveCmd.Description = "Archive to blob";
 
-                var an = archiveCmd.Option<string>("--accountname|-n", 
+                var accountName = archiveCmd.Option<string>("--accountname|-n <ACCOUNTNAME>", 
                     "Blob Account Name", 
                     CommandOptionType.SingleValue)
                 .IsRequired();
 
-                var ak = archiveCmd.Option<string>("--accountkey|-k", 
+                var accountKey = archiveCmd.Option<string>("--accountkey|-k <ACCOUNTKEY>", 
                     "Account Key", 
                     CommandOptionType.SingleValue)
                 .IsRequired();
 
-                var pp = archiveCmd.Option<string>("--passphrase|-p", 
-                    "Passphrase", CommandOptionType.SingleValue)
+                var passphrase = archiveCmd.Option<string>("--passphrase|-p <PASSPHRASE>", 
+                    "Passphrase", 
+                    CommandOptionType.SingleValue)
                 .IsRequired();
 
-                var c = archiveCmd.Option<string>("--container|-c", "Blob container", CommandOptionType.SingleOrNoValue);
+                var container = archiveCmd.Option<string>("--container|-c <CONTAINERNAME>", 
+                    "Blob container to use. Default: 'arius'", 
+                    CommandOptionType.SingleValue);
+
+                var keepLocal = archiveCmd.Option<bool>("--keep-local",
+                    "Do not delete the local copies of the file after a successful upload",
+                    CommandOptionType.NoValue);
+
+                var tier = archiveCmd.Option<string>("--tier <TIER>",
+                    "Storage tier to use. Defaut: archive",
+                    CommandOptionType.SingleValue)
+                    .Accepts().Values("hot", "cool", "archive"); 
+
+                var minSize = archiveCmd.Option<int>("--min-size <MB>",
+                    "Minimul size of files to archive in MB. Default: 1",
+                    CommandOptionType.SingleValue);
+
+                var simulate = archiveCmd.Option<bool>("--simulate",
+                    "List the differences between the local and the remote, without making any changes to remote",
+                    CommandOptionType.NoValue);
+
+                var path = archiveCmd.Argument("path", "Path to archive. Default: current directory");
 
                 archiveCmd.OnExecute(() =>
                 {
-                    Console.WriteLine("hallo");
+                    //CommandLineApplication.Execute<Program>()
+                    //Archive()
+                    //var accountName = accountName.
+                    //var p = new DirectoryInfo(path.Value ?? Environment.CurrentDirectory) ;
+
+
+
+                    Console.WriteLine($"hallo {p.FullName}");
                 });
             });
 
@@ -66,42 +96,42 @@ public class Program
             });
 
 
-            app.Command("config2", configCmd =>
-            {
-                configCmd.OnExecute(() =>
-                {
-                    Console.WriteLine("Specify a subcommand");
-                    configCmd.ShowHelp();
-                    return 1;
-                });
+            //app.Command("config2", configCmd =>
+            //{
+            //    configCmd.OnExecute(() =>
+            //    {
+            //        Console.WriteLine("Specify a subcommand");
+            //        configCmd.ShowHelp();
+            //        return 1;
+            //    });
 
-                configCmd.Command("set", setCmd =>
-                {
-                    setCmd.Description = "Set config value";
-                    var key = setCmd.Argument("key", "Name of the config").IsRequired();
-                    var val = setCmd.Argument("value", "Value of the config").IsRequired();
-                    setCmd.OnExecute(() =>
-                    {
-                        Console.WriteLine($"Setting config {key.Value} = {val.Value}");
-                    });
-                });
+            //    configCmd.Command("set", setCmd =>
+            //    {
+            //        setCmd.Description = "Set config value";
+            //        var key = setCmd.Argument("key", "Name of the config").IsRequired();
+            //        var val = setCmd.Argument("value", "Value of the config").IsRequired();
+            //        setCmd.OnExecute(() =>
+            //        {
+            //            Console.WriteLine($"Setting config {key.Value} = {val.Value}");
+            //        });
+            //    });
 
-                configCmd.Command("list", listCmd =>
-                {
-                    var json = listCmd.Option("--json", "Json output", CommandOptionType.NoValue);
-                    listCmd.OnExecute(() =>
-                    {
-                        if (json.HasValue())
-                        {
-                            Console.WriteLine("{\"dummy\": \"value\"}");
-                        }
-                        else
-                        {
-                            Console.WriteLine("dummy = value");
-                        }
-                    });
-                });
-            });
+            //    configCmd.Command("list", listCmd =>
+            //    {
+            //        var json = listCmd.Option("--json", "Json output", CommandOptionType.NoValue);
+            //        listCmd.OnExecute(() =>
+            //        {
+            //            if (json.HasValue())
+            //            {
+            //                Console.WriteLine("{\"dummy\": \"value\"}");
+            //            }
+            //            else
+            //            {
+            //                Console.WriteLine("dummy = value");
+            //            }
+            //        });
+            //    });
+            //});
 
             app.OnExecute(() =>
             {
@@ -111,6 +141,11 @@ public class Program
             });
 
             return app.Execute(args);
+        }
+
+        private void Archive(string accountName, string accountKey, string passphrase, string container, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo path)
+        {
+
         }
 
         //public static void Main()
