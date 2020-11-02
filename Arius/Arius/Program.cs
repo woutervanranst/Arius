@@ -8,7 +8,11 @@ public class Watcher
         var path = @"C:\Users\Wouter\Documents\";
         //var path = @"\\192.168.1.100\Video\Arius";
 
-        var k = new AriusCore.Arius(path);
+        var passphrase = "woutervr";
+
+        // // DefaultEndpointsProtocol=https;AccountName=aurius;AccountKey=hKtsHebpvfQ9nk4UCImAgPY3Q1Pc8C2u4mFlXUCxGBkJF8Zu1ARJURjV39mymzPfpsyPeQpHAk66vy7Fs9kjvQ==;EndpointSuffix=core.windows.net
+
+        var k = new AriusCore.Arius(path, passphrase, "aurius", "hKtsHebpvfQ9nk4UCImAgPY3Q1Pc8C2u4mFlXUCxGBkJF8Zu1ARJURjV39mymzPfpsyPeQpHAk66vy7Fs9kjvQ==");
 
         Task.Run(() => k.Monitor());
 
