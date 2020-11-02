@@ -11,17 +11,22 @@ namespace AriusCore
 {
     public class Arius
     {
-        public Arius(string path)
+        public Arius(string path, string passphrase, string accountName, string accountKey)
         {
             _path = path;
+
+            _zip = new ZipUtils(passphrase);
+            _blobUtils = new BlobUtils(accountName, accountKey);
         }
 
-        private string _path;
         private static FileSystemWatcher _watcher = new FileSystemWatcher();
-        private ZipUtils _zip = new ZipUtils();
+        private ZipUtils _zip;
+        private BlobUtils _blobUtils;
 
+        private string _path;
+        
         [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
-        public void Monitor()
+        public async Task Monitor()
         {
 
             // Create a new FileSystemWatcher and set its properties.
@@ -57,19 +62,43 @@ namespace AriusCore
                 if (cgh.ChangeType == WatcherChangeTypes.Created)
                 {
                     var source = Path.Combine(_path, cgh.Name);
-                    var target = Path.Combine(_path, $"{cgh.Name}.7z.arius");
+                    var blobTarget = Path.Combine(_path, $"{cgh.Name}.7z.arius");
+                    var localTarget = Path.Combine(_path, $"{cgh.Name}.arius");
 
+                    // Compress & encrypt the file
                     try
                     {
-                        _zip.Compress(source, target, "haha");
+                        _zip.Compress(source, blobTarget);
+                    }
+                    catch (Exception e)
+                    {
+                        continue; //TODO
+                    }
+
+                    // Move the file to blob
+                    string blobName;
+                    try
+                    {
+                        blobName = await _blobUtils.Upload(blobTarget);
+                    }
+                    catch (Exception e)
+                    {
+                        continue;
+                    }
+
+                    //Replace the file by the reference
+                    try
+                    {
+                        File.WriteAllText(localTarget, blobName, System.Text.Encoding.UTF8);
                     }
                     catch (Exception e)
                     {
 
                     }
+
                 }
 
-                Task.Delay(100);
+                await Task.Delay(100);
             }
 
         }
