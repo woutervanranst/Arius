@@ -6,7 +6,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AriusCore
+namespace Arius
 {
     class BlobUtils
     {
