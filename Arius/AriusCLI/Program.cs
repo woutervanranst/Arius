@@ -11,7 +11,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius
+namespace AriusCLI
 {
     class Program
     {
@@ -195,7 +195,6 @@ namespace Arius
                 Console.WriteLine("");
             }
 
-            Console.WriteLine(dir.FullName);
             return 0;
         }
     }
