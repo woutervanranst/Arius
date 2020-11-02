@@ -146,12 +146,12 @@ namespace Arius
                 _ => throw new NotImplementedException()
             };
 
-            return await Execute(passphrase, bu, keepLocal, accessTier, minSize, simulate, di);
+            return Execute(passphrase, bu, keepLocal, accessTier, minSize, simulate, di);
         }
 
-        private async Task<int> Execute(string passphrase, BlobUtils bu, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
+        private int Execute(string passphrase, BlobUtils bu, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
         {
-            foreach (var fi in dir.GetFiles())
+            foreach (var fi in dir.GetFiles("*.*", SearchOption.AllDirectories))
             {
                 if (fi.Length < minSize * 1024 * 1024)
                     continue;
@@ -159,12 +159,12 @@ namespace Arius
                 if (fi.Name.EndsWith(".arius"))
                     continue;
 
-                
-                Console.WriteLine($"Archiving file: {fi.FullName}");
+
+                Console.WriteLine($"Archiving file: {fi.FullName.Replace(dir.FullName, "")}");
                 var source = fi.FullName;
-                var encryptedSource = Path.Combine(dir.FullName, $"{fi.Name}.7z.arius");
+                var encryptedSource = Path.Combine(fi.DirectoryName, $"{fi.Name}.7z.arius");
                 var blobTarget = $"{Guid.NewGuid()}.7z.arius";
-                var localTarget = Path.Combine(dir.FullName, $"{fi.Name}.arius");
+                var localTarget = Path.Combine(fi.DirectoryName, $"{fi.Name}.arius");
 
                 Console.Write("Encrypting... ");
                 _szu.Encrypt(source, encryptedSource, passphrase);
@@ -195,7 +195,6 @@ namespace Arius
                 Console.WriteLine("");
             }
 
-            Console.WriteLine(dir.FullName);
             return 0;
         }
     }
