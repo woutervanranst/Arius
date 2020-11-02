@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Arius": {
+      "commandName": "Project",
+      "commandLineArgs": "archive -n a -k kk -p ppp"
+    }
+  }
+}
