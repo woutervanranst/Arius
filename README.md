@@ -1,5 +1,5 @@
 # Arius
-Auius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier
+Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier
 
 The name derives from the Greek for 'immortal'
 
