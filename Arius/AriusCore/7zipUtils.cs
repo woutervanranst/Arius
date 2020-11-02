@@ -9,14 +9,16 @@ namespace AriusCore
 {
     internal class ZipUtils
     {
-        public ZipUtils()
+        public ZipUtils(string passphrase)
         {
-
+            _passphrase = passphrase;
         }
+
+        private string _passphrase;
 
         private string _sevenZipPath = @"C:\Program Files\7-Zip\7z.exe";
 
-        public void Compress(string sourceFile, string targetFile, string password)
+        public void Compress(string sourceFile, string targetFile)
         {
             try
             {
@@ -26,7 +28,7 @@ namespace AriusCore
 
                     // -mhe=on      = HEADER ENCRYPTION
                     // -mx0         = NO COMPRESSION
-                    proc.StartInfo.Arguments = $"a -p{password} \"{targetFile}\" \"{sourceFile}\" -mhe=on -mx0";
+                    proc.StartInfo.Arguments = $"a -p{_passphrase} \"{targetFile}\" \"{sourceFile}\" -mhe=on -mx0";
 
                     proc.StartInfo.UseShellExecute = false;
                     proc.StartInfo.RedirectStandardOutput = true;
