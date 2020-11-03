@@ -175,7 +175,13 @@ namespace Arius
                     {
                         Console.Write("File already exists on remote. Checking manifest...");
 
-                        var m = GetManifest(passphrase, remoteBlobs, blobTargetManifestFullName);
+                        var manifest = GetManifest(passphrase, remoteBlobs, blobTargetManifestFullName);
+                        var lastManifest = manifest.OrderBy(m => m.DateTime).Last();
+
+                        if (relativeFileName != lastManifest.RelativeFileName)
+                        {
+                            AddFileToManifest(passphrase, remoteBlobs, manifest, relativeFileName);
+                        }
 
                     }
 
@@ -229,7 +235,18 @@ namespace Arius
 
         private void CreateManifest(string passphrase, BlobUtils remoteBlobs, string relativeFileName, string manifestFullName, string manifest7zFullName, string blobTargetManifestFullName)
         {
-            var manifest = new List<Manifest> { new Manifest { RelativeName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = false } };
+            var manifest = new List<Manifest> { GetNewManifest(relativeFileName) };
+            UploadManifest(passphrase, remoteBlobs, manifestFullName, manifest7zFullName, blobTargetManifestFullName, manifest);
+        }
+
+        private void AddFileToManifest(string passphrase, BlobUtils remoteBlobs, List<Manifest> existing, string relativeFileName)
+        {
+            existing.Add(GetNewManifest(relativeFileName));
+            //UploadManifest(passphrase, remoteBlobs, )
+        }
+
+        private void UploadManifest(string passphrase, BlobUtils remoteBlobs, string manifestFullName, string manifest7zFullName, string blobTargetManifestFullName, List<Manifest> manifest)
+        {
             var json = JsonSerializer.Serialize(manifest);
             File.WriteAllText(manifestFullName, json);
             _szu.EncryptFile(manifestFullName, manifest7zFullName, passphrase);
@@ -255,10 +272,17 @@ namespace Arius
             return manifest;
         }
 
+        
+
+        private Manifest GetNewManifest(string relativeFileName, DateTime? datetime = null, bool IsDeleted = false)
+        {
+            return new Manifest { RelativeFileName = relativeFileName, DateTime = datetime ?? DateTime.UtcNow, IsDeleted = IsDeleted };
+        }
+
 
         class Manifest
         {
-            public string RelativeName { get; set; }
+            public string RelativeFileName { get; set; }
             public DateTime DateTime { get; set; }
             public bool IsDeleted { get; set; }
         }
