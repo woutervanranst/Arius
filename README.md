@@ -27,6 +27,7 @@ arius archive
   (--tier=(hot/cool/archive))
   (--min-size=<minsizeinMB>)
   (--simulate)
+  <path>
 ```
 
 ``--container`` the container name to use. Default: ``arius``
@@ -46,10 +47,17 @@ arius restore
    --accountname <accountname> 
    --accountkey <accountkey> 
    --passphrase <passphrase>
+  (--container <containername>) 
   (--download)
+  <path>
 ```
 
 ``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
+
+``path``
+* Empty Directory > Full Restore
+* Directory with .arius files > Restore all files in the directory
+* Arius file > restore this file
 
 ## Restore with common tools
 
