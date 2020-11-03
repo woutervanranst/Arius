@@ -38,7 +38,7 @@ namespace Arius
             var di = Directory.CreateDirectory(Path.Combine(tfi.DirectoryName, Guid.NewGuid().ToString()));
             extractor.ExtractArchive(di.FullName);
 
-            File.Move(Path.Combine(di.FullName, extractor.ArchiveFileNames.Single()), targetFile);
+            File.Move(Path.Combine(di.FullName, extractor.ArchiveFileNames.Single()), targetFile, true);
 
             if (di.EnumerateFiles().Any())
                 throw new NotImplementedException(); // Folder should be empty but is not
