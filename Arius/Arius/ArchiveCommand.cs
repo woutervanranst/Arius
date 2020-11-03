@@ -24,16 +24,16 @@ namespace Arius
     class ArchiveCommand
     {
         /*
-             *  arius archive 
-                    --accountname <accountname> 
-                    --accountkey <accountkey> 
-                    --passphrase <passphrase>
-                    (--container <containername>) 
-                    (--keep-local)
-                    (--tier=(hot/cool/archive))
-                    (--min-size=<minsizeinMB>)
-                    (--simulate)
-             * */
+        *  arius archive 
+            --accountname <accountname> 
+            --accountkey <accountkey> 
+            --passphrase <passphrase>
+            (--container <containername>) 
+            (--keep-local)
+            (--tier=(hot/cool/archive))
+            (--min-size=<minsizeinMB>)
+            (--simulate)
+        * */
         public static Command GetCommand()
         {
             var archiveCommand = new Command("archive", "Archive to blob");
@@ -125,7 +125,8 @@ namespace Arius
             var ac = new ArchiveCommand(szu, bu);
             return ac.Execute(passphrase, keepLocal, accessTier, minSize, simulate, di);
 
-
+            //TODO KeepLocal
+            // TODO Simulate
 
             /*
              * Test cases
@@ -281,8 +282,8 @@ namespace Arius
 
                 bool toUpdate = false;
 
-                var entriesPerFile = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me);
-                foreach (var me in entriesPerFile)
+                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me);
+                foreach (var me in entriesPerFileName)
                 {
                     var localFile = Path.Combine(dir.FullName, me.Key);
                     var lastEntry = me.OrderBy(mm => mm.DateTime).Last();

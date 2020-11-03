@@ -25,6 +25,7 @@ namespace Arius
 
             var rootCommand = new RootCommand();
             rootCommand.AddCommand(ArchiveCommand.GetCommand());
+            rootCommand.AddCommand(RestoreCommand.GetCommand());
 
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
