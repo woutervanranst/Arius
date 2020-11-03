@@ -3,6 +3,7 @@ using Azure.Storage.Blobs.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Arius
@@ -53,26 +54,12 @@ namespace Arius
             bc.DownloadTo(fileName);
         }
 
-        public IEnumerable<string> GetManifestBlobNames()
+        public IEnumerable<string> GetContentBlobNames()
         {
             foreach (var b in _bcc.GetBlobs())
             {
-                if (!b.Name.EndsWith(".manifest.7z.arius"))
-                    continue;
-
-
-
-                //var zzz = _bcc.GetBlobClient(b.Name);
-
-                //var te = Path.GetTempFileName();
-
-                //var kkk = zzz.DownloadTo(te);
-
-                //var zzzz = File.ReadAllText()
-
-                ////s.
-
-                yield return b.Name;
+                if (!b.Name.EndsWith(".manifest.7z.arius") && b.Name.EndsWith(".arius"))
+                    yield return b.Name; //Return the .arius files, not the .manifest.  
             }
         }
     }
