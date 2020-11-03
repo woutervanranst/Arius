@@ -1,4 +1,6 @@
 ﻿using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.DependencyInjection;
+using SevenZip;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -6,6 +8,7 @@ using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Configuration;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -20,12 +23,6 @@ namespace Arius
 {
     class ArchiveCommand
     {
-        public ArchiveCommand(SevenZipUtils szu)
-        {
-            _szu = szu;
-        }
-        private readonly SevenZipUtils _szu;
-
         /*
              *  arius archive 
                     --accountname <accountname> 
@@ -38,7 +35,7 @@ namespace Arius
                     (--min-size=<minsizeinMB>)
                     (--simulate)
              * */
-        public Command GetArchiveCommand()
+        public static Command GetCommand()
         {
             var archiveCommand = new Command("archive", "Archive to blob");
 
@@ -47,6 +44,7 @@ namespace Arius
             accountNameOption.AddAlias("-n");
             accountNameOption.IsRequired = true;
             archiveCommand.AddOption(accountNameOption);
+
 
             var accountKeyOption = new Option<string>("--accountkey",
                 "Account Key");
@@ -109,7 +107,7 @@ namespace Arius
 
         delegate int ArchiveDelegate(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path);
 
-        private int Execute(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
+        private static int Execute(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
         {
             var bu = new BlobUtils(accountName, accountKey, container);
 
@@ -123,7 +121,12 @@ namespace Arius
                 _ => throw new NotImplementedException()
             };
 
-            return Execute(passphrase, bu, keepLocal, accessTier, minSize, simulate, di);
+            var szu = new SevenZipUtils();
+
+            var ac = new ArchiveCommand(szu, bu);
+            return ac.Execute(passphrase, keepLocal, accessTier, minSize, simulate, di);
+
+
 
             /*
              * Test cases
@@ -137,7 +140,15 @@ namespace Arius
              */
         }
 
-        private int Execute(string passphrase, BlobUtils remoteBlobs, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
+        public ArchiveCommand(SevenZipUtils szu, BlobUtils bu)
+        {
+            _szu = szu;
+            _bu = bu;
+        }
+        private readonly SevenZipUtils _szu;
+        private readonly BlobUtils _bu;
+
+        private int Execute(string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
         {
             Console.ForegroundColor = ConsoleColor.White;
             Console.BackgroundColor = ConsoleColor.Green;
@@ -167,7 +178,7 @@ namespace Arius
                     var blobName = $"{hash}.7z.arius";
                     var localPointerFullName = Path.Combine(fi.DirectoryName, $"{fi.Name}.arius");
 
-                    if (!remoteBlobs.Exists(blobName))
+                    if (!_bu.Exists(blobName))
                     {
                         //CREATE -- File does not exis on remote
 
@@ -178,24 +189,24 @@ namespace Arius
                         Console.WriteLine("Done");
 
                         Console.Write("Uploading... ");
-                        remoteBlobs.Upload(encryptedSourceFullName, blobName, tier);
+                        _bu.Upload(encryptedSourceFullName, blobName, tier);
                         Console.WriteLine("Done");
 
                         Console.Write("Creating manifest...");
-                        AddManifestEntry(remoteBlobs, blobName, passphrase, relativeFileName);
+                        AddManifestEntry(blobName, passphrase, relativeFileName);
                         Console.WriteLine("Done");
                     }
                     else
                     {
                         Console.Write("Binary exists on remote. Checking manifest... ");
 
-                        var manifests = GetManifestsForBlob(remoteBlobs, blobName, passphrase); //TODO what if the manifest got deleted?
+                        var manifests = GetManifestsForBlob(blobName, passphrase); //TODO what if the manifest got deleted?
 
                         if (!manifests.Any(m => m.RelativeFileName == relativeFileName && !m.IsDeleted))
                         {
                             Console.Write("Adding reference to manifest... ");
                             //AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifest, relativeFileName);
-                            AddManifestEntry(remoteBlobs, blobName, passphrase, relativeFileName, manifests: manifests);
+                            AddManifestEntry(blobName, passphrase, relativeFileName, manifests: manifests);
                             Console.WriteLine("Done");
                         }
                         else
@@ -237,7 +248,7 @@ namespace Arius
 
                     Console.Write("Archived file. Checking manifest... ");
                     var blobName = File.ReadAllText(fi.FullName);
-                    var manifests = GetManifestsForBlob(remoteBlobs, blobName, passphrase);
+                    var manifests = GetManifestsForBlob(blobName, passphrase);
 
                     var originalFileName = GetContentFullName(relativeFileName); // Path.GetFileNameWithoutExtension(relativeFileName);
                     if (!manifests.Any(mm => mm.RelativeFileName == originalFileName))
@@ -247,7 +258,7 @@ namespace Arius
                         Console.WriteLine("File has been renamed.");
                         Console.Write("Updating manifest...");
                         //AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifests, originalFileName);
-                        AddManifestEntry(remoteBlobs, blobName, passphrase, originalFileName, manifests: manifests);
+                        AddManifestEntry(blobName, passphrase, originalFileName, manifests: manifests);
                         Console.WriteLine("Done");
                     }
                     else
@@ -265,9 +276,9 @@ namespace Arius
             Console.ResetColor();
 
 
-            foreach (var manifestBlobName in remoteBlobs.GetManifestBlobNames())
+            foreach (var manifestBlobName in _bu.GetManifestBlobNames())
             {
-                var manifests = GetManifests(remoteBlobs, passphrase, manifestBlobName);
+                var manifests = GetManifests(passphrase, manifestBlobName);
 
                 bool toUpdate = false;
 
@@ -279,7 +290,7 @@ namespace Arius
                     {
                         // DELETE
                         var contentBlobName = GetContentBlobName(manifestBlobName);
-                        AddManifestEntry(remoteBlobs, contentBlobName, passphrase, localFile, isDeleted: true, manifests: manifests, upload: false);
+                        AddManifestEntry(contentBlobName, passphrase, localFile, isDeleted: true, manifests: manifests, upload: false);
                         toUpdate = true;
 
                         Console.WriteLine("File");
@@ -289,7 +300,7 @@ namespace Arius
                 if (toUpdate)
                 {
                     var contentBlobName = GetContentBlobName(manifestBlobName);
-                    UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifests);
+                    UploadManifestsForBlob(contentBlobName, passphrase, manifests);
                 }
             }
 
@@ -298,16 +309,16 @@ namespace Arius
 
         
 
-        private void AddManifestEntry(BlobUtils remoteBlobs, string contentBlobName, string passphrase, string relativeFileName, DateTime? datetime = null, bool isDeleted = false, List<Manifest> manifests = null, bool upload = true)
+        private void AddManifestEntry(string contentBlobName, string passphrase, string relativeFileName, DateTime? datetime = null, bool isDeleted = false, List<Manifest> manifests = null, bool upload = true)
         {
             if (manifests == null)
-                AddManifestEntry(remoteBlobs, contentBlobName, passphrase, relativeFileName, datetime, isDeleted, new List<Manifest>(), upload);
+                AddManifestEntry(contentBlobName, passphrase, relativeFileName, datetime, isDeleted, new List<Manifest>(), upload);
             else
             {
                 manifests.Add(new Manifest { RelativeFileName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = isDeleted });
 
                 if (upload)
-                    UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifests);
+                    UploadManifestsForBlob( contentBlobName, passphrase, manifests);
             }
         }
 
@@ -334,7 +345,7 @@ namespace Arius
         //    existingManifests.Add(GetNewManifest(relativeFileNameToAdd));
         //}
 
-        private void UploadManifestsForBlob(BlobUtils remoteBlobs, string contentBlobName, string passphrase, List<Manifest> manifests)
+        private void UploadManifestsForBlob(string contentBlobName, string passphrase, List<Manifest> manifests)
         {
             var manifestName = GetManifestName(contentBlobName, false);
             var manifestFullName = Path.Combine(Path.GetTempPath(), manifestName);
@@ -349,20 +360,20 @@ namespace Arius
             File.Delete(manifestFullName);
 
             var manifestBlobName = GetManifestName(contentBlobName, true);
-            remoteBlobs.Upload(tempFileName1, manifestBlobName, AccessTier.Cool);
+            _bu.Upload(tempFileName1, manifestBlobName, AccessTier.Cool);
             File.Delete(tempFileName1);
         }
 
-        private List<Manifest> GetManifestsForBlob(BlobUtils remoteBlobs, string contentBlobName, string passphrase)
+        private List<Manifest> GetManifestsForBlob(string contentBlobName, string passphrase)
         {
             var manifestName = GetManifestName(contentBlobName, true);
-            return GetManifests(remoteBlobs, passphrase, manifestName);
+            return GetManifests(passphrase, manifestName);
         }
 
-        private List<Manifest> GetManifests(BlobUtils remoteBlobs, string passphrase, string manifestBlobName)
+        private List<Manifest> GetManifests(string passphrase, string manifestBlobName)
         {
             var tempFileName1 = Path.GetTempFileName();
-            remoteBlobs.Download(manifestBlobName, tempFileName1);
+            _bu.Download(manifestBlobName, tempFileName1);
 
             var tempFileName2 = Path.GetTempFileName();
             _szu.DecryptFile(tempFileName1, tempFileName2, passphrase);
