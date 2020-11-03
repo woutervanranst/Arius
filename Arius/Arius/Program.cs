@@ -34,10 +34,4 @@ namespace Arius
             return rootCommand.InvokeAsync(args).Result;
         }
     }
-
-    
-
-    
-
-    
 }
