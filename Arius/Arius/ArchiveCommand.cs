@@ -26,7 +26,6 @@ namespace Arius
         /*
              *  arius archive 
                     --accountname <accountname> 
-
                     --accountkey <accountkey> 
                     --passphrase <passphrase>
                     (--container <containername>) 
@@ -234,10 +233,7 @@ namespace Arius
                     File.Delete(encryptedSourceFullName);
                 }
 
-
                 // READ - n/a
-
-                //UPDATE - ie rename of an .arius file
 
                 if (fi.Name.EndsWith(".arius"))
                 {
@@ -256,12 +252,10 @@ namespace Arius
                     var relativeFileName = GetLocalContentRelativeName(relativeAriusFileName); // Path.GetFileNameWithoutExtension(relativeFileName);
                     if (!manifest.Entries.Any(me => me.RelativeFileName == relativeFileName))
                     {
-                        // The manifest does not have a pointer to this local file, ie the .arius file has been renamed
+                        // UPDATE The manifest does not have a pointer to this local file, ie the .arius file has been renamed
 
                         Console.WriteLine("File has been renamed.");
                         Console.Write("Updating manifest...");
-                        //AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifests, originalFileName);
-                        //AddManifestEntry(blobName, passphrase, originalFileName, manifests: manifest);
                         manifest.AddEntry(relativeFileName);
                         manifest.Upload(_bu, _szu, passphrase);
                         Console.WriteLine("Done");
@@ -290,21 +284,25 @@ namespace Arius
                 var entriesPerFile = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me);
                 foreach (var me in entriesPerFile)
                 {
-                    //TODO: Fout: als ik een file upload, dan rename, dan blijft de originele staan in de netry "isdeleted"
                     var localFile = Path.Combine(dir.FullName, me.Key);
                     var lastEntry = me.OrderBy(mm => mm.DateTime).Last();
 
                     if (!lastEntry.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
                     {
-                        // File is deleted
+                        // DELETE - File is deleted
                         manifest.AddEntry(me.Key, true);
                         toUpdate = true;
+
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"File {me.Key} is deleted. Marking as deleted on remote...");
+                        Console.ResetColor();
                     }
                 }
 
                 if (toUpdate)
                 {
                     manifest.Upload(_bu, _szu, passphrase);
+                    Console.WriteLine("Done");
                 }
             }
 
@@ -312,93 +310,12 @@ namespace Arius
         }
 
 
-
-
-        //private string GetContentBlobName(string manifestBlobName)
-        //{
-        //    //Ref https://stackoverflow.com/questions/5650909/regex-for-extracting-certain-part-of-a-string
-
-        //    var match = Regex.Match(manifestBlobName, "^(?<contentBlobName>.*).manifest.7z.arius$");
-        //    return match.Groups["contentBlobName"].Value;
-        //}
-
         private string GetLocalContentRelativeName(string relativeName)
         {
+            //Ref https://stackoverflow.com/questions/5650909/regex-for-extracting-certain-part-of-a-string
+
             var match = Regex.Match(relativeName, "^(?<relativeName>.*).arius$");
             return match.Groups["relativeName"].Value;
-        }
-
-
-        class Manifest
-        {
-            public static Manifest CreateManifest(string contentBlobName, string relativeFileName)
-            {
-                var manifest = new Manifest(contentBlobName, new List<ManifestEntry>());
-                manifest.AddEntry(relativeFileName);
-
-                return manifest;
-            }
-
-            public static Manifest GetManifest(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string contentBlobName, string passphrase)
-            {
-                var m = new Manifest(contentBlobName);
-
-                var tempFileName1 = Path.GetTempFileName();
-                blobUtils.Download(m.EncryptedManifestBlobName, tempFileName1);
-
-                var tempFileName2 = Path.GetTempFileName();
-                sevenZipUtils.DecryptFile(tempFileName1, tempFileName2, passphrase);
-                File.Delete(tempFileName1);
-
-                var json = File.ReadAllText(tempFileName2);
-                File.Delete(tempFileName2);
-
-                //var manifest = new Manifest(manifestBlobName, JsonSerializer.Deserialize<List<ManifestEntry>>(json));
-                m._entries = JsonSerializer.Deserialize<List<ManifestEntry>>(json);
-
-                return m;
-            }
-
-            private List<ManifestEntry> _entries;
-
-
-            private Manifest(string contentBlobName, List<ManifestEntry> entries = null)
-            {
-                ContentBlobName = contentBlobName;
-                _entries = entries ?? new List<ManifestEntry>();
-            }
-
-            public IEnumerable<ManifestEntry> Entries => _entries.Count == 0 ? throw new ArgumentException("Entries not initialized") : _entries;
-            public string ContentBlobName { get; private set; }
-            public string ManifestBlobName => $"{ContentBlobName}.manifest";
-            public string EncryptedManifestBlobName => $"{ContentBlobName}.manifest.7z.arius";
-
-            public void AddEntry(string relativeFileName, bool isDeleted = false)
-            {
-                _entries.Add(new ManifestEntry { RelativeFileName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = isDeleted });
-            }
-
-            public void Upload(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string passphrase)
-            {
-                var tempManifestFileName = Path.Combine(Path.GetTempPath(), ManifestBlobName);
-                var json = JsonSerializer.Serialize(_entries);
-                File.WriteAllText(tempManifestFileName, json);
-
-                var tempEncryptedManifestFileName = Path.GetTempFileName();
-
-                sevenZipUtils.EncryptFile(tempManifestFileName, tempEncryptedManifestFileName, passphrase);
-                File.Delete(tempManifestFileName);
-
-                blobUtils.Upload(tempEncryptedManifestFileName, EncryptedManifestBlobName, AccessTier.Cool);
-                File.Delete(tempEncryptedManifestFileName);
-            }
-        }
-
-        class ManifestEntry
-        {
-            public string RelativeFileName { get; set; }
-            public DateTime DateTime { get; set; }
-            public bool IsDeleted { get; set; }
         }
     }
 }
