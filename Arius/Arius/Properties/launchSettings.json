@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "AriusCLI": {
+    "Arius": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k hKtsHebpvfQ9nk4UCImAgPY3Q1Pc8C2u4mFlXUCxGBkJF8Zu1ARJURjV39mymzPfpsyPeQpHAk66vy7Fs9kjvQ== -p woutervr -c arius2 --tier hot C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive -n aurius -k hKtsHebpvfQ9nk4UCImAgPY3Q1Pc8C2u4mFlXUCxGBkJF8Zu1ARJURjV39mymzPfpsyPeQpHAk66vy7Fs9kjvQ== -p woutervr -c arius2 --keep-local --tier hot C:\\Users\\Wouter\\Documents\\Test"
     }
   }
 }
