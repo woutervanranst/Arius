@@ -30,16 +30,27 @@ namespace Arius
         }
         private readonly BlobContainerClient _bcc;
 
-        public void Upload(string sourceFile, string targetFile, AccessTier tier)
+        public bool Exists(string file)
         {
-            var bc = _bcc.GetBlobClient(targetFile);
+            return _bcc.GetBlobClient(file).Exists();
+        }
 
-            // Open the file and upload its data
-            using FileStream uploadFileStream = File.OpenRead(sourceFile);
+        public void Upload(string fileName, string blobName, AccessTier tier)
+        {
+            var bc = _bcc.GetBlobClient(blobName);
+
+            using FileStream uploadFileStream = File.OpenRead(fileName);
             var r = bc.Upload(uploadFileStream, true);
             uploadFileStream.Close();
 
             bc.SetAccessTier(tier);
+        }
+
+        public void Download(string blobName, string fileName)
+        {
+            var bc = _bcc.GetBlobClient(blobName);
+
+            bc.DownloadTo(fileName);
         }
     }
 }
