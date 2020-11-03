@@ -1,5 +1,6 @@
 ﻿using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.CommandLine;
@@ -17,17 +18,14 @@ namespace Arius
     {
         static int Main(string[] args)
         {
-            //setup our DI
-            var serviceProvider = new ServiceCollection()
-                //.AddLogging()
-                .AddSingleton<ArchiveCommand>()
-                .AddSingleton<SevenZipUtils>()
-                .BuildServiceProvider();
-
-            var a = serviceProvider.GetService<ArchiveCommand>();
+            //var serviceProvider = new ServiceCollection()
+            //    //.AddLogging()
+            //    .AddScoped<ArchiveCommand>()
+            //    .AddScoped<SevenZipUtils>()
+            //    .BuildServiceProvider();
 
             var rootCommand = new RootCommand();
-            rootCommand.AddCommand(a.GetArchiveCommand());
+            rootCommand.AddCommand(ArchiveCommand.GetCommand());
 
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
