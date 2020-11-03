@@ -52,5 +52,28 @@ namespace Arius
 
             bc.DownloadTo(fileName);
         }
+
+        public IEnumerable<string> GetManifestBlobNames()
+        {
+            foreach (var b in _bcc.GetBlobs())
+            {
+                if (!b.Name.EndsWith(".manifest.7z.arius"))
+                    continue;
+
+
+
+                //var zzz = _bcc.GetBlobClient(b.Name);
+
+                //var te = Path.GetTempFileName();
+
+                //var kkk = zzz.DownloadTo(te);
+
+                //var zzzz = File.ReadAllText()
+
+                ////s.
+
+                yield return b.Name;
+            }
+        }
     }
 }
