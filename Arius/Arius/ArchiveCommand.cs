@@ -139,6 +139,11 @@ namespace Arius
 
         private int Execute(string passphrase, BlobUtils remoteBlobs, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
         {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.BackgroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Archiving Local -> Remote");
+            Console.ResetColor();
+
             foreach (var fi in dir.GetFiles("*.*", SearchOption.AllDirectories))
             {
                 var relativeFileName = Path.GetRelativePath(dir.FullName, fi.FullName);
@@ -148,7 +153,7 @@ namespace Arius
                 {
                     Console.ForegroundColor = ConsoleColor.White;
                     Console.BackgroundColor = ConsoleColor.Blue;
-                    Console.WriteLine($"File {relativeFileName}");
+                    Console.WriteLine($"File: {relativeFileName}");
                     Console.ResetColor();
 
                     //File is large enough AND not an .arius file
@@ -177,19 +182,20 @@ namespace Arius
                         Console.WriteLine("Done");
 
                         Console.Write("Creating manifest...");
-                        CreateAndUploadManifest(remoteBlobs, blobName, passphrase, relativeFileName);
+                        AddManifestEntry(remoteBlobs, blobName, passphrase, relativeFileName);
                         Console.WriteLine("Done");
                     }
                     else
                     {
                         Console.Write("Binary exists on remote. Checking manifest... ");
 
-                        var manifest = GetManifestsForBlob(remoteBlobs, blobName, passphrase); //TODO what if the manifest got deleted?
+                        var manifests = GetManifestsForBlob(remoteBlobs, blobName, passphrase); //TODO what if the manifest got deleted?
 
-                        if (!manifest.Any(m => m.RelativeFileName == relativeFileName && !m.IsDeleted))
+                        if (!manifests.Any(m => m.RelativeFileName == relativeFileName && !m.IsDeleted))
                         {
                             Console.Write("Adding reference to manifest... ");
-                            AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifest, relativeFileName);
+                            //AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifest, relativeFileName);
+                            AddManifestEntry(remoteBlobs, blobName, passphrase, relativeFileName, manifests: manifests);
                             Console.WriteLine("Done");
                         }
                         else
@@ -222,7 +228,6 @@ namespace Arius
 
                 //UPDATE - ie rename of an .arius file
 
-
                 if (fi.Name.EndsWith(".arius"))
                 {
                     Console.ForegroundColor = ConsoleColor.White;
@@ -234,14 +239,15 @@ namespace Arius
                     var blobName = File.ReadAllText(fi.FullName);
                     var manifests = GetManifestsForBlob(remoteBlobs, blobName, passphrase);
 
-                    var originalFileName = Path.GetFileNameWithoutExtension(relativeFileName);
+                    var originalFileName = GetContentFullName(relativeFileName); // Path.GetFileNameWithoutExtension(relativeFileName);
                     if (!manifests.Any(mm => mm.RelativeFileName == originalFileName))
                     {
                         // The manifest does not have a pointer to this local file, ie the .arius file has been renamed
 
                         Console.WriteLine("File has been renamed.");
                         Console.Write("Updating manifest...");
-                        AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifests, originalFileName);
+                        //AddFileToManifestAndUpload(remoteBlobs, blobName, passphrase, manifests, originalFileName);
+                        AddManifestEntry(remoteBlobs, blobName, passphrase, originalFileName, manifests: manifests);
                         Console.WriteLine("Done");
                     }
                     else
@@ -253,20 +259,26 @@ namespace Arius
                 Console.WriteLine("");
             }
 
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.BackgroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Synchronizing Remote with Local");
+            Console.ResetColor();
+
+
             foreach (var manifestBlobName in remoteBlobs.GetManifestBlobNames())
             {
                 var manifests = GetManifests(remoteBlobs, passphrase, manifestBlobName);
 
                 bool toUpdate = false;
 
-                foreach (var manifest in manifests)
+                foreach (var manifest in manifests.Where(m => !m.IsDeleted).ToArray()) //ToArray as were modifying the collection along the way
                 {
                     var localFile = Path.Combine(dir.FullName, manifest.RelativeFileName);
                     if (!File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
                     {
                         // DELETE
-                        manifest.IsDeleted = true;
-
+                        var contentBlobName = GetContentBlobName(manifestBlobName);
+                        AddManifestEntry(remoteBlobs, contentBlobName, passphrase, localFile, isDeleted: true, manifests: manifests, upload: false);
                         toUpdate = true;
 
                         Console.WriteLine("File");
@@ -278,39 +290,55 @@ namespace Arius
                     var contentBlobName = GetContentBlobName(manifestBlobName);
                     UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifests);
                 }
-
             }
-
-
-
-
 
             return 0;
         }
 
+        
 
-        private void CreateAndUploadManifest(BlobUtils remoteBlobs, string contentBlobName, string passphrase, string relativeFileName)
+        private void AddManifestEntry(BlobUtils remoteBlobs, string contentBlobName, string passphrase, string relativeFileName, DateTime? datetime = null, bool isDeleted = false, List<Manifest> manifests = null, bool upload = true)
         {
-            var manifest = new List<Manifest> { GetNewManifest(relativeFileName) };
-            UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifest);
+            if (manifests == null)
+                AddManifestEntry(remoteBlobs, contentBlobName, passphrase, relativeFileName, datetime, isDeleted, new List<Manifest>(), upload);
+            else
+            {
+                manifests.Add(new Manifest { RelativeFileName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = isDeleted });
+
+                if (upload)
+                    UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifests);
+            }
         }
 
-        private void AddFileToManifestAndUpload(BlobUtils remoteBlobs, string contentBlobName, string passphrase, List<Manifest> existingManifests, string relativeFileNameToAdd)
-        {
-            AddFileToManifest(existingManifests, relativeFileNameToAdd);
-            UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, existingManifests);
-        }
 
-        private void AddFileToManifest(List<Manifest> existingManifests, string relativeFileNameToAdd)
-        {
-            existingManifests.Add(GetNewManifest(relativeFileNameToAdd));
-        }
+        //private Manifest GetNewManifest(string relativeFileName, DateTime? datetime = null, bool IsDeleted = false)
+        //{
+        //    return new Manifest { RelativeFileName = relativeFileName, DateTime = datetime ?? DateTime.UtcNow, IsDeleted = IsDeleted };
+        //}
+
+        //private void CreateAndUploadManifest(BlobUtils remoteBlobs, string contentBlobName, string passphrase, string relativeFileName)
+        //{
+        //    var manifest = new List<Manifest> { GetNewManifest(relativeFileName) };
+        //    UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, manifest);
+        //}
+
+        //private void AddFileToManifestAndUpload(BlobUtils remoteBlobs, string contentBlobName, string passphrase, List<Manifest> existingManifests, string relativeFileNameToAdd)
+        //{
+        //    AddFileToManifest(existingManifests, relativeFileNameToAdd);
+        //    UploadManifestsForBlob(remoteBlobs, contentBlobName, passphrase, existingManifests);
+        //}
+
+        //private void AddFileToManifest(List<Manifest> existingManifests, string relativeFileNameToAdd)
+        //{
+        //    existingManifests.Add(GetNewManifest(relativeFileNameToAdd));
+        //}
 
         private void UploadManifestsForBlob(BlobUtils remoteBlobs, string contentBlobName, string passphrase, List<Manifest> manifests)
         {
             var manifestName = GetManifestName(contentBlobName, false);
             var manifestFullName = Path.Combine(Path.GetTempPath(), manifestName);
 
+            manifests = manifests.OrderBy(m => m.DateTime).ToList();
             var json = JsonSerializer.Serialize(manifests);
             File.WriteAllText(manifestFullName, json);
 
@@ -363,17 +391,11 @@ namespace Arius
             return match.Groups["contentBlobName"].Value;
         }
 
-        private List<Manifest> AddManifestEntry()
+        private string GetContentFullName(string ariusFullName)
         {
-
+            var match = Regex.Match(ariusFullName, "^(?<ariusFullName>.*).arius$");
+            return match.Groups["ariusFullName"].Value;
         }
-        
-
-        private Manifest GetNewManifest(string relativeFileName, DateTime? datetime = null, bool IsDeleted = false)
-        {
-            return new Manifest { RelativeFileName = relativeFileName, DateTime = datetime ?? DateTime.UtcNow, IsDeleted = IsDeleted };
-        }
-
 
         class Manifest
         {
