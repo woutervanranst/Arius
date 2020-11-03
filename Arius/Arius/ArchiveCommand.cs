@@ -273,6 +273,7 @@ namespace Arius
 
                 foreach (var manifest in manifests.Where(m => !m.IsDeleted).ToArray()) //ToArray as were modifying the collection along the way
                 {
+                    //TODO: Fout: als ik een file upload, dan rename, dan blijft de originele staan in de netry "isdeleted"
                     var localFile = Path.Combine(dir.FullName, manifest.RelativeFileName);
                     if (!File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
                     {
