@@ -27,6 +27,7 @@ arius archive
   (--tier=(hot/cool/archive))
   (--min-size=<minsizeinMB>)
   (--simulate)
+  <path>
 ```
 
 ``--container`` the container name to use. Default: ``arius``
@@ -34,6 +35,8 @@ arius archive
 ``--keep-local`` do not delete the local files after archiving. Default: delete after archiving
 
 ``--tier`` specify the blob tier. Default: archive
+
+``--min-size`` the minimum size as of which to archive files. Default: 1 MB. WARNING if >0 then a full restore will miss the smaller files
 
 
 ### Restore from blob
@@ -44,10 +47,17 @@ arius restore
    --accountname <accountname> 
    --accountkey <accountkey> 
    --passphrase <passphrase>
+  (--container <containername>) 
   (--download)
+  <path>
 ```
 
 ``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
+
+``path``
+* Empty Directory > Full Restore
+* Directory with .arius files > Restore all files in the directory
+* Arius file > restore this file
 
 ## Restore with common tools
 
