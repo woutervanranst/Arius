@@ -35,6 +35,8 @@ arius archive
 
 ``--tier`` specify the blob tier. Default: archive
 
+``--min-size`` the minimum size as of which to archive files. Default: 1 MB. WARNING if >0 then a full restore will miss the smaller files
+
 
 ### Restore from blob
 Restore the archive structure to the current path.
