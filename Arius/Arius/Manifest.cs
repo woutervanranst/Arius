@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Arius
 {
@@ -46,7 +47,11 @@ namespace Arius
             _entries = entries ?? new List<ManifestEntry>();
         }
 
-        //public IEnumerable<ManifestEntry> Entries => _entries.Count == 0 ? throw new ArgumentException("Entries not initialized") : _entries;
+        /// <summary>
+        /// Get all ManifestEntries
+        /// </summary>
+        /// <param name="includeDeleted"></param>
+        /// <returns></returns>
         public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted)
         {
             if (_entries.Count == 0)
@@ -57,13 +62,26 @@ namespace Arius
             else
                 return _entries.Where(me => !me.IsDeleted).AsEnumerable();
         }
+
+        /// <summary>
+        /// Get all ManifestEntries for the given relative path/filename
+        /// </summary>
+        /// <param name="includeDeleted"></param>
+        /// <param name="relativeFileName"></param>
+        /// <returns></returns>
         public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted, string relativeFileName)
         {
             return GetAllEntries(includeDeleted)
                 .Where(me => me.RelativeFileName == relativeFileName)
                 .AsEnumerable();
         }
-        public IEnumerable<ManifestEntry> GetLatestEntries(bool includeDeleted)
+
+        /// <summary>
+        /// Get the last (per file and ordered by date) ManifestEntries
+        /// </summary>
+        /// <param name="includeDeleted"></param>
+        /// <returns></returns>
+        public IEnumerable<ManifestEntry> GetLastEntries(bool includeDeleted)
         {
             var latestEntries = GetAllEntries(true)  //NOTE: niet GetAllEntries(includeDeleted) want dan hebt ge de entires die zeggen datm deleted is niet
                 .GroupBy(me => me.RelativeFileName, me => me)
@@ -76,6 +94,13 @@ namespace Arius
                 return latestEntries
                     .Where(m => !m.IsDeleted)
                     .AsEnumerable();
+        }
+
+        public IEnumerable<LocalAriusFile> GetLocalAriusFiles(DirectoryInfo root)
+        {
+            var les = GetLastEntries(false);
+
+            return les.Select(me => new LocalAriusFile(root, me.RelativeLocalAriusFileName, this));
         }
 
         public string ContentBlobName { get; private set; }
@@ -108,7 +133,12 @@ namespace Arius
     class ManifestEntry
     {
         public string RelativeFileName { get; set; }
+        
+        [JsonIgnore]
+        public string RelativeLocalAriusFileName => $"{RelativeFileName}.arius";
+        
         public DateTime DateTime { get; set; }
+        
         public bool IsDeleted { get; set; }
     }
 }

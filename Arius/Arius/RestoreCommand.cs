@@ -106,7 +106,7 @@ namespace Arius
             return 0;
         }
 
-        private int RestorePointers(string passphrase, DirectoryInfo dir)
+        private int RestorePointers(string passphrase, DirectoryInfo root)
         {
             //foreach (var contentBlobName in _bu.GetContentBlobNames())
             //{
@@ -133,43 +133,94 @@ namespace Arius
 
             Console.Write($"Getting {cbn.Length} manifests... ");
             var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
-            var syncItems = cb //.AsParallel()
-                .Select(m => new
-                {
-                    m.ContentBlobName,
-                    LastManifestEntries = m.GetLatestEntries(false).ToImmutableArray()
-                }).SelectMany(m => m.LastManifestEntries, (collection, result) => new SyncItem
-                {
-                    RelativeFileName = result.RelativeFileName,
-                    ContentBlobName = collection.ContentBlobName,
-                    Checked = false
-                }).ToImmutableDictionary(m => m.RelativeFileName, m => m);
-            Console.WriteLine($"Done. {syncItems.Count} files in latest version of remote");
 
+            var remoteItems = cb
+                .AsParallel()
+                .Select(m => m.GetLocalAriusFiles(root))
+                .SelectMany(laf => laf)
+                .ToImmutableArray();
+            Console.WriteLine($"Done. {remoteItems.Count()} files in latest version of remote");
 
+            
             Console.WriteLine($"Synchronizing state of local folder with remote... ");
-            foreach (var fi in dir.GetFiles("*.arius", SearchOption.AllDirectories))
+            
+            // 1. FILES THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
+            var ariusFilesToCreate = remoteItems.Where(laf => !laf.Exists);
+            Console.WriteLine($"{ariusFilesToCreate.Count()} files to be created... ");
+            ariusFilesToCreate.AsParallel().ForAll(laf =>
             {
-                var relativeLocalContentFileName = AriusFile.GetLocalContentName(Path.GetRelativePath(dir.FullName, fi.FullName));
+                laf.Create();
+                Console.WriteLine($"File '{laf.RelativeAriusFileName}' created");
+            });
 
-                if (syncItems.ContainsKey(relativeLocalContentFileName))
-                    // File exists locally and should exist as per latest remote
-                    syncItems[relativeLocalContentFileName].Checked = true;
-                else
-                {
-                    Console.Write($"File '{relativeLocalContentFileName}' not present in latest version of remote... Deleting... ");
-                    // File exists locally and should not exist as per latest remote
-                    fi.Delete();
-                    Console.WriteLine("Done");
-                }
-            }
-            foreach (var syncItem in syncItems.Where(syncItem => !syncItem.Value.Checked))
+            // 2. FILES THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
+            var ariusFilesToDelete = root.GetFiles("*.arius", SearchOption.AllDirectories)
+                .Select(localFileInfo => localFileInfo.FullName)
+                .Except(remoteItems.Select(laf => laf.AriusFileName))
+                .ToImmutableArray();
+            Console.WriteLine($"File '{ariusFilesToDelete.Count()}' files to be deleted... ");
+            ariusFilesToDelete.AsParallel().ForAll(filename =>
             {
-                Console.Write($"File '{syncItem.Value}' present in latest version of remote but not locally... Creating... ");
-                // File exists as per remote but does not exist locally
-                AriusFile.CreatePointer(Path.Combine(dir.FullName, $"{syncItem.Value.RelativeFileName}.arius"), syncItem.Value.ContentBlobName);
-                Console.WriteLine("Done");
-            }
+                File.Delete(filename);
+                Console.WriteLine($"{Path.GetRelativePath(root.FullName, filename)} deleted");
+            });
+
+            //Create Files
+
+            //Delete Files
+
+
+
+            //foreach (var fi in root.GetFiles("*.arius", SearchOption.AllDirectories))
+            //{
+            //    var relativeAriusFileName = Path.GetRelativePath(root.FullName, fi.FullName);
+
+            //    if (remoteItems.ContainsKey(relativeAriusFileName))
+            //        // File exists locally and should exist as per latest remote
+            //        remoteItems[relativeAriusFileName].Value = true;
+            //    else
+            //    {
+            //        Console.Write($"File '{relativeAriusFileName}' not present in latest version of remote... Deleting... ");
+            //        // File exists locally and should not exist as per latest remote
+            //        fi.Delete();
+            //        Console.WriteLine("Done");
+            //    }
+            //}
+            //foreach (var syncItem in syncItems.Where(syncItem => !syncItem.Value.Checked))
+            //{
+            //    Console.Write($"File '{syncItem.Value}' present in latest version of remote but not locally... Creating... ");
+            //    // File exists as per remote but does not exist locally
+            //    LocalAriusFile.CreatePointer(Path.Combine(root.FullName, $"{syncItem.Value.RelativeFileName}.arius"), syncItem.Value.ContentBlobName);
+            //    Console.WriteLine("Done");
+            //}
+
+
+
+
+
+
+            //foreach (var fi in root.GetFiles("*.arius", SearchOption.AllDirectories))
+            //{
+            //    var relativeLocalContentFileName = LocalAriusFile.GetLocalContentName(Path.GetRelativePath(root.FullName, fi.FullName));
+
+            //    if (syncItems.ContainsKey(relativeLocalContentFileName))
+            //        // File exists locally and should exist as per latest remote
+            //        syncItems[relativeLocalContentFileName].Checked = true;
+            //    else
+            //    {
+            //        Console.Write($"File '{relativeLocalContentFileName}' not present in latest version of remote... Deleting... ");
+            //        // File exists locally and should not exist as per latest remote
+            //        fi.Delete();
+            //        Console.WriteLine("Done");
+            //    }
+            //}
+            //foreach (var syncItem in syncItems.Where(syncItem => !syncItem.Value.Checked))
+            //{
+            //    Console.Write($"File '{syncItem.Value}' present in latest version of remote but not locally... Creating... ");
+            //    // File exists as per remote but does not exist locally
+            //    LocalAriusFile.CreatePointer(Path.Combine(root.FullName, $"{syncItem.Value.RelativeFileName}.arius"), syncItem.Value.ContentBlobName);
+            //    Console.WriteLine("Done");
+            //}
 
             /*
              * Test cases
