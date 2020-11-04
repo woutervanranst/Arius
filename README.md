@@ -1,12 +1,13 @@
 # Arius
-Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier
+Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier. 
 
-The name derives from the Greek for 'immortal'
+The name derives from the Greek for 'immortal'. 
 
 ## Key design objectives
 * Maintain local file structure (files/folders) by creating 'sparse' placeholders
 * Files, folders & filenames are encrypted clientside
 * The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
+* Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
 * Never delete files on remote
 * Point in time restore (FUTURE)
 * No central store to avoid a single point of failure
