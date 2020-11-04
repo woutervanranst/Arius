@@ -8,19 +8,18 @@ namespace Arius
 {
     class FileUtils
     {
-        public static string GetHash(string salt, string file)
+        public static string GetHash(string salt, string fileName)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(salt);
             using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = File.OpenRead(file);
+            using Stream fs = File.OpenRead(fileName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
 
             using var md5 = MD5.Create();
             var hash = md5.ComputeHash(stream);
 
-            //var kak = System.Convert.ToBase64String(hash);
             return BitConverter.ToString(hash);
         }
     }

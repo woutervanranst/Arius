@@ -138,10 +138,11 @@ namespace Arius
             ariusFilesToDelete.AsParallel().ForAll(filename =>
             {
                 File.Delete(filename);
+
+                //TODO Delete empty directories / recursively
+
                 Console.WriteLine($"File '{Path.GetRelativePath(root.FullName, filename)}' deleted");
             });
-
-
 
 
 
@@ -155,6 +156,10 @@ namespace Arius
              *      remote with isdeleted and local present > should be deleted
              *      remote with !isdeleted and local not present > should be created
              *      also in subdirectories
+             *      in ariusfile : de verschillende extensions
+             *      files met duplicates enz upload download
+             *      al 1 file lokaal > kopieert de rest
+             *      restore > normal binary file remains untouched
              * */
 
 
@@ -163,19 +168,46 @@ namespace Arius
 
         private int Download(DirectoryInfo root, string passphrase)
         {
-            //root.GetFiles("*.arius", SearchOption.AllDirectories).AsParallel().Select(localFileInfo => new LocalAriusFile(root, localFileInfo.FullName)
+            var blobsToDownload = root.GetFiles("*.arius", SearchOption.AllDirectories)
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .Select(localFileInfo => new LocalAriusFileWithoutManifest(root, Path.GetRelativePath(root.FullName, localFileInfo.FullName)))
+                .GroupBy(lafwm => lafwm.ContentBlobName, lafwm => lafwm).Select(g => g.ToImmutableArray());
+
+            blobsToDownload
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .ForAll(blobGroup =>
+                {
+                    var contentFileName = blobGroup.First().ContentFileName;
+
+                    if (File.Exists(contentFileName))
+                    {
+                        //Already exists, check hash
+                        var hash = FileUtils.GetHash(passphrase, contentFileName);
+
+                        if (hash != blobGroup.First().Hash)
+                            //Hash differs > delete file
+                            File.Delete(contentFileName);
+                    }
+
+                    if (!File.Exists(contentFileName))
+                    {
+                        //Download
+                        var tempContentFileName = blobGroup.First().ContentBlob.Download(_bu, _szu, passphrase);
+                        File.Move(tempContentFileName, contentFileName);
+                    }
+
+                    blobGroup.Skip(1).AsParallel().ForAll(lafwm =>
+                    {
+                        // Copy & overwrite
+                        File.Copy(contentFileName, lafwm.ContentFileName, true);
+
+                        //TODO https://docs.microsoft.com/en-us/dotnet/api/system.io.file.setlastwritetime?view=netcore-3.1
+                    });
+                });
 
             return 0;
         }
-
-
-
-    }
-
-    internal class SyncItem
-    {
-        public string RelativeFileName { get; set; }
-        public string ContentBlobName { get; set; }
-        public bool Checked { get; set; }
     }
 }
