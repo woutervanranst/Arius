@@ -220,7 +220,7 @@ namespace Arius
                         // File exists on remote, create pointer
 
                         Console.Write("Creating local pointer... ");
-                        File.WriteAllText(localPointerFullName, contentBlobName, Encoding.UTF8);
+                        AriusFile.CreatePointer(localPointerFullName, contentBlobName);
                         Console.WriteLine("Done");
                     }
 
@@ -312,7 +312,8 @@ namespace Arius
             return 0;
         }
 
-
         
+
+
     }
 }
