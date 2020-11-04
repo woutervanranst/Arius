@@ -6,49 +6,25 @@ using System.Text.RegularExpressions;
 
 namespace Arius
 {
-    class LocalAriusFile
+    abstract class AriusFile
     {
-        //public static AriusFile()
-        //{
-
-        //}
-
-        public LocalAriusFile(DirectoryInfo root, string relativeAriusFileName, Manifest manifest)
+        public AriusFile(DirectoryInfo root, string relativeAriusFileName)
         {
             if (!relativeAriusFileName.EndsWith(".arius"))
                 throw new ArgumentException($"{nameof(relativeAriusFileName)} not an .arius file");
 
             _root = root;
+
             RelativeAriusFileName = relativeAriusFileName;
-            //_fi = new FileInfo(Path.Combine(root.FullName, relativeAriusFileName));
-            _m = manifest;
         }
+
         private readonly DirectoryInfo _root;
-        //private readonly FileInfo _fi;
-        private readonly Manifest _m;
 
         public string RelativeAriusFileName { get; private set; }
         public string AriusFileName => Path.Combine(_root.FullName, RelativeAriusFileName);
         public bool Exists => File.Exists(AriusFileName);
-
-        //public void CreatePointer(string contentBlobName)
-        //{
-        //    LocalAriusFile.CreatePointer(_fi.FullName, contentBlobName);
-        //}
-
-        public void Create()
-        {
-            if (File.Exists(AriusFileName))
-                throw new InvalidOperationException($"LocalAriusFile {AriusFileName} already exists");
-
-            LocalAriusFile.CreatePointer(AriusFileName, _m.ContentBlobName);
-        }
-
-
+        
         public override string ToString() => RelativeAriusFileName;
-
-
-
 
 
         public static string GetLocalContentName(string relativeName)
@@ -72,5 +48,30 @@ namespace Arius
 
             File.WriteAllText(ariusFileName, contentBlobName, Encoding.UTF8);
         }
+    }
+
+    class LocalAriusFile : AriusFile
+    {
+        public LocalAriusFile(DirectoryInfo root, string relativeAriusFileName, Manifest manifest) : base(root, relativeAriusFileName)
+        {
+            _m = manifest;
+        }
+
+        private readonly Manifest _m;
+
+        public void Create()
+        {
+            if (File.Exists(AriusFileName))
+                throw new InvalidOperationException($"LocalAriusFile {AriusFileName} already exists");
+
+            LocalAriusFile.CreatePointer(AriusFileName, _m.ContentBlobName);
+        }
+    }
+
+    class LocalAriusFileWithoutManifest : AriusFile
+    {
+        public LocalAriusFileWithoutManifest(DirectoryInfo root, string relativeAriusFileName) : base(root, relativeAriusFileName)
+        { }
+
     }
 }
