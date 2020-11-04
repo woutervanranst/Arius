@@ -282,20 +282,19 @@ namespace Arius
 
                 bool toUpdate = false;
 
-                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me);
+                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(meg => meg.OrderBy(me => me.DateTime).Last());
                 foreach (var me in entriesPerFileName)
                 {
-                    var localFile = Path.Combine(dir.FullName, me.Key);
-                    var lastEntry = me.OrderBy(mm => mm.DateTime).Last();
+                    var localFile = Path.Combine(dir.FullName, me.RelativeFileName);
 
-                    if (!lastEntry.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
+                    if (!me.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
                     {
                         // DELETE - File is deleted
                         manifest.AddEntry(me.Key, true);
                         toUpdate = true;
 
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"File {me.Key} is deleted. Marking as deleted on remote...");
+                        Console.WriteLine($"File {me.RelativeFileName} is deleted. Marking as deleted on remote...");
                         Console.ResetColor();
                     }
                 }
