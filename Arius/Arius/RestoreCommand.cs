@@ -133,16 +133,11 @@ namespace Arius
 
             Console.Write($"Getting {cbn.Length} manifests... ");
             var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
-            var syncItems = cb.AsParallel()
+            var syncItems = cb //.AsParallel()
                 .Select(m => new
                 {
                     m.ContentBlobName,
-                    LastManifestEntries = m.Entries
-                        .GroupBy(me => me.RelativeFileName, me => me)   
-                        //.Where(g => g.Any(me => !me.IsDeleted))
-                        .Select(g => g.OrderBy(me => me.DateTime).Last())
-                        .Where(m => !m.IsDeleted)
-                        .ToImmutableArray()
+                    LastManifestEntries = m.GetLatestEntries(false).ToImmutableArray()
                 }).SelectMany(m => m.LastManifestEntries, (collection, result) => new SyncItem
                 {
                     RelativeFileName = result.RelativeFileName,

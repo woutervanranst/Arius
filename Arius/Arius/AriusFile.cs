@@ -8,6 +8,32 @@ namespace Arius
 {
     class AriusFile
     {
+        //public AriusFile(string rootDirectory)
+        //{
+
+        //}
+
+        public AriusFile(DirectoryInfo root, string relativePath)
+        {
+            if (!relativePath.EndsWith(".arius"))
+                throw new ArgumentException($"{nameof(relativePath)} not an .arius file");
+
+            _root = root;
+            _fi = new FileInfo(Path.Combine(root.FullName, relativePath));
+        }
+        private readonly DirectoryInfo _root;
+        private readonly FileInfo _fi;
+
+
+        public void CreatePointer(string contentBlobName)
+        {
+            AriusFile.CreatePointer(_fi.FullName, contentBlobName);
+        }
+
+
+
+
+
         public static string GetLocalContentName(string relativeName)
         {
             //Ref https://stackoverflow.com/questions/5650909/regex-for-extracting-certain-part-of-a-string
