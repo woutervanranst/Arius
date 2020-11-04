@@ -11,7 +11,10 @@ namespace Arius
         public AriusFile(DirectoryInfo root, string relativeAriusFileName)
         {
             if (!relativeAriusFileName.EndsWith(".arius"))
-                throw new ArgumentException($"{nameof(relativeAriusFileName)} not an .arius file");
+                throw new ArgumentException($"{relativeAriusFileName} not an .arius file");
+
+            if (Path.IsPathRooted(relativeAriusFileName))
+                throw new ArgumentException($"{relativeAriusFileName} not a relative file");
 
             _root = root;
 
@@ -22,6 +25,8 @@ namespace Arius
 
         public string RelativeAriusFileName { get; private set; }
         public string AriusFileName => Path.Combine(_root.FullName, RelativeAriusFileName);
+        public string ContentFileName => GetLocalContentName(AriusFileName);
+        public string EncryptedContentFileName => $"{ContentFileName}.7z.arius"; // TODO komt via ManifestEntry.RelativeLocalAriusFileName waar we .arius kunnen droppen
         public bool Exists => File.Exists(AriusFileName);
         
         public override string ToString() => RelativeAriusFileName;
@@ -71,7 +76,40 @@ namespace Arius
     class LocalAriusFileWithoutManifest : AriusFile
     {
         public LocalAriusFileWithoutManifest(DirectoryInfo root, string relativeAriusFileName) : base(root, relativeAriusFileName)
-        { }
+        {
+            _contentBlobName = new Lazy<string>(() => File.ReadAllText(AriusFileName));
+            _contentBlob = new Lazy<ContentBlob>(() => new ContentBlob(ContentBlobName));
 
+        }
+        private readonly Lazy<ContentBlob> _contentBlob;
+        private readonly Lazy<string> _contentBlobName;
+
+
+        public string ContentBlobName => _contentBlobName.Value;
+
+        public ContentBlob ContentBlob => _contentBlob.Value;
+
+        public string Hash => ContentBlobName.TrimEnd(".7z.arius"); //TODO
+    }
+
+    class ContentBlob
+    {
+        public ContentBlob(string contentBlobName)
+        {
+            _contentBlobName = contentBlobName;
+        }
+        private readonly string _contentBlobName;
+
+        public string Download(BlobUtils bu, SevenZipUtils szu, string passphrase)
+        {
+            var encryptedContentTempFile = Path.GetTempFileName();
+            bu.Download(_contentBlobName, encryptedContentTempFile);
+
+            var contentTempFile = Path.GetTempFileName();
+            szu.DecryptFile(encryptedContentTempFile, contentTempFile, passphrase);
+            File.Delete(encryptedContentTempFile);
+
+            return contentTempFile;
+        }
     }
 }
