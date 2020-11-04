@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
@@ -83,15 +84,15 @@ namespace Arius
             if (Directory.Exists(path))
             {
                 var di = new DirectoryInfo(path);
-                if (di.EnumerateFiles().Any())
-                {
-                    // Non empty directory > restore all files
-                }
-                else
-                {
-                    // Empty directory > restore all pointers
+                //if (di.EnumerateFiles().Any())
+                //{
+                //    // Non empty directory > restore all files
+                //}
+                //else
+                //{
+                //    // Empty directory > restore all pointers
                     RestorePointers(passphrase, di);
-                }
+                //}
             } 
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
@@ -107,28 +108,86 @@ namespace Arius
 
         private int RestorePointers(string passphrase, DirectoryInfo dir)
         {
-            foreach (var contentBlobName in _bu.GetContentBlobNames())
-            {
-                var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
+            //foreach (var contentBlobName in _bu.GetContentBlobNames())
+            //{
+            //    var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
 
-                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(meg => meg.OrderBy(me => me.DateTime).Last());
-                foreach (var me in entriesPerFileName)
+            //    var entriesPerFileName = manifest.Entries
+            //        .GroupBy(me => me.RelativeFileName, me => me)
+            //        .Select(meg => meg.OrderBy(me => me.DateTime).Last());
+
+            //    foreach (var me in entriesPerFileName)
+            //    {
+            //        if (!me.IsDeleted)
+            //        {
+            //            var localFile = new FileInfo(Path.Combine(dir.FullName, $"{me.RelativeFileName}.arius"));
+            //            if (!localFile.Directory.Exists)
+            //                localFile.Directory.Create();
+
+            //            File.WriteAllText(localFile.FullName, contentBlobName);
+            //        }
+            //    }
+            //}
+
+            var cbn = _bu.GetContentBlobNames().ToArray();
+
+            Console.Write($"Getting manifests for {cbn.Length} files... ");
+            var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
+            var syncItems = cb.AsParallel()
+                .Select(m => new
                 {
-                    var lastEntry = me.OrderBy(mm => mm.DateTime).Last();
+                    m.ContentBlobName,
+                    LastManifestEntries = m.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(g => g.OrderBy(me => me.DateTime).Last()).ToImmutableArray()
+                }).SelectMany(m => m.LastManifestEntries, (collection, result) => new SyncItem
+                {
+                    RelativeFileName = result.RelativeFileName,
+                    ContentBlobName = collection.ContentBlobName,
+                    Checked = false
+                }).ToImmutableDictionary(m => m.RelativeFileName, m => m);
+            Console.WriteLine("Done");
 
-                    if (!lastEntry.IsDeleted)
-                    {
-                        var localFile = new FileInfo(Path.Combine(dir.FullName, $"{me.Key}.arius"));
-                        if (!localFile.Directory.Exists)
-                            localFile.Directory.Create();
 
-                        File.WriteAllText(localFile.FullName, contentBlobName);
-                    }
+            Console.WriteLine($"Synchronizing state of local folder with remote... ");
+            foreach (var fi in dir.GetFiles("*.arius", SearchOption.AllDirectories))
+            {
+                var relativeLocalContentFileName = AriusFile.GetLocalContentName(Path.GetRelativePath(dir.FullName, fi.FullName));
+
+                if (syncItems.ContainsKey(relativeLocalContentFileName))
+                    // File exists and should exist as per latest remote
+                    syncItems[relativeLocalContentFileName].Checked = true;
+                else
+                {
+                    Console.Write($"File '{relativeLocalContentFileName}' not present in latest version of remote... Deleting... ");
+                    // File exists and should not exist as per latest remote
+                    fi.Delete();
+                    Console.WriteLine("Done");
                 }
             }
+            foreach (var m in syncItems.Where(m => !m.Value.Checked))
+            {
+
+            }
+
+            /*
+             * Test cases
+             *      empty dir
+             *      dir with files > not to be touched?
+             *      dir with pointers - too many pointers > to be deleted
+             *      dir with pointers > not enough pointers > to be synchronzed
+             * */
+
+            Console.WriteLine("Done");
 
             return 0;
         }
+
+        
     }
 
+    internal class SyncItem
+    {
+        public string RelativeFileName { get; set; }
+        public string ContentBlobName { get; set; }
+        public bool Checked { get; set; }
+    }
 }
