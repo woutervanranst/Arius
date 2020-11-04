@@ -47,9 +47,9 @@ namespace Arius
             containerOption.AddAlias("-c");
             restoreCommand.AddOption(containerOption);
 
-            //var downloadOption = new Option<bool>("--download",
-            //    "List the differences between the local and the remote, without making any changes to remote");
-            //restoreCommand.AddOption(downloadOption);
+            var downloadOption = new Option<bool>("--download",
+                "List the differences between the local and the remote, without making any changes to remote");
+            restoreCommand.AddOption(downloadOption);
 
             var pathArgument = new Argument<string>("path",
                 getDefaultValue: () => Environment.CurrentDirectory,
@@ -58,13 +58,13 @@ namespace Arius
 
             //root.Handler = CommandHandler.Create<GreeterOptions, IHost>(Run);
 
-            restoreCommand.Handler = CommandHandler.Create<string, string, string, string, string>((accountName, accountKey, passphrase, container, path) =>
+            restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
             {
                 var bu = new BlobUtils(accountName, accountKey, container);
                 var szu = new SevenZipUtils();
 
                 var rc = new RestoreCommand(szu, bu);
-                return rc.Execute(passphrase, path);
+                return rc.Execute(passphrase, download, path);
             });
 
             return restoreCommand;
@@ -78,7 +78,7 @@ namespace Arius
         private readonly SevenZipUtils _szu;
         private readonly BlobUtils _bu;
 
-        public int Execute(string passphrase, string path)
+        public int Execute(string passphrase, bool download, string path)
         {
             if (Directory.Exists(path))
             {
@@ -111,7 +111,7 @@ namespace Arius
             {
                 var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
 
-                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me);
+                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(meg => meg.OrderBy(me => me.DateTime).Last());
                 foreach (var me in entriesPerFileName)
                 {
                     var lastEntry = me.OrderBy(mm => mm.DateTime).Last();
