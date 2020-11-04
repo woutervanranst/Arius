@@ -11,13 +11,12 @@ The name derives from the Greek for 'immortal'.
 * Never delete files on remote
 * Point in time restore (FUTURE)
 * No central store to avoid a single point of failure
+* File level deduplication
 * Leverage common tools, to allow restores even when this project would become deprecated
 
 ## CLI
 
 ### Archive to Blob
-Archive the current path Azure
-
 ```
 arius archive 
    --accountname <accountname> 
@@ -30,6 +29,7 @@ arius archive
   (--simulate)
   <path>
 ```
+Synchronize the `<path>` to the the remote archive.
 
 ``--container`` the container name to use. Default: ``arius``
 
@@ -41,8 +41,6 @@ arius archive
 
 
 ### Restore from blob
-Restore the archive structure to the current path.
-
 ```
 arius restore
    --accountname <accountname> 
@@ -52,13 +50,17 @@ arius restore
   (--download)
   <path>
 ```
+If `<path>` is a Directory:
 
-``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
+Synchronize the remote archive structure to the `<path>`:
+* This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
+* Pointers that exist in the archive but not remote are created
+* Pointers that exist locally but not in the archive are deleted
 
-``path``
-* Empty Directory > Full Restore
-* Directory with .arius files > Restore all files in the directory
-* Arius file > restore this file
+When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
+
+If ``<path>`` is an `.arius` file `--download` flag is specified: the file is restored 
+
 
 ## Restore with common tools
 
