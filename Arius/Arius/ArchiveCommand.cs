@@ -202,7 +202,7 @@ namespace Arius
 
                         var m = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase); //TODO what if the manifest got deleted?
 
-                        if (!m.Entries.Any(me => me.RelativeFileName == relativeFileName && !me.IsDeleted))
+                        if (!m.GetAllEntries(false, relativeFileName).Any())
                         {
                             Console.Write("Adding reference to manifest... ");
                             m.AddEntry(relativeFileName);
@@ -251,7 +251,7 @@ namespace Arius
 
 
                     var relativeFileName = AriusFile.GetLocalContentName(relativeAriusFileName);
-                    if (!manifest.Entries.Any(me => me.RelativeFileName == relativeFileName))
+                    if (!manifest.GetAllEntries(false, relativeFileName).Any())
                     {
                         // UPDATE The manifest does not have a pointer to this local file, ie the .arius file has been renamed
 
@@ -279,14 +279,11 @@ namespace Arius
             foreach (var contentBlobName in _bu.GetContentBlobNames())
             {
                 var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
+                var entries = manifest.GetLatestEntries(true);
 
                 bool toUpdate = false;
 
-                var entriesPerFileName = manifest.Entries
-                    .GroupBy(me => me.RelativeFileName, me => me)
-                    .Select(meg => meg.OrderBy(me => me.DateTime).Last());
-
-                foreach (var me in entriesPerFileName)
+                foreach (var me in entries)
                 {
                     var localFile = Path.Combine(dir.FullName, me.RelativeFileName);
 
