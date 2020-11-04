@@ -11,6 +11,7 @@ The name derives from the Greek for 'immortal'.
 * Never delete files on remote
 * Point in time restore (FUTURE)
 * No central store to avoid a single point of failure
+* File level deduplication
 * Leverage common tools, to allow restores even when this project would become deprecated
 
 ## CLI
