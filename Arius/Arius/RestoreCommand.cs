@@ -84,15 +84,10 @@ namespace Arius
             if (Directory.Exists(path))
             {
                 var di = new DirectoryInfo(path);
-                //if (di.EnumerateFiles().Any())
-                //{
-                //    // Non empty directory > restore all files
-                //}
-                //else
-                //{
-                //    // Empty directory > restore all pointers
-                    RestorePointers(passphrase, di);
-                //}
+                Synchronize(di, passphrase);
+
+                if (download)
+                    Download(di, passphrase);
             } 
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
@@ -106,7 +101,7 @@ namespace Arius
             return 0;
         }
 
-        private int RestorePointers(string passphrase, DirectoryInfo root)
+        private int Synchronize(DirectoryInfo root, string passphrase)
         {
             var cbn = _bu.GetContentBlobNames().ToArray();
 
@@ -166,7 +161,15 @@ namespace Arius
             return 0;
         }
 
-        
+        private int Download(DirectoryInfo root, string passphrase)
+        {
+            //root.GetFiles("*.arius", SearchOption.AllDirectories).AsParallel().Select(localFileInfo => new LocalAriusFile(root, localFileInfo.FullName)
+
+            return 0;
+        }
+
+
+
     }
 
     internal class SyncItem
