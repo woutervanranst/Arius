@@ -16,8 +16,6 @@ The name derives from the Greek for 'immortal'.
 ## CLI
 
 ### Archive to Blob
-Archive the current path Azure
-
 ```
 arius archive 
    --accountname <accountname> 
@@ -30,6 +28,7 @@ arius archive
   (--simulate)
   <path>
 ```
+Synchronize the `<path>` to the the remote archive.
 
 ``--container`` the container name to use. Default: ``arius``
 
@@ -41,8 +40,6 @@ arius archive
 
 
 ### Restore from blob
-Restore the archive structure to the current path.
-
 ```
 arius restore
    --accountname <accountname> 
@@ -52,13 +49,20 @@ arius restore
   (--download)
   <path>
 ```
+Synchronize the remote archive structure to the `<path>`:
+* This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
+* Pointers that exist in the archive but not remote are created
+* Pointers that exist locally but not in the archive are deleted
+
+When the `--download` option is specified, the files are also downloaded
+
 
 ``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
 
 ``path``
-* Empty Directory > Full Restore
-* Directory with .arius files > Restore all files in the directory
-* Arius file > restore this file
+* Path is a directory: Synchronize all pointers
+* Path is an existing `.arius` file and the `--download flag is specified`: the file is restored 
+
 
 ## Restore with common tools
 
