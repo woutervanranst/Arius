@@ -52,4 +52,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: arius
-        path: /home/runner/work/Playground/Playground/src/WebApp1/bin/Debug/netcoreapp3.1/publish/
+        path: /home/runner/work/Arius/Arius/Arius/Arius/bin/Debug/netcoreapp3.1/publish/
