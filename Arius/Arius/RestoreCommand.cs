@@ -131,20 +131,25 @@ namespace Arius
 
             var cbn = _bu.GetContentBlobNames().ToArray();
 
-            Console.Write($"Getting manifests for {cbn.Length} files... ");
+            Console.Write($"Getting {cbn.Length} manifests... ");
             var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
             var syncItems = cb.AsParallel()
                 .Select(m => new
                 {
                     m.ContentBlobName,
-                    LastManifestEntries = m.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(g => g.OrderBy(me => me.DateTime).Last()).ToImmutableArray()
+                    LastManifestEntries = m.Entries
+                        .GroupBy(me => me.RelativeFileName, me => me)   
+                        //.Where(g => g.Any(me => !me.IsDeleted))
+                        .Select(g => g.OrderBy(me => me.DateTime).Last())
+                        .Where(m => !m.IsDeleted)
+                        .ToImmutableArray()
                 }).SelectMany(m => m.LastManifestEntries, (collection, result) => new SyncItem
                 {
                     RelativeFileName = result.RelativeFileName,
                     ContentBlobName = collection.ContentBlobName,
                     Checked = false
                 }).ToImmutableDictionary(m => m.RelativeFileName, m => m);
-            Console.WriteLine("Done");
+            Console.WriteLine($"Done. {syncItems.Count} files in latest version of remote");
 
 
             Console.WriteLine($"Synchronizing state of local folder with remote... ");
@@ -153,19 +158,22 @@ namespace Arius
                 var relativeLocalContentFileName = AriusFile.GetLocalContentName(Path.GetRelativePath(dir.FullName, fi.FullName));
 
                 if (syncItems.ContainsKey(relativeLocalContentFileName))
-                    // File exists and should exist as per latest remote
+                    // File exists locally and should exist as per latest remote
                     syncItems[relativeLocalContentFileName].Checked = true;
                 else
                 {
                     Console.Write($"File '{relativeLocalContentFileName}' not present in latest version of remote... Deleting... ");
-                    // File exists and should not exist as per latest remote
+                    // File exists locally and should not exist as per latest remote
                     fi.Delete();
                     Console.WriteLine("Done");
                 }
             }
-            foreach (var m in syncItems.Where(m => !m.Value.Checked))
+            foreach (var syncItem in syncItems.Where(syncItem => !syncItem.Value.Checked))
             {
-
+                Console.Write($"File '{syncItem.Value}' present in latest version of remote but not locally... Creating... ");
+                // File exists as per remote but does not exist locally
+                AriusFile.CreatePointer(Path.Combine(dir.FullName, $"{syncItem.Value.RelativeFileName}.arius"), syncItem.Value.ContentBlobName);
+                Console.WriteLine("Done");
             }
 
             /*
@@ -174,6 +182,9 @@ namespace Arius
              *      dir with files > not to be touched?
              *      dir with pointers - too many pointers > to be deleted
              *      dir with pointers > not enough pointers > to be synchronzed
+             *      remote with isdeleted and local present > should be deleted
+             *      remote with !isdeleted and local not present > should be created
+             *      also in subdirectories
              * */
 
             Console.WriteLine("Done");
