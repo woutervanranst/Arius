@@ -49,19 +49,16 @@ arius restore
   (--download)
   <path>
 ```
+If `<path>` is a Directory:
+
 Synchronize the remote archive structure to the `<path>`:
 * This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
 * Pointers that exist in the archive but not remote are created
 * Pointers that exist locally but not in the archive are deleted
 
-When the `--download` option is specified, the files are also downloaded
+When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
 
-
-``--download`` also download the blobs WARNING this may consume a lot of bandwidth and may take a long time
-
-``path``
-* Path is a directory: Synchronize all pointers
-* Path is an existing `.arius` file and the `--download flag is specified`: the file is restored 
+If ``<path>`` is an `.arius` file `--download` flag is specified: the file is restored 
 
 
 ## Restore with common tools
