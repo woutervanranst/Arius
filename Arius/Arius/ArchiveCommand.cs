@@ -250,7 +250,7 @@ namespace Arius
                     var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
 
 
-                    var relativeFileName = GetLocalContentRelativeName(relativeAriusFileName); // Path.GetFileNameWithoutExtension(relativeFileName);
+                    var relativeFileName = AriusFile.GetLocalContentName(relativeAriusFileName);
                     if (!manifest.Entries.Any(me => me.RelativeFileName == relativeFileName))
                     {
                         // UPDATE The manifest does not have a pointer to this local file, ie the .arius file has been renamed
@@ -282,7 +282,10 @@ namespace Arius
 
                 bool toUpdate = false;
 
-                var entriesPerFileName = manifest.Entries.GroupBy(me => me.RelativeFileName, me => me).Select(meg => meg.OrderBy(me => me.DateTime).Last());
+                var entriesPerFileName = manifest.Entries
+                    .GroupBy(me => me.RelativeFileName, me => me)
+                    .Select(meg => meg.OrderBy(me => me.DateTime).Last());
+
                 foreach (var me in entriesPerFileName)
                 {
                     var localFile = Path.Combine(dir.FullName, me.RelativeFileName);
@@ -290,7 +293,7 @@ namespace Arius
                     if (!me.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
                     {
                         // DELETE - File is deleted
-                        manifest.AddEntry(me.Key, true);
+                        manifest.AddEntry(me.RelativeFileName, true);
                         toUpdate = true;
 
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -310,12 +313,6 @@ namespace Arius
         }
 
 
-        private string GetLocalContentRelativeName(string relativeName)
-        {
-            //Ref https://stackoverflow.com/questions/5650909/regex-for-extracting-certain-part-of-a-string
-
-            var match = Regex.Match(relativeName, "^(?<relativeName>.*).arius$");
-            return match.Groups["relativeName"].Value;
-        }
+        
     }
 }
