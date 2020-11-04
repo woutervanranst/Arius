@@ -220,7 +220,7 @@ namespace Arius
                         // File exists on remote, create pointer
 
                         Console.Write("Creating local pointer... ");
-                        AriusFile.CreatePointer(localPointerFullName, contentBlobName);
+                        LocalAriusFile.CreatePointer(localPointerFullName, contentBlobName);
                         Console.WriteLine("Done");
                     }
 
@@ -250,7 +250,7 @@ namespace Arius
                     var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
 
 
-                    var relativeFileName = AriusFile.GetLocalContentName(relativeAriusFileName);
+                    var relativeFileName = LocalAriusFile.GetLocalContentName(relativeAriusFileName);
                     if (!manifest.GetAllEntries(false, relativeFileName).Any())
                     {
                         // UPDATE The manifest does not have a pointer to this local file, ie the .arius file has been renamed
@@ -279,7 +279,7 @@ namespace Arius
             foreach (var contentBlobName in _bu.GetContentBlobNames())
             {
                 var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
-                var entries = manifest.GetLatestEntries(true);
+                var entries = manifest.GetLastEntries(true);
 
                 bool toUpdate = false;
 
