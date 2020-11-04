@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -45,7 +46,38 @@ namespace Arius
             _entries = entries ?? new List<ManifestEntry>();
         }
 
-        public IEnumerable<ManifestEntry> Entries => _entries.Count == 0 ? throw new ArgumentException("Entries not initialized") : _entries;
+        //public IEnumerable<ManifestEntry> Entries => _entries.Count == 0 ? throw new ArgumentException("Entries not initialized") : _entries;
+        public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted)
+        {
+            if (_entries.Count == 0)
+                throw new ArgumentException("Entries not initialized");
+
+            if (includeDeleted)
+                return _entries.AsEnumerable();
+            else
+                return _entries.Where(me => !me.IsDeleted).AsEnumerable();
+        }
+        public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted, string relativeFileName)
+        {
+            return GetAllEntries(includeDeleted)
+                .Where(me => me.RelativeFileName == relativeFileName)
+                .AsEnumerable();
+        }
+        public IEnumerable<ManifestEntry> GetLatestEntries(bool includeDeleted)
+        {
+            var latestEntries = GetAllEntries(true)  //NOTE: niet GetAllEntries(includeDeleted) want dan hebt ge de entires die zeggen datm deleted is niet
+                .GroupBy(me => me.RelativeFileName, me => me)
+                .Select(g => g.OrderBy(me => me.DateTime).Last());
+
+            if (includeDeleted)
+                return latestEntries
+                    .AsEnumerable();
+            else
+                return latestEntries
+                    .Where(m => !m.IsDeleted)
+                    .AsEnumerable();
+        }
+
         public string ContentBlobName { get; private set; }
         public string ManifestBlobName => $"{ContentBlobName}.manifest";
         public string EncryptedManifestBlobName => $"{ContentBlobName}.manifest.7z.arius";
@@ -69,6 +101,8 @@ namespace Arius
             blobUtils.Upload(tempEncryptedManifestFileName, EncryptedManifestBlobName, AccessTier.Cool);
             File.Delete(tempEncryptedManifestFileName);
         }
+
+
     }
 
     class ManifestEntry
