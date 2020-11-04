@@ -6,7 +6,7 @@
     },
     "arius restore": {
       "commandName": "Project",
-      "commandLineArgs": "restore -n aurius -k %ACCOUNT_KEY% -p woutervr -c arius2 C:\\Users\\Wouter\\Documents\\Test2"
+      "commandLineArgs": "restore -n aurius -k %ACCOUNT_KEY% -p woutervr -c arius2 --download C:\\Users\\Wouter\\Documents\\Test2"
     }
   }
 }
