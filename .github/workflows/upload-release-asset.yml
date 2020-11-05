@@ -16,6 +16,10 @@ name: Upload Release Asset
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: ./Arius
+        
     name: Upload Release Asset
     runs-on: ubuntu-latest
     steps:
