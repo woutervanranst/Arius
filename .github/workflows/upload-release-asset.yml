@@ -14,6 +14,9 @@ on:
 
 name: Upload Release Asset
 
+# See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
+# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+
 jobs:
   build:
     defaults:
@@ -41,11 +44,12 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.run_number }}
-        release_name: Release ${{ github.run_number }}
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-        
+
+# For SSH / debug        
 #    - name: Setup tmate session
 #      uses: mxschmitt/action-tmate@v3
     
