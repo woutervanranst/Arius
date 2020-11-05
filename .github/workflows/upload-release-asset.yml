@@ -26,34 +26,14 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v2
           
-#    - name: Setup .NET Core
-#      uses: actions/setup-dotnet@v1
-#      with:
-#        dotnet-version: 3.1.301
-  
-#    - name: Install dependencies
-#      run: dotnet restore
-
-#    - name: Build
-#      run: dotnet build --configuration Release --no-restore
-   
-#    - name: Test
-#      run: dotnet test --no-restore --verbosity normal
-      
-#    - name: Publish
-#      run: dotnet publish Arius #Deploy only Arius project, not the tests
-      
-      # - name: Build project # This would actually build your project, using zip for an example artifact
-      #  run: dotnet publish
-      #    # |
-      #    #zip --junk-paths my-artifact README.md
- 
     - name: Publish with dotnet
       run: dotnet publish Arius -c Release -o ./artifacts #Deploy only Arius project, not the tests
       
     - name: Zip artifacts
       run: |
-        zip --junk-paths -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/ ##--junk-paths gebruikt relative path
+        pushd /home/runner/work/Arius/Arius/Arius/artifacts/
+        zip -r /home/runner/work/Arius/Arius/Arius/release.zip .
+        popd
         
     - name: Create Release
       id: create_release
