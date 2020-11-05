@@ -47,7 +47,7 @@ jobs:
 #        tag_name: ${{ github.ref }}
 #        release_name: Release ${{ github.ref }}
 #        draft: false
-"        prerelease: false
+#        prerelease: false
 
 # For SSH / debug        
 #    - name: Setup tmate session
