@@ -338,9 +338,6 @@ namespace Arius
                 
                 using var fs = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
                 var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
-                //fs.Close();
-
-                //using var fs2 = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
                 fs.Position = 0;
 
                 DirectoryInfo clf = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
@@ -363,9 +360,15 @@ namespace Arius
                 var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
                 var concaten = new ConcatenatedStream(chunkFiles);
 
-                using var fff = File.Create(Path.Combine(clf.FullName, "haha.exe"));
+                var restorePath = Path.Combine(clf.FullName, "haha.exe");
+                using var fff = File.Create(restorePath);
                 concaten.CopyTo(fff);
                 fff.Close();
+
+                var x = FileUtils.GetHash("a", _fi.FullName);
+                var y = FileUtils.GetHash("a", restorePath);
+
+                bool yes = (x == y);
 
 
 
