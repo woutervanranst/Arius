@@ -10,31 +10,31 @@ namespace Arius
 {
     class SevenZipUtils
     {
-        //public SevenZipUtils()
-        //{
-        //    var lib = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Environment.Is64BitProcess ? "x64" : "x86", "7z.dll");
-        //    SevenZip.SevenZipBase.SetLibraryPath(lib);
-        //}
+        static SevenZipUtils()
+        {
+            var lib = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), Environment.Is64BitProcess ? "x64" : "x86", "7z.dll");
+            SevenZip.SevenZipBase.SetLibraryPath(lib);
+        }
 
-        //public void EncryptFile(string sourceFile, string targetFile, string password)
-        //{
-        //    var compressor = new SevenZip.SevenZipCompressor
-        //    {
-        //        ArchiveFormat = SevenZip.OutArchiveFormat.SevenZip,
-        //        CompressionLevel = SevenZip.CompressionLevel.None,
-        //        EncryptHeaders = true,
-        //        ZipEncryptionMethod = SevenZip.ZipEncryptionMethod.Aes256
-        //    };
+        public void EncryptFile(string sourceFile, string targetFile, string password)
+        {
+            var compressor = new SevenZip.SevenZipCompressor
+            {
+                ArchiveFormat = SevenZip.OutArchiveFormat.SevenZip,
+                CompressionLevel = SevenZip.CompressionLevel.None,
+                EncryptHeaders = true,
+                ZipEncryptionMethod = SevenZip.ZipEncryptionMethod.Aes256
+            };
 
-        //    compressor.CompressFilesEncrypted(targetFile, password, sourceFile);
-        //}
+            compressor.CompressFilesEncrypted(targetFile, password, sourceFile);
+        }
 
         //public void DecryptFile(string sourceFile, string targetFile, string password)
         //{
         //    var tfi = new FileInfo(targetFile);
 
         //    var extractor = new SevenZip.SevenZipExtractor(sourceFile, password);
-            
+
         //    var di = Directory.CreateDirectory(Path.Combine(tfi.DirectoryName, Guid.NewGuid().ToString()));
         //    extractor.ExtractArchive(di.FullName);
 
@@ -57,7 +57,7 @@ namespace Arius
         ////    var byteArray = Encoding.UTF8.GetBytes(text);
         ////    using Stream inStream = new MemoryStream(byteArray);
         ////    using Stream outStream = new MemoryStream();
-            
+
         ////    compressor.CompressStream(inStream, outStream, password);
 
         ////    outStream.Position = 0;
