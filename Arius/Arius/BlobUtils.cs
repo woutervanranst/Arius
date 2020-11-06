@@ -1,4 +1,5 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure.Storage;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System;
 using System.Collections.Generic;
@@ -40,9 +41,24 @@ namespace Arius
         {
             var bc = _bcc.GetBlobClient(blobName);
 
-            using FileStream uploadFileStream = File.OpenRead(fileName);
-            var r = bc.Upload(uploadFileStream, true);
-            uploadFileStream.Close();
+            // TODO BlobUploadOptions > ProgressHandler
+            // TransferOptions = new StorageTransferOptions { MaximumConcurrency
+
+
+            //using FileStream uploadFileStream = File.OpenRead(fileName);
+            //var r = bc.Upload(uploadFileStream, true);
+            //uploadFileStream.Close();
+
+            var buo = new BlobUploadOptions
+            {
+                AccessTier = tier,
+                TransferOptions = new StorageTransferOptions
+                {
+                    MaximumConcurrency = 128
+                }
+            };
+
+            var r = bc.Upload(fileName, buo);
 
             bc.SetAccessTier(tier);
         }
