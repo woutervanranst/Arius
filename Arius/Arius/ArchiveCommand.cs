@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SevenZip;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
@@ -18,6 +19,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static Arius.StreamBreaker;
 
 namespace Arius
 {
@@ -110,20 +112,20 @@ namespace Arius
         {
             //var bu = new BlobUtils(accountName, accountKey, container);
 
-            //var di = new DirectoryInfo(path);
+            var root = new DirectoryInfo(path);
 
-            //var accessTier = tier switch
-            //{
-            //    "hot" => AccessTier.Hot,
-            //    "cool" => AccessTier.Cool,
-            //    "archive" => AccessTier.Archive,
-            //    _ => throw new NotImplementedException()
-            //};
+            var accessTier = tier switch
+            {
+                "hot" => AccessTier.Hot,
+                "cool" => AccessTier.Cool,
+                "archive" => AccessTier.Archive,
+                _ => throw new NotImplementedException()
+            };
 
             //var szu = new SevenZipUtils();
 
-            //var ac = new ArchiveCommand(szu, bu);
-            //return ac.Execute(passphrase, keepLocal, accessTier, minSize, simulate, di);
+            var ac = new ArchiveCommand();
+            return ac.Execute(passphrase, keepLocal, accessTier, minSize, simulate, root);
 
             ////TODO KeepLocal
             //// TODO Simulate
@@ -138,20 +140,28 @@ namespace Arius
             // * Rename content file
             // * rename .arius file
             // */
-
-            return 0;
         }
 
-        public ArchiveCommand(SevenZipUtils szu, BlobUtils bu)
+        public ArchiveCommand()
         {
-            _szu = szu;
-            _bu = bu;
         }
-        private readonly SevenZipUtils _szu;
-        private readonly BlobUtils _bu;
 
-        private int Execute(string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo dir)
+        private int Execute(string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo root)
         {
+            var ha = root.GetFiles("*.*", SearchOption.AllDirectories).Where(fi => !fi.Name.EndsWith(".arius")).Select(fi => new LocalFile(fi));
+
+            ha
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .ForAll(f =>
+                {
+                    f.GetChunkedLocalFile();
+                });
+
+
+
+
+
             //    Console.ForegroundColor = ConsoleColor.White;
             //    Console.BackgroundColor = ConsoleColor.Green;
             //    Console.WriteLine($"Archiving Local -> Remote");
@@ -309,6 +319,104 @@ namespace Arius
             //    }
 
             return 0;
+        }
+
+        /// <summary>
+        /// Het gewone bestand
+        /// </summary>
+        class LocalFile
+        {
+            public LocalFile(FileInfo fi) //, FileInfo localAriusFile)
+            {
+                _fi = fi;
+            }
+            private readonly FileInfo _fi;
+
+            public ChunkedLocalFile GetChunkedLocalFile()
+            {
+                var sb = new StreamBreaker();
+                
+                using var fs = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
+                var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
+                //fs.Close();
+
+                //using var fs2 = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
+                fs.Position = 0;
+
+                DirectoryInfo clf = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
+                clf.Create();
+
+                foreach (var chunk in chunks)
+                {
+                    var chunkFullName = Path.Combine(clf.FullName, BitConverter.ToString(chunk.Hash));
+
+                    byte[] buff = new byte[chunk.Length];
+                    fs.Read(buff, 0, (int)chunk.Length);
+
+                    using var fileStream = File.Create(chunkFullName);
+                    fileStream.Write(buff, 0, (int)chunk.Length);
+                    fileStream.Close();
+                }
+
+                fs.Close();
+
+                var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+                var concaten = new ConcatenatedStream(chunkFiles);
+
+                using var fff = File.Create(Path.Combine(clf.FullName, "haha.exe"));
+                concaten.CopyTo(fff);
+                fff.Close();
+
+
+
+                var laf = new LocalAriusFile(this);
+                var lac = chunks.Select(c => new LocalAriusChunk("")).ToImmutableArray();
+
+                var r = new ChunkedLocalFile(this, laf, lac);
+
+                return r;
+            }
+        }
+
+        class ChunkedLocalFile
+        {
+            public ChunkedLocalFile(LocalFile lf, LocalAriusFile laf, ImmutableArray<LocalAriusChunk> lac)
+            {
+
+            }
+
+
+        }
+
+        /*
+         * Conventie
+         *  File.Name = de naam
+         *  File.FullName = met full path
+         * 
+         * 
+         */
+
+        /// <summary>
+        /// De Pointer
+        /// </summary>
+        class LocalAriusFile
+        {
+            public LocalAriusFile(LocalFile lf)
+            {
+
+            }
+
+        }
+
+        /// <summary>
+        /// Een stuk van de pointer
+        /// </summary>
+        class LocalAriusChunk
+        {
+            public LocalAriusChunk(string fileFullName)
+            {
+
+            }
         }
     }
 }
