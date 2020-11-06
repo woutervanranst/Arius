@@ -11,72 +11,72 @@ namespace Arius
 {
     class BlobUtils
     {
-        public BlobUtils(string accountName, string accountKey, string container)
-        {
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+        //public BlobUtils(string accountName, string accountKey, string container)
+        //{
+        //    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 
-            // Create a BlobServiceClient object which will be used to create a container client
-            BlobServiceClient bsc = new BlobServiceClient(connectionString);
-            //var bcc = await bsc.CreateBlobContainerAsync(container, );
+        //    // Create a BlobServiceClient object which will be used to create a container client
+        //    BlobServiceClient bsc = new BlobServiceClient(connectionString);
+        //    //var bcc = await bsc.CreateBlobContainerAsync(container, );
 
-            var bcc = bsc.GetBlobContainerClient(container);
+        //    var bcc = bsc.GetBlobContainerClient(container);
 
-            if (!bcc.Exists())
-            {
-                Console.Write($"Creating container {container}... ");
-                bcc = bsc.CreateBlobContainer(container);
-                Console.WriteLine("Done");
-            }
+        //    if (!bcc.Exists())
+        //    {
+        //        Console.Write($"Creating container {container}... ");
+        //        bcc = bsc.CreateBlobContainer(container);
+        //        Console.WriteLine("Done");
+        //    }
 
-            _bcc = bcc;
-        }
-        private readonly BlobContainerClient _bcc;
+        //    _bcc = bcc;
+        //}
+        //private readonly BlobContainerClient _bcc;
 
-        public bool Exists(string file)
-        {
-            return _bcc.GetBlobClient(file).Exists();
-        }
+        //public bool Exists(string file)
+        //{
+        //    return _bcc.GetBlobClient(file).Exists();
+        //}
 
-        public void Upload(string fileName, string blobName, AccessTier tier)
-        {
-            var bc = _bcc.GetBlobClient(blobName);
+        //public void Upload(string fileName, string blobName, AccessTier tier)
+        //{
+        //    var bc = _bcc.GetBlobClient(blobName);
 
-            // TODO BlobUploadOptions > ProgressHandler
-            // TransferOptions = new StorageTransferOptions { MaximumConcurrency
+        //    // TODO BlobUploadOptions > ProgressHandler
+        //    // TransferOptions = new StorageTransferOptions { MaximumConcurrency
 
 
-            //using FileStream uploadFileStream = File.OpenRead(fileName);
-            //var r = bc.Upload(uploadFileStream, true);
-            //uploadFileStream.Close();
+        //    //using FileStream uploadFileStream = File.OpenRead(fileName);
+        //    //var r = bc.Upload(uploadFileStream, true);
+        //    //uploadFileStream.Close();
 
-            var buo = new BlobUploadOptions
-            {
-                AccessTier = tier,
-                TransferOptions = new StorageTransferOptions
-                {
-                    MaximumConcurrency = 128
-                }
-            };
+        //    var buo = new BlobUploadOptions
+        //    {
+        //        AccessTier = tier,
+        //        TransferOptions = new StorageTransferOptions
+        //        {
+        //            MaximumConcurrency = 128
+        //        }
+        //    };
 
-            var r = bc.Upload(fileName, buo);
+        //    var r = bc.Upload(fileName, buo);
 
-            bc.SetAccessTier(tier);
-        }
+        //    bc.SetAccessTier(tier);
+        //}
 
-        public void Download(string blobName, string fileName)
-        {
-            var bc = _bcc.GetBlobClient(blobName);
+        //public void Download(string blobName, string fileName)
+        //{
+        //    var bc = _bcc.GetBlobClient(blobName);
 
-            bc.DownloadTo(fileName);
-        }
+        //    bc.DownloadTo(fileName);
+        //}
 
-        public IEnumerable<string> GetContentBlobNames()
-        {
-            foreach (var b in _bcc.GetBlobs())
-            {
-                if (!b.Name.EndsWith(".manifest.7z.arius") && b.Name.EndsWith(".arius"))
-                    yield return b.Name; //Return the .arius files, not the .manifest.  
-            }
-        }
+        //public IEnumerable<string> GetContentBlobNames()
+        //{
+        //    foreach (var b in _bcc.GetBlobs())
+        //    {
+        //        if (!b.Name.EndsWith(".manifest.7z.arius") && b.Name.EndsWith(".arius"))
+        //            yield return b.Name; //Return the .arius files, not the .manifest.  
+        //    }
+        //}
     }
 }
