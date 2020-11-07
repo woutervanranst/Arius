@@ -1,144 +1,102 @@
-﻿using Azure.Storage.Blobs.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Arius
 {
-    //class Manifest
-    //{
-    //    public static Manifest CreateManifest(string contentBlobName, string relativeFileName)
-    //    {
-    //        var manifest = new Manifest(contentBlobName, new List<ManifestEntry>());
-    //        manifest.AddEntry(relativeFileName);
+    class AriusManifest
+    {
+        public static AriusManifest CreateManifest(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
+        {
+            var me = new AriusManifestEntry
+            {
+                RelativeName = lcf.RelativeName,
+                Version = DateTime.UtcNow,
+                IsDeleted = false,
+                EncryptedChunks = chunks.Select(c => c.Name),
+                CreationTimeUtc = lcf.CreationTimeUtc,
+                LastWriteTimeUtc = lcf.LastWriteTimeUtc,
+                Hash = lcf.Hash
+            };
 
-    //        return manifest;
-    //    }
+            return new AriusManifest
+            {
+                Entries = new List<AriusManifestEntry>(new AriusManifestEntry[] { me })
+            };
+        }
 
-    //    public static Manifest GetManifest(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string contentBlobName, string passphrase)
-    //    {
-    //        var m = new Manifest(contentBlobName);
+        public List<AriusManifestEntry> Entries;
 
-    //        var tempFileName1 = Path.GetTempFileName();
-    //        blobUtils.Download(m.EncryptedManifestBlobName, tempFileName1);
+        public AriusManifestFile GetAriusManifestFile(string ariusManifestFullName) => AriusManifestFile.GetAriusManifestFile(ariusManifestFullName, this);
 
-    //        var tempFileName2 = Path.GetTempFileName();
-    //        sevenZipUtils.DecryptFile(tempFileName1, tempFileName2, passphrase);
-    //        File.Delete(tempFileName1);
+        public struct AriusManifestEntry
+        {
+            public string RelativeName { get; set; }
+            public DateTime Version { get; set; }
+            public bool IsDeleted { get; set; }
+            public IEnumerable<string> EncryptedChunks { get; set; }
+            public DateTime CreationTimeUtc { get; set; }
+            public DateTime LastWriteTimeUtc { get; set; }
+            public string Hash { get; set; }
+        }
 
-    //        var json = File.ReadAllText(tempFileName2);
-    //        File.Delete(tempFileName2);
+        public string AsJson() => JsonSerializer.Serialize(Entries, new JsonSerializerOptions { WriteIndented = true }); // TODO waarom niet gewoon Serialize(this)
+        public AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
+    }
 
-    //        m._entries = JsonSerializer.Deserialize<List<ManifestEntry>>(json);
+    /// <summary>
+    /// De Pointer
+    /// </summary>
+    class AriusManifestFile : AriusFile
+    {
+        //public static AriusManifestFile GetAriusManifest(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
+        //{
+        //    var m = AriusManifest.CreateManifest(lcf, chunks);
+        //    var ariusManifestFullName = GetAriusManifestFullName(lcf);
 
-    //        return m;
-    //    }
+        //    File.WriteAllText(ariusManifestFullName, m.AsJson);
 
-    //    private List<ManifestEntry> _entries;
+        //    var fi = new FileInfo(ariusManifestFullName);
+        //    return new AriusManifestFile(fi);
+        //}
+        public static AriusManifestFile GetAriusManifestFile(string ariusManifestFullName, AriusManifest ariusManifest)
+        {
+            var json = ariusManifest.AsJson();
+            File.WriteAllText(ariusManifestFullName, json);
 
+            var fi = new FileInfo(ariusManifestFullName);
+            return new AriusManifestFile(fi);
+        }
 
-    //    private Manifest(string contentBlobName, List<ManifestEntry> entries = null)
-    //    {
-    //        ContentBlobName = contentBlobName;
-    //        _entries = entries ?? new List<ManifestEntry>();
-    //    }
+        private AriusManifestFile(FileInfo ariusManifestFile) : base(ariusManifestFile)
+        {
+        }
 
-    //    /// <summary>
-    //    /// Get all ManifestEntries
-    //    /// </summary>
-    //    /// <param name="includeDeleted"></param>
-    //    /// <returns></returns>
-    //    public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted)
-    //    {
-    //        if (_entries.Count == 0)
-    //            throw new ArgumentException("Entries not initialized");
+        public EncryptedAriusManifestFile AsEncryptedAriusManifestFile(string passphrase)
+        {
+            return EncryptedAriusManifestFile.GetEncryptedAriusManifestFile(this, passphrase);
+        }
+    }
 
-    //        if (includeDeleted)
-    //            return _entries.AsEnumerable();
-    //        else
-    //            return _entries.Where(me => !me.IsDeleted).AsEnumerable();
-    //    }
+    class EncryptedAriusManifestFile : AriusFile
+    {
+        public EncryptedAriusManifestFile(FileInfo file) : base(file) { }
 
-    //    /// <summary>
-    //    /// Get all ManifestEntries for the given relative path/filename
-    //    /// </summary>
-    //    /// <param name="includeDeleted"></param>
-    //    /// <param name="relativeFileName"></param>
-    //    /// <returns></returns>
-    //    public IEnumerable<ManifestEntry> GetAllEntries(bool includeDeleted, string relativeFileName)
-    //    {
-    //        return GetAllEntries(includeDeleted)
-    //            .Where(me => me.RelativeFileName == relativeFileName)
-    //            .AsEnumerable();
-    //    }
+        public static EncryptedAriusManifestFile GetEncryptedAriusManifestFile(AriusManifestFile ariusManifestFile, string passphrase)
+        {
+            //var encryptedAriusChunkFullName = GetEncryptedAriusManifestFileFullName(ariusChunk);
 
-    //    /// <summary>
-    //    /// Get the last (per file and ordered by date) ManifestEntries
-    //    /// </summary>
-    //    /// <param name="includeDeleted"></param>
-    //    /// <returns></returns>
-    //    public IEnumerable<ManifestEntry> GetLastEntries(bool includeDeleted)
-    //    {
-    //        var latestEntries = GetAllEntries(true)  //NOTE: niet GetAllEntries(includeDeleted) want dan hebt ge de entires die zeggen datm deleted is niet
-    //            .GroupBy(me => me.RelativeFileName, me => me)
-    //            .Select(g => g.OrderBy(me => me.DateTime).Last());
+            //var szu = new SevenZipUtils();
+            //szu.EncryptFile(ariusChunk.FullName, encryptedAriusChunkFullName, passphrase);
 
-    //        if (includeDeleted)
-    //            return latestEntries
-    //                .AsEnumerable();
-    //        else
-    //            return latestEntries
-    //                .Where(m => !m.IsDeleted)
-    //                .AsEnumerable();
-    //    }
+            //return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName));
+        }
 
-    //    public IEnumerable<LocalAriusFile> GetLocalAriusFiles(DirectoryInfo root)
-    //    {
-    //        var les = GetLastEntries(false);
+        private static string GetEncryptedAriusManifestFileFullName(AriusChunk chunk) => $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
+    }
 
-    //        return les.Select(me => new LocalAriusFile(root, me.RelativeLocalAriusFileName, this));
-    //    }
-
-    //    public string ContentBlobName { get; private set; }
-    //    public string ManifestBlobName => $"{ContentBlobName}.manifest";
-    //    public string EncryptedManifestBlobName => $"{ContentBlobName}.manifest.7z.arius";
-
-    //    public void AddEntry(string relativeFileName, bool isDeleted = false)
-    //    {
-    //        _entries.Add(new ManifestEntry { RelativeFileName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = isDeleted });
-    //    }
-
-    //    public void Upload(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string passphrase)
-    //    {
-    //        var tempManifestFileName = Path.Combine(Path.GetTempPath(), ManifestBlobName);
-    //        var json = JsonSerializer.Serialize(_entries);
-    //        File.WriteAllText(tempManifestFileName, json);
-
-    //        var tempEncryptedManifestFileName = Path.GetTempFileName();
-
-    //        sevenZipUtils.EncryptFile(tempManifestFileName, tempEncryptedManifestFileName, passphrase);
-    //        File.Delete(tempManifestFileName);
-
-    //        blobUtils.Upload(tempEncryptedManifestFileName, EncryptedManifestBlobName, AccessTier.Cool);
-    //        File.Delete(tempEncryptedManifestFileName);
-    //    }
-
-
-    //}
-
-    //class ManifestEntry
-    //{
-    //    public string RelativeFileName { get; set; }
-        
-    //    [JsonIgnore]
-    //    public string RelativeLocalAriusFileName => $"{RelativeFileName}.arius";
-        
-    //    public DateTime DateTime { get; set; }
-        
-    //    public bool IsDeleted { get; set; }
-    //}
+    
 }
