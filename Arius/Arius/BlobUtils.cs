@@ -172,7 +172,7 @@ namespace Arius
             if (storedPolicyName == null)
             {
                 sasBuilder.StartsOn = DateTimeOffset.UtcNow;
-                sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
+                sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(24);
                 sasBuilder.SetPermissions(BlobContainerSasPermissions.All); //TODO Restrict?
             }
             else
