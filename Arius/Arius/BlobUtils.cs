@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Azure.Storage.Sas;
 
@@ -84,7 +85,7 @@ namespace Arius
                 };
 
                 process.StartInfo = psi;
-                process.OutputDataReceived += (sender, data) => output += data.Data; //System.Diagnostics.Debug.WriteLine(data.Data);
+                process.OutputDataReceived += (sender, data) => output += data.Data + Environment.NewLine; //System.Diagnostics.Debug.WriteLine(data.Data);
                 process.ErrorDataReceived += (sender, data) =>
                 {
                     if (data.Data == null)
@@ -126,38 +127,37 @@ namespace Arius
                 .ForAll(filesGroupedPerDirectory =>
                 {
                     //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
+                    //Note the \* after the {dir}\*
 
                     var dir = filesGroupedPerDirectory.Key;
                     var sas = GetContainerSasUri(_bcc, _skc);
-                    var files = string.Join(';', filesGroupedPerDirectory.Select(af => Path.GetRelativePath(dir, af.FullName)));
+                    var fileNames = filesGroupedPerDirectory.Select(af => Path.GetRelativePath(dir, af.FullName)).ToArray();
 
                     string arguments;
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        arguments = $"copy '{dir}' '{sas}' --include-path '{files}'";
+                        arguments = $@"copy '{dir}\*' '{sas}' --include-path '{string.Join(';', fileNames)}' --overwrite=false";
                     else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                        arguments = $"copy \"{dir}\" \"{sas}\" --include-path \"{files}\"";
+                        arguments = $@"copy ""{dir}\*"" ""{sas}"" --include-path ""{string.Join(';', fileNames)}"" --overwrite=false";
                     else
                         throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-                    ShellExecute(_azCopyPath, arguments);
+                    var o = ShellExecute(_azCopyPath, arguments);
+
+                    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+                    var match = Regex.Match(o, regex);
+
+                    if (!match.Success)
+                        throw new ApplicationException("REGEX MATCH ERROR");
+
+                    int completed = int.Parse(match.Groups["completed"].Value);
+                    int failed = int.Parse(match.Groups["failed"].Value);
+                    int skipped = int.Parse(match.Groups["skipped"].Value);
+
+                    string finalJobStatus = match.Groups["finalJobStatus"].Value;
+
+                    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+                        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{o}");
                 });
-
-            
-
-            //	azcopy copy 'C:\myDirectory' 'https://mystorageaccount.file.core.windows.net/myfileshare?sAiqIddM845yiyFwdMH481QA8%3D' --include-path 'photos;documents\myFile.txt'
-
-
-
-
-
-            /*
-             *
-$env:AZCOPY_CRED_TYPE = "Anonymous";
-./azcopy.exe copy "C:\Users\Wouter\Documents\Test\*" "https://vanranstarius.blob.core.windows.net/series/?sv=2019-10-10&se=2020-12-07T07%3A15%3A50Z&sr=c&sp=rwl&sig=HHqytgEpAe3PRyj4VdoK16RCtDl83uMer6cYzlCKNTQ%3D" --overwrite=prompt --from-to=LocalBlob --blob-type Detect --follow-symlinks --put-md5 --follow-symlinks --list-of-files "C:\Users\Wouter\AppData\Local\Temp\stg-exp-azcopy-edbfb78c-2128-4031-a2d6-7b2c6c986ec5.txt" --recursive;
-$env:AZCOPY_CRED_TYPE = "";
-
-             *
-             */
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
