@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -9,41 +10,46 @@ namespace Arius
     /// <summary>
     /// Een Arius file met manifest en chunks
     /// </summary>
-    class EncryptedAriusContent
+    internal class EncryptedAriusContent
     {
-        public static EncryptedAriusContent CreateEncryptedAriusContent(LocalContentFile lcf, bool dedup, string passphrase, DirectoryInfo root) //AriusManifestFile amf, params EncryptedAriusChunk)
+        public static EncryptedAriusContent CreateAriusContentFile(LocalContentFile lcf, bool dedup, string passphrase, DirectoryInfo root) //AriusManifestFile amf, params EncryptedAriusChunk)
         {
-            //DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
-            //tempDir.Create();
-
             var eacs = lcf
                 .GetChunks(dedup)
                 .AsParallel()
                     .WithDegreeOfParallelism(1)
-                .Select(ac => ac.AsEncryptedAriusChunk(passphrase))
+                .Select(ac => ac.GetEncryptedAriusChunk(passphrase))
                 .ToArray();
 
             var eamf = lcf
                 .GetManifest(eacs)
                 .GetAriusManifestFile(lcf.AriusManifestFullName)
-                .AsEncryptedAriusManifestFile(passphrase);
+                .AsEncryptedAriusManifestFile(passphrase, true);
 
+            var p = lcf.GetPointer();
 
-            return new EncryptedAriusContent(eamf, eacs);
+            return new EncryptedAriusContent(lcf, p, eamf, eacs);
         }
 
-
-        public EncryptedAriusContent(EncryptedAriusManifestFile eamf, EncryptedAriusChunk[] eacs)
+        
+        public EncryptedAriusContent(LocalContentFile lcf, AriusPointer pointer, EncryptedAriusManifestFile eamf, EncryptedAriusChunk[] eacs)
         {
+            _lcf = lcf;
+            _pointer = pointer;
             _eamf = eamf;
             _eacs = eacs;
         }
+
+        private readonly LocalContentFile _lcf;
+        private readonly AriusPointer _pointer;
         private readonly EncryptedAriusManifestFile _eamf;
         private readonly EncryptedAriusChunk[] _eacs;
 
-        public void Upload()
+        public void Upload(BlobUtils bu)
         {
+            //var x = _eacs.Cast<AriusFile>(); //.Union((IEnumerable<AriusFile>)_eamf);
 
+            bu.Upload(_eacs);
         }
 
         public void Restore()
@@ -57,4 +63,6 @@ namespace Arius
             //fff.Close();
         }
     }
+
+    
 }

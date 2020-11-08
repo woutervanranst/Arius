@@ -22,12 +22,12 @@ namespace Arius
     /// <summary>
     /// Een bestand met .arius als extensie
     /// </summary>
-    class AriusFile
+    internal class AriusFile
     {
         public AriusFile(FileInfo fi)
         {
-            //if (!fi.FullName.EndsWith(".arius"))
-            //    throw new ArgumentException();
+            if (!fi.FullName.EndsWith(".arius"))
+                throw new ArgumentException();
 
             _fi = fi;
         }
@@ -36,6 +36,10 @@ namespace Arius
         public string Name => _fi.Name;
         public string FullName => _fi.FullName;
         public string DirectoryName => _fi.DirectoryName;
+        public void Delete()
+        {
+            _fi.Delete();
+        }
 
     }
 }

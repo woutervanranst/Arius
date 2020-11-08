@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Arius
 {
-    static class FileExtensions
+    internal static class FileExtensions
     {
         // https://stackoverflow.com/questions/4101539/c-sharp-removing-substring-from-end-of-string
 
