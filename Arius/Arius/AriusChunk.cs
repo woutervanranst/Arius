@@ -5,16 +5,18 @@ using System.Text;
 
 namespace Arius
 {
-    interface IChunk
+    internal interface IChunk
     {
+        string DirectoryName { get; }
         string FullName { get; }
-        string Hash { get;  }
+        string Hash { get; }
+        EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase);
     }
 
     /// <summary>
     /// Binary chunk (NOT ENCRYPTED / ZIPPED)
     /// </summary>
-    class AriusChunk : AriusFile, IChunk
+    internal class AriusChunk : AriusFile, IChunk
     {
         public AriusChunk(FileInfo file, string hash) : base(file)
         {
@@ -25,7 +27,7 @@ namespace Arius
         public string Hash { get; private set; }
 
 
-        public EncryptedAriusChunk AsEncryptedAriusChunk(string passphrase)
+        public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
             return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase);
         }
@@ -34,22 +36,24 @@ namespace Arius
     /// <summary>
     /// Encrypted + zipped binary chunk
     /// </summary>
-    class EncryptedAriusChunk : AriusFile
+    internal class EncryptedAriusChunk : AriusFile
     {
-        public static EncryptedAriusChunk GetEncryptedAriusChunk(AriusChunk ariusChunk, string passphrase)
+        public static EncryptedAriusChunk GetEncryptedAriusChunk(IChunk chunk, string passphrase)
         {
-            var encryptedAriusChunkFullName = GetEncryptedAriusChunkFullName(ariusChunk);
+            var encryptedAriusChunkFullName = GetEncryptedAriusChunkFullName(chunk);
+
+            // IF ALREADY EXISTS ON REMOTE ......
 
             var szu = new SevenZipUtils();
-            szu.EncryptFile(ariusChunk.FullName, encryptedAriusChunkFullName, passphrase);
+            szu.EncryptFile(chunk.FullName, encryptedAriusChunkFullName, passphrase);
 
             return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName));
         }
 
-        private static string GetEncryptedAriusChunkFullName(AriusChunk chunk) => $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
-
-        //public override string FullName => ;
-
+        private static string GetEncryptedAriusChunkFullName(IChunk chunk)
+        {
+            return $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
+        }
 
         private EncryptedAriusChunk(FileInfo encryptedAriusChunk) : base(encryptedAriusChunk) { }
     }

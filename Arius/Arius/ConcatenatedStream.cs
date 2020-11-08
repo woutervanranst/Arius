@@ -5,9 +5,9 @@ using System.Text;
 
 namespace Arius
 {
-    class ConcatenatedStream : Stream
+    internal class ConcatenatedStream : Stream
     {
-        Queue<Stream> streams;
+        private Queue<Stream> streams;
 
         public ConcatenatedStream(IEnumerable<Stream> streams)
         {

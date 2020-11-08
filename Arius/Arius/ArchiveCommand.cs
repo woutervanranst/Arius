@@ -24,7 +24,7 @@ using static Arius.StreamBreaker;
 
 namespace Arius
 {
-    class ArchiveCommand
+    internal class ArchiveCommand
     {
         /*
         *  arius archive 
@@ -107,11 +107,11 @@ namespace Arius
             return archiveCommand;
         }
 
-        delegate int ArchiveDelegate(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path);
+        private delegate int ArchiveDelegate(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path);
 
         private static int Execute(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
         {
-            //var bu = new BlobUtils(accountName, accountKey, container);
+            var bu = new BlobUtils(accountName, accountKey, container);
 
             var root = new DirectoryInfo(path);
 
@@ -126,7 +126,7 @@ namespace Arius
             //var szu = new SevenZipUtils();
 
             var ac = new ArchiveCommand();
-            return ac.Execute(passphrase, keepLocal, accessTier, minSize, simulate, root);
+            return ac.Execute(bu, passphrase, keepLocal, accessTier, minSize, simulate, root);
 
             ////TODO KeepLocal
             //// TODO Simulate
@@ -147,15 +147,15 @@ namespace Arius
         {
         }
 
-        private int Execute(string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo root)
+        private int Execute(BlobUtils bu, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, DirectoryInfo root)
         {
             root.GetFiles("*.*", SearchOption.AllDirectories)
                 .AsParallel()
                 .WithDegreeOfParallelism(1)
                 .Where(fi => !fi.Name.EndsWith(".arius"))
                 .Select(fi => new LocalContentFile(root, fi))
-                .Select(f => f.AsAriusContentFile(false, passphrase, root))
-                .ForAll(eac => eac.Upload());
+                .Select(lcf => lcf.CreateAriusContentFile(false, passphrase, root))
+                .ForAll(eac => eac.Upload(bu));
 
 
 

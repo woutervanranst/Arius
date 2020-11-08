@@ -13,9 +13,9 @@ using System.Threading.Tasks;
 
 namespace Arius
 {
-    class Program
+    internal class Program
     {
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             //var serviceProvider = new ServiceCollection()
             //    //.AddLogging()

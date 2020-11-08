@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Arius
 {
-    class FileUtils
+    internal class FileUtils
     {
         public static string GetHash(string fileName)
         {

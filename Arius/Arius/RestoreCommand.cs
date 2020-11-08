@@ -9,7 +9,7 @@ using System.Text;
 
 namespace Arius
 {
-    class RestoreCommand
+    internal class RestoreCommand
     {
         /*
          * arius restore
