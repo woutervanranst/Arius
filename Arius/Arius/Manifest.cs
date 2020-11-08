@@ -4,10 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using SevenZip;
 
 namespace Arius
 {
-    class AriusManifest
+    internal class AriusManifest
     {
         public static AriusManifest CreateManifest(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
         {
@@ -32,6 +33,10 @@ namespace Arius
 
         public AriusManifestFile GetAriusManifestFile(string ariusManifestFullName) => AriusManifestFile.GetAriusManifestFile(ariusManifestFullName, this);
 
+        public string AsJson() => JsonSerializer.Serialize(Entries, new JsonSerializerOptions { WriteIndented = true }); // TODO waarom niet gewoon Serialize(this)
+        public AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
+
+
         public struct AriusManifestEntry
         {
             public string RelativeName { get; set; }
@@ -42,26 +47,13 @@ namespace Arius
             public DateTime LastWriteTimeUtc { get; set; }
             public string Hash { get; set; }
         }
-
-        public string AsJson() => JsonSerializer.Serialize(Entries, new JsonSerializerOptions { WriteIndented = true }); // TODO waarom niet gewoon Serialize(this)
-        public AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
     }
 
     /// <summary>
-    /// De Pointer
+    /// De Manifest
     /// </summary>
-    class AriusManifestFile : AriusFile
+    internal class AriusManifestFile : AriusFile
     {
-        //public static AriusManifestFile GetAriusManifest(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
-        //{
-        //    var m = AriusManifest.CreateManifest(lcf, chunks);
-        //    var ariusManifestFullName = GetAriusManifestFullName(lcf);
-
-        //    File.WriteAllText(ariusManifestFullName, m.AsJson);
-
-        //    var fi = new FileInfo(ariusManifestFullName);
-        //    return new AriusManifestFile(fi);
-        //}
         public static AriusManifestFile GetAriusManifestFile(string ariusManifestFullName, AriusManifest ariusManifest)
         {
             var json = ariusManifest.AsJson();
@@ -75,28 +67,30 @@ namespace Arius
         {
         }
 
-        public EncryptedAriusManifestFile AsEncryptedAriusManifestFile(string passphrase)
+        public EncryptedAriusManifestFile AsEncryptedAriusManifestFile(string passphrase, bool deleteUnencryptedManifestFile)
         {
-            return EncryptedAriusManifestFile.GetEncryptedAriusManifestFile(this, passphrase);
+            var eamf = EncryptedAriusManifestFile.GetEncryptedAriusManifestFile(this, passphrase);
+            if (deleteUnencryptedManifestFile)
+                base.Delete();
+
+            return eamf;
         }
     }
 
-    class EncryptedAriusManifestFile : AriusFile
+    internal class EncryptedAriusManifestFile : AriusFile
     {
         public EncryptedAriusManifestFile(FileInfo file) : base(file) { }
 
         public static EncryptedAriusManifestFile GetEncryptedAriusManifestFile(AriusManifestFile ariusManifestFile, string passphrase)
         {
-            //var encryptedAriusChunkFullName = GetEncryptedAriusManifestFileFullName(ariusChunk);
+            var encryptedAriusManifestFileFullName = GetEncryptedAriusManifestFileFullName(ariusManifestFile);
 
-            //var szu = new SevenZipUtils();
-            //szu.EncryptFile(ariusChunk.FullName, encryptedAriusChunkFullName, passphrase);
+            var szu = new SevenZipUtils();
+            szu.EncryptFile(ariusManifestFile.FullName, encryptedAriusManifestFileFullName, passphrase, CompressionLevel.Normal);
 
-            //return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName));
+            return new EncryptedAriusManifestFile(new FileInfo(encryptedAriusManifestFileFullName));
         }
 
-        private static string GetEncryptedAriusManifestFileFullName(AriusChunk chunk) => $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
+        private static string GetEncryptedAriusManifestFileFullName(AriusManifestFile ariusManifestFile) => $"{ariusManifestFile.FullName}.7z.arius";
     }
-
-    
 }
