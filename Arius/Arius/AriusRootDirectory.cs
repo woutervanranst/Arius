@@ -39,7 +39,7 @@ namespace Arius
                     .AsParallel()
                         .WithDegreeOfParallelism(1)
                     .Where(fi => !fi.Name.EndsWith(".arius"))
-                    .Select(fi => new LocalContentFile(this, fi))
+                    .Select(fi => new LocalContentFile(this, fi, passphrase))
                     .GroupBy(lcf => lcf.Hash)
                     .ToImmutableArray();
 
