@@ -25,6 +25,7 @@ namespace Arius.Tests
          * Rename content file
          * rename .arius file
          * Modify the binary
+* azcopy fails
          */
     }
 }
