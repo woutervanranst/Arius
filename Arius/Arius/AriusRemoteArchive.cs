@@ -15,9 +15,9 @@ using Azure.Storage.Sas;
 
 namespace Arius
 {
-    internal class BlobUtils
+    internal class AriusRemoteArchive
     {
-        static BlobUtils()
+        static AriusRemoteArchive()
         {
             /*
              * = Path.GetPathRoot(Environment.SystemDirectory)
@@ -31,7 +31,7 @@ namespace Arius
 
         private static readonly string _azCopyPath;
 
-        public BlobUtils(string accountName, string accountKey, string container)
+        public AriusRemoteArchive(string accountName, string accountKey, string container)
         {
             _skc = new StorageSharedKeyCredential(accountName, accountKey);
             
@@ -60,103 +60,59 @@ namespace Arius
             return _bcc.GetBlobClient(file).Exists();
         }
 
-        public string ShellExecute(string fileName, string arguments)
-        {
-            try
-            {
-                // https://developers.redhat.com/blog/2019/10/29/the-net-process-class-on-linux/
+        
 
-                using var process = new Process();
-
-                bool hasError = false;
-                string errorMsg = string.Empty;
-                string output = string.Empty;
-
-                var psi = new ProcessStartInfo
-                {
-                    FileName = fileName,
-
-                    UseShellExecute = false,
-                    Arguments = arguments,
-                    //ArgumentList = { argumentList },
-
-                    RedirectStandardError = true,
-                    RedirectStandardOutput = true
-                };
-
-                process.StartInfo = psi;
-                process.OutputDataReceived += (sender, data) => output += data.Data + Environment.NewLine; //System.Diagnostics.Debug.WriteLine(data.Data);
-                process.ErrorDataReceived += (sender, data) =>
-                {
-                    if (data.Data == null)
-                        return;
-
-                    System.Diagnostics.Debug.WriteLine(data.Data);
-
-                    hasError = true;
-                    errorMsg += data.Data;
-                };
-
-                process.Start();
-                process.BeginOutputReadLine();
-                process.BeginErrorReadLine();
-
-
-                process.WaitForExit();
-
-                if (process.ExitCode != 0 || hasError)
-                    throw new ApplicationException(errorMsg);
-
-                return output;
-
-            }
-            catch (Win32Exception e) // Win32Exception: 'The system cannot find the file specified.'
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-        }
-
-        public void Upload(params AriusFile[] files)
+        public void Archive(IEnumerable<AriusFile> files, AccessTier chunkTier)
         {
             var path = _azCopyPath;
 
-            files.GroupBy(af => af.DirectoryName, af => af)
+            files.GroupBy(af =>
+                {
+                    AccessTier tier = af switch
+                    {
+                        EncryptedAriusChunk _ => chunkTier,
+                        EncryptedAriusManifestFile _ => AccessTier.Cool,
+                        _ => throw new ArgumentException("File not of type") //TODO mooier
+                    };
+
+                    return new {af.DirectoryName, Tier = tier};
+                }, af => af)
                 .AsParallel()
                 .WithDegreeOfParallelism(1)
-                .ForAll(filesGroupedPerDirectory =>
+                .ForAll(groupedFiles =>
                 {
                     //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
                     //Note the \* after the {dir}\*
 
-                    var dir = filesGroupedPerDirectory.Key;
-                    var sas = GetContainerSasUri(_bcc, _skc);
-                    var fileNames = filesGroupedPerDirectory.Select(af => Path.GetRelativePath(dir, af.FullName)).ToArray();
+                    var dir = groupedFiles.Key.DirectoryName;
+                    var fileNames = groupedFiles.Select(af => Path.GetRelativePath(dir, af.FullName)).ToArray();
 
                     string arguments;
+                    var sas = GetContainerSasUri(_bcc, _skc);
+                    var tier = groupedFiles.Key.Tier;
                     if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                        arguments = $@"copy '{dir}\*' '{sas}' --include-path '{string.Join(';', fileNames)}' --overwrite=false";
+                        arguments = $@"copy '{dir}\*' '{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
                     else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                        arguments = $@"copy ""{dir}\*"" ""{sas}"" --include-path ""{string.Join(';', fileNames)}"" --overwrite=false";
+                        arguments = $@"copy ""{dir}\*"" ""{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
                     else
                         throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-                    var o = ShellExecute(_azCopyPath, arguments);
 
                     var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
-                    var match = Regex.Match(o, regex);
 
-                    if (!match.Success)
-                        throw new ApplicationException("REGEX MATCH ERROR");
+                    var p = new ExternalProcess(_azCopyPath);
+                    //var output = p.Execute(arguments, regex);
+                    
+                    //int completed = int.Parse(output.Groups["completed"].Value);
+                    //int failed = int.Parse(output.Groups["failed"].Value);
+                    //int skipped = int.Parse(output.Groups["skipped"].Value);
+                    //string finalJobStatus = output.Groups["finalJobStatus"].Value;
 
-                    int completed = int.Parse(match.Groups["completed"].Value);
-                    int failed = int.Parse(match.Groups["failed"].Value);
-                    int skipped = int.Parse(match.Groups["skipped"].Value);
-
-                    string finalJobStatus = match.Groups["finalJobStatus"].Value;
+                    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus", out int completed,
+                        out int failed, out int skipped, out string finalJobStatus);
 
                     if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{o}");
+                        throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
                 });
         }
 
@@ -189,7 +145,7 @@ namespace Arius
             return $"{container.Uri}?{sasToken}";
         }
 
-        //public void Upload(string fileName, string blobName, AccessTier tier)
+        //public void Archive(string fileName, string blobName, AccessTier tier)
         //{
         //    var bc = _bcc.GetBlobClient(blobName);
 
@@ -198,7 +154,7 @@ namespace Arius
 
 
         //    //using FileStream uploadFileStream = File.OpenRead(fileName);
-        //    //var r = bc.Upload(uploadFileStream, true);
+        //    //var r = bc.Archive(uploadFileStream, true);
         //    //uploadFileStream.Close();
 
         //    var buo = new BlobUploadOptions
@@ -210,7 +166,7 @@ namespace Arius
         //        }
         //    };
 
-        //    var r = bc.Upload(fileName, buo);
+        //    var r = bc.Archive(fileName, buo);
 
         //    bc.SetAccessTier(tier);
         //}
@@ -230,5 +186,12 @@ namespace Arius
         //            yield return b.Name; //Return the .arius files, not the .manifest.  
         //    }
         //}
+
+        public IEnumerable<string> GetEncryptedManifestNames()
+        {
+            return _bcc.GetBlobs()
+                .Where(b => b.Name.EndsWith(".manifest.7z.arius"))
+                .Select(b => b.Name);
+        }
     }
 }

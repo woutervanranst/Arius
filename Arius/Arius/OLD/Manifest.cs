@@ -19,7 +19,7 @@ namespace Arius
     //        return manifest;
     //    }
 
-    //    public static Manifest GetManifest(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string contentBlobName, string passphrase)
+    //    public static Manifest GetManifest(AriusRemoteArchive blobUtils, SevenZipUtils sevenZipUtils, string contentBlobName, string passphrase)
     //    {
     //        var m = new Manifest(contentBlobName);
 
@@ -112,7 +112,7 @@ namespace Arius
     //        _entries.Add(new ManifestEntry { RelativeFileName = relativeFileName, DateTime = DateTime.UtcNow, IsDeleted = isDeleted });
     //    }
 
-    //    public void Upload(BlobUtils blobUtils, SevenZipUtils sevenZipUtils, string passphrase)
+    //    public void Archive(AriusRemoteArchive blobUtils, SevenZipUtils sevenZipUtils, string passphrase)
     //    {
     //        var tempManifestFileName = Path.Combine(Path.GetTempPath(), ManifestBlobName);
     //        var json = JsonSerializer.Serialize(_entries);
@@ -123,7 +123,7 @@ namespace Arius
     //        sevenZipUtils.EncryptFile(tempManifestFileName, tempEncryptedManifestFileName, passphrase);
     //        File.Delete(tempManifestFileName);
 
-    //        blobUtils.Upload(tempEncryptedManifestFileName, EncryptedManifestBlobName, AccessTier.Cool);
+    //        blobUtils.Archive(tempEncryptedManifestFileName, EncryptedManifestBlobName, AccessTier.Cool);
     //        File.Delete(tempEncryptedManifestFileName);
     //    }
 

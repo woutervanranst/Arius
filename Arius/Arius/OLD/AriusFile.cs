@@ -100,7 +100,7 @@ namespace Arius
     //    }
     //    private readonly string _contentBlobName;
 
-    //    public string Download(BlobUtils bu, SevenZipUtils szu, string passphrase)
+    //    public string Download(AriusRemoteArchive bu, SevenZipUtils szu, string passphrase)
     //    {
     //        var encryptedContentTempFile = Path.GetTempFileName();
     //        bu.Download(_contentBlobName, encryptedContentTempFile);
