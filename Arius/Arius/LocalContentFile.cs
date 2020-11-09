@@ -8,7 +8,7 @@ namespace Arius
     /// <summary>
     /// Het gewone bestand met content erin
     /// </summary>
-    internal class LocalContentFile : IChunk
+    internal class LocalContentFile : IUnencryptedChunk
     {
         public LocalContentFile(AriusRootDirectory root, FileInfo localContent)
         {
@@ -25,7 +25,7 @@ namespace Arius
             return EncryptedAriusContent.Create(this, dedup, passphrase, _root);
         }
 
-        public IChunk[] GetChunks(bool dedup)
+        public IUnencryptedChunk[] GetChunks(bool dedup)
         {
             if (dedup)
             {
@@ -63,7 +63,7 @@ namespace Arius
             }
             else
             {
-                return new IChunk[] { this };
+                return new IUnencryptedChunk[] { this };
             }
         }
 
@@ -82,6 +82,9 @@ namespace Arius
             return AriusManifest.Create(this, chunks);
         }
 
+        /// <summary>
+        /// The Hash of the unencrypted file
+        /// </summary>
         public string Hash => _hash.Value;
         public string FullName => _localContent.FullName;
         public string DirectoryName => _localContent.DirectoryName;
@@ -93,6 +96,8 @@ namespace Arius
         public string AriusPointerFileFullName => $"{FullName}.arius";
         public DateTime CreationTimeUtc => _localContent.CreationTimeUtc;
         public DateTime LastWriteTimeUtc => _localContent.LastWriteTimeUtc;
+
+        public override string ToString() => RelativeName;
     }
 
    

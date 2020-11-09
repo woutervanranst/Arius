@@ -68,7 +68,7 @@ namespace Arius
 
             files.GroupBy(af =>
                 {
-                    AccessTier tier = af switch
+                    var tier = af switch
                     {
                         EncryptedAriusChunk _ => chunkTier,
                         EncryptedAriusManifestFile _ => AccessTier.Cool,
@@ -187,11 +187,36 @@ namespace Arius
         //    }
         //}
 
-        public IEnumerable<string> GetEncryptedManifestNames()
+        public IEnumerable<BlobItem> GetEncryptedManifestFileBlobItems()
         {
             return _bcc.GetBlobs()
-                .Where(b => b.Name.EndsWith(".manifest.7z.arius"))
-                .Select(b => b.Name);
+                .Where(b => b.Name.EndsWith(".manifest.7z.arius"));
+                //.Select(b => b.Name);
+        }
+
+        public IEnumerable<BlobItem> GetEncryptedAriusChunkBlobItems()
+        {
+            return _bcc.GetBlobs()
+                .Where(b => b.Name.EndsWith(".7z.arius") && !b.Name.EndsWith(".manifest.7z.arius"));
+            //.Select(b => encryptedar)
+        }
+
+        //public void Archive(IEnumerable<EncryptedAriusChunk> chunks, AccessTier chunkTier)
+        //{
+        //    var files = _encryptedChunks.Cast<AriusFile>().Union(new[] { EncryptedManifestFile });
+
+        //    archive.Archive(files, chunkTier);
+        //}
+
+        public void Restore()
+        {
+            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+            //var concaten = new ConcatenatedStream(chunkFiles);
+
+            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+            //using var fff = File.Create(restorePath);
+            //concaten.CopyTo(fff);
+            //fff.Close();
         }
     }
 }

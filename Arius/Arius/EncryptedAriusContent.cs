@@ -39,33 +39,15 @@ namespace Arius
             _lcf = lcf;
             PointerFile = pointerFile;
             EncryptedManifestFile = encryptedManifest;
-            _encryptedChunks = encryptedChunks;
+            EncryptedAriusChunks = encryptedChunks;
         }
 
         private readonly LocalContentFile _lcf;
-        private readonly EncryptedAriusChunk[] _encryptedChunks;
 
         public AriusPointerFile PointerFile { get; }
         public EncryptedAriusManifestFile EncryptedManifestFile { get; }
+        public EncryptedAriusChunk[] EncryptedAriusChunks { get; }
 
-        public void Archive(AriusRemoteArchive archive, AccessTier chunkTier)
-        {
-            var files = _encryptedChunks.Cast<AriusFile>().Union(new[] { EncryptedManifestFile });
-
-            archive.Archive(files, chunkTier);
-        }
-
-        public void Restore()
-        {
-            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-            //var concaten = new ConcatenatedStream(chunkFiles);
-
-            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-            //using var fff = File.Create(restorePath);
-            //concaten.CopyTo(fff);
-            //fff.Close();
-        }
     }
-
     
 }
