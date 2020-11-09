@@ -10,19 +10,19 @@ namespace Arius
     /// </summary>
     internal class LocalContentFile : IChunk
     {
-        public LocalContentFile(DirectoryInfo root, FileInfo localContent)
+        public LocalContentFile(AriusRootDirectory root, FileInfo localContent)
         {
             _root = root;
             _localContent = localContent;
             _hash = new Lazy<string>(() => FileUtils.GetHash(_localContent.FullName));
         }
-        private readonly DirectoryInfo _root;
+        private readonly AriusRootDirectory _root;
         private readonly FileInfo _localContent;
         private readonly Lazy<string> _hash;
 
-        public EncryptedAriusContent CreateAriusContentFile(bool dedup, string passphrase, DirectoryInfo root)
+        public EncryptedAriusContent CreateEncryptedAriusContent(bool dedup, string passphrase)
         {
-            return EncryptedAriusContent.CreateAriusContentFile(this, dedup, passphrase, root);
+            return EncryptedAriusContent.Create(this, dedup, passphrase, _root);
         }
 
         public IChunk[] GetChunks(bool dedup)
@@ -67,10 +67,10 @@ namespace Arius
             }
         }
 
-        internal AriusPointer GetPointer()
-        {
-            return AriusPointer.CreateAriusPointer(AriusPointerFullName, AriusManifestName);
-        }
+        //internal AriusPointerFile CreatePointerFile()
+        //{
+        //    return AriusPointerFile.Create(AriusPointerFileFullName, AriusManifestName);
+        //}
 
         public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
@@ -79,7 +79,7 @@ namespace Arius
 
         public AriusManifest GetManifest(params EncryptedAriusChunk[] chunks)
         {
-            return AriusManifest.CreateManifest(this, chunks);
+            return AriusManifest.Create(this, chunks);
         }
 
         public string Hash => _hash.Value;
@@ -87,8 +87,10 @@ namespace Arius
         public string DirectoryName => _localContent.DirectoryName;
         public string RelativeName => Path.GetRelativePath(_root.FullName, FullName);
         public string AriusManifestName => $"{Hash}.manifest.arius";
+        public string EncryptedAriusManifestName => $"{Hash}.manifest.7z.arius";
         public string AriusManifestFullName => Path.Combine(DirectoryName, AriusManifestName);
-        public string AriusPointerFullName => $"{FullName}.arius";
+        public string EncryptedAriusManifestFullName => Path.Combine(DirectoryName, EncryptedAriusManifestName);
+        public string AriusPointerFileFullName => $"{FullName}.arius";
         public DateTime CreationTimeUtc => _localContent.CreationTimeUtc;
         public DateTime LastWriteTimeUtc => _localContent.LastWriteTimeUtc;
     }
