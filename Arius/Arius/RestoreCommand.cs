@@ -61,7 +61,7 @@ namespace Arius
 
             restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
             {
-                //var bu = new BlobUtils(accountName, accountKey, container);
+                //var bu = new AriusRemoteArchive(accountName, accountKey, container);
                 //var szu = new SevenZipUtils();
 
                 //var rc = new RestoreCommand(szu, bu);
@@ -73,13 +73,13 @@ namespace Arius
             return restoreCommand;
         }
 
-        public RestoreCommand(SevenZipUtils szu, BlobUtils bu)
+        public RestoreCommand(SevenZipUtils szu, AriusRemoteArchive bu)
         {
             _szu = szu;
             _bu = bu;
         }
         private readonly SevenZipUtils _szu;
-        private readonly BlobUtils _bu;
+        private readonly AriusRemoteArchive _bu;
 
         public int Execute(string passphrase, bool download, string path)
         {

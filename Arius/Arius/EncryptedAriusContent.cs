@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
     /// <summary>
-    /// Een Arius file met manifest en chunks
+    /// Een Arius file met pointer, manifest en chunks
     /// </summary>
     internal class EncryptedAriusContent
     {
-        public static EncryptedAriusContent CreateAriusContentFile(LocalContentFile lcf, bool dedup, string passphrase, DirectoryInfo root) //AriusManifestFile amf, params EncryptedAriusChunk)
+        public static EncryptedAriusContent Create(LocalContentFile lcf, bool dedup, string passphrase, AriusRootDirectory root) //AriusManifestFile amf, params EncryptedAriusChunk)
         {
             var eacs = lcf
                 .GetChunks(dedup)
@@ -23,33 +25,34 @@ namespace Arius
 
             var eamf = lcf
                 .GetManifest(eacs)
-                .GetAriusManifestFile(lcf.AriusManifestFullName)
-                .AsEncryptedAriusManifestFile(passphrase, true);
+                .CreateAriusManifestFile(lcf.AriusManifestFullName)
+                .CreateEncryptedAriusManifestFile(lcf.EncryptedAriusManifestFullName, passphrase, true);
 
-            var p = lcf.GetPointer();
+            var p = eamf.CreatePointerFile(lcf);
 
             return new EncryptedAriusContent(lcf, p, eamf, eacs);
         }
 
         
-        public EncryptedAriusContent(LocalContentFile lcf, AriusPointer pointer, EncryptedAriusManifestFile eamf, EncryptedAriusChunk[] eacs)
+        public EncryptedAriusContent(LocalContentFile lcf, AriusPointerFile pointerFile, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
         {
             _lcf = lcf;
-            _pointer = pointer;
-            _eamf = eamf;
-            _eacs = eacs;
+            PointerFile = pointerFile;
+            EncryptedManifestFile = encryptedManifest;
+            _encryptedChunks = encryptedChunks;
         }
 
         private readonly LocalContentFile _lcf;
-        private readonly AriusPointer _pointer;
-        private readonly EncryptedAriusManifestFile _eamf;
-        private readonly EncryptedAriusChunk[] _eacs;
+        private readonly EncryptedAriusChunk[] _encryptedChunks;
 
-        public void Upload(BlobUtils bu)
+        public AriusPointerFile PointerFile { get; }
+        public EncryptedAriusManifestFile EncryptedManifestFile { get; }
+
+        public void Archive(AriusRemoteArchive archive, AccessTier chunkTier)
         {
-            //var x = _eacs.Cast<AriusFile>(); //.Union((IEnumerable<AriusFile>)_eamf);
+            var files = _encryptedChunks.Cast<AriusFile>().Union(new[] { EncryptedManifestFile });
 
-            bu.Upload(_eacs);
+            archive.Archive(files, chunkTier);
         }
 
         public void Restore()

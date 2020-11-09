@@ -10,7 +10,7 @@ namespace Arius
 {
     internal class AriusManifest
     {
-        public static AriusManifest CreateManifest(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
+        public static AriusManifest Create(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
         {
             var me = new AriusManifestEntry
             {
@@ -25,13 +25,16 @@ namespace Arius
 
             return new AriusManifest
             {
-                Entries = new List<AriusManifestEntry>(new AriusManifestEntry[] { me })
+                Entries = new List<AriusManifestEntry>(new[] { me })
             };
         }
 
         public List<AriusManifestEntry> Entries;
 
-        public AriusManifestFile GetAriusManifestFile(string ariusManifestFullName) => AriusManifestFile.GetAriusManifestFile(ariusManifestFullName, this);
+        public AriusManifestFile CreateAriusManifestFile(string ariusManifestFullName)
+        {
+            return AriusManifestFile.Create(ariusManifestFullName, this);
+        }
 
         public string AsJson() => JsonSerializer.Serialize(Entries, new JsonSerializerOptions { WriteIndented = true }); // TODO waarom niet gewoon Serialize(this)
         public AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
@@ -54,7 +57,7 @@ namespace Arius
     /// </summary>
     internal class AriusManifestFile : AriusFile
     {
-        public static AriusManifestFile GetAriusManifestFile(string ariusManifestFullName, AriusManifest ariusManifest)
+        public static AriusManifestFile Create(string ariusManifestFullName, AriusManifest ariusManifest)
         {
             var json = ariusManifest.AsJson();
             File.WriteAllText(ariusManifestFullName, json);
@@ -67,9 +70,9 @@ namespace Arius
         {
         }
 
-        public EncryptedAriusManifestFile AsEncryptedAriusManifestFile(string passphrase, bool deleteUnencryptedManifestFile)
+        public EncryptedAriusManifestFile CreateEncryptedAriusManifestFile(string encryptedAriusManifestFileFullName, string passphrase, bool deleteUnencryptedManifestFile)
         {
-            var eamf = EncryptedAriusManifestFile.GetEncryptedAriusManifestFile(this, passphrase);
+            var eamf = EncryptedAriusManifestFile.Create(encryptedAriusManifestFileFullName, this, passphrase);
             if (deleteUnencryptedManifestFile)
                 base.Delete();
 
@@ -81,9 +84,9 @@ namespace Arius
     {
         public EncryptedAriusManifestFile(FileInfo file) : base(file) { }
 
-        public static EncryptedAriusManifestFile GetEncryptedAriusManifestFile(AriusManifestFile ariusManifestFile, string passphrase)
+        public static EncryptedAriusManifestFile Create(string encryptedAriusManifestFileFullName, AriusManifestFile ariusManifestFile, string passphrase)
         {
-            var encryptedAriusManifestFileFullName = GetEncryptedAriusManifestFileFullName(ariusManifestFile);
+            //var encryptedAriusManifestFileFullName = EncryptedAriusManifestFileFullName(ariusManifestFile);
 
             var szu = new SevenZipUtils();
             szu.EncryptFile(ariusManifestFile.FullName, encryptedAriusManifestFileFullName, passphrase, CompressionLevel.Normal);
@@ -91,6 +94,11 @@ namespace Arius
             return new EncryptedAriusManifestFile(new FileInfo(encryptedAriusManifestFileFullName));
         }
 
-        private static string GetEncryptedAriusManifestFileFullName(AriusManifestFile ariusManifestFile) => $"{ariusManifestFile.FullName}.7z.arius";
+        //private static string EncryptedAriusManifestFileFullName(AriusManifestFile ariusManifestFile) => $"{ariusManifestFile.FullName}.7z.arius";
+
+        internal AriusPointerFile CreatePointerFile(LocalContentFile lcf)
+        {
+            return AriusPointerFile.Create(lcf.AriusPointerFileFullName, Name);
+        }
     }
 }
