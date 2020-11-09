@@ -10,11 +10,11 @@ namespace Arius
     /// </summary>
     internal class LocalContentFile : IUnencryptedChunk
     {
-        public LocalContentFile(AriusRootDirectory root, FileInfo localContent)
+        public LocalContentFile(AriusRootDirectory root, FileInfo localContent, string hashSalt)
         {
             _root = root;
             _localContent = localContent;
-            _hash = new Lazy<string>(() => FileUtils.GetHash(salt, _localContent.FullName));
+            _hash = new Lazy<string>(() => FileUtils.GetHash(hashSalt, _localContent.FullName));
         }
         private readonly AriusRootDirectory _root;
         private readonly FileInfo _localContent;
