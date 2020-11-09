@@ -14,7 +14,7 @@ namespace Arius
         {
             _root = root;
             _localContent = localContent;
-            _hash = new Lazy<string>(() => FileUtils.GetHash(_localContent.FullName));
+            _hash = new Lazy<string>(() => FileUtils.GetHash(salt, _localContent.FullName));
         }
         private readonly AriusRootDirectory _root;
         private readonly FileInfo _localContent;
