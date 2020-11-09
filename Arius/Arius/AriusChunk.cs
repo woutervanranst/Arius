@@ -1,31 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 
 namespace Arius
 {
-    internal interface IChunk
+    internal interface IUnencryptedChunk
     {
         string DirectoryName { get; }
         string FullName { get; }
+
+        /// <summary>
+        /// The hash of the unencrytped chunk
+        /// </summary>
         string Hash { get; }
+
         EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase);
     }
 
     /// <summary>
     /// Binary chunk (NOT ENCRYPTED / ZIPPED)
     /// </summary>
-    internal class AriusChunk : AriusFile, IChunk
+    internal class AriusChunk : AriusFile, IUnencryptedChunk
     {
         public AriusChunk(FileInfo file, string hash) : base(file)
         {
-            //_hash = hash;
             Hash = hash;
         }
-        //private readonly string _hash;
-        public string Hash { get; private set; }
 
+        /// <summary>
+        /// The hash of the unencrypted chunk
+        /// </summary>
+        public string Hash { get; }
 
         public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
@@ -38,23 +45,43 @@ namespace Arius
     /// </summary>
     internal class EncryptedAriusChunk : AriusFile
     {
-        public static EncryptedAriusChunk GetEncryptedAriusChunk(IChunk chunk, string passphrase)
+        public static EncryptedAriusChunk GetEncryptedAriusChunk(IUnencryptedChunk unencryptedChunk, string passphrase)
         {
-            var encryptedAriusChunkFullName = GetEncryptedAriusChunkFullName(chunk);
+            var encryptedAriusChunkFullName = GetEncryptedAriusChunkFullName(unencryptedChunk);
 
             // IF ALREADY EXISTS ON REMOTE ......
 
             var szu = new SevenZipUtils();
-            szu.EncryptFile(chunk.FullName, encryptedAriusChunkFullName, passphrase);
+            szu.EncryptFile(unencryptedChunk.FullName, encryptedAriusChunkFullName, passphrase);
 
-            return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName));
+            return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName), unencryptedChunk);
         }
 
-        private static string GetEncryptedAriusChunkFullName(IChunk chunk)
+        private static string GetEncryptedAriusChunkFullName(IUnencryptedChunk chunk) =>
+            $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
+
+        private EncryptedAriusChunk(FileInfo encryptedAriusChunk, IUnencryptedChunk unencryptedChunk) : base(
+            encryptedAriusChunk)
         {
-            return $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
+            _unencryptedChunk = unencryptedChunk;
         }
 
-        private EncryptedAriusChunk(FileInfo encryptedAriusChunk) : base(encryptedAriusChunk) { }
+        private readonly IUnencryptedChunk _unencryptedChunk;
+
+        public string UnencryptedHash => _unencryptedChunk.Hash;
     }
+
+    //class EncryptedAriusChunkEqualityComparer : IEqualityComparer<EncryptedAriusChunk>
+    //{
+    //    public bool Equals([AllowNull] EncryptedAriusChunk x, [AllowNull] EncryptedAriusChunk y)
+    //    {
+    //        return x?.UnencryptedHash == y?.UnencryptedHash;
+    //    }
+
+    //    public int GetHashCode([DisallowNull] EncryptedAriusChunk obj)
+    //    {
+    //        throw new NotImplementedException();
+    //    }
+    //}
+
 }

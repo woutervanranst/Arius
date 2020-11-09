@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using Azure.Storage.Blobs.Models;
 using SevenZip;
 
 namespace Arius
@@ -100,5 +101,25 @@ namespace Arius
         {
             return AriusPointerFile.Create(lcf.AriusPointerFileFullName, Name);
         }
+    }
+
+    internal class RemoteEncryptedAriusManifestFile
+    {
+        public static RemoteEncryptedAriusManifestFile Create(BlobItem bi)
+        {
+            return new RemoteEncryptedAriusManifestFile(bi);
+        }
+
+        private RemoteEncryptedAriusManifestFile(BlobItem bi)
+        {
+            _bi = bi;
+        }
+
+        private readonly BlobItem _bi;
+
+        /// <summary>
+        /// Hash of the unencrypted content
+        /// </summary>
+        public string Hash => _bi.Name.Substring(0, _bi.Name.Length - ".7z.arius".Length);
     }
 }
