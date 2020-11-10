@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using SevenZip;
 
@@ -97,31 +98,35 @@ namespace Arius
 
         //private static string EncryptedAriusManifestFileFullName(AriusManifestFile ariusManifestFile) => $"{ariusManifestFile.FullName}.7z.arius";
 
-        internal AriusPointerFile CreatePointerFile(LocalContentFile lcf)
-        {
-            return AriusPointerFile.Create(lcf.AriusPointerFileFullName, Name);
-        }
+        //internal AriusPointerFile CreatePointerFile(LocalContentFile lcf)
+        //{
+        //    return AriusPointerFile.Create(lcf.AriusPointerFileFullName, Name);
+        //}
 
         public override string ToString() => base.Name;
     }
 
     internal class RemoteEncryptedAriusManifestFile
     {
-        public static RemoteEncryptedAriusManifestFile Create(BlobItem bi)
+        public static RemoteEncryptedAriusManifestFile Create(BlobClient bc)
         {
-            return new RemoteEncryptedAriusManifestFile(bi);
+            return new RemoteEncryptedAriusManifestFile(bc);
         }
 
-        private RemoteEncryptedAriusManifestFile(BlobItem bi)
+        private RemoteEncryptedAriusManifestFile(BlobClient bc)
         {
-            _bi = bi;
+            _bc = bc;
         }
 
-        private readonly BlobItem _bi;
+        private readonly BlobClient _bc;
+
+        public string Name => _bc.Name;
 
         /// <summary>
-        /// Hash of the unencrypted content
+        /// Hash of the unencrypted LocalContentFile
         /// </summary>
-        public string Hash => _bi.Name.Substring(0, _bi.Name.Length - ".manifest.7z.arius".Length);
+        public string Hash => GetHash(_bc.Name);
+
+        public static string GetHash(string blobName) => blobName.Substring(0, blobName.Length - ".manifest.7z.arius".Length);
     }
 }

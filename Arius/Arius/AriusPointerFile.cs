@@ -8,7 +8,11 @@ namespace Arius
 {
     internal class AriusPointerFile : AriusFile
     {
-        public static AriusPointerFile Create(string ariusPointerFullName, string encryptedManifestName)
+        public static AriusPointerFile Create(LocalContentFile lcf, RemoteEncryptedAriusManifestFile f)
+        {
+            return Create(lcf.AriusPointerFileFullName, f.Name);
+        }
+        private static AriusPointerFile Create(string ariusPointerFullName, string encryptedManifestName)
         {
             if (File.Exists(ariusPointerFullName))
                 throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?

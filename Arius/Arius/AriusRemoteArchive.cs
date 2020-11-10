@@ -3,6 +3,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -68,7 +69,7 @@ namespace Arius
         public void Upload(IEnumerable<AriusFile> files, AccessTier tier)
         {
             files.GroupBy(af => af.DirectoryName)
-                .AsParallel() // Kan nog altijd gebeuren als we ContentFIles uit verschillende directories uploaden
+                .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
                     .WithDegreeOfParallelism(1)         
                 .ForAll(g => Upload(g.Key, g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray(), tier));
         }
@@ -133,27 +134,62 @@ namespace Arius
         //    bc.DownloadTo(fileName);
         //}
 
-        //public IEnumerable<string> GetContentBlobNames()
-        //{
-        //    foreach (var b in _bcc.GetBlobs())
-        //    {
-        //        if (!b.Name.EndsWith(".manifest.7z.arius") && b.Name.EndsWith(".arius"))
-        //            yield return b.Name; //Return the .arius files, not the .manifest.  
-        //    }
-        //}
 
         public IEnumerable<BlobItem> GetEncryptedManifestFileBlobItems()
         {
             return _bcc.GetBlobs()
                 .Where(b => b.Name.EndsWith(".manifest.7z.arius"));
-                //.Select(b => b.Name);
         }
 
         public IEnumerable<BlobItem> GetEncryptedAriusChunkBlobItems()
         {
             return _bcc.GetBlobs()
                 .Where(b => b.Name.EndsWith(".7z.arius") && !b.Name.EndsWith(".manifest.7z.arius"));
-            //.Select(b => encryptedar)
+        }
+
+
+        /// <summary>
+        /// Get the Hashes of the unencrypted LocalContentFiles that are stored in the archive [ie the names (without extension) of the .7z.arius files]
+        /// </summary>
+        /// <returns></returns>
+        public ImmutableArray<string> GetContentHashes()
+        {
+            return GetEncryptedManifestFileBlobItems()
+                .Select(bi => RemoteEncryptedAriusManifestFile.GetHash(bi.Name))
+                .ToImmutableArray();
+        }
+
+        public ImmutableArray<RemoteEncryptedAriusManifestFile> GetRemoteEncryptedAriusManifestFiles()
+        {
+            return GetEncryptedManifestFileBlobItems()
+                .Select(bi => GetRemoteEncryptedAriusManifestFileByName(bi.Name))
+                .ToImmutableArray();
+        }
+
+
+        /// <summary>
+        /// Get a RemoteEncryptedAriusManifestFile for the given contentHash
+        /// </summary>
+        /// <param name="contentHash">Hash of the unencrypted LocalContentFile</param>
+        /// <returns></returns>
+        public RemoteEncryptedAriusManifestFile GetRemoteEncryptedAriusManifestFileByHash(string contentHash)
+        {
+            return GetRemoteEncryptedAriusManifestFileByName($"{contentHash}.manifest.7z.arius");
+        }
+
+        /// <summary>
+        /// Get a RemoteEncryptedAriusManifestFile with the full blobName
+        /// </summary>
+        /// <param name="blobName">Name of the blob (incl. extension)</param>
+        /// <returns></returns>
+        public RemoteEncryptedAriusManifestFile GetRemoteEncryptedAriusManifestFileByName(string blobName)
+        {
+            var bc = _bcc.GetBlobClient(blobName);
+
+            if (!bc.Exists())
+                throw new ArgumentException("CONTENT/MANIFEST DOES NOT EXIST"); //TODO
+
+            return RemoteEncryptedAriusManifestFile.Create(bc);
         }
     }
 }

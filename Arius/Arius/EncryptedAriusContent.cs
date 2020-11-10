@@ -10,7 +10,7 @@ using Azure.Storage.Blobs.Models;
 namespace Arius
 {
     /// <summary>
-    /// Een Arius file met pointer, manifest en chunks
+    /// Een Arius file met manifest en chunks
     /// </summary>
     internal class EncryptedAriusContent
     {
@@ -28,22 +28,22 @@ namespace Arius
                 .CreateAriusManifestFile(lcf.AriusManifestFullName)
                 .CreateEncryptedAriusManifestFile(lcf.EncryptedAriusManifestFullName, passphrase, true);
 
-            var p = eamf.CreatePointerFile(lcf);
+            //var p = eamf.CreatePointerFile(lcf);
 
-            return new EncryptedAriusContent(lcf, p, eamf, eacs);
+            return new EncryptedAriusContent(lcf, eamf, eacs);
         }
 
         
-        public EncryptedAriusContent(LocalContentFile lcf, AriusPointerFile pointerFile, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
+        public EncryptedAriusContent(LocalContentFile lcf, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
         {
             LocalContentFile = lcf;
-            PointerFile = pointerFile;
+            //PointerFile = pointerFile;
             EncryptedManifestFile = encryptedManifest;
             EncryptedAriusChunks = encryptedChunks;
         }
 
         public LocalContentFile LocalContentFile { get; }
-        public AriusPointerFile PointerFile { get; }
+        //public AriusPointerFile PointerFile { get; }
         public EncryptedAriusManifestFile EncryptedManifestFile { get; }
         public EncryptedAriusChunk[] EncryptedAriusChunks { get; }
 
