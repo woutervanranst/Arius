@@ -94,6 +94,7 @@ namespace Arius
         public string AriusManifestFullName => Path.Combine(DirectoryName, AriusManifestName);
         public string EncryptedAriusManifestFullName => Path.Combine(DirectoryName, EncryptedAriusManifestName);
         public string AriusPointerFileFullName => $"{FullName}.arius";
+        public FileInfo AriusPointerFileInfo => new FileInfo(AriusPointerFileFullName);
         public DateTime CreationTimeUtc => _localContent.CreationTimeUtc;
         public DateTime LastWriteTimeUtc => _localContent.LastWriteTimeUtc;
 
