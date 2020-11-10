@@ -1,5 +1,4 @@
 ﻿using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
 using SevenZip;
 using System;
 using System.Collections.Generic;
@@ -150,14 +149,12 @@ namespace Arius
                     .GroupBy(lcf => lcf.Hash)
                     .ToImmutableArray();
 
-            var remoteManifests = archive
-                .GetEncryptedManifestFileBlobItems()
-                .Select(bi => RemoteEncryptedAriusManifestFile.Create(bi))
-                .ToImmutableArray();  //TODO Samentrekken met de vorige
+            //var remoteManifests = archive
+            //    .GetEncryptedManifestFileBlobItems()
+            //    .Select(bi => RemoteEncryptedAriusManifestFile.Create(bi))
+            //    .ToImmutableArray();  //TODO Samentrekken met de vorige
 
-            var remoteContentHashes = remoteManifests
-                .Select(s => s.Hash)
-                .ToImmutableArray();
+            var remoteContentHashes = archive.GetContentHashes();
 
             var localContentFilesToUpload = localContentPerHash
                 .Where(g => !remoteContentHashes.Contains(g.Key))
@@ -189,8 +186,82 @@ namespace Arius
             foreach (var manifestFile in encryptedAriusContentsToUpload.Select(eac => eac.EncryptedManifestFile))
                 File.Delete(manifestFile.FullName);
 
+            //TODO test File X is al geupload ik kopieer 'X - Copy' erbij> expectation gewoon pointer erbij binary weg
 
-            //1.2 Pointers voor de redundant ones
+            //1.2 Create Pointers
+            /*
+             * FROM
+             * hash1    content1
+             *          content2
+             *          content3
+             * hash2    content4
+             *          content5
+             *
+             * TO
+             * hash1    content1
+             * hash1    content2
+             * hash1    content3
+             * hash2    content4
+             * hash2    content4
+             */
+            var localContentPerManifestFile = localContentPerHash
+                .ToImmutableDictionary(
+                    g => archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
+                    g => g.ToList());
+
+            var pointers = localContentPerManifestFile
+                .SelectMany(p => p.Value.Select(lcf => new
+                {
+                    RemoteEncryptedAriusManifestFile = p.Key, 
+                    LocalContentFile = lcf
+                }));
+
+            //var pointers = localContentPerManifestFile
+            //    .Select(g => g
+            //        .Select(lcf => new
+            //        {
+            //            RemoteEncryptedAriusManifestFile = archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key), 
+            //            LocalContentFile = lcf
+            //        })
+            //        .ToArray())
+            //    .SelectMany(el => el)
+            //    .ToImmutableArray();
+
+            var pointerFiles = pointers 
+                .AsParallel()
+                    .WithDegreeOfParallelism(1)
+                .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
+                .ToImmutableArray();
+
+
+
+            //var pointers = localContentPerHash
+            //    .AsParallel()
+            //    .WithDegreeOfParallelism(1)
+            //    .Select(g => new
+            //    {
+            //        RemoteEncryptedAriusManifestFile = archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
+            //        LocalContentFiles = g.AsEnumerable()
+            //    })
+            //    .ToImmutableArray();
+
+            //pointers
+            //    .AsParallel()
+            //    .WithDegreeOfParallelism(1)
+            //    .ForAll(z =>
+            //    {
+            //        //AriusPointerFile.Create(z.)
+            //    });
+
+
+
+
+
+            //var remoteEncryptedAriusManifestFiles = archive
+            //    .GetRemoteEncryptedAriusManifestFiles()
+            //    .ToImmutableDictionary(reamf => reamf.Hash, reamf => reamf);
+
+
             //var lcfHashToUploadedEac = encryptedAriusContentsToUpload
             //    .ToDictionary(
             //        eac => eac.LocalContentFile.Hash, 
@@ -203,12 +274,12 @@ namespace Arius
             //            notUploadedLcf.AriusPointerFileFullName, 
             //            lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
 
-            var redundantLcf = localContentPerHash.SelectMany(g => g)
-                .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
-                .Select(notUploadedLcf => 5);
-                    //AriusPointerFile.Create(
-                    //    notUploadedLcf.AriusPointerFileFullName,
-                    //    lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
+            //var redundantLcf = localContentPerHash.SelectMany(g => g)
+            //    .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
+            //    .Select(notUploadedLcf => 5);
+            //        //AriusPointerFile.Create(
+            //        //    notUploadedLcf.AriusPointerFileFullName,
+            //        //    lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
 
 
             /* 2. Local AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
