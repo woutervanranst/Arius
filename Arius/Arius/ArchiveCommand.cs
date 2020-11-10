@@ -189,25 +189,20 @@ namespace Arius
             //TODO test File X is al geupload ik kopieer 'X - Copy' erbij> expectation gewoon pointer erbij binary weg
 
             //1.2 Create Pointers
-            /*
-             * FROM
-             * hash1    content1
-             *          content2
-             *          content3
-             * hash2    content4
-             *          content5
-             *
-             * TO
-             * hash1    content1
-             * hash1    content2
-             * hash1    content3
-             * hash2    content4
-             * hash2    content4
-             */
+            
             var localContentPerManifestFile = localContentPerHash
                 .ToImmutableDictionary(
                     g => archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
                     g => g.ToList());
+
+            /*
+             * FROM                             TO
+             * hash1    content1                hash1   content1
+             *          content2                hash1   content2                
+             *          content3                hash1   content3
+             * hash2    content4                hash2   content4
+             *          content5                hash2   content5
+             */
 
             var pointersToCreate = localContentPerManifestFile
                 .SelectMany(p => p.Value.Select(lcf => new
@@ -218,16 +213,12 @@ namespace Arius
                 .Where(z => !z.LocalContentFile.AriusPointerFileInfo.Exists)
                 .ToImmutableArray();
 
-            var pointerFiles = pointersToCreate 
+            var createdPointerFiles = pointersToCreate 
                 .AsParallel()
                     .WithDegreeOfParallelism(1)
                 .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
                 .ToImmutableArray();
 
-            return 0;
-
-
-            
 
 
             /* 2. Local AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
@@ -244,6 +235,9 @@ namespace Arius
             //    .ToImmutableArray();
 
             //var x = 5;
+
+            return 0;
+
 
             // DO STUFF
             // AsParallel
