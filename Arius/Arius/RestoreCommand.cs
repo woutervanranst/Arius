@@ -103,6 +103,17 @@ namespace Arius
             return 0;
         }
 
+        public void Restore()
+        {
+            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+            //var concaten = new ConcatenatedStream(chunkFiles);
+
+            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+            //using var fff = File.Create(restorePath);
+            //concaten.CopyTo(fff);
+            //fff.Close();
+        }
+
         private int Synchronize(DirectoryInfo root, string passphrase)
         {
             //var cbn = _bu.GetContentBlobNames().ToArray();

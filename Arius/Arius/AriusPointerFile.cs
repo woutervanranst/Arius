@@ -41,5 +41,8 @@ namespace Arius
 
         public string EncryptedManifestName => _encryptedManifestName.Value;
         private readonly Lazy<string> _encryptedManifestName;
+
+
+        public override string ToString() => base.FullName; //TODO Beter relativeName
     }
 }
