@@ -101,6 +101,8 @@ namespace Arius
         {
             return AriusPointerFile.Create(lcf.AriusPointerFileFullName, Name);
         }
+
+        public override string ToString() => base.Name;
     }
 
     internal class RemoteEncryptedAriusManifestFile

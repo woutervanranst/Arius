@@ -69,6 +69,8 @@ namespace Arius
         private readonly IUnencryptedChunk _unencryptedChunk;
 
         public string UnencryptedHash => _unencryptedChunk.Hash;
+
+        public override string ToString() => base.Name;
     }
 
     //class EncryptedAriusChunkEqualityComparer : IEqualityComparer<EncryptedAriusChunk>
