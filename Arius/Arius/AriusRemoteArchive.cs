@@ -61,42 +61,24 @@ namespace Arius
         }
 
         
-
-        public void Upload(IEnumerable<AriusFile> files, AccessTier chunkTier)
+        public void Upload(IEnumerable<EncryptedAriusManifestFile> manifests)
         {
-            files.GroupBy(af =>
-                {
-                    var tier = af switch
-                    {
-                        EncryptedAriusChunk _ => chunkTier,
-                        EncryptedAriusManifestFile _ => AccessTier.Cool,
-                        _ => throw new ArgumentException("File not of type") //TODO mooier
-                    };
-
-                    return new GroupingKey { DirectoryName = af.DirectoryName, Tier = tier };
-                }, af => af)
-                .AsParallel()
-                    .WithDegreeOfParallelism(1)
-                .ForAll(UploadGroupedFiles);
+            Upload(manifests, AccessTier.Cool);
         }
-
-        private struct GroupingKey
+        public void Upload(IEnumerable<AriusFile> files, AccessTier tier)
         {
-            public string DirectoryName;
-            public AccessTier Tier;
+            files.GroupBy(af => af.DirectoryName)
+                .AsParallel() // Kan nog altijd gebeuren als we ContentFIles uit verschillende directories uploaden
+                    .WithDegreeOfParallelism(1)         
+                .ForAll(g => Upload(g.Key, g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray(), tier));
         }
-            
-        private void UploadGroupedFiles(IGrouping<GroupingKey, AriusFile> groupedFiles)
+        private void Upload(string dir, string[] fileNames, AccessTier tier)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
 
-            var dir = groupedFiles.Key.DirectoryName;
-            var fileNames = groupedFiles.Select(af => Path.GetRelativePath(dir, af.FullName)).ToArray();
-
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            var tier = groupedFiles.Key.Tier;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 arguments =
                     $@"copy '{dir}\*' '{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
@@ -106,19 +88,16 @@ namespace Arius
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-
             var regex =
                 @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(AzCopyPath);
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus", out int completed,
-                out int failed, out int skipped, out string finalJobStatus);
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus", 
+                out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw
-                    new ApplicationException(
-                        $"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
+                throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
@@ -145,31 +124,7 @@ namespace Arius
             return $"{container.Uri}?{sasToken}";
         }
 
-        //public void Archive(string fileName, string blobName, AccessTier tier)
-        //{
-        //    var bc = _bcc.GetBlobClient(blobName);
-
-        //    // TODO BlobUploadOptions > ProgressHandler
-        //    // TransferOptions = new StorageTransferOptions { MaximumConcurrency
-
-
-        //    //using FileStream uploadFileStream = File.OpenRead(fileName);
-        //    //var r = bc.Archive(uploadFileStream, true);
-        //    //uploadFileStream.Close();
-
-        //    var buo = new BlobUploadOptions
-        //    {
-        //        AccessTier = tier,
-        //        TransferOptions = new StorageTransferOptions
-        //        {
-        //            MaximumConcurrency = 128
-        //        }
-        //    };
-
-        //    var r = bc.Archive(fileName, buo);
-
-        //    bc.SetAccessTier(tier);
-        //}
+        
 
         //public void Download(string blobName, string fileName)
         //{
