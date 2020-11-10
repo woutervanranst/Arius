@@ -209,77 +209,25 @@ namespace Arius
                     g => archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
                     g => g.ToList());
 
-            var pointers = localContentPerManifestFile
+            var pointersToCreate = localContentPerManifestFile
                 .SelectMany(p => p.Value.Select(lcf => new
                 {
                     RemoteEncryptedAriusManifestFile = p.Key, 
                     LocalContentFile = lcf
-                }));
+                }))
+                .Where(z => !z.LocalContentFile.AriusPointerFileInfo.Exists)
+                .ToImmutableArray();
 
-            //var pointers = localContentPerManifestFile
-            //    .Select(g => g
-            //        .Select(lcf => new
-            //        {
-            //            RemoteEncryptedAriusManifestFile = archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key), 
-            //            LocalContentFile = lcf
-            //        })
-            //        .ToArray())
-            //    .SelectMany(el => el)
-            //    .ToImmutableArray();
-
-            var pointerFiles = pointers 
+            var pointerFiles = pointersToCreate 
                 .AsParallel()
                     .WithDegreeOfParallelism(1)
                 .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
                 .ToImmutableArray();
 
+            return 0;
 
 
-            //var pointers = localContentPerHash
-            //    .AsParallel()
-            //    .WithDegreeOfParallelism(1)
-            //    .Select(g => new
-            //    {
-            //        RemoteEncryptedAriusManifestFile = archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
-            //        LocalContentFiles = g.AsEnumerable()
-            //    })
-            //    .ToImmutableArray();
-
-            //pointers
-            //    .AsParallel()
-            //    .WithDegreeOfParallelism(1)
-            //    .ForAll(z =>
-            //    {
-            //        //AriusPointerFile.Create(z.)
-            //    });
-
-
-
-
-
-            //var remoteEncryptedAriusManifestFiles = archive
-            //    .GetRemoteEncryptedAriusManifestFiles()
-            //    .ToImmutableDictionary(reamf => reamf.Hash, reamf => reamf);
-
-
-            //var lcfHashToUploadedEac = encryptedAriusContentsToUpload
-            //    .ToDictionary(
-            //        eac => eac.LocalContentFile.Hash, 
-            //        eac => eac);
-
-            //var redundantLcf = localContentPerHash.SelectMany(g => g)
-            //    .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
-            //    .Select(notUploadedLcf => 
-            //        AriusPointerFile.Create(
-            //            notUploadedLcf.AriusPointerFileFullName, 
-            //            lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
-
-            //var redundantLcf = localContentPerHash.SelectMany(g => g)
-            //    .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
-            //    .Select(notUploadedLcf => 5);
-            //        //AriusPointerFile.Create(
-            //        //    notUploadedLcf.AriusPointerFileFullName,
-            //        //    lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
+            
 
 
             /* 2. Local AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
@@ -505,7 +453,6 @@ namespace Arius
             //        }
             //    }
 
-            return 0;
         }
     }
 }
