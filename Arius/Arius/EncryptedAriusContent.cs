@@ -36,14 +36,13 @@ namespace Arius
         
         public EncryptedAriusContent(LocalContentFile lcf, AriusPointerFile pointerFile, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
         {
-            _lcf = lcf;
+            LocalContentFile = lcf;
             PointerFile = pointerFile;
             EncryptedManifestFile = encryptedManifest;
             EncryptedAriusChunks = encryptedChunks;
         }
 
-        private readonly LocalContentFile _lcf;
-
+        public LocalContentFile LocalContentFile { get; }
         public AriusPointerFile PointerFile { get; }
         public EncryptedAriusManifestFile EncryptedManifestFile { get; }
         public EncryptedAriusChunk[] EncryptedAriusChunks { get; }

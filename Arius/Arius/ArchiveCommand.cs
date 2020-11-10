@@ -153,7 +153,7 @@ namespace Arius
             var remoteManifests = archive
                 .GetEncryptedManifestFileBlobItems()
                 .Select(bi => RemoteEncryptedAriusManifestFile.Create(bi))
-                .ToImmutableArray();
+                .ToImmutableArray();  //TODO Samentrekken met de vorige
 
             var remoteContentHashes = remoteManifests
                 .Select(s => s.Hash)
@@ -174,7 +174,12 @@ namespace Arius
                 .DistinctBy(eac => eac.UnencryptedHash)
                 .ToImmutableArray();
 
+            var encryptedManifestsToUpload = encryptedAriusContentsToUpload
+                .Select(eac => eac.EncryptedManifestFile)
+                .ToImmutableArray();
+
             archive.Upload(encryptedChunksToUpload, tier);
+            archive.Upload(encryptedManifestsToUpload);
 
             //Delete Uploaded Chunks
             foreach (var chunk in encryptedChunksToUpload)
@@ -186,9 +191,24 @@ namespace Arius
 
 
             //1.2 Pointers voor de redundant ones
-            //var redundantLocalContentFiles = localContentPerHash.SelectMany(g => g)
+            //var lcfHashToUploadedEac = encryptedAriusContentsToUpload
+            //    .ToDictionary(
+            //        eac => eac.LocalContentFile.Hash, 
+            //        eac => eac);
+
+            //var redundantLcf = localContentPerHash.SelectMany(g => g)
             //    .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
-            //    .Select(lcf => lcf.CreateEncryptedAriusContent());
+            //    .Select(notUploadedLcf => 
+            //        AriusPointerFile.Create(
+            //            notUploadedLcf.AriusPointerFileFullName, 
+            //            lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
+
+            var redundantLcf = localContentPerHash.SelectMany(g => g)
+                .ExceptBy(localContentFilesToUpload, lcf => lcf.FullName)
+                .Select(notUploadedLcf => 5);
+                    //AriusPointerFile.Create(
+                    //    notUploadedLcf.AriusPointerFileFullName,
+                    //    lcfHashToUploadedEac[notUploadedLcf.Hash].EncryptedManifestFile.Name));
 
 
             /* 2. Local AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
@@ -198,13 +218,13 @@ namespace Arius
              * DELETE > remote manifest bijwerken
              */
 
-            var remainingAriusPointers = root
-                .GetAriusFiles()
-                .Select(fi => AriusPointerFile.Create(fi))
-                .ExceptBy(encryptedAriusContentsToUpload.Select(eac => eac.PointerFile), pf => pf.FullName)
-                .ToImmutableArray();
+            //var remainingAriusPointers = root
+            //    .GetAriusFiles()
+            //    .Select(fi => AriusPointerFile.Create(fi))
+            //    .ExceptBy(encryptedAriusContentsToUpload.Select(eac => eac.PointerFile), pf => pf.FullName)
+            //    .ToImmutableArray();
 
-            var x = 5;
+            //var x = 5;
 
             // DO STUFF
             // AsParallel

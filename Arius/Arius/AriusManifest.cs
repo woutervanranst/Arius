@@ -122,6 +122,6 @@ namespace Arius
         /// <summary>
         /// Hash of the unencrypted content
         /// </summary>
-        public string Hash => _bi.Name.Substring(0, _bi.Name.Length - ".7z.arius".Length);
+        public string Hash => _bi.Name.Substring(0, _bi.Name.Length - ".manifest.7z.arius".Length);
     }
 }
