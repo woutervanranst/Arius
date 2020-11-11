@@ -8,7 +8,24 @@ namespace Arius
 {
     internal class AriusPointerFile : AriusFile
     {
+        /// <summary>
+        /// Create a pointer for a local file with a remote manifest (that is already uploaded)
+        /// </summary>
+        /// <param name="lcf"></param>
+        /// <param name="f"></param>
+        /// <returns></returns>
         public static AriusPointerFile Create(LocalContentFile lcf, RemoteEncryptedAriusManifestFile f)
+        {
+            return Create(lcf.AriusPointerFileFullName, f.Name);
+        }
+
+        /// <summary>
+        /// Create a pointer for a local file with a local manifest (that is not yet uploaded)
+        /// </summary>
+        /// <param name="lcf"></param>
+        /// <param name="f"></param>
+        /// <returns></returns>
+        public static AriusPointerFile Create(LocalContentFile lcf, EncryptedAriusManifestFile f)
         {
             return Create(lcf.AriusPointerFileFullName, f.Name);
         }

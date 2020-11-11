@@ -87,7 +87,7 @@ namespace Arius
             archiveCommand.AddOption(tierOption);
 
             var minSizeOption = new Option<int>("--min-size",
-                getDefaultValue: () => 1,
+                getDefaultValue: () => 0,
                 description: "Minimum size of files to archive in MB");
             archiveCommand.AddOption(minSizeOption);
 
@@ -132,6 +132,8 @@ namespace Arius
             ////TODO KeepLocal
             ////TODO Simulate
             //// TODO MINSIZE
+            ///
+            /// TODO CHeck if the archive is deduped and password by checking the first amnifest file
 
             /* 1. LocalContentFiles (ie. all non-.arius files)
              *  READ > N/A
@@ -188,12 +190,18 @@ namespace Arius
 
             //TODO test File X is al geupload ik kopieer 'X - Copy' erbij> expectation gewoon pointer erbij binary weg
 
-            //1.2 Create Pointers
-            
-            var localContentPerManifestFile = localContentPerHash
+            //1.2 Create remaining pointers & update the remote manifests
+            var x = 5;
+
+            var remainingLocalContentPerManifestFile = localContentPerHash
                 .ToImmutableDictionary(
                     g => archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
-                    g => g.ToList());
+                    g => g.Where(z => !z.AriusPointerFileInfo.Exists).ToList());
+
+            var pointers = remainingLocalContentPerManifestFile
+                .Where(p => p.Value.Count > 0) //hack
+                .Select(p => p.Key.CreatePointers(p.Value, passphrase))
+                .ToImmutableArray();
 
             /*
              * FROM                             TO
@@ -204,20 +212,22 @@ namespace Arius
              *          content5                hash2   content5
              */
 
-            var pointersToCreate = localContentPerManifestFile
-                .SelectMany(p => p.Value.Select(lcf => new
-                {
-                    RemoteEncryptedAriusManifestFile = p.Key, 
-                    LocalContentFile = lcf
-                }))
-                .Where(z => !z.LocalContentFile.AriusPointerFileInfo.Exists)
-                .ToImmutableArray();
 
-            var createdPointerFiles = pointersToCreate 
-                .AsParallel()
-                    .WithDegreeOfParallelism(1)
-                .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
-                .ToImmutableArray();
+
+            //var pointersToCreate = remainingLocalContentPerManifestFile
+            //    .SelectMany(p => p.Value.Select(lcf => new
+            //    {
+            //        RemoteEncryptedAriusManifestFile = p.Key, 
+            //        LocalContentFile = lcf
+            //    }))
+            //    .Where(z => !z.LocalContentFile.AriusPointerFileInfo.Exists)
+            //    .ToImmutableArray();
+
+            //var createdPointerFiles = pointersToCreate 
+            //    .AsParallel()
+            //        .WithDegreeOfParallelism(1)
+            //    .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
+            //    .ToImmutableArray();
 
 
 
