@@ -10,7 +10,7 @@ using Azure.Storage.Blobs.Models;
 namespace Arius
 {
     /// <summary>
-    /// Een Arius file met manifest en chunks
+    /// Een Arius file met manifest en chunks //TODO Waarom bestaat deze class? volgens mij kan die weg - is gewoon een empty shell. de commands in CCreate draaien gewoon op lcf
     /// </summary>
     internal class EncryptedAriusContent
     {
@@ -28,7 +28,7 @@ namespace Arius
                 .CreateAriusManifestFile(lcf.AriusManifestFullName)
                 .CreateEncryptedAriusManifestFile(lcf.EncryptedAriusManifestFullName, passphrase, true);
 
-            //var p = eamf.CreatePointerFile(lcf);
+            var p = eamf.CreatePointerFile(lcf); //TODO voor consistency de pointer hier buiten aanmaken / eg na de encryptedAriusContentsToUpload call?
 
             return new EncryptedAriusContent(lcf, eamf, eacs);
         }
@@ -37,13 +37,13 @@ namespace Arius
         public EncryptedAriusContent(LocalContentFile lcf, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
         {
             LocalContentFile = lcf;
-            //PointerFile = pointerFile;
+            //PointerFile = pointerFile; //NOTE dit kunnnen er meerdere zijn
             EncryptedManifestFile = encryptedManifest;
             EncryptedAriusChunks = encryptedChunks;
         }
 
         public LocalContentFile LocalContentFile { get; }
-        //public AriusPointerFile PointerFile { get; }
+        //public AriusPointerFile PointerFile { get; } //NOTE dit kunnnen er meerdere zijn
         public EncryptedAriusManifestFile EncryptedManifestFile { get; }
         public EncryptedAriusChunk[] EncryptedAriusChunks { get; }
 

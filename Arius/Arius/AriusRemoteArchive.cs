@@ -125,7 +125,25 @@ namespace Arius
             return $"{container.Uri}?{sasToken}";
         }
 
-        
+
+
+        /*
+         * TODO voor t foefke progress:
+         *
+         * azcopy.exe jobs show <jobid>
+
+
+            Job ae15d86d-81ad-a54f-55b3-472d0bc93041 summary
+            Number of File Transfers: 0
+            Number of Folder Property Transfers: 0
+            Total Number Of Transfers: 0
+            Number of Transfers Completed: 0
+            Number of Transfers Failed: 0
+            Number of Transfers Skipped: 0
+            Percent Complete (approx): 100.0 <--------
+            Final Job Status: InProgress
+         */
+
 
         //public void Download(string blobName, string fileName)
         //{
