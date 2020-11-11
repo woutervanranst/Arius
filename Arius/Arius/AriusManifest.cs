@@ -1,14 +1,12 @@
-﻿using System;
+﻿using Azure.Storage.Blobs;
+using SevenZip;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using SevenZip;
 
 namespace Arius
 {
@@ -18,7 +16,7 @@ namespace Arius
         public static AriusManifest Create(LocalContentFile lcf, params EncryptedAriusChunk[] chunks)
         {
             return new AriusManifest(
-                new List<AriusManifestEntry> {AriusManifestEntry.GetAriusManifestEntry(lcf)},
+                new List<AriusManifestEntry> { AriusManifestEntry.GetAriusManifestEntry(lcf) },
                 chunks.Select(c => c.Name),
                 lcf.Hash);
         }
@@ -55,7 +53,7 @@ namespace Arius
 
         public string AsJson() =>
             JsonSerializer.Serialize(this,
-                new JsonSerializerOptions {WriteIndented = true}); // TODO waarom niet gewoon Serialize(this)
+                new JsonSerializerOptions { WriteIndented = true }); // TODO waarom niet gewoon Serialize(this)
 
         public static AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
 
@@ -86,17 +84,17 @@ namespace Arius
             {
                 return x.RelativeName == y.RelativeName &&
                        //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
-                       x.IsDeleted == y.IsDeleted && 
-                       x.CreationTimeUtc.Equals(y.CreationTimeUtc) && 
+                       x.IsDeleted == y.IsDeleted &&
+                       x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
                        x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
             }
 
             public int GetHashCode(AriusManifestEntry obj)
             {
-                return HashCode.Combine(obj.RelativeName, 
+                return HashCode.Combine(obj.RelativeName,
                     //obj.Version,  //DO NOT Compare on DateTime Version
-                    obj.IsDeleted, 
-                    obj.CreationTimeUtc, 
+                    obj.IsDeleted,
+                    obj.CreationTimeUtc,
                     obj.LastWriteTimeUtc);
             }
         }
@@ -239,7 +237,7 @@ namespace Arius
             var tempAriusManifestFullName = Path.Combine(Path.GetTempPath(), lcfs.First().AriusManifestName);
             var tempEncryptedAriusManifestFullName =
                 Path.Combine(Path.GetTempPath(), lcfs.First().EncryptedAriusManifestName);
-            eamf = manifest
+            manifest
                 .CreateAriusManifestFile(tempAriusManifestFullName)
                 .CreateEncryptedAriusManifestFile(tempEncryptedAriusManifestFullName, passphrase, true);
 

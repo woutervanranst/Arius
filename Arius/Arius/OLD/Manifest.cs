@@ -1,13 +1,4 @@
-﻿using Azure.Storage.Blobs.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-namespace Arius
+﻿namespace Arius
 {
     //class Manifest
     //{
@@ -133,12 +124,12 @@ namespace Arius
     //class ManifestEntry
     //{
     //    public string RelativeFileName { get; set; }
-        
+
     //    [JsonIgnore]
     //    public string RelativeLocalAriusFileName => $"{RelativeFileName}.arius";
-        
+
     //    public DateTime DateTime { get; set; }
-        
+
     //    public bool IsDeleted { get; set; }
     //}
 }
