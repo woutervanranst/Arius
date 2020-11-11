@@ -25,7 +25,8 @@ namespace Arius.Tests
          * Rename content file
          * rename .arius file
          * Modify the binary
-* azcopy fails
+            * azcopy fails
+         * add binary > get .arius file > delete .arius file > archive again > arius file will reappear but cannot appear twice in the manifest
          */
     }
 }
