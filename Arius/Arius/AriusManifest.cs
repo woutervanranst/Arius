@@ -59,7 +59,7 @@ namespace Arius
 
         public static AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
 
-        public struct AriusManifestEntry
+        public record AriusManifestEntry
         {
             public string RelativeName { get; set; }
             public DateTime Version { get; set; }
