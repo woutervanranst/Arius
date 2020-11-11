@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
-
-namespace Arius
+﻿namespace Arius
 {
     //abstract class AriusFile
     //{
@@ -28,7 +22,7 @@ namespace Arius
     //    public string ContentFileName => GetLocalContentName(AriusFileName);
     //    public string EncryptedContentFileName => $"{ContentFileName}.7z.arius"; // TODO komt via ManifestEntry.RelativeLocalAriusFileName waar we .arius kunnen droppen
     //    public bool Exists => File.Exists(AriusFileName);
-        
+
     //    public override string ToString() => RelativeAriusFileName;
 
 

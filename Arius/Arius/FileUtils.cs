@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,7 +11,7 @@ namespace Arius
         {
             using Stream fs = File.OpenRead(fileName);
             using var sha256 = SHA256.Create();
-            
+
             var hash = sha256.ComputeHash(fs);
 
             fs.Close();
@@ -28,7 +27,7 @@ namespace Arius
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();
-            
+
             var hash = sha256.ComputeHash(stream);
 
             fs.Close();

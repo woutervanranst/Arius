@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
-using System.Linq;
-using System.Text;
 
 namespace Arius
 {
@@ -90,7 +86,7 @@ namespace Arius
 
                 if (download)
                     Download(di, passphrase);
-            } 
+            }
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
                 // Restore one file
