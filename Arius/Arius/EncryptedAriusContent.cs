@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using Azure.Storage.Blobs.Models;
+﻿using System.Linq;
 
 namespace Arius
 {
@@ -33,7 +26,7 @@ namespace Arius
             return new EncryptedAriusContent(lcf, eamf, eacs);
         }
 
-        
+
         public EncryptedAriusContent(LocalContentFile lcf, EncryptedAriusManifestFile encryptedManifest, EncryptedAriusChunk[] encryptedChunks)
         {
             LocalContentFile = lcf;
@@ -48,5 +41,5 @@ namespace Arius
         public EncryptedAriusChunk[] EncryptedAriusChunks { get; }
 
     }
-    
+
 }

@@ -1,26 +1,12 @@
 ﻿using Azure.Storage.Blobs.Models;
-using SevenZip;
+using MoreLinq;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Configuration;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using MoreLinq;
-using static Arius.StreamBreaker;
 
 namespace Arius
 {
@@ -123,7 +109,7 @@ namespace Arius
             var root = new AriusRootDirectory(path);
 
             return Archive(root, archive, passphrase, keepLocal, accessTier, minSize, simulate);
-            
+
         }
 
         public static int Archive(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate)

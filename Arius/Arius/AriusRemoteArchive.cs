@@ -1,18 +1,13 @@
 ﻿using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Azure.Storage.Sas;
 
 namespace Arius
 {
@@ -35,7 +30,7 @@ namespace Arius
         public AriusRemoteArchive(string accountName, string accountKey, string container)
         {
             _skc = new StorageSharedKeyCredential(accountName, accountKey);
-            
+
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 
             // Create a BlobServiceClient object which will be used to create a container client
@@ -61,7 +56,7 @@ namespace Arius
             return _bcc.GetBlobClient(file).Exists();
         }
 
-        
+
         public void Upload(IEnumerable<EncryptedAriusManifestFile> manifests)
         {
             Upload(manifests, AccessTier.Cool);
@@ -70,7 +65,7 @@ namespace Arius
         {
             files.GroupBy(af => af.DirectoryName)
                 .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
-                    .WithDegreeOfParallelism(1)         
+                    .WithDegreeOfParallelism(1)
                 .ForAll(g => Upload(g.Key, g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray(), tier));
         }
         private void Upload(string dir, string[] fileNames, AccessTier tier)
@@ -94,7 +89,7 @@ namespace Arius
 
             var p = new ExternalProcess(AzCopyPath);
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus", 
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
