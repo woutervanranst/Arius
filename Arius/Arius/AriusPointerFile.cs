@@ -16,17 +16,6 @@ namespace Arius
             return Create(lcf.AriusPointerFileFullName, f.Name);
         }
 
-        ///// <summary>
-        ///// Create a pointer for a local file with a local manifest (that is not yet uploaded)
-        ///// </summary>
-        ///// <param name="lcf"></param>
-        ///// <param name="f"></param>
-        ///// <returns></returns>
-        //public static AriusPointerFile Create(LocalContentFile lcf, EncryptedAriusManifestFile f)
-        //{
-        //    return Create(lcf.AriusPointerFileFullName, f.Name);
-        //}
-
         private static AriusPointerFile Create(string ariusPointerFullName, string encryptedManifestName)
         {
             if (File.Exists(ariusPointerFullName))
@@ -39,7 +28,7 @@ namespace Arius
             return new AriusPointerFile(new FileInfo(ariusPointerFullName), encryptedManifestName);
         }
 
-        public static AriusPointerFile Create(FileInfo fi)
+        public static AriusPointerFile FromFile(FileInfo fi)
         {
             if (!fi.Exists)
                 throw new ArgumentException("The Pointer file does not exist");

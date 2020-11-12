@@ -7,17 +7,17 @@ namespace Arius
 {
     internal class FileUtils
     {
-        public static string GetHash(string fileName)
-        {
-            using Stream fs = File.OpenRead(fileName);
-            using var sha256 = SHA256.Create();
+        //public static string GetHash(string fileName)
+        //{
+        //    using Stream fs = File.OpenRead(fileName);
+        //    using var sha256 = SHA256.Create();
 
-            var hash = sha256.ComputeHash(fs);
+        //    var hash = sha256.ComputeHash(fs);
 
-            fs.Close();
+        //    fs.Close();
 
-            return BitConverter.ToString(hash);
-        }
+        //    return BitConverter.ToString(hash);
+        //}
         public static string GetHash(string salt, string fileName)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(salt);
