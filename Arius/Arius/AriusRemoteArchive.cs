@@ -211,32 +211,4 @@ namespace Arius
             bc.DownloadTo(file);
         }
     }
-
-    internal abstract class RemoteAriusFile
-    {
-        protected RemoteAriusFile(BlobItem bi)
-        {
-            if (!bi.Name.EndsWith(".arius"))
-                throw new ArgumentException("NOT A CHUNK"); //TODO
-
-            _bi = bi;
-        }
-        protected readonly BlobItem _bi;
-
-        public string Name => _bi.Name;
-        public abstract string Hash { get; }
-    }
-
-    internal class RemoteEncryptedAriusChunk : RemoteAriusFile
-    {
-        public RemoteEncryptedAriusChunk(BlobItem bi) : base(bi)
-        {
-            if (!(bi.Name.EndsWith(".7z.arius") && !bi.Name.EndsWith(".manifest.7z.arius")))
-                throw new ArgumentException("NOT A CHUNK"); //TODO
-        }
-
-        public override string Hash => _bi.Name.TrimEnd(".7z.arius");
-    }
-
-    
 }
