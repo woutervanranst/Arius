@@ -18,11 +18,6 @@ namespace Arius
         private readonly FileInfo _localContent;
         private readonly Lazy<string> _hash;
 
-        //public EncryptedAriusContent CreateEncryptedAriusContent(bool dedup, string passphrase)
-        //{
-        //    return EncryptedAriusContent.Create(this, dedup, passphrase, _root);
-        //}
-
         public IUnencryptedChunk[] GetChunks(bool dedup)
         {
             if (dedup)
@@ -75,11 +70,6 @@ namespace Arius
         {
             return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase, false);
         }
-
-        //public AriusManifest GetManifest(params EncryptedAriusChunk[] chunks)
-        //{
-        //    return AriusManifest.Create(this, chunks);
-        //}
 
         /// <summary>
         /// The Hash of the unencrypted file

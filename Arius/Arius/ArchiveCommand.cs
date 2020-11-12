@@ -211,43 +211,6 @@ namespace Arius
                 })
                 .ToImmutableArray();
 
-            //var remainingLocalContentPerManifestFile = localContentPerHash
-            //    .ToImmutableDictionary(
-            //        g => archive.GetRemoteAriusManifestHash(g.Key, passphrase),
-            //        g => g.Where(lcf => !lcf.AriusPointerFileInfo.Exists).ToList());
-
-            //var pointers = remainingLocalContentPerManifestFile
-            //    .Where(p => p.Value.Count > 0) //hack
-            //    .Select(p => p.Key.CreatePointers(p.Value, passphrase))
-            //    .ToImmutableArray();
-
-            /*
-             * FROM                             TO
-             * hash1    content1                hash1   content1
-             *          content2                hash1   content2                
-             *          content3                hash1   content3
-             * hash2    content4                hash2   content4
-             *          content5                hash2   content5
-             */
-
-
-
-            //var pointersToCreate = remainingLocalContentPerManifestFile
-            //    .SelectMany(p => p.Value.Select(lcf => new
-            //    {
-            //        RemoteEncryptedAriusManifestFile = p.Key, 
-            //        LocalContentFile = lcf
-            //    }))
-            //    .Where(z => !z.LocalContentFile.AriusPointerFileInfo.Exists)
-            //    .ToImmutableArray();
-
-            //var createdPointerFiles = pointersToCreate 
-            //    .AsParallel()
-            //        .WithDegreeOfParallelism(1)
-            //    .Select(z => AriusPointerFile.Create(z.LocalContentFile, z.RemoteEncryptedAriusManifestFile))
-            //    .ToImmutableArray();
-
-
 
             /* 2. Local AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
              * CREATE >N/A

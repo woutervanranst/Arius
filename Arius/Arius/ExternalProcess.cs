@@ -94,11 +94,6 @@ namespace Arius
             t2 = (T2)Convert.ChangeType(output.Groups[t2Name].Value, typeof(T2));
             t3 = (T3)Convert.ChangeType(output.Groups[t3Name].Value, typeof(T3));
             t4 = (T4)Convert.ChangeType(output.Groups[t4Name].Value, typeof(T4));
-
-            //int completed = int.Parse(output.Groups["completed"].Value);
-            //int failed = int.Parse(output.Groups["failed"].Value);
-            //int skipped = int.Parse(output.Groups["skipped"].Value);
-            //string finalJobStatus = output.Groups["finalJobStatus"].Value;
         }
     }
 }

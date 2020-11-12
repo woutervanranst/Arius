@@ -58,10 +58,6 @@ namespace Arius
         }
 
 
-        //public void Upload(IEnumerable<EncryptedAriusManifestFile> manifests)
-        //{
-        //    Upload(manifests, AccessTier.Cool);
-        //}
         public void Upload(IEnumerable<AriusFile> files, AccessTier tier)
         {
             files.GroupBy(af => af.DirectoryName)
@@ -191,52 +187,6 @@ namespace Arius
 
 
 
-        ///// <summary>
-        ///// Get the Hashes of the unencrypted LocalContentFiles that are stored in the archive [ie the names (without extension) of the .7z.arius files]
-        ///// </summary>
-        ///// <returns></returns>
-        //public ImmutableArray<string> GetContentHashes()
-        //{
-        //    return GetEncryptedManifestFileBlobItems()
-        //        .Select(bi => AriusManifest.GetHash(bi.Name))
-        //        .ToImmutableArray();
-        //}
-
-        //public ImmutableArray<object> GetRemoteEncryptedAriusManifestFiles()
-        //{
-        //    throw new NotImplementedException();
-
-        //    //return GetEncryptedManifestFileBlobItems()
-        //    //    .Select(bi => GetRemoteEncryptedAriusManifestFileByName(bi.Name))
-        //    //    .ToImmutableArray();
-        //}
-
-
-        ///// <summary>
-        ///// Get a RemoteEncryptedAriusManifestFile for the given contentHash
-        ///// </summary>
-        ///// <param name="hash">Hash of the unencrypted LocalContentFile</param>
-        ///// <param name="passphrase"></param>
-        ///// <returns></returns>
-        //public AriusManifest GetRemoteAriusManifestHash(string hash, string passphrase)
-        //{
-        //    return AriusManifest.FromRemote(this, hash, passphrase);
-        //}
-
-        ///// <summary>
-        ///// Get a RemoteEncryptedAriusManifestFile with the full blobName
-        ///// </summary>
-        ///// <param name="blobName">Name of the blob (incl. extension)</param>
-        ///// <returns></returns>
-        //public RemoteEncryptedAriusManifestFile GetRemoteEncryptedAriusManifestFileByName(string blobName)
-        //{
-        //    var bc = _bcc.GetBlobClient(blobName);
-
-            
-
-        //    return RemoteEncryptedAriusManifestFile.Create(bc);
-        //}
-
         public RemoteEncryptedAriusManifest UploadEncryptedAriusManifest(string file, string hash)
         {
             var blobName = $"{hash}.manifest.7z.arius";
@@ -248,12 +198,7 @@ namespace Arius
 
             bc.SetAccessTier(AccessTier.Cool);
 
-            //if (file.EndsWith(".manifest.7z.arius"))
             return GetRemoteEncryptedAriusManifest(hash);
-            //else if (file.EndsWith(".7z.arius"))
-            //    return GetRemoteEncryptedAriusChunk(file);
-            //else
-            //    throw new ArgumentException("NOT A VALID ARIUSFILE");
         }
 
         public void Download(string blobName, string file)
@@ -290,7 +235,7 @@ namespace Arius
                 throw new ArgumentException("NOT A CHUNK"); //TODO
         }
 
-        public override string Hash => _bi.Name.Substring(0, _bi.Name.Length - ".7z.arius".Length);
+        public override string Hash => _bi.Name.TrimEnd(".7z.arius");
     }
 
     
