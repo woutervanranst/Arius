@@ -29,57 +29,14 @@ namespace Arius
             //TODO manifest does not yet exit remte
             //if (archive.GetRemoteEncryptedAriusManifestFileByHash(lcfs.First().Hash)
 
-            var manifest = new AriusManifest(
-                lcfs.Select(lcf => AriusManifest.GetAriusManifestEntry(lcf)).ToList(),
-                chunks.Select(c => c.Name),
-                lcfs.First().Hash);
-
-
-            // Save it
-            var tempAriusManifestName = Path.GetTempFileName();
-            var json = manifest.AsJson();
-            File.WriteAllText(tempAriusManifestName, json);
-
-            var szu = new SevenZipUtils();
-            var tempAriusEncryptedManifestName = Path.GetTempFileName(); // Path.Combine(Path.GetTempPath(), manifest.EncryptedAriusManifestName);
-            szu.EncryptFile(tempAriusManifestName, tempAriusEncryptedManifestName, passphrase, CompressionLevel.Normal);
-            File.Delete(tempAriusManifestName);
-
-            // Upload it
-            var remoteManifest = archive.UploadEncryptedAriusManifest(tempAriusEncryptedManifestName, manifest.Hash);
-            File.Delete(tempAriusEncryptedManifestName);
+            var manifest = new AriusManifest(lcfs, chunks.Select(c => c.Name), lcfs.First().Hash);
+            var remoteManifest = manifest.Create(archive, passphrase);
 
             return remoteManifest;
         }
 
-        public static RemoteEncryptedAriusManifest FromRemote(AriusRemoteArchive archive, string hash, string passphrase)
-        {
-            throw new NotImplementedException();
-
-            //var blobName = GetEncryptedAriusManifestBlobName(hash);
-
-            ////Download the existing EncryptedManifest
-            //var tempEncryptedAriusManifestFileFullname = Path.GetTempFileName();
-            //archive.Download(blobName, tempEncryptedAriusManifestFileFullname);
-
-            ////Get the decrypted manifest
-            //var szu = new SevenZipUtils();
-            //var tempDecryptedAriusManifestFileFullName = Path.GetTempFileName();
-            //szu.DecryptFile(tempEncryptedAriusManifestFileFullname, tempDecryptedAriusManifestFileFullName, passphrase);
-            //File.Delete(tempEncryptedAriusManifestFileFullname);
-
-            ////Get the Manifest
-            //var json = File.ReadAllText(tempDecryptedAriusManifestFileFullName);
-            //File.Delete(tempDecryptedAriusManifestFileFullName);
-            //var manifest = AriusManifest.FromJson(json);
-
-            //return manifest;
-        }
-
-        private static string GetEncryptedAriusManifestBlobName(string hash) => $"{hash}.manifest.7z.arius";
-
-
-        public RemoteEncryptedAriusManifest(BlobItem bi) : base(bi)
+        
+        public RemoteEncryptedAriusManifest(AriusRemoteArchive archive, BlobItem bi) : base(archive, bi)
         {
             if (!bi.Name.EndsWith(".manifest.7z.arius"))
                 throw new ArgumentException("NOT A MANIFEST"); //TODO
@@ -87,21 +44,52 @@ namespace Arius
 
         public override string Hash => _bi.Name.TrimEnd(".manifest.7z.arius");
 
+        public void Synchronize(IEnumerable<LocalContentFile> currentLocalContentFiles, string passphrase)
+        {
+            var manifest = AriusManifest.FromRemote(this, passphrase);
+            manifest.Synchronize(currentLocalContentFiles, _archive, passphrase);
+        }
 
 
         private class AriusManifest
         {
             // --- CONSTRUCTORS
-            public string AsJson() =>
-                JsonSerializer.Serialize(this,
-                    new JsonSerializerOptions { WriteIndented = true });
+            public static AriusManifest FromRemote(RemoteEncryptedAriusManifest ream, string passphrase)
+            {
+                //Download the existing EncryptedManifest
+                var tempEncryptedAriusManifestFileFullname = Path.GetTempFileName();
+                ream._archive.Download(ream.Name, tempEncryptedAriusManifestFileFullname);
 
-            public static AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
+                //Get the decrypted manifest
+                var szu = new SevenZipUtils();
+                var tempDecryptedAriusManifestFileFullName = Path.GetTempFileName();
+                szu.DecryptFile(tempEncryptedAriusManifestFileFullname, tempDecryptedAriusManifestFileFullName, passphrase);
+                File.Delete(tempEncryptedAriusManifestFileFullname);
+
+                //Get the Manifest
+                var json = File.ReadAllText(tempDecryptedAriusManifestFileFullName);
+                File.Delete(tempDecryptedAriusManifestFileFullName);
+                var manifest = AriusManifest.FromJson(json);
+
+                return manifest;
+            }
+
+            private string AsJson() =>
+                JsonSerializer.Serialize(this,
+                    new JsonSerializerOptions { WriteIndented = true, IgnoreNullValues = true });
+
+            private static AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
 
             [JsonConstructor]
             public AriusManifest(IEnumerable<LocalContentFileEntry> localContentFileEntries, IEnumerable<string> encryptedChunks, string hash)
             {
-                _localContentFiles = localContentFileEntries.ToList();
+                _localContentFileEntries = localContentFileEntries.ToList();
+                EncryptedChunks = encryptedChunks;
+                Hash = hash;
+            }
+            public AriusManifest(IEnumerable<LocalContentFile> localContentFiles, IEnumerable<string> encryptedChunks, string hash)
+            {
+                _localContentFileEntries = GetAriusManifestEntries(localContentFiles);
                 EncryptedChunks = encryptedChunks;
                 Hash = hash;
             }
@@ -109,8 +97,9 @@ namespace Arius
             // --- PROPERTIES
 
             [JsonInclude]
-            public IEnumerable<LocalContentFileEntry> LocalContentFiles => _localContentFiles;
-            private readonly List<LocalContentFileEntry> _localContentFiles;
+            public IEnumerable<LocalContentFileEntry> LocalContentFileEntries => _localContentFileEntries;
+            private readonly List<LocalContentFileEntry> _localContentFileEntries;
+            
             [JsonInclude]
             public IEnumerable<string> EncryptedChunks { get; private set; }
 
@@ -121,25 +110,80 @@ namespace Arius
             public string Hash { get; private set; }
 
             // --- METHODS
-            public void AddEntry(LocalContentFile lcf)
+            private IEnumerable<LocalContentFileEntry> GetLastEntriesPerRelativeName()
             {
-                var me = GetAriusManifestEntry(lcf);
+                return _localContentFileEntries
+                    .GroupBy(lcfe => lcfe.RelativeName)
+                    .Select(g => g
+                        .OrderBy(lcfe => lcfe.Version)
+                        .Last());
+            }
+            /// <summary>
+            /// Synchronize the state of the manifest to the current state of the file system:
+            /// Additions, deletions, renames (= add + delete)
+            /// </summary>
+            public void Synchronize(IEnumerable<LocalContentFile> lcfs, AriusRemoteArchive archive, string passphrase)
+            {
+                var fileSystemEntries = GetAriusManifestEntries(lcfs);
+                var lastEntries = GetLastEntriesPerRelativeName().ToImmutableArray();
 
-                if (!_localContentFiles.Contains(me, new AriusManifestEntryEqualityComparer()))
-                    _localContentFiles.Add(me);
+
+                //TODO LOCALCONTENTFILES >> LOCALFILESYSTEM
+                //TODO GetLatestEntires > OrderBy > Last --> voor den deleted
+
+
+                var addedFiles = fileSystemEntries.Except(lastEntries, new AriusManifestEntryEqualityComparer()).ToList();
+                var deletedFiles = lastEntries
+                    .Except(fileSystemEntries, new AriusManifestEntryEqualityComparer())
+                    .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null})
+                    .ToList();
+
+                _localContentFileEntries.AddRange(addedFiles);
+                _localContentFileEntries.AddRange(deletedFiles);
+
+                if (addedFiles.Any() || deletedFiles.Any())
+                    Update(archive, passphrase);
+            }
+
+            public RemoteEncryptedAriusManifest Create(AriusRemoteArchive archive, string passphrase)
+            {
+                Update(archive, passphrase);
+
+                return archive.GetRemoteEncryptedAriusManifestByHash(Hash);
+            }
+
+            public void Update(AriusRemoteArchive archive, string passphrase)
+            {
+                var tempAriusManifestName = Path.GetTempFileName();
+                var json = AsJson();
+                File.WriteAllText(tempAriusManifestName, json);
+
+                var szu = new SevenZipUtils();
+                var tempAriusEncryptedManifestName = Path.GetTempFileName();
+                szu.EncryptFile(tempAriusManifestName, tempAriusEncryptedManifestName, passphrase, CompressionLevel.Normal);
+                File.Delete(tempAriusManifestName);
+
+                // Upload it
+                archive.UploadEncryptedAriusManifest(tempAriusEncryptedManifestName, Hash);
+                File.Delete(tempAriusEncryptedManifestName);
             }
 
 
-            // --- STATIC HELPER METHODS
-            public static LocalContentFileEntry GetAriusManifestEntry(LocalContentFile lcf)
+            // --- RECORD DEFINITION & HELPERS
+            private static List<LocalContentFileEntry> GetAriusManifestEntries(IEnumerable<LocalContentFile> localContentFiles)
+            {
+                return localContentFiles.Select(lcf => GetAriusManifestEntry(lcf)).ToList();
+            }
+            private static LocalContentFileEntry GetAriusManifestEntry(LocalContentFile lcf)
             {
                 return new LocalContentFileEntry(lcf.RelativeName, DateTime.UtcNow, false, lcf.CreationTimeUtc, lcf.LastWriteTimeUtc);
             }
 
-            public sealed record LocalContentFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime CreationTimeUtc, DateTime LastWriteTimeUtc);
+
+            public sealed record LocalContentFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
 
 
-            internal class AriusManifestEntryEqualityComparer : IEqualityComparer<LocalContentFileEntry>
+            private class AriusManifestEntryEqualityComparer : IEqualityComparer<LocalContentFileEntry>
             {
                 public bool Equals(LocalContentFileEntry x, LocalContentFileEntry y)
                 {
@@ -161,4 +205,6 @@ namespace Arius
             }
         }
     }
+
+    
 }
