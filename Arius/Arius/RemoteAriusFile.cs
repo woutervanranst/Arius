@@ -5,13 +5,16 @@ namespace Arius
 {
     internal abstract class RemoteAriusFile
     {
-        protected RemoteAriusFile(BlobItem bi)
+        protected RemoteAriusFile(AriusRemoteArchive archive, BlobItem bi)
         {
             if (!bi.Name.EndsWith(".arius"))
-                throw new ArgumentException("NOT A CHUNK"); //TODO
+                throw new ArgumentException("NOT AN ARIUS FILE"); //TODO
 
+            _archive = archive;
             _bi = bi;
         }
+
+        protected readonly AriusRemoteArchive _archive;
         protected readonly BlobItem _bi;
 
         public string Name => _bi.Name;
