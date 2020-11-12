@@ -1,5 +1,4 @@
 ﻿using Azure.Storage.Blobs.Models;
-using MoreLinq;
 using System;
 using System.Collections.Immutable;
 using System.CommandLine;
@@ -132,7 +131,7 @@ namespace Arius
             var localContentPerHash = root
                     .GetNonAriusFiles()
                     .AsParallel()
-                        //.WithDegreeOfParallelism(1)
+                    //.WithDegreeOfParallelism(1)
                     .Select(fi => new LocalContentFile(root, fi, passphrase))
                     .GroupBy(lcf => lcf.Hash)
                     .ToImmutableArray();
@@ -150,7 +149,7 @@ namespace Arius
                 .AsParallel()
                     .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
                 .ToImmutableDictionary(
-                    g => g.Key, 
+                    g => g.Key,
                     g => g.First().GetChunks(dedup));
 
             var remoteChunkHashes = archive

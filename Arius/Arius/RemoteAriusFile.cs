@@ -1,5 +1,5 @@
-﻿using System;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs.Models;
+using System;
 
 namespace Arius
 {
