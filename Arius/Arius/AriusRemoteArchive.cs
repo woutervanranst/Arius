@@ -149,28 +149,34 @@ namespace Arius
         {
             return _bcc.GetBlobs()
                 .Where(b => b.Name.EndsWith(".manifest.7z.arius"))
-                .Select(bi => new RemoteEncryptedAriusManifest(bi)); //TODO extract "validators" to some other class?
+                .Select(bi => new RemoteEncryptedAriusManifest(this, bi)); //TODO extract "validators" to some other class?
         }
 
         public IEnumerable<RemoteEncryptedAriusChunk> GetRemoteEncryptedAriusChunks()
         {
             return _bcc.GetBlobs()
                 .Where(b => b.Name.EndsWith(".7z.arius") && !b.Name.EndsWith(".manifest.7z.arius"))
-                .Select(bi => new RemoteEncryptedAriusChunk(bi));
+                .Select(bi => new RemoteEncryptedAriusChunk(this, bi));
         }
 
         public RemoteEncryptedAriusChunk GetRemoteEncryptedAriusChunk(string hash)
         {
             var bi = GetBlobItem($"{hash}.7z.arius");
 
-            return new RemoteEncryptedAriusChunk(bi);
+            return new RemoteEncryptedAriusChunk(this, bi);
         }
 
-        public RemoteEncryptedAriusManifest GetRemoteEncryptedAriusManifest(string hash)
+        public RemoteEncryptedAriusManifest GetRemoteEncryptedAriusManifestByHash(string hash)
         {
             var bi = GetBlobItem($"{hash}.manifest.7z.arius");
 
-            return new RemoteEncryptedAriusManifest(bi);
+            return new RemoteEncryptedAriusManifest(this, bi);
+        }
+        public RemoteEncryptedAriusManifest GetRemoteEncryptedAriusManifestByBlobItemName(string blobItemName)
+        {
+            var bi = GetBlobItem(blobItemName);
+
+            return new RemoteEncryptedAriusManifest(this, bi);
         }
 
         private BlobItem GetBlobItem(string name)
@@ -186,19 +192,24 @@ namespace Arius
         }
 
 
-
-        public RemoteEncryptedAriusManifest UploadEncryptedAriusManifest(string file, string hash)
+        public void UploadEncryptedAriusManifest(string file, string hash) //TODO Strinlgy Typed RemoteEncryptedAriusManifest : RemoteFile ?
         {
             var blobName = $"{hash}.manifest.7z.arius";
             var bc = _bcc.GetBlobClient(blobName);
-            
+
             using var s = File.Open(file, FileMode.Open, FileAccess.Read);
-            bc.Upload(s, true);
+
+            if (bc.Exists())
+            {
+                bc.Upload(s, overwrite: true);
+            }
+            else
+            {
+                bc.Upload(s);
+                bc.SetAccessTier(AccessTier.Cool);
+            }
+            
             s.Close();
-
-            bc.SetAccessTier(AccessTier.Cool);
-
-            return GetRemoteEncryptedAriusManifest(hash);
         }
 
         public void Download(string blobName, string file)
