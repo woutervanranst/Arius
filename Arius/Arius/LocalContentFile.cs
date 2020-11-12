@@ -18,10 +18,10 @@ namespace Arius
         private readonly FileInfo _localContent;
         private readonly Lazy<string> _hash;
 
-        public EncryptedAriusContent CreateEncryptedAriusContent(bool dedup, string passphrase)
-        {
-            return EncryptedAriusContent.Create(this, dedup, passphrase, _root);
-        }
+        //public EncryptedAriusContent CreateEncryptedAriusContent(bool dedup, string passphrase)
+        //{
+        //    return EncryptedAriusContent.Create(this, dedup, passphrase, _root);
+        //}
 
         public IUnencryptedChunk[] GetChunks(bool dedup)
         {
@@ -65,11 +65,12 @@ namespace Arius
             }
         }
 
-        //internal AriusPointerFile CreatePointerFile()
-        //{
-        //    return AriusPointerFile.Create(AriusPointerFileFullName, AriusManifestName);
-        //}
-
+        /// <summary>
+        /// Get this LocalContentFile (in it s entirety) as an EncryptedAriusChunk (ie when not deduping)
+        /// IUnencryptedChunk implementation
+        /// </summary>
+        /// <param name="passphrase"></param>
+        /// <returns></returns>
         public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
             return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase);
