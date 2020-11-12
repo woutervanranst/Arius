@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace Arius
 {
@@ -32,7 +33,7 @@ namespace Arius
 
         public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
-            return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase);
+            return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase, true);
         }
     }
 
@@ -41,7 +42,7 @@ namespace Arius
     /// </summary>
     internal class EncryptedAriusChunk : AriusFile
     {
-        public static EncryptedAriusChunk GetEncryptedAriusChunk(IUnencryptedChunk unencryptedChunk, string passphrase)
+        public static EncryptedAriusChunk GetEncryptedAriusChunk(IUnencryptedChunk unencryptedChunk, string passphrase, bool deleteUnencrypted)
         {
             var encryptedAriusChunkFullName = GetEncryptedAriusChunkFullName(unencryptedChunk);
 
@@ -50,14 +51,16 @@ namespace Arius
             var szu = new SevenZipUtils();
             szu.EncryptFile(unencryptedChunk.FullName, encryptedAriusChunkFullName, passphrase);
 
+            if (deleteUnencrypted)
+                File.Delete(unencryptedChunk.FullName);
+
             return new EncryptedAriusChunk(new FileInfo(encryptedAriusChunkFullName), unencryptedChunk);
         }
 
         private static string GetEncryptedAriusChunkFullName(IUnencryptedChunk chunk) =>
             $"{Path.Combine(chunk.DirectoryName, chunk.Hash)}.7z.arius";
 
-        private EncryptedAriusChunk(FileInfo encryptedAriusChunk, IUnencryptedChunk unencryptedChunk) : base(
-            encryptedAriusChunk)
+        private EncryptedAriusChunk(FileInfo encryptedAriusChunk, IUnencryptedChunk unencryptedChunk) : base(encryptedAriusChunk)
         {
             // TODO ik denk niet dat unecnryptedChunk nodig is?
             //_unencryptedChunk = unencryptedChunk;

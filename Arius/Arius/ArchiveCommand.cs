@@ -108,11 +108,11 @@ namespace Arius
             var archive = new AriusRemoteArchive(accountName, accountKey, container);
             var root = new AriusRootDirectory(path);
 
-            return Archive(root, archive, passphrase, keepLocal, accessTier, minSize, simulate);
+            return Archive(root, archive, passphrase, keepLocal, accessTier, minSize, simulate, false);
 
         }
 
-        public static int Archive(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate)
+        public static int Archive(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, bool dedup)
         {
 
             ////TODO KeepLocal
@@ -128,83 +128,98 @@ namespace Arius
              *  DELETE > N/A
              */
 
-            //1.1 Ensure all binaries are uploaded
+            //1.1 Ensure all chunks are uploaded
             var localContentPerHash = root
                     .GetNonAriusFiles()
                     .AsParallel()
-                        .WithDegreeOfParallelism(1)
+                        //.WithDegreeOfParallelism(1)
                     .Select(fi => new LocalContentFile(root, fi, passphrase))
                     .GroupBy(lcf => lcf.Hash)
                     .ToImmutableArray();
 
-            var remoteContentHashes = archive.GetContentHashes();
-
-            var localContentFilesToUpload = localContentPerHash
-                .Where(g => !remoteContentHashes.Contains(g.Key))
-                .Select(g => g.First())
+            var remoteManifestHashes = archive
+                .GetRemoteEncryptedAriusManifests()
+                .Select(ream => ream.Hash)
                 .ToImmutableArray();
 
-            var unencryptedChunksPerLocalContentFile = localContentFilesToUpload
+            var localContentFilesToUpload = localContentPerHash
+                .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
+                .ToImmutableArray();
+
+            var unencryptedChunksPerHash = localContentFilesToUpload
+                .AsParallel()
+                    .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+                .ToImmutableDictionary(
+                    g => g.Key, 
+                    g => g.First().GetChunks(dedup));
+
+            var remoteChunkHashes = archive
+                .GetRemoteEncryptedAriusChunks()
+                .Select(reac => reac.Hash)
+                .ToImmutableArray();
+
+            var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
                 .AsParallel()
                     .WithDegreeOfParallelism(1)
                 .ToImmutableDictionary(
-                    lcf => lcf,
-                    lcf => lcf.GetChunks(false));
+                    p => p.Key,
+                    p => p.Value
+                        .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
+                        .Select(c => c.GetEncryptedAriusChunk(passphrase)).ToImmutableArray()
+                );
 
-            var encryptedChunksPerHash = unencryptedChunksPerLocalContentFile.Values
-                .AsParallel()
-                .WithDegreeOfParallelism(1)
-                .SelectMany(lcf => lcf)
-                .DistinctBy(uec => uec.Hash)
-                .ToImmutableDictionary(
-                    uec => uec.Hash,
-                    uec => uec.GetEncryptedAriusChunk(passphrase));
-            // For dedup --> . EXCEPT ALREADY REMOTE TODO archive.GetEncryptedAriusChunkBlobItems
+            var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
+                .SelectMany(eac => eac)
+                .ToImmutableArray();
 
-            archive.Upload(encryptedChunksPerHash.Values, tier);
 
-            //Delete Uploaded Chunks
-            foreach (var chunk in encryptedChunksPerHash.Values)
-                File.Delete(chunk.FullName);
+            //Upload Chunks
+            archive.Upload(encryptedChunksToUpload, tier);
+
+            //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
+            foreach (var encryptedChunkFullName in encryptedChunksToUpload
+                    .Select(uec => uec.FullName)
+                    .Distinct())
+                File.Delete(encryptedChunkFullName);
 
 
             //1.2 Create manifests & pointers
-
-            var encryptedManifestsToUpload = localContentFilesToUpload
+            var createdManifestsPerHash = localContentFilesToUpload
                 .AsParallel()
-                .WithDegreeOfParallelism(1)
-                .Select(lcf =>
-                {
-                    var eamf = lcf.GetManifest(encryptedChunksPerHash[lcf.Hash])
-                        .CreateAriusManifestFile(lcf.AriusManifestFullName)
-                        .CreateEncryptedAriusManifestFile(lcf.EncryptedAriusManifestFullName, passphrase, true);
+                    .WithDegreeOfParallelism(1)
+                .Select(g => RemoteEncryptedAriusManifest.Create(
+                    g.AsEnumerable(),
+                    unencryptedChunksPerHash[g.Key]
+                        .Select(uec => archive.GetRemoteEncryptedAriusChunk(uec.Hash)),
+                    archive, passphrase))
+                .ToDictionary(
+                    ream => ream.Hash,
+                    ream => ream);
 
-                    return eamf;
+            //1.2 Create pointers
+            var x = 5;
+
+
+            var createdPointers = localContentPerHash
+                .SelectMany(g =>
+                {
+                    var manifest = createdManifestsPerHash[g.Key];
+                    var pointersToCreate = g.Where(lcf => !lcf.AriusPointerFileInfo.Exists);
+                    var createdPointers = pointersToCreate.Select(lcf => AriusPointerFile.Create(lcf, manifest));
+
+                    return createdPointers;
                 })
                 .ToImmutableArray();
 
+            //var remainingLocalContentPerManifestFile = localContentPerHash
+            //    .ToImmutableDictionary(
+            //        g => archive.GetRemoteAriusManifestHash(g.Key, passphrase),
+            //        g => g.Where(lcf => !lcf.AriusPointerFileInfo.Exists).ToList());
 
-            archive.Upload(encryptedManifestsToUpload);
-
-            //Delete Uploaded Manifests
-            foreach (var manifestFile in encryptedManifestsToUpload)
-                File.Delete(manifestFile.FullName);
-
-            // TODO DAN: QUID  AriusPointerFile.Create ??
-
-
-            //1.2 Create pointers & update the remote manifests
-            var x = 5;
-
-            var remainingLocalContentPerManifestFile = localContentPerHash
-                .ToImmutableDictionary(
-                    g => archive.GetRemoteEncryptedAriusManifestFileByHash(g.Key),
-                    g => g.Where(z => !z.AriusPointerFileInfo.Exists).ToList());
-
-            var pointers = remainingLocalContentPerManifestFile
-                .Where(p => p.Value.Count > 0) //hack
-                .Select(p => p.Key.CreatePointers(p.Value, passphrase))
-                .ToImmutableArray();
+            //var pointers = remainingLocalContentPerManifestFile
+            //    .Where(p => p.Value.Count > 0) //hack
+            //    .Select(p => p.Key.CreatePointers(p.Value, passphrase))
+            //    .ToImmutableArray();
 
             /*
              * FROM                             TO
@@ -252,8 +267,6 @@ namespace Arius
             return 0;
 
 
-            // DO STUFF
-            // AsParallel
 
             /* 3. Remote Manifests that were not touched by #1 or #2 --- Dan de OVERBLIJVENDE remote manifest files
              * CREATE > N/A
