@@ -73,13 +73,13 @@ namespace Arius
         /// <returns></returns>
         public EncryptedAriusChunk GetEncryptedAriusChunk(string passphrase)
         {
-            return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase);
+            return EncryptedAriusChunk.GetEncryptedAriusChunk(this, passphrase, false);
         }
 
-        public AriusManifest GetManifest(params EncryptedAriusChunk[] chunks)
-        {
-            return AriusManifest.Create(this, chunks);
-        }
+        //public AriusManifest GetManifest(params EncryptedAriusChunk[] chunks)
+        //{
+        //    return AriusManifest.Create(this, chunks);
+        //}
 
         /// <summary>
         /// The Hash of the unencrypted file
@@ -88,10 +88,10 @@ namespace Arius
         public string FullName => _localContent.FullName;
         public string DirectoryName => _localContent.DirectoryName;
         public string RelativeName => Path.GetRelativePath(_root.FullName, FullName);
-        public string AriusManifestName => $"{Hash}.manifest.arius";
-        public string EncryptedAriusManifestName => $"{Hash}.manifest.7z.arius";
-        public string AriusManifestFullName => Path.Combine(DirectoryName, AriusManifestName);
-        public string EncryptedAriusManifestFullName => Path.Combine(DirectoryName, EncryptedAriusManifestName);
+        //public string AriusManifestName => $"{Hash}.manifest.arius"; //TODO NOG GEBRUIKT?
+        //public string EncryptedAriusManifestName => $"{Hash}.manifest.7z.arius"; //TODO NOG GEBRUIKT?
+        //public string AriusManifestFullName => Path.Combine(DirectoryName, AriusManifestName); //TODO NOG GEBRUIKT?
+        //public string EncryptedAriusManifestFullName => Path.Combine(DirectoryName, EncryptedAriusManifestName); //TODO NOG GEBRUIKT?
         public string AriusPointerFileFullName => $"{FullName}.arius";
         public FileInfo AriusPointerFileInfo => new FileInfo(AriusPointerFileFullName);
         public DateTime CreationTimeUtc => _localContent.CreationTimeUtc;

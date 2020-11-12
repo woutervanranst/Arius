@@ -33,6 +33,18 @@ namespace Arius.Tests
          * add binary
          * add another binary
          * add the same binary
+         *
+         *
+            //TODO test File X is al geupload ik kopieer 'X - Copy' erbij> expectation gewoon pointer erbij binary weg
+         *
+         *
+         * geen lingering files
+         *  localcontentfile > blijft staan
+         * .7z.arius weg
+         *
+         * dedup > chunks weg
+         * .7z.arius weg
+         *
          */
     }
 }
