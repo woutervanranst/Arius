@@ -59,12 +59,13 @@ namespace Arius
         private EncryptedAriusChunk(FileInfo encryptedAriusChunk, IUnencryptedChunk unencryptedChunk) : base(
             encryptedAriusChunk)
         {
-            _unencryptedChunk = unencryptedChunk;
+            // TODO ik denk niet dat unecnryptedChunk nodig is?
+            //_unencryptedChunk = unencryptedChunk;
         }
 
-        private readonly IUnencryptedChunk _unencryptedChunk;
+        //private readonly IUnencryptedChunk _unencryptedChunk;
 
-        public string UnencryptedHash => _unencryptedChunk.Hash;
+        //public string UnencryptedHash => _unencryptedChunk.Hash;
 
         public override string ToString() => base.Name;
     }
