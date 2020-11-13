@@ -17,6 +17,6 @@ namespace Arius
 
         public IEnumerable<FileInfo> GetNonAriusFiles() => _root.GetFiles("*.*", SearchOption.AllDirectories).Where(fi => !fi.Name.EndsWith(".arius"));
         public IEnumerable<FileInfo> GetAriusFiles() => _root.GetFiles("*.arius", SearchOption.AllDirectories);
-
+        public IEnumerable<AriusPointerFile> GetAriusPointerFiles() => GetAriusFiles().Select(fi => AriusPointerFile.FromFile(this, fi));
     }
 }
