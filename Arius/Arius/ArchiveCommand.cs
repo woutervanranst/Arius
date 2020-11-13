@@ -233,6 +233,7 @@ namespace Arius
                             manifest = archive.GetRemoteEncryptedAriusManifestByHash(g.Key);
                         }
 
+                        manifest.Synchronize(g.ToList(), passphrase);
                         createdPointersForHash = pointersToCreate
                             .Select(lcf => AriusPointerFile.Create(root, lcf, manifest))
                             .ToImmutableArray();
