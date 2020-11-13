@@ -6,7 +6,7 @@ namespace Arius
     /// <summary>
     /// Het gewone bestand met content erin
     /// </summary>
-    internal class LocalContentFile : IUnencryptedChunk
+    internal class LocalContentFile : IUnencryptedChunk, ILocalFile
     {
         public LocalContentFile(AriusRootDirectory root, FileInfo localContent, string hashSalt)
         {
@@ -84,8 +84,8 @@ namespace Arius
         //public string EncryptedAriusManifestFullName => Path.Combine(DirectoryName, EncryptedAriusManifestName); //TODO NOG GEBRUIKT?
         public string AriusPointerFileFullName => $"{FullName}.arius";
         public FileInfo AriusPointerFileInfo => new FileInfo(AriusPointerFileFullName);
-        public DateTime CreationTimeUtc => _localContent.CreationTimeUtc;
-        public DateTime LastWriteTimeUtc => _localContent.LastWriteTimeUtc;
+        public DateTime? CreationTimeUtc => _localContent.CreationTimeUtc;
+        public DateTime? LastWriteTimeUtc => _localContent.LastWriteTimeUtc;
 
         public override string ToString() => RelativeName;
     }

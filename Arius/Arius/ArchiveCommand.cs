@@ -234,7 +234,7 @@ namespace Arius
                         }
 
                         createdPointersForHash = pointersToCreate
-                            .Select(lcf => AriusPointerFile.Create(lcf, manifest))
+                            .Select(lcf => AriusPointerFile.Create(root, lcf, manifest))
                             .ToImmutableArray();
                     }
 
@@ -243,7 +243,7 @@ namespace Arius
                 .ToImmutableArray();
 
 
-            /* 2. * Update remaining AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE .arius files
+            /* 2. * Update remaining AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE LOKALE .arius files
              * CREATE >N/A
              * READ > N/A
              * UPDATE > remote manifest bijwerken (naming, plaats, ;;;)
@@ -257,7 +257,7 @@ namespace Arius
             var remainingAriusPointers = root
                 .GetAriusFiles()
                 .Where(fi => !createdPointerNames.Contains(fi.FullName))
-                .Select(fi => AriusPointerFile.FromFile(fi))
+                .Select(fi => AriusPointerFile.FromFile(root, fi))
                 .ToImmutableArray();
 
             var pointersPerManifest = remainingAriusPointers
@@ -266,13 +266,13 @@ namespace Arius
 
             pointersPerManifest
                 .AsParallel()
-                .WithDegreeOfParallelism(1)
+                    .WithDegreeOfParallelism(1)
                 .ForAll(p =>
                 {
                     var ream = archive.GetRemoteEncryptedAriusManifestByBlobItemName(p.Key);
                     var currentLocalContentFiles = p.ToList();
 
-                    //ream.SetState(p);
+                    ream.Synchronize(currentLocalContentFiles, passphrase);
                 });
 
 
