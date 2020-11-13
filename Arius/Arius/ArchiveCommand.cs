@@ -225,7 +225,7 @@ namespace Arius
                     .WithDegreeOfParallelism(1)
                 .ForAll(a =>
                 {
-                    a.Synchronize(ariusPointersPerManifestName[a.Name], passphrase);
+                    a.Update(ariusPointersPerManifestName[a.Name], passphrase);
                 });
 
             /*
