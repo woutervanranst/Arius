@@ -56,7 +56,7 @@ namespace Arius
         }
 
 
-        private class AriusManifest
+        internal class AriusManifest //Marked as internal for Unit Testing
         {
             // --- CONSTRUCTORS
             public static AriusManifest FromRemote(RemoteEncryptedAriusManifest ream, string passphrase)
@@ -115,7 +115,7 @@ namespace Arius
             public string Hash { get; private set; }
 
             // --- METHODS
-            private IEnumerable<LocalContentFileEntry> GetLastEntriesPerRelativeName()
+            internal IEnumerable<LocalContentFileEntry> GetLastEntriesPerRelativeName()
             {
                 return _localContentFileEntries
                     .GroupBy(lcfe => lcfe.RelativeName)
