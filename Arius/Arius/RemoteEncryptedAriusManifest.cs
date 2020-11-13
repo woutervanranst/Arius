@@ -14,22 +14,18 @@ namespace Arius
     internal class RemoteEncryptedAriusManifest : RemoteAriusFile
     {
         /// <summary>
-        /// Create a New Manifest for the given LocalContentFiles & upload it
-        /// The LocalContentFiles all have the same hash (ie are 'copies')
+        /// Create a New Manifest & upload it
         /// </summary>
-        /// <param name="lcfs"></param>
-        /// <param name="chunks"></param>
-        /// <returns></returns>
-        public static RemoteEncryptedAriusManifest Create(IEnumerable<LocalContentFile> lcfs, IEnumerable<RemoteEncryptedAriusChunk> chunks, AriusRemoteArchive archive, string passphrase)
+        public static RemoteEncryptedAriusManifest Create(string localContentFileHash, IEnumerable<RemoteEncryptedAriusChunk> chunks, AriusRemoteArchive archive, string passphrase)
         {
-            if (lcfs.Select(lcf => lcf.Hash).Distinct().Count() > 1)
-                throw new ArgumentException(
-                    "The specified LocalContentFiles have different hashes and do not belong to the same manifest");
+            //if (lcfs.Select(lcf => lcf.Hash).Distinct().Count() > 1)
+            //    throw new ArgumentException(
+            //        "The specified LocalContentFiles have different hashes and do not belong to the same manifest");
 
             //TODO manifest does not yet exit remte
             //if (archive.GetRemoteEncryptedAriusManifestFileByHash(lcfs.First().Hash)
 
-            var manifest = new AriusManifest(lcfs, chunks.Select(c => c.Name), lcfs.First().Hash);
+            var manifest = new AriusManifest(chunks.Select(c => c.Name), localContentFileHash);
             var remoteManifest = manifest.Create(archive, passphrase);
 
             return remoteManifest;
@@ -44,12 +40,13 @@ namespace Arius
 
         public override string Hash => _bi.Name.TrimEnd(".manifest.7z.arius");
 
+
         /// <summary>
         /// Synchronize the remote manifest with the current local file system entries
         /// </summary>
         /// <param name="lcfs">The current (as per the file system) LocalContentFiles for this manifest</param>
         /// <param name="passphrase"></param>
-        public void Synchronize(IEnumerable<ILocalFile> lcfs, string passphrase)
+        public void Synchronize(IEnumerable<AriusPointerFile> lcfs, string passphrase)
         {
             var manifest = AriusManifest.FromRemote(this, passphrase);
             manifest.Synchronize(lcfs, _archive, passphrase);
@@ -86,15 +83,15 @@ namespace Arius
             private static AriusManifest FromJson(string json) => JsonSerializer.Deserialize<AriusManifest>(json);
 
             [JsonConstructor]
-            public AriusManifest(IEnumerable<LocalContentFileEntry> localContentFileEntries, IEnumerable<string> encryptedChunks, string hash)
+            public AriusManifest(IEnumerable<AriusPointerFileEntry> ariusPointerFileEntries, IEnumerable<string> encryptedChunks, string hash)
             {
-                _localContentFileEntries = localContentFileEntries.ToList();
+                _ariusPointerFileEntries = ariusPointerFileEntries.ToList();
                 EncryptedChunks = encryptedChunks;
                 Hash = hash;
             }
-            public AriusManifest(IEnumerable<LocalContentFile> localContentFiles, IEnumerable<string> encryptedChunks, string hash)
+            public AriusManifest(IEnumerable<string> encryptedChunks, string hash)
             {
-                _localContentFileEntries = GetAriusManifestEntries(localContentFiles);
+                _ariusPointerFileEntries = new List<AriusPointerFileEntry>();
                 EncryptedChunks = encryptedChunks;
                 Hash = hash;
             }
@@ -102,8 +99,8 @@ namespace Arius
             // --- PROPERTIES
 
             [JsonInclude]
-            public IEnumerable<LocalContentFileEntry> LocalContentFileEntries => _localContentFileEntries;
-            private readonly List<LocalContentFileEntry> _localContentFileEntries;
+            public IEnumerable<AriusPointerFileEntry> AriusPointerFileEntries => _ariusPointerFileEntries;
+            private readonly List<AriusPointerFileEntry> _ariusPointerFileEntries;
             
             [JsonInclude]
             public IEnumerable<string> EncryptedChunks { get; private set; }
@@ -115,9 +112,9 @@ namespace Arius
             public string Hash { get; private set; }
 
             // --- METHODS
-            internal IEnumerable<LocalContentFileEntry> GetLastEntriesPerRelativeName()
+            internal IEnumerable<AriusPointerFileEntry> GetLastEntriesPerRelativeName()
             {
-                return _localContentFileEntries
+                return _ariusPointerFileEntries
                     .GroupBy(lcfe => lcfe.RelativeName)
                     .Select(g => g
                         .OrderBy(lcfe => lcfe.Version)
@@ -127,14 +124,12 @@ namespace Arius
             /// Synchronize the state of the manifest to the current state of the file system:
             /// Additions, deletions, renames (= add + delete)
             /// </summary>
-            public void Synchronize<T>(IEnumerable<T> lcfs, AriusRemoteArchive archive, string passphrase) where T : ILocalFile
+            public void Synchronize(IEnumerable<AriusPointerFile> apfs, AriusRemoteArchive archive, string passphrase)
             {
-                var fileSystemEntries = GetAriusManifestEntries((IEnumerable<ILocalFile>)lcfs);
+                var fileSystemEntries = GetAriusManifestEntries(apfs);
                 var lastEntries = GetLastEntriesPerRelativeName().ToImmutableArray();
 
-                var genericTIsAriusPointerFile = (lcfs.First() as AriusPointerFile) is not null; //When Comparing with AriusPointerFiles, we ignore Created/lastWrite time
-                        //TODO TEST VOOR LocalContentFIle
-                var ameec = new AriusManifestEntryEqualityComparer(genericTIsAriusPointerFile); // https://stackoverflow.com/questions/39244449/cast-generic-type-parameter-to-a-specific-type-in-c-sharp/39244683
+                var ameec = new AriusManifestEntryEqualityComparer();
 
                 var addedFiles = fileSystemEntries.Except(lastEntries, ameec).ToList();
                 var deletedFiles = lastEntries
@@ -142,8 +137,8 @@ namespace Arius
                     .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null})
                     .ToList();
 
-                _localContentFileEntries.AddRange(addedFiles);
-                _localContentFileEntries.AddRange(deletedFiles);
+                _ariusPointerFileEntries.AddRange(addedFiles);
+                _ariusPointerFileEntries.AddRange(deletedFiles);
 
                 if (addedFiles.Any() || deletedFiles.Any())
                     Update(archive, passphrase);
@@ -174,55 +169,40 @@ namespace Arius
 
 
             // --- RECORD DEFINITION & HELPERS
-            private static List<LocalContentFileEntry> GetAriusManifestEntries(IEnumerable<ILocalFile> localContentFiles)
+            private static List<AriusPointerFileEntry> GetAriusManifestEntries(IEnumerable<AriusPointerFile> localContentFiles)
             {
                 return localContentFiles.Select(lcf => GetAriusManifestEntry(lcf)).ToList();
             }
-            private static LocalContentFileEntry GetAriusManifestEntry(ILocalFile lcf)
+            private static AriusPointerFileEntry GetAriusManifestEntry(AriusPointerFile lcf)
             {
-                return new LocalContentFileEntry(lcf.RelativeName, DateTime.UtcNow, false, lcf.CreationTimeUtc, lcf.LastWriteTimeUtc);
+                return new AriusPointerFileEntry(lcf.RelativeLocalContentFileName, DateTime.UtcNow, false, lcf.CreationTimeUtc, lcf.LastWriteTimeUtc);
             }
 
 
-            public sealed record LocalContentFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
+            public sealed record AriusPointerFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
 
 
-            private class AriusManifestEntryEqualityComparer : IEqualityComparer<LocalContentFileEntry>
+            private class AriusManifestEntryEqualityComparer : IEqualityComparer<AriusPointerFileEntry>
             {
-                public AriusManifestEntryEqualityComparer(bool ignoreCreationTimeLastWriteTime)
-                {
-                    _ignoreCreationTimeLastWriteTime = ignoreCreationTimeLastWriteTime;
-                }
 
-                private readonly bool _ignoreCreationTimeLastWriteTime;
-
-                public bool Equals(LocalContentFileEntry x, LocalContentFileEntry y)
+                public bool Equals(AriusPointerFileEntry x, AriusPointerFileEntry y)
                 {
                     return x.RelativeName == y.RelativeName &&
                            //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
                            x.IsDeleted == y.IsDeleted &&
-                           (_ignoreCreationTimeLastWriteTime || x.CreationTimeUtc.Equals(y.CreationTimeUtc)) &&
-                           (_ignoreCreationTimeLastWriteTime || x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc));
+                           x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
+                           x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
                 }
 
-                public int GetHashCode(LocalContentFileEntry obj)
+                public int GetHashCode(AriusPointerFileEntry obj)
                 {
-                    if (_ignoreCreationTimeLastWriteTime)
-                        return HashCode.Combine(obj.RelativeName,
-                            //obj.Version,  //DO NOT Compare on DateTime Version
-                            obj.IsDeleted);
-                            //obj.CreationTimeUtc, // Do NOT compare on CreationTime
-                            //obj.LastWriteTimeUtc); // Do NOT compare on LastWriteTime
-                    else
-                        return HashCode.Combine(obj.RelativeName,
-                            //obj.Version,  //DO NOT Compare on DateTime Version
-                            obj.IsDeleted,
-                            obj.CreationTimeUtc,
-                            obj.LastWriteTimeUtc);
+                    return HashCode.Combine(obj.RelativeName,
+                        //obj.Version,  //DO NOT Compare on DateTime Version
+                        obj.IsDeleted,
+                        obj.CreationTimeUtc,
+                        obj.LastWriteTimeUtc);
                 }
             }
         }
     }
-
-    
 }
