@@ -112,13 +112,18 @@ namespace Arius
             public string Hash { get; private set; }
 
             // --- METHODS
-            internal IEnumerable<AriusPointerFileEntry> GetLastEntriesPerRelativeName()
+            internal IEnumerable<AriusPointerFileEntry> GetLastExistingEntriesPerRelativeName(bool includeLastDeleted = false)
             {
-                return _ariusPointerFileEntries
+                var r =  _ariusPointerFileEntries
                     .GroupBy(lcfe => lcfe.RelativeName)
                     .Select(g => g
                         .OrderBy(lcfe => lcfe.Version)
                         .Last());
+
+                if (includeLastDeleted)
+                    return r;
+                else 
+                    return r.Where(afpe => !afpe.IsDeleted);
             }
             /// <summary>
             /// Synchronize the state of the manifest to the current state of the file system:
@@ -127,7 +132,7 @@ namespace Arius
             public void Synchronize(IEnumerable<AriusPointerFile> apfs, AriusRemoteArchive archive, string passphrase)
             {
                 var fileSystemEntries = GetAriusManifestEntries(apfs);
-                var lastEntries = GetLastEntriesPerRelativeName().ToImmutableArray();
+                var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
 
                 var ameec = new AriusManifestEntryEqualityComparer();
 

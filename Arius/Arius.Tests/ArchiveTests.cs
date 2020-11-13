@@ -95,16 +95,106 @@ namespace Arius.Tests
             Assert.AreEqual(false, secondEntry.IsDeleted);
             Assert.AreEqual(secondFile.CreationTimeUtc, secondEntry.CreationTimeUtc);
             Assert.AreEqual(secondFile.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
-
-
-
         }
 
-        [Test]
-        public void MixPointersWithLocalContent()
+        [Test, Order(30)]
+        public void ArchiveJustAPointer()
         {
+            //Add a duplicate of the pointer
+            var firstPointer = root.GetAriusFiles().First();
+            var secondPointerFileInfo = TestSetup.CopyFile(firstPointer, $"Copy2 of {firstPointer.Name}");
+            var secondPointer = AriusPointerFile.FromFile(root, secondPointerFileInfo);
 
+            // Modify datetime slightly
+            secondPointerFileInfo.CreationTimeUtc += TimeSpan.FromSeconds(10);
+            secondPointerFileInfo.LastWriteTimeUtc += TimeSpan.FromSeconds(10);
+
+
+            //Run archive again
+            ArchiveCommand(false, AccessTier.Cool);
+
+
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+
+            //Get the manifest entries
+            var entries = GetManifestEntries(secondPointer);
+
+            //We have exactly two entries
+            Assert.AreEqual(3, entries.Count());
+
+            //var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondFile.FullName);
+            var secondEntry = entries.Single(lcf => lcf.RelativeName == secondPointer.RelativeLocalContentFileName);
+
+            // Evaluate the the entry
+            Assert.AreEqual(false, secondEntry.IsDeleted);
+            Assert.AreEqual(secondPointerFileInfo.CreationTimeUtc, secondEntry.CreationTimeUtc);
+            Assert.AreEqual(secondPointerFileInfo.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
         }
+
+        [Test, Order(40)]
+        public void RenameLocalContentFileWithPointer()
+        {
+            var file = root.GetNonAriusFiles().First();
+            var originalFileFullName = file.FullName;
+            TestSetup.MoveFile(file, $"Moving of {file.Name}");
+            var pointer = new FileInfo(originalFileFullName + ".arius"); 
+            TestSetup.MoveFile(pointer, $"Moving of {pointer.Name}");
+
+            //Run archive again
+            ArchiveCommand(false, AccessTier.Cool);
+
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+
+            //Get the manifest entries
+            var manifest = GetManifest(AriusPointerFile.FromFile(root, pointer));
+
+            Assert.AreEqual(3+2, manifest.AriusPointerFileEntries.Count());
+            Assert.AreEqual(3, manifest.GetLastExistingEntriesPerRelativeName().Count());
+
+            var relativeNameOfOriginalFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalFileFullName);
+            var relativeNameOfMovedFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, file.FullName);
+
+            Assert.IsNull(manifest.GetLastExistingEntriesPerRelativeName().SingleOrDefault(lcf => lcf.RelativeName == relativeNameOfOriginalFile));
+            var originalEntry = manifest.GetLastExistingEntriesPerRelativeName(true).Single(lcf => lcf.RelativeName == relativeNameOfOriginalFile);
+            var movedEntry = manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfMovedFile);
+
+            Assert.AreEqual(true, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
+        }
+
+        [Test, Order(50)]
+        public void RenamePointer()
+        {
+            //var file = TestSetup.sourceFolder.GetFiles().First();
+            //file = TestSetup.MoveFile(file, $"Moving of {file.Name}");
+
+            ////Run archive again
+            //ArchiveCommand(false, AccessTier.Cool);
+
+            ////One manifest and one binary should still be there
+            //Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
+            //Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+
+            ////Get the manifest entries
+            //var entries = GetManifestEntries(file);
+
+            //Assert.AreEqual(4, entries.Count());
+            //Assert.AreEqual(3, entries.);
+
+            //var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondFile.FullName);
+            //var secondEntry = entries.Single(lcf => lcf.RelativeName == relativeName);
+
+            //// Evaluate the the entry
+            //Assert.AreEqual(false, secondEntry.IsDeleted);
+            //Assert.AreEqual(secondFile.CreationTimeUtc, secondEntry.CreationTimeUtc);
+            //Assert.AreEqual(secondFile.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
+        }
+
+
 
         private FileInfo GetAriusFileInfo(string contentFile) => new FileInfo($"{contentFile}.arius");
 
@@ -116,14 +206,26 @@ namespace Arius.Tests
                 Arius.ArchiveCommand.Archive(root, archive, TestSetup.passphrase, true, AccessTier.Cool, 0, false, dedup);
         }
 
-        private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> GetManifestEntries(FileInfo firstFile)
+        private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> GetManifestEntries(FileInfo localContentFileInfo)
         {
-            var pointer = AriusPointerFile.FromFile(root, GetAriusFileInfo(firstFile.FullName));
-            var encrytpedManifest = archive.GetRemoteEncryptedAriusManifestByBlobItemName(pointer.EncryptedManifestName);
-            var manifest = RemoteEncryptedAriusManifest.AriusManifest.FromRemote(encrytpedManifest, TestSetup.passphrase);
+            var pointer = AriusPointerFile.FromFile(root, GetAriusFileInfo(localContentFileInfo.FullName));
+            return GetManifestEntries(pointer);
+        }
+
+        private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> GetManifestEntries(AriusPointerFile pointer)
+        {
+            var manifest = GetManifest(pointer);
             var entries = manifest.AriusPointerFileEntries;
             return entries;
         }
+
+        private RemoteEncryptedAriusManifest.AriusManifest GetManifest(AriusPointerFile pointer)
+        {
+            var encrytpedManifest = archive.GetRemoteEncryptedAriusManifestByBlobItemName(pointer.EncryptedManifestName);
+            var manifest = RemoteEncryptedAriusManifest.AriusManifest.FromRemote(encrytpedManifest, TestSetup.passphrase);
+            return manifest;
+        }
+
 
         [TearDown]
         public void TestCleanup()
@@ -141,8 +243,6 @@ namespace Arius.Tests
         
 
         /*
-         * Create File
-         * Duplicate file
          * Rename file
          * Delete file
          * Add file again that was previously deleted
