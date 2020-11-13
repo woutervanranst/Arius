@@ -11,7 +11,7 @@ namespace Arius.Tests
     public class TestSetup
     {
         public static DirectoryInfo sourceFolder;
-        public static DirectoryInfo tempFolder;
+        public static DirectoryInfo rootDirectoryInfo;
         public static BlobContainerClient container;
         public static string accountName;
         public static string accountKey;
@@ -24,8 +24,8 @@ namespace Arius.Tests
 
             // Create temp folder
             var tempFolderName = RandomString(8).ToLower();
-            tempFolder = new DirectoryInfo(Path.Combine(Path.GetTempPath(), tempFolderName));
-            tempFolder.Create();
+            rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), tempFolderName));
+            rootDirectoryInfo.Create();
 
 
             // Create temmp container
@@ -40,7 +40,7 @@ namespace Arius.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            tempFolder.Delete(true);
+            rootDirectoryInfo.Delete(true);
             container.Delete();
         }
 
