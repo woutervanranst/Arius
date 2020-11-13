@@ -253,8 +253,7 @@ namespace Arius
                 //.ExceptBy(createdManifestsPerHash.Values, z => z.Name)
                 .ToImmutableArray();
 
-            var ariusPointersPerManifestName = root.GetAriusFiles()
-                .Select(fi => AriusPointerFile.FromFile(root, fi))
+            var ariusPointersPerManifestName = root.GetAriusPointerFiles()
                 .GroupBy(apf => apf.EncryptedManifestName)
                 .ToImmutableDictionary(
                     g => g.Key,
@@ -279,32 +278,32 @@ namespace Arius
 
             var x = 5;
 
-            var createdPointerNames = createdPointers.Select(apf => apf.FullName);
+            //var createdPointerNames = createdPointers.Select(apf => apf.FullName);
 
-            var remainingAriusPointers = root
-                .GetAriusFiles()
-                .Where(fi => !createdPointerNames.Contains(fi.FullName))
-                .Select(fi => AriusPointerFile.FromFile(root, fi))
-                .ToImmutableArray();
+            //var remainingAriusPointers = root
+            //    .GetAriusFiles()
+            //    .Where(fi => !createdPointerNames.Contains(fi.FullName))
+            //    .Select(fi => AriusPointerFile.FromFile(root, fi))
+            //    .ToImmutableArray();
 
-            var pointersPerManifest = remainingAriusPointers
-                .GroupBy(apf => apf.EncryptedManifestName)
-                .ToImmutableArray();
+            //var pointersPerManifest = remainingAriusPointers
+            //    .GroupBy(apf => apf.EncryptedManifestName)
+            //    .ToImmutableArray();
 
-            pointersPerManifest
-                .AsParallel()
-                    .WithDegreeOfParallelism(1)
-                .ForAll(p =>
-                {
-                    var ream = archive.GetRemoteEncryptedAriusManifestByBlobItemName(p.Key);
-                    var currentLocalContentFiles = p.ToList();
+            //pointersPerManifest
+            //    .AsParallel()
+            //        .WithDegreeOfParallelism(1)
+            //    .ForAll(p =>
+            //    {
+            //        var ream = archive.GetRemoteEncryptedAriusManifestByBlobItemName(p.Key);
+            //        var currentLocalContentFiles = p.ToList();
 
-                    ream.Synchronize(currentLocalContentFiles, passphrase);
-                });
+            //        ream.Synchronize(currentLocalContentFiles, passphrase);
+            //    });
 
 
 
-            return 0;
+            //return 0;
 
 
 

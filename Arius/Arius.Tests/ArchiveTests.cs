@@ -167,31 +167,67 @@ namespace Arius.Tests
         }
 
         [Test, Order(50)]
-        public void RenamePointer()
+        public void RenameLocalContentFileWithoutPointer()
         {
-            //var file = TestSetup.sourceFolder.GetFiles().First();
-            //file = TestSetup.MoveFile(file, $"Moving of {file.Name}");
+            var file = root.GetNonAriusFiles().First();
+            var originalFileFullName = file.FullName;
+            TestSetup.MoveFile(file, $"Moving of {file.Name}");
+            var pointer = new FileInfo(originalFileFullName + ".arius");
+            //TestSetup.MoveFile(pointer, $"Moving of {pointer.Name}"); <---- DIT DOEN WE HIER NIET vs de vorige
 
-            ////Run archive again
-            //ArchiveCommand(false, AccessTier.Cool);
+            //Run archive again
+            ArchiveCommand(false, AccessTier.Cool);
 
-            ////One manifest and one binary should still be there
-            //Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
-            //Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
 
-            ////Get the manifest entries
-            //var entries = GetManifestEntries(file);
+            //Get the manifest entries
+            var manifest = GetManifest(AriusPointerFile.FromFile(root, pointer));
 
-            //Assert.AreEqual(4, entries.Count());
-            //Assert.AreEqual(3, entries.);
+            Assert.AreEqual(5 + 1, manifest.AriusPointerFileEntries.Count());
+            Assert.AreEqual(4, manifest.GetLastExistingEntriesPerRelativeName().Count());
 
-            //var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondFile.FullName);
-            //var secondEntry = entries.Single(lcf => lcf.RelativeName == relativeName);
+            var relativeNameOfOriginalFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalFileFullName);
+            var relativeNameOfMovedFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, file.FullName);
 
-            //// Evaluate the the entry
-            //Assert.AreEqual(false, secondEntry.IsDeleted);
-            //Assert.AreEqual(secondFile.CreationTimeUtc, secondEntry.CreationTimeUtc);
-            //Assert.AreEqual(secondFile.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
+            var originalEntry =  manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfOriginalFile);
+            var movedEntry = manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfMovedFile);
+
+            Assert.AreEqual(false, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
+        }
+
+        [Test, Order(60)]
+        public void RenameJustPointer()
+        {
+            var pointerFileInfo = root.GetAriusFiles().First();
+            var originalFileFullName = pointerFileInfo.FullName;
+            TestSetup.MoveFile(pointerFileInfo, $"Moving123 of {pointerFileInfo.Name}");
+            //var pointer = new FileInfo(originalFileFullName + ".arius");
+            //TestSetup.MoveFile(pointer, $"Moving of {pointer.Name}"); <---- DIT DOEN WE HIER NIET vs de vorige
+
+            //Run archive again
+            ArchiveCommand(false, AccessTier.Cool);
+
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
+            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+
+            //Get the manifest entries
+            var manifest = GetManifest(AriusPointerFile.FromFile(root, pointerFileInfo));
+
+            Assert.AreEqual(6 + 2, manifest.AriusPointerFileEntries.Count());
+            Assert.AreEqual(4 + 0, manifest.GetLastExistingEntriesPerRelativeName().Count());
+
+            var relativeNameOfOriginalFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalFileFullName.TrimEnd(".arius"));
+            var relativeNameOfMovedFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName.TrimEnd(".arius"));
+
+            var originalEntry = manifest.GetLastExistingEntriesPerRelativeName(true).Single(lcf => lcf.RelativeName == relativeNameOfOriginalFile);
+            var movedEntry = manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfMovedFile);
+
+            Assert.AreEqual(true, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
         }
 
 
@@ -243,11 +279,8 @@ namespace Arius.Tests
         
 
         /*
-         * Rename file
          * Delete file
          * Add file again that was previously deleted
-         * Rename content file
-         * rename .arius file
          * Modify the binary
             * azcopy fails
          * add binary > get .arius file > delete .arius file > archive again > arius file will reappear but cannot appear twice in the manifest
@@ -276,11 +309,5 @@ namespace Arius.Tests
          * change a manifest without the binary present
          *
          */
-    }
-
-    [TestFixture]
-    public class Test
-    {
-
     }
 }
