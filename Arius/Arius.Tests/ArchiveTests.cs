@@ -22,7 +22,7 @@ namespace Arius.Tests
             // Executes once for the test class. (Optional)
 
             archive = new AriusRemoteArchive(TestSetup.accountName, TestSetup.accountKey, TestSetup.container.Name);
-            root = new AriusRootDirectory(TestSetup.tempFolder.FullName);
+            root = new AriusRootDirectory(TestSetup.rootDirectoryInfo.FullName);
         }
         [SetUp]
         public void TestInit()
@@ -35,17 +35,17 @@ namespace Arius.Tests
         {
             //Copy First file to the temp folder
             var firstFile = TestSetup.sourceFolder.GetFiles().First();
-            firstFile = TestSetup.CopyFile(firstFile, TestSetup.tempFolder);
+            firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
             //Archive it
-            ArchiveCommand();
-
-            //Get the manifest entries
-            var entries = GetManifestEntries(firstFile);
+            ArchiveCommand(false, AccessTier.Cool);
 
             //One manifest and one binary should be uploaded
             Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
             Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
+
+            //Get the manifest entries
+            var entries = GetManifestEntries(firstFile);
 
             //We have exactly one entry
             Assert.AreEqual(1, entries.Count());
@@ -53,7 +53,7 @@ namespace Arius.Tests
             var firstEntry = entries.First();
 
             // Evaluate the the entry
-            Assert.AreEqual(Path.GetRelativePath(TestSetup.tempFolder.FullName, firstFile.FullName), firstEntry.RelativeName);
+            Assert.AreEqual(Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, firstFile.FullName), firstEntry.RelativeName);
             Assert.AreEqual(false, firstEntry.IsDeleted);
             Assert.AreEqual(firstFile.CreationTimeUtc, firstEntry.CreationTimeUtc);
             Assert.AreEqual(firstFile.LastWriteTimeUtc, firstEntry.LastWriteTimeUtc);
@@ -67,7 +67,7 @@ namespace Arius.Tests
         {
             //Add a duplicate of the first file
             var firstFile = TestSetup.sourceFolder.GetFiles().First();
-            var secondFile = TestSetup.CopyFile(firstFile, TestSetup.tempFolder, $"Copy of {firstFile.Name}");
+            var secondFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo, $"Copy of {firstFile.Name}");
 
             // Modify datetime slightly
             secondFile.CreationTimeUtc += TimeSpan.FromSeconds(10);
@@ -75,20 +75,20 @@ namespace Arius.Tests
 
 
             //Run archive again
-            //ArchiveCommand();
-            Arius.ArchiveCommand.Archive(root, archive, TestSetup.passphrase, true, AccessTier.Cool, 0, false, true);
+            ArchiveCommand(false, AccessTier.Cool);
 
-            //Get the manifest entries
-            var entries = GetManifestEntries(secondFile);
 
             //One manifest and one binary should still be there
             Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
             Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
 
+            //Get the manifest entries
+            var entries = GetManifestEntries(secondFile);
+
             //We have exactly two entries
             Assert.AreEqual(2, entries.Count());
 
-            var relativeName = Path.GetRelativePath(TestSetup.tempFolder.FullName, secondFile.FullName);
+            var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondFile.FullName);
             var secondEntry = entries.Single(lcf => lcf.RelativeName == relativeName);
 
             // Evaluate the the entry
@@ -108,19 +108,20 @@ namespace Arius.Tests
 
         private FileInfo GetAriusFileInfo(string contentFile) => new FileInfo($"{contentFile}.arius");
 
-        private static void ArchiveCommand()
+        private void ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
         {
-            TestSetup.ExecuteCommandline($"archive -n {TestSetup.accountName} -k {TestSetup.accountKey} -p {TestSetup.passphrase} -c {TestSetup.container.Name} --keep-local --tier hot {TestSetup.tempFolder}");
-
-            
+            if (executeAsCli)
+                TestSetup.ExecuteCommandline($"archive -n {TestSetup.accountName} -k {TestSetup.accountKey} -p {TestSetup.passphrase} -c {TestSetup.container.Name} --keep-local --tier hot {root.FullName}");
+            else
+                Arius.ArchiveCommand.Archive(root, archive, TestSetup.passphrase, true, AccessTier.Cool, 0, false, dedup);
         }
 
-        private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.LocalContentFileEntry> GetManifestEntries(FileInfo firstFile)
+        private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> GetManifestEntries(FileInfo firstFile)
         {
             var pointer = AriusPointerFile.FromFile(root, GetAriusFileInfo(firstFile.FullName));
             var encrytpedManifest = archive.GetRemoteEncryptedAriusManifestByBlobItemName(pointer.EncryptedManifestName);
             var manifest = RemoteEncryptedAriusManifest.AriusManifest.FromRemote(encrytpedManifest, TestSetup.passphrase);
-            var entries = manifest.LocalContentFileEntries;
+            var entries = manifest.AriusPointerFileEntries;
             return entries;
         }
 
@@ -167,6 +168,9 @@ namespace Arius.Tests
          *
          * dedup > chunks weg
          * .7z.arius weg
+         *
+         *
+         * kopieer ne pointer en archiveer >> quid datetimes?
          *
          * #2
          * change a manifest without the binary present
