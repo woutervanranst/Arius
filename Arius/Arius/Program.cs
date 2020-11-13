@@ -1,6 +1,8 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
 {
     internal class Program
