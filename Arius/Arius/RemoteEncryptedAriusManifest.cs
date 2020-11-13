@@ -46,10 +46,17 @@ namespace Arius
         /// </summary>
         /// <param name="lcfs">The current (as per the file system) LocalContentFiles for this manifest</param>
         /// <param name="passphrase"></param>
-        public void Synchronize(IEnumerable<AriusPointerFile> lcfs, string passphrase)
+        public void Update(IEnumerable<AriusPointerFile> lcfs, string passphrase)
         {
             var manifest = AriusManifest.FromRemote(this, passphrase);
-            manifest.Synchronize(lcfs, _archive, passphrase);
+            manifest.Update(lcfs, _archive, passphrase);
+        }
+
+
+        public IEnumerable<AriusManifest.AriusPointerFileEntry> GetAriusPointerFileEntries(string passphrase)
+        {
+            var manifest = AriusManifest.FromRemote(this, passphrase);
+            return manifest.GetLastExistingEntriesPerRelativeName();
         }
 
 
@@ -129,7 +136,7 @@ namespace Arius
             /// Synchronize the state of the manifest to the current state of the file system:
             /// Additions, deletions, renames (= add + delete)
             /// </summary>
-            public void Synchronize(IEnumerable<AriusPointerFile> apfs, AriusRemoteArchive archive, string passphrase)
+            public void Update(IEnumerable<AriusPointerFile> apfs, AriusRemoteArchive archive, string passphrase)
             {
                 var fileSystemEntries = GetAriusManifestEntries(apfs);
                 var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();

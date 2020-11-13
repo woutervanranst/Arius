@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
+using System.Linq;
 
 namespace Arius
 {
@@ -53,39 +55,27 @@ namespace Arius
                 "Path to archive. Default: current directory");
             restoreCommand.AddArgument(pathArgument);
 
-            //root.Handler = CommandHandler.Create<GreeterOptions, IHost>(Run);
-
             restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
             {
-                //var bu = new AriusRemoteArchive(accountName, accountKey, container);
-                //var szu = new SevenZipUtils();
+                var archive = new AriusRemoteArchive(accountName, accountKey, container);
 
-                //var rc = new RestoreCommand(szu, bu);
-                //return rc.Execute(passphrase, download, path);
-
-                return 0;
+                return Execute(archive, passphrase, download, path);
             });
 
             return restoreCommand;
         }
 
-        public RestoreCommand(SevenZipUtils szu, AriusRemoteArchive bu)
-        {
-            _szu = szu;
-            _bu = bu;
-        }
-        private readonly SevenZipUtils _szu;
-        private readonly AriusRemoteArchive _bu;
-
-        public int Execute(string passphrase, bool download, string path)
+        public static int Execute(AriusRemoteArchive archive, string passphrase, bool download, string path)
         {
             if (Directory.Exists(path))
             {
-                var di = new DirectoryInfo(path);
-                Synchronize(di, passphrase);
+                // Synchronize a folder
+                var root = new AriusRootDirectory(path);
 
-                if (download)
-                    Download(di, passphrase);
+                Synchronize(archive, root, passphrase);
+
+                //if (download)
+                //    Download(di, passphrase);
             }
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
@@ -99,77 +89,75 @@ namespace Arius
             return 0;
         }
 
-        public void Restore()
+        
+
+        private static int Synchronize(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
         {
-            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-            //var concaten = new ConcatenatedStream(chunkFiles);
+            var cbn = archive.GetRemoteEncryptedAriusManifests().ToImmutableArray();
 
-            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-            //using var fff = File.Create(restorePath);
-            //concaten.CopyTo(fff);
-            //fff.Close();
-        }
+            Console.Write($"Getting {cbn.Length} manifests... ");
 
-        private int Synchronize(DirectoryInfo root, string passphrase)
-        {
-            //var cbn = _bu.GetContentBlobNames().ToArray();
+            var pointerEntriesperManifest = cbn
+                .AsParallel()
+                .ToImmutableDictionary(
+                    ream => ream,
+                    ream => ream.GetAriusPointerFileEntries(passphrase).ToList());
 
-            //Console.Write($"Getting {cbn.Length} manifests... ");
-            //var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
-
-            //var remoteItems = cb
-            //    .AsParallel()
-            //    .Select(m => m.GetLocalAriusFiles(root))
-            //    .SelectMany(laf => laf)
-            //    .ToImmutableArray();
-            //Console.WriteLine($"Done. {remoteItems.Count()} files in latest version of remote");
+            Console.WriteLine($"Done. {pointerEntriesperManifest.Values.Count()} files in latest version of remote");
 
 
-            //Console.WriteLine($"Synchronizing state of local folder with remote... ");
+            Console.WriteLine($"Synchronizing state of local folder with remote... ");
 
-            //// 1. FILES THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
-            //var ariusFilesToCreate = remoteItems.Where(laf => !laf.Exists);
-            //Console.WriteLine($"{ariusFilesToCreate.Count()} file(s) present in latest version of remote but not locally... Creating...");
-            //ariusFilesToCreate.AsParallel().ForAll(laf =>
-            //{
-            //    laf.Create();
-            //    Console.WriteLine($"File '{laf.RelativeAriusFileName}' created");
-            //});
+            // 1. FILES THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
+            var createdPointers = pointerEntriesperManifest
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .SelectMany(p => p.Value
+                        .Where(afpe => !root.Exists(afpe))
+                        .Select(afpe =>
+                        {
+                            var apf = AriusPointerFile.Create(root, afpe, p.Key);
+                            Console.WriteLine($"File '{apf.RelativeLocalContentFileName}' created");
 
-            //Console.WriteLine();
+                            return apf;
+                        }))
+                .ToImmutableArray();
 
-            //// 2. FILES THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
-            //var ariusFilesToDelete = root.GetFiles("*.arius", SearchOption.AllDirectories)
-            //    .Select(localFileInfo => localFileInfo.FullName)
-            //    .Except(remoteItems.Select(laf => laf.AriusFileName))
-            //    .ToImmutableArray();
-            //Console.WriteLine($"{ariusFilesToDelete.Count()} file(s) not present in latest version of remote... Deleting...");
-            //ariusFilesToDelete.AsParallel().ForAll(filename =>
-            //{
-            //    File.Delete(filename);
+            Console.WriteLine();
 
-            //    //TODO Delete empty directories / recursively
+            // 2. FILES THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
+            var relativeNamesThatShouldExist = pointerEntriesperManifest.Values.SelectMany(x => x).Select(x => x.RelativeName); //root.GetFullName(x));
 
-            //    Console.WriteLine($"File '{Path.GetRelativePath(root.FullName, filename)}' deleted");
-            //});
+            root.GetAriusPointerFiles()
+                .Where(apf => !relativeNamesThatShouldExist.Contains(apf.RelativeLocalContentFileName))
+                .AsParallel()
+                .ForAll(apfe =>
+                {
+                    File.Delete(apfe.FullName);
+
+                    Console.WriteLine($"Pointer for '{apfe.RelativeLocalContentFileName}' deleted");
+                });
+
+            DirectoryExtensions.DeleteEmptySubdirectories(root.FullName);
 
 
 
 
-            ///*
-            // * Test cases
-            // *      empty dir
-            // *      dir with files > not to be touched?
-            // *      dir with pointers - too many pointers > to be deleted
-            // *      dir with pointers > not enough pointers > to be synchronzed
-            // *      remote with isdeleted and local present > should be deleted
-            // *      remote with !isdeleted and local not present > should be created
-            // *      also in subdirectories
-            // *      in ariusfile : de verschillende extensions
-            // *      files met duplicates enz upload download
-            // *      al 1 file lokaal > kopieert de rest
-            // *      restore > normal binary file remains untouched
-            // * */
+            /*
+             * Test cases
+             *      empty dir
+             *      dir with files > not to be touched?
+             *      dir with pointers - too many pointers > to be deleted
+             *      dir with pointers > not enough pointers > to be synchronzed
+             *      remote with isdeleted and local present > should be deleted
+             *      remote with !isdeleted and local not present > should be created
+             *      also in subdirectories
+             *      in ariusfile : de verschillende extensions
+             *      files met duplicates enz upload download
+             *      al 1 file lokaal > kopieert de rest
+             *      restore > normal binary file remains untouched
+             * directory more than 2 deep without other files
+             * */
 
 
             return 0;
@@ -217,6 +205,17 @@ namespace Arius
             //    });
 
             return 0;
+        }
+
+        public void Restore()
+        {
+            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+            //var concaten = new ConcatenatedStream(chunkFiles);
+
+            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+            //using var fff = File.Create(restorePath);
+            //concaten.CopyTo(fff);
+            //fff.Close();
         }
     }
 }
