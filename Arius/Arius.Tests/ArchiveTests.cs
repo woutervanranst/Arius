@@ -198,6 +198,16 @@ namespace Arius.Tests
             Assert.AreEqual(false, movedEntry.IsDeleted);
         }
 
+        [Test, Order(55)]
+        public void TestKeepLocal()
+        {
+            Assert.IsTrue(root.GetNonAriusFiles().Any());
+
+            ArchiveCommand(false, AccessTier.Cool, false);
+
+            Assert.IsTrue(!root.GetNonAriusFiles().Any());
+        }
+
         [Test, Order(60)]
         public void RenameJustPointer()
         {
@@ -237,9 +247,14 @@ namespace Arius.Tests
         private void ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
         {
             if (executeAsCli)
-                TestSetup.ExecuteCommandline($"archive -n {TestSetup.accountName} -k {TestSetup.accountKey} -p {TestSetup.passphrase} -c {TestSetup.container.Name} --keep-local --tier hot {root.FullName}");
+                TestSetup.ExecuteCommandline($"archive " +
+                                             $"-n {TestSetup.accountName} " +
+                                             $"-k {TestSetup.accountKey} " +
+                                             $"-p {TestSetup.passphrase} " +
+                                             $"-c {TestSetup.container.Name} " +
+                                             $"{(keepLocal ? "--keep-local" : "")} --tier hot {root.FullName}");
             else
-                Arius.ArchiveCommand.Archive(root, archive, TestSetup.passphrase, true, AccessTier.Cool, 0, false, dedup);
+                Arius.ArchiveCommand.Archive(root, archive, TestSetup.passphrase, keepLocal, AccessTier.Cool, 0, false, dedup);
         }
 
         private IEnumerable<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> GetManifestEntries(FileInfo localContentFileInfo)
