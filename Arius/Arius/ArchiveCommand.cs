@@ -116,17 +116,13 @@ namespace Arius
         public static int Archive(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, bool dedup)
         {
 
-            ////TODO KeepLocal
             ////TODO Simulate
             //// TODO MINSIZE
             ///
             /// TODO CHeck if the archive is deduped and password by checking the first amnifest file
 
-            /* 1. LocalContentFiles (ie. all non-.arius files)
-             *  READ > N/A
-             *  CREATE > uploaden en manifest schrijven
-             *  UPDATE > uploaden en manifest overschrijven
-             *  DELETE > N/A
+            /*
+             * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
              */
 
             //1.1 Ensure all chunks are uploaded
@@ -183,8 +179,6 @@ namespace Arius
                 .Distinct())
                 File.Delete(encryptedChunkFullName);
 
-
-
             //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
             var createdManifestsPerHash = localContentFilesToUpload
                 .AsParallel()
@@ -198,40 +192,9 @@ namespace Arius
                     ream => ream.Hash,
                     ream => ream);
 
-            //1.3 Create Pointers for ALL Content (at this stage all manifests exist)
-            //var createdPointers = localContentPerHash
-            //    .SelectMany(g =>
-            //    {
-            //        var pointersToCreate = g
-            //            .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
-            //            .ToImmutableArray();
-
-            //        IEnumerable<AriusPointerFile> createdPointersForHash;
-            //        if (!pointersToCreate.Any())
-            //        {
-            //            //For this hash (manifest), no pointers need to be created
-            //            createdPointersForHash = Enumerable.Empty<AriusPointerFile>();
-            //        }
-            //        else
-            //        {
-            //            //Create pointer
-
-            //            RemoteEncryptedAriusManifest manifest;
-
-            //            if (createdManifestsPerHash.ContainsKey(g.Key))
-            //                manifest = createdManifestsPerHash[g.Key];
-            //            else
-            //                manifest = archive.GetRemoteEncryptedAriusManifestByHash(g.Key);
-
-            //            createdPointersForHash = pointersToCreate
-            //                .Select(lcf => AriusPointerFile.Create(root, lcf, manifest))
-            //                .ToImmutableArray();
-            //        }
-
-            //        return createdPointersForHash;
-            //    })
-            //    .ToImmutableArray();
-
+            /*
+             * 2. Ensure Pointers exist/are create for ALL LocalContentFiles
+             */
             var createdPointers = localContentPerHash
                 .SelectMany(g => g)
                 .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
@@ -247,11 +210,9 @@ namespace Arius
                 })
                 .ToImmutableArray();
 
-            // SYNCHRONIZE "old" MANIFESTS WITH THE LOCAL FILE SYSTEM
-
-            var manifestsToUpdate = archive.GetRemoteEncryptedAriusManifests()
-                //.ExceptBy(createdManifestsPerHash.Values, z => z.Name)
-                .ToImmutableArray();
+            /*
+             * 3. Synchronize ALL MANIFESTS with the local file system
+             */
 
             var ariusPointersPerManifestName = root.GetAriusPointerFiles()
                 .GroupBy(apf => apf.EncryptedManifestName)
@@ -259,259 +220,21 @@ namespace Arius
                     g => g.Key,
                     g => g.ToList());
 
-            manifestsToUpdate
+            archive.GetRemoteEncryptedAriusManifests()
                 .AsParallel()
-                .WithDegreeOfParallelism(1)
+                    .WithDegreeOfParallelism(1)
                 .ForAll(a =>
                 {
                     a.Synchronize(ariusPointersPerManifestName[a.Name], passphrase);
                 });
 
-            return 0;
-
-        /* 2. * Update remaining AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE LOKALE .arius files
-         * CREATE >N/A
-         * READ > N/A
-         * UPDATE > remote manifest bijwerken (naming, plaats, ;;;)
-         * DELETE > remote manifest bijwerken
-         */
-
-            var x = 5;
-
-            //var createdPointerNames = createdPointers.Select(apf => apf.FullName);
-
-            //var remainingAriusPointers = root
-            //    .GetAriusFiles()
-            //    .Where(fi => !createdPointerNames.Contains(fi.FullName))
-            //    .Select(fi => AriusPointerFile.FromFile(root, fi))
-            //    .ToImmutableArray();
-
-            //var pointersPerManifest = remainingAriusPointers
-            //    .GroupBy(apf => apf.EncryptedManifestName)
-            //    .ToImmutableArray();
-
-            //pointersPerManifest
-            //    .AsParallel()
-            //        .WithDegreeOfParallelism(1)
-            //    .ForAll(p =>
-            //    {
-            //        var ream = archive.GetRemoteEncryptedAriusManifestByBlobItemName(p.Key);
-            //        var currentLocalContentFiles = p.ToList();
-
-            //        ream.Synchronize(currentLocalContentFiles, passphrase);
-            //    });
-
-
-
-            //return 0;
-
-
-
-            /* 3. Remote Manifests that were not touched by #1 or #2 --- Dan de OVERBLIJVENDE remote manifest files
-             * CREATE > N/A
-             * READ > N/A
-             * UPDATE > N/A
-             * DELETE > if deleted local > delete
+            /*
+             * 4. Remove LocalContentFiles
              */
+            if (!keepLocal)
+                root.GetNonAriusFiles().AsParallel().ForAll(fi => fi.Delete());
 
-            //var kaka = archive.GetEncryptedManifestNames()
-            //    .Except(localContentPerHash.Select(lcf => lcf.EncryptedManifestFile.Name))
-            //    .Except(remainingAriusPointers.Select(apf => apf.EncryptedManifestName));
-
-
-
-            //    foreach (var contentBlobName in _bu.GetContentBlobNames())
-            //    {
-            //        var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
-            //        var entries = manifest.GetLastEntries(true);
-
-            //        bool toUpdate = false;
-
-            //        foreach (var me in entries)
-            //        {
-            //            var localFile = Path.Combine(dir.FullName, me.RelativeFileName);
-
-            //            if (!me.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
-            //            {
-            //                // DELETE - File is deleted
-            //                manifest.AddEntry(me.RelativeFileName, true);
-            //                toUpdate = true;
-
-            //                Console.ForegroundColor = ConsoleColor.Red;
-            //                Console.WriteLine($"File {me.RelativeFileName} is deleted. Marking as deleted on remote...");
-            //                Console.ResetColor();
-            //            }
-            //        }
-
-            //        if (toUpdate)
-            //        {
-            //            manifest.Archive(_bu, _szu, passphrase);
-            //            Console.WriteLine("Done");
-            //        }
-            //    }
-
-
-
-
-
-
-            //    Console.ForegroundColor = ConsoleColor.White;
-            //    Console.BackgroundColor = ConsoleColor.Green;
-            //    Console.WriteLine($"Archiving Local -> Remote");
-            //    Console.ResetColor();
-
-            //    foreach (var fi in dir.GetFiles("*.*", SearchOption.AllDirectories))
-            //    {
-            //        if (fi.Length >= minSize * 1024 * 1024 && !fi.Name.EndsWith(".arius"))
-            //        {
-            //            var relativeFileName = Path.GetRelativePath(dir.FullName, fi.FullName);
-
-            //            Console.ForegroundColor = ConsoleColor.White;
-            //            Console.BackgroundColor = ConsoleColor.Blue;
-            //            Console.WriteLine($"File: {relativeFileName}");
-            //            Console.ResetColor();
-
-            //            //File is large enough AND not an .arius file
-
-            //            Console.Write("Local file. Generating hash... ");
-            //            var hash = FileUtils.GetHash(passphrase, fi.FullName);
-            //            Console.WriteLine("Done");
-
-            //            var sourceFullName = fi.FullName;
-            //            var encryptedSourceFullName = Path.Combine(fi.DirectoryName, $"{fi.Name}.7z.arius");
-            //            var contentBlobName = $"{hash}.7z.arius";
-            //            var localPointerFullName = Path.Combine(fi.DirectoryName, $"{fi.Name}.arius");
-
-            //            if (!_bu.Exists(contentBlobName))
-            //            {
-            //                //CREATE -- File does not exis on remote
-
-            //                Console.WriteLine($"Archiving file: {fi.Length / 1024 / 1024} MB");
-
-            //                Console.Write("Encrypting... ");
-            //                _szu.EncryptFile(sourceFullName, encryptedSourceFullName, passphrase);
-            //                Console.WriteLine("Done");
-
-            //                Console.Write("Uploading... ");
-            //                _bu.Archive(encryptedSourceFullName, contentBlobName, tier);
-            //                Console.WriteLine("Done");
-
-            //                Console.Write("Creating manifest...");
-            //                var m = Manifest.CreateManifest(contentBlobName, relativeFileName);
-            //                m.Archive(_bu, _szu, passphrase);
-            //                Console.WriteLine("Done");
-            //            }
-            //            else
-            //            {
-            //                Console.Write("Binary exists on remote. Checking manifest... ");
-
-            //                var m = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase); //TODO what if the manifest got deleted?
-
-            //                if (!m.GetAllEntries(false, relativeFileName).Any())
-            //                {
-            //                    Console.Write("Adding reference to manifest... ");
-            //                    m.AddEntry(relativeFileName);
-            //                    m.Archive(_bu, _szu, passphrase);
-            //                    Console.WriteLine("Done");
-            //                }
-            //                else
-            //                {
-            //                    Console.WriteLine("No changes");
-            //                }
-            //            }
-
-            //            if (!File.Exists(localPointerFullName))
-            //            {
-            //                // File exists on remote, create pointer
-
-            //                Console.Write("Creating local pointer... ");
-            //                LocalAriusFile.CreatePointer(localPointerFullName, contentBlobName);
-            //                Console.WriteLine("Done");
-            //            }
-
-            //            if (!keepLocal)
-            //            {
-            //                Console.Write("Deleting local file... ");
-            //                File.Delete(sourceFullName);
-            //                Console.WriteLine("Done");
-            //            }
-
-            //            File.Delete(encryptedSourceFullName);
-            //        }
-
-            //        // READ - n/a
-
-            //        if (fi.Name.EndsWith(".arius"))
-            //        {
-            //            var relativeAriusFileName = Path.GetRelativePath(dir.FullName, fi.FullName);
-
-            //            Console.ForegroundColor = ConsoleColor.White;
-            //            Console.BackgroundColor = ConsoleColor.DarkBlue;
-            //            Console.WriteLine($"File {relativeAriusFileName}");
-            //            Console.ResetColor();
-
-            //            Console.Write("Archived file. Checking manifest... ");
-            //            var contentBlobName = File.ReadAllText(fi.FullName);
-            //            var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
-
-
-            //            var relativeFileName = LocalAriusFile.GetLocalContentName(relativeAriusFileName);
-            //            if (!manifest.GetAllEntries(false, relativeFileName).Any())
-            //            {
-            //                // UPDATE The manifest does not have a pointer to this local file, ie the .arius file has been renamed
-
-            //                Console.WriteLine("File has been renamed.");
-            //                Console.Write("Updating manifest...");
-            //                manifest.AddEntry(relativeFileName);
-            //                manifest.Archive(_bu, _szu, passphrase);
-            //                Console.WriteLine("Done");
-            //            }
-            //            else
-            //            {
-            //                Console.WriteLine("No changes");
-            //            }
-            //        }
-
-            //        Console.WriteLine("");
-            //    }
-
-            //    Console.ForegroundColor = ConsoleColor.White;
-            //    Console.BackgroundColor = ConsoleColor.Green;
-            //    Console.WriteLine($"Synchronizing Remote with Local");
-            //    Console.ResetColor();
-
-            // ---------------- 3 ---------------------
-
-            //    foreach (var contentBlobName in _bu.GetContentBlobNames())
-            //    {
-            //        var manifest = Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase);
-            //        var entries = manifest.GetLastEntries(true);
-
-            //        bool toUpdate = false;
-
-            //        foreach (var me in entries)
-            //        {
-            //            var localFile = Path.Combine(dir.FullName, me.RelativeFileName);
-
-            //            if (!me.IsDeleted && !File.Exists(localFile) && !File.Exists($"{localFile}.arius"))
-            //            {
-            //                // DELETE - File is deleted
-            //                manifest.AddEntry(me.RelativeFileName, true);
-            //                toUpdate = true;
-
-            //                Console.ForegroundColor = ConsoleColor.Red;
-            //                Console.WriteLine($"File {me.RelativeFileName} is deleted. Marking as deleted on remote...");
-            //                Console.ResetColor();
-            //            }
-            //        }
-
-            //        if (toUpdate)
-            //        {
-            //            manifest.Archive(_bu, _szu, passphrase);
-            //            Console.WriteLine("Done");
-            //        }
-            //    }
-
+            return 0;
         }
     }
 }
