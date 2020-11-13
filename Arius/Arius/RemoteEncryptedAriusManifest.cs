@@ -44,10 +44,15 @@ namespace Arius
 
         public override string Hash => _bi.Name.TrimEnd(".manifest.7z.arius");
 
-        public void Synchronize(IEnumerable<LocalContentFile> currentLocalContentFiles, string passphrase)
+        /// <summary>
+        /// Synchronize the remote manifest with the current local file system entries
+        /// </summary>
+        /// <param name="lcfs">The current (as per the file system) LocalContentFiles for this manifest</param>
+        /// <param name="passphrase"></param>
+        public void Synchronize(IEnumerable<ILocalFile> lcfs, string passphrase)
         {
             var manifest = AriusManifest.FromRemote(this, passphrase);
-            manifest.Synchronize(currentLocalContentFiles, _archive, passphrase);
+            manifest.Synchronize(lcfs, _archive, passphrase);
         }
 
 
@@ -122,19 +127,18 @@ namespace Arius
             /// Synchronize the state of the manifest to the current state of the file system:
             /// Additions, deletions, renames (= add + delete)
             /// </summary>
-            public void Synchronize(IEnumerable<LocalContentFile> lcfs, AriusRemoteArchive archive, string passphrase)
+            public void Synchronize<T>(IEnumerable<T> lcfs, AriusRemoteArchive archive, string passphrase) where T : ILocalFile
             {
-                var fileSystemEntries = GetAriusManifestEntries(lcfs);
+                var fileSystemEntries = GetAriusManifestEntries((IEnumerable<ILocalFile>)lcfs);
                 var lastEntries = GetLastEntriesPerRelativeName().ToImmutableArray();
 
+                var genericTIsAriusPointerFile = (lcfs.First() as AriusPointerFile) is not null; //When Comparing with AriusPointerFiles, we ignore Created/lastWrite time
+                        //TODO TEST VOOR LocalContentFIle
+                var ameec = new AriusManifestEntryEqualityComparer(genericTIsAriusPointerFile); // https://stackoverflow.com/questions/39244449/cast-generic-type-parameter-to-a-specific-type-in-c-sharp/39244683
 
-                //TODO LOCALCONTENTFILES >> LOCALFILESYSTEM
-                //TODO GetLatestEntires > OrderBy > Last --> voor den deleted
-
-
-                var addedFiles = fileSystemEntries.Except(lastEntries, new AriusManifestEntryEqualityComparer()).ToList();
+                var addedFiles = fileSystemEntries.Except(lastEntries, ameec).ToList();
                 var deletedFiles = lastEntries
-                    .Except(fileSystemEntries, new AriusManifestEntryEqualityComparer())
+                    .Except(fileSystemEntries, ameec)
                     .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null})
                     .ToList();
 
@@ -170,11 +174,11 @@ namespace Arius
 
 
             // --- RECORD DEFINITION & HELPERS
-            private static List<LocalContentFileEntry> GetAriusManifestEntries(IEnumerable<LocalContentFile> localContentFiles)
+            private static List<LocalContentFileEntry> GetAriusManifestEntries(IEnumerable<ILocalFile> localContentFiles)
             {
                 return localContentFiles.Select(lcf => GetAriusManifestEntry(lcf)).ToList();
             }
-            private static LocalContentFileEntry GetAriusManifestEntry(LocalContentFile lcf)
+            private static LocalContentFileEntry GetAriusManifestEntry(ILocalFile lcf)
             {
                 return new LocalContentFileEntry(lcf.RelativeName, DateTime.UtcNow, false, lcf.CreationTimeUtc, lcf.LastWriteTimeUtc);
             }
@@ -185,22 +189,36 @@ namespace Arius
 
             private class AriusManifestEntryEqualityComparer : IEqualityComparer<LocalContentFileEntry>
             {
+                public AriusManifestEntryEqualityComparer(bool ignoreCreationTimeLastWriteTime)
+                {
+                    _ignoreCreationTimeLastWriteTime = ignoreCreationTimeLastWriteTime;
+                }
+
+                private readonly bool _ignoreCreationTimeLastWriteTime;
+
                 public bool Equals(LocalContentFileEntry x, LocalContentFileEntry y)
                 {
                     return x.RelativeName == y.RelativeName &&
                            //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
                            x.IsDeleted == y.IsDeleted &&
-                           x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
-                           x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
+                           (_ignoreCreationTimeLastWriteTime || x.CreationTimeUtc.Equals(y.CreationTimeUtc)) &&
+                           (_ignoreCreationTimeLastWriteTime || x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc));
                 }
 
                 public int GetHashCode(LocalContentFileEntry obj)
                 {
-                    return HashCode.Combine(obj.RelativeName,
-                        //obj.Version,  //DO NOT Compare on DateTime Version
-                        obj.IsDeleted,
-                        obj.CreationTimeUtc,
-                        obj.LastWriteTimeUtc);
+                    if (_ignoreCreationTimeLastWriteTime)
+                        return HashCode.Combine(obj.RelativeName,
+                            //obj.Version,  //DO NOT Compare on DateTime Version
+                            obj.IsDeleted);
+                            //obj.CreationTimeUtc, // Do NOT compare on CreationTime
+                            //obj.LastWriteTimeUtc); // Do NOT compare on LastWriteTime
+                    else
+                        return HashCode.Combine(obj.RelativeName,
+                            //obj.Version,  //DO NOT Compare on DateTime Version
+                            obj.IsDeleted,
+                            obj.CreationTimeUtc,
+                            obj.LastWriteTimeUtc);
                 }
             }
         }
