@@ -3,8 +3,10 @@ using System.IO;
 
 namespace Arius
 {
-    internal class AriusPointerFile : AriusFile, ILocalFile //TODO ILocalFile to LocalFile : AriusFile
+    internal class AriusPointerFile : AriusFile
     {
+        // --- STATIC CONSTRUCTORS
+
         /// <summary>
         /// Create a pointer for a local file with a remote manifest (that is already uploaded)
         /// </summary>
@@ -13,19 +15,18 @@ namespace Arius
         /// <returns></returns>
         public static AriusPointerFile Create(AriusRootDirectory root, LocalContentFile lcf, RemoteEncryptedAriusManifest f)
         {
-            return Create(root, lcf.AriusPointerFileFullName, f.Name);
-        }
-
-        private static AriusPointerFile Create(AriusRootDirectory root, string ariusPointerFullName, string encryptedManifestName)
-        {
-            if (File.Exists(ariusPointerFullName))
+            if (File.Exists(lcf.AriusPointerFileFullName))
                 throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
 
-            if (!encryptedManifestName.EndsWith(".manifest.7z.arius"))
+            if (!f.Name.EndsWith(".manifest.7z.arius"))
                 throw new ArgumentException("Not a valid encrypted manifest file name");
 
-            File.WriteAllText(ariusPointerFullName, encryptedManifestName);
-            return new AriusPointerFile(root, new FileInfo(ariusPointerFullName), encryptedManifestName);
+            File.WriteAllText(lcf.AriusPointerFileFullName, f.Name);
+
+            File.SetCreationTimeUtc(lcf.AriusPointerFileFullName, File.GetCreationTime(lcf.FullName));
+            File.SetLastWriteTimeUtc(lcf.AriusPointerFileFullName, File.GetLastWriteTimeUtc(lcf.FullName));
+
+            return new AriusPointerFile(root, new FileInfo(lcf.AriusPointerFileFullName), f.Name);
         }
 
         public static AriusPointerFile FromFile(AriusRootDirectory root, FileInfo fi)
@@ -37,6 +38,7 @@ namespace Arius
         }
 
 
+        // --- CONSTRUCTORS
         private AriusPointerFile(AriusRootDirectory root, FileInfo fi, string encryptedManifestName) : base(fi)
         {
             _root = root;
@@ -50,20 +52,29 @@ namespace Arius
 
         private readonly AriusRootDirectory _root;
 
+
+        // --- PROPERTIES
+
         public string EncryptedManifestName => _encryptedManifestName.Value;
         private readonly Lazy<string> _encryptedManifestName;
-
-        
-        // --- ILocalFile IMPLEMENTATIONS
 
         /// <summary>
         /// The Relative Name of the would-be LocalContentFile
         /// </summary>
-        public string RelativeName => Path.GetRelativePath(_root.FullName, FullName).TrimEnd(".arius");
-        public DateTime? CreationTimeUtc => null;
-        public DateTime? LastWriteTimeUtc => null;
+        public string RelativeLocalContentFileName => Path.GetRelativePath(_root.FullName, LocalContentFileFullName);
 
-        
+        /// <summary>
+        /// The CreationTimeUtc of the LocalContentFile if it exists. Null otherwise.; 
+        /// </summary>
+        public DateTime CreationTimeUtc => File.GetCreationTimeUtc(FullName);
+
+        public DateTime LastWriteTimeUtc => File.GetLastWriteTimeUtc(FullName);
+
+        public string LocalContentFileFullName => _fi.FullName.TrimEnd(".arius");
+
+        // --- METHODS
+
+
         // --- OTHER OVERRIDES
         public override string ToString() => base.FullName; //TODO Beter relativeName
         

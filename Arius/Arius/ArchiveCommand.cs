@@ -7,6 +7,7 @@ using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
+using MoreLinq;
 
 namespace Arius
 {
@@ -130,12 +131,12 @@ namespace Arius
 
             //1.1 Ensure all chunks are uploaded
             var localContentPerHash = root
-                    .GetNonAriusFiles()
-                    .AsParallel()
-                    //.WithDegreeOfParallelism(1)
-                    .Select(fi => new LocalContentFile(root, fi, passphrase))
-                    .GroupBy(lcf => lcf.Hash)
-                    .ToImmutableArray();
+                .GetNonAriusFiles()
+                .AsParallel()
+                //.WithDegreeOfParallelism(1)
+                .Select(fi => new LocalContentFile(root, fi, passphrase))
+                .GroupBy(lcf => lcf.Hash)
+                .ToImmutableArray();
 
             var remoteManifestHashes = archive
                 .GetRemoteEncryptedAriusManifests()
@@ -148,7 +149,7 @@ namespace Arius
 
             var unencryptedChunksPerHash = localContentFilesToUpload
                 .AsParallel()
-                    .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+                .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
                 .ToImmutableDictionary(
                     g => g.Key,
                     g => g.First().GetChunks(dedup));
@@ -160,7 +161,7 @@ namespace Arius
 
             var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
                 .AsParallel()
-                    .WithDegreeOfParallelism(1)
+                .WithDegreeOfParallelism(1)
                 .ToImmutableDictionary(
                     p => p.Key,
                     p => p.Value
@@ -178,18 +179,18 @@ namespace Arius
 
             //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
             foreach (var encryptedChunkFullName in encryptedChunksToUpload
-                    .Select(uec => uec.FullName)
-                    .Distinct())
+                .Select(uec => uec.FullName)
+                .Distinct())
                 File.Delete(encryptedChunkFullName);
 
 
 
-            //1.2 Create manifests & pointers for the new content
+            //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
             var createdManifestsPerHash = localContentFilesToUpload
                 .AsParallel()
-                    .WithDegreeOfParallelism(1)
+                .WithDegreeOfParallelism(1)
                 .Select(g => RemoteEncryptedAriusManifest.Create(
-                    g.AsEnumerable(),
+                    g.First().Hash,
                     unencryptedChunksPerHash[g.Key]
                         .Select(uec => archive.GetRemoteEncryptedAriusChunk(uec.Hash)),
                     archive, passphrase))
@@ -197,59 +198,84 @@ namespace Arius
                     ream => ream.Hash,
                     ream => ream);
 
+            //1.3 Create Pointers for ALL Content (at this stage all manifests exist)
+            //var createdPointers = localContentPerHash
+            //    .SelectMany(g =>
+            //    {
+            //        var pointersToCreate = g
+            //            .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
+            //            .ToImmutableArray();
+
+            //        IEnumerable<AriusPointerFile> createdPointersForHash;
+            //        if (!pointersToCreate.Any())
+            //        {
+            //            //For this hash (manifest), no pointers need to be created
+            //            createdPointersForHash = Enumerable.Empty<AriusPointerFile>();
+            //        }
+            //        else
+            //        {
+            //            //Create pointer
+
+            //            RemoteEncryptedAriusManifest manifest;
+
+            //            if (createdManifestsPerHash.ContainsKey(g.Key))
+            //                manifest = createdManifestsPerHash[g.Key];
+            //            else
+            //                manifest = archive.GetRemoteEncryptedAriusManifestByHash(g.Key);
+
+            //            createdPointersForHash = pointersToCreate
+            //                .Select(lcf => AriusPointerFile.Create(root, lcf, manifest))
+            //                .ToImmutableArray();
+            //        }
+
+            //        return createdPointersForHash;
+            //    })
+            //    .ToImmutableArray();
+
             var createdPointers = localContentPerHash
-                .SelectMany(g =>
+                .SelectMany(g => g)
+                .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
+                .Select(lcf =>
                 {
-                    var pointersToCreate = g
-                        .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
-                        .ToImmutableArray();
+                    var manifest = createdManifestsPerHash.ContainsKey(lcf.Hash) ? 
+                        createdManifestsPerHash[lcf.Hash] : 
+                        archive.GetRemoteEncryptedAriusManifestByHash(lcf.Hash);
 
-                    IEnumerable<AriusPointerFile> createdPointersForHash;
-                    if (!pointersToCreate.Any())
-                    {
-                        //MANIFEST: NO UPDATE NEEDED
-                        //POINTER: NO CREATE NEEDED
-                        //For this hash (manifest), no pointers need to be created, the manifest does not need to be updated
-                        createdPointersForHash = Enumerable.Empty<AriusPointerFile>();
-                    }
-                    else
-                    {
-                        RemoteEncryptedAriusManifest manifest;
+                    var p = AriusPointerFile.Create(root, lcf, manifest);
 
-                        if (createdManifestsPerHash.ContainsKey(g.Key))
-                        {
-                            //MANIFEST: NO UPDATE NEEDED
-                            //POINTER: TO BE CREATED
-                            //For this hash (manifest), the manifest was just created and thus is in sync with the local file system.
-                            //Create pointer, no manifest update required
-                            manifest = createdManifestsPerHash[g.Key];
-                        }
-                        else
-                        {
-                            //MANIFEST: TO BE UPDATED
-                            //POINTER: TO BE CREATED
-                            //For this hash (manifest), the manifest was created <some time ago> and needs to be updated
-                            //Pointer to be updated / manifest already exists
-                            manifest = archive.GetRemoteEncryptedAriusManifestByHash(g.Key);
-                        }
-
-                        manifest.Synchronize(g.ToList(), passphrase);
-                        createdPointersForHash = pointersToCreate
-                            .Select(lcf => AriusPointerFile.Create(root, lcf, manifest))
-                            .ToImmutableArray();
-                    }
-
-                    return createdPointersForHash;
+                    return p;
                 })
                 .ToImmutableArray();
 
+            // SYNCHRONIZE "old" MANIFESTS WITH THE LOCAL FILE SYSTEM
 
-            /* 2. * Update remaining AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE LOKALE .arius files
-             * CREATE >N/A
-             * READ > N/A
-             * UPDATE > remote manifest bijwerken (naming, plaats, ;;;)
-             * DELETE > remote manifest bijwerken
-             */
+            var manifestsToUpdate = archive.GetRemoteEncryptedAriusManifests()
+                //.ExceptBy(createdManifestsPerHash.Values, z => z.Name)
+                .ToImmutableArray();
+
+            var ariusPointersPerManifestName = root.GetAriusFiles()
+                .Select(fi => AriusPointerFile.FromFile(root, fi))
+                .GroupBy(apf => apf.EncryptedManifestName)
+                .ToImmutableDictionary(
+                    g => g.Key,
+                    g => g.ToList());
+
+            manifestsToUpdate
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .ForAll(a =>
+                {
+                    a.Synchronize(ariusPointersPerManifestName[a.Name], passphrase);
+                });
+
+            return 0;
+
+        /* 2. * Update remaining AriusPointerFiles (.arius files of LocalContentFiles that were not touched in #1) --- de OVERBLIJVENDE LOKALE .arius files
+         * CREATE >N/A
+         * READ > N/A
+         * UPDATE > remote manifest bijwerken (naming, plaats, ;;;)
+         * DELETE > remote manifest bijwerken
+         */
 
             var x = 5;
 
