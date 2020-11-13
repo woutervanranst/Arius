@@ -2,7 +2,7 @@
 
 namespace Arius
 {
-    internal static class FileExtensions
+    internal static class StringExtensions
     {
         // https://stackoverflow.com/questions/4101539/c-sharp-removing-substring-from-end-of-string
 

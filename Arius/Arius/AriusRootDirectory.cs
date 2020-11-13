@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -18,5 +19,15 @@ namespace Arius
         public IEnumerable<FileInfo> GetNonAriusFiles() => _root.GetFiles("*.*", SearchOption.AllDirectories).Where(fi => !fi.Name.EndsWith(".arius"));
         public IEnumerable<FileInfo> GetAriusFiles() => _root.GetFiles("*.arius", SearchOption.AllDirectories);
         public IEnumerable<AriusPointerFile> GetAriusPointerFiles() => GetAriusFiles().Select(fi => AriusPointerFile.FromFile(this, fi));
+
+        internal bool Exists(RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry apfe)
+        {
+            return File.Exists(GetFullName(apfe));
+        }
+
+        internal string GetFullName(RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry apfe)
+        {
+            return Path.Combine(FullName, apfe.RelativeName);
+        }
     }
 }

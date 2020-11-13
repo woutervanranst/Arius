@@ -11,22 +11,39 @@ namespace Arius
         /// Create a pointer for a local file with a remote manifest (that is already uploaded)
         /// </summary>
         /// <param name="lcf"></param>
-        /// <param name="f"></param>
+        /// <param name="manifest"></param>
         /// <returns></returns>
-        public static AriusPointerFile Create(AriusRootDirectory root, LocalContentFile lcf, RemoteEncryptedAriusManifest f)
+        public static AriusPointerFile Create(AriusRootDirectory root, LocalContentFile lcf, RemoteEncryptedAriusManifest manifest)
         {
             if (File.Exists(lcf.AriusPointerFileFullName))
                 throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
 
-            if (!f.Name.EndsWith(".manifest.7z.arius"))
+            if (!manifest.Name.EndsWith(".manifest.7z.arius"))
                 throw new ArgumentException("Not a valid encrypted manifest file name");
 
-            File.WriteAllText(lcf.AriusPointerFileFullName, f.Name);
+            File.WriteAllText(lcf.AriusPointerFileFullName, manifest.Name);
 
-            File.SetCreationTimeUtc(lcf.AriusPointerFileFullName, File.GetCreationTime(lcf.FullName));
+            File.SetCreationTimeUtc(lcf.AriusPointerFileFullName, File.GetCreationTimeUtc(lcf.FullName));
             File.SetLastWriteTimeUtc(lcf.AriusPointerFileFullName, File.GetLastWriteTimeUtc(lcf.FullName));
 
-            return new AriusPointerFile(root, new FileInfo(lcf.AriusPointerFileFullName), f.Name);
+            return new AriusPointerFile(root, new FileInfo(lcf.AriusPointerFileFullName), manifest.Name);
+        }
+
+        public static AriusPointerFile Create(AriusRootDirectory root, RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry e, RemoteEncryptedAriusManifest manifest)
+        {
+            var fullName = Path.Combine(root.FullName, $"{e.RelativeName}.arius");
+
+            var fi = new FileInfo(fullName);
+            
+            if (!fi.Directory.Exists)
+                fi.Directory.Create();
+
+            File.WriteAllText(fullName, manifest.Name);
+
+            fi.CreationTimeUtc = e.CreationTimeUtc.Value;
+            fi.LastWriteTimeUtc = e.LastWriteTimeUtc.Value;
+
+            return new AriusPointerFile(root, new FileInfo(fullName), manifest.Name);
         }
 
         public static AriusPointerFile FromFile(AriusRootDirectory root, FileInfo fi)
@@ -36,6 +53,8 @@ namespace Arius
 
             return new AriusPointerFile(root, fi);
         }
+
+        
 
 
         // --- CONSTRUCTORS
