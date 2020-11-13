@@ -29,7 +29,7 @@ namespace Arius
 
             _fi = fi;
         }
-        private readonly FileInfo _fi;
+        protected readonly FileInfo _fi;
 
         public string Name => _fi.Name;
         public string FullName => _fi.FullName;
