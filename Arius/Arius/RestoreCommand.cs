@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -74,8 +75,8 @@ namespace Arius
 
                 Synchronize(archive, root, passphrase);
 
-                //if (download)
-                //    Download(di, passphrase);
+                if (download)
+                    Download(archive, root, passphrase);
             }
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
@@ -157,43 +158,100 @@ namespace Arius
              *      al 1 file lokaal > kopieert de rest
              *      restore > normal binary file remains untouched
              * directory more than 2 deep without other files
+             *  download > local files exist s> don't download all
              * */
 
 
             return 0;
         }
 
-        private int Download(DirectoryInfo root, string passphrase)
+        private static int Download(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
         {
-            //var blobsToDownload = root.GetFiles("*.arius", SearchOption.AllDirectories)
-            //    .AsParallel()
-            //    .WithDegreeOfParallelism(1)
-            //    .Select(localFileInfo => new LocalAriusFileWithoutManifest(root, Path.GetRelativePath(root.FullName, localFileInfo.FullName)))
-            //    .GroupBy(lafwm => lafwm.ContentBlobName, lafwm => lafwm).Select(g => g.ToImmutableArray());
+            var pointerFilesPerRemoteEncryptedManifest = root.GetAriusPointerFiles()
+                .AsParallel()
+                .Where(apf => !File.Exists(apf.LocalContentFileFullName)) //TODO test dit
+                .GroupBy(apf => apf.EncryptedManifestName)
+                .ToImmutableDictionary(
+                    apf => archive.GetRemoteEncryptedAriusManifestByBlobItemName(apf.Key),
+                    apf => apf.ToList());
 
-            //blobsToDownload
-            //    .AsParallel()
-            //    .WithDegreeOfParallelism(1)
-            //    .ForAll(blobGroup =>
+            var chunkNamesToDownload = pointerFilesPerRemoteEncryptedManifest.Keys
+                .AsParallel()
+                .SelectMany(ream => ream.GetEncryptedChunkNames(passphrase))
+                .Distinct()
+                .ToImmutableArray();
+
+            var downloadDirectory = new DirectoryInfo(Path.Combine(root.FullName, ".ariusdownload"));
+            if (downloadDirectory.Exists)
+                downloadDirectory.Delete(true);
+            downloadDirectory.Create();
+            archive.Download(chunkNamesToDownload, downloadDirectory);
+
+            var unencryptedChunks = downloadDirectory.GetFiles()
+                .AsParallel()
+                .Select(fi =>
+                {
+                    var szu = new SevenZipUtils();
+
+                    var extractedFile = fi.FullName.TrimEnd(".7z.arius");
+                    szu.DecryptFile(fi.FullName, extractedFile, passphrase);
+                    fi.Delete();
+
+                    return new FileInfo(extractedFile);
+                })
+                .ToImmutableDictionary(x => x.Name, x => x);
+
+            //var pointersWithchunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
+            //    .Select(ream => new
             //    {
-            //        var contentFileName = blobGroup.First().ContentFileName;
-
-            //        if (File.Exists(contentFileName))
+            //        ream.Hash,
+            //        PointerFileEntry = ream.GetAriusPointerFileEntries(passphrase),
+            //        UnencryptedChunks = ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn]).ToImmutableArray()
+            //    })
+            //    .GroupBy(x => x.Hash)
+            //    .ToImmutableDictionary(
+            //        x => x.Key,
+            //        x => new
             //        {
-            //            //Already exists, check hash
-            //            var hash = FileUtils.GetHash(passphrase, contentFileName);
+            //            ka = x.
+            //        });
 
-            //            if (hash != blobGroup.First().Hash)
-            //                //Hash differs > delete file
-            //                File.Delete(contentFileName);
-            //        }
+            var pointersWithChunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
+                .GroupBy(ream => ream.Hash)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        PointerFileEntry = g.SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase)).ToImmutableArray(),
+                        UnencryptedChunks = g.SelectMany(ream => ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn.TrimEnd(".7z.arius")])).ToImmutableArray()
+                    });
 
-            //        if (!File.Exists(contentFileName))
-            //        {
-            //            //Download
-            //            var tempContentFileName = blobGroup.First().ContentBlob.Download(_bu, _szu, passphrase);
-            //            File.Move(tempContentFileName, contentFileName);
-            //        }
+            pointersWithChunksPerHash
+                .AsParallel()
+                .ForAll(p =>
+                {
+                    Restore(root, p.Value.PointerFileEntry, p.Value.UnencryptedChunks);
+                });
+
+            //var chunksPerPointer = pointerFilesPerRemoteEncryptedManifest.Keys
+            //    .SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase).Select(apfe => new
+            //    {
+            //        PointerFileEntry = apfe,
+            //        EncryptedChunkNames = ream.GetEncryptedChunkNames(passphrase)
+            //    }))
+            //    .ToImmutableDictionary(
+            //        x => x.PointerFileEntry,
+            //        x => x.EncryptedChunkNames.Select(cn => unencryptedChunks[cn]).ToImmutableArray());
+
+            //chunksPerPointer
+            //    .AsParallel()
+            //    .ForAll(p =>
+            //    {
+            //        Restore(p.Key, p.Value); //TODO dit neemt veel diskspace ie double of what is needed
+            //    });
+
+
+
 
             //        blobGroup.Skip(1).AsParallel().ForAll(lafwm =>
             //        {
@@ -204,18 +262,37 @@ namespace Arius
             //        });
             //    });
 
+
             return 0;
         }
 
-        public void Restore()
+        public static void Restore(AriusRootDirectory root, ImmutableArray<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> apfes, ImmutableArray<FileInfo> chunks)
         {
-            //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-            //var concaten = new ConcatenatedStream(chunkFiles);
+            if (chunks.Length == 1)
+            {
+                //No dedup
+                var chunk = chunks.Single();
 
-            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-            //using var fff = File.Create(restorePath);
-            //concaten.CopyTo(fff);
-            //fff.Close();
+                chunk.MoveTo(root.GetFullName(apfes.First()));
+
+                apfes.Skip(1)
+                    .AsParallel()
+                    .ForAll(apfe => chunk.CopyTo(root.GetFullName(apfe)));
+            }
+            else
+            {
+                //Dedup
+                throw new NotImplementedException();
+
+                //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+                //var concaten = new ConcatenatedStream(chunkFiles);
+
+                //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+                //using var fff = File.Create(restorePath);
+                //concaten.CopyTo(fff);
+                //fff.Close();
+            }
+
         }
     }
 }

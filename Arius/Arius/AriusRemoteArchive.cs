@@ -73,16 +73,13 @@ namespace Arius
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments =
-                    $@"copy '{dir}\*' '{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy '{dir}\*' '{_bcc.Uri}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments =
-                    $@"copy ""{dir}\*"" ""{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy ""{dir}\*"" ""{_bcc.Uri}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-            var regex =
-                @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(AzCopyPath);
 
@@ -90,6 +87,32 @@ namespace Arius
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+                throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
+        }
+
+        public void Download(ImmutableArray<string> chunkNames, DirectoryInfo downloadDirectory)
+        {
+            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names-1
+
+            //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-or-directory-name><SAS-token>' '<local-directory-path>' --include-pattern <semicolon-separated-file-list-with-wildcard-characters>
+
+            string arguments;
+            var sas = GetContainerSasUri(_bcc, _skc);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{downloadDirectory.FullName}'  --include-pattern '{string.Join(';', chunkNames)}'";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{downloadDirectory.FullName}""  --include-pattern ""{string.Join(';', chunkNames)}""";
+            else
+                throw new NotImplementedException("OS Platform is not Windows or Linux");
+
+            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+            var p = new ExternalProcess(AzCopyPath);
+
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+                out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+            if (completed != chunkNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
         }
 
@@ -114,7 +137,7 @@ namespace Arius
 
             string sasToken = sasBuilder.ToSasQueryParameters(sharedKeyCredential).ToString();
 
-            return $"{container.Uri}?{sasToken}";
+            return sasToken;
         }
 
 
