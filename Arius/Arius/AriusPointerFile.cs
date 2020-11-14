@@ -40,8 +40,8 @@ namespace Arius
 
             File.WriteAllText(fullName, manifest.Name);
 
-            fi.CreationTimeUtc = e.CreationTimeUtc.Value;
-            fi.LastWriteTimeUtc = e.LastWriteTimeUtc.Value;
+            fi.CreationTimeUtc = e.CreationTimeUtc!.Value;
+            fi.LastWriteTimeUtc = e.LastWriteTimeUtc!.Value;
 
             return new AriusPointerFile(root, new FileInfo(fullName), manifest.Name);
         }
