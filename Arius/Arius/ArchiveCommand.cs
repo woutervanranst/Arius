@@ -214,11 +214,15 @@ namespace Arius
              * 3. Synchronize ALL MANIFESTS with the local file system
              */
 
+// todo quid broken pointer files
+
             var ariusPointersPerManifestName = root.GetAriusPointerFiles()
                 .GroupBy(apf => apf.EncryptedManifestName)
                 .ToImmutableDictionary(
                     g => g.Key,
                     g => g.ToList());
+
+// todo update manifests with azcopy
 
             archive.GetRemoteEncryptedAriusManifests()
                 .AsParallel()
