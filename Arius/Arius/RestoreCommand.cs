@@ -201,21 +201,6 @@ namespace Arius
                 })
                 .ToImmutableDictionary(x => x.Name, x => x);
 
-            //var pointersWithchunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
-            //    .Select(ream => new
-            //    {
-            //        ream.Hash,
-            //        PointerFileEntry = ream.GetAriusPointerFileEntries(passphrase),
-            //        UnencryptedChunks = ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn]).ToImmutableArray()
-            //    })
-            //    .GroupBy(x => x.Hash)
-            //    .ToImmutableDictionary(
-            //        x => x.Key,
-            //        x => new
-            //        {
-            //            ka = x.
-            //        });
-
             var pointersWithChunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
                 .GroupBy(ream => ream.Hash)
                 .ToDictionary(
@@ -233,35 +218,8 @@ namespace Arius
                     Restore(root, p.Value.PointerFileEntry, p.Value.UnencryptedChunks);
                 });
 
-            //var chunksPerPointer = pointerFilesPerRemoteEncryptedManifest.Keys
-            //    .SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase).Select(apfe => new
-            //    {
-            //        PointerFileEntry = apfe,
-            //        EncryptedChunkNames = ream.GetEncryptedChunkNames(passphrase)
-            //    }))
-            //    .ToImmutableDictionary(
-            //        x => x.PointerFileEntry,
-            //        x => x.EncryptedChunkNames.Select(cn => unencryptedChunks[cn]).ToImmutableArray());
-
-            //chunksPerPointer
-            //    .AsParallel()
-            //    .ForAll(p =>
-            //    {
-            //        Restore(p.Key, p.Value); //TODO dit neemt veel diskspace ie double of what is needed
-            //    });
-
-
-
-
-            //        blobGroup.Skip(1).AsParallel().ForAll(lafwm =>
-            //        {
-            //            // Copy & overwrite
-            //            File.Copy(contentFileName, lafwm.ContentFileName, true);
-
-            //            //TODO https://docs.microsoft.com/en-us/dotnet/api/system.io.file.setlastwritetime?view=netcore-3.1
-            //        });
-            //    });
-
+            downloadDirectory.Delete();
+            root.GetAriusPointerFiles().AsParallel().ForAll(apf => apf.Delete());
 
             return 0;
         }
@@ -275,9 +233,18 @@ namespace Arius
 
                 chunk.MoveTo(root.GetFullName(apfes.First()));
 
+                chunk.CreationTimeUtc = apfes.First().CreationTimeUtc!.Value;
+                chunk.LastWriteTimeUtc = apfes.First().LastWriteTimeUtc!.Value;
+
                 apfes.Skip(1)
                     .AsParallel()
-                    .ForAll(apfe => chunk.CopyTo(root.GetFullName(apfe)));
+                    .ForAll(apfe =>
+                    {
+                        var copy = chunk.CopyTo(root.GetFullName(apfe), true);
+
+                        copy.CreationTimeUtc = apfe.CreationTimeUtc!.Value;
+                        copy.LastWriteTimeUtc = apfe.LastWriteTimeUtc!.Value;
+                    });
             }
             else
             {
