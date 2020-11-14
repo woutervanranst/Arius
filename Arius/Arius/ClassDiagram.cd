@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1" MembersFormat="NameAndType">
+  <Class Name="Arius.AriusFile">
+    <Position X="16" Y="1.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AACAAAAAAAAAAIAAAAAAAAQAAAEAAAAAAAAAAAAAEAA=</HashCode>
+      <FileName>AriusFile.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.AriusChunk">
+    <Position X="20" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>AriusChunk.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.EncryptedAriusChunk">
+    <Position X="21.75" Y="5" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAABAIAAAAAAAAAAAAAEAABAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>AriusChunk.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.AriusPointerFile">
+    <Position X="26" Y="5" Width="1.5" />
+    <Compartments>
+      <Compartment Name="Fields" Collapsed="true" />
+    </Compartments>
+    <TypeIdentifier>
+      <HashCode>AAAAIAAAAAAAAAAgAAAAAAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
+      <FileName>AriusPointerFile.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.AriusRemoteArchive">
+    <Position X="31.75" Y="4" Width="4.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAIAIAAAAAAAAKgAAAAAAAIAAAAAAIEAEAAAA=</HashCode>
+      <FileName>AriusRemoteArchive.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.AriusRootDirectory">
+    <Position X="29.5" Y="4" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAQAIAAAAAAgAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>AriusRootDirectory.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.EncryptedAriusContent">
+    <Position X="20.5" Y="10.25" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAABAIAAAAQAAAAAAAAAAECAAAAAAAAAAAA=</HashCode>
+      <FileName>EncryptedAriusContent.cs</FileName>
+    </TypeIdentifier>
+    <ShowAsAssociation>
+      <Property Name="EncryptedManifestFile" />
+      <Property Name="PointerFile" />
+    </ShowAsAssociation>
+    <ShowAsCollectionAssociation>
+      <Property Name="EncryptedAriusChunks" />
+    </ShowAsCollectionAssociation>
+  </Class>
+  <Class Name="Arius.LocalContentFile" BaseTypeListCollapsed="true">
+    <Position X="0.5" Y="5" Width="3.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAQBAAIQBIgECCAUQAAAEAAQAABEAACAAAAAEAA=</HashCode>
+      <FileName>LocalContentFile.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.AriusManifest">
+    <Position X="7.75" Y="5" Width="3" />
+    <NestedTypes>
+      <Struct Name="Arius.AriusManifest.AriusManifestEntry" Collapsed="true">
+        <TypeIdentifier>
+          <NewMemberFileName>Manifest.cs</NewMemberFileName>
+        </TypeIdentifier>
+      </Struct>
+    </NestedTypes>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAEACAAAQAAAAAAAAAAEEAAAAAAAAAAAAA=</HashCode>
+      <FileName>Manifest.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.AriusManifestFile">
+    <Position X="11" Y="5" Width="4.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAI=</HashCode>
+      <FileName>Manifest.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.EncryptedAriusManifestFile">
+    <Position X="15.5" Y="5" Width="2.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAEAAAAAAAAA=</HashCode>
+      <FileName>Manifest.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.RemoteEncryptedAriusManifestFile">
+    <Position X="31.75" Y="7.75" Width="3.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAAAAAAAAIAAAAAAAAEAAAAAAAAAAAAA=</HashCode>
+      <FileName>Manifest.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="Arius.IUnencryptedChunk">
+    <Position X="4" Y="1.75" Width="3.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAIAAAAAAAAAAEAAAAAAAAAAAAAAAEAA=</HashCode>
+      <FileName>AriusChunk.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
