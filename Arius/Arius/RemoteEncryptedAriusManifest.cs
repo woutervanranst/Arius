@@ -59,6 +59,12 @@ namespace Arius
             return manifest.GetLastExistingEntriesPerRelativeName();
         }
 
+        public IEnumerable<string> GetEncryptedChunkNames(string passphrase)
+        {
+            var manifest = AriusManifest.FromRemote(this, passphrase);
+            return manifest.EncryptedChunks;
+        }
+
 
         internal class AriusManifest //Marked as internal for Unit Testing
         {
