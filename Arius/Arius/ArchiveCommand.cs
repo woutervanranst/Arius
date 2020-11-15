@@ -1,4 +1,4 @@
-﻿using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -195,26 +195,23 @@ namespace Arius
             /*
              * 2. Ensure Pointers exist/are create for ALL LocalContentFiles
              */
-            var createdPointers = localContentPerHash
+            localContentPerHash
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
                 .SelectMany(g => g)
                 .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
-                .Select(lcf =>
+                .ForAll(lcf =>
                 {
                     var manifest = createdManifestsPerHash.ContainsKey(lcf.Hash) ? 
                         createdManifestsPerHash[lcf.Hash] : 
                         archive.GetRemoteEncryptedAriusManifestByHash(lcf.Hash);
 
-                    var p = AriusPointerFile.Create(root, lcf, manifest);
-
-                    return p;
-                })
-                .ToImmutableArray();
+                    AriusPointerFile.Create(root, lcf, manifest);
+                });
 
             /*
              * 3. Synchronize ALL MANIFESTS with the local file system
              */
-
-// todo quid broken pointer files
 
             var ariusPointersPerManifestName = root.GetAriusPointerFiles()
                 .GroupBy(apf => apf.EncryptedManifestName)
@@ -222,11 +219,9 @@ namespace Arius
                     g => g.Key,
                     g => g.ToList());
 
-// todo update manifests with azcopy
-
             archive.GetRemoteEncryptedAriusManifests()
                 .AsParallel()
-                    .WithDegreeOfParallelism(1)
+                    //.WithDegreeOfParallelism(1)
                 .ForAll(a =>
                 {
                     a.Update(ariusPointersPerManifestName[a.Name], passphrase);
