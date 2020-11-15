@@ -219,6 +219,9 @@ namespace Arius
                     g => g.Key,
                     g => g.ToList());
 
+            // TODO QUID BROKEN POINTERFILES
+            
+            //TODO met AZCOPY
             archive.GetRemoteEncryptedAriusManifests()
                 .AsParallel()
                     //.WithDegreeOfParallelism(1)
