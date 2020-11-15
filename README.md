@@ -26,7 +26,7 @@ The name derives from the Greek for 'immortal'.
 * Never delete files on remote
 * Point in time restore (FUTURE)
 * No central store to avoid a single point of failure
-* File level deduplication
+* File level deduplication, optionally variable block size (rolling hash Rabin-Karp) deduplication
 * Leverage common tools, to allow restores even when this project would become deprecated
 
 ## Usage
