@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace Arius.V4
         string Name { get; }
     }
 
+    //[Extension("*.*")]
     public interface IContent : IRemote, ILocal
     {
     }
@@ -28,6 +30,7 @@ namespace Arius.V4
 
     }
 
+    [Extension2Attribute("*.arius.pointer")]
     public interface IPointer<T> : ILocal where T : IManifest
     {
 
@@ -148,7 +151,7 @@ namespace Arius.V4
     //    }
     //}
 
-    public class LocalRootFolder : ILocalRepository<IContent>, ILocalRepository<IPointer<IManifest>>
+    public class LocalRootFolder : ILocalRepository<ILocal>
     {
         public LocalRootFolder(DirectoryInfo root)
         {
@@ -157,38 +160,26 @@ namespace Arius.V4
 
         private readonly DirectoryInfo _root;
 
+        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : ILocal
+        {
+            var ext = typeof(T).GetCustomAttribute<Extension2Attribute>().Extension;
+            //var x = (typeof(T).Implements(typeof(IContent)));
 
-        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter) where T : class, ILocal
+
+            throw new NotImplementedException();
+        }
+
+        public ILocal GetByID(object id)
         {
             throw new NotImplementedException();
         }
 
-        IPointer<IManifest> IRepository<IPointer<IManifest>>.GetByID(object id)
+        public void Insert(ILocal entity)
         {
             throw new NotImplementedException();
         }
 
-        public void Insert(IPointer<IManifest> entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Update(IPointer<IManifest> entityToUpdate)
-        {
-            throw new NotImplementedException();
-        }
-
-        IContent IRepository<IContent>.GetByID(object id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Insert(IContent entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Update(IContent entityToUpdate)
+        public void Update(ILocal entityToUpdate)
         {
             throw new NotImplementedException();
         }
@@ -197,14 +188,37 @@ namespace Arius.V4
 
     public class Kak
     {
-        void Ha()
+        public void Ha()
         {
             var x = new LocalRootFolder(new DirectoryInfo(@"c:\"));
 
-            var z = x as ILocalRepository<IContent>;
-            //z.Get()
+            var content = x.Get<IPointer<IManifest>>();
             //x.Get(x => x.FullName.EndsWith() == )
 
         }
     }
+}
+
+public static class Helpers
+{
+    public static bool Implements<I>(this Type type, I @interface) where I : class
+    {
+        // https://stackoverflow.com/questions/503263/how-to-determine-if-a-type-implements-a-specific-generic-interface-type
+
+
+        if (((@interface as Type) == null) || !(@interface as Type).IsInterface)
+            throw new ArgumentException("Only interfaces can be 'implemented'.");
+
+        return (@interface as Type).IsAssignableFrom(type);
+    }
+}
+
+[AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
+public class Extension2Attribute : Attribute
+{
+    public Extension2Attribute(string extension)
+    {
+        Extension = extension;
+    }
+    public string Extension { get; init; }
 }

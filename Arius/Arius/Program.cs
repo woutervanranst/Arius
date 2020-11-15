@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Runtime.CompilerServices;
+using Arius.V4;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
@@ -14,6 +15,9 @@ namespace Arius
             //    .AddScoped<ArchiveCommand>()
             //    .AddScoped<SevenZipUtils>()
             //    .BuildServiceProvider();
+
+            var k = new Kak();
+            k.Ha();
 
             var rootCommand = new RootCommand();
             rootCommand.AddCommand(ArchiveCommand.GetCommand());
