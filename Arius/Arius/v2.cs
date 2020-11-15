@@ -93,8 +93,8 @@ namespace Arius.V4
     {
         //void Delete(TEntity entityToDelete);
         //void Delete(object id);
-        //IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : TEntity;
-        IEnumerable<TEntity> Get(Expression<Func<TEntity, bool>> filter = null);
+        IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : TEntity;
+        //IEnumerable<TEntity> Get(Expression<Func<TEntity, bool>> filter = null);
         TEntity GetByID(object id);
         //IEnumerable<TEntity> GetWithRawSql(string query, params object[] parameters);
         void Insert(TEntity entity);
@@ -157,98 +157,8 @@ namespace Arius.V4
 
         private readonly DirectoryInfo _root;
 
-        //public IEnumerable<ILocal> Get<T>(Expression<Func<ILocal, bool>> filter = null) where T : ILocal
-        //{
-        //    Type.GetTypeCode(T)
-        //    var x = _root.GetFiles(default(T)!.Extension)
 
-        //    return null;
-        //}
-
-        //public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public IEnumerable<TContent> Get<TContent>(Expression<Func<TContent, bool>> filter = null)
-        //{
-        //    var x = _root.GetFiles(); //(default(T)!.Extension)
-
-        //    return null;
-        //}
-        //public IEnumerable<IPointer<IManifest>> Get<TPointer>(Expression<Func<IPointer<IManifest>, bool>> filter = null)
-        //{
-        //    var x = _root.GetFiles(); //(default(T)!.Extension)
-
-        //    return null;
-        //}
-
-        //public ILocal GetByID(object id)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public void Insert(ILocal entity)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public void Update(ILocal entityToUpdate)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public IEnumerable<X> Get<X>(Expression<Func<X, bool>> filter = null) where X : ILocal
-        //{
-        //    throw new NotImplementedException();
-        //}
-        //public IEnumerable<X2> Get<X2>(Expression<Func<X2, bool>> filter = null) where X2 : IContent
-        //{
-        //    throw new NotImplementedException();
-        //}
-        //public IEnumerable<T> Get<T>(Expression<Func<ILocal, bool>> filter = null) where T : ILocal
-        //{
-
-
-        //    foreach (object obj in source)
-        //    {
-        //        if (obj is TResult result)
-        //            yield return result;
-        //    }
-        //}
-
-
-        //    throw new NotImplementedException();
-        //}
-
-        //public IEnumerable<ILocal> Get(Expression<Func<ILocal, bool>> filter = null)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-
-        //public ILocal GetByID(object id)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public void Insert(ILocal entity)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public void Update(ILocal entityToUpdate)
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-
-        public IEnumerable<IContent> Get(Expression<Func<IContent, bool>> filter = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IEnumerable<IPointer<IManifest>> Get(Expression<Func<IPointer<IManifest>, bool>> filter = null)
+        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter) where T : class, ILocal
         {
             throw new NotImplementedException();
         }
@@ -290,6 +200,9 @@ namespace Arius.V4
         void Ha()
         {
             var x = new LocalRootFolder(new DirectoryInfo(@"c:\"));
+
+            var z = x as ILocalRepository<IContent>;
+            //z.Get()
             //x.Get(x => x.FullName.EndsWith() == )
 
         }
