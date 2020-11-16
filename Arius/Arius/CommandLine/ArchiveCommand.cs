@@ -8,9 +8,9 @@ using System.CommandLine.Parsing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.V4;
+using Arius.CommandLine;
 
-namespace Arius
+namespace Arius.CommandLine
 {
     internal class ArchiveCommand : IAriusCommand
     {
@@ -25,13 +25,6 @@ namespace Arius
             (--min-size=<minsizeinMB>)
             (--simulate)
         * */
-
-        //public ArchiveCommand()
-        //{
-        //    _mykak = ha;
-        //}
-
-        //private readonly ExexutionDetails _mykak;
 
         public Command GetCommand(ParsedCommandProvider pcp)
         {
@@ -123,7 +116,7 @@ namespace Arius
         }
     }
 
-    internal struct ArchiveOptions : IAriusRootDirectoryOptions
+    internal struct ArchiveOptions : ILocalRootDirectoryOptions
     {
         public string AccountName;
         public string AccountKey;
@@ -138,18 +131,19 @@ namespace Arius
 
     internal class ArchiveCommandExecutor  : ICommandExecutor
     {
-        public ArchiveCommandExecutor(ICommandExecutorOptions options, AriusRootDirectory root)
+        public ArchiveCommandExecutor(ICommandExecutorOptions options, LocalRootDirectory root)
         {
             var o = (ArchiveOptions)options;
             _root = root;
         }
 
-        private readonly AriusRootDirectory _root;
+        private readonly LocalRootDirectory _root;
 
         public int Execute()
         {
+            var pointers = _root.Get<IPointerFile<IManifestBlob>>();
 
-            var pointers = _root.Get<IPointer<IManifest>>();
+            var content = _root.Get<IContent>();
 
             return 0;
         }
