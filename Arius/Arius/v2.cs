@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.V4
+namespace Arius
 {
     public interface IFile
     {
@@ -20,7 +20,7 @@ namespace Arius.V4
         string Name { get; }
     }
 
-    //[Extension("*.*")]
+    [AriusFileExtension("*.*", true)]
     public interface IContent : IRemote, ILocal
     {
     }
@@ -30,25 +30,48 @@ namespace Arius.V4
 
     }
 
-    [Extension2Attribute("*.arius.pointer")]
+    [AriusFileExtension("*.arius.pointer")]
     public interface IPointer<T> : ILocal where T : IManifest
     {
 
     }
 
+    
+
     public abstract class AriusFile : IFile
     {
-        protected AriusFile(FileInfo fi)
+        public abstract string FullName { get; }
+    }
+         
+    public abstract class AriusLocalFile : AriusFile, ILocal
+    {
+        protected AriusLocalFile(FileInfo fi)
         {
             _fi = fi;
         }
 
         private readonly FileInfo _fi;
 
-        public string FullName => _fi.FullName;
+        public override string FullName => _fi.FullName;
     }
 
-    
+    internal class AriusPointerFile : AriusLocalFile, IPointer<IManifest>, ILocal
+    {
+        public AriusPointerFile(AriusRootDirectory root, FileInfo fi) : base(fi)
+        {
+            if (!fi.Exists)
+                throw new ArgumentException("The Pointer file does not exist");
+        }
+    }
+
+    //public class Manifest : IManifest
+    //{
+    //    public string Name { get; }
+    //}
+
+
+
+
 
     public interface ILocal : IFile
     {
@@ -151,22 +174,30 @@ namespace Arius.V4
     //    }
     //}
 
-    public class LocalRootFolder : ILocalRepository<ILocal>
-    {
-        public LocalRootFolder(DirectoryInfo root)
-        {
 
+    internal interface IAriusRootDirectoryOptions : ICommandExecutorOptions
+    {
+        public string Path { get; set; }
+    }
+
+    internal class AriusRootDirectory : ILocalRepository<ILocal>
+    {
+        public AriusRootDirectory(ICommandExecutorOptions options, LocalFileFactory factory)
+        {
+            var root = ((IAriusRootDirectoryOptions)options).Path;
+            _root = new DirectoryInfo(root);
+            _factory = factory;
         }
 
         private readonly DirectoryInfo _root;
+        private readonly LocalFileFactory _factory;
 
         public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : ILocal
         {
-            var ext = typeof(T).GetCustomAttribute<Extension2Attribute>().Extension;
-            //var x = (typeof(T).Implements(typeof(IContent)));
+            var attr = typeof(T).GetCustomAttribute<AriusFileExtensionAttribute>();
+            var localFiles = AriusFileExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T>(this, fi));
 
-
-            throw new NotImplementedException();
+            return localFiles;
         }
 
         public ILocal GetByID(object id)
@@ -186,17 +217,42 @@ namespace Arius.V4
     }
 
 
-    public class Kak
+    internal class LocalFileFactory
     {
-        public void Ha()
+        //public LocalFileFactory(AriusRootDirectory root)
+        //{
+        //    _root = root;
+        //}
+
+        //private readonly AriusRootDirectory _root;
+
+        public T Create<T>(AriusRootDirectory root, FileInfo fi) where T : ILocal
         {
-            var x = new LocalRootFolder(new DirectoryInfo(@"c:\"));
+            if (typeof(T).Name == typeof(IPointer<IManifest>).Name)
+            {
+                //return new AriusPointerFile(_root, fi) as T;
+                ILocal result = new AriusPointerFile(root, fi);
 
-            var content = x.Get<IPointer<IManifest>>();
-            //x.Get(x => x.FullName.EndsWith() == )
-
+                return (T) result;
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
+
+    //public class Kak
+    //{
+    //    public void Ha()
+    //    {
+    //        var x = new AriusRootDirectory(new DirectoryInfo(@"c:\"));
+
+    //        var content = x.Get<IPointer<IManifest>>();
+    //        //x.Get(x => x.FullName.EndsWith() == )
+
+    //    }
+    //}
 }
 
 public static class Helpers
@@ -214,11 +270,21 @@ public static class Helpers
 }
 
 [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
-public class Extension2Attribute : Attribute
+public class AriusFileExtensionAttribute : Attribute
 {
-    public Extension2Attribute(string extension)
+    public AriusFileExtensionAttribute(string extension, bool excludeOthers = false)
     {
         Extension = extension;
+        ExcludeOthers = excludeOthers;
     }
     public string Extension { get; init; }
+    public bool ExcludeOthers { get; init; }
+
+    public static FileInfo[] GetFilesWithExtension(DirectoryInfo dir, AriusFileExtensionAttribute attr)
+    {
+        var otherExtensions = Assembly.GetExecutingAssembly().GetCustomAttributes<AriusFileExtensionAttribute>().Select(attr => attr.Extension);
+        return dir.GetFiles(attr.Extension)
+            .Where(fi => !attr.ExcludeOthers || 
+                         otherExtensions.Any(extToExclude => !fi.Name.EndsWith(extToExclude))).ToArray();
+    }
 }
