@@ -38,7 +38,7 @@ namespace Arius
 
     internal class LocalPointerFile : LocalFile, IPointerFile<IRemote<IEncrypted<IManifestFile>>>
     {
-        public LocalPointerFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi)
+        public LocalPointerFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi, hashValueProvider)
         {
         }
 
@@ -51,12 +51,12 @@ namespace Arius
     internal class LocalContentFile : LocalFile, ILocalContentFile
     {
 
-        public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi)
+        public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi, hashValueProvider)
         {
-            
+
         }
 
-        
+
     }
 
 
@@ -98,3 +98,4 @@ namespace Arius
             }
         }
     }
+}

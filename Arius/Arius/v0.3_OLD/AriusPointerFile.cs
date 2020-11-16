@@ -46,15 +46,6 @@
 //            return new AriusPointerFile(root, new FileInfo(fullName), manifest.Name);
 //        }
 
-////        public static AriusPointerFile FromFile(AriusRootDirectory root, FileInfo fi)
-////        {
-////            if (!fi.Exists)
-////                throw new ArgumentException("The Pointer file does not exist");
-
-////            return new AriusPointerFile(root, fi);
-////        }
-
-        
 
 
 //        // --- CONSTRUCTORS
@@ -63,11 +54,7 @@
 //            _root = root;
 //            _encryptedManifestName = new Lazy<string>(() => encryptedManifestName);
 //        }
-//        private AriusPointerFile(AriusRootDirectory root, FileInfo fi) : base(fi)
-//        {
-//            _root = root;
-//            _encryptedManifestName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
-//        }
+
 
 //        private readonly AriusRootDirectory _root;
 

@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace Arius
 {
-    [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Interface, AllowMultiple = false, Inherited = true)]
     public class FileExtensionAttribute : Attribute
     {
         public FileExtensionAttribute(string extension, bool excludeOthers = false)

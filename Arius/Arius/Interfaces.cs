@@ -13,25 +13,46 @@ namespace Arius
         string Name { get; }
     }
 
+    internal interface ILocalFile : IFile, IHashable
+    {
+    }
+
+    [FileExtension("*.*", true)]
+    internal interface ILocalContentFile : ILocalFile
+    {
+    }
+
+    [FileExtension("*.arius.pointer")]
+    internal interface IPointerFile<TObject> : ILocalFile
+    {
+        TObject GetObject();
+    }
+
+
+
+
+
     internal interface IBlob
     {
         string Name { get; }
     }
 
-
-    internal interface ILocalFile : IFile
+    internal interface IRemote<TObject> : IBlob
     {
+        TObject GetRemoteObject();
     }
 
-    internal interface IRemoteBlob : IBlob
+    internal interface IManifestFile : IFile
     {
+
     }
 
 
-    [FileExtension("*.*", true)]
-    internal interface ILocalContentFile : ILocalFile, IHashable
-    {
-    }
+
+    //internal interface IRemoteBlob : IBlob
+    //{
+    //}
+
 
     ////[FileExtension("*.*", true)]
     //internal interface IRemoteContentBlob : IRemoteBlob, IHashable
@@ -44,21 +65,11 @@ namespace Arius
 
     //}
 
-    internal interface IManifestFile
-    {
 
-    }
 
-    [FileExtension("*.arius.pointer")]
-    internal interface IPointerFile<TObject> : ILocalFile
-    {
-        TObject GetObject();
-    }
 
-    internal interface IRemote<TObject>
-    {
-        TObject GetRemoteObject();
-    }
+
+
 
     internal interface IHashable
     {
