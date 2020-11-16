@@ -8,36 +8,41 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
-    public abstract class File : IFile
-    {
-        public abstract string FullName { get; }
-        public abstract string Name { get; }
-    }
+    //public abstract class File : IFile
+    //{
+    //    public abstract string FullName { get; }
+    //    public abstract string Name { get; }
+    //}
 
-    internal abstract class LocalFile : File, ILocalFile
+    internal abstract class LocalFile : ILocalFile //, IFile
     {
-        protected LocalFile(FileInfo fi)
+        protected LocalFile(FileInfo fi, IHashValueProvider hashValueProvider)
         {
             if (!fi.Exists)
                 throw new ArgumentException("The LocalFile does not exist");
 
             _fi = fi;
+
+            _hash = new Lazy<HashValue>(() => hashValueProvider.GetHashValue(this)); //NO method groep > moet lazily evaluated zijn
         }
+
+        protected readonly Lazy<HashValue> _hash;
 
         private readonly FileInfo _fi;
 
+        public HashValue Hash => _hash.Value;
 
-        public override string FullName => _fi.FullName;
-        public override string Name => _fi.Name;
+        public string FullName => _fi.FullName;
+        public string Name => _fi.Name;
     }
 
-    internal class LocalPointerFile : LocalFile, IPointerFile<IRemoteManifestBlob>
+    internal class LocalPointerFile : LocalFile, IPointerFile<IRemote<IEncrypted<IManifestFile>>>
     {
         public LocalPointerFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi)
         {
         }
 
-        public IRemoteManifestBlob GetObject()
+        public IRemote<IEncrypted<IManifestFile>> GetObject()
         {
             throw new NotImplementedException();
         }
@@ -48,12 +53,10 @@ namespace Arius
 
         public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi)
         {
-            _hash = new Lazy<HashValue>(() => hashValueProvider.GetHashValue(this)); //NO method groep > moet lazily evaluated zijn
+            
         }
 
-        protected readonly Lazy<HashValue> _hash;
-
-        public HashValue Hash => _hash.Value;
+        
     }
 
 
@@ -73,16 +76,25 @@ namespace Arius
 
 
         public string Name => _bi.Name;
+        //}
+
+        //internal  class ManifestBlob : IRemoteManifestBlob
+        //{
+        //}
+
+        //internal class ContentBlob : IRemoteContentBlob
+        //{
+        //}
+
+        class RemoteEncryptedManifestfile : Blob, IRemote<IEncrypted<IManifestFile>>
+        {
+            public RemoteEncryptedManifestfile(BlobItem bi) : base(bi)
+            {
+            }
+
+            public IEncrypted<IManifestFile> GetRemoteObject()
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
-
-    internal  class ManifestBlob : IRemoteManifestBlob
-    {
-        public string Name => throw new NotImplementedException();
-    }
-
-    internal class ContentBlob : IRemoteContentBlob
-    {
-
-    }
-
-}
