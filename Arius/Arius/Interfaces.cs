@@ -33,13 +33,18 @@ namespace Arius
     {
     }
 
-    //[FileExtension("*.*", true)]
-    internal interface IRemoteContentBlob : IRemoteBlob, IHashable
-    {
-    }
+    ////[FileExtension("*.*", true)]
+    //internal interface IRemoteContentBlob : IRemoteBlob, IHashable
+    //{
+    //}
 
-    [FileExtension("*.arius.manifest")]
-    internal interface IRemoteManifestBlob : IRemoteBlob
+    //[FileExtension("*.arius.manifest")]
+    //internal interface IRemoteManifestBlob : IRemoteBlob
+    //{
+
+    //}
+
+    internal interface IManifestFile
     {
 
     }
@@ -50,7 +55,10 @@ namespace Arius
         TObject GetObject();
     }
 
-
+    internal interface IRemote<TObject>
+    {
+        TObject GetRemoteObject();
+    }
 
     internal interface IHashable
     {
