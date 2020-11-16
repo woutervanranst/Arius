@@ -11,7 +11,8 @@ namespace Arius
     {
         public static void DeleteEmptySubdirectories(string parentDirectory)
         {
-            Parallel.ForEach(Directory.GetDirectories(parentDirectory), directory => {
+            Parallel.ForEach(Directory.GetDirectories(parentDirectory), directory =>
+            {
                 DeleteEmptySubdirectories(directory);
                 if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory, false);
             });
