@@ -12,26 +12,26 @@ namespace Arius
 {
     internal class LocalFileFactory
     {
-        //public LocalFileFactory(AriusRootDirectory root)
-        //{
-        //    _root = root;
-        //}
+        public LocalFileFactory(IHashValueProvider contentFileHasher)
+        {
+            _contentFileHasher = contentFileHasher;
+        }
 
-        //private readonly AriusRootDirectory _root;
+        private readonly IHashValueProvider _contentFileHasher;
 
         public T Create<T>(LocalRootDirectory root, FileInfo fi) where T : ILocalFile
         {
-            if (typeof(T).Name == typeof(IPointerFile<IManifestBlob>).Name)
-            {
-                //return new AriusPointerFile(_root, fi) as T;
-                ILocalFile result = new AriusPointerFile(root, fi);
+            ILocalFile result;
 
-                return (T)result;
-            }
+            if (typeof(T).Name == typeof(IPointerFile<IRemoteManifestBlob>).Name)
+                result = new LocalPointerFile(root, fi, _contentFileHasher);
+            else if (typeof(T).Name == nameof(ILocalContentFile))
+                result = new LocalContentFile(root, fi, _contentFileHasher);
             else
-            {
                 throw new NotImplementedException();
-            }
+
+            return (T)result;
+
         }
     }
 }
