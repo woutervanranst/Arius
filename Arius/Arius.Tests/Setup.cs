@@ -100,7 +100,7 @@ namespace Arius.Tests
             Directory.CreateDirectory(targetDir);
 
             foreach (var file in Directory.GetFiles(sourceDir))
-                File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+                System.IO.File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
 
             foreach (var directory in Directory.GetDirectories(sourceDir))
                 CopyFolder(directory, Path.Combine(targetDir, Path.GetFileName(directory)));

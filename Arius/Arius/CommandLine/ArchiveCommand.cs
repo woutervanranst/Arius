@@ -1,5 +1,6 @@
 using Azure.Storage.Blobs.Models;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.CommandLine;
@@ -116,17 +117,17 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ILocalRootDirectoryOptions
+    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions
     {
-        public string AccountName;
-        public string AccountKey;
-        public string Passphrase;
-        public string Container;
-        public bool KeepLocal;
-        public string Tier;
-        public int MinSize;
-        public bool Simulate;
-        public string Path { get; set; }
+        public string AccountName { get; init; }
+        public string AccountKey { get; init; }
+        public string Passphrase { get; init; }
+        public string Container { get; init; }
+        public bool KeepLocal { get; init; }
+        public string Tier { get; init; } 
+        public int MinSize { get; init; }
+        public bool Simulate { get; init; }
+        public string Path { get; init; }
     }
 
     internal class ArchiveCommandExecutor  : ICommandExecutor
@@ -141,9 +142,11 @@ namespace Arius.CommandLine
 
         public int Execute()
         {
-            var pointers = _root.Get<IPointerFile<IManifestBlob>>();
+            var pointers = _root.Get<IPointerFile<IRemoteManifestBlob>>().GroupBy(c => c.GetObject().Hash, c => (ILocalFile)c);
 
-            var content = _root.Get<IContent>();
+            var content = _root.Get<ILocalContentFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
+
+            var kka = pointers.Union(content).ToImmutableArray();
 
             return 0;
         }

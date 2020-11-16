@@ -12,7 +12,7 @@ namespace Arius
 {
     internal interface ILocalRootDirectoryOptions : ICommandExecutorOptions
     {
-        public string Path { get; set; }
+        string Path { get; }
     }
 
     internal class LocalRootDirectory : ILocalRepository<ILocalFile>

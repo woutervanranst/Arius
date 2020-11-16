@@ -7,71 +7,84 @@ using System.Threading.Tasks;
 
 namespace Arius
 {
-    public interface IFile
+    internal interface IFile
     {
         string FullName { get; }
-        //string Extension { get; }
+        string Name { get; }
     }
 
-    public interface IBlob
+    internal interface IBlob
     {
         string Name { get; }
     }
 
-    [FileExtension("*.*", true)]
-    public interface IContent : IRemoteBlob, ILocalFile
+
+    internal interface ILocalFile : IFile
     {
     }
 
-    public interface IManifestBlob : IRemoteBlob
+    internal interface IRemoteBlob : IBlob
+    {
+    }
+
+
+    [FileExtension("*.*", true)]
+    internal interface ILocalContentFile : ILocalFile, IHashable
+    {
+    }
+
+    //[FileExtension("*.*", true)]
+    internal interface IRemoteContentBlob : IRemoteBlob, IHashable
+    {
+    }
+
+    [FileExtension("*.arius.manifest")]
+    internal interface IRemoteManifestBlob : IRemoteBlob
     {
 
     }
 
     [FileExtension("*.arius.pointer")]
-    public interface IPointerFile<T> : ILocalFile where T : IManifestBlob
+    internal interface IPointerFile<TObject> : ILocalFile
     {
-
+        TObject GetObject();
     }
 
-    public interface ILocalFile : IFile
-    {
 
+
+    internal interface IHashable
+    {
+        HashValue Hash { get; }
     }
 
-    public interface IRemoteBlob : IBlob
-    {
-
-    }
-
-    //public interface IChunk<T> where T : IEnumerable<T>
+    //internal interface IChunk<T> where T : IEnumerable<T>
     //{
 
     //}
-    public interface IChunkedFile<T> : IFile where T : IFile
+    internal interface IChunkedFile<T> : IFile where T : IFile
     {
 
     }
 
-    public interface IChunker<T> where T : IFile
+    internal interface IChunker<T> where T : IFile
     {
         IEnumerable<T> Chunk(T fileToChunk);
         T Merge(IEnumerable<T> chunksToJoin);
     }
 
-    public interface IEncrypted<T> where T : IFile
+    internal interface IEncrypted<T> where T : IFile
     {
 
     }
 
-    public interface IEncrypter<T> where T : IFile
+    internal interface IEncrypter<T> where T : IFile
     {
         IEncrypted<T> Chunk(T fileToChunk);
         T Merge(IEnumerable<T> chunksToJoin);
     }
 
 
-    public interface IRepository<TEntity> where TEntity : class
+    internal interface IRepository<TEntity> where TEntity : class
     {
         //void Delete(TEntity entityToDelete);
         //void Delete(object id);
@@ -83,7 +96,7 @@ namespace Arius
         void Update(TEntity entityToUpdate);
     }
 
-    public interface ILocalRepository<TEntity> : IRepository<TEntity> where TEntity : class, ILocalFile
+    internal interface ILocalRepository<TEntity> : IRepository<TEntity> where TEntity : class, ILocalFile
     {
     }
 
