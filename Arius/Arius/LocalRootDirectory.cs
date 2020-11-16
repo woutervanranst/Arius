@@ -35,6 +35,14 @@ namespace Arius
             return localFiles;
         }
 
+        //public IEnumerable<T> Get<T, V>(Expression<Func<T, bool>> filter = null) where T : IPointerFile<V>
+        //{
+        //    var attr = typeof(T).GetCustomAttribute<FileExtensionAttribute>();
+        //    var localFiles = FileExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T, V>(this, fi));
+
+        //    return localFiles;
+        //}
+
         public ILocalFile GetByID(object id)
         {
             throw new NotImplementedException();
