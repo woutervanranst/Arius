@@ -6,7 +6,7 @@ using System.CommandLine.Invocation;
 using System.IO;
 using System.Linq;
 
-namespace Arius
+namespace Arius.CommandLines
 {
     internal class RestoreCommand
     {
