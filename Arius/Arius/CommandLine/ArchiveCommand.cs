@@ -142,11 +142,11 @@ namespace Arius.CommandLine
 
         public int Execute()
         {
-            var pointers = _root.Get<IPointerFile<IRemoteManifestBlob>>().GroupBy(c => c.GetObject().Hash, c => (ILocalFile)c);
+            var pointers = _root.Get<LocalPointerFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
 
             var content = _root.Get<ILocalContentFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
 
-            var kka = pointers.Union(content).ToImmutableArray();
+            //var kka = pointers.Union(content).ToImmutableArray();
 
             return 0;
         }

@@ -39,7 +39,7 @@ namespace Arius
             return GetHashValue((dynamic) hashable);
         }
 
-        private HashValue GetHashValue<T>(IPointerFile<T> hashable) where T : IHashable, IManifestBlob
+        private HashValue GetHashValue<T>(IPointerFile<T> hashable) where T : IHashable
         {
             return hashable.GetObject().Hash;
         }

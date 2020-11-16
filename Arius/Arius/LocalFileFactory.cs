@@ -23,15 +23,38 @@ namespace Arius
         {
             ILocalFile result;
 
-            if (typeof(T).Name == typeof(IPointerFile<IRemoteManifestBlob>).Name)
-                result = new LocalPointerFile(root, fi, _contentFileHasher);
-            else if (typeof(T).Name == nameof(ILocalContentFile))
+            //if (typeof(T).IsAssignableFrom(typeof(IPointerFile<V>)))
+            //{
+
+            //}
+
+            if (typeof(T).Name == nameof(LocalContentFile))
                 result = new LocalContentFile(root, fi, _contentFileHasher);
+            else if (typeof(T).IsAssignableTo(typeof(LocalPointerFile)))
+                result = new LocalPointerFile(root, fi, _contentFileHasher);
             else
                 throw new NotImplementedException();
 
             return (T)result;
 
         }
+
+        //public T Create<T, V>(LocalRootDirectory root, FileInfo fi) where T : IPointerFile<V>
+        //{
+        //    ILocalFile result;
+
+        //    if (typeof(T).IsAssignableFrom(typeof(IPointerFile<V>)))
+        //    {
+
+        //    }
+
+        //    if (typeof(T).Name == nameof(IPointerFile<V>))
+        //        result = new LocalPointerFile(root, fi, _contentFileHasher);
+        //    else
+        //        throw new NotImplementedException();
+
+        //    return (T)result;
+
+        //}
     }
 }
