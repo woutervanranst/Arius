@@ -40,6 +40,7 @@ namespace Arius
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
+                .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddScoped<ArchiveCommandExecutor>()
                 //.AddScoped<SevenZipUtils>()
                 .BuildServiceProvider();
