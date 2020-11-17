@@ -47,47 +47,17 @@ namespace Arius
                 .Build();
 
 
-
-            configurationRoot.GetSection("Logging:File")["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHMMss}.log";
+            //Hack
+            var fileLoggingConfigurationSection = configurationRoot.GetSection("Logging:File");
+            fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
 
             var serviceProvider = new ServiceCollection()
                 .AddLogging(builder =>
                 {
                     builder.AddConfiguration(configurationRoot.GetSection("Logging"))
                         .AddConsole()
-                        .AddFile(configurationRoot.GetSection("Logging:File"));
-
-                    //builder.AddFilter(((provider, category, logLevel) =>
-                    //    {
-                    //        return true;
-                    //    }))
-                    //    .AddConsole(configure => configure.. LogLevel.Information)
-                    //    .AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log", LogLevel.Trace);
+                        .AddFile(fileLoggingConfigurationSection);
                 })
-
-                //.AddSingleton(new LoggerFactory()
-                //    .AddConsole())
-                //.AddLogging(builder =>
-                //{
-                //    configurationRoot.GetSection("Logging");
-                //})
-
-                //.AddLogging( builder =>
-                //{
-                //    builder.AddConsole();
-                   
-                //    //builder.AddFile($"arius-{DateTime.Now:hhmmss}.log");
-                //    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log", LogLevel.Trace);
-
-                //    builder.AddFilter( (provider, category, logLevel) =>
-                //    {
-                //        if (provider.Contains("ConsoleLoggerProvider"))
-                //            return logLevel >= LogLevel.Warning;
-
-                //        //.AddFilter(ll => ll >= LogLevel.Trace)
-                //        return false;
-                //    });
-                //})
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
