@@ -41,7 +41,7 @@ namespace Arius
                 {
                     builder.AddConsole().AddFilter(ll => ll >= LogLevel.Warning);
                     //builder.AddFile($"arius-{DateTime.Now:hhmmss}.log");
-                    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:hhMMss}.log");
+                    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log");
                 })
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootDirectory>()
