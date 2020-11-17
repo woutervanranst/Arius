@@ -46,14 +46,14 @@ namespace Arius
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-
-            //Hack
-            var fileLoggingConfigurationSection = configurationRoot.GetSection("Logging:File");
-            fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
-
             var serviceProvider = new ServiceCollection()
                 .AddLogging(builder =>
                 {
+                    //Hack
+                    var fileLoggingConfigurationSection = configurationRoot.GetSection("Logging:File");
+                    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
+
+
                     builder.AddConfiguration(configurationRoot.GetSection("Logging"))
                         .AddConsole()
                         .AddFile(fileLoggingConfigurationSection);

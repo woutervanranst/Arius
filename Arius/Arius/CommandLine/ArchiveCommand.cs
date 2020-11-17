@@ -164,8 +164,6 @@ namespace Arius.CommandLine
              */
 
             _logger.LogWarning("test");
-            _logger.LogError("haha");
-
 
             //1.1 Ensure all chunks are uploaded
             var localContentPerHash = _root
@@ -175,7 +173,7 @@ namespace Arius.CommandLine
                 .ToImmutableArray();
 
             _logger.LogInformation($"Found {localContentPerHash.Count()} files");
-            _logger.LogTrace(string.Join(Environment.NewLine, localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
+            _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
 
             var remoteManifestHashes = new HashValue[] { };
             //    var remoteManifestHashes = archive
