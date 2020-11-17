@@ -1,12 +1,16 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Arius.CommandLine;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
+using NUnit.Framework.Internal;
 
 // https://www.automatetheplanet.com/nunit-cheat-sheet/
 
@@ -31,11 +35,18 @@ namespace Arius.Tests
                 Passphrase = TestSetup.passphrase,
                 Container = TestSetup.container.Name,
                 KeepLocal = true,
-                Tier = "cool",
+                Tier = "fdsfsd",
                 MinSize = 0,
                 Simulate = false,
                 Path = TestSetup.rootDirectoryInfo.FullName
             };
+
+            //    var accessTier = tier switch
+            //    {
+            //        "hot" => AccessTier.Hot,
+            //        "archive" => AccessTier.Archive,
+            //        _ => throw new NotImplementedException()
+            //    };
 
             root = new LocalRootDirectory(options, new LocalFileFactory(new SHA256Hasher(options)));
         }
@@ -43,6 +54,29 @@ namespace Arius.Tests
         public void TestInit()
         {
             // Runs before each test. (Optional)
+        }
+
+        [Test]
+        public void Test()
+        {
+            //var pointerFiles = TestSetup.sourceFolder., 
+            //    ;
+
+            DirectoryExtensions.DirectoryCopy(TestSetup.sourceFolder.FullName, TestSetup.rootDirectoryInfo.FullName, true);
+
+            var pointerFileInfos = TestSetup.rootDirectoryInfo.GetFiles("*" + typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension);
+            var contentFileInfos = TestSetup.rootDirectoryInfo.GetFiles("*" + typeof(LocalContentFile).GetCustomAttribute<ExtensionAttribute>().Extension);
+
+            IEnumerable<ILocalFile> localPointerFiles = root.Get<LocalPointerFile>();
+            IEnumerable<ILocalFile> localContentFiles = root.Get<LocalContentFile>();
+
+            Assert.AreEqual(pointerFileInfos.Length, localPointerFiles.Count());
+            Assert.AreEqual(contentFileInfos.Length, localContentFiles.Count());
+
+            Assert.IsTrue(localPointerFiles.All(lpf => pointerFileInfos.SingleOrDefault(fi => fi.FullName == lpf.FullName) is not null));
+            Assert.IsTrue(localContentFiles.All(lcf => contentFileInfos.SingleOrDefault(fi => fi.FullName == lcf.FullName) is not null));
+
+            var hashedAndGrouped = localPointerFiles.Union(localContentFiles).GroupBy(c => c.Hash).ToImmutableArray();
         }
 
         //        [Test, Order(10)]
@@ -293,17 +327,17 @@ namespace Arius.Tests
         //        }
 
 
-        //        [TearDown]
-        //        public void TestCleanup()
-        //        {
-        //            // Runs after each test. (Optional)
-        //        }
-        //        [OneTimeTearDown]
-        //        public void ClassCleanup()
-        //        {
-        //            // Runs once after all tests in this class are executed. (Optional)
-        //            // Not guaranteed that it executes instantly after all tests from the class.
-        //        }
+        [TearDown]
+        public void TestCleanup()
+        {
+            // Runs after each test. (Optional)
+        }
+        [OneTimeTearDown]
+        public void ClassCleanup()
+        {
+            // Runs once after all tests in this class are executed. (Optional)
+            // Not guaranteed that it executes instantly after all tests from the class.
+        }
 
 
 
