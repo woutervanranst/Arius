@@ -24,7 +24,7 @@ namespace Arius
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // 1. Find in the PATH folders
-                var executables = path.Split(';')
+                var executables = path.Trim(';').Split(';')
                     .Select(dir => new DirectoryInfo(dir))
                     .SelectMany(dir => dir.TryGetFiles(windowsExecutableName))
                     .ToArray();
