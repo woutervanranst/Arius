@@ -124,7 +124,7 @@ namespace Arius.CommandLine
         public string Passphrase { get; init; }
         public string Container { get; init; }
         public bool KeepLocal { get; init; }
-        public string Tier { get; init; } 
+        public AccessTier Tier { get; init; } 
         public int MinSize { get; init; }
         public bool Simulate { get; init; }
         public string Path { get; init; }
@@ -142,6 +142,11 @@ namespace Arius.CommandLine
 
         public int Execute()
         {
+            ////TODO Simulate
+            ////TODO MINSIZE
+            ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
+
+
             //var pointers = _root.Get<LocalPointerFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
             ////pointers.ToImmutableArray();
 
@@ -160,52 +165,24 @@ namespace Arius.CommandLine
 
             var kka = pointers.Union(content).GroupBy(c => c.Hash).ToImmutableArray();
 
+            /*
+             * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
+             */
+
+            //1.1 Ensure all chunks are uploaded
+            var localContentPerHash = _root
+                .Get<LocalContentFile>()
+                .AsParallel()
+                .GroupBy(lcf => lcf.Hash)
+                .ToImmutableArray();
+
             return 0;
         }
-        //public ArchiveCommandExecuter(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, bool dedup)
-        //{
 
-        //}
 
-    //private delegate int ArchiveDelegate(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path);
+        
 
-        //private static int Execute(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
-        //{
-        //    var accessTier = tier switch
-        //    {
-        //        "hot" => AccessTier.Hot,
-        //        "cool" => AccessTier.Cool,
-        //        "archive" => AccessTier.Archive,
-        //        _ => throw new NotImplementedException()
-        //    };
-
-        //    var archive = new AriusRemoteArchive(accountName, accountKey, container);
-        //    var root = new AriusRootDirectory(path);
-
-        //    return Archive(root, archive, passphrase, keepLocal, accessTier, minSize, simulate, false);
-
-        //}
-
-        //public static int Archive(AriusRootDirectory root, AriusRemoteArchive archive, string passphrase, bool keepLocal, AccessTier tier, int minSize, bool simulate, bool dedup)
-        //{
-
-        //    ////TODO Simulate
-        //    //// TODO MINSIZE
-        //    ///
-        //    /// TODO CHeck if the archive is deduped and password by checking the first amnifest file
-
-        //    /*
-        //     * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
-        //     */
-
-        //    //1.1 Ensure all chunks are uploaded
-        //    var localContentPerHash = root
-        //        .GetNonAriusFiles()
-        //        .AsParallel()
-        //        //.WithDegreeOfParallelism(1)
-        //        .Select(fi => new LocalContentFile(root, fi, passphrase))
-        //        .GroupBy(lcf => lcf.Hash)
-        //        .ToImmutableArray();
+        
 
         //    var remoteManifestHashes = archive
         //        .GetRemoteEncryptedAriusManifests()
