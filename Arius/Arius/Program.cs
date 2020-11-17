@@ -41,6 +41,10 @@ namespace Arius
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
+                .AddSingleton<IChunker<LocalContentFile>>(
+                    ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
+                        new DedupChunker() : 
+                        new Chunker())
                 .AddScoped<ArchiveCommandExecutor>()
                 //.AddScoped<SevenZipUtils>()
                 .BuildServiceProvider();

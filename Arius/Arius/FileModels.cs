@@ -65,7 +65,7 @@ namespace Arius
     }
 
     [Extension(".*", true)]
-    internal class LocalContentFile : LocalFile, ILocalContentFile
+    internal class LocalContentFile : LocalFile, ILocalContentFile, IChunk<LocalContentFile>
     {
 
         public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
