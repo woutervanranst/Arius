@@ -71,6 +71,10 @@ Arius relies on the 7zip command line and Azure blob storage cli.
 
 # Install
 ## Linux
+### Prereqs
+* 7zip
+```sudo apt-get install p7zip-full```
+
 Run the following commands:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
 ```
