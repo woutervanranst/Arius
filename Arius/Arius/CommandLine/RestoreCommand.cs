@@ -248,16 +248,8 @@ namespace Arius.CommandLines
         //    }
         //    else
         //    {
-        //        //Dedup
-        //        throw new NotImplementedException();
 
-        //        //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-        //        //var concaten = new ConcatenatedStream(chunkFiles);
 
-        //        //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-        //        //using var fff = File.Create(restorePath);
-        //        //concaten.CopyTo(fff);
-        //        //fff.Close();
         //    }
 
         //}

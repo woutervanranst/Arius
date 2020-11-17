@@ -4,6 +4,7 @@ using System.CommandLine.Parsing;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
@@ -36,7 +37,12 @@ namespace Arius
             var r = rootCommand.InvokeAsync(args).Result;
 
             var serviceProvider = new ServiceCollection()
-                .AddLogging()
+                .AddLogging(builder =>
+                {
+                    builder.AddConsole().AddFilter(ll => ll >= LogLevel.Warning);
+                    //builder.AddFile($"arius-{DateTime.Now:hhmmss}.log");
+                    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:hhMMss}.log");
+                })
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
@@ -45,6 +51,7 @@ namespace Arius
                     ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
                         new DedupChunker() : 
                         new Chunker())
+                .AddSingleton<SevenZipEncrypter<IChunk<LocalContentFile>>>()
                 .AddScoped<ArchiveCommandExecutor>()
                 //.AddScoped<SevenZipUtils>()
                 .BuildServiceProvider();

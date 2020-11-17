@@ -18,48 +18,6 @@
 //        private readonly FileInfo _localContent;
 //        private readonly Lazy<string> _hash;
 
-//        public IUnencryptedChunk[] GetChunks(bool dedup)
-//        {
-//            if (dedup)
-//            {
-//                throw new NotImplementedException();
-
-//                //var sb = new StreamBreaker();
-
-//                //using var fs = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
-//                //var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
-//                //fs.Position = 0;
-
-//                //DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
-//                //tempDir.Create();
-
-//                //foreach (var chunk in chunks)
-//                //{
-//                //    var chunkFullName = Path.Combine(tempDir.FullName, BitConverter.ToString(chunk.Hash));
-
-//                //    byte[] buff = new byte[chunk.Length];
-//                //    fs.Read(buff, 0, (int)chunk.Length);
-
-//                //    using var fileStream = File.Create(chunkFullName);
-//                //    fileStream.Write(buff, 0, (int)chunk.Length);
-//                //    fileStream.Close();
-//                //}
-
-//                //fs.Close();
-
-//                //var laf = new LocalAriusManifest(this);
-//                //var lac = chunks.Select(c => new LocalAriusChunk("")).ToImmutableArray();
-
-//                //var r = new AriusFile(this, laf, lac);
-
-//                //return r;
-//            }
-//            else
-//            {
-//                return new IUnencryptedChunk[] { this };
-//            }
-//        }
-
 //        /// <summary>
 //        /// Get this LocalContentFile (in it s entirety) as an EncryptedAriusChunk (ie when not deduping)
 //        /// IUnencryptedChunk implementation
