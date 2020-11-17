@@ -33,7 +33,7 @@ namespace Arius
                 {
                     var fullname = executables.First().FullName;
 
-                    logger.LogInformation($"Found {executables.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullname}");
+                    logger.LogDebug($"Found {executables.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullname}");
 
                     return fullname;
                 }
@@ -47,7 +47,7 @@ namespace Arius
                     logger.LogWarning($"Did not find {windowsExecutableName} in PATH variable. Searching on {path}. Consider adding the location to the PATH variable to improve speed.");
                     var fullNames = p.Execute($" /R {path} {windowsExecutableName}").Split(Environment.NewLine);
 
-                    logger.LogInformation($"Found {fullNames.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullNames.First()}");
+                    logger.LogDebug($"Found {fullNames.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullNames.First()}");
 
                     return fullNames.First();
                 }
