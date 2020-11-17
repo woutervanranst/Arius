@@ -67,13 +67,17 @@ namespace Arius
     [Extension(".*", true)]
     internal class LocalContentFile : LocalFile, ILocalContentFile, IChunk<LocalContentFile>
     {
-
         public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
-
         }
+    }
 
-
+    [Extension(".7z.arius")]
+    internal class EncryptedLocalContentFile : LocalFile, IEncrypted<IChunk<LocalContentFile>>
+    {
+        public EncryptedLocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
+        {
+        }
     }
 
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -103,8 +104,8 @@ namespace Arius
 
     internal interface IEncrypter<T> where T : IFile
     {
-        IEncrypted<T> Encrypt(T fileToChunk);
-        T Decrypt(IEnumerable<T> chunksToJoin);
+        IEncrypted<T> Encrypt(T fileToEncrypt);
+        T Decrypt(IEnumerable<T> fileToDecrypt);
     }
 
 
@@ -122,6 +123,7 @@ namespace Arius
 
     internal interface ILocalRepository<TEntity> : IRepository<TEntity> where TEntity : class, ILocalFile
     {
+        DirectoryInfo Root { get; }
     }
 
 }

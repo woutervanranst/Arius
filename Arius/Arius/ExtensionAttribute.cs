@@ -24,6 +24,10 @@ namespace Arius
 
         public bool IsMatch(FileInfo fi)
         {
+            if (ExcludeOthers &&
+                OtherExtensions(this).Any(extToExclude => fi.Name.EndsWith(extToExclude)))
+                return false;
+
             if (Extension == ".*")
                 return true;
 
@@ -41,13 +45,16 @@ namespace Arius
         private static readonly Lazy<ImmutableArray<string>> _extensions;
         public static FileInfo[] GetFilesWithExtension(DirectoryInfo dir, ExtensionAttribute attr)
         {
-            var otherExtensions = _extensions.Value
-                .Except(new[] {attr.Extension})
-                .ToImmutableArray();
-
             return dir.GetFiles($"*{attr.Extension}")
                 .Where(fi => !attr.ExcludeOthers ||
-                             !otherExtensions.Any(extToExclude => fi.Name.EndsWith(extToExclude))).ToArray();
+                             !OtherExtensions(attr).Any(extToExclude => fi.Name.EndsWith(extToExclude))).ToArray();
+        }
+
+        private static ImmutableArray<string> OtherExtensions(ExtensionAttribute attr)
+        {
+            return _extensions.Value
+                .Except(new[] { attr.Extension })
+                .ToImmutableArray();
         }
     }
 }

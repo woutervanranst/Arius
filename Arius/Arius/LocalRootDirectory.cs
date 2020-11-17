@@ -35,6 +35,7 @@ namespace Arius
             return localFiles;
         }
 
+        public DirectoryInfo Root => _root;
 
         public ILocalFile GetByID(object id)
         {
@@ -50,5 +51,7 @@ namespace Arius
         {
             throw new NotImplementedException();
         }
+
+        
     }
 }

@@ -27,6 +27,8 @@ namespace Arius
                 result = new LocalPointerFile(root, fi, _contentFileHasher); 
             else if (typeof(LocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
                 result = new LocalContentFile(root, fi, _contentFileHasher);
+            else if (typeof(EncryptedLocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+                result = new EncryptedLocalContentFile(root, fi, _contentFileHasher);
             else
                 throw new NotImplementedException();
 
