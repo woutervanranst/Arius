@@ -105,7 +105,7 @@ namespace Arius
     internal interface IEncrypter<T> where T : IFile
     {
         IEncrypted<T> Encrypt(T fileToEncrypt);
-        T Decrypt(IEnumerable<T> fileToDecrypt);
+        T Decrypt(IEncrypted<T> fileToDecrypt);
     }
 
 

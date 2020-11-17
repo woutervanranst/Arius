@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
 {
@@ -134,16 +135,20 @@ namespace Arius.CommandLine
     internal class ArchiveCommandExecutor  : ICommandExecutor
     {
         public ArchiveCommandExecutor(ICommandExecutorOptions options, 
+            ILogger<ArchiveCommandExecutor> logger,
             LocalRootDirectory root, 
             IChunker<LocalContentFile> chunker, 
             SevenZipEncrypter<IChunk<LocalContentFile>> encrypter)
         {
             var o = (ArchiveOptions)options;
+
+            _logger = logger;
             _root = root;
             _chunker = chunker;
             _encrypter = encrypter;
         }
 
+        private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootDirectory _root;
         private readonly IChunker<LocalContentFile> _chunker;
         private readonly SevenZipEncrypter<IChunk<LocalContentFile>> _encrypter;
@@ -158,12 +163,19 @@ namespace Arius.CommandLine
              * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
              */
 
+            _logger.LogWarning("test");
+            _logger.LogError("haha");
+
+
             //1.1 Ensure all chunks are uploaded
             var localContentPerHash = _root
                 .Get<LocalContentFile>()
                 .AsParallel()
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
+
+            _logger.LogInformation($"Found {localContentPerHash.Count()} files");
+            _logger.LogTrace(string.Join(Environment.NewLine, localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
 
             var remoteManifestHashes = new HashValue[] { };
             //    var remoteManifestHashes = archive
@@ -188,7 +200,6 @@ namespace Arius.CommandLine
             //        .Select(reac => reac.Hash)
             //        .ToImmutableArray();
 
-
             var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
                 .AsParallel()
                 .WithDegreeOfParallelism(1)
@@ -200,34 +211,9 @@ namespace Arius.CommandLine
                 );
 
 
-
-            //    var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
-            //        .AsParallel()
-            //        .WithDegreeOfParallelism(1)
-            //        .ToImmutableDictionary(
-            //            p => p.Key,
-            //            p => p.Value
-            //                .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
-            //                .Select(c => c.GetEncryptedAriusChunk(passphrase)).ToImmutableArray()
-            //        );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //    var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
-            //        .SelectMany(eac => eac)
-            //        .ToImmutableArray();
+            var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
+                .SelectMany(eac => eac)
+                .ToImmutableArray();
 
 
             //    //Upload Chunks

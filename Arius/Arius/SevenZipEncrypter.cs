@@ -26,7 +26,7 @@ namespace Arius
             _passphrase = ((IEncrypterOptions) options).Passphrase;
             
             //Search async for the 7z Library (on another thread)
-            _7zLibraryPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.dll", "7z"));
+            _7ZLibraryPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.dll", "7z"));
 
             _root = root;
 
@@ -34,7 +34,7 @@ namespace Arius
         }
 
         private readonly string _passphrase;
-        private readonly Task<string> _7zLibraryPath;
+        private readonly Task<string> _7ZLibraryPath;
         private readonly LocalRootDirectory _root;
         private readonly LocalFileFactory _factory;
 
@@ -47,7 +47,7 @@ namespace Arius
         {
             try
             {
-                SevenZipBase.SetLibraryPath(_7zLibraryPath.Result);
+                SevenZipBase.SetLibraryPath(_7ZLibraryPath.Result);
             }
             catch (SevenZipLibraryException e)
             {
@@ -70,7 +70,7 @@ namespace Arius
 
         
 
-        public T Decrypt(IEnumerable<T> fileToDecrypt)
+        public T Decrypt(IEncrypted<T> fileToDecrypt)
         {
             throw new NotImplementedException();
         }
