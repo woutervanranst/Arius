@@ -17,15 +17,14 @@ namespace Arius
     {
     }
 
-    [FileExtension("*.*", true)]
     internal interface ILocalContentFile : ILocalFile
     {
     }
 
-    [FileExtension("*.arius.pointer")]
     internal interface IPointerFile<TObject> : ILocalFile
     {
         TObject GetObject();
+        string GetObjectName();
     }
 
 
@@ -107,7 +106,7 @@ namespace Arius
     {
         //void Delete(TEntity entityToDelete);
         //void Delete(object id);
-        IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : TEntity;
+        IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : class, TEntity;
         //IEnumerable<TEntity> Get(Expression<Func<TEntity, bool>> filter = null);
         TEntity GetByID(object id);
         //IEnumerable<TEntity> GetWithRawSql(string query, params object[] parameters);

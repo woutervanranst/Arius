@@ -16,7 +16,7 @@ namespace Arius
 
     internal abstract class LocalFile : ILocalFile //, IFile
     {
-        protected LocalFile(FileInfo fi, IHashValueProvider hashValueProvider)
+        protected LocalFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider)
         {
             if (!fi.Exists)
                 throw new ArgumentException("The LocalFile does not exist");
@@ -36,22 +36,39 @@ namespace Arius
         public string Name => _fi.Name;
     }
 
+    [Extension(".arius.pointer")]
     internal class LocalPointerFile : LocalFile, IPointerFile<IRemote<IEncrypted<IManifestFile>>>
     {
-        public LocalPointerFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi, hashValueProvider)
+        public LocalPointerFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
+            _objectName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
 
+
+        /// <summary>
+        /// The name of the object that this pointer is pointing to
+        /// </summary>
+        /// <returns></returns>
+        public string GetObjectName() => _objectName.Value;
+
+        private readonly Lazy<string> _objectName;
+
+        /// <summary>
+        /// The object that this pointer is pointing to
+        /// </summary>
+        /// <returns></returns>
         public IRemote<IEncrypted<IManifestFile>> GetObject()
         {
-            throw new NotImplementedException();
+            return null;
+            //throw new NotImplementedException();
         }
     }
 
+    [Extension(".*", true)]
     internal class LocalContentFile : LocalFile, ILocalContentFile
     {
 
-        public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(fi, hashValueProvider)
+        public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
 
         }
@@ -60,12 +77,7 @@ namespace Arius
     }
 
 
-
-
-
-
-
-    abstract class Blob : IBlob
+    internal abstract class Blob : IBlob
     {
         protected Blob(BlobItem bi)
         {
@@ -76,26 +88,27 @@ namespace Arius
 
 
         public string Name => _bi.Name;
-        //}
+        
+    }
 
-        //internal  class ManifestBlob : IRemoteManifestBlob
-        //{
-        //}
+    //internal  class ManifestBlob : IRemoteManifestBlob
+    //{
+    //}
 
-        //internal class ContentBlob : IRemoteContentBlob
-        //{
-        //}
+    //internal class ContentBlob : IRemoteContentBlob
+    //{
+    //}
 
-        class RemoteEncryptedManifestfile : Blob, IRemote<IEncrypted<IManifestFile>>
+    [Extension(".manifest.7z.arius")]
+    class RemoteEncryptedManifestBlob : Blob, IRemote<IEncrypted<IManifestFile>>
+    {
+        public RemoteEncryptedManifestBlob(BlobItem bi) : base(bi)
         {
-            public RemoteEncryptedManifestfile(BlobItem bi) : base(bi)
-            {
-            }
+        }
 
-            public IEncrypted<IManifestFile> GetRemoteObject()
-            {
-                throw new NotImplementedException();
-            }
+        public IEncrypted<IManifestFile> GetRemoteObject()
+        {
+            throw new NotImplementedException();
         }
     }
 }

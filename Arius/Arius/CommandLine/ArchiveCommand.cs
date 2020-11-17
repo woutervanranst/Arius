@@ -142,11 +142,23 @@ namespace Arius.CommandLine
 
         public int Execute()
         {
-            var pointers = _root.Get<LocalPointerFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
+            //var pointers = _root.Get<LocalPointerFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
+            ////pointers.ToImmutableArray();
 
-            var content = _root.Get<ILocalContentFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
+            //var content = _root.Get<LocalContentFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
+            ////content.ToImmutableArray();
 
-            //var kka = pointers.Union(content).ToImmutableArray();
+            //var kka = pointers.Union(content).GroupBy(c => c.Key).ToImmutableArray();
+
+            //return 0;
+
+            IEnumerable<ILocalFile> pointers = _root.Get<LocalPointerFile>();
+            //pointers.ToImmutableArray();
+
+            IEnumerable<ILocalFile> content = _root.Get<LocalContentFile>();
+            //content.ToImmutableArray();
+
+            var kka = pointers.Union(content).GroupBy(c => c.Hash).ToImmutableArray();
 
             return 0;
         }

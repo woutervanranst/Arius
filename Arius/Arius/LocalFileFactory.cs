@@ -23,17 +23,24 @@ namespace Arius
         {
             ILocalFile result;
 
+            if (typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+                result = new LocalPointerFile(root, fi, _contentFileHasher); 
+            else if (typeof(LocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+                result = new LocalContentFile(root, fi, _contentFileHasher);
+            else
+                throw new NotImplementedException();
+
             //if (typeof(T).IsAssignableFrom(typeof(IPointerFile<V>)))
             //{
 
             //}
 
-            if (typeof(T).Name == nameof(LocalContentFile))
-                result = new LocalContentFile(root, fi, _contentFileHasher);
-            else if (typeof(T).IsAssignableTo(typeof(LocalPointerFile)))
-                result = new LocalPointerFile(root, fi, _contentFileHasher);
-            else
-                throw new NotImplementedException();
+            //if (typeof(T).Name == nameof(LocalContentFile))
+            //    result = new LocalContentFile(root, fi, _contentFileHasher);
+            //else if (typeof(T).IsAssignableTo(typeof(LocalPointerFile)))
+            //    result = new LocalPointerFile(root, fi, _contentFileHasher);
+            //else
+            //    throw new NotImplementedException();
 
             return (T)result;
 

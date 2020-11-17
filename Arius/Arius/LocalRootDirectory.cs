@@ -27,21 +27,14 @@ namespace Arius
         private readonly DirectoryInfo _root;
         private readonly LocalFileFactory _factory;
 
-        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : ILocalFile
+        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : class, ILocalFile
         {
-            var attr = typeof(T).GetCustomAttribute<FileExtensionAttribute>();
-            var localFiles = FileExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T>(this, fi));
+            var attr = typeof(T).GetCustomAttribute<ExtensionAttribute>();
+            var localFiles = ExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T>(this, fi));
 
             return localFiles;
         }
 
-        //public IEnumerable<T> Get<T, V>(Expression<Func<T, bool>> filter = null) where T : IPointerFile<V>
-        //{
-        //    var attr = typeof(T).GetCustomAttribute<FileExtensionAttribute>();
-        //    var localFiles = FileExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T, V>(this, fi));
-
-        //    return localFiles;
-        //}
 
         public ILocalFile GetByID(object id)
         {
