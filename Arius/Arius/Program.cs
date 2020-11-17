@@ -1,10 +1,14 @@
 ﻿using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.Configuration;
+using System.IO;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
@@ -36,13 +40,54 @@ namespace Arius
 
             var r = rootCommand.InvokeAsync(args).Result;
 
+
+            var configurationRoot = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+
+
+
+            configurationRoot.GetSection("Logging:File")["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHMMss}.log";
+
             var serviceProvider = new ServiceCollection()
                 .AddLogging(builder =>
                 {
-                    builder.AddConsole().AddFilter(ll => ll >= LogLevel.Warning);
-                    //builder.AddFile($"arius-{DateTime.Now:hhmmss}.log");
-                    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log");
+                    builder.AddConfiguration(configurationRoot.GetSection("Logging"))
+                        .AddConsole()
+                        .AddFile(configurationRoot.GetSection("Logging:File"));
+
+                    //builder.AddFilter(((provider, category, logLevel) =>
+                    //    {
+                    //        return true;
+                    //    }))
+                    //    .AddConsole(configure => configure.. LogLevel.Information)
+                    //    .AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log", LogLevel.Trace);
                 })
+
+                //.AddSingleton(new LoggerFactory()
+                //    .AddConsole())
+                //.AddLogging(builder =>
+                //{
+                //    configurationRoot.GetSection("Logging");
+                //})
+
+                //.AddLogging( builder =>
+                //{
+                //    builder.AddConsole();
+                   
+                //    //builder.AddFile($"arius-{DateTime.Now:hhmmss}.log");
+                //    builder.AddFile("arius-{Date}-" + $"{DateTime.Now:HHMMss}.log", LogLevel.Trace);
+
+                //    builder.AddFilter( (provider, category, logLevel) =>
+                //    {
+                //        if (provider.Contains("ConsoleLoggerProvider"))
+                //            return logLevel >= LogLevel.Warning;
+
+                //        //.AddFilter(ll => ll >= LogLevel.Trace)
+                //        return false;
+                //    });
+                //})
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
@@ -53,7 +98,6 @@ namespace Arius
                         new Chunker())
                 .AddSingleton<SevenZipEncrypter<IChunk<LocalContentFile>>>()
                 .AddScoped<ArchiveCommandExecutor>()
-                //.AddScoped<SevenZipUtils>()
                 .BuildServiceProvider();
 
 
