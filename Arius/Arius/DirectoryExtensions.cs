@@ -7,8 +7,23 @@ using System.Threading.Tasks;
 
 namespace Arius
 {
-    class DirectoryExtensions
+    static class DirectoryExtensions
     {
+        public static FileInfo[] TryGetFiles(this DirectoryInfo d, string searchPattern)
+        {
+            try
+            {
+                return d.GetFiles(searchPattern, SearchOption.AllDirectories);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Array.Empty<FileInfo>();
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return Array.Empty<FileInfo>();
+            }
+        }
         public static void DeleteEmptySubdirectories(string parentDirectory)
         {
             Parallel.ForEach(Directory.GetDirectories(parentDirectory), directory =>

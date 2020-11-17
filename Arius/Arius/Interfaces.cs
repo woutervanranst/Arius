@@ -80,20 +80,21 @@ namespace Arius
         HashValue Hash { get; }
     }
 
-    internal interface IChunk<T> // where T : IEnumerable<T>
+
+
+
+    internal interface IChunk<T> : IHashable, IFile // where T : IEnumerable<T>
     {
 
     }
-    //internal interface IChunkedFile<T> : IFile where T : IFile
-    //{
-
-    //}
-
     internal interface IChunker<T> where T : class, ILocalContentFile
     {
         IEnumerable<IChunk<T>> Chunk(T fileToChunk);
         T Merge(IEnumerable<IChunk<T>> chunksToJoin);
     }
+
+
+
 
     internal interface IEncrypted<T> where T : IFile
     {
@@ -102,8 +103,8 @@ namespace Arius
 
     internal interface IEncrypter<T> where T : IFile
     {
-        IEncrypted<T> Chunk(T fileToChunk);
-        T Merge(IEnumerable<T> chunksToJoin);
+        IEncrypted<T> Encrypt(T fileToChunk);
+        T Decrypt(IEnumerable<T> chunksToJoin);
     }
 
 

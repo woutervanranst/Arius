@@ -17,11 +17,6 @@
 //        static AriusRemoteArchive()
 //        {
 //            /*
-//             * = Path.GetPathRoot(Environment.SystemDirectory)
-//             * where /R . azcopy
-//             * https://blog.stephencleary.com/2012/08/asynchronous-lazy-initialization.html
-//             * https://devblogs.microsoft.com/pfxteam/asynclazyt/
-//             */
 
 //            AzCopyPath = @"C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\CommonExtensions\Microsoft\ModelBuilder\AzCopyService\azcopy.exe";
 //        }
