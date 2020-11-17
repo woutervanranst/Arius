@@ -41,6 +41,11 @@ namespace Arius
         TObject GetRemoteObject();
     }
 
+
+
+
+
+
     internal interface IManifestFile : IFile
     {
 
@@ -75,19 +80,19 @@ namespace Arius
         HashValue Hash { get; }
     }
 
-    //internal interface IChunk<T> where T : IEnumerable<T>
-    //{
-
-    //}
-    internal interface IChunkedFile<T> : IFile where T : IFile
+    internal interface IChunk<T> // where T : IEnumerable<T>
     {
 
     }
+    //internal interface IChunkedFile<T> : IFile where T : IFile
+    //{
 
-    internal interface IChunker<T> where T : IFile
+    //}
+
+    internal interface IChunker<T> where T : class, ILocalContentFile
     {
-        IEnumerable<T> Chunk(T fileToChunk);
-        T Merge(IEnumerable<T> chunksToJoin);
+        IEnumerable<IChunk<T>> Chunk(T fileToChunk);
+        T Merge(IEnumerable<IChunk<T>> chunksToJoin);
     }
 
     internal interface IEncrypted<T> where T : IFile

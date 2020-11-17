@@ -117,7 +117,7 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions
+    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions, IChunkerOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -127,43 +127,27 @@ namespace Arius.CommandLine
         public AccessTier Tier { get; init; } 
         public int MinSize { get; init; }
         public bool Simulate { get; init; }
+        public bool Dedup { get; init; }
         public string Path { get; init; }
     }
 
     internal class ArchiveCommandExecutor  : ICommandExecutor
     {
-        public ArchiveCommandExecutor(ICommandExecutorOptions options, LocalRootDirectory root)
+        public ArchiveCommandExecutor(ICommandExecutorOptions options, LocalRootDirectory root, IChunker<LocalContentFile> chunker)
         {
             var o = (ArchiveOptions)options;
             _root = root;
+            _chunker = chunker;
         }
 
         private readonly LocalRootDirectory _root;
+        private readonly IChunker<LocalContentFile> _chunker;
 
         public int Execute()
         {
             ////TODO Simulate
             ////TODO MINSIZE
             ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
-
-
-            //var pointers = _root.Get<LocalPointerFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
-            ////pointers.ToImmutableArray();
-
-            //var content = _root.Get<LocalContentFile>().GroupBy(c => c.Hash, c => (ILocalFile)c);
-            ////content.ToImmutableArray();
-
-            //var kka = pointers.Union(content).GroupBy(c => c.Key).ToImmutableArray();
-
-            //return 0;
-
-            IEnumerable<ILocalFile> pointers = _root.Get<LocalPointerFile>();
-            //pointers.ToImmutableArray();
-
-            IEnumerable<ILocalFile> content = _root.Get<LocalContentFile>();
-            //content.ToImmutableArray();
-
-            var kka = pointers.Union(content).GroupBy(c => c.Hash).ToImmutableArray();
 
             /*
              * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
@@ -176,6 +160,32 @@ namespace Arius.CommandLine
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
 
+            var remoteManifestHashes = new HashValue[] { };
+            //    var remoteManifestHashes = archive
+            //        .GetRemoteEncryptedAriusManifests()
+            //        .Select(ream => ream.Hash)
+            //        .ToImmutableArray();
+
+            var localContentFilesToUpload = localContentPerHash
+                .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
+                .ToImmutableArray();
+
+            var unencryptedChunksPerHash = localContentFilesToUpload
+                .AsParallel()
+                .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+                .ToImmutableDictionary(
+                    g => g.Key,
+                    g => _chunker.Chunk(g.First()));
+
+
+
+            //    var unencryptedChunksPerHash = localContentFilesToUpload
+            //        .AsParallel()
+            //        .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+            //        .ToImmutableDictionary(
+            //            g => g.Key,
+            //            g => g.First().GetChunks(dedup));
+
             return 0;
         }
 
@@ -184,21 +194,10 @@ namespace Arius.CommandLine
 
         
 
-        //    var remoteManifestHashes = archive
-        //        .GetRemoteEncryptedAriusManifests()
-        //        .Select(ream => ream.Hash)
-        //        .ToImmutableArray();
+        
 
-        //    var localContentFilesToUpload = localContentPerHash
-        //        .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
-        //        .ToImmutableArray();
 
-        //    var unencryptedChunksPerHash = localContentFilesToUpload
-        //        .AsParallel()
-        //        .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
-        //        .ToImmutableDictionary(
-        //            g => g.Key,
-        //            g => g.First().GetChunks(dedup));
+
 
         //    var remoteChunkHashes = archive
         //        .GetRemoteEncryptedAriusChunks()
