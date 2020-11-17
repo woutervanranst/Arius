@@ -11,24 +11,11 @@ using Arius.CommandLine;
 namespace Arius
 {
 
-    internal struct HashValue // : IEquatable<HashValue>
+    internal struct HashValue
     {
         public string Value { get; set; }
 
-        //public bool Equals(HashValue other)
-        //{
-        //    return Value == other.Value;
-        //}
-
-        //public override bool Equals(object obj)
-        //{
-        //    return obj is HashValue other && Equals(other);
-        //}
-
-        //public override int GetHashCode()
-        //{
-        //    return (Value != null ? Value.GetHashCode() : 0);
-        //}
+        public override string ToString() => Value;
     }
 
     internal interface IHashValueProvider
