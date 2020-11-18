@@ -62,11 +62,11 @@ namespace Arius
                 .AddSingleton<LocalRootDirectory>()
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker<LocalContentFile>>(
-                    ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
+                .AddSingleton<IChunker<ILocalContentFile>>( ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
                         new DedupChunker() : 
                         new Chunker())
-                .AddSingleton<SevenZipEncrypter<IChunk<LocalContentFile>>>()
+                .AddSingleton<SevenZipEncrypter<IFile>>()
+                .AddSingleton<IUploader<IEncrypted<IFile>>, AzCopyUploader<IEncrypted<IFile>>>()
                 .AddScoped<ArchiveCommandExecutor>()
                 .BuildServiceProvider();
 

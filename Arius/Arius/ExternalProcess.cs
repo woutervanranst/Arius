@@ -13,7 +13,6 @@ namespace Arius
 {
     class ExternalProcess
     {
-        
         public static string FindFullName(ILogger logger, string windowsExecutableName, string linuxExecutableName)
         {
             var path = Environment.GetEnvironmentVariable("PATH");

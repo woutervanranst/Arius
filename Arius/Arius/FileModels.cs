@@ -34,6 +34,7 @@ namespace Arius
 
         public string FullName => _fi.FullName;
         public string Name => _fi.Name;
+        public string DirectoryName => _fi.DirectoryName;
     }
 
     [Extension(".arius.pointer")]
@@ -65,7 +66,7 @@ namespace Arius
     }
 
     [Extension(".*", true)]
-    internal class LocalContentFile : LocalFile, ILocalContentFile, IChunk<LocalContentFile>
+    internal class LocalContentFile : LocalFile, ILocalContentFile, IChunk<ILocalContentFile>
     {
         public LocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
@@ -73,7 +74,7 @@ namespace Arius
     }
 
     [Extension(".7z.arius")]
-    internal class EncryptedLocalContentFile : LocalFile, IEncrypted<IChunk<LocalContentFile>>
+    internal class EncryptedLocalContentFile : LocalFile, IEncrypted<IFile>, IEncrypted<IChunk<IFile>>, IEncrypted<IChunk<LocalContentFile>>  //TODO clean up this type mess
     {
         public EncryptedLocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
