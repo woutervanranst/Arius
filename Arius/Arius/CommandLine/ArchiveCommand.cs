@@ -139,7 +139,7 @@ namespace Arius.CommandLine
             LocalRootDirectory root, 
             IChunker<ILocalContentFile> chunker, 
             SevenZipEncrypter<IFile> encrypter,
-            IUploader<IEncrypted<IFile>> uploader)
+            IUploader<IFile> uploader)
         {
             var o = (ArchiveOptions)options;
 
@@ -154,7 +154,7 @@ namespace Arius.CommandLine
         private readonly LocalRootDirectory _root;
         private readonly IChunker<ILocalContentFile> _chunker;
         private readonly SevenZipEncrypter<IFile> _encrypter;
-        private readonly IUploader<IEncrypted<IFile>> _uploader;
+        private readonly IUploader<IFile> _uploader;
 
         public int Execute()
         {
