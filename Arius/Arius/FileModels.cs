@@ -74,7 +74,7 @@ namespace Arius
     }
 
     [Extension(".7z.arius")]
-    internal class EncryptedLocalContentFile : LocalFile, IEncrypted<IFile>, IEncrypted<IChunk<IFile>>, IEncrypted<IChunk<LocalContentFile>>  //TODO clean up this type mess
+    internal class EncryptedLocalContentFile : LocalFile, IEncrypted<IFile>, IEncrypted<IChunk<ILocalContentFile>>  //TODO clean up this type mess
     {
         public EncryptedLocalContentFile(LocalRootDirectory root, FileInfo fi, IHashValueProvider hashValueProvider) : base(root, fi, hashValueProvider)
         {
