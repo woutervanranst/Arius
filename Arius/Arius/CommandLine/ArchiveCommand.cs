@@ -172,6 +172,7 @@ namespace Arius.CommandLine
             var localContentPerHash = _root
                 .Get<LocalContentFile>()
                 .AsParallel()
+                .WithDegreeOfParallelism(1)
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
 
@@ -227,7 +228,7 @@ namespace Arius.CommandLine
 
             //Upload Chunks
             _uploader.Upload(encryptedChunksToUpload);
-            //    archive.Upload(encryptedChunksToUpload, tier);
+
 
             //    //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
             //    foreach (var encryptedChunkFullName in encryptedChunksToUpload
