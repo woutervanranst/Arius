@@ -118,7 +118,7 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions, IChunkerOptions, IEncrypterOptions, IAzCopyUploaderOptions
+    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions, IChunkerOptions, IEncrypterOptions, IAzCopyUploaderOptions, IRemoteContainerRepositoryOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -136,25 +136,27 @@ namespace Arius.CommandLine
     {
         public ArchiveCommandExecutor(ICommandExecutorOptions options, 
             ILogger<ArchiveCommandExecutor> logger,
-            LocalRootDirectory root, 
+            ILocalRepository<ILocalFile> localRoot,
+            IRemoteRepository<IEncrypted<IFile>> remoteArchive,
             IChunker<ILocalContentFile> chunker, 
-            SevenZipEncrypter<IFile> encrypter,
-            IUploader<IFile> uploader)
+            SevenZipEncrypter<IFile> encrypter
+            )
         {
             var o = (ArchiveOptions)options;
 
             _logger = logger;
-            _root = root;
+            _root = localRoot;
+            _archive = remoteArchive;
             _chunker = chunker;
             _encrypter = encrypter;
-            _uploader = uploader;
+            
         }
 
         private readonly ILogger<ArchiveCommandExecutor> _logger;
-        private readonly LocalRootDirectory _root;
+        private readonly ILocalRepository<ILocalFile> _root;
+        private readonly IRemoteRepository<IEncrypted<IFile>> _archive;
         private readonly IChunker<ILocalContentFile> _chunker;
         private readonly SevenZipEncrypter<IFile> _encrypter;
-        private readonly IUploader<IFile> _uploader;
 
         public int Execute()
         {
@@ -221,20 +223,20 @@ namespace Arius.CommandLine
                 );
 
             var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
-                .SelectMany(eac => eac) // .Cast<IEncrypted<IChunk<IFile>>>()
+                .SelectMany(eac => eac.Cast<IEncrypted<IFile>>()) // .Cast<IEncrypted<IChunk<IFile>>>()
                 .ToImmutableArray();
 
             _logger.LogInformation($"After diff... {encryptedChunksToUpload.Count()} encrypted chunks to upload");
 
             //Upload Chunks
-            _uploader.Upload(encryptedChunksToUpload);
+            _archive.Add(encryptedChunksToUpload.AsEnumerable());
 
 
-            //    //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
-            //    foreach (var encryptedChunkFullName in encryptedChunksToUpload
-            //        .Select(uec => uec.FullName)
-            //        .Distinct())
-            //        File.Delete(encryptedChunkFullName);
+            //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
+            foreach (var encryptedChunkFullName in encryptedChunksToUpload
+                .Select(uec => uec.FullName)
+                .Distinct())
+                File.Delete(encryptedChunkFullName);
 
             //    //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
             //    var createdManifestsPerHash = localContentFilesToUpload

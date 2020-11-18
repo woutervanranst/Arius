@@ -21,7 +21,7 @@ namespace Arius
     {
 
 
-        public SevenZipEncrypter(ICommandExecutorOptions options, ILogger<SevenZipEncrypter<T>> logger, LocalRootDirectory root, LocalFileFactory factory)
+        public SevenZipEncrypter(ICommandExecutorOptions options, ILogger<SevenZipEncrypter<T>> logger, ILocalRepository<ILocalFile> root, LocalFileFactory factory)
         {
             _passphrase = ((IEncrypterOptions) options).Passphrase;
             
@@ -35,7 +35,7 @@ namespace Arius
 
         private readonly string _passphrase;
         private readonly Task<string> _7ZLibraryPath;
-        private readonly LocalRootDirectory _root;
+        private readonly ILocalRepository<ILocalFile> _root;
         private readonly LocalFileFactory _factory;
 
         public IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T

@@ -27,6 +27,13 @@ namespace Arius
         private readonly DirectoryInfo _root;
         private readonly LocalFileFactory _factory;
 
+        public DirectoryInfo Root => _root;
+
+        public ILocalFile GetByID(object id)
+        {
+            throw new NotImplementedException();
+        }
+
         public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : class, ILocalFile
         {
             var attr = typeof(T).GetCustomAttribute<ExtensionAttribute>();
@@ -35,23 +42,14 @@ namespace Arius
             return localFiles;
         }
 
-        public DirectoryInfo Root => _root;
-
-        public ILocalFile GetByID(object id)
+        public void Add(ILocalFile entity)
         {
             throw new NotImplementedException();
         }
 
-        public void Insert(ILocalFile entity)
+        public void Add(IEnumerable<ILocalFile> entities)
         {
             throw new NotImplementedException();
         }
-
-        public void Update(ILocalFile entityToUpdate)
-        {
-            throw new NotImplementedException();
-        }
-
-        
     }
 }
