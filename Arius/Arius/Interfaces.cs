@@ -122,8 +122,8 @@ namespace Arius
 
     internal interface IEncrypter<T> where T : IFile
     {
-        // IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T;
-        IEncrypted<T> Encrypt(T fileToEncrypt);
+        IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T;
+        //IEncrypted<T> Encrypt(T fileToEncrypt);
         T Decrypt(IEncrypted<T> fileToDecrypt);
     }
 
