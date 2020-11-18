@@ -38,12 +38,12 @@ namespace Arius
         private readonly LocalRootDirectory _root;
         private readonly LocalFileFactory _factory;
 
-        public IEncrypted<T> Encrypt(T fileToEncrypt, string fileName)
+        public IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T
         {
             return Encrypt(fileToEncrypt, fileName, CompressionLevel.None);
         }
 
-        public IEncrypted<T> Encrypt(T fileToEncrypt, string fileName, CompressionLevel compressionLevel)
+        public IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName, CompressionLevel compressionLevel) where V : T
         {
             try
             {
@@ -65,7 +65,7 @@ namespace Arius
             var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileName));
             compressor.CompressFilesEncrypted(archive.FullName, _passphrase, fileToEncrypt.FullName);
 
-            return (IEncrypted<T>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
+            return (IEncrypted<V>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
         }
 
         
