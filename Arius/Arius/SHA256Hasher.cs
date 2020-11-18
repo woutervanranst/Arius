@@ -67,10 +67,14 @@ namespace Arius
 
         public static string ByteArrayToString(byte[] ba)
         {
-            StringBuilder hex = new StringBuilder(ba.Length * 2);
-            foreach (byte b in ba)
-                hex.AppendFormat("{0:x2}", b);
-            return hex.ToString();
+            // https://stackoverflow.com/questions/311165/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-and-vice-versa?page=1&tab=votes#tab-top
+
+            //StringBuilder hex = new StringBuilder(ba.Length * 2);
+            //foreach (byte b in ba)
+            //    hex.AppendFormat("{0:x2}", b);
+            //return hex.ToString();
+
+            return BitConverter.ToString(ba).Replace("-", "").ToLower();
         }
     }
 }

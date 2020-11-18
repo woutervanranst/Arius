@@ -79,7 +79,8 @@ namespace Arius
                     Upload(g.Key, fileNames, tier);
 
                     return fileNames.Select(filename => (IRemote<K>)new RemoteEncryptedContentBlob(filename));
-                });
+                })
+                .ToImmutableArray();
 
             return remoteBlobs;
         }
