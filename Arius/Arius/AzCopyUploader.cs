@@ -25,10 +25,13 @@ namespace Arius
 
     internal class AzCopyUploader<T> : IUploader<T> where T : IFile
     {
-        public AzCopyUploader(ICommandExecutorOptions options, ILogger<AzCopyUploader<T>> logger)
+        public AzCopyUploader(ICommandExecutorOptions options, ILogger<AzCopyUploader<T>> logger, RemoteBlobFactory factory)
         {
             var o = (IAzCopyUploaderOptions) options;
             _contentAccessTier = o.Tier;
+
+            _factory = factory;
+            _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
             _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "azcopy.exe", "azcopy"));
@@ -57,8 +60,10 @@ namespace Arius
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
         private readonly AccessTier _contentAccessTier;
+        private readonly RemoteBlobFactory _factory;
+        private readonly ILogger<AzCopyUploader<T>> _logger;
 
-        public IEnumerable<IRemote<K>> Upload<K>(IEnumerable<K> chunksToUpload) where K : T
+        public IEnumerable<IBlob> Upload<K>(IEnumerable<K> chunksToUpload) where K : T
         {
             AccessTier tier;
 
@@ -69,7 +74,7 @@ namespace Arius
             else
                 throw new NotImplementedException();
 
-            var remoteBlobs = chunksToUpload.GroupBy(af => af.DirectoryName)
+            var remoteBlobItemNames = chunksToUpload.GroupBy(af => af.DirectoryName)
                 .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
                     .WithDegreeOfParallelism(1)
                 .SelectMany(g =>
@@ -78,11 +83,12 @@ namespace Arius
                     
                     Upload(g.Key, fileNames, tier);
 
-                    return fileNames.Select(filename => (IRemote<K>)new RemoteEncryptedContentBlob(filename));
+                    return fileNames;
                 })
-                .ToImmutableArray();
+                .ToImmutableArray(); //dat staat hier want anders worden de files niet geupload. De Remote<K> s worden pas aangemaakt als ze gevraagd worden
 
-            return remoteBlobs;
+            //return remoteBlobItemNames.Select(filename => (IRemote<K>)new RemoteEncryptedContentBlob(filename));
+            return remoteBlobItemNames.Select(blobItemName => _factory.Create(blobItemName));
         }
 
         private void Upload(string dir, string[] fileNames, AccessTier tier)

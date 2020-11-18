@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -8,6 +9,7 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
@@ -24,14 +26,22 @@ namespace Arius
 
         public bool IsMatch(FileInfo fi)
         {
+            return IsMatch(fi.Name);
+        }
+        public bool IsMatch(BlobItem bi)
+        {
+            return IsMatch(bi.Name);
+        }
+        public bool IsMatch(string fileName)
+        {
             if (ExcludeOthers &&
-                OtherExtensions(this).Any(extToExclude => fi.Name.EndsWith(extToExclude)))
+                OtherExtensions(this).Any(extToExclude => fileName.EndsWith(extToExclude)))
                 return false;
 
             if (Extension == ".*")
                 return true;
 
-            return fi.Name.EndsWith(Extension);
+            return fileName.EndsWith(Extension);
         }
 
 

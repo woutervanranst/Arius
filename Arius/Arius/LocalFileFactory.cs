@@ -19,7 +19,7 @@ namespace Arius
 
         private readonly IHashValueProvider _contentFileHasher;
 
-        public T Create<T>(LocalRootDirectory root, FileInfo fi) where T : ILocalFile
+        public T Create<T>(ILocalRepository<ILocalFile> root, FileInfo fi) where T : ILocalFile
         {
             ILocalFile result;
 

@@ -59,8 +59,10 @@ namespace Arius
                         .AddFile(fileLoggingConfigurationSection);
                 })
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                .AddSingleton<LocalRootDirectory>()
+                .AddSingleton<ILocalRepository<ILocalFile>, LocalRootDirectory>()
+                .AddSingleton<IRemoteRepository<IEncrypted<IFile>>, RemoteContainerRepository>()
                 .AddSingleton<LocalFileFactory>()
+                .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IChunker<ILocalContentFile>>( ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
                         new DedupChunker() : 
