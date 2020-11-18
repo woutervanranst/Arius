@@ -121,29 +121,29 @@ namespace Arius
             }
         }
 
-        public Match Execute(string arguments, string regex)
+        public Match Execute(string arguments, string regex, out string rawOutput)
         {
-            var o = Execute(arguments);
+            rawOutput = Execute(arguments);
 
-            var match = Regex.Match(o, regex);
+            var match = Regex.Match(rawOutput, regex);
 
             if (!match.Success)
             {
                 var executableName = new FileInfo(_executableFullName).Name;
-                throw new ApplicationException($"Error parsing output for {executableName}{Environment.NewLine}Output:{Environment.NewLine}{o}");
+                throw new ApplicationException($"Error parsing output for {executableName}{Environment.NewLine}Output:{Environment.NewLine}{rawOutput}");
             }
 
             return match;
         }
 
-        public void Execute<T1, T2, T3, T4>(string arguments, string regex, string t1Name, string t2Name, string t3Name, string t4Name, out T1 t1, out T2 t2, out T3 t3, out T4 t4)
+        public void Execute<T1, T2, T3, T4>(string arguments, string regex, string t1Name, string t2Name, string t3Name, string t4Name, out string rawOutput, out T1 t1, out T2 t2, out T3 t3, out T4 t4)
         {
-            var output = Execute(arguments, regex);
+            var regexMatch = Execute(arguments, regex, out rawOutput);
 
-            t1 = (T1)Convert.ChangeType(output.Groups[t1Name].Value, typeof(T1));
-            t2 = (T2)Convert.ChangeType(output.Groups[t2Name].Value, typeof(T2));
-            t3 = (T3)Convert.ChangeType(output.Groups[t3Name].Value, typeof(T3));
-            t4 = (T4)Convert.ChangeType(output.Groups[t4Name].Value, typeof(T4));
+            t1 = (T1)Convert.ChangeType(regexMatch.Groups[t1Name].Value, typeof(T1));
+            t2 = (T2)Convert.ChangeType(regexMatch.Groups[t2Name].Value, typeof(T2));
+            t3 = (T3)Convert.ChangeType(regexMatch.Groups[t3Name].Value, typeof(T3));
+            t4 = (T4)Convert.ChangeType(regexMatch.Groups[t4Name].Value, typeof(T4));
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -29,8 +30,8 @@ namespace Arius
             var o = (IAzCopyUploaderOptions) options;
             _contentAccessTier = o.Tier;
 
-            //Search async for the 7z Library (on another thread)
-            _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.dll", "7z"));
+            //Search async for the AZCopy Library (on another thread)
+            _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "azcopy.exe", "azcopy"));
 
             _skc = new StorageSharedKeyCredential(o.AccountName, o.AccountKey);
 
@@ -68,12 +69,19 @@ namespace Arius
             else
                 throw new NotImplementedException();
 
-            chunksToUpload.GroupBy(af => af.DirectoryName)
+            var remoteBlobs = chunksToUpload.GroupBy(af => af.DirectoryName)
                 .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
                     .WithDegreeOfParallelism(1)
-                .ForAll(g => Upload(g.Key, g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray(), tier));
+                .SelectMany(g =>
+                {
+                    var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+                    
+                    Upload(g.Key, fileNames, tier);
 
-            return null;
+                    return fileNames.Select(filename => (IRemote<K>)new RemoteEncryptedContentBlob(filename));
+                });
+
+            return remoteBlobs;
         }
 
         private void Upload(string dir, string[] fileNames, AccessTier tier)
@@ -95,10 +103,11 @@ namespace Arius
             var p = new ExternalProcess(_AzCopyPath.Result);
 
             p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput,
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         }
 
 
