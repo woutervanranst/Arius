@@ -56,7 +56,8 @@ namespace Arius
 
     internal interface IUploader<T> where T : IFile //class , IChunk<T>
     {
-        IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
+        //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
+        IEnumerable<IRemote<V>> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
         IEnumerable<T> Download(IEnumerable<IRemote<T>> chunksToDownload);
     }
 
@@ -102,7 +103,7 @@ namespace Arius
 
 
 
-    internal interface IChunk<T> : IHashable, IFile where T : IFile //IEnumerable<T>
+    internal interface IChunk<T> : IHashable, IFile where T : ILocalContentFile//IEnumerable<T>
     {
 
     }

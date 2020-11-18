@@ -66,7 +66,7 @@ namespace Arius
                         new DedupChunker() : 
                         new Chunker())
                 .AddSingleton<SevenZipEncrypter<IFile>>()
-                .AddSingleton<IUploader<IEncrypted<IFile>>, AzCopyUploader<IEncrypted<IFile>>>()
+                .AddSingleton<IUploader<IFile>, AzCopyUploader<IFile>>()
                 .AddScoped<ArchiveCommandExecutor>()
                 .BuildServiceProvider();
 

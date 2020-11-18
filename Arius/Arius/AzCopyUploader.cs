@@ -57,12 +57,16 @@ namespace Arius
         private readonly StorageSharedKeyCredential _skc;
         private readonly AccessTier _contentAccessTier;
 
-        public IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload)
+        public IEnumerable<IRemote<K>> Upload<K>(IEnumerable<K> chunksToUpload) where K : T
         {
-            var tier = AccessTier.Cool;
+            AccessTier tier;
 
-            if (typeof(T).IsAssignableTo(typeof(EncryptedLocalContentFile)))
+            if (typeof(K).IsAssignableTo(typeof(IEncrypted<IChunk<ILocalContentFile>>)))
                 tier = _contentAccessTier;
+            else if (typeof(K).IsAssignableTo(typeof(IEncrypted<IManifestFile>)))
+                tier = AccessTier.Cool;
+            else
+                throw new NotImplementedException();
 
             chunksToUpload.GroupBy(af => af.DirectoryName)
                 .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
