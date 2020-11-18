@@ -5,6 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
@@ -12,9 +13,15 @@ namespace Arius
     {
         string FullName { get; }
         string Name { get; }
+        string DirectoryName { get; }
     }
 
-    internal interface ILocalFile : IFile, IHashable
+    //internal interface IHashableFile : IFile, IHashable
+    //{
+
+    //}
+
+    internal interface ILocalFile : IFile, IHashable //TODO kan deze eruit?
     {
     }
 
@@ -37,9 +44,20 @@ namespace Arius
         string Name { get; }
     }
 
+    
+    
+    
+    
+    
     internal interface IRemote<TObject> : IBlob
     {
         TObject GetRemoteObject();
+    }
+
+    internal interface IUploader<T> where T : IFile //class , IChunk<T>
+    {
+        IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
+        IEnumerable<T> Download(IEnumerable<IRemote<T>> chunksToDownload);
     }
 
 
@@ -84,7 +102,7 @@ namespace Arius
 
 
 
-    internal interface IChunk<T> : IHashable, IFile // where T : IEnumerable<T>
+    internal interface IChunk<T> : IHashable, IFile where T : IFile //IEnumerable<T>
     {
 
     }
@@ -97,16 +115,21 @@ namespace Arius
 
 
 
-    internal interface IEncrypted<T> where T : IFile
+    internal interface IEncrypted<T> : IFile where T : IFile
     {
 
     }
 
     internal interface IEncrypter<T> where T : IFile
     {
+        // IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T;
         IEncrypted<T> Encrypt(T fileToEncrypt);
         T Decrypt(IEncrypted<T> fileToDecrypt);
     }
+
+
+
+
 
 
     internal interface IRepository<TEntity> where TEntity : class

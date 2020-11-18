@@ -118,7 +118,7 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions, IChunkerOptions, IEncrypterOptions
+    internal struct ArchiveOptions : ILocalRootDirectoryOptions, ISHA256HasherOptions, IChunkerOptions, IEncrypterOptions, IAzCopyUploaderOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -137,8 +137,9 @@ namespace Arius.CommandLine
         public ArchiveCommandExecutor(ICommandExecutorOptions options, 
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootDirectory root, 
-            IChunker<LocalContentFile> chunker, 
-            SevenZipEncrypter<IChunk<LocalContentFile>> encrypter)
+            IChunker<ILocalContentFile> chunker, 
+            SevenZipEncrypter<IFile> encrypter,
+            IUploader<IEncrypted<IFile>> uploader)
         {
             var o = (ArchiveOptions)options;
 
@@ -146,12 +147,14 @@ namespace Arius.CommandLine
             _root = root;
             _chunker = chunker;
             _encrypter = encrypter;
+            _uploader = uploader;
         }
 
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootDirectory _root;
-        private readonly IChunker<LocalContentFile> _chunker;
-        private readonly SevenZipEncrypter<IChunk<LocalContentFile>> _encrypter;
+        private readonly IChunker<ILocalContentFile> _chunker;
+        private readonly SevenZipEncrypter<IFile> _encrypter;
+        private readonly IUploader<IEncrypted<IFile>> _uploader;
 
         public int Execute()
         {
@@ -181,9 +184,13 @@ namespace Arius.CommandLine
             //        .Select(ream => ream.Hash)
             //        .ToImmutableArray();
 
+            _logger.LogInformation($"Found {remoteManifestHashes.Length} manifests on the remote");
+
             var localContentFilesToUpload = localContentPerHash
                 .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
                 .ToImmutableArray();
+
+            _logger.LogInformation($"After diff...  {localContentFilesToUpload.Length} files to upload");
 
             var unencryptedChunksPerHash = localContentFilesToUpload
                 .AsParallel()
@@ -192,11 +199,15 @@ namespace Arius.CommandLine
                     g => g.Key,
                     g => _chunker.Chunk(g.First()));
 
+            _logger.LogInformation($"After deduplication... {unencryptedChunksPerHash.Values.Count()} chunks to upload");
+
             var remoteChunkHashes = (new HashValue[] { }).ToImmutableArray();
             //    var remoteChunkHashes = archive
             //        .GetRemoteEncryptedAriusChunks()
             //        .Select(reac => reac.Hash)
             //        .ToImmutableArray();
+
+            _logger.LogInformation($"Found {remoteChunkHashes.Length} encrypted chunks remote");
 
             var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
                 .AsParallel()
@@ -205,16 +216,17 @@ namespace Arius.CommandLine
                     p => p.Key,
                     p => p.Value
                         .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
-                        .Select(c => _encrypter.Encrypt(c)).ToImmutableArray()
+                        .Select(c => _encrypter.Encrypt(c, $"{c.Hash.Value}.7z.arius")).ToImmutableArray()
                 );
 
-
             var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
-                .SelectMany(eac => eac)
+                .SelectMany(eac => eac) // .Cast<IEncrypted<IChunk<IFile>>>()
                 .ToImmutableArray();
 
+            _logger.LogInformation($"After diff... {encryptedChunksToUpload.Count()} encrypted chunks to upload");
 
-            //    //Upload Chunks
+            //Upload Chunks
+            _uploader.Upload(encryptedChunksToUpload);
             //    archive.Upload(encryptedChunksToUpload, tier);
 
             //    //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)

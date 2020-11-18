@@ -17,7 +17,7 @@ namespace Arius
         string Passphrase { get; }
     }
 
-    internal class SevenZipEncrypter<T> : IEncrypter<T> where T : IFile, IHashable
+    internal class SevenZipEncrypter<T> : IEncrypter<T> where T : IFile
     {
 
 
@@ -38,12 +38,12 @@ namespace Arius
         private readonly LocalRootDirectory _root;
         private readonly LocalFileFactory _factory;
 
-        public IEncrypted<T> Encrypt(T fileToEncrypt)
+        public IEncrypted<T> Encrypt(T fileToEncrypt, string fileName)
         {
-            return Encrypt(fileToEncrypt, CompressionLevel.None);
+            return Encrypt(fileToEncrypt, fileName, CompressionLevel.None);
         }
 
-        public IEncrypted<T> Encrypt(T fileToEncrypt, CompressionLevel compressionLevel)
+        public IEncrypted<T> Encrypt(T fileToEncrypt, string fileName, CompressionLevel compressionLevel)
         {
             try
             {
@@ -62,7 +62,7 @@ namespace Arius
                 ZipEncryptionMethod = ZipEncryptionMethod.Aes256
             };
 
-            var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileToEncrypt.Hash + ".7z.arius"));
+            var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileName));
             compressor.CompressFilesEncrypted(archive.FullName, _passphrase, fileToEncrypt.FullName);
 
             return (IEncrypted<T>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
