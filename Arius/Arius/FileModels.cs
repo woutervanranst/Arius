@@ -84,9 +84,14 @@ namespace Arius
 
     internal abstract class Blob : IBlob
     {
+        protected Blob(string blobItemName)
+        {
+        }
         protected Blob(BlobItem bi)
         {
             _bi = bi;
+
+            throw new NotImplementedException("TODO DE FACTORY EN REMOTEARCHIVE EN EXISTS()");
         }
 
         private readonly BlobItem _bi;
@@ -100,9 +105,18 @@ namespace Arius
     //{
     //}
 
-    //internal class ContentBlob : IRemoteContentBlob
-    //{
-    //}
+    [Extension(".7z.arius")]
+    internal class RemoteEncryptedContentBlob : Blob, IRemote<IEncrypted<IChunk<ILocalContentFile>>>
+    {
+        public RemoteEncryptedContentBlob(string blobItemName) : base(blobItemName)
+        {
+        }
+
+        public IEncrypted<IChunk<ILocalContentFile>> GetRemoteObject()
+        {
+            throw new NotImplementedException();
+        }
+    }
 
     [Extension(".manifest.7z.arius")]
     class RemoteEncryptedManifestBlob : Blob, IRemote<IEncrypted<IManifestFile>>
