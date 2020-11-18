@@ -49,15 +49,15 @@ namespace Arius
     
     
     
-    internal interface IRemote<TObject> : IBlob
+    internal interface IRemote<T> : IBlob
     {
-        TObject GetRemoteObject();
+        T GetRemoteObject();
     }
 
     internal interface IUploader<T> where T : IFile //class , IChunk<T>
     {
         //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
-        IEnumerable<IRemote<V>> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
+        IEnumerable<IBlob> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
         IEnumerable<T> Download(IEnumerable<IRemote<T>> chunksToDownload);
     }
 
@@ -124,7 +124,6 @@ namespace Arius
     internal interface IEncrypter<T> where T : IFile
     {
         IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T;
-        //IEncrypted<T> Encrypt(T fileToEncrypt);
         T Decrypt(IEncrypted<T> fileToDecrypt);
     }
 
@@ -141,13 +140,20 @@ namespace Arius
         //IEnumerable<TEntity> Get(Expression<Func<TEntity, bool>> filter = null);
         TEntity GetByID(object id);
         //IEnumerable<TEntity> GetWithRawSql(string query, params object[] parameters);
-        void Insert(TEntity entity);
-        void Update(TEntity entityToUpdate);
+        void Add(TEntity entity);
+
+        void Add(IEnumerable<TEntity> entities);
+        //void Update(TEntity entityToUpdate);
     }
 
     internal interface ILocalRepository<TEntity> : IRepository<TEntity> where TEntity : class, ILocalFile
     {
         DirectoryInfo Root { get; }
+    }
+
+    internal interface IRemoteRepository<TEntity> : IRepository<TEntity> where TEntity : class, IEncrypted<IFile>
+    {
+
     }
 
 }
