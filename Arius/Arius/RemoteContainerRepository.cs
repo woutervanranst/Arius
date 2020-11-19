@@ -27,18 +27,24 @@ namespace Arius
             ILogger<RemoteContainerRepository> logger,
             IBlobCopier uploader,
             IRepository<IManifestFile> manifestRepository,
-            IChunker chunker)
+            IRepository<IRemotenEncryptedChunkBlob> chunkRepository,
+            IChunker chunker,
+            IEncrypter encrypter)
         {
             _logger = logger;
             _uploader = uploader;
             _manifestRepository = manifestRepository;
+            _remoteChunkRepository = chunkRepository;
             _chunker = chunker;
+            _encrypter = encrypter;
         }
 
         private readonly ILogger<RemoteContainerRepository> _logger;
         private readonly IBlobCopier _uploader;
         private readonly IRepository<IManifestFile> _manifestRepository;
+        private readonly IRepository<IRemotenEncryptedChunkBlob> _remoteChunkRepository;
         private readonly IChunker _chunker;
+        private readonly IEncrypter _encrypter;
 
         public string FullName => throw new NotImplementedException();
 
@@ -100,6 +106,33 @@ namespace Arius
                     g => _chunker.Chunk(g.First()));
 
             _logger.LogInformation($"After deduplication... {unencryptedChunksPerHash.Values.Count()} chunks to upload");
+
+            var remoteChunkHashes = _remoteChunkRepository.GetAll()
+                .Select(rcb => rcb.Hash)
+                .ToImmutableArray();
+
+            _logger.LogInformation($"Found {remoteChunkHashes.Length} encrypted chunks remote");
+
+            var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .ToImmutableDictionary(
+                    p => p.Key,
+                    p => p.Value
+                        .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
+                        .Select(c => (IEncryptedChunkFile)_encrypter.Encrypt(c, c is not ILocalContentFile)).ToImmutableArray()
+                );
+
+            var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
+                .SelectMany(eac => eac)
+                .ToImmutableArray();
+
+            _logger.LogInformation($"After diff... {encryptedChunksToUpload.Count()} encrypted chunks to upload");
+
+            //Upload Chunks
+            _remoteChunkRepository.PutAll(encryptedChunksToUpload);
+            //_uploader.Upload(encryptedChunksToUpload);
+
         }
 
         //{

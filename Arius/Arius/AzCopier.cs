@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,11 +67,6 @@ namespace Arius
         private readonly ILogger<AzCopier> _logger;
 
 
-        public void Upload(IEnumerable<ILocalFile> filesToUpload, BlobContainerClient target)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Download(IEnumerable<IBlob> blobsToDownload)
         {
             throw new NotImplementedException();
@@ -102,59 +98,54 @@ namespace Arius
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         }
 
-        //public IEnumerable<IBlob> Upload<K>(IEnumerable<K> chunksToUpload) where K : T
-        //{
-        //    AccessTier tier;
 
-        //    if (typeof(K).IsAssignableTo(typeof(IEncrypted<IChunk<ILocalContentFile>>)))
-        //        tier = _contentAccessTier;
-        //    else if (typeof(K).IsAssignableTo(typeof(IEncrypted<IManifestFile>)))
-        //        tier = AccessTier.Cool;
-        //    else
-        //        throw new NotImplementedException();
+        public void Upload<T>(IEnumerable<T> filesToUpload) where T : ILocalFile
+        {
+            AccessTier tier;
 
-        //    var remoteBlobItemNames = chunksToUpload.GroupBy(af => af.DirectoryName)
-        //        .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
-        //            .WithDegreeOfParallelism(1)
-        //        .SelectMany(g =>
-        //        {
-        //            var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+            if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
+                tier = _contentAccessTier;
+            else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
+                tier = AccessTier.Cool;
+            else
+                throw new NotImplementedException();
 
-        //            Upload(g.Key, fileNames, tier);
+            filesToUpload.GroupBy(af => af.DirectoryName)
+                .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+                .WithDegreeOfParallelism(1)
+                .ForAll(g =>
+                {
+                    var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-        //            return fileNames;
-        //        })
-        //        .ToImmutableArray(); //dat staat hier want anders worden de files niet geupload. De Remote<K> s worden pas aangemaakt als ze gevraagd worden
+                    Upload(g.Key, fileNames, tier);
+                });
+        }
 
-        //    //return remoteBlobItemNames.Select(filename => (IRemote<K>)new RemoteEncryptedContentBlob(filename));
-        //    return remoteBlobItemNames.Select(blobItemName => _factory.Create(blobItemName));
-        //}
+        private void Upload(string dir, string[] fileNames, AccessTier tier)
+        {
+            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
+            //Note the \* after the {dir}\*
 
-        //private void Upload(string dir, string[] fileNames, AccessTier tier)
-        //{
-        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
-        //    //Note the \* after the {dir}\*
+            string arguments;
+            var sas = GetContainerSasUri(_bcc, _skc);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                arguments = $@"copy '{dir}\*' '{_bcc.Uri}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                arguments = $@"copy ""{dir}\*"" ""{_bcc.Uri}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
+            else
+                throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-        //    string arguments;
-        //    var sas = GetContainerSasUri(_bcc, _skc);
-        //    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        //        arguments = $@"copy '{dir}\*' '{_bcc.Uri}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
-        //    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        //        arguments = $@"copy ""{dir}\*"" ""{_bcc.Uri}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
-        //    else
-        //        throw new NotImplementedException("OS Platform is not Windows or Linux");
+            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
-        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var p = new ExternalProcess(_AzCopyPath.Result);
 
-        //    var p = new ExternalProcess(_AzCopyPath.Result);
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput,
+                out int completed, out int failed, out int skipped, out string finalJobStatus);
 
-        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-        //        out string rawOutput,
-        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
-
-        //    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
-        //}
+            if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        }
 
 
 

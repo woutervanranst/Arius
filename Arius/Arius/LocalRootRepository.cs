@@ -18,9 +18,9 @@ namespace Arius
         string Path { get; }
     }
 
-    internal class LocalRootDirectory : ILocalRepository
+    internal class LocalRootRepository : ILocalRepository
     {
-        public LocalRootDirectory(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
+        public LocalRootRepository(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
         {
             var root = ((ILocalRootDirectoryOptions)options).Path;
             _root = new DirectoryInfo(root);
