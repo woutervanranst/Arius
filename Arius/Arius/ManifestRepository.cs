@@ -35,14 +35,13 @@ namespace Arius
             {
                 blobcopier.Download("manifests", _localTemp);
 
-                var f = _localTemp.GetFiles("*.7z.manifest")
-                    .Select(fi => factory.Create(this, fi));
-                //encrypter.Decrypt()
+                var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
+                    .Select(fi => factory.Create<IEncryptedLocalFile>(fi))
+                    .AsParallel()
+                    .WithDegreeOfParallelism(1)
+                    .Select(a => encrypter.Decrypt(a));
 
-                //    .Select(fi => _factory.Create<ILocalFile>(this, fi)) //TODO FILTER
-                //    .ToImmutableArray();
-
-                //return localFiles;
+                localManifests.ToArray();
 
             });
         }

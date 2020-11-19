@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using Arius.CommandLine;
+using System.Xml.XPath;
 
 namespace Arius
 {
@@ -34,22 +29,22 @@ namespace Arius
 
 
         //}
-        public T Create<T>(IRepository<T> root, FileInfo fi) where T : ILocalFile
+        public T Create<T>(FileInfo fi, IRepository<T> root = null) where T : ILocalFile
         {
             ILocalFile result;
 
             //Func<T, FileInfo, bool> ka = (arg1, info) => typeof(arg1).GetCustomAttribute<ExtensionAttribute>()
 
-            if (typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+            if (IsMatch<LocalPointerFile>(fi))
                 result = new LocalPointerFile((IRepository<ILocalFile>)root, fi, lf => _contentFileHasher.GetHashValue(lf)); 
-            else if (typeof(LocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+            else if (IsMatch<LocalContentFile>(fi))
                 result = new LocalContentFile((IRepository<ILocalFile>)root, fi, lf => _contentFileHasher.GetHashValue(lf));
-            else if (typeof(LocalEncryptedManifestFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-                result = new LocalEncryptedManifestFile((IRepository<ILocalFile>)root, fi, null);
-            //else if (typeof(EncryptedLocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-            //    result = new EncryptedLocalContentFile(root, fi, _contentFileHasher);
-                    else
-                        throw new NotImplementedException();
+            else if (IsMatch<LocalEncryptedManifestFile>(fi))
+                result = new LocalEncryptedManifestFile(null, fi, null);
+            else if (IsMatch<LocalManifestFile>(fi))
+                result = new LocalManifestFile((IRepository<ILocalFile>)root, fi, (lf) => new HashValue { Value = lf.FullNameWithoutExtension });
+            else
+                throw new NotImplementedException();
 
 
 
@@ -71,6 +66,11 @@ namespace Arius
 
             return (T)result;
 
+        }
+
+        private bool IsMatch<T>(FileInfo fi)
+        {
+            return typeof(T).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi);
         }
 
         //public T Create<T, V>(LocalRootDirectory root, FileInfo fi) where T : IPointerFile<V>
