@@ -60,7 +60,7 @@ namespace Arius
                 })
                 .AddSingleton<Configuration>(new Configuration(pcp.CommandExecutorOptions, configurationRoot))
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                .AddSingleton<LocalRootDirectory>()
+                .AddSingleton<ILocalRepository, LocalRootDirectory>()
                 //.AddSingleton<LocalTempManifestRepository>()
                 .AddSingleton<IRemoteRepository, RemoteContainerRepository>()
                 .AddSingleton<IRepository<IManifestFile>, ManifestRepository>()

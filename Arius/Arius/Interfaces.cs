@@ -15,10 +15,14 @@ namespace Arius
     {
         string FullName { get; }
         string Name { get; }
+        string FullNameWithoutExtension { get; }
     }
     internal interface ILocalFile : IITem, IHashable
     {
-        string DirectoryName { get; }
+        //string DirectoryName { get; }
+        public IRepository<ILocalFile> Root { get; }
+
+        void Delete();
     }
 
     internal interface ILocalContentFile : ILocalFile
@@ -34,7 +38,7 @@ namespace Arius
     {
     }
 
-    internal interface IEncryptedManifestFile : ILocalFile
+    internal interface IEncryptedManifestFile : ILocalFile, IEncryptedLocalFile
     {
     }
     internal interface IChunk : IHashable, ILocalFile
@@ -157,7 +161,7 @@ namespace Arius
 
 
 
-    internal interface IEncrypted : ILocalFile
+    internal interface IEncryptedLocalFile : ILocalFile
     {
 
     }
@@ -170,8 +174,8 @@ namespace Arius
 
     internal interface IEncrypter
     {
-        IEncrypted Encrypt(ILocalFile fileToEncrypt, string fileName);
-        ILocalFile Decrypt(IEncrypted fileToDecrypt);
+        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, string fileName, bool deletePlaintext = false);
+        ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false);
     }
 
 

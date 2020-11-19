@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs.Models;
@@ -16,10 +17,13 @@ namespace Arius
 
     internal abstract class LocalFile : ILocalFile //, IFile
     {
+
         protected LocalFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider)
         {
             if (!fi.Exists)
                 throw new ArgumentException("The LocalFile does not exist");
+
+            Root = root;
 
             _fi = fi;
 
@@ -34,7 +38,15 @@ namespace Arius
 
         public string FullName => _fi.FullName;
         public string Name => _fi.Name;
-        public string DirectoryName => _fi.DirectoryName;
+        //public string DirectoryName => _fi.DirectoryName;
+        public IRepository<ILocalFile> Root { get; }
+
+        public void Delete()
+        {
+            _fi.Delete();
+        }
+
+        public string FullNameWithoutExtension => FullName.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
     }
 
     [Extension(".arius.pointer")]
@@ -100,6 +112,7 @@ namespace Arius
 
 
         public string Name => "NAM"; // _bi.Name;
+        public string FullNameWithoutExtension { get; }
 
         public string FullName => Name;
     }
@@ -138,7 +151,7 @@ namespace Arius
         //}
     }
 
-    [Extension(".manifest.7z.arius")]
+    [Extension(".manifest.7z.arius", decryptedType: typeof(LocalManifestFile))]
     internal class LocalEncryptedManifestFile : LocalFile, IEncryptedManifestFile //, IRemote<IEncrypted<IManifestFile>>
     {
         public LocalEncryptedManifestFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
@@ -146,6 +159,13 @@ namespace Arius
         }
     }
 
+    [Extension(".manifest.arius")]
+    internal class LocalManifestFile : LocalFile, IManifestFile //, IRemote<IEncrypted<IManifestFile>>
+    {
+        public LocalManifestFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        {
+        }
+    }
 
-    
+
 }
