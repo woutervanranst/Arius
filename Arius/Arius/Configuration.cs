@@ -23,7 +23,7 @@ namespace Arius
             _config = config;
 
             //Init TempDir
-            if (TempDir.Exists) TempDir.Delete();
+            if (TempDir.Exists) TempDir.Delete(true);
             TempDir.Create();
         }
 

@@ -68,7 +68,7 @@ namespace Arius
         public IEnumerable<ILocalFile> GetAll(Expression<Func<ILocalFile, bool>> filter = null)
         {
             var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => _factory.Create<ILocalFile>(this, fi)) //TODO FILTER
+                .Select(fi => _factory.Create<ILocalFile>(fi, this)) //TODO FILTER
                 .ToImmutableArray();
 
             return localFiles;

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Metadata;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Azure.Storage.Blobs.Models;
@@ -16,13 +17,17 @@ namespace Arius
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     public class ExtensionAttribute : Attribute
     {
-        public ExtensionAttribute(string extension, bool excludeOthers = false)
+        public ExtensionAttribute(string extension, bool excludeOthers = false, Type encryptedType = null, Type decryptedType = null)
         {
             Extension = extension;
             ExcludeOthers = excludeOthers;
+            EncryptedType = encryptedType;
+            DecryptedType = decryptedType;
         }
         public string Extension { get; init; }
         public bool ExcludeOthers { get; init; }
+        public Type EncryptedType { get; init; }
+        public Type DecryptedType { get; init; }
 
         public bool IsMatch(FileInfo fi)
         {
