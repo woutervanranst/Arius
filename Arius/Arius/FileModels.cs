@@ -47,6 +47,7 @@ namespace Arius
         }
 
         public string FullNameWithoutExtension => FullName.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
+        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
     }
 
     [Extension(".arius.pointer")]
@@ -112,9 +113,10 @@ namespace Arius
 
 
         public string Name => "NAM"; // _bi.Name;
-        public string FullNameWithoutExtension { get; }
 
         public string FullName => Name;
+
+        public string NameWithoutExtension => throw new NotImplementedException();
     }
 
     //internal  class ManifestBlob : IRemoteManifestBlob

@@ -163,52 +163,12 @@ namespace Arius.CommandLine
         }
 
 
-        //public ArchiveCommandExecutor(ICommandExecutorOptions options, 
-        //    ILogger<ArchiveCommandExecutor> logger,
-        //    ILocalRepository<ILocalFile> localRoot,
-        //    IRemoteRepository<IEncrypted<IFile>> remoteArchive,
-        //    IChunker<ILocalContentFile> chunker, 
-        //    SevenZipEncrypter<IFile> encrypter
-        //    )
-        //{
-        //    var o = (ArchiveOptions)options;
 
-        //    _logger = logger;
-        //    _root = localRoot;
-        //    _archive = remoteArchive;
-        //    _chunker = chunker;
-        //    _encrypter = encrypter;
 
-        //}
-
-        //private readonly ILogger<ArchiveCommandExecutor> _logger;
-        //private readonly ILocalRepository<ILocalFile> _root;
-        //private readonly IRemoteRepository<IEncrypted<IFile>> _archive;
-        //private readonly IChunker<ILocalContentFile> _chunker;
-        //private readonly SevenZipEncrypter<IFile> _encrypter;
-
-        //public int Execute()
-        //{
+        
         
 
-
-
-        //    _logger.LogInformation($"Found {remoteManifestHashes.Length} manifests on the remote");
-
-        //    var localContentFilesToUpload = localContentPerHash
-        //        .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
-        //        .ToImmutableArray();
-
-        //    _logger.LogInformation($"After diff...  {localContentFilesToUpload.Length} files to upload");
-
-        //    var unencryptedChunksPerHash = localContentFilesToUpload
-        //        .AsParallel()
-        //        .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
-        //        .ToImmutableDictionary(
-        //            g => g.Key,
-        //            g => _chunker.Chunk(g.First()));
-
-        //    _logger.LogInformation($"After deduplication... {unencryptedChunksPerHash.Values.Count()} chunks to upload");
+        
 
         //    var remoteChunkHashes = (new HashValue[] { }).ToImmutableArray();
         //    //    var remoteChunkHashes = archive

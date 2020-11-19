@@ -23,19 +23,24 @@ namespace Arius
 
     class RemoteContainerRepository : IRemoteRepository
     {
-        public RemoteContainerRepository(ICommandExecutorOptions options, 
+        public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
             IBlobCopier uploader,
-            IRepository<IManifestFile> manifestRepository)
+            IRepository<IManifestFile> manifestRepository,
+            IChunker chunker)
         {
             _logger = logger;
             _uploader = uploader;
             _manifestRepository = manifestRepository;
+            _chunker = chunker;
         }
 
         private readonly ILogger<RemoteContainerRepository> _logger;
         private readonly IBlobCopier _uploader;
         private readonly IRepository<IManifestFile> _manifestRepository;
+        private readonly IChunker _chunker;
+
+        public string FullName => throw new NotImplementedException();
 
         public ILocalFile GetById(HashValue id)
         {
@@ -75,11 +80,26 @@ namespace Arius
             _logger.LogInformation($"Found {localContentPerHash.Count()} files");
             _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
 
-            var remoteManifestHashes = _manifestRepository.GetAll();
-            //    var remoteManifestHashes = archive
-            //        .GetRemoteEncryptedAriusManifests()
-            //        .Select(ream => ream.Hash)
-            //        .ToImmutableArray();
+            var remoteManifestHashes = _manifestRepository.GetAll()
+                .Select(f => f.Hash)
+                .ToImmutableArray();
+
+            _logger.LogInformation($"Found {remoteManifestHashes.Length} manifests on the remote");
+
+            var localContentFilesToUpload = localContentPerHash
+                .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
+                .ToImmutableArray();
+
+            _logger.LogInformation($"After diff...  {localContentFilesToUpload.Length} files to upload");
+
+            var unencryptedChunksPerHash = localContentFilesToUpload
+                .AsParallel()
+                .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+                .ToImmutableDictionary(
+                    g => g.Key,
+                    g => _chunker.Chunk(g.First()));
+
+            _logger.LogInformation($"After deduplication... {unencryptedChunksPerHash.Values.Count()} chunks to upload");
         }
 
         //{
