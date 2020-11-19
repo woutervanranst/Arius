@@ -25,14 +25,21 @@ namespace Arius
         void Delete();
     }
 
-    internal interface ILocalContentFile : ILocalFile
+    internal interface IKaka : ILocalFile
+    {
+        string RelativeContentName { get; }
+        DateTime CreationTimeUtc { get; set; }
+        DateTime LastWriteTimeUtc { get; set; }
+
+    }
+    internal interface ILocalContentFile : ILocalFile, IKaka
     {
     }
 
-    internal interface IPointerFile/*<TObject>*/ : ILocalFile
+    internal interface IPointerFile/*<TObject>*/ : ILocalFile, IKaka
     {
         //TObject GetObject();
-        string GetObjectName();
+        //string GetObjectName();
     }
     internal interface IManifestFile : ILocalFile
     {
@@ -61,7 +68,7 @@ namespace Arius
     {
         string FullName { get; }
     }
-    internal interface IRepository<T> : IRepository where T : IItem
+    internal interface IRepository<T> : IRepository where T : IItem //TODO Refactor all IRepositoruy
     {
         T GetById(HashValue id);
         IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
@@ -76,6 +83,14 @@ namespace Arius
 
         void Put(TLocal entity);
         void PutAll(IEnumerable<TLocal> entities);
+    }
+    internal interface IRepository<TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
+    {
+        TGet GetById(HashValue id);
+        IEnumerable<TGet> GetAll(Expression<Func<TGet, bool>> filter = null);
+
+        void Put(TPut entity);
+        void PutAll(IEnumerable<TPut> entities);
     }
 
     internal interface IBlobCopier
@@ -180,13 +195,11 @@ namespace Arius
     //    DirectoryInfo Root { get; }
     //}
 
-    internal interface ILocalRepository : IRepository<ILocalFile>
+    internal interface ILocalRepository : IRepository<IKaka>
     {
-
     }
 
     internal interface IRemoteRepository : IRepository<ILocalFile>
     {
-
     }
 }

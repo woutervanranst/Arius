@@ -76,7 +76,7 @@ namespace Arius
         {
             if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
             {
-                _logger.LogInformation($"No files to download in {remoteDirectoryName}, skipping AzCopy");
+                _logger.LogInformation($"No files to download in '{remoteDirectoryName}', skipping AzCopy");
                 return;
             }
 

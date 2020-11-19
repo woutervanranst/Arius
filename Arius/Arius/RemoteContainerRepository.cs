@@ -21,15 +21,17 @@ namespace Arius
         public string Container { get; init; }
     }
 
-    class RemoteContainerRepository : IRemoteRepository
+    class RemoteContainerRepository : IRepository<ILocalFile, IKaka>
     {
         public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
             IBlobCopier uploader,
-            IRepository<IManifestFile> manifestRepository,
+            IRepository<IManifestFile, IKaka> manifestRepository,
             IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> chunkRepository,
             IChunker chunker,
-            IEncrypter encrypter)
+            IEncrypter encrypter
+            //ManifestService manifestService
+            )
         {
             _logger = logger;
             _uploader = uploader;
@@ -37,14 +39,16 @@ namespace Arius
             _remoteChunkRepository = chunkRepository;
             _chunker = chunker;
             _encrypter = encrypter;
+            //_manifestService = manifestService;
         }
 
         private readonly ILogger<RemoteContainerRepository> _logger;
         private readonly IBlobCopier _uploader;
-        private readonly IRepository<IManifestFile> _manifestRepository;
+        private readonly IRepository<IManifestFile, IKaka> _manifestRepository;
         private readonly IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> _remoteChunkRepository;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
+        //private readonly ManifestService _manifestService;
 
         public string FullName => throw new NotImplementedException();
 
@@ -58,12 +62,12 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public void Put(ILocalFile entity)
+        public void Put(IKaka entity)
         {
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<ILocalFile> localFiles)
+        public void PutAll(IEnumerable<IKaka> localFiles)
         {
             ////TODO Simulate
             ////TODO MINSIZE
@@ -137,6 +141,38 @@ namespace Arius
                 .Select(uec => uec.FullName)
                 .Distinct())
                 File.Delete(encryptedChunkFullName);
+
+
+
+            _manifestRepository.PutAll(localFiles);
+
+
+            //_manif
+            //    localFiles
+
+
+            ////1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
+            //var createdManifestsPerHash = localContentFilesToUpload
+            //    .AsParallel()
+            //    .WithDegreeOfParallelism(1)
+            //    .Select(g => RemoteEncryptedAriusManifest.Create(
+            //        g.First().Hash,
+            //        unencryptedChunksPerHash[g.Key]
+            //            .Select(uec => archive.GetRemoteEncryptedAriusChunk(uec.Hash)),
+            //        archive, passphrase))
+            //    .ToDictionary(
+            //        ream => ream.Hash,
+            //        ream => ream);
+
+            //    //    /*
+            //    //     * 3. Synchronize ALL MANIFESTS with the local file system
+            //    //     */
+
+            //    //    var ariusPointersPerManifestName = root.GetAriusPointerFiles()
+            //    //        .GroupBy(apf => apf.EncryptedManifestName)
+            //    //        .ToImmutableDictionary(
+            //    //            g => g.Key,
+            //    //            g => g.ToList());
         }
     }
 }
