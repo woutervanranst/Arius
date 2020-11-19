@@ -20,7 +20,7 @@ namespace Arius
     internal interface ILocalFile : IITem, IHashable
     {
         //string DirectoryName { get; }
-        public IRepository<ILocalFile> Root { get; }
+        public IRepository Root { get; }
 
         void Delete();
     }
@@ -54,14 +54,17 @@ namespace Arius
     }
 
 
-    internal interface IRepository<T> where T : ILocalFile
+    internal interface IRepository
+    {
+        string FullName { get; }
+    }
+    internal interface IRepository<T> : IRepository where T : ILocalFile
     {
         T GetById(HashValue id);
         IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
 
         void Put(T entity);
         void PutAll(IEnumerable<T> entities);
-        string FullName { get; }
     }
 
     //internal class ChunkRepository : IRepository<IChunk>
