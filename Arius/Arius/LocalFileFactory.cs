@@ -2,9 +2,11 @@
 using System.IO;
 using System.Reflection;
 using System.Xml.XPath;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
+    
     internal class LocalFileFactory
     {
         public LocalFileFactory(IHashValueProvider contentFileHasher)
@@ -14,21 +16,6 @@ namespace Arius
 
         private readonly IHashValueProvider _contentFileHasher;
 
-        //public T Create<T>(FileInfo fi) where T : ILocalFile
-        //{
-        //    ILocalFile result;
-
-        //    if (typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-        //        result = new LocalPointerFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
-        //    else
-        //        throw new NotImplementedException();
-
-        //    return (T)result;
-
-            
-
-
-        //}
         public T Create<T>(FileInfo fi, IRepository root) where T : ILocalFile
         {
             ILocalFile result;
@@ -42,7 +29,9 @@ namespace Arius
             else if (IsMatch<LocalEncryptedManifestFile>(fi))
                 result = new LocalEncryptedManifestFile(root, fi, null);
             else if (IsMatch<LocalManifestFile>(fi))
-                result = new LocalManifestFile(root, fi, (lf) => new HashValue { Value = lf.NameWithoutExtension });
+                result = new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+            else if (IsMatch<EncryptedChunkFile>(fi))
+                result = new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
             else
                 throw new NotImplementedException();
 

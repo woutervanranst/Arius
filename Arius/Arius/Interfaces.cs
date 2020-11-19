@@ -11,15 +11,15 @@ using Microsoft.Extensions.Configuration;
 
 namespace Arius
 {
-    internal interface IITem
+    internal interface IItem
     {
         string FullName { get; }
         string Name { get; }
         string NameWithoutExtension { get; }
     }
-    internal interface ILocalFile : IITem, IHashable
+    internal interface ILocalFile : IItem, IHashable
     {
-        //string DirectoryName { get; }
+        string DirectoryName { get; }
         public IRepository Root { get; }
 
         void Delete();
@@ -41,15 +41,18 @@ namespace Arius
     internal interface IEncryptedManifestFile : ILocalFile, IEncryptedLocalFile
     {
     }
-    internal interface IChunk : IHashable, ILocalFile
-    {
 
+
+    internal interface IChunkFile : IHashable, ILocalFile
+    {
+    }
+
+    internal interface IEncryptedChunkFile : IHashable, ILocalFile, IEncryptedLocalFile
+    {
     }
 
 
-
-
-    internal interface IBlob : IITem
+    internal interface IBlob : IItem
     {
     }
 
@@ -58,7 +61,7 @@ namespace Arius
     {
         string FullName { get; }
     }
-    internal interface IRepository<T> : IRepository where T : ILocalFile
+    internal interface IRepository<T> : IRepository where T : IItem
     {
         T GetById(HashValue id);
         IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
@@ -67,48 +70,11 @@ namespace Arius
         void PutAll(IEnumerable<T> entities);
     }
 
-    //internal class ChunkRepository : IRepository<IChunk>
-    //{
-    //    public IChunk GetById(HashValue id)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-
-    //    public IEnumerable<IChunk> GetAll(Expression<Func<IChunk, bool>> filter = null)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-
-    //    public void Put(IChunk entity)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-
-    //    public void PutAll(IEnumerable<IChunk> entities)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-
-
-
-
-    //internal interface IUploader<T, V> where T : ILocalFile where V : IBlob //class , IChunk<T>
-    //{
-    //    void Upload(IEnumerable<T> filesToUpload, BlobContainerClient target);
-    //    void Download(IEnumerable<V> blobsToDownload);
-
-    //    //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
-    //    //IEnumerable<IBlob> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
-    //    //IEnumerable<T> Download(IEnumerable<IRemote<T>> chunksToDownload);
-    //}
-
     internal interface IBlobCopier
     {
-        void Upload(IEnumerable<ILocalFile> filesToUpload, BlobContainerClient target);
+        public void Upload<T>(IEnumerable<T> filesToUpload) where T : ILocalFile;
         void Download(IEnumerable<IBlob> blobsToDownload);
-        public void Download(string directoryName, DirectoryInfo target);
+        void Download(string directoryName, DirectoryInfo target);
 
         //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
         //IEnumerable<IBlob> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
@@ -125,15 +91,15 @@ namespace Arius
 
 
 
-    //internal interface IRemoteBlob : IBlob
-    //{
-    //}
+    internal interface IRemoteBlob : IBlob, IHashable
+    {
+    }
 
 
-    ////[FileExtension("*.*", true)]
-    //internal interface IRemoteContentBlob : IRemoteBlob, IHashable
-    //{
-    //}
+    //[FileExtension("*.*", true)]
+    internal interface IRemotenEncryptedChunkBlob : IRemoteBlob
+    {
+    }
 
     //[FileExtension("*.arius.manifest")]
     //internal interface IRemoteManifestBlob : IRemoteBlob
@@ -158,8 +124,8 @@ namespace Arius
     
     internal interface IChunker //<T> where T : ILocalContentFile
     {
-        IEnumerable<IChunk> Chunk(ILocalContentFile fileToChunk);
-        ILocalContentFile Merge(IEnumerable<IChunk> chunksToJoin);
+        IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk);
+        ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin);
     }
 
 
@@ -178,7 +144,7 @@ namespace Arius
 
     internal interface IEncrypter
     {
-        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, string fileName, bool deletePlaintext = false);
+        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false);
         ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false);
     }
 

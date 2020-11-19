@@ -125,7 +125,8 @@ namespace Arius.CommandLine
         IAzCopyUploaderOptions, 
         IRemoteContainerRepositoryOptions, 
         IConfigurationOptions,
-        IManifestRepositoryOptions
+        IManifestRepositoryOptions,
+        IRemoteChunkRepositoryOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -170,32 +171,10 @@ namespace Arius.CommandLine
 
         
 
-        //    var remoteChunkHashes = (new HashValue[] { }).ToImmutableArray();
-        //    //    var remoteChunkHashes = archive
-        //    //        .GetRemoteEncryptedAriusChunks()
-        //    //        .Select(reac => reac.Hash)
-        //    //        .ToImmutableArray();
 
-        //    _logger.LogInformation($"Found {remoteChunkHashes.Length} encrypted chunks remote");
 
-        //    var encryptedChunksToUploadPerHash = unencryptedChunksPerHash
-        //        .AsParallel()
-        //        .WithDegreeOfParallelism(1)
-        //        .ToImmutableDictionary(
-        //            p => p.Key,
-        //            p => p.Value
-        //                .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
-        //                .Select(c => _encrypter.Encrypt(c, $"{c.Hash.Value}.7z.arius")).ToImmutableArray()
-        //        );
 
-        //    var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
-        //        .SelectMany(eac => eac.Cast<IEncrypted<IFile>>()) // .Cast<IEncrypted<IChunk<IFile>>>()
-        //        .ToImmutableArray();
 
-        //    _logger.LogInformation($"After diff... {encryptedChunksToUpload.Count()} encrypted chunks to upload");
-
-        //    //Upload Chunks
-        //    _archive.Add(encryptedChunksToUpload.AsEnumerable());
 
 
         //    //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
