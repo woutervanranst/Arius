@@ -177,11 +177,7 @@ namespace Arius.CommandLine
 
 
 
-        //    //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
-        //    foreach (var encryptedChunkFullName in encryptedChunksToUpload
-        //        .Select(uec => uec.FullName)
-        //        .Distinct())
-        //        File.Delete(encryptedChunkFullName);
+
 
         //    //    //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
         //    //    var createdManifestsPerHash = localContentFilesToUpload
