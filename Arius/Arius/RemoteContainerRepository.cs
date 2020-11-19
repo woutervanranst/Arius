@@ -121,7 +121,7 @@ namespace Arius
                     p => p.Value
                         .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
                         .Select(c => (IEncryptedChunkFile)_encrypter.Encrypt(c, c is not ILocalContentFile)).ToImmutableArray()
-                );
+                ); //TODO naar temp folder
 
             var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
                 .SelectMany(eac => eac)
@@ -131,59 +131,12 @@ namespace Arius
 
             //Upload Chunks
             _remoteChunkRepository.PutAll(encryptedChunksToUpload);
-            //_uploader.Upload(encryptedChunksToUpload);
 
+            //Delete Chunks (niet enkel de uploaded ones maar ook de generated ones)
+            foreach (var encryptedChunkFullName in encryptedChunksToUpload
+                .Select(uec => uec.FullName)
+                .Distinct())
+                File.Delete(encryptedChunkFullName);
         }
-
-        //{
-        //    _uploader.Upload(entities);
-        //}
-
-
     }
-
-
-
-
-    //    internal class LocalRootDirectory : ILocalRepository<ILocalFile>
-    //    {
-    //        public LocalRootDirectory(ICommandExecutorOptions options, LocalFileFactory factory)
-    //        {
-    //            var root = ((ILocalRootDirectoryOptions)options).Path;
-    //            _root = new DirectoryInfo(root);
-    //            _factory = factory;
-    //        }
-
-    //        private readonly DirectoryInfo _root;
-    //        private readonly LocalFileFactory _factory;
-
-    //        public IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : class, ILocalFile
-    //        {
-    //            var attr = typeof(T).GetCustomAttribute<ExtensionAttribute>();
-    //            var localFiles = ExtensionAttribute.GetFilesWithExtension(_root, attr).Select(fi => _factory.Create<T>(this, fi));
-
-    //            return localFiles;
-    //        }
-
-    //        public DirectoryInfo Root => _root;
-
-    //        public ILocalFile GetByID(object id)
-    //        {
-    //            throw new NotImplementedException();
-    //        }
-
-    //        public void Insert(ILocalFile entity)
-    //        {
-    //            throw new NotImplementedException();
-    //        }
-
-    //        public void Update(ILocalFile entityToUpdate)
-    //        {
-    //            throw new NotImplementedException();
-    //        }
-
-
-    //    }
-    //}
-
 }
