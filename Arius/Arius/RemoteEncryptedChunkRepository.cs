@@ -19,7 +19,7 @@ namespace Arius
         public string Container { get; }
     }
 
-    internal class RemoteEncryptedChunkRepository : IRepository<IRemotenEncryptedChunkBlob>, IDisposable
+    internal class RemoteEncryptedChunkRepository : IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, IDisposable
     {
         public RemoteEncryptedChunkRepository(ICommandExecutorOptions options,
             Configuration config,
@@ -55,27 +55,28 @@ namespace Arius
         
         public string FullName => _localTemp.FullName;
 
-        public IRemotenEncryptedChunkBlob GetById(HashValue id)
+        public IRemoteEncryptedChunkBlob GetById(HashValue id)
         {
             throw new NotImplementedException();
         }
 
-        public IEnumerable<IRemotenEncryptedChunkBlob> GetAll(Expression<Func<IRemotenEncryptedChunkBlob, bool>> filter = null)
+        public IEnumerable<IRemoteEncryptedChunkBlob> GetAll(Expression<Func<IRemoteEncryptedChunkBlob, bool>> filter = null)
         {
             return _bcc.GetBlobs(prefix: SubDirectoryName)
-                .Select(bi => _factory.Create<IRemotenEncryptedChunkBlob>(bi, this))
+                .Select(bi => _factory.Create<IRemoteEncryptedChunkBlob>(bi, this))
                 .ToImmutableArray();
         }
 
-        public void Put(IRemotenEncryptedChunkBlob entity)
+        public void Put(IEncryptedChunkFile entity)
         {
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IRemotenEncryptedChunkBlob> entities)
+        public void PutAll(IEnumerable<IEncryptedChunkFile> entities)
         {
-            throw new NotImplementedException();
+            _blobcopier.Upload(entities, $"/{SubDirectoryName}");
         }
+
 
         public void Dispose()
         {

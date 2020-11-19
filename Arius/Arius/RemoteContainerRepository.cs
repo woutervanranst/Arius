@@ -27,7 +27,7 @@ namespace Arius
             ILogger<RemoteContainerRepository> logger,
             IBlobCopier uploader,
             IRepository<IManifestFile> manifestRepository,
-            IRepository<IRemotenEncryptedChunkBlob> chunkRepository,
+            IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> chunkRepository,
             IChunker chunker,
             IEncrypter encrypter)
         {
@@ -42,7 +42,7 @@ namespace Arius
         private readonly ILogger<RemoteContainerRepository> _logger;
         private readonly IBlobCopier _uploader;
         private readonly IRepository<IManifestFile> _manifestRepository;
-        private readonly IRepository<IRemotenEncryptedChunkBlob> _remoteChunkRepository;
+        private readonly IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> _remoteChunkRepository;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
 
