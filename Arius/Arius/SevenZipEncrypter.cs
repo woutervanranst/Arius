@@ -17,60 +17,62 @@ namespace Arius
         string Passphrase { get; }
     }
 
-    internal class SevenZipEncrypter<T> : IEncrypter<T> where T : IFile
+    internal class SevenZipEncrypter : IEncrypter
     {
 
 
-        public SevenZipEncrypter(ICommandExecutorOptions options, ILogger<SevenZipEncrypter<T>> logger, ILocalRepository<ILocalFile> root, LocalFileFactory factory)
+        public SevenZipEncrypter(ICommandExecutorOptions options, 
+            ILogger<SevenZipEncrypter> logger, 
+            //ILocalRepository root, 
+            LocalFileFactory factory)
         {
-            _passphrase = ((IEncrypterOptions) options).Passphrase;
-            
+            _passphrase = ((IEncrypterOptions)options).Passphrase;
+
             //Search async for the 7z Library (on another thread)
             _7ZLibraryPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.dll", "7z"));
 
-            _root = root;
+            //_root = root;
 
             _factory = factory;
         }
 
         private readonly string _passphrase;
         private readonly Task<string> _7ZLibraryPath;
-        private readonly ILocalRepository<ILocalFile> _root;
+        //private readonly ILocalRepository _root;
         private readonly LocalFileFactory _factory;
 
-        public IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T
+        public IEncrypted Encrypt(ILocalFile fileToEncrypt, string fileName)
         {
-            return Encrypt(fileToEncrypt, fileName, CompressionLevel.None);
+            return Encrypt(fileToEncrypt, fileName);
+        }
+        public IEncrypted Encrypt(ILocalFile fileToEncrypt, string fileName, CompressionLevel compressionLevel)
+        {
+            throw new NotImplementedException();
+
+            //try
+            //{
+            //    SevenZipBase.SetLibraryPath(_7ZLibraryPath.Result);
+            //}
+            //catch (SevenZipLibraryException e)
+            //{
+            //    throw;
+            //}
+
+            //var compressor = new SevenZipCompressor
+            //{
+            //    ArchiveFormat = OutArchiveFormat.SevenZip,
+            //    CompressionLevel = compressionLevel,
+            //    EncryptHeaders = true,
+            //    ZipEncryptionMethod = ZipEncryptionMethod.Aes256
+            //};
+
+            //var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileName));
+            //compressor.CompressFilesEncrypted(archive.FullName, _passphrase, fileToEncrypt.FullName);
+
+            //return (IEncrypted<V>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
         }
 
-        public IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName, CompressionLevel compressionLevel) where V : T
-        {
-            try
-            {
-                SevenZipBase.SetLibraryPath(_7ZLibraryPath.Result);
-            }
-            catch (SevenZipLibraryException e)
-            {
-                throw;
-            }
-            
-            var compressor = new SevenZipCompressor
-            {
-                ArchiveFormat = OutArchiveFormat.SevenZip,
-                CompressionLevel = compressionLevel,
-                EncryptHeaders = true,
-                ZipEncryptionMethod = ZipEncryptionMethod.Aes256
-            };
-
-            var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileName));
-            compressor.CompressFilesEncrypted(archive.FullName, _passphrase, fileToEncrypt.FullName);
-
-            return (IEncrypted<V>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
-        }
-
-        
-
-        public T Decrypt(IEncrypted<T> fileToDecrypt)
+        public ILocalFile Decrypt(IEncrypted fileToDecrypt)
         {
             throw new NotImplementedException();
         }
