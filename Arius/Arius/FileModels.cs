@@ -24,7 +24,7 @@ namespace Arius
 
         protected readonly Lazy<HashValue> _hash;
 
-        private readonly FileInfo _fi;
+        protected readonly FileInfo _fi;
 
         public HashValue Hash => _hash.Value;
 
@@ -67,6 +67,9 @@ namespace Arius
         //    return null;
         //    //throw new NotImplementedException();
         //}
+        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Name);
+        public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
+        public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
 
     [Extension(".*", true, encryptedType: typeof(RemoteEncryptedChunkBlob))]
@@ -75,6 +78,10 @@ namespace Arius
         public LocalContentFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
         }
+
+        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Name);
+        public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
+        public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
 
     [Extension(".7z.arius")]

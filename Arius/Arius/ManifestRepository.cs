@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 
@@ -15,7 +17,7 @@ namespace Arius
         //public string Container { get; init; }
     }
 
-    internal class ManifestRepository : IRepository<IManifestFile>, IDisposable
+    internal class ManifestRepository : IRepository<IManifestFile, IKaka>, IDisposable
     {
         public ManifestRepository(ICommandExecutorOptions options, 
             Configuration config, 
@@ -27,7 +29,7 @@ namespace Arius
             _encrypter = encrypter;
             _factory = factory;
             _localTemp = config.TempDir.CreateSubdirectory(SubDirectoryName);
-            _manifestFiles = new List<IManifestFile>();
+            //_manifestFiles = new Dictionary<HashValue, IManifestFile>();
 
             //Asynchronously download all manifests
             _downloadManifestsTask = Task.Run(() => DownloadManifests());
@@ -43,7 +45,7 @@ namespace Arius
                 .WithDegreeOfParallelism(1)
                 .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
-            _manifestFiles.AddRange(localManifests.ToList());
+            _manifestFiles = localManifests.ToDictionary(mf => mf.Hash, mf => mf);
         }
 
         private const string SubDirectoryName = "manifests";
@@ -52,7 +54,7 @@ namespace Arius
         private readonly IBlobCopier _blobcopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
-        private readonly List<IManifestFile> _manifestFiles;
+        private Dictionary<HashValue, IManifestFile> _manifestFiles;
 
         public string FullName => _localTemp.FullName;
 
@@ -68,7 +70,7 @@ namespace Arius
         {
             _downloadManifestsTask.Wait();
 
-            return _manifestFiles; //TODO FILTER
+            return _manifestFiles.Values; //TODO FILTER
         }
 
         public void Dispose()
@@ -77,15 +79,48 @@ namespace Arius
             _localTemp.Delete();
         }
 
-        public void Put(IManifestFile entity)
+        public void Put(IKaka entity)
         {
+            _downloadManifestsTask.Wait();
+
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IManifestFile> entities)
+        public void PutAll(IEnumerable<IKaka> entities)
         {
-            throw new NotImplementedException();
-        }
+            _downloadManifestsTask.Wait();
 
+            entities
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .GroupBy(lf => lf.Hash)
+                .ForAll(g =>
+                {
+                    //Get the Manifest
+                    AriusManifest manifest;
+                    string manifestFileFullName;
+                    if (_manifestFiles.ContainsKey(g.Key))
+                    {
+                        manifestFileFullName = _manifestFiles[g.Key].FullName;
+                        var jso2n = File.ReadAllText(manifestFileFullName);
+                        manifest = JsonSerializer.Deserialize<AriusManifest>(jso2n);
+                    }
+                    else
+                    {
+                        manifest = new AriusManifest(new[] {g.Key.Value}, g.Key.Value); //TODO quid encryptedChunks van Dedup
+                        manifestFileFullName = g.Key.Value;
+                    }
+
+
+                    var writeback = manifest.Update(g.AsEnumerable());
+
+                    
+                    //Save
+                    var json = JsonSerializer.Serialize(this,
+                        new JsonSerializerOptions { WriteIndented = true, IgnoreNullValues = true });
+                    File.WriteAllText(manifestFileFullName, json);
+
+                });
+        }
     }
 }

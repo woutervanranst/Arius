@@ -61,8 +61,8 @@ namespace Arius
                 .AddSingleton<Configuration>(new Configuration(pcp.CommandExecutorOptions, configurationRoot))
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<ILocalRepository, LocalRootRepository>()
-                .AddSingleton<IRemoteRepository, RemoteContainerRepository>()
-                .AddSingleton<IRepository<IManifestFile>, ManifestRepository>()
+                .AddSingleton<IRepository<ILocalFile, IKaka>, RemoteContainerRepository>()
+                .AddSingleton<IRepository<IManifestFile, IKaka>, ManifestRepository>()
                 .AddSingleton<IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, RemoteEncryptedChunkRepository>()
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
@@ -72,7 +72,9 @@ namespace Arius
                         new Chunker())
                 .AddSingleton<IEncrypter, SevenZipEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
-                .AddScoped<ArchiveCommandExecutor>()
+                //.AddSingleton<ManifestService>()
+                .AddSingleton<ArchiveCommandExecutor>()
+
                 .BuildServiceProvider();
 
 
