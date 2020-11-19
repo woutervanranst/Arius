@@ -104,7 +104,7 @@ namespace Arius
                 s.Close();
             }
 
-            var decryptedLocalFile = _factory.Create(targetFile, fileToDecrypt.Root);
+            var decryptedLocalFile = _factory.Create<ILocalFile>(targetFile, fileToDecrypt.Root);
 
             if (deleteEncrypted)
                 fileToDecrypt.Delete();
