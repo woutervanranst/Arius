@@ -19,18 +19,43 @@ namespace Arius
 
         private readonly IHashValueProvider _contentFileHasher;
 
-        public T Create<T>(ILocalRepository<ILocalFile> root, FileInfo fi) where T : ILocalFile
+        //public T Create<T>(FileInfo fi) where T : ILocalFile
+        //{
+        //    ILocalFile result;
+
+        //    if (typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+        //        result = new LocalPointerFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
+        //    else
+        //        throw new NotImplementedException();
+
+        //    return (T)result;
+
+            
+
+
+        //}
+        public T Create<T>(IRepository<T> root, FileInfo fi) where T : ILocalFile
         {
             ILocalFile result;
 
+            //Func<T, FileInfo, bool> ka = (arg1, info) => typeof(arg1).GetCustomAttribute<ExtensionAttribute>()
+
             if (typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-                result = new LocalPointerFile(root, fi, _contentFileHasher); 
+                result = new LocalPointerFile((IRepository<ILocalFile>)root, fi, lf => _contentFileHasher.GetHashValue(lf)); 
             else if (typeof(LocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-                result = new LocalContentFile(root, fi, _contentFileHasher);
-            else if (typeof(EncryptedLocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
-                result = new EncryptedLocalContentFile(root, fi, _contentFileHasher);
-            else
-                throw new NotImplementedException();
+                result = new LocalContentFile((IRepository<ILocalFile>)root, fi, lf => _contentFileHasher.GetHashValue(lf));
+            else if (typeof(LocalEncryptedManifestFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+                result = new LocalEncryptedManifestFile((IRepository<ILocalFile>)root, fi, null);
+            //else if (typeof(EncryptedLocalContentFile).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi))
+            //    result = new EncryptedLocalContentFile(root, fi, _contentFileHasher);
+                    else
+                        throw new NotImplementedException();
+
+
+
+            
+
+
 
             //if (typeof(T).IsAssignableFrom(typeof(IPointerFile<V>)))
             //{
