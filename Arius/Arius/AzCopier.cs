@@ -67,12 +67,12 @@ namespace Arius
         private readonly ILogger<AzCopier> _logger;
 
 
-        public void Download(IEnumerable<IBlob> blobsToDownload)
+        public void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
         {
             throw new NotImplementedException();
         }
 
-        public void Download(string directoryName, DirectoryInfo target)
+        public void Download(string remoteDirectoryName, DirectoryInfo target)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
             //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
@@ -80,9 +80,9 @@ namespace Arius
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{_bcc.Uri}/{directoryName}/*?{sas}' '{target.FullName}' --recursive";
+                arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{_bcc.Uri}/{directoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
+                arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 
@@ -99,7 +99,7 @@ namespace Arius
         }
 
 
-        public void Upload<T>(IEnumerable<T> filesToUpload) where T : ILocalFile
+        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile
         {
             AccessTier tier;
 
@@ -117,11 +117,11 @@ namespace Arius
                 {
                     var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-                    Upload(g.Key, fileNames, tier);
+                    Upload(g.Key, remoteDirectoryName, fileNames, tier);
                 });
         }
 
-        private void Upload(string dir, string[] fileNames, AccessTier tier)
+        private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
@@ -129,9 +129,9 @@ namespace Arius
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{dir}\*' '{_bcc.Uri}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{dir}\*"" ""{_bcc.Uri}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 

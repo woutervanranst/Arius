@@ -69,12 +69,20 @@ namespace Arius
         void Put(T entity);
         void PutAll(IEnumerable<T> entities);
     }
+    internal interface IRemoteRepository<TRemote, in TLocal> : IRepository where TRemote : IBlob where TLocal : ILocalFile
+    {
+        TRemote GetById(HashValue id);
+        IEnumerable<TRemote> GetAll(Expression<Func<TRemote, bool>> filter = null);
+
+        void Put(TLocal entity);
+        void PutAll(IEnumerable<TLocal> entities);
+    }
 
     internal interface IBlobCopier
     {
-        public void Upload<T>(IEnumerable<T> filesToUpload) where T : ILocalFile;
-        void Download(IEnumerable<IBlob> blobsToDownload);
-        void Download(string directoryName, DirectoryInfo target);
+        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile;
+        void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
+        void Download(string remoteDirectoryName, DirectoryInfo target);
 
         //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
         //IEnumerable<IBlob> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
@@ -97,7 +105,7 @@ namespace Arius
 
 
     //[FileExtension("*.*", true)]
-    internal interface IRemotenEncryptedChunkBlob : IRemoteBlob
+    internal interface IRemoteEncryptedChunkBlob : IRemoteBlob
     {
     }
 
