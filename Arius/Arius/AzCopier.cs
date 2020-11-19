@@ -74,6 +74,12 @@ namespace Arius
 
         public void Download(string remoteDirectoryName, DirectoryInfo target)
         {
+            if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
+            {
+                _logger.LogInformation($"No files to download in {remoteDirectoryName}, skipping AzCopy");
+                return;
+            }
+
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
             //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
 
