@@ -144,12 +144,12 @@ namespace Arius.CommandLine
     {
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly ILocalRepository _localRoot;
-        private readonly IRemoteRepository _remoteArchive;
+        private readonly IRepository<ILocalFile, IKaka> _remoteArchive;
 
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             ILocalRepository localRoot,
-            IRemoteRepository remoteArchive)
+            IRepository<ILocalFile, IKaka> remoteArchive)
         {
             _logger = logger;
             _localRoot = localRoot;
@@ -167,30 +167,6 @@ namespace Arius.CommandLine
 
 
         
-        
-
-        
-
-
-
-
-
-
-
-
-
-        //    //    //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
-        //    //    var createdManifestsPerHash = localContentFilesToUpload
-        //    //        .AsParallel()
-        //    //        .WithDegreeOfParallelism(1)
-        //    //        .Select(g => RemoteEncryptedAriusManifest.Create(
-        //    //            g.First().Hash,
-        //    //            unencryptedChunksPerHash[g.Key]
-        //    //                .Select(uec => archive.GetRemoteEncryptedAriusChunk(uec.Hash)),
-        //    //            archive, passphrase))
-        //    //        .ToDictionary(
-        //    //            ream => ream.Hash,
-        //    //            ream => ream);
 
         //    //    /*
         //    //     * 2. Ensure Pointers exist/are create for ALL LocalContentFiles
@@ -209,15 +185,7 @@ namespace Arius.CommandLine
         //    //            AriusPointerFile.Create(root, lcf, manifest);
         //    //        });
 
-        //    //    /*
-        //    //     * 3. Synchronize ALL MANIFESTS with the local file system
-        //    //     */
 
-        //    //    var ariusPointersPerManifestName = root.GetAriusPointerFiles()
-        //    //        .GroupBy(apf => apf.EncryptedManifestName)
-        //    //        .ToImmutableDictionary(
-        //    //            g => g.Key,
-        //    //            g => g.ToList());
 
         //    //    // TODO QUID BROKEN POINTERFILES
 
