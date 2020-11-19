@@ -32,7 +32,7 @@ namespace Arius
         private readonly Configuration _config;
         private readonly LocalFileFactory _factory;
 
-        public DirectoryInfo Root => _root;
+        public string FullName => _root.FullName;
 
         
         public void Add(ILocalFile entity)

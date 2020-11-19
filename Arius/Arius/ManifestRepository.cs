@@ -15,7 +15,7 @@ namespace Arius
         //public string Container { get; init; }
     }
 
-    internal class ManifestRepository : IRepository<IManifestFile>, IDisposable
+    internal class ManifestRepository : IRepository<IManifestFile>, IRepository<IEncryptedManifestFile>, IDisposable
     {
         
 
@@ -29,21 +29,23 @@ namespace Arius
             _encrypter = encrypter;
             _factory = factory;
             _localTemp = config.TempDir.CreateSubdirectory("manifests");
+            _manifestFiles = new List<IManifestFile>();
 
             //Asynchronously download all manifests
-            downloadManifestsTask = Task.Run(() =>
-            {
-                blobcopier.Download("manifests", _localTemp);
+            downloadManifestsTask = Task.Run(() => DownloadManifests());
+        }
 
-                var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
-                    .Select(fi => factory.Create<IEncryptedLocalFile>(fi))
-                    .AsParallel()
-                    .WithDegreeOfParallelism(1)
-                    .Select(a => encrypter.Decrypt(a));
+        private void DownloadManifests()
+        {
+            _blobcopier.Download("manifests", _localTemp);
 
-                localManifests.ToArray();
+            var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
+                .Select(fi => _factory.Create<IEncryptedManifestFile>(fi, this))
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
-            });
+            _manifestFiles.AddRange(localManifests.ToList());
         }
 
         private readonly Task downloadManifestsTask;
@@ -51,19 +53,35 @@ namespace Arius
         private readonly IBlobCopier _blobcopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
+        private readonly List<IManifestFile> _manifestFiles;
 
 
         public IEnumerable<IManifestFile> GetAll(Expression<Func<IManifestFile, bool>> filter = null)
         {
             downloadManifestsTask.Wait();
 
-            throw new NotImplementedException();
+            return _manifestFiles; //TODO FILTER
         }
 
         public IManifestFile GetById(HashValue id)
         {
             downloadManifestsTask.Wait();
 
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<IEncryptedManifestFile> GetAll(Expression<Func<IEncryptedManifestFile, bool>> filter = null)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Put(IEncryptedManifestFile entity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void PutAll(IEnumerable<IEncryptedManifestFile> entities)
+        {
             throw new NotImplementedException();
         }
 
@@ -82,5 +100,12 @@ namespace Arius
         {
             throw new NotImplementedException();
         }
+
+        IEncryptedManifestFile IRepository<IEncryptedManifestFile>.GetById(HashValue id)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string FullName => _localTemp.FullName;
     }
 }

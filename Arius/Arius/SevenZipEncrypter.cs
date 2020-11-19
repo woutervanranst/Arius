@@ -90,15 +90,17 @@ namespace Arius
             var decryptedType = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>().DecryptedType;
             var decryptedTypeExtension = decryptedType.GetCustomAttribute<ExtensionAttribute>().Extension;
 
-            var targetFile = new FileInfo($"{fileToDecrypt.FullNameWithoutExtension}.{decryptedTypeExtension}");
+            var targetFile = new FileInfo(Path.Combine(fileToDecrypt.Root.FullName, 
+                $"{fileToDecrypt.NameWithoutExtension}{decryptedTypeExtension}"));
 
             using (var s = targetFile.OpenWrite())
             {
-                var extractor = new SevenZip.SevenZipExtractor(fileToDecrypt.FullName, _passphrase);
-                if (extractor.ArchiveFileNames.Count > 1)
-                    throw new ArgumentException("ARFCHIVE TOO MANY FILES"); //TODO
-                extractor.ExtractFile(0, s);
-
+                using (var extractor = new SevenZip.SevenZipExtractor(fileToDecrypt.FullName, _passphrase))
+                {
+                    if (extractor.ArchiveFileNames.Count > 1)
+                        throw new ArgumentException("ARFCHIVE TOO MANY FILES"); //TODO
+                    extractor.ExtractFile(0, s);
+                }
                 s.Close();
             }
 

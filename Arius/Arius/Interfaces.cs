@@ -15,7 +15,7 @@ namespace Arius
     {
         string FullName { get; }
         string Name { get; }
-        string FullNameWithoutExtension { get; }
+        string NameWithoutExtension { get; }
     }
     internal interface ILocalFile : IITem, IHashable
     {
@@ -61,6 +61,7 @@ namespace Arius
 
         void Put(T entity);
         void PutAll(IEnumerable<T> entities);
+        string FullName { get; }
     }
 
     //internal class ChunkRepository : IRepository<IChunk>

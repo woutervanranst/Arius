@@ -40,9 +40,9 @@ namespace Arius
             else if (IsMatch<LocalContentFile>(fi))
                 result = new LocalContentFile((IRepository<ILocalFile>)root, fi, lf => _contentFileHasher.GetHashValue(lf));
             else if (IsMatch<LocalEncryptedManifestFile>(fi))
-                result = new LocalEncryptedManifestFile(null, fi, null);
+                result = new LocalEncryptedManifestFile((IRepository<ILocalFile>)root, fi, null);
             else if (IsMatch<LocalManifestFile>(fi))
-                result = new LocalManifestFile((IRepository<ILocalFile>)root, fi, (lf) => new HashValue { Value = lf.FullNameWithoutExtension });
+                result = new LocalManifestFile((IRepository<ILocalFile>)root, fi, (lf) => new HashValue { Value = lf.NameWithoutExtension });
             else
                 throw new NotImplementedException();
 
