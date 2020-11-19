@@ -44,7 +44,7 @@ namespace Arius
 
         public HashValue GetHashValue(LocalPointerFile hashable)
         {
-            var k = typeof(RemoteEncryptedManifestBlob).GetCustomAttribute<ExtensionAttribute>().Extension;
+            var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
             return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
         }
 

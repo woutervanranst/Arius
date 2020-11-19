@@ -20,8 +20,6 @@ namespace Arius
 
     internal class SevenZipEncrypter : IEncrypter
     {
-
-
         public SevenZipEncrypter(ICommandExecutorOptions options, 
             ILogger<SevenZipEncrypter> logger, 
             LocalFileFactory factory)
@@ -38,40 +36,51 @@ namespace Arius
         private readonly Task<string> _7ZLibraryPath;
         private readonly LocalFileFactory _factory;
 
-        public IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, string fileName)
+        public IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false)
         {
-            return Encrypt(fileToEncrypt, fileName);
-        }
-        public IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, string fileName, CompressionLevel compressionLevel)
-        {
-            throw new NotImplementedException();
+            try
+            {
+                SevenZipBase.SetLibraryPath(_7ZLibraryPath.Result);
+            }
+            catch (SevenZipLibraryException e)
+            {
+                throw;
+            }
 
-            //try
-            //{
-            //    SevenZipBase.SetLibraryPath(_7ZLibraryPath.Result);
-            //}
-            //catch (SevenZipLibraryException e)
-            //{
-            //    throw;
-            //}
+            CompressionLevel cl;
+            if (fileToEncrypt is IChunkFile) // CHUNK?
+                cl = CompressionLevel.None;
+            else if (fileToEncrypt is IManifestFile)
+                cl = CompressionLevel.Normal;
+            else
+                throw new NotImplementedException();
 
-            //var compressor = new SevenZipCompressor
-            //{
-            //    ArchiveFormat = OutArchiveFormat.SevenZip,
-            //    CompressionLevel = compressionLevel,
-            //    EncryptHeaders = true,
-            //    ZipEncryptionMethod = ZipEncryptionMethod.Aes256
-            //};
+            var compressor = new SevenZipCompressor
+            {
+                ArchiveFormat = OutArchiveFormat.SevenZip,
+                CompressionLevel = cl,
+                EncryptHeaders = true,
+                ZipEncryptionMethod = ZipEncryptionMethod.Aes256
+            };
 
-            //var archive = new FileInfo(Path.Combine(_root.Root.FullName, fileName));
-            //compressor.CompressFilesEncrypted(archive.FullName, _passphrase, fileToEncrypt.FullName);
+            var encryptedType = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>().EncryptedType;
+            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>().Extension;
 
-            //return (IEncrypted<V>)_factory.Create<EncryptedLocalContentFile>(_root, archive);
-        }
+            var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Root.FullName,
+                $"{fileToEncrypt.Hash}{encryptedTypeExtension}"));
 
-        public IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, string fileName, bool deletePlaintext = false)
-        {
-            throw new NotImplementedException();
+            compressor.CompressFilesEncrypted(targetFile.FullName, _passphrase, fileToEncrypt.FullName);
+
+            //var encryptedLocalFile = (IEncryptedLocalFile)Convert.ChangeType(
+            //    _factory.Create<IEncryptedLocalFile>(targetFile, fileToEncrypt.Root),
+            //    encryptedType);
+            var encryptedLocalFile = _factory.Create<IEncryptedLocalFile>(targetFile, fileToEncrypt.Root);
+
+
+            if (deletePlaintext)
+                fileToEncrypt.Delete();
+
+            return encryptedLocalFile;
         }
 
 
