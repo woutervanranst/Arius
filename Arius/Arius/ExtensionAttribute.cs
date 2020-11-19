@@ -53,12 +53,14 @@ namespace Arius
         }
 
         private static readonly Lazy<ImmutableArray<string>> _extensions;
-        public static FileInfo[] GetFilesWithExtension(DirectoryInfo dir, ExtensionAttribute attr)
-        {
-            return dir.GetFiles($"*{attr.Extension}")
-                .Where(fi => !attr.ExcludeOthers ||
-                             !OtherExtensions(attr).Any(extToExclude => fi.Name.EndsWith(extToExclude))).ToArray();
-        }
+        //public static FileInfo[] GetFilesWithExtension(DirectoryInfo dir, ExtensionAttribute attr)
+        //{
+        //    return dir.GetFiles($"*{attr.Extension}")
+        //        .Where(fi => !attr.ExcludeOthers ||
+        //                     !OtherExtensions(attr).Any(extToExclude => fi.Name.EndsWith(extToExclude))).ToArray();
+        //}
+
+        
 
         private static ImmutableArray<string> OtherExtensions(ExtensionAttribute attr)
         {

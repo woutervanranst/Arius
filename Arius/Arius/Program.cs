@@ -58,17 +58,20 @@ namespace Arius
                         .AddConsole()
                         .AddFile(fileLoggingConfigurationSection);
                 })
+                .AddSingleton<Configuration>(new Configuration(pcp.CommandExecutorOptions, configurationRoot))
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                .AddSingleton<ILocalRepository<ILocalFile>, LocalRootDirectory>()
-                .AddSingleton<IRemoteRepository<IEncrypted<IFile>>, RemoteContainerRepository>()
+                .AddSingleton<LocalRootDirectory>()
+                //.AddSingleton<LocalTempManifestRepository>()
+                .AddSingleton<IRemoteRepository, RemoteContainerRepository>()
+                .AddSingleton<IRepository<IManifestFile>, ManifestRepository>()
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker<ILocalContentFile>>( ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
+                .AddSingleton<IChunker>(((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
                         new DedupChunker() : 
                         new Chunker())
-                .AddSingleton<SevenZipEncrypter<IFile>>()
-                .AddSingleton<IUploader<IFile>, AzCopyUploader<IFile>>()
+                .AddSingleton<IEncrypter, SevenZipEncrypter>()
+                .AddSingleton<IBlobCopier, AzCopier>()
                 .AddScoped<ArchiveCommandExecutor>()
                 .BuildServiceProvider();
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arius
 {
@@ -19,34 +21,71 @@ namespace Arius
         public string Container { get; init; }
     }
 
-    class RemoteContainerRepository : IRemoteRepository<IEncrypted<IFile>>
+    class RemoteContainerRepository : IRemoteRepository
     {
-        public RemoteContainerRepository(ICommandExecutorOptions options, IUploader<IFile> uploader)
+        public RemoteContainerRepository(ICommandExecutorOptions options, 
+            ILogger<RemoteContainerRepository> logger,
+            IBlobCopier uploader,
+            IRepository<IManifestFile> manifestRepository)
         {
+            _logger = logger;
             _uploader = uploader;
+            _manifestRepository = manifestRepository;
         }
 
-        private readonly IUploader<IFile> _uploader;
+        private readonly ILogger<RemoteContainerRepository> _logger;
+        private readonly IBlobCopier _uploader;
+        private readonly IRepository<IManifestFile> _manifestRepository;
 
-        IEnumerable<T> IRepository<IEncrypted<IFile>>.Get<T>(Expression<Func<T, bool>> filter)
+        public ILocalFile GetById(HashValue id)
         {
             throw new NotImplementedException();
         }
 
-        public IEncrypted<IFile> GetByID(object id)
+        public IEnumerable<ILocalFile> GetAll(Expression<Func<ILocalFile, bool>> filter = null)
         {
             throw new NotImplementedException();
         }
 
-        public void Add(IEncrypted<IFile> entity)
+        public void Put(ILocalFile entity)
         {
             throw new NotImplementedException();
         }
 
-        public void Add(IEnumerable<IEncrypted<IFile>> entities)
+        public void PutAll(IEnumerable<ILocalFile> localFiles)
         {
-            _uploader.Upload(entities);
+            ////TODO Simulate
+            ////TODO MINSIZE
+            ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
+
+            /*
+             * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
+             */
+
+            _logger.LogWarning("test");
+
+            //1.1 Ensure all chunks are uploaded
+            var localContentPerHash = localFiles
+                .OfType<LocalContentFile>()
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .GroupBy(lcf => lcf.Hash)
+                .ToImmutableArray();
+
+            _logger.LogInformation($"Found {localContentPerHash.Count()} files");
+            _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
+
+            var remoteManifestHashes = _manifestRepository.GetAll();
+            //    var remoteManifestHashes = archive
+            //        .GetRemoteEncryptedAriusManifests()
+            //        .Select(ream => ream.Hash)
+            //        .ToImmutableArray();
         }
+
+        //{
+        //    _uploader.Upload(entities);
+        //}
+
 
     }
 
