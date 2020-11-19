@@ -18,7 +18,7 @@ namespace Arius
     internal abstract class LocalFile : ILocalFile //, IFile
     {
 
-        protected LocalFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider)
+        protected LocalFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider)
         {
             if (!fi.Exists)
                 throw new ArgumentException("The LocalFile does not exist");
@@ -39,7 +39,7 @@ namespace Arius
         public string FullName => _fi.FullName;
         public string Name => _fi.Name;
         //public string DirectoryName => _fi.DirectoryName;
-        public IRepository<ILocalFile> Root { get; }
+        public IRepository Root { get; }
 
         public void Delete()
         {
@@ -53,7 +53,7 @@ namespace Arius
     [Extension(".arius.pointer")]
     internal class LocalPointerFile : LocalFile, IPointerFile
     {
-        public LocalPointerFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public LocalPointerFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
             _objectName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
@@ -81,7 +81,7 @@ namespace Arius
     [Extension(".*", true)]
     internal class LocalContentFile : LocalFile, ILocalContentFile, IChunk
     {
-        public LocalContentFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public LocalContentFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
         }
     }
@@ -156,7 +156,7 @@ namespace Arius
     [Extension(".manifest.7z.arius", decryptedType: typeof(LocalManifestFile))]
     internal class LocalEncryptedManifestFile : LocalFile, IEncryptedManifestFile //, IRemote<IEncrypted<IManifestFile>>
     {
-        public LocalEncryptedManifestFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public LocalEncryptedManifestFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
         }
     }
@@ -164,7 +164,7 @@ namespace Arius
     [Extension(".manifest.arius")]
     internal class LocalManifestFile : LocalFile, IManifestFile //, IRemote<IEncrypted<IManifestFile>>
     {
-        public LocalManifestFile(IRepository<ILocalFile> root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public LocalManifestFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
         }
     }

@@ -15,7 +15,7 @@ namespace Arius
         //public string Container { get; init; }
     }
 
-    internal class ManifestRepository : IRepository<IManifestFile>, IRepository<IEncryptedManifestFile>, IDisposable
+    internal class ManifestRepository : IRepository<IManifestFile>, IDisposable
     {
         
 
@@ -70,21 +70,6 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public IEnumerable<IEncryptedManifestFile> GetAll(Expression<Func<IEncryptedManifestFile, bool>> filter = null)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Put(IEncryptedManifestFile entity)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void PutAll(IEnumerable<IEncryptedManifestFile> entities)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Dispose()
         {
             //Delete the temporary manifest files
@@ -97,11 +82,6 @@ namespace Arius
         }
 
         public void PutAll(IEnumerable<IManifestFile> entities)
-        {
-            throw new NotImplementedException();
-        }
-
-        IEncryptedManifestFile IRepository<IEncryptedManifestFile>.GetById(HashValue id)
         {
             throw new NotImplementedException();
         }
