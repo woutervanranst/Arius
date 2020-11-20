@@ -21,7 +21,7 @@ namespace Arius
         public string Container { get; init; }
     }
 
-    class RemoteContainerRepository : IRepository<ILocalFile, IArchivable>
+    class RemoteContainerRepository : IRemoteRepository
     {
         public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
