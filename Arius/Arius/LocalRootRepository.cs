@@ -45,17 +45,17 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public IKaka GetById(HashValue id)
+        public IPointersAndContent GetById(HashValue id)
         {
             throw new NotImplementedException();
         }
 
-        public void Put(IKaka entity)
+        public void Put(IPointersAndContent entity)
         {
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IKaka> entities)
+        public void PutAll(IEnumerable<IPointersAndContent> entities)
         {
             throw new NotImplementedException();
         }
@@ -65,10 +65,10 @@ namespace Arius
         /// </summary>
         /// <param name="filter"></param>
         /// <returns></returns>
-        public IEnumerable<IKaka> GetAll(Expression<Func<IKaka, bool>> filter = null)
+        public IEnumerable<IPointersAndContent> GetAll(Expression<Func<IPointersAndContent, bool>> filter = null)
         {
             var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => _factory.Create<IKaka>(fi, this)) //TODO FILTER
+                .Select(fi => _factory.Create<IPointersAndContent>(fi, this)) //TODO FILTER
                 .ToImmutableArray();
 
             return localFiles;
