@@ -123,9 +123,9 @@ namespace Arius.CommandLine
         IChunkerOptions, 
         IEncrypterOptions, 
         IAzCopyUploaderOptions, 
-        IRemoteContainerRepositoryOptions, 
+        //IRemoteContainerRepositoryOptions, 
         IConfigurationOptions,
-        IManifestRepositoryOptions,
+        //IManifestRepositoryOptions,
         IRemoteChunkRepositoryOptions
     {
         public string AccountName { get; init; }
@@ -144,21 +144,21 @@ namespace Arius.CommandLine
     {
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootRepository _localRoot;
-        private readonly RemoteContainerRepository _remoteArchive;
+        private readonly AriusRepository _ariusRepository;
 
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
-            RemoteContainerRepository remoteArchive)
+            AriusRepository remoteArchive)
         {
             _logger = logger;
             _localRoot = localRoot;
-            _remoteArchive = remoteArchive;
+            _ariusRepository = remoteArchive;
         }
         public int Execute()
         {
             var allLocalFiles = _localRoot.GetAll();
-            _remoteArchive.PutAll(allLocalFiles);
+            _ariusRepository.PutAll(allLocalFiles);
 
             return 0;
         }

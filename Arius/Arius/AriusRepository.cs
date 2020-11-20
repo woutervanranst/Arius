@@ -14,19 +14,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius
 {
-    internal interface IRemoteContainerRepositoryOptions : ICommandExecutorOptions
-    {
-        public string AccountName { get; init; }
-        public string AccountKey { get; init; }
-        public string Container { get; init; }
-    }
+    //internal interface IRemoteContainerRepositoryOptions : ICommandExecutorOptions
+    //{
+    //    public string AccountName { get; init; }
+    //    public string AccountKey { get; init; }
+    //    public string Container { get; init; }
+    //}
 
-    class RemoteContainerRepository : IPutRepository<IArchivable>
+    internal class AriusRepository : IPutRepository<IArchivable>
     {
-        public RemoteContainerRepository(ICommandExecutorOptions options,
-            ILogger<RemoteContainerRepository> logger,
+        public AriusRepository(ICommandExecutorOptions options,
+            ILogger<AriusRepository> logger,
             IBlobCopier uploader,
-            ManifestService manifestService,
+            LocalManifestRepository manifestRepository,
             RemoteEncryptedChunkRepository chunkRepository,
             IChunker chunker,
             IEncrypter encrypter
@@ -34,15 +34,15 @@ namespace Arius
         {
             _logger = logger;
             _uploader = uploader;
-            _manifestService = manifestService;
+            _manifestRepository = manifestRepository;
             _remoteChunkRepository = chunkRepository;
             _chunker = chunker;
             _encrypter = encrypter;
         }
 
-        private readonly ILogger<RemoteContainerRepository> _logger;
+        private readonly ILogger<AriusRepository> _logger;
         private readonly IBlobCopier _uploader;
-        private readonly ManifestService _manifestService;
+        private readonly LocalManifestRepository _manifestRepository;
         private readonly RemoteEncryptedChunkRepository _remoteChunkRepository;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
@@ -77,7 +77,7 @@ namespace Arius
             _logger.LogInformation($"Found {localContentPerHash.Count()} files");
             _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
 
-            var remoteManifestHashes = _manifestService.GetAll()
+            var remoteManifestHashes = _manifestRepository.GetAll()
                 .Select(f => f.Hash)
                 .ToImmutableArray();
 
@@ -136,7 +136,7 @@ namespace Arius
 
             var createdManifestsPerHash = localContentFilesToUpload
                 .AsParallelWithParallelism()
-                .Select(g => _manifestService.Create(
+                .Select(g => _manifestRepository.Create(
                     unencryptedChunksPerLocalContentHash[g.First().Hash].Select(cf => encryptedChunkPerHash[cf.Hash]),
                     g.Select(lcf => lcf)))
                 .ToDictionary(
@@ -156,9 +156,9 @@ namespace Arius
                     {
                         var manifest = createdManifestsPerHash.ContainsKey(lcf.Hash) ?
                             createdManifestsPerHash[lcf.Hash] :
-                            _manifestService.GetById(lcf.Hash);
+                            _manifestRepository.GetById(lcf.Hash);
 
-                        throw new NotImplementedException();
+
                         //AriusPointerFile.Create(root, lcf, manifest);
                     });
 
@@ -183,7 +183,7 @@ namespace Arius
             //    a.Update(ariusPointersPerManifestName[a.Name], passphrase);
             //});
 
-            _manifestService.PutAll(localFiles);
+            //_manifestService.PutAll(localFiles);
 
 
             //    /*
