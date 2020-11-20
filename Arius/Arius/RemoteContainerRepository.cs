@@ -21,7 +21,7 @@ namespace Arius
         public string Container { get; init; }
     }
 
-    class RemoteContainerRepository : IRemoteRepository
+    class RemoteContainerRepository : IPutRepository<IArchivable>
     {
         public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
@@ -48,16 +48,6 @@ namespace Arius
         private readonly IEncrypter _encrypter;
 
         public string FullName => throw new NotImplementedException();
-
-        public ILocalFile GetById(HashValue id)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IEnumerable<ILocalFile> GetAll()
-        {
-            throw new NotImplementedException();
-        }
 
         public void Put(IArchivable entity)
         {
