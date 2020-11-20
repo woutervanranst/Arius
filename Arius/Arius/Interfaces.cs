@@ -77,18 +77,18 @@ namespace Arius
     //    void Put(T entity);
     //    void PutAll(IEnumerable<T> entities);
     //}
-    internal interface IRemoteRepository<out TRemote, in TLocal> : IRepository where TRemote : IBlob where TLocal : ILocalFile
-    {
-        TRemote GetById(HashValue id);
-        IEnumerable<TRemote> GetAll();
+    //internal interface IRemoteRepository<out TRemote, in TLocal> : IRepository where TRemote : IBlob where TLocal : ILocalFile
+    //{
+    //    TRemote GetById(HashValue id);
+    //    IEnumerable<TRemote> GetAll();
 
-        void Put(TLocal entity);
-        void PutAll(IEnumerable<TLocal> entities);
-    }
+    //    void Put(TLocal entity);
+    //    void PutAll(IEnumerable<TLocal> entities);
+    //}
 
-    internal interface IRepository<T> : IRepository<T, T> where T : IItem
-    {
-    }
+    //internal interface IRepository<T> : IRepository<T, T> where T : IItem
+    //{
+    //}
     internal interface IRepository<out TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
     {
         TGet GetById(HashValue id);
@@ -104,7 +104,7 @@ namespace Arius
         IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
     }
 
-    internal interface IPointerService : IRepository<IPointerFile>
+    internal interface IPointerService : IRepository<IPointerFile, IPointerFile>
     {
     }
 
@@ -210,7 +210,7 @@ namespace Arius
     //    DirectoryInfo Root { get; }
     //}
 
-    internal interface ILocalRepository : IRepository<IArchivable> //, IPointerService
+    internal interface ILocalRepository : IRepository<IArchivable, IArchivable> //, IPointerService
     {
     }
 
