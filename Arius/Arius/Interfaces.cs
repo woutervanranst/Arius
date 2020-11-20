@@ -1,13 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Configuration;
 
 namespace Arius
 {
@@ -16,6 +9,10 @@ namespace Arius
         string FullName { get; }
         string Name { get; }
         string NameWithoutExtension { get; }
+    }
+    internal interface IHashable
+    {
+        HashValue Hash { get; }
     }
     internal interface ILocalFile : IItem, IHashable
     {
@@ -45,24 +42,56 @@ namespace Arius
     internal interface IManifestFile : ILocalFile
     {
     }
+    internal interface IChunkFile : IHashable, ILocalFile
+    {
+    }
+    internal interface IChunker //<T> where T : ILocalContentFile
+    {
+        IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk);
+        ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin);
+    }
 
+
+
+    internal interface IEncryptedLocalFile : ILocalFile
+    {
+    }
+    internal interface IEncrypter
+    {
+        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false);
+        ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false);
+    }
     internal interface IEncryptedManifestFile : ILocalFile, IEncryptedLocalFile
     {
     }
 
 
-    internal interface IChunkFile : IHashable, ILocalFile
-    {
-    }
-
+    
     internal interface IEncryptedChunkFile : IHashable, ILocalFile, IEncryptedLocalFile
     {
     }
 
 
+
     internal interface IBlob : IItem
     {
     }
+    internal interface IRemoteBlob : IBlob, IHashable
+    {
+    }
+    internal interface IRemoteEncryptedChunkBlob : IRemoteBlob
+    {
+    }
+
+
+
+    internal interface IBlobCopier
+    {
+        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile;
+        void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
+        void Download(string remoteDirectoryName, DirectoryInfo target);
+    }
+
 
 
     internal interface IRepository
@@ -89,108 +118,6 @@ namespace Arius
     //internal interface IRepository<T> : IRepository<T, T> where T : IItem
     //{
     //}
-    internal interface IRepository<out TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
-    {
-        TGet GetById(HashValue id);
-        IEnumerable<TGet> GetAll();
-
-        void Put(TPut entity);
-        void PutAll(IEnumerable<TPut> entities);
-    }
-
-
-    internal interface IManifestService : IRepository<IManifestFile, IArchivable>
-    {
-        IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
-    }
-
-    internal interface IPointerService : IRepository<IPointerFile, IPointerFile>
-    {
-    }
-
-    internal interface IBlobCopier
-    {
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile;
-        void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
-        void Download(string remoteDirectoryName, DirectoryInfo target);
-
-        //IEnumerable<IRemote<T>> Upload(IEnumerable<T> chunksToUpload);
-        //IEnumerable<IBlob> Upload<V>(IEnumerable<V> chunksToUpload) where V : T;
-        //IEnumerable<T> Download(IEnumerable<IRemote<T>> chunksToDownload);
-    }
-
-
-
-
-
-
-
-
-
-
-
-    internal interface IRemoteBlob : IBlob, IHashable
-    {
-    }
-
-
-    //[FileExtension("*.*", true)]
-    internal interface IRemoteEncryptedChunkBlob : IRemoteBlob
-    {
-    }
-
-    //[FileExtension("*.arius.manifest")]
-    //internal interface IRemoteManifestBlob : IRemoteBlob
-    //{
-
-    //}
-
-
-
-
-
-
-
-    internal interface IHashable
-    {
-        HashValue Hash { get; }
-    }
-
-
-
-
-    
-    internal interface IChunker //<T> where T : ILocalContentFile
-    {
-        IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk);
-        ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin);
-    }
-
-
-
-
-    internal interface IEncryptedLocalFile : ILocalFile
-    {
-
-    }
-
-    //internal interface IEncrypter<T> where T : IFile
-    //{
-    //    IEncrypted<V> Encrypt<V>(V fileToEncrypt, string fileName) where V : T;
-    //    T Decrypt(IEncrypted<T> fileToDecrypt);
-    //}
-
-    internal interface IEncrypter
-    {
-        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false);
-        ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false);
-    }
-
-
-
-
-
-
     //internal interface IRepository<TEntity> where TEntity : class
     //{
     //    //void Delete(TEntity entityToDelete);
@@ -209,6 +136,25 @@ namespace Arius
     //{
     //    DirectoryInfo Root { get; }
     //}
+    internal interface IRepository<out TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
+    {
+        TGet GetById(HashValue id);
+        IEnumerable<TGet> GetAll();
+
+        void Put(TPut entity);
+        void PutAll(IEnumerable<TPut> entities);
+    }
+
+
+    internal interface IManifestService : IRepository<IManifestFile, IArchivable>
+    {
+        IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
+    }
+    internal interface IPointerService : IRepository<IPointerFile, IPointerFile>
+    {
+    }
+
+   
 
     internal interface ILocalRepository : IRepository<IArchivable, IArchivable> //, IPointerService
     {
