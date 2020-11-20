@@ -69,14 +69,14 @@ namespace Arius
     {
         string FullName { get; }
     }
-    internal interface IRepository<T> : IRepository where T : IItem //TODO Refactor all IRepositoruy
-    {
-        T GetById(HashValue id);
-        IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
+    //internal interface IRepository<T> : IRepository where T : IItem //TODO Refactor all IRepositoruy
+    //{
+    //    T GetById(HashValue id);
+    //    IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
 
-        void Put(T entity);
-        void PutAll(IEnumerable<T> entities);
-    }
+    //    void Put(T entity);
+    //    void PutAll(IEnumerable<T> entities);
+    //}
     internal interface IRemoteRepository<TRemote, in TLocal> : IRepository where TRemote : IBlob where TLocal : ILocalFile
     {
         TRemote GetById(HashValue id);
@@ -203,11 +203,11 @@ namespace Arius
     //    DirectoryInfo Root { get; }
     //}
 
-    internal interface ILocalRepository : IRepository<IArchivable>
+    internal interface ILocalRepository : IRepository<IArchivable, IArchivable>
     {
     }
 
-    internal interface IRemoteRepository : IRepository<ILocalFile>
+    internal interface IRemoteRepository : IRepository<ILocalFile, IArchivable>
     {
     }
 }
