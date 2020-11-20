@@ -19,7 +19,7 @@ namespace Arius
         //public string Container { get; init; }
     }
 
-    internal class ManifestService : IManifestService, IRepository<IManifestFile, IKaka>, IDisposable
+    internal class ManifestService : IManifestService, IRepository<IManifestFile, IArchivable>, IDisposable
     {
         public ManifestService(ICommandExecutorOptions options, 
             Configuration config, 
@@ -113,14 +113,14 @@ namespace Arius
             _localTemp.Delete();
         }
 
-        public void Put(IKaka entity)
+        public void Put(IArchivable entity)
         {
             _downloadManifestsTask.Wait();
 
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IKaka> entities)
+        public void PutAll(IEnumerable<IArchivable> entities)
         {
             _downloadManifestsTask.Wait();
 
