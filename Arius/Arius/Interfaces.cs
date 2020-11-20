@@ -98,54 +98,7 @@ namespace Arius
     {
         string FullName { get; }
     }
-    //internal interface IRepository<T> : IRepository where T : IItem //TODO Refactor all IRepositoruy
-    //{
-    //    T GetById(HashValue id);
-    //    IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
-
-    //    void Put(T entity);
-    //    void PutAll(IEnumerable<T> entities);
-    //}
-    //internal interface IRemoteRepository<out TRemote, in TLocal> : IRepository where TRemote : IBlob where TLocal : ILocalFile
-    //{
-    //    TRemote GetById(HashValue id);
-    //    IEnumerable<TRemote> GetAll();
-
-    //    void Put(TLocal entity);
-    //    void PutAll(IEnumerable<TLocal> entities);
-    //}
-
-    //internal interface IRepository<T> : IRepository<T, T> where T : IItem
-    //{
-    //}
-    //internal interface IRepository<TEntity> where TEntity : class
-    //{
-    //    //void Delete(TEntity entityToDelete);
-    //    //void Delete(object id);
-    //    IEnumerable<T> Get<T>(Expression<Func<T, bool>> filter = null) where T : class, TEntity;
-    //    //IEnumerable<TEntity> Get(Expression<Func<TEntity, bool>> filter = null);
-    //    TEntity GetByID(object id);
-    //    //IEnumerable<TEntity> GetWithRawSql(string query, params object[] parameters);
-    //    void Add(TEntity entity);
-
-    //    void Add(IEnumerable<TEntity> entities);
-    //    //void Update(TEntity entityToUpdate);
-    //}
-
-    //internal interface ILocalRepository<TEntity> : IRepository<TEntity> where TEntity : class, ILocalFile
-    //{
-    //    DirectoryInfo Root { get; }
-    //}
-    internal interface IRepository<out TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
-    {
-        TGet GetById(HashValue id);
-        IEnumerable<TGet> GetAll();
-
-        void Put(TPut entity);
-        void PutAll(IEnumerable<TPut> entities);
-    }
-
-    internal interface IReadRepository<out T> : IRepository
+    internal interface IGetRepository<out T> : IRepository
     {
         T GetById(HashValue id);
         IEnumerable<T> GetAll();
@@ -156,14 +109,4 @@ namespace Arius
         void Put(T entity);
         void PutAll(IEnumerable<T> entities);
     }
-
-
-    internal interface IManifestService : IRepository<IManifestFile, IArchivable>
-    {
-        IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
-    }
-    internal interface IPointerService : IReadRepository<IPointerFile>
-    {
-    }
-
 }

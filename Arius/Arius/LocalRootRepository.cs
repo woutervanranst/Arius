@@ -18,7 +18,7 @@ namespace Arius
         string Path { get; }
     }
 
-    internal class LocalRootRepository : IReadRepository<ILocalContentFile>, IReadRepository<IPointerFile>, IPointerService
+    internal class LocalRootRepository : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
     {
         public LocalRootRepository(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
         {
@@ -52,10 +52,10 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        ILocalContentFile IReadRepository<ILocalContentFile>.GetById(HashValue id) => (ILocalContentFile)GetById(id);
-        IPointerFile IReadRepository<IPointerFile>.GetById(HashValue id) => (IPointerFile)GetById(id);
+        ILocalContentFile IGetRepository<ILocalContentFile>.GetById(HashValue id) => (ILocalContentFile)GetById(id);
+        IPointerFile IGetRepository<IPointerFile>.GetById(HashValue id) => (IPointerFile)GetById(id);
 
-        IEnumerable<IPointerFile> IReadRepository<IPointerFile>.GetAll() => (IEnumerable<IPointerFile>)GetAll();
-        IEnumerable<ILocalContentFile> IReadRepository<ILocalContentFile>.GetAll() => (IEnumerable<ILocalContentFile>)GetAll();
+        IEnumerable<IPointerFile> IGetRepository<IPointerFile>.GetAll() => (IEnumerable<IPointerFile>)GetAll();
+        IEnumerable<ILocalContentFile> IGetRepository<ILocalContentFile>.GetAll() => (IEnumerable<ILocalContentFile>)GetAll();
     }
 }
