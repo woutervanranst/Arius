@@ -25,18 +25,18 @@ namespace Arius
         void Delete();
     }
 
-    internal interface IKaka : ILocalFile
+    internal interface IPointersAndContent : ILocalFile
     {
         string RelativeContentName { get; }
         DateTime CreationTimeUtc { get; set; }
         DateTime LastWriteTimeUtc { get; set; }
 
     }
-    internal interface ILocalContentFile : ILocalFile, IKaka
+    internal interface ILocalContentFile : ILocalFile, IPointersAndContent
     {
     }
 
-    internal interface IPointerFile/*<TObject>*/ : ILocalFile, IKaka
+    internal interface IPointerFile/*<TObject>*/ : ILocalFile, IPointersAndContent
     {
         //TObject GetObject();
         //string GetObjectName();
@@ -71,6 +71,7 @@ namespace Arius
     internal interface IRepository<T> : IRepository where T : IItem //TODO Refactor all IRepositoruy
     {
         T GetById(HashValue id);
+        //K GetById<K>(HashValue id) where K : T;
         IEnumerable<T> GetAll(Expression<Func<T, bool>> filter = null);
 
         void Put(T entity);
@@ -94,7 +95,7 @@ namespace Arius
     }
 
 
-    internal interface IManifestService : IRepository<IManifestFile, IKaka>
+    internal interface IManifestService : IRepository<IManifestFile, IPointersAndContent>
     {
         IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
     }
@@ -201,7 +202,7 @@ namespace Arius
     //    DirectoryInfo Root { get; }
     //}
 
-    internal interface ILocalRepository : IRepository<IKaka>
+    internal interface ILocalRepository : IRepository<IPointersAndContent>
     {
     }
 

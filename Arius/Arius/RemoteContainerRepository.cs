@@ -21,7 +21,7 @@ namespace Arius
         public string Container { get; init; }
     }
 
-    class RemoteContainerRepository : IRepository<ILocalFile, IKaka>
+    class RemoteContainerRepository : IRepository<ILocalFile, IPointersAndContent>
     {
         public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
@@ -59,12 +59,12 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public void Put(IKaka entity)
+        public void Put(IPointersAndContent entity)
         {
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IKaka> localFiles)
+        public void PutAll(IEnumerable<IPointersAndContent> localFiles)
         {
             ////TODO Simulate
             ////TODO MINSIZE
