@@ -41,22 +41,22 @@ namespace Arius
         public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
     }
 
-    [Extension(".arius.pointer")]
+    [Extension(".pointer.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
     internal class LocalPointerFile : LocalFile, IPointerFile
     {
         public LocalPointerFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
-            _objectName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
+            _manifestHash = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
 
 
-        /// <summary>
-        /// The name of the object that this pointer is pointing to
-        /// </summary>
-        /// <returns></returns>
-        public string GetObjectName() => _objectName.Value;
+        ///// <summary>
+        ///// The name of the object that this pointer is pointing to
+        ///// </summary>
+        ///// <returns></returns>
+        //public string ManifestHash => _manifestHash.Value;
 
-        private readonly Lazy<string> _objectName;
+        private readonly Lazy<string> _manifestHash;
 
         ///// <summary>
         ///// The object that this pointer is pointing to
@@ -67,7 +67,7 @@ namespace Arius
         //    return null;
         //    //throw new NotImplementedException();
         //}
-        public string RelativeContentName => Path.GetRelativePath(Root.FullName, FullName);
+        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Path.Combine(DirectoryName, NameWithoutExtension));
         public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
@@ -100,7 +100,7 @@ namespace Arius
 
 
 
-    [Extension(".manifest.arius")]
+    [Extension(".manifest.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
     internal class LocalManifestFile : LocalFile, IManifestFile //, IRemote<IEncrypted<IManifestFile>>
     {
         public LocalManifestFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)

@@ -7,27 +7,6 @@
 //    {
 //        // --- STATIC CONSTRUCTORS
 
-//        /// <summary>
-//        /// Create a pointer for a local file with a remote manifest (that is already uploaded)
-//        /// </summary>
-//        /// <param name="lcf"></param>
-//        /// <param name="manifest"></param>
-//        /// <returns></returns>
-//        public static AriusPointerFile Create(AriusRootDirectory root, LocalContentFile lcf, RemoteEncryptedAriusManifest manifest)
-//        {
-//            if (File.Exists(lcf.AriusPointerFileFullName))
-//                throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
-
-//            if (!manifest.Name.EndsWith(".manifest.7z.arius"))
-//                throw new ArgumentException("Not a valid encrypted manifest file name");
-
-//            File.WriteAllText(lcf.AriusPointerFileFullName, manifest.Name);
-
-//            File.SetCreationTimeUtc(lcf.AriusPointerFileFullName, File.GetCreationTimeUtc(lcf.FullName));
-//            File.SetLastWriteTimeUtc(lcf.AriusPointerFileFullName, File.GetLastWriteTimeUtc(lcf.FullName));
-
-//            return new AriusPointerFile(root, new FileInfo(lcf.AriusPointerFileFullName), manifest.Name);
-//        }
 
 //        public static AriusPointerFile Create(AriusRootDirectory root, RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry e, RemoteEncryptedAriusManifest manifest)
 //        {

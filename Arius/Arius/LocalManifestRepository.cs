@@ -19,7 +19,7 @@ namespace Arius
     //    //public string Container { get; init; }
     //}
 
-    internal class LocalManifestRepository : IGetRepository<IManifestFile>, IPutRepository<IManifestFile>, IDisposable
+    internal class LocalManifestRepository : IGetRepository<IManifestFile>/*, IPutRepository<IPointerFile>*/, IDisposable
     {
         public LocalManifestRepository(ICommandExecutorOptions options, 
             Configuration config, 
@@ -60,35 +60,9 @@ namespace Arius
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
         private Dictionary<HashValue, IManifestFile> _manifestFiles;
+        private readonly IList<IManifestFile> _modifiedManifestFiles = new List<IManifestFile>();
 
         public string FullName => _localTemp.FullName;
-
-
-        public IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFiles)
-        {
-            var manifest = new Manifest(localContentFiles, 
-                encryptedChunks.Select(recb => recb.Name), 
-                localContentFiles.First().Hash.Value);
-
-            var manifestFile = SaveManifest(manifest);
-
-            _logger.LogDebug($"Created ManifestFile '{manifestFile.Name}'");
-
-            return _factory.Create<IManifestFile>(manifestFile, this);
-        }
-
-        private FileInfo SaveManifest(Manifest manifest)
-        {
-            var extension = typeof(LocalManifestFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
-            var manifestFileFullName = Path.Combine(_localTemp.FullName, $"{manifest.Hash}{extension}");
-            var json = JsonSerializer.Serialize(manifest,
-                new JsonSerializerOptions { WriteIndented = true, IgnoreNullValues = true });
-            
-            File.WriteAllText(manifestFileFullName, json);
-
-            return new FileInfo(manifestFileFullName);
-        }
-
 
 
         public IManifestFile GetById(HashValue id)
@@ -107,53 +81,58 @@ namespace Arius
             return _manifestFiles.Values;
         }
 
+        public IManifestFile CreateManifestFile(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, HashValue hash)
+        {
+            var manifest = new Manifest(encryptedChunks.Select(recb => recb.Name),
+                hash.Value);
+
+            var manifestFileInfo = SaveManifest(manifest);
+
+            _logger.LogDebug($"Created ManifestFile '{manifestFileInfo.Name}'");
+
+            var manifestFile = _factory.Create<IManifestFile>(manifestFileInfo, this);
+            _manifestFiles.Add(hash, manifestFile);
+
+            return manifestFile;
+
+        }
+
+        private FileInfo SaveManifest(Manifest manifest, string manifestFileFullName = null)
+        {
+            if (manifestFileFullName is null)
+            { 
+                var extension = typeof(LocalManifestFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
+                manifestFileFullName = Path.Combine(_localTemp.FullName, $"{manifest.Hash}{extension}");
+            }
+            var json = JsonSerializer.Serialize(manifest,
+                new JsonSerializerOptions { WriteIndented = true, IgnoreNullValues = true });
+
+            File.WriteAllText(manifestFileFullName, json);
+
+            return new FileInfo(manifestFileFullName);
+        }
+
+        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> entities)
+        {
+            _downloadManifestsTask.Wait();
+
+            //TODO Assert all hashes equal to the manifest file hash
+
+            var manifestFileFullName = _manifestFiles[entities.First().Hash].FullName;
+            var json = File.ReadAllText(manifestFileFullName);
+            var manifest = JsonSerializer.Deserialize<Manifest>(json);
+            var writeback = manifest!.Update(entities);
+
+            SaveManifest(manifest, manifestFileFullName);
+
+            if (writeback)
+                _modifiedManifestFiles.Add(manifestFile);
+        }
         public void Dispose()
         {
             //Delete the temporary manifest files
             _localTemp.Delete();
         }
-
-        public void Put(IManifestFile entity)
-        {
-            _downloadManifestsTask.Wait();
-
-            throw new NotImplementedException();
-        }
-
-        public void PutAll(IEnumerable<IManifestFile> entities)
-        {
-            _downloadManifestsTask.Wait();
-
-            entities
-                .AsParallelWithParallelism()
-                .GroupBy(lf => lf.Hash)
-                .ForAll(g =>
-                {
-                    //Get the Manifest
-                    Manifest manifest;
-                    string manifestFileFullName;
-                    if (_manifestFiles.ContainsKey(g.Key))
-                    {
-                        manifestFileFullName = _manifestFiles[g.Key].FullName;
-                        var jso2n = File.ReadAllText(manifestFileFullName);
-                        manifest = JsonSerializer.Deserialize<Manifest>(jso2n);
-                    }
-                    else
-                    {
-                        
-                    }
-
-                    throw new NotImplementedException();
-
-                    //var writeback = manifest.Update(g.AsEnumerable());
-
-                    
-                    //Save
-                    
-
-                });
-        }
-
         
     }
 }
