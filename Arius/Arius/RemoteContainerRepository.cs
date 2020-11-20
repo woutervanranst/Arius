@@ -166,7 +166,7 @@ namespace Arius
                     {
                         var manifest = createdManifestsPerHash.ContainsKey(lcf.Hash) ?
                             createdManifestsPerHash[lcf.Hash] :
-                            archive.GetRemoteEncryptedAriusManifestByHash(lcf.Hash);
+                            _manifestService.GetById(lcf.Hash);
 
                         AriusPointerFile.Create(root, lcf, manifest);
                     });
