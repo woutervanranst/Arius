@@ -54,7 +54,7 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public IEnumerable<ILocalFile> GetAll(Expression<Func<ILocalFile, bool>> filter = null)
+        public IEnumerable<ILocalFile> GetAll()
         {
             throw new NotImplementedException();
         }
@@ -168,7 +168,8 @@ namespace Arius
                             createdManifestsPerHash[lcf.Hash] :
                             _manifestService.GetById(lcf.Hash);
 
-                        AriusPointerFile.Create(root, lcf, manifest);
+                        throw new NotImplementedException();
+                        //AriusPointerFile.Create(root, lcf, manifest);
                     });
 
             //    /*

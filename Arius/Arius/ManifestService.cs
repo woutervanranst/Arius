@@ -100,7 +100,7 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public IEnumerable<IManifestFile> GetAll(Expression<Func<IManifestFile, bool>> filter = null)
+        public IEnumerable<IManifestFile> GetAll()
         {
             _downloadManifestsTask.Wait();
 
