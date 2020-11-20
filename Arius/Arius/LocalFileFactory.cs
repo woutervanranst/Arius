@@ -6,7 +6,6 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius
 {
-    
     internal class LocalFileFactory
     {
         public LocalFileFactory(IHashValueProvider contentFileHasher)
@@ -57,7 +56,7 @@ namespace Arius
 
         }
 
-        private bool IsMatch<T>(FileInfo fi)
+        protected bool IsMatch<T>(FileInfo fi)
         {
             return typeof(T).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi);
         }

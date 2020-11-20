@@ -7,27 +7,29 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Arius;
 
-internal class AriusManifest //Marked as internal for Unit Testing
+internal class Manifest //Marked as internal for Unit Testing
 {
     [JsonConstructor]
-    public AriusManifest(IEnumerable<AriusPointerFileEntry> ariusPointerFileEntries, IEnumerable<string> encryptedChunks, string hash)
+    public Manifest(IEnumerable<PointerFileEntry> pointerFileEntries, IEnumerable<string> encryptedChunks, string hash)
     {
-        _ariusPointerFileEntries = ariusPointerFileEntries.ToList();
+        _PointerFileEntries = pointerFileEntries.ToList();
         EncryptedChunks = encryptedChunks;
         Hash = hash;
     }
-    public AriusManifest(IEnumerable<string> encryptedChunks, string hash)
+    public Manifest(IEnumerable<ILocalContentFile> localContentFiles, IEnumerable<string> encryptedChunks, string hash)
     {
-        _ariusPointerFileEntries = new List<AriusPointerFileEntry>();
+        _PointerFileEntries = GetPointerFileEntries(localContentFiles); // new List<AriusPointerFileEntry>();
         EncryptedChunks = encryptedChunks;
         Hash = hash;
     }
+
+    private static _pfeec = new PointerFileEntryEqualityComparer();
 
     // --- PROPERTIES
 
     [JsonInclude]
-    public IEnumerable<AriusPointerFileEntry> AriusPointerFileEntries => _ariusPointerFileEntries;
-    private readonly List<AriusPointerFileEntry> _ariusPointerFileEntries;
+    public IEnumerable<PointerFileEntry> PointerFileEntries => _PointerFileEntries;
+    private readonly List<PointerFileEntry> _PointerFileEntries;
 
     [JsonInclude]
     public IEnumerable<string> EncryptedChunks { get; private set; }
@@ -39,9 +41,9 @@ internal class AriusManifest //Marked as internal for Unit Testing
     public string Hash { get; private set; }
 
     // --- METHODS
-    internal IEnumerable<AriusPointerFileEntry> GetLastExistingEntriesPerRelativeName(bool includeLastDeleted = false)
+    internal IEnumerable<PointerFileEntry> GetLastExistingEntriesPerRelativeName(bool includeLastDeleted = false)
     {
-        var r = _ariusPointerFileEntries
+        var r = _PointerFileEntries
             .GroupBy(lcfe => lcfe.RelativeName)
             .Select(g => g
                 .OrderBy(lcfe => lcfe.Version)
@@ -58,19 +60,17 @@ internal class AriusManifest //Marked as internal for Unit Testing
     /// </summary>
     public bool Update(IEnumerable<IKaka> apfs)
     {
-        var fileSystemEntries = GetAriusManifestEntries(apfs);
+        var fileSystemEntries = GetPointerFileEntries(apfs);
         var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
 
-        var ameec = new AriusManifestEntryEqualityComparer();
-
-        var addedFiles = fileSystemEntries.Except(lastEntries, ameec).ToList();
+        var addedFiles = fileSystemEntries.Except(lastEntries, _pfeec).ToList();
         var deletedFiles = lastEntries
-            .Except(fileSystemEntries, ameec)
+            .Except(fileSystemEntries, _pfeec)
             .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null })
             .ToList();
 
-        _ariusPointerFileEntries.AddRange(addedFiles);
-        _ariusPointerFileEntries.AddRange(deletedFiles);
+        _PointerFileEntries.AddRange(addedFiles);
+        _PointerFileEntries.AddRange(deletedFiles);
 
         return addedFiles.Any() || deletedFiles.Any();
     }
@@ -83,13 +83,13 @@ internal class AriusManifest //Marked as internal for Unit Testing
     //}
 
     // --- RECORD DEFINITION & HELPERS
-    private static List<AriusPointerFileEntry> GetAriusManifestEntries(IEnumerable<IKaka> localContentFiles)
+    private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IKaka> localContentFiles)
     {
-        return localContentFiles.Select(lcf => GetAriusManifestEntry(lcf)).ToList();
+        return localContentFiles.Select(lcf => GetPointerFileEntry(lcf)).ToList();
     }
-    private static AriusPointerFileEntry GetAriusManifestEntry(IKaka lcf)
+    private static PointerFileEntry GetPointerFileEntry(IKaka lcf)
     {
-        return new AriusPointerFileEntry(lcf.RelativeContentName, 
+        return new PointerFileEntry(lcf.RelativeContentName, 
             DateTime.UtcNow, 
             false, 
             lcf.CreationTimeUtc,
@@ -97,13 +97,13 @@ internal class AriusManifest //Marked as internal for Unit Testing
     }
 
 
-    public sealed record AriusPointerFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
+    public sealed record PointerFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
 
 
-    private class AriusManifestEntryEqualityComparer : IEqualityComparer<AriusPointerFileEntry>
+    private class PointerFileEntryEqualityComparer : IEqualityComparer<PointerFileEntry>
     {
 
-        public bool Equals(AriusPointerFileEntry x, AriusPointerFileEntry y)
+        public bool Equals(PointerFileEntry x, PointerFileEntry y)
         {
             return x.RelativeName == y.RelativeName &&
                    //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
@@ -112,7 +112,7 @@ internal class AriusManifest //Marked as internal for Unit Testing
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
-        public int GetHashCode(AriusPointerFileEntry obj)
+        public int GetHashCode(PointerFileEntry obj)
         {
             return HashCode.Combine(obj.RelativeName,
                 //obj.Version,  //DO NOT Compare on DateTime Version

@@ -166,46 +166,6 @@ namespace Arius.CommandLine
 
 
 
-        
-
-        //    //    /*
-        //    //     * 2. Ensure Pointers exist/are create for ALL LocalContentFiles
-        //    //     */
-        //    //    localContentPerHash
-        //    //        .AsParallel()
-        //    //        .WithDegreeOfParallelism(1)
-        //    //        .SelectMany(g => g)
-        //    //        .Where(lcf => !lcf.AriusPointerFileInfo.Exists)
-        //    //        .ForAll(lcf =>
-        //    //        {
-        //    //            var manifest = createdManifestsPerHash.ContainsKey(lcf.Hash) ?
-        //    //                createdManifestsPerHash[lcf.Hash] :
-        //    //                archive.GetRemoteEncryptedAriusManifestByHash(lcf.Hash);
-
-        //    //            AriusPointerFile.Create(root, lcf, manifest);
-        //    //        });
-
-
-
-        //    //    // TODO QUID BROKEN POINTERFILES
-
-        //    //    //TODO met AZCOPY
-        //    //    archive.GetRemoteEncryptedAriusManifests()
-        //    //        .AsParallel()
-        //    //        //.WithDegreeOfParallelism(1)
-        //    //        .ForAll(a =>
-        //    //        {
-        //    //            a.Update(ariusPointersPerManifestName[a.Name], passphrase);
-        //    //        });
-
-        //    //    /*
-        //    //     * 4. Remove LocalContentFiles
-        //    //     */
-        //    //    if (!keepLocal)
-        //    //        root.GetNonAriusFiles().AsParallel().ForAll(fi => fi.Delete());
-
-        //    return 0;
-        //}
 
     }
 }
