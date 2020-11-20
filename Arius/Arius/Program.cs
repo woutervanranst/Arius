@@ -61,7 +61,7 @@ namespace Arius
                 .AddSingleton<Configuration>(new Configuration(pcp.CommandExecutorOptions, configurationRoot))
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<ILocalRepository, LocalRootRepository>()
-                .AddSingleton<IRepository<ILocalFile, IKaka>, RemoteContainerRepository>()
+                .AddSingleton<IRepository<ILocalFile, IArchivable>, RemoteContainerRepository>()
                 .AddSingleton<IManifestService, ManifestService>()
                 .AddSingleton<IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, RemoteEncryptedChunkRepository>()
                 .AddSingleton<LocalFileFactory>()
