@@ -23,7 +23,7 @@ internal class Manifest //Marked as internal for Unit Testing
         Hash = hash;
     }
 
-    private static _pfeec = new PointerFileEntryEqualityComparer();
+    private static readonly PointerFileEntryEqualityComparer _pfeec = new PointerFileEntryEqualityComparer();
 
     // --- PROPERTIES
 
