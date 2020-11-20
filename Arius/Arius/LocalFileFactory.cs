@@ -24,7 +24,7 @@ namespace Arius
             if (IsMatch<LocalPointerFile>(fi))
                 result = new LocalPointerFile(root, fi, lf => _contentFileHasher.GetHashValue(lf)); 
             else if (IsMatch<LocalContentFile>(fi))
-                result = new LocalContentFile((ILocalRepository)root, fi, lf => _contentFileHasher.GetHashValue(lf));
+                result = new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
             else if (IsMatch<LocalEncryptedManifestFile>(fi))
                 result = new LocalEncryptedManifestFile(root, fi, null);
             else if (IsMatch<LocalManifestFile>(fi))

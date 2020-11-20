@@ -23,7 +23,7 @@ internal class Manifest //Marked as internal for Unit Testing
         Hash = hash;
     }
 
-    private static readonly PointerFileEntryEqualityComparer _pfeec = new PointerFileEntryEqualityComparer();
+    private static _pfeec = new PointerFileEntryEqualityComparer();
 
     // --- PROPERTIES
 
@@ -58,7 +58,7 @@ internal class Manifest //Marked as internal for Unit Testing
     /// Synchronize the state of the manifest to the current state of the file system:
     /// Additions, deletions, renames (= add + delete)
     /// </summary>
-    public bool Update(IEnumerable<IPointersAndContent> apfs)
+    public bool Update(IEnumerable<IKaka> apfs)
     {
         var fileSystemEntries = GetPointerFileEntries(apfs);
         var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
@@ -83,11 +83,11 @@ internal class Manifest //Marked as internal for Unit Testing
     //}
 
     // --- RECORD DEFINITION & HELPERS
-    private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointersAndContent> localContentFiles)
+    private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IKaka> localContentFiles)
     {
         return localContentFiles.Select(lcf => GetPointerFileEntry(lcf)).ToList();
     }
-    private static PointerFileEntry GetPointerFileEntry(IPointersAndContent lcf)
+    private static PointerFileEntry GetPointerFileEntry(IKaka lcf)
     {
         return new PointerFileEntry(lcf.RelativeContentName, 
             DateTime.UtcNow, 
