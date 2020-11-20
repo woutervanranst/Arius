@@ -145,22 +145,25 @@ namespace Arius
         void PutAll(IEnumerable<TPut> entities);
     }
 
+    internal interface IReadRepository<out T> : IRepository
+    {
+        T GetById(HashValue id);
+        IEnumerable<T> GetAll();
+    }
+
+    internal interface IPutRepository<in T> : IRepository
+    {
+        void Put(T entity);
+        void PutAll(IEnumerable<T> entities);
+    }
+
 
     internal interface IManifestService : IRepository<IManifestFile, IArchivable>
     {
         IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
     }
-    internal interface IPointerService : IRepository<IPointerFile, IPointerFile>
+    internal interface IPointerService : IReadRepository<IPointerFile>
     {
     }
 
-   
-
-    internal interface ILocalRepository : IRepository<IArchivable, IArchivable> //, IPointerService
-    {
-    }
-
-    internal interface IRemoteRepository : IRepository<ILocalFile, IArchivable>
-    {
-    }
 }
