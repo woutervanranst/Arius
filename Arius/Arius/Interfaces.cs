@@ -34,6 +34,7 @@ namespace Arius
     }
     internal interface ILocalContentFile : ILocalFile, IKaka
     {
+        FileInfo PointerFileInfo { get; }
     }
 
     internal interface IPointerFile/*<TObject>*/ : ILocalFile, IKaka
@@ -98,6 +99,7 @@ namespace Arius
     {
         IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
     }
+    internal interface IPointerService : IRepository
 
     internal interface IBlobCopier
     {
