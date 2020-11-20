@@ -63,7 +63,7 @@ namespace Arius
                 .AddSingleton<ILocalRepository, LocalRootRepository>()
                 .AddSingleton<IRemoteRepository, RemoteContainerRepository>()
                 .AddSingleton<IManifestService, ManifestService>()
-                .AddSingleton<IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, RemoteEncryptedChunkRepository>()
+                .AddSingleton<IRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, RemoteEncryptedChunkRepository>()
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
