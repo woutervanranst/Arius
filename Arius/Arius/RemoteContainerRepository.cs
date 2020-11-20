@@ -26,8 +26,8 @@ namespace Arius
         public RemoteContainerRepository(ICommandExecutorOptions options,
             ILogger<RemoteContainerRepository> logger,
             IBlobCopier uploader,
-            IManifestService manifestService,
-            IRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> chunkRepository,
+            ManifestService manifestService,
+            RemoteEncryptedChunkRepository chunkRepository,
             IChunker chunker,
             IEncrypter encrypter
             )
@@ -42,8 +42,8 @@ namespace Arius
 
         private readonly ILogger<RemoteContainerRepository> _logger;
         private readonly IBlobCopier _uploader;
-        private readonly IManifestService _manifestService;
-        private readonly IRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile> _remoteChunkRepository;
+        private readonly ManifestService _manifestService;
+        private readonly RemoteEncryptedChunkRepository _remoteChunkRepository;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
 

@@ -19,7 +19,7 @@ namespace Arius
         //public string Container { get; init; }
     }
 
-    internal class ManifestService : IManifestService, IRepository<IManifestFile, IArchivable>, IDisposable
+    internal class ManifestService : IGetRepository<IManifestFile>, IPutRepository<IArchivable>, IDisposable
     {
         public ManifestService(ICommandExecutorOptions options, 
             Configuration config, 
