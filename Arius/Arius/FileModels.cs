@@ -67,7 +67,7 @@ namespace Arius
         //    return null;
         //    //throw new NotImplementedException();
         //}
-        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Name);
+        public string RelativeContentName => Path.GetRelativePath(Root.FullName, FullName);
         public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
@@ -79,7 +79,12 @@ namespace Arius
         {
         }
 
-        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Name);
+        private static string _pointerFileExtension = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
+
+        private string PointerFileFullName => $"{FullName}{_pointerFileExtension}";
+        public FileInfo PointerFileInfo => new FileInfo(PointerFileFullName);
+
+        public string RelativeContentName => Path.GetRelativePath(Root.FullName, FullName);
         public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
