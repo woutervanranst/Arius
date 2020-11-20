@@ -37,7 +37,7 @@ namespace Arius
         FileInfo PointerFileInfo { get; }
     }
 
-    internal interface IPointerFile : ILocalFile, IArchivable
+    internal interface IPointerFile/*<TObject>*/ : ILocalFile, IArchivable
     {
         //TObject GetObject();
         //string GetObjectName();
@@ -86,13 +86,13 @@ namespace Arius
         void PutAll(IEnumerable<TLocal> entities);
     }
 
-    //internal interface IRepository<T> : IRepository<T, T> where T : IItem
-    //{
-    //}
-    internal interface IRepository<in TPut> : IRepository where TPut : IItem
+    internal interface IRepository<T> : IRepository<T, T> where T : IItem
     {
-        TGet GetById<TGet>(HashValue id) where TGet : IItem;
-        IEnumerable<TGet> GetAll<TGet>() where TGet : IItem;
+    }
+    internal interface IRepository<out TGet, in TPut> : IRepository where TGet : IItem where TPut : IItem
+    {
+        TGet GetById(HashValue id);
+        IEnumerable<TGet> GetAll();
 
         void Put(TPut entity);
         void PutAll(IEnumerable<TPut> entities);
@@ -210,7 +210,7 @@ namespace Arius
     //    DirectoryInfo Root { get; }
     //}
 
-    internal interface ILocalRepository : IRepository<IArchivable>, IPointerService
+    internal interface ILocalRepository : IRepository<IArchivable> //, IPointerService
     {
     }
 
