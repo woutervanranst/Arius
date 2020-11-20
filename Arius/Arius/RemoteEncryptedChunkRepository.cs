@@ -19,7 +19,7 @@ namespace Arius
         public string Container { get; }
     }
 
-    internal class RemoteEncryptedChunkRepository : IRemoteRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, IDisposable
+    internal class RemoteEncryptedChunkRepository : IRepository<IRemoteEncryptedChunkBlob, IEncryptedChunkFile>, IDisposable
     {
         public RemoteEncryptedChunkRepository(ICommandExecutorOptions options,
             Configuration config,
