@@ -42,11 +42,11 @@ namespace Arius
             return GetHashValue((dynamic) hashable);
         }
 
-        public HashValue GetHashValue(LocalPointerFile hashable)
-        {
-            var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
-            return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
-        }
+        //public HashValue GetHashValue(LocalPointerFile hashable)
+        //{
+        //    var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
+        //    return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
+        //}
 
         public HashValue GetHashValue(LocalContentFile hashable)
         {
