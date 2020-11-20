@@ -93,6 +93,12 @@ namespace Arius
         void PutAll(IEnumerable<TPut> entities);
     }
 
+
+    internal interface IManifestService : IRepository<IManifestFile, IKaka>
+    {
+        IManifestFile Create(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, IEnumerable<ILocalContentFile> localContentFile);
+    }
+
     internal interface IBlobCopier
     {
         public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile;
