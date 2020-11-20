@@ -24,7 +24,6 @@ namespace Arius
 
     internal interface IArchivable : ILocalFile
     {
-        string RelativeContentName { get; }
         DateTime CreationTimeUtc { get; set; }
         DateTime LastWriteTimeUtc { get; set; }
 
@@ -36,8 +35,10 @@ namespace Arius
 
     internal interface IPointerFile/*<TObject>*/ : ILocalFile, IArchivable
     {
+        string RelativeContentName { get; }
+
         //TObject GetObject();
-        //string GetObjectName();
+        //HashValue ManifestHash { get; }
     }
     internal interface IManifestFile : ILocalFile
     {

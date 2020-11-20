@@ -16,9 +16,10 @@ internal class Manifest //Marked as internal for Unit Testing
         EncryptedChunks = encryptedChunks;
         Hash = hash;
     }
-    public Manifest(IEnumerable<ILocalContentFile> localContentFiles, IEnumerable<string> encryptedChunks, string hash)
+
+    public Manifest(IEnumerable<string> encryptedChunks, string hash)
     {
-        _PointerFileEntries = GetPointerFileEntries(localContentFiles); // new List<AriusPointerFileEntry>();
+        _PointerFileEntries = new List<PointerFileEntry>();
         EncryptedChunks = encryptedChunks;
         Hash = hash;
     }
@@ -58,7 +59,7 @@ internal class Manifest //Marked as internal for Unit Testing
     /// Synchronize the state of the manifest to the current state of the file system:
     /// Additions, deletions, renames (= add + delete)
     /// </summary>
-    public bool Update(IEnumerable<IArchivable> apfs)
+    public bool Update(IEnumerable<IPointerFile> apfs)
     {
         var fileSystemEntries = GetPointerFileEntries(apfs);
         var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
@@ -83,11 +84,11 @@ internal class Manifest //Marked as internal for Unit Testing
     //}
 
     // --- RECORD DEFINITION & HELPERS
-    private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IArchivable> localContentFiles)
+    private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> localContentFiles)
     {
         return localContentFiles.Select(lcf => GetPointerFileEntry(lcf)).ToList();
     }
-    private static PointerFileEntry GetPointerFileEntry(IArchivable lcf)
+    private static PointerFileEntry GetPointerFileEntry(IPointerFile lcf)
     {
         return new PointerFileEntry(lcf.RelativeContentName, 
             DateTime.UtcNow, 

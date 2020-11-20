@@ -52,10 +52,35 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        //ILocalContentFile IGetRepository<ILocalContentFile>.GetById(HashValue id) => (ILocalContentFile)GetById(id);
-        //IPointerFile IGetRepository<IPointerFile>.GetById(HashValue id) => (IPointerFile)GetById(id);
+        /// <summary>
+        /// Create a pointer for a local file with a remote manifest
+        /// </summary>
+        public IPointerFile CreatePointerFile(AriusRepository repository, ILocalContentFile lcf, IManifestFile manifestFile)
+        {
+            var pointerFileInfo = lcf.PointerFileInfo;
 
-        //IEnumerable<IPointerFile> IGetRepository<IPointerFile>.GetAll() => (IEnumerable<IPointerFile>)GetAll();
-        //IEnumerable<ILocalContentFile> IGetRepository<ILocalContentFile>.GetAll() => (IEnumerable<ILocalContentFile>)GetAll();
+            if (pointerFileInfo.Exists)
+                throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
+
+            File.WriteAllText(pointerFileInfo.FullName, manifestFile.Hash.Value);
+
+            pointerFileInfo.CreationTimeUtc = lcf.CreationTimeUtc;
+            pointerFileInfo.LastWriteTimeUtc = lcf.LastWriteTimeUtc;
+
+            return _factory.Create<LocalPointerFile>(pointerFileInfo, repository);
+        }
     }
+
+    //[Extension(".pointer.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
+    //internal class PointerFile : LocalFile, IPointerFile
+    //{
+    //    public PointerFile(AriusRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+    //    {
+
+    //    }
+
+    //    public string RelativeContentName { get; }
+    //    public DateTime CreationTimeUtc { get; set; }
+    //    public DateTime LastWriteTimeUtc { get; set; }
+    //}
 }

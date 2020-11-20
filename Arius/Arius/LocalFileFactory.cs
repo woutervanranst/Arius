@@ -22,7 +22,7 @@ namespace Arius
             //Func<T, FileInfo, bool> ka = (arg1, info) => typeof(arg1).GetCustomAttribute<ExtensionAttribute>()
 
             if (IsMatch<LocalPointerFile>(fi))
-                result = new LocalPointerFile(root, fi, lf => _contentFileHasher.GetHashValue(lf)); 
+                result = new LocalPointerFile(root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
             else if (IsMatch<LocalContentFile>(fi))
                 result = new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
             else if (IsMatch<LocalEncryptedManifestFile>(fi))
@@ -31,6 +31,8 @@ namespace Arius
                 result = new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
             else if (IsMatch<EncryptedChunkFile>(fi))
                 result = new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+            //else if (IsMatch<PointerFile>(fi))
+            //    result = new PointerFile((AriusRepository)root, fi, lf => new HashValue {Value = lf.NameWithoutExtension});
             else
                 throw new NotImplementedException();
 
