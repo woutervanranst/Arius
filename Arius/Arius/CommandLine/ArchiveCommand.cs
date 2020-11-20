@@ -144,12 +144,12 @@ namespace Arius.CommandLine
     {
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly ILocalRepository _localRoot;
-        private readonly IRepository<ILocalFile, IArchivable> _remoteArchive;
+        private readonly IRemoteRepository _remoteArchive;
 
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             ILocalRepository localRoot,
-            IRepository<ILocalFile, IArchivable> remoteArchive)
+            IRemoteRepository remoteArchive)
         {
             _logger = logger;
             _localRoot = localRoot;
