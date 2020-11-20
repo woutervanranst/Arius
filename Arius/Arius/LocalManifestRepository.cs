@@ -12,18 +12,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius
 {
-    internal interface IManifestRepositoryOptions : ICommandExecutorOptions
-    {
-        //public string AccountName { get; init; }
-        //public string AccountKey { get; init; }
-        //public string Container { get; init; }
-    }
+    //internal interface IManifestRepositoryOptions : ICommandExecutorOptions
+    //{
+    //    //public string AccountName { get; init; }
+    //    //public string AccountKey { get; init; }
+    //    //public string Container { get; init; }
+    //}
 
-    internal class ManifestService : IGetRepository<IManifestFile>, IPutRepository<IArchivable>, IDisposable
+    internal class LocalManifestRepository : IGetRepository<IManifestFile>, IPutRepository<IManifestFile>, IDisposable
     {
-        public ManifestService(ICommandExecutorOptions options, 
+        public LocalManifestRepository(ICommandExecutorOptions options, 
             Configuration config, 
-            ILogger<ManifestService> logger,
+            ILogger<LocalManifestRepository> logger,
             IBlobCopier blobcopier,
             IEncrypter encrypter,
             LocalFileFactory factory)
@@ -55,7 +55,7 @@ namespace Arius
         private const string SubDirectoryName = "manifests";
         private readonly Task _downloadManifestsTask;
         private readonly DirectoryInfo _localTemp;
-        private readonly ILogger<ManifestService> _logger;
+        private readonly ILogger<LocalManifestRepository> _logger;
         private readonly IBlobCopier _blobcopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
@@ -104,7 +104,7 @@ namespace Arius
         {
             _downloadManifestsTask.Wait();
 
-            return _manifestFiles.Values; //TODO FILTER
+            return _manifestFiles.Values;
         }
 
         public void Dispose()
@@ -113,14 +113,14 @@ namespace Arius
             _localTemp.Delete();
         }
 
-        public void Put(IArchivable entity)
+        public void Put(IManifestFile entity)
         {
             _downloadManifestsTask.Wait();
 
             throw new NotImplementedException();
         }
 
-        public void PutAll(IEnumerable<IArchivable> entities)
+        public void PutAll(IEnumerable<IManifestFile> entities)
         {
             _downloadManifestsTask.Wait();
 
@@ -145,7 +145,7 @@ namespace Arius
 
                     throw new NotImplementedException();
 
-                    var writeback = manifest.Update(g.AsEnumerable());
+                    //var writeback = manifest.Update(g.AsEnumerable());
 
                     
                     //Save
