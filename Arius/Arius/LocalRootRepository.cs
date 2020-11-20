@@ -35,14 +35,20 @@ namespace Arius
         public string FullName => _root.FullName;
 
         
-        public void Add(ILocalFile entity)
-        {
-            throw new NotImplementedException();
-        }
 
-        public void Add(IEnumerable<ILocalFile> entities)
+
+        /// <summary>
+        /// Return all LocalContentFiles and Pointers in this repository
+        /// </summary>
+        /// <param name="filter"></param>
+        /// <returns></returns>
+        public IEnumerable<IArchivable> GetAll()
         {
-            throw new NotImplementedException();
+            var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
+                .Select(fi => _factory.Create<IArchivable>(fi, this)) //TODO FILTER
+                .ToImmutableArray();
+
+            return localFiles;
         }
 
         public IArchivable GetById(HashValue id)
@@ -60,18 +66,24 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// Return all LocalContentFiles and Pointers in this repository
-        /// </summary>
-        /// <param name="filter"></param>
-        /// <returns></returns>
-        public IEnumerable<IArchivable> GetAll(Expression<Func<IArchivable, bool>> filter = null)
-        {
-            var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => _factory.Create<IArchivable>(fi, this)) //TODO FILTER
-                .ToImmutableArray();
+        //IPointerFile IRepository<IPointerFile, IPointerFile>.GetById(HashValue id)
+        //{
+        //    throw new NotImplementedException();
+        //}
 
-            return localFiles;
-        }
+        //IEnumerable<IPointerFile> IRepository<IPointerFile, IPointerFile>.GetAll()
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        //void IRepository<IPointerFile, IPointerFile>.Put(IPointerFile entity)
+        //{
+        //    throw new NotImplementedException();
+        //}
+
+        //void IRepository<IPointerFile, IPointerFile>.PutAll(IEnumerable<IPointerFile> entities)
+        //{
+        //    throw new NotImplementedException();
+        //}
     }
 }

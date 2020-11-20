@@ -60,7 +60,7 @@ namespace Arius
             throw new NotImplementedException();
         }
 
-        public IEnumerable<IRemoteEncryptedChunkBlob> GetAll(Expression<Func<IRemoteEncryptedChunkBlob, bool>> filter = null)
+        public IEnumerable<IRemoteEncryptedChunkBlob> GetAll()
         {
             return _bcc.GetBlobs(prefix: SubDirectoryName)
                 .Select(bi => _factory.Create<IRemoteEncryptedChunkBlob>(bi, this))
