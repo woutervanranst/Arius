@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using Arius.Extensions;
-using Arius.Services;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace Arius.Models
+namespace Arius
 {
     internal abstract class LocalFile : ILocalFile //, IFile
     {

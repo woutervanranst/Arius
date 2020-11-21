@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Extensions;
-using Arius.Models;
 
-namespace Arius.Services
+namespace Arius
 {
 
     internal struct HashValue
