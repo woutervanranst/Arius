@@ -170,6 +170,8 @@ namespace Arius
                     })
                 .ToImmutableArray();
 
+            _logger.LogInformation($"Created {newPointers.Count()} new pointers");
+
 
             /*
              * 3. Synchronize ALL MANIFESTS with the local file system
