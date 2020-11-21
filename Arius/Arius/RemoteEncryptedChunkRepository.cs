@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Models;
-using Arius.Services;
+using Azure.Storage;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
-namespace Arius.Repositories
+namespace Arius
 {
     internal interface IRemoteChunkRepositoryOptions : ICommandExecutorOptions
     {

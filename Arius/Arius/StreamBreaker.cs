@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Arius.Services
+namespace Arius
 {
     // https://www.codeproject.com/Articles/801608/Using-a-rolling-hash-to-break-up-binary-files
 

@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using Arius.Extensions;
-using Arius.Services;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.Models
+namespace Arius
 {
     internal abstract class Blob : IBlob
     {

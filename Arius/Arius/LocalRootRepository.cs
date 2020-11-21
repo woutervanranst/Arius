@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Configuration;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Models;
-using Arius.Services;
+using Microsoft.Extensions.Configuration;
 
-namespace Arius.Repositories
+namespace Arius
 {
     internal interface ILocalRootDirectoryOptions : ICommandExecutorOptions
     {
