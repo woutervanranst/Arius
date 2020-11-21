@@ -25,14 +25,15 @@ namespace Arius
                 result = new LocalPointerFile(root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
             else if (IsMatch<LocalContentFile>(fi))
                 result = new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
-            else if (IsMatch<LocalEncryptedManifestFile>(fi))
-                result = new LocalEncryptedManifestFile(root, fi, null);
-            else if (IsMatch<LocalManifestFile>(fi))
-                result = new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+
             else if (IsMatch<EncryptedChunkFile>(fi))
                 result = new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
-            //else if (IsMatch<PointerFile>(fi))
-            //    result = new PointerFile((AriusRepository)root, fi, lf => new HashValue {Value = lf.NameWithoutExtension});
+
+            else if (IsMatch<LocalManifestFile>(fi))
+                result = new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+            else if (IsMatch<LocalEncryptedManifestFile>(fi))
+                result = new LocalEncryptedManifestFile(root, fi, null);
+
             else
                 throw new NotImplementedException();
 
