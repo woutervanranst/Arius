@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -29,7 +30,7 @@ namespace Arius
             LocalFileFactory factory)
         {
             _logger = logger;
-            _blobcopier = blobcopier;
+            _blobCopier = blobcopier;
             _encrypter = encrypter;
             _factory = factory;
             _localTemp = config.TempDir.CreateSubdirectory(SubDirectoryName);
@@ -41,22 +42,31 @@ namespace Arius
 
         private void DownloadManifests()
         {
-            _blobcopier.Download(SubDirectoryName, _localTemp);
+            _blobCopier.Download(SubDirectoryName, _localTemp);
 
             var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
                 .Select(fi => _factory.Create<IEncryptedManifestFile>(fi, this))
-                .AsParallel()
-                .WithDegreeOfParallelism(1)
+                .AsParallelWithParallelism()
                 .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
             _manifestFiles = localManifests.ToDictionary(mf => mf.Hash, mf => mf);
+        }
+
+        public void UploadModifiedManifests()
+        {
+            var modifiedEncryptedManifsts = _modifiedManifestFiles
+                .AsParallelWithParallelism()
+                .Select(mf => _encrypter.Encrypt(mf, false))
+                .ToImmutableArray();
+
+            _blobCopier.Upload(modifiedEncryptedManifsts, SubDirectoryName);
         }
 
         private const string SubDirectoryName = "manifests";
         private readonly Task _downloadManifestsTask;
         private readonly DirectoryInfo _localTemp;
         private readonly ILogger<LocalManifestRepository> _logger;
-        private readonly IBlobCopier _blobcopier;
+        private readonly IBlobCopier _blobCopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
         private Dictionary<HashValue, IManifestFile> _manifestFiles;
@@ -83,6 +93,8 @@ namespace Arius
 
         public IManifestFile CreateManifestFile(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, HashValue hash)
         {
+            _downloadManifestsTask.Wait();
+
             var manifest = new Manifest(encryptedChunks.Select(recb => recb.Name),
                 hash.Value);
 
@@ -99,6 +111,8 @@ namespace Arius
 
         private FileInfo SaveManifest(Manifest manifest, string manifestFileFullName = null)
         {
+            _downloadManifestsTask.Wait();
+
             if (manifestFileFullName is null)
             { 
                 var extension = typeof(LocalManifestFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
@@ -112,22 +126,43 @@ namespace Arius
             return new FileInfo(manifestFileFullName);
         }
 
-        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> entities)
+        public void UpdateManifests(IEnumerable<IPointerFile> pointers)
+        {
+            _downloadManifestsTask.Wait();
+
+            // Group the pointers by manifest (hash)
+            var ariusPointersPerManifestName = pointers
+                .GroupBy(pointer => pointer.Hash)
+                .ToImmutableDictionary(
+                    g => g.Key,
+                    g => g.ToList());
+
+            //// TODO QUID BROKEN POINTERFILES
+
+            // Update each manifest
+            _manifestFiles
+                .AsParallelWithParallelism()
+                .ForAll(mf => 
+                    UpdateManifest(mf.Value, ariusPointersPerManifestName[mf.Key]));
+        }
+
+        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointers)
         {
             _downloadManifestsTask.Wait();
 
             //TODO Assert all hashes equal to the manifest file hash
 
-            var manifestFileFullName = _manifestFiles[entities.First().Hash].FullName;
+            var manifestFileFullName = _manifestFiles[pointers.First().Hash].FullName;
             var json = File.ReadAllText(manifestFileFullName);
             var manifest = JsonSerializer.Deserialize<Manifest>(json);
-            var writeback = manifest!.Update(entities);
+            var writeback = manifest!.Update(pointers);
 
             SaveManifest(manifest, manifestFileFullName);
 
             if (writeback)
                 _modifiedManifestFiles.Add(manifestFile);
         }
+
         public void Dispose()
         {
             //Delete the temporary manifest files
