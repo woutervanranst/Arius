@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Repositories;
 using Microsoft.Extensions.Configuration;
 
 namespace Arius

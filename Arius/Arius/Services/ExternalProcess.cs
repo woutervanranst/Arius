@@ -5,11 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using Arius.Extensions;
 using Microsoft.Extensions.Logging;
 
 //using System.IO.FileSystem.AccessControl; // Security.AccessControl.DirectorySecurity;
 
-namespace Arius
+namespace Arius.Services
 {
     class ExternalProcess
     {
