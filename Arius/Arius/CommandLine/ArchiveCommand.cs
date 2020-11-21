@@ -122,8 +122,8 @@ namespace Arius.CommandLine
         ISHA256HasherOptions, 
         IChunkerOptions, 
         IEncrypterOptions, 
-        IAzCopyUploaderOptions, 
-        //IRemoteContainerRepositoryOptions, 
+        IAzCopyUploaderOptions,
+        IAriusRepositoryOptions,
         IConfigurationOptions,
         //IManifestRepositoryOptions,
         IRemoteChunkRepositoryOptions

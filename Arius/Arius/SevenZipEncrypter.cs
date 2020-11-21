@@ -63,8 +63,8 @@ namespace Arius
                 ZipEncryptionMethod = ZipEncryptionMethod.Aes256
             };
 
-            var encryptedType = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>().EncryptedType;
-            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>().Extension;
+            var encryptedType = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.EncryptedType;
+            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
 
             var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Root.FullName,
                 $"{fileToEncrypt.Hash}{encryptedTypeExtension}"));

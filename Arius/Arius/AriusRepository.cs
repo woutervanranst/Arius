@@ -14,12 +14,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius
 {
-    //internal interface IRemoteContainerRepositoryOptions : ICommandExecutorOptions
-    //{
-    //    public string AccountName { get; init; }
-    //    public string AccountKey { get; init; }
-    //    public string Container { get; init; }
-    //}
+    internal interface IAriusRepositoryOptions : ICommandExecutorOptions
+    {
+        public bool KeepLocal { get; init; }
+        public int MinSize { get; init; }
+        public bool Simulate { get; init; }
+    }
 
     internal class AriusRepository : IPutRepository<IArchivable>
     {
@@ -33,8 +33,9 @@ namespace Arius
             IEncrypter encrypter
             )
         {
+            _options = (IAriusRepositoryOptions)options;
             _logger = logger;
-            _uploader = uploader;
+            _blobCopier = uploader;
             _manifestRepository = manifestRepository;
             _rootRepository = rootRepository;
             _remoteChunkRepository = chunkRepository;
@@ -42,8 +43,9 @@ namespace Arius
             _encrypter = encrypter;
         }
 
+        private readonly IAriusRepositoryOptions _options;
         private readonly ILogger<AriusRepository> _logger;
-        private readonly IBlobCopier _uploader;
+        private readonly IBlobCopier _blobCopier;
         private readonly LocalManifestRepository _manifestRepository;
         private readonly LocalRootRepository _rootRepository;
         private readonly RemoteEncryptedChunkRepository _remoteChunkRepository;
@@ -171,76 +173,20 @@ namespace Arius
              * 3. Synchronize ALL MANIFESTS with the local file system
              */
 
+            // Get all pointers
             var allPointers = localFiles.OfType<IPointerFile>().Union(newPointers);
 
-            var ariusPointersPerManifestName = allPointers
-                .GroupBy(pointer => pointer.Hash)
-                .ToImmutableDictionary(
-                    g => g.Key,
-                    g => g.ToList());
+            //Update all manifests
+            _manifestRepository.UpdateManifests(allPointers);
 
-            //// TODO QUID BROKEN POINTERFILES
+            // Upload the CHANGED manifests
+            _manifestRepository.UploadModifiedManifests();
 
-            _manifestRepository.GetAll()
-                .AsParallelWithParallelism()
-                .ForAll(mf => _manifestRepository
-                    .UpdateManifest(mf, ariusPointersPerManifestName[mf.Hash]));
-
-            ////TODO met AZCOPY
-            //archive.GetRemoteEncryptedAriusManifests()
-            //    .AsParallel()
-            //    //.WithDegreeOfParallelism(1)
-            //    .ForAll(a =>
-            //    {
-            //        a.Update(ariusPointersPerManifestName[a.Name], passphrase);
-            //    });
-
-            ///*
-            // * 4. Remove LocalContentFiles
-            // */
-            //if (!keepLocal)
-            //    root.GetNonAriusFiles().AsParallel().ForAll(fi => fi.Delete());
-
-
-
-
-
-
-            ///*
-            // * 3. Synchronize ALL MANIFESTS with the local file system
-            // */
-
-            //// 3.1 Synchronize all 
-
-            //var allPointers = _rootRepository.GetAll().OfType<IPointerFile>();
-            //_manifestRepository.PutAll(allPointers);
-
-
-            ////    var ariusPointersPerManifestName = root.GetAriusPointerFiles()
-            ////        .GroupBy(apf => apf.EncryptedManifestName)
-            ////        .ToImmutableDictionary(
-            ////            g => g.Key,
-            ////            g => g.ToList());
-
-            ////// TODO QUID BROKEN POINTERFILES
-
-            //////TODO met AZCOPY
-            ////archive.GetRemoteEncryptedAriusManifests()
-            ////        .AsParallel()
-            ////            //.WithDegreeOfParallelism(1)
-            ////        .ForAll(a =>
-            ////        {
-            ////    a.Update(ariusPointersPerManifestName[a.Name], passphrase);
-            ////});
-
-
-
-            ////    /*
-            ////     * 4. Remove LocalContentFiles
-            ////     */
-            ////    if (!keepLocal)
-            ////        root.GetNonAriusFiles().AsParallel().ForAll(fi => fi.Delete());
-
+            /*
+             * 4. Remove LocalContentFiles
+             */
+            if (!_options.KeepLocal)
+                localFiles.OfType<LocalContentFile>().AsParallelWithParallelism().ForAll(fi => fi.Delete());
         }
     }
 }
