@@ -74,7 +74,7 @@ namespace Arius
 
         public void PutAll(IEnumerable<IEncryptedChunkFile> entities)
         {
-            _blobcopier.Upload(entities, $"/{SubDirectoryName}");
+            _blobcopier.Upload(entities, $"/{SubDirectoryName}", overwrite: false);
         }
 
 

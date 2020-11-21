@@ -70,6 +70,7 @@ internal class Manifest //Marked as internal for Unit Testing
             .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null })
             .ToList();
 
+        //TODO add logging here, but the methods should move to the ManifestService / ie just a POCO remains
         _PointerFileEntries.AddRange(addedFiles);
         _PointerFileEntries.AddRange(deletedFiles);
 
