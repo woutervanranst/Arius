@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Models;
 
-namespace Arius.Services
+namespace Arius
 {
     internal interface IChunkerOptions : ICommandExecutorOptions
     {

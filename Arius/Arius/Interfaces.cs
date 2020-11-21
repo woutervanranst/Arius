@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Arius.Services;
 
-namespace Arius.Models
+namespace Arius
 {
     internal interface IItem
     {

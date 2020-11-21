@@ -3,12 +3,16 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Reflection.Metadata;
+using System.Text;
+using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Extensions;
-using Arius.Models;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Repositories
+namespace Arius
 {
     internal interface IAriusRepositoryOptions : ICommandExecutorOptions
     {

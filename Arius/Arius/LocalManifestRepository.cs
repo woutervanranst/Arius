@@ -1,17 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Extensions;
-using Arius.Models;
-using Arius.Services;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Repositories
+namespace Arius
 {
     //internal interface IManifestRepositoryOptions : ICommandExecutorOptions
     //{
