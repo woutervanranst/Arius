@@ -45,7 +45,7 @@ namespace Arius
             _blobCopier.Download(SubDirectoryName, _localTemp);
 
             var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
-                .Select(fi => _factory.Create<IEncryptedManifestFile>(fi, this))
+                .Select(fi => (IEncryptedManifestFile)_factory.Create(fi, this))
                 .AsParallelWithParallelism()
                 .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
@@ -56,10 +56,10 @@ namespace Arius
         {
             var modifiedEncryptedManifsts = _modifiedManifestFiles
                 .AsParallelWithParallelism()
-                .Select(mf => _encrypter.Encrypt(mf, false))
+                .Select(mf => (IEncryptedManifestFile)_encrypter.Encrypt(mf, false))
                 .ToImmutableArray();
 
-            _blobCopier.Upload(modifiedEncryptedManifsts, SubDirectoryName);
+            _blobCopier.Upload(modifiedEncryptedManifsts, $"/{SubDirectoryName}");
         }
 
         private const string SubDirectoryName = "manifests";
@@ -102,7 +102,7 @@ namespace Arius
 
             _logger.LogDebug($"Created ManifestFile '{manifestFileInfo.Name}'");
 
-            var manifestFile = _factory.Create<IManifestFile>(manifestFileInfo, this);
+            var manifestFile = (IManifestFile)_factory.Create(manifestFileInfo, this);
             _manifestFiles.Add(hash, manifestFile);
 
             return manifestFile;

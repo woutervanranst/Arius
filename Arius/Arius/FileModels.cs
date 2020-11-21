@@ -72,7 +72,7 @@ namespace Arius
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
 
-    [Extension(".*", true, encryptedType: typeof(RemoteEncryptedChunkBlob))]
+    [Extension(".*", encryptedType: typeof(RemoteEncryptedChunkBlob))]
     internal class LocalContentFile : LocalFile, ILocalContentFile, IChunkFile
     {
         public LocalContentFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)

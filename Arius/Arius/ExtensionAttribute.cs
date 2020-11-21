@@ -17,15 +17,15 @@ namespace Arius
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
     public class ExtensionAttribute : Attribute
     {
-        public ExtensionAttribute(string extension, bool excludeOthers = false, Type encryptedType = null, Type decryptedType = null)
+        public ExtensionAttribute(string extension/*, bool excludeOthers = false*/, Type encryptedType = null, Type decryptedType = null)
         {
             Extension = extension;
-            ExcludeOthers = excludeOthers;
+            //ExcludeOthers = excludeOthers;
             EncryptedType = encryptedType;
             DecryptedType = decryptedType;
         }
         public string Extension { get; init; }
-        public bool ExcludeOthers { get; init; }
+        //public bool ExcludeOthers { get; init; }
         public Type EncryptedType { get; init; }
         public Type DecryptedType { get; init; }
 
@@ -39,14 +39,24 @@ namespace Arius
         }
         public bool IsMatch(string fileName)
         {
-            if (ExcludeOthers &&
-                OtherExtensions(this).Any(extToExclude => fileName.EndsWith(extToExclude)))
-                return false;
-
             if (Extension == ".*")
-                return true;
+            {
+                return !OtherExtensions(this).Any(extToExclude => fileName.EndsWith(extToExclude));
+            }
+            else
+            {
+                if (fileName.EndsWith(Extension))
+                {
+                    // True if the extension is not contained within another extension (eg. .manifest.7z.arius should not match with .7z.arius)
+                    var r = !OtherExtensions(this)
+                        .Where(ext => ext.EndsWith(Extension))
+                        .Any(extToExclude => fileName.EndsWith(extToExclude)); ;
 
-            return fileName.EndsWith(Extension);
+                    return r;
+                }
+                else
+                    return false;
+            }
         }
 
 

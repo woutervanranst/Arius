@@ -52,7 +52,7 @@ namespace Arius
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
 
-        public string FullName => throw new NotImplementedException();
+        public string FullName => _rootRepository.FullName;
 
         public void Put(IArchivable entity)
         {
@@ -69,7 +69,7 @@ namespace Arius
              * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
              */
 
-            _logger.LogWarning("test");
+            //_logger.LogWarning("test");
 
             //1.1 Ensure all chunks are uploaded
             var localContentPerHash = localFiles
@@ -148,6 +148,8 @@ namespace Arius
                 .ToDictionary(
                     mf => mf.Hash, 
                     mf => mf);
+
+            _logger.LogInformation($"Created {createdManifestsPerHash.Count()} new manifests");
 
 
             /*

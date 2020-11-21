@@ -15,48 +15,23 @@ namespace Arius
 
         private readonly IHashValueProvider _contentFileHasher;
 
-        public T Create<T>(FileInfo fi, IRepository root) where T : ILocalFile
+        public ILocalFile Create(FileInfo fi, IRepository root)
         {
-            ILocalFile result;
-
-            //Func<T, FileInfo, bool> ka = (arg1, info) => typeof(arg1).GetCustomAttribute<ExtensionAttribute>()
-
             if (IsMatch<LocalPointerFile>(fi))
-                result = new LocalPointerFile(root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
+                return new LocalPointerFile(root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
             else if (IsMatch<LocalContentFile>(fi))
-                result = new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
+                return new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
 
             else if (IsMatch<EncryptedChunkFile>(fi))
-                result = new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+                return new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
 
             else if (IsMatch<LocalManifestFile>(fi))
-                result = new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+                return new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
             else if (IsMatch<LocalEncryptedManifestFile>(fi))
-                result = new LocalEncryptedManifestFile(root, fi, null);
+                return new LocalEncryptedManifestFile(root, fi, null);
 
             else
                 throw new NotImplementedException();
-
-
-
-            
-
-
-
-            //if (typeof(T).IsAssignableFrom(typeof(IPointerFile<V>)))
-            //{
-
-            //}
-
-            //if (typeof(T).Name == nameof(LocalContentFile))
-            //    result = new LocalContentFile(root, fi, _contentFileHasher);
-            //else if (typeof(T).IsAssignableTo(typeof(LocalPointerFile)))
-            //    result = new LocalPointerFile(root, fi, _contentFileHasher);
-            //else
-            //    throw new NotImplementedException();
-
-            return (T)result;
-
         }
 
         protected bool IsMatch<T>(FileInfo fi)
