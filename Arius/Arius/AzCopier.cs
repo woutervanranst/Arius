@@ -109,7 +109,7 @@ namespace Arius
         }
 
 
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile
+        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite = false) where T : ILocalFile
         {
             AccessTier tier;
 
@@ -127,11 +127,11 @@ namespace Arius
                 {
                     var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-                    Upload(g.Key, remoteDirectoryName, fileNames, tier);
+                    Upload(g.Key, remoteDirectoryName, fileNames, tier, overwrite);
                 });
         }
 
-        private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier)
+        private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
         {
             _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
 
@@ -141,9 +141,9 @@ namespace Arius
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite={overwrite}";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite=false";
+                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite={overwrite}";
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 

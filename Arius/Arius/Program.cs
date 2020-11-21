@@ -46,6 +46,8 @@ namespace Arius
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
+            var config = new Configuration(pcp.CommandExecutorOptions, configurationRoot);
+
             var serviceProvider = new ServiceCollection()
                 .AddLogging(builder =>
                 {
@@ -58,7 +60,7 @@ namespace Arius
                         .AddConsole()
                         .AddFile(fileLoggingConfigurationSection);
                 })
-                .AddSingleton<Configuration>(new Configuration(pcp.CommandExecutorOptions, configurationRoot))
+                .AddSingleton<Configuration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
                 .AddSingleton<LocalRootRepository>()
                 .AddSingleton<AriusRepository>()
@@ -67,19 +69,28 @@ namespace Arius
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker>(((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
-                        new DedupChunker() : 
-                        new Chunker())
+                .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
                 .AddSingleton<IEncrypter, SevenZipEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
                 .AddSingleton<ArchiveCommandExecutor>()
 
                 .BuildServiceProvider();
 
+            try
+            {
+                var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(pcp.CommandExecutorType);
 
-            var commandExecutor = (ICommandExecutor)serviceProvider.GetRequiredService(pcp.CommandExecutorType);
-
-            return commandExecutor.Execute();
+                return commandExecutor.Execute();
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+            finally
+            {
+                //Delete the tempdir
+                config.TempDir.Delete(true);
+            }
         }
     }
 }

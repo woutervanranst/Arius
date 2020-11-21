@@ -20,7 +20,7 @@ namespace Arius
     //    //public string Container { get; init; }
     //}
 
-    internal class LocalManifestRepository : IGetRepository<IManifestFile>/*, IPutRepository<IPointerFile>*/, IDisposable
+    internal class LocalManifestRepository : IGetRepository<IManifestFile>
     {
         public LocalManifestRepository(ICommandExecutorOptions options, 
             Configuration config, 
@@ -59,7 +59,7 @@ namespace Arius
                 .Select(mf => (IEncryptedManifestFile)_encrypter.Encrypt(mf, false))
                 .ToImmutableArray();
 
-            _blobCopier.Upload(modifiedEncryptedManifsts, $"/{SubDirectoryName}");
+            _blobCopier.Upload(modifiedEncryptedManifsts, $"/{SubDirectoryName}", overwrite: true);
         }
 
         private const string SubDirectoryName = "manifests";
@@ -79,9 +79,7 @@ namespace Arius
         {
             _downloadManifestsTask.Wait();
 
-            //TODO
-
-            throw new NotImplementedException();
+            return _manifestFiles[id];
         }
 
         public IEnumerable<IManifestFile> GetAll()
@@ -160,14 +158,10 @@ namespace Arius
             SaveManifest(manifest, manifestFileFullName);
 
             if (writeback)
+            {
                 _modifiedManifestFiles.Add(manifestFile);
+                _logger.LogInformation($"Manifest '{manifestFile.Hash}' has modified entries");
+            }
         }
-
-        public void Dispose()
-        {
-            //Delete the temporary manifest files
-            _localTemp.Delete();
-        }
-        
     }
 }

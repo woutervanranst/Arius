@@ -88,7 +88,7 @@ namespace Arius
 
     internal interface IBlobCopier
     {
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName) where T : ILocalFile;
+        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite) where T : ILocalFile;
         void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
         void Download(string remoteDirectoryName, DirectoryInfo target);
     }
