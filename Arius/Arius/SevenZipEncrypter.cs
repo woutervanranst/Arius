@@ -71,10 +71,11 @@ namespace Arius
 
             compressor.CompressFilesEncrypted(targetFile.FullName, _passphrase, fileToEncrypt.FullName);
 
+            //var encryptedType 
             //var encryptedLocalFile = (IEncryptedLocalFile)Convert.ChangeType(
             //    _factory.Create<IEncryptedLocalFile>(targetFile, fileToEncrypt.Root),
             //    encryptedType);
-            var encryptedLocalFile = _factory.Create<IEncryptedLocalFile>(targetFile, fileToEncrypt.Root);
+            var encryptedLocalFile = (IEncryptedLocalFile)_factory.Create(targetFile, fileToEncrypt.Root);
 
 
             if (deletePlaintext)
@@ -113,7 +114,7 @@ namespace Arius
                 s.Close();
             }
 
-            var decryptedLocalFile = _factory.Create<ILocalFile>(targetFile, fileToDecrypt.Root);
+            var decryptedLocalFile = _factory.Create(targetFile, fileToDecrypt.Root);
 
             if (deleteEncrypted)
                 fileToDecrypt.Delete();

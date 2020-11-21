@@ -80,6 +80,8 @@ namespace Arius
                 return;
             }
 
+            _logger.LogInformation($"Downloading remote '{remoteDirectoryName}' to '{target.FullName}'");
+
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
             //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
 
@@ -99,6 +101,8 @@ namespace Arius
             p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
                 out string rawOutput,
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+            _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
@@ -129,6 +133,8 @@ namespace Arius
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier)
         {
+            _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
 
@@ -148,6 +154,8 @@ namespace Arius
             p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
                 out string rawOutput,
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+            _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");

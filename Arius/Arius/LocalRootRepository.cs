@@ -41,7 +41,7 @@ namespace Arius
         public IEnumerable<IArchivable> GetAll()
         {
             var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => _factory.Create<IArchivable>(fi, this)) //TODO FILTER
+                .Select(fi => (IArchivable)_factory.Create(fi, this)) //TODO FILTER
                 .ToImmutableArray();
 
             return localFiles;
@@ -67,7 +67,7 @@ namespace Arius
             pointerFileInfo.CreationTimeUtc = lcf.CreationTimeUtc;
             pointerFileInfo.LastWriteTimeUtc = lcf.LastWriteTimeUtc;
 
-            return _factory.Create<LocalPointerFile>(pointerFileInfo, repository);
+            return (LocalPointerFile)_factory.Create(pointerFileInfo, repository);
         }
     }
 
