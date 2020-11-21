@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using Arius.Extensions;
+using Arius.Models;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius
+namespace Arius.Services
 {
     internal class RemoteBlobFactory
     {

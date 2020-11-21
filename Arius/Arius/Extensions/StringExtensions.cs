@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Arius
+namespace Arius.Extensions
 {
     internal static class StringExtensions
     {
