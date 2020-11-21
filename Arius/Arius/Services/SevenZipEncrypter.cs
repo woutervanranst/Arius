@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Extensions;
+using Arius.Models;
 using Microsoft.Extensions.Logging;
 using SevenZip;
 
-namespace Arius
+namespace Arius.Services
 {
     internal interface IEncrypterOptions : ICommandExecutorOptions
     {
