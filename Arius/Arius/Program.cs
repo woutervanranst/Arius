@@ -34,12 +34,13 @@ namespace Arius
             var pcp = new ParsedCommandProvider();
 
             IAriusCommand archiveCommand = new ArchiveCommand();
+            //IAriusCommand restoreCommand = new RestoreCommand();
 
             var rootCommand = new RootCommand();
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
             rootCommand.AddCommand(archiveCommand.GetCommand(pcp));
-            //rootCommand.AddCommand(RestoreCommand.GetCommand());
+            //rootCommand.AddCommand(restoreCommand.GetCommand(pcp));
 
             var r = rootCommand.InvokeAsync(args).Result;
 
@@ -65,17 +66,21 @@ namespace Arius
                 })
                 .AddSingleton<Configuration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                .AddSingleton<LocalRootRepository>()
+                //Add Repositories
                 .AddSingleton<AriusRepository>()
+                .AddSingleton<LocalRootRepository>()
                 .AddSingleton<LocalManifestRepository>()
                 .AddSingleton<RemoteEncryptedChunkRepository>()
+                //Add Services
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
                 .AddSingleton<IEncrypter, SevenZipEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
+                //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
+                .AddSingleton<RestoreCommandExecutor>()
 
                 .BuildServiceProvider();
 
