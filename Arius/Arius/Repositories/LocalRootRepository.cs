@@ -29,6 +29,7 @@ namespace Arius.Repositories
         private readonly LocalFileFactory _factory;
 
         public string FullName => _root.FullName;
+        public bool Exists => _root.Exists;
 
 
         /// <summary>
