@@ -1,10 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-using System.Xml.XPath;
-using Azure.Storage.Blobs.Models;
+using Arius.Extensions;
+using Arius.Models;
 
-namespace Arius
+namespace Arius.Services
 {
     internal class LocalFileFactory
     {
