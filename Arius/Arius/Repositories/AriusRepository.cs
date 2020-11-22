@@ -6,6 +6,7 @@ using System.Linq;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Repositories
@@ -22,11 +23,12 @@ namespace Arius.Repositories
         public AriusRepository(ICommandExecutorOptions options,
             ILogger<AriusRepository> logger,
             IBlobCopier uploader,
-            LocalManifestRepository manifestRepository,
+            LocalManifestFileRepository manifestRepository,
             LocalRootRepository rootRepository,
             RemoteEncryptedChunkRepository chunkRepository,
             IChunker chunker,
-            IEncrypter encrypter
+            IEncrypter encrypter,
+            ManifestService manifestService
             )
         {
             _options = (IAriusRepositoryOptions)options;
@@ -37,16 +39,18 @@ namespace Arius.Repositories
             _remoteChunkRepository = chunkRepository;
             _chunker = chunker;
             _encrypter = encrypter;
+            _manifestService = manifestService;
         }
 
         private readonly IAriusRepositoryOptions _options;
         private readonly ILogger<AriusRepository> _logger;
         private readonly IBlobCopier _blobCopier;
-        private readonly LocalManifestRepository _manifestRepository;
+        private readonly LocalManifestFileRepository _manifestRepository;
         private readonly LocalRootRepository _rootRepository;
         private readonly RemoteEncryptedChunkRepository _remoteChunkRepository;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
+        private readonly ManifestService _manifestService;
 
         public string FullName => _rootRepository.FullName;
 
@@ -144,7 +148,7 @@ namespace Arius.Repositories
 
             var createdManifestsPerHash = localContentFilesToUpload
                 .AsParallelWithParallelism()
-                .Select(g => _manifestRepository.CreateManifestFile(
+                .Select(g => _manifestService.CreateManifestFile(
                     unencryptedChunksPerLocalContentHash[g.First().Hash].Select(cf => encryptedChunkPerHash[cf.Hash]),
                     g.First().Hash))
                 //g.Select(lcf => lcf)))
@@ -184,7 +188,7 @@ namespace Arius.Repositories
             var allPointers = localFiles.OfType<IPointerFile>().Union(newPointers);
 
             //Update all manifests
-            _manifestRepository.UpdateManifests(allPointers);
+            _manifestService.UpdateManifests(allPointers);
 
             // Upload the CHANGED manifests
             _manifestRepository.UploadModifiedManifests();

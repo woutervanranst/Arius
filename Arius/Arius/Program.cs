@@ -69,11 +69,12 @@ namespace Arius
                 //Add Repositories
                 .AddSingleton<AriusRepository>()
                 .AddSingleton<LocalRootRepository>()
-                .AddSingleton<LocalManifestRepository>()
+                .AddSingleton<LocalManifestFileRepository>()
                 .AddSingleton<RemoteEncryptedChunkRepository>()
                 //Add Services
                 .AddSingleton<LocalFileFactory>()
                 .AddSingleton<RemoteBlobFactory>()
+                .AddSingleton<ManifestService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
                 .AddSingleton<IEncrypter, SevenZipEncrypter>()
