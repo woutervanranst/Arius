@@ -120,7 +120,8 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ILocalRootDirectoryOptions, 
+    internal struct ArchiveOptions : ICommandExecutorOptions,
+        ILocalRootDirectoryOptions, 
         ISHA256HasherOptions, 
         IChunkerOptions, 
         IEncrypterOptions, 
