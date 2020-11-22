@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Services;
 
@@ -14,7 +15,8 @@ namespace Arius.Repositories
         string Path { get; }
     }
 
-    internal class LocalRootRepository : IGetRepository<IArchivable> // : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
+    internal class LocalRootRepository : IGetRepository<IArchivable>, IPutRepository<IManifestFile> // : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
+
     {
         public LocalRootRepository(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
         {
@@ -31,6 +33,10 @@ namespace Arius.Repositories
         public string FullName => _root.FullName;
         public bool Exists => _root.Exists;
 
+        public IArchivable GetById(HashValue id)
+        {
+            throw new NotImplementedException();
+        }
 
         /// <summary>
         /// Return all LocalContentFiles and Pointers in this repository
@@ -38,22 +44,32 @@ namespace Arius.Repositories
         public IEnumerable<IArchivable> GetAll()
         {
             var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => (IArchivable)_factory.Create(fi, this)) //TODO FILTER
+                .Select(fi => (IArchivable) _factory.Create(fi, this)) //TODO FILTER
                 .ToImmutableArray();
 
             return localFiles;
         }
 
-        public IArchivable GetById(HashValue id)
+        public void Put(IManifestFile manifest)
         {
-            throw new NotImplementedException();
+            //manifest
         }
+
+        public void PutAll(IEnumerable<IManifestFile> manifestFiles)
+        {
+            manifestFiles.AsParallelWithParallelism().ForAll(Put);
+        }
+
+
 
         /// <summary>
         /// Create a pointer for a local file with a remote manifest
         /// </summary>
         public IPointerFile CreatePointerFile(AriusRepository repository, ILocalContentFile lcf, IManifestFile manifestFile)
         {
+            //TODO can be refactored to Put()?
+
+
             var pointerFileInfo = lcf.PointerFileInfo;
 
             if (pointerFileInfo.Exists)
@@ -64,20 +80,9 @@ namespace Arius.Repositories
             pointerFileInfo.CreationTimeUtc = lcf.CreationTimeUtc;
             pointerFileInfo.LastWriteTimeUtc = lcf.LastWriteTimeUtc;
 
-            return (LocalPointerFile)_factory.Create(pointerFileInfo, repository);
+            return (LocalPointerFile) _factory.Create(pointerFileInfo, repository);
         }
+
+
     }
-
-    //[Extension(".pointer.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
-    //internal class PointerFile : LocalFile, IPointerFile
-    //{
-    //    public PointerFile(AriusRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
-    //    {
-
-    //    }
-
-    //    public string RelativeContentName { get; }
-    //    public DateTime CreationTimeUtc { get; set; }
-    //    public DateTime LastWriteTimeUtc { get; set; }
-    //}
 }
