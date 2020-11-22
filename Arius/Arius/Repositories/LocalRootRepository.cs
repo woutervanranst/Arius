@@ -15,7 +15,7 @@ namespace Arius.Repositories
         string Path { get; }
     }
 
-    internal class LocalRootRepository : IGetRepository<IArchivable>, IPutRepository<IManifestFile> // : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
+    internal class LocalRootRepository : IGetRepository<IArchivable> //, IPutRepository<IManifestFile> // : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
 
     {
         public LocalRootRepository(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
@@ -50,14 +50,14 @@ namespace Arius.Repositories
             return localFiles;
         }
 
-        public void Put(IManifestFile manifest)
-        {
-            //manifest
-        }
+        //public void Put(IManifestFile manifest)
+        //{
+        //    //manifest
+        //}
 
-        public void PutAll(IEnumerable<IManifestFile> manifestFiles)
-        {
-            manifestFiles.AsParallelWithParallelism().ForAll(Put);
-        }
+        //public void PutAll(IEnumerable<IManifestFile> manifestFiles)
+        //{
+        //    manifestFiles.AsParallelWithParallelism().ForAll(Put);
+        //}
     }
 }
