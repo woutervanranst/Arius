@@ -57,6 +57,8 @@ namespace Arius.Repositories
 
         public void PutAll(IEnumerable<IArchivable> localFiles)
         {
+            localFiles = localFiles.ToImmutableArray();
+
             ////TODO Simulate
             ////TODO MINSIZE
             ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
@@ -65,13 +67,18 @@ namespace Arius.Repositories
              * 1. Ensure ALL LocalContentFiles (ie. all non-.arius files) are on the remote WITH a Manifest
              */
 
-            //_logger.LogWarning("test");
-
             //1.1 Ensure all chunks are uploaded
+            //var hasherProgress = new ConsoleProgress(localFiles.LongCount());
             var localContentPerHash = localFiles
                 .OfType<LocalContentFile>()
                 .AsParallel()
                 .WithDegreeOfParallelism(1)
+                //.Select(lcf =>
+                //{
+                //    var hash = lcf.Hash;
+                //    hasherProgress.AddProgress(1);
+                //    return lcf;
+                //})
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
 
