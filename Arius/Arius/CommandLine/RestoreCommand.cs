@@ -109,22 +109,29 @@ namespace Arius.CommandLine
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootRepository _localRoot;
         private readonly AriusRepository _remoteArchive;
+        private readonly LocalManifestFileRepository _manifestRepository;
 
         public RestoreCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
-            AriusRepository remoteArchive)
+            AriusRepository remoteArchive,
+            LocalManifestFileRepository manifestRepository)
         {
             _options = options;
             _logger = logger;
             _localRoot = localRoot;
             _remoteArchive = remoteArchive;
+            _manifestRepository = manifestRepository;
         }
 
         public int Execute()
         {
-            if (_localRoot.Exists/* Directory.Exists(path)*/)
+            if (_localRoot.Exists)
             {
+                //Synchronize the local root to the remote repository
+                var manifestFiles = _manifestRepository.GetAll();
+                _localRoot.PutAll(manifestFiles);
+
                 //// Synchronize a folder
                 //var root = new AriusRootDirectory(path);
 
@@ -145,7 +152,6 @@ namespace Arius.CommandLine
             return 0;
         }
     }
-
 
 
     //private static int Synchronize(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
