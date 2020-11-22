@@ -28,29 +28,27 @@ namespace Arius.Services
             ILogger<AzCopier> logger, 
             RemoteBlobFactory factory)
         {
-            var o = (IAzCopyUploaderOptions) options;
-            _contentAccessTier = o.Tier;
-
+            _options = (IAzCopyUploaderOptions)options;
             _factory = factory;
             _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
             _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "azcopy.exe", "azcopy"));
 
-            _skc = new StorageSharedKeyCredential(o.AccountName, o.AccountKey);
+            _skc = new StorageSharedKeyCredential(_options.AccountName, _options.AccountKey);
 
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_options.AccountName};AccountKey={_options.AccountKey};EndpointSuffix=core.windows.net";
 
             // Create a BlobServiceClient object which will be used to create a container client
             var bsc = new BlobServiceClient(connectionString);
             //var bsc = new BlobServiceClient(new Uri($"{accountName}", _skc));
 
-            var bcc = bsc.GetBlobContainerClient(o.Container);
+            var bcc = bsc.GetBlobContainerClient(_options.Container);
 
             if (!bcc.Exists())
             {
-                logger.LogInformation($"Creating container {o.Container}... ");
-                bcc = bsc.CreateBlobContainer(o.Container);
+                logger.LogInformation($"Creating container {_options.Container}... ");
+                bcc = bsc.CreateBlobContainer(_options.Container);
                 logger.LogInformation("Done");
             }
 
@@ -60,7 +58,8 @@ namespace Arius.Services
         private readonly Task<string> _AzCopyPath;
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
-        private readonly AccessTier _contentAccessTier;
+        //private readonly AccessTier _contentAccessTier;
+        private readonly IAzCopyUploaderOptions _options;
         private readonly RemoteBlobFactory _factory;
         private readonly ILogger<AzCopier> _logger;
 
@@ -112,7 +111,7 @@ namespace Arius.Services
             AccessTier tier;
 
             if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
-                tier = _contentAccessTier;
+                tier = _options.Tier;
             else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
                 tier = AccessTier.Cool;
             else
