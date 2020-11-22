@@ -59,9 +59,16 @@ namespace Arius.Repositories
         {
             manifestFiles.AsParallelWithParallelism().ForAll(Put);
         }
+    }
 
+    internal class PointerService
+    {
+        private readonly LocalFileFactory _factory;
 
-
+        public PointerService(LocalFileFactory factory)
+        {
+            _factory = factory;
+        }
         /// <summary>
         /// Create a pointer for a local file with a remote manifest
         /// </summary>

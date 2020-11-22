@@ -28,7 +28,8 @@ namespace Arius.Repositories
             RemoteEncryptedChunkRepository chunkRepository,
             IChunker chunker,
             IEncrypter encrypter,
-            ManifestService manifestService
+            ManifestService manifestService,
+            PointerService pointerService
             )
         {
             _options = (IAriusRepositoryOptions)options;
@@ -40,6 +41,7 @@ namespace Arius.Repositories
             _chunker = chunker;
             _encrypter = encrypter;
             _manifestService = manifestService;
+            _pointerService = pointerService;
         }
 
         private readonly IAriusRepositoryOptions _options;
@@ -51,6 +53,7 @@ namespace Arius.Repositories
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
         private readonly ManifestService _manifestService;
+        private readonly PointerService _pointerService;
 
         public string FullName => _rootRepository.FullName;
 
@@ -173,7 +176,7 @@ namespace Arius.Repositories
                             createdManifestsPerHash[lcf.Hash] :
                             _manifestRepository.GetById(lcf.Hash);
 
-                        return _rootRepository.CreatePointerFile(this, lcf, manifestFile);
+                        return _pointerService.CreatePointerFile(this, lcf, manifestFile);
                     })
                 .ToImmutableArray();
 
