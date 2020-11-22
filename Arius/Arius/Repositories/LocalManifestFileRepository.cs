@@ -55,7 +55,7 @@ namespace Arius.Repositories
 
         public void UploadModifiedManifests()
         {
-            var modifiedEncryptedManifsts = _modifiedManifestFiles
+            var modifiedEncryptedManifsts = _modifiedManifestFiles.Values
                 .AsParallelWithParallelism()
                 .Select(mf => (IEncryptedManifestFile)_encrypter.Encrypt(mf, false))
                 .ToImmutableArray();
@@ -71,7 +71,7 @@ namespace Arius.Repositories
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
         private Task<Dictionary<HashValue, IManifestFile>> _manifestFiles;
-        private readonly IList<IManifestFile> _modifiedManifestFiles = new List<IManifestFile>();
+        private readonly Dictionary<HashValue, IManifestFile> _modifiedManifestFiles = new();
 
         public string FullName => _localTemp.FullName;
 
@@ -93,8 +93,8 @@ namespace Arius.Repositories
 
             if (!_manifestFiles.Result.ContainsKey(manifestFile.Hash))
                 _manifestFiles.Result.Add(manifestFile.Hash, manifestFile);
-            if (!_modifiedManifestFiles.Contains(manifestFile))
-                _modifiedManifestFiles.Add(manifestFile);
+            if (!_modifiedManifestFiles.ContainsKey(manifestFile.Hash))
+                _modifiedManifestFiles.Add(manifestFile.Hash, manifestFile);
         }
 
         public void PutAll(IEnumerable<IManifestFile> manifestFiles)

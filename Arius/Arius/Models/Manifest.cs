@@ -58,9 +58,9 @@ namespace Arius.Models
         /// Synchronize the state of the manifest to the current state of the file system:
         /// Additions, deletions, renames (= add + delete)
         /// </summary>
-        public bool Update(IEnumerable<IPointerFile> apfs)
+        public bool Update(IEnumerable<IPointerFile> pointerFiles)
         {
-            var fileSystemEntries = GetPointerFileEntries(apfs);
+            var fileSystemEntries = GetPointerFileEntries(pointerFiles);
             var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
 
             var addedFiles = fileSystemEntries.Except(lastEntries, _pfeec).ToList();
@@ -84,17 +84,17 @@ namespace Arius.Models
         //}
 
         // --- RECORD DEFINITION & HELPERS
-        private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> localContentFiles)
+        private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> pointerFiles)
         {
-            return localContentFiles.Select(lcf => GetPointerFileEntry(lcf)).ToList();
+            return pointerFiles.Select(pf => GetPointerFileEntry(pf)).ToList();
         }
-        private static PointerFileEntry GetPointerFileEntry(IPointerFile lcf)
+        private static PointerFileEntry GetPointerFileEntry(IPointerFile pointerFile)
         {
-            return new PointerFileEntry(lcf.RelativeContentName, 
+            return new PointerFileEntry(pointerFile.RelativeName, 
                 DateTime.UtcNow, 
                 false, 
-                lcf.CreationTimeUtc,
-                lcf.LastWriteTimeUtc);
+                pointerFile.CreationTimeUtc,
+                pointerFile.LastWriteTimeUtc);
         }
 
 

@@ -3,12 +3,13 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using Arius.Models;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Extensions
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-    public class ExtensionAttribute : Attribute
+    internal class ExtensionAttribute : Attribute
     {
         public ExtensionAttribute(string extension/*, bool excludeOthers = false*/, Type encryptedType = null, Type decryptedType = null)
         {
@@ -19,8 +20,23 @@ namespace Arius.Extensions
         }
         public string Extension { get; init; }
         //public bool ExcludeOthers { get; init; }
-        public Type EncryptedType { get; init; }
-        public Type DecryptedType { get; init; }
+        private Type EncryptedType { get; init; }
+        private Type DecryptedType { get; init; }
+
+        public FileInfo GetEncryptedFileInfo(ILocalFile lf)
+        {
+            var encryptedType = lf.GetType().GetCustomAttribute<ExtensionAttribute>()!.EncryptedType;
+            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
+
+            return new FileInfo(Path.Combine(lf.Root.FullName, $"{lf.Hash}{encryptedTypeExtension}"));
+        }
+        public FileInfo GetDecryptedFileInfo(ILocalFile lf)
+        {
+            var decryptedType = lf.GetType().GetCustomAttribute<ExtensionAttribute>()!.DecryptedType;
+            var decryptedTypeExtension = decryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
+
+            return new FileInfo(Path.Combine(lf.Root.FullName, $"{lf.NameWithoutExtension}{decryptedTypeExtension}"));
+        }
 
         public bool IsMatch(FileInfo fi)
         {

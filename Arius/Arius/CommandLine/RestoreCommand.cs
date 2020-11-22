@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Extensions;
+using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
@@ -112,13 +115,15 @@ namespace Arius.CommandLine
         private readonly AriusRepository _remoteArchive;
         private readonly LocalManifestFileRepository _manifestRepository;
         private readonly ManifestService _manifestService;
+        private readonly PointerService _pointerService;
 
         public RestoreCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
             AriusRepository remoteArchive,
             LocalManifestFileRepository manifestRepository,
-            ManifestService manifestService)
+            ManifestService manifestService,
+            PointerService pointerService)
         {
             _options = options;
             _logger = logger;
@@ -126,22 +131,16 @@ namespace Arius.CommandLine
             _remoteArchive = remoteArchive;
             _manifestRepository = manifestRepository;
             _manifestService = manifestService;
+            _pointerService = pointerService;
         }
 
         public int Execute()
         {
             if (_localRoot.Exists)
             {
-                //Synchronize the local root to the remote repository
-                var manifestFiles = _manifestRepository.GetAll();
-                //manifestFiles.First().
-                //_manifestService.GetAriusPointerFileEntries
-                //_localRoot.PutAll(manifestFiles);
+                //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
 
-                //// Synchronize a folder
-                //var root = new AriusRootDirectory(path);
-
-                //Synchronize(archive, root, passphrase);
+                Synchronize();
 
                 //if (download)
                 //    Download(archive, root, passphrase);
@@ -157,57 +156,66 @@ namespace Arius.CommandLine
             }
             return 0;
         }
+
+        private void Synchronize()
+        {
+            //Synchronize the local root to the remote repository
+            var manifestFiles = _manifestRepository.GetAll();
+
+            var pointerEntriesperManifest = manifestFiles.AsParallelWithParallelism()
+                //.Select(mf => _manifestService.ReadManifestFile(mf))
+                //.ToImmutableDictionary(
+                //    m => m,
+                //    m => m.GetLastExistingEntriesPerRelativeName().ToImmutableArray()
+                .ToImmutableDictionary(
+                    mf => mf,
+                    mf => _manifestService.ReadManifestFile(mf).GetLastExistingEntriesPerRelativeName().ToImmutableArray()
+                );
+
+            _logger.LogInformation($"{pointerEntriesperManifest.Values.Sum(pfes => pfes.Length)} files in latest version of remote");
+
+
+            _logger.LogInformation($"Synchronizing state of local folder with remote... ");
+
+            //1. POINTERS THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
+            var createdPointers = pointerEntriesperManifest
+                .AsParallelWithParallelism()
+                .SelectMany(p => p.Value
+                    .Where(pfe => !_localRoot.GetPointerFileInfo(pfe).Exists)
+                    .Select(pfe =>
+                    {
+                        var apf = _pointerService.CreatePointerFile(_localRoot, pfe, p.Key);
+                        _logger.LogInformation($"Pointer '{apf.RelativeName}' created");
+
+                        return apf;
+                    }))
+                .ToImmutableArray();
+
+            // 2. POINTERS THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
+            var relativeNamesThatShouldExist = pointerEntriesperManifest.Values.SelectMany(x => x).Select(x => x.RelativeName); //root.GetFullName(x));
+
+            _localRoot.GetAll().OfType<IPointerFile>()
+                .AsParallelWithParallelism()
+                .Where(pf => !relativeNamesThatShouldExist.Contains(pf.RelativeName))
+                .ForAll(pf =>
+                {
+                    pf.Delete();
+
+                    Console.WriteLine($"Pointer for '{pf.RelativeName}' deleted");
+                });
+
+            _localRoot.DeleteEmptySubdirectories();
+        }
     }
 
 
     //private static int Synchronize(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
     //{
-    //    var cbn = archive.GetRemoteEncryptedAriusManifests().ToImmutableArray();
-
-    //    Console.Write($"Getting {cbn.Length} manifests... ");
-
-    //    var pointerEntriesperManifest = cbn
-    //        .AsParallel()
-    //        .ToImmutableDictionary(
-    //            ream => ream,
-    //            ream => ream.GetAriusPointerFileEntries(passphrase).ToList());
-
-    //    Console.WriteLine($"Done. {pointerEntriesperManifest.Values.Count()} files in latest version of remote");
 
 
-    //    Console.WriteLine($"Synchronizing state of local folder with remote... ");
 
-    //    // 1. FILES THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
-    //    var createdPointers = pointerEntriesperManifest
-    //        .AsParallel()
-    //        .WithDegreeOfParallelism(1)
-    //        .SelectMany(p => p.Value
-    //                .Where(afpe => !root.Exists(afpe))
-    //                .Select(afpe =>
-    //                {
-    //                    var apf = AriusPointerFile.Create(root, afpe, p.Key);
-    //                    Console.WriteLine($"File '{apf.RelativeLocalContentFileName}' created");
 
-    //                    return apf;
-    //                }))
-    //        .ToImmutableArray();
 
-    //    Console.WriteLine();
-
-    //    // 2. FILES THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
-    //    var relativeNamesThatShouldExist = pointerEntriesperManifest.Values.SelectMany(x => x).Select(x => x.RelativeName); //root.GetFullName(x));
-
-    //    root.GetAriusPointerFiles()
-    //        .Where(apf => !relativeNamesThatShouldExist.Contains(apf.RelativeLocalContentFileName))
-    //        .AsParallel()
-    //        .ForAll(apfe =>
-    //        {
-    //            File.Delete(apfe.FullName);
-
-    //            Console.WriteLine($"Pointer for '{apfe.RelativeLocalContentFileName}' deleted");
-    //        });
-
-    //    DirectoryExtensions.DeleteEmptySubdirectories(root.FullName);
 
 
 
@@ -227,6 +235,7 @@ namespace Arius.CommandLine
     //     *      restore > normal binary file remains untouched
     //     * directory more than 2 deep without other files
     //     *  download > local files exist s> don't download all
+            // * restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
     //     * */
 
 
@@ -242,6 +251,8 @@ namespace Arius.CommandLine
     //        .ToImmutableDictionary(
     //            apf => archive.GetRemoteEncryptedAriusManifestByBlobItemName(apf.Key),
     //            apf => apf.ToList());
+
+    //TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
 
     //    var chunkNamesToDownload = pointerFilesPerRemoteEncryptedManifest.Keys
     //        .AsParallel()
