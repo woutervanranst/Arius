@@ -59,11 +59,11 @@ namespace Arius.Services
         /// <summary>
         /// Synchronize the manifest files with the local pointers
         /// </summary>
-        /// <param name="pointers"></param>
-        public void UpdateManifests(IEnumerable<IPointerFile> pointers)
+        /// <param name="pointerFiles"></param>
+        public void UpdateManifests(IEnumerable<IPointerFile> pointerFiles)
         {
             // Group the pointers by manifest (hash)
-            var pointersPerManifestName = pointers
+            var pointerFilesPerManifestName = pointerFiles
                 .GroupBy(pointer => pointer.Hash)
                 .ToImmutableDictionary(
                     g => g.Key,
@@ -75,19 +75,15 @@ namespace Arius.Services
             _localManifestRepository.GetAll()
                 .AsParallelWithParallelism()
                 .ForAll(mf =>
-                    UpdateManifest(mf, pointersPerManifestName[mf.Hash]));
+                    UpdateManifest(mf, pointerFilesPerManifestName[mf.Hash]));
         }
 
-        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointers)
+        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointerFiles)
         {
-            var m1 = _localManifestRepository.GetById(pointers.First().Hash).FullName;
-            var m2 = manifestFile;
-
-
             //TODO Assert all hashes equal to the manifest file hash
-            var manifest = ReadManifestFile(m2);
+            var manifest = ReadManifestFile(manifestFile);
             
-            var writeback = manifest!.Update(pointers);
+            var writeback = manifest!.Update(pointerFiles);
 
             SaveManifest(manifest, manifestFile.FullName);
 
@@ -107,16 +103,18 @@ namespace Arius.Services
             return manifest;
         }
 
-        public void Ha(IEnumerable<IManifestFile> manifestFiles)
-        {
-            var pointerEntriesperManifest = manifestFiles
-                .AsParallelWithParallelism()
-                .Select(mf => ReadManifestFile(mf))
-                .ToImmutableDictionary(
-                    m => m,
-                    m => m.GetLastExistingEntriesPerRelativeName()
-                );
+        //public void Ha(IEnumerable<IManifestFile> manifestFiles)
+        //{
+        //    var pointerEntriesperManifest = manifestFiles
+        //        .AsParallelWithParallelism()
+        //        .Select(mf => ReadManifestFile(mf))
 
-        }
+
+        //}
+
+        //public IEnumerable<Manifest.PointerFileEntry> GetLastExistingEntriesPerRelativeName(IManifestFile manifestFile)
+        //{
+        //    return ReadManifestFile(manifestFile).GetLastExistingEntriesPerRelativeName();
+        //}
     }
 }

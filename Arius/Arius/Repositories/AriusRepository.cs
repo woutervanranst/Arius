@@ -165,7 +165,7 @@ namespace Arius.Repositories
             /*
              * 2. Ensure Pointers exist/are create for ALL LocalContentFiles
              */
-            var newPointers = localContentPerHash
+            var newPointerFiles = localContentPerHash
                 .AsParallel()
                     .WithDegreeOfParallelism(1)
                     .SelectMany(g => g)
@@ -176,11 +176,11 @@ namespace Arius.Repositories
                             createdManifestsPerHash[lcf.Hash] :
                             _manifestRepository.GetById(lcf.Hash);
 
-                        return _pointerService.CreatePointerFile(this, lcf, manifestFile);
+                        return _pointerService.CreatePointerFile(_rootRepository, lcf, manifestFile);
                     })
                 .ToImmutableArray();
 
-            _logger.LogInformation($"Created {newPointers.Count()} new pointers");
+            _logger.LogInformation($"Created {newPointerFiles.Count()} new pointers");
 
 
             /*
@@ -188,10 +188,10 @@ namespace Arius.Repositories
              */
 
             // Get all pointers
-            var allPointers = localFiles.OfType<IPointerFile>().Union(newPointers);
+            var allPointerFiles = localFiles.OfType<IPointerFile>().Union(newPointerFiles);
 
             //Update all manifests
-            _manifestService.UpdateManifests(allPointers);
+            _manifestService.UpdateManifests(allPointerFiles);
 
             // Upload the CHANGED manifests
             _manifestRepository.UploadModifiedManifests();

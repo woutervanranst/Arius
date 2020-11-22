@@ -1,8 +1,11 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Arius.Extensions
 {
+
+    [DebuggerStepThrough]
     internal static class IEnumerableExtensions
     {
         public static ParallelQuery<TSource> AsParallel<TSource>(this IEnumerable<TSource> source, int withDegreeOfParallelism)
