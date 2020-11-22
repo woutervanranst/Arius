@@ -37,10 +37,10 @@ namespace Arius.Repositories
             //_manifestFiles = new Dictionary<HashValue, IManifestFile>();
 
             //Asynchronously download all manifests
-            _downloadManifestsTask = Task.Run(() => DownloadManifests());
+            _manifestFiles = Task.Run(() => DownloadManifests());
         }
 
-        private void DownloadManifests()
+        private Dictionary<HashValue, IManifestFile> DownloadManifests()
         {
             _blobCopier.Download(SubDirectoryName, _localTemp);
 
@@ -49,7 +49,7 @@ namespace Arius.Repositories
                 .AsParallelWithParallelism()
                 .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
-            _manifestFiles = localManifests.ToDictionary(mf => mf.Hash, mf => mf);
+            return localManifests.ToDictionary(mf => mf.Hash, mf => mf);
         }
 
         public void UploadModifiedManifests()
@@ -63,13 +63,13 @@ namespace Arius.Repositories
         }
 
         private const string SubDirectoryName = "manifests";
-        private readonly Task _downloadManifestsTask;
+        //private readonly Task _downloadManifestsTask;
         private readonly DirectoryInfo _localTemp;
         private readonly ILogger<LocalManifestRepository> _logger;
         private readonly IBlobCopier _blobCopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
-        private Dictionary<HashValue, IManifestFile> _manifestFiles;
+        private Task<Dictionary<HashValue, IManifestFile>> _manifestFiles;
         private readonly IList<IManifestFile> _modifiedManifestFiles = new List<IManifestFile>();
 
         public string FullName => _localTemp.FullName;
@@ -77,21 +77,21 @@ namespace Arius.Repositories
 
         public IManifestFile GetById(HashValue id)
         {
-            _downloadManifestsTask.Wait();
+            //_downloadManifestsTask.Wait();
 
-            return _manifestFiles[id];
+            return _manifestFiles.Result[id];
         }
 
         public IEnumerable<IManifestFile> GetAll()
         {
-            _downloadManifestsTask.Wait();
+            //_downloadManifestsTask.Wait();
 
-            return _manifestFiles.Values;
+            return _manifestFiles.Result.Values;
         }
 
         public IManifestFile CreateManifestFile(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, HashValue hash)
         {
-            _downloadManifestsTask.Wait();
+            //_downloadManifestsTask.Wait();
 
             var manifest = new Manifest(encryptedChunks.Select(recb => recb.Name),
                 hash.Value);
@@ -101,16 +101,13 @@ namespace Arius.Repositories
             _logger.LogDebug($"Created ManifestFile '{manifestFileInfo.Name}'");
 
             var manifestFile = (IManifestFile)_factory.Create(manifestFileInfo, this);
-            _manifestFiles.Add(hash, manifestFile);
+            _manifestFiles.Result.Add(hash, manifestFile);
 
             return manifestFile;
-
         }
 
         private FileInfo SaveManifest(Manifest manifest, string manifestFileFullName = null)
         {
-            _downloadManifestsTask.Wait();
-
             if (manifestFileFullName is null)
             { 
                 var extension = typeof(LocalManifestFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
@@ -126,8 +123,6 @@ namespace Arius.Repositories
 
         public void UpdateManifests(IEnumerable<IPointerFile> pointers)
         {
-            _downloadManifestsTask.Wait();
-
             // Group the pointers by manifest (hash)
             var ariusPointersPerManifestName = pointers
                 .GroupBy(pointer => pointer.Hash)
@@ -138,7 +133,7 @@ namespace Arius.Repositories
             //// TODO QUID BROKEN POINTERFILES
 
             // Update each manifest
-            _manifestFiles
+            _manifestFiles.Result
                 .AsParallelWithParallelism()
                 .ForAll(mf => 
                     UpdateManifest(mf.Value, ariusPointersPerManifestName[mf.Key]));
@@ -146,11 +141,10 @@ namespace Arius.Repositories
 
         public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointers)
         {
-            _downloadManifestsTask.Wait();
 
             //TODO Assert all hashes equal to the manifest file hash
 
-            var manifestFileFullName = _manifestFiles[pointers.First().Hash].FullName;
+            var manifestFileFullName = _manifestFiles.Result[pointers.First().Hash].FullName;
             var json = File.ReadAllText(manifestFileFullName);
             var manifest = JsonSerializer.Deserialize<Manifest>(json);
             var writeback = manifest!.Update(pointers);
