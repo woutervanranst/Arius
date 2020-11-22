@@ -2,6 +2,7 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Repositories;
@@ -110,18 +111,21 @@ namespace Arius.CommandLine
         private readonly LocalRootRepository _localRoot;
         private readonly AriusRepository _remoteArchive;
         private readonly LocalManifestFileRepository _manifestRepository;
+        private readonly ManifestService _manifestService;
 
         public RestoreCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
             AriusRepository remoteArchive,
-            LocalManifestFileRepository manifestRepository)
+            LocalManifestFileRepository manifestRepository,
+            ManifestService manifestService)
         {
             _options = options;
             _logger = logger;
             _localRoot = localRoot;
             _remoteArchive = remoteArchive;
             _manifestRepository = manifestRepository;
+            _manifestService = manifestService;
         }
 
         public int Execute()
@@ -130,7 +134,9 @@ namespace Arius.CommandLine
             {
                 //Synchronize the local root to the remote repository
                 var manifestFiles = _manifestRepository.GetAll();
-                _localRoot.PutAll(manifestFiles);
+                //manifestFiles.First().
+                //_manifestService.GetAriusPointerFileEntries
+                //_localRoot.PutAll(manifestFiles);
 
                 //// Synchronize a folder
                 //var root = new AriusRootDirectory(path);
