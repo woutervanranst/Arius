@@ -34,13 +34,13 @@ namespace Arius
             var pcp = new ParsedCommandProvider();
 
             IAriusCommand archiveCommand = new ArchiveCommand();
-            //IAriusCommand restoreCommand = new RestoreCommand();
+            IAriusCommand restoreCommand = new RestoreCommand();
 
             var rootCommand = new RootCommand();
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
             rootCommand.AddCommand(archiveCommand.GetCommand(pcp));
-            //rootCommand.AddCommand(restoreCommand.GetCommand(pcp));
+            rootCommand.AddCommand(restoreCommand.GetCommand(pcp));
 
             var r = rootCommand.InvokeAsync(args).Result;
 
@@ -90,10 +90,10 @@ namespace Arius
 
                 return commandExecutor.Execute();
             }
-            catch (Exception e)
-            {
-                throw;
-            }
+            //catch (Exception e)
+            //{
+            //    throw;
+            //}
             finally
             {
                 //Delete the tempdir
