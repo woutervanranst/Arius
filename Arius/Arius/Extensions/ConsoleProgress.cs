@@ -17,6 +17,9 @@ namespace Arius.Extensions
 
         public void AddProgress(int i)
         {
+            // https://github.com/a-luna/console-progress-bar/blob/master/ConsoleProgressBar/ConsoleProgressBar.cs
+
+
             lock (_lock)
             {
                 _current += i;
