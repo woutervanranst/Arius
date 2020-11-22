@@ -60,11 +60,12 @@ namespace Arius.Services
                 ZipEncryptionMethod = ZipEncryptionMethod.Aes256
             };
 
-            var encryptedType = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.EncryptedType;
-            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
+            //var encryptedType = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.EncryptedType;
+            //var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
 
-            var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Root.FullName,
-                $"{fileToEncrypt.Hash}{encryptedTypeExtension}"));
+            //var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Root.FullName, $"{fileToEncrypt.Hash}{encryptedTypeExtension}"));
+
+            var targetFile = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetEncryptedFileInfo(fileToEncrypt);
 
             compressor.CompressFilesEncrypted(targetFile.FullName, _passphrase, fileToEncrypt.FullName);
 
@@ -94,11 +95,13 @@ namespace Arius.Services
                 throw;
             }
 
-            var decryptedType = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>().DecryptedType;
-            var decryptedTypeExtension = decryptedType.GetCustomAttribute<ExtensionAttribute>().Extension;
+            //var decryptedType = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>().DecryptedType;
+            //var decryptedTypeExtension = decryptedType.GetCustomAttribute<ExtensionAttribute>().Extension;
 
-            var targetFile = new FileInfo(Path.Combine(fileToDecrypt.Root.FullName, 
-                $"{fileToDecrypt.NameWithoutExtension}{decryptedTypeExtension}"));
+            //var targetFile = new FileInfo(Path.Combine(fileToDecrypt.Root.FullName, 
+            //    $"{fileToDecrypt.NameWithoutExtension}{decryptedTypeExtension}"));
+
+            var targetFile = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetDecryptedFileInfo(fileToDecrypt);
 
             using (var s = targetFile.OpenWrite())
             {

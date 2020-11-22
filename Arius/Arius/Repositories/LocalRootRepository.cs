@@ -50,6 +50,16 @@ namespace Arius.Repositories
             return localFiles;
         }
 
+        public FileInfo GetPointerFileInfo(Manifest.PointerFileEntry pfe)
+        {
+            return new FileInfo(Path.Combine(_root.FullName, pfe.RelativeName));
+        }
+
+        public void DeleteEmptySubdirectories()
+        {
+            _root.DeleteEmptySubdirectories();
+        }
+
         //public void Put(IManifestFile manifest)
         //{
         //    //manifest

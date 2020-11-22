@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Repositories;
 
 namespace Arius.Services
 {
@@ -18,7 +19,7 @@ namespace Arius.Services
         public ILocalFile Create(FileInfo fi, IRepository root)
         {
             if (IsMatch<LocalPointerFile>(fi))
-                return new LocalPointerFile(root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
+                return new LocalPointerFile((LocalRootRepository)root, fi, lf => new HashValue { Value = File.ReadAllText(lf.FullName) }); 
             else if (IsMatch<LocalContentFile>(fi))
                 return new LocalContentFile(root, fi, lf => _contentFileHasher.GetHashValue(lf));
 
@@ -36,7 +37,7 @@ namespace Arius.Services
 
         protected bool IsMatch<T>(FileInfo fi)
         {
-            return typeof(T).GetCustomAttribute<ExtensionAttribute>().IsMatch(fi);
+            return typeof(T).GetCustomAttribute<ExtensionAttribute>()!.IsMatch(fi);
         }
 
         //public T Create<T, V>(LocalRootDirectory root, FileInfo fi) where T : IPointerFile<V>

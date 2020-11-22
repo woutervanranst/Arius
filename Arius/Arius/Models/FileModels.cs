@@ -48,25 +48,12 @@ namespace Arius.Models
             _manifestHash = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
 
-
-        ///// <summary>
-        ///// The name of the object that this pointer is pointing to
-        ///// </summary>
-        ///// <returns></returns>
-        //public string ManifestHash => _manifestHash.Value;
-
         private readonly Lazy<string> _manifestHash;
 
-        ///// <summary>
-        ///// The object that this pointer is pointing to
-        ///// </summary>
-        ///// <returns></returns>
-        //public IRemote<IEncrypted<IManifestFile>> GetObject()
-        //{
-        //    return null;
-        //    //throw new NotImplementedException();
-        //}
-        public string RelativeContentName => Path.GetRelativePath(Root.FullName, Path.Combine(DirectoryName, NameWithoutExtension));
+        public FileInfo LocalContentFileInfo => new FileInfo(Path.Combine(DirectoryName, NameWithoutExtension));
+        
+        public string RelativeName => Path.GetRelativePath(Root.FullName, Path.Combine(DirectoryName, Name));
+
         public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
@@ -78,12 +65,12 @@ namespace Arius.Models
         {
         }
 
-        private static string _pointerFileExtension = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
+        private static readonly string _pointerFileExtension = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
 
-        private string PointerFileFullName => $"{FullName}{_pointerFileExtension}";
-        public FileInfo PointerFileInfo => new FileInfo(PointerFileFullName);
+        public FileInfo PointerFileInfo => new FileInfo($"{FullName}{_pointerFileExtension}");
 
-        public string RelativeContentName => Path.GetRelativePath(Root.FullName, FullName);
+        public string RelativeName => Path.GetRelativePath(Root.FullName, FullName);
+
         public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
