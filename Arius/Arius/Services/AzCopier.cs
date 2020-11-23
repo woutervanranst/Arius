@@ -63,49 +63,13 @@ namespace Arius.Services
         private readonly RemoteBlobFactory _factory;
         private readonly ILogger<AzCopier> _logger;
 
-
-        public void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Download(string remoteDirectoryName, DirectoryInfo target)
-        {
-            if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
-            {
-                _logger.LogInformation($"No files to download in '{remoteDirectoryName}', skipping AzCopy");
-                return;
-            }
-
-            _logger.LogInformation($"Downloading remote '{remoteDirectoryName}' to '{target.FullName}'");
-
-            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
-            //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
-
-            string arguments;
-            var sas = GetContainerSasUri(_bcc, _skc);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
-
-            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
-
-            var p = new ExternalProcess(_AzCopyPath.Result);
-
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput,
-                out int completed, out int failed, out int skipped, out string finalJobStatus);
-
-            _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
-
-            if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
-        }
-
-
+        /// <summary>
+        /// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="filesToUpload"></param>
+        /// <param name="remoteDirectoryName"></param>
+        /// <param name="overwrite"></param>
         public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite = false) where T : ILocalFile
         {
             AccessTier tier;
@@ -158,33 +122,76 @@ namespace Arius.Services
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         }
 
+        /// <summary>
+        /// Download all files in the given remoteDirectoryName to the local target
+        /// </summary>
+        public void Download(string remoteDirectoryName, DirectoryInfo target)
+        {
+            if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
+            {
+                _logger.LogInformation($"No files to download in '{remoteDirectoryName}', skipping AzCopy");
+                return;
+            }
 
+            _logger.LogInformation($"Downloading remote '{remoteDirectoryName}' to '{target.FullName}'");
 
-        //public void Download(ImmutableArray<string> chunkNames, DirectoryInfo downloadDirectory)
-        //{
-        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names-1
+            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
+            //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
 
-        //    //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-or-directory-name><SAS-token>' '<local-directory-path>' --include-pattern <semicolon-separated-file-list-with-wildcard-characters>
+            string arguments;
+            var sas = GetContainerSasUri(_bcc, _skc);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
+            else
+                throw new NotImplementedException("OS Platform is not Windows or Linux");
 
-        //    string arguments;
-        //    var sas = GetContainerSasUri(_bcc, _skc);
-        //    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        //        arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{downloadDirectory.FullName}'  --include-pattern '{string.Join(';', chunkNames)}'";
-        //    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        //        arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{downloadDirectory.FullName}""  --include-pattern ""{string.Join(';', chunkNames)}""";
-        //    else
-        //        throw new NotImplementedException("OS Platform is not Windows or Linux");
+            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
-        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var p = new ExternalProcess(_AzCopyPath.Result);
 
-        //    var p = new ExternalProcess(AzCopyPath);
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
-        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
+            _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
-        //    if (completed != chunkNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-        //        throw new ApplicationException($"Not all files were transferred."); // Raw AzCopy output{Environment.NewLine}{o}");
-        //}
+            if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        }
+
+        /// <summary>
+        /// Download the blobsToDownload to the specified target
+        /// </summary>
+        public void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
+        {
+            ////Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names-1
+            ////azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-or-directory-name><SAS-token>' '<local-directory-path>' --include-pattern <semicolon-separated-file-list-with-wildcard-characters>
+
+            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
+            //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>
+
+            string arguments;
+            var sas = GetContainerSasUri(_bcc, _skc);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{target.FullName}'  --include-path '{string.Join(';', blobsToDownload.Select(b => b.FullName))}'";
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --include-path ""{string.Join(';', blobsToDownload.Select(b => b.FullName))}""";
+            else
+                throw new NotImplementedException("OS Platform is not Windows or Linux");
+
+            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+            var p = new ExternalProcess(_AzCopyPath.Result);
+
+            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+            _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
+
+            if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
         {

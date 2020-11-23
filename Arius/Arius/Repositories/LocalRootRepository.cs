@@ -32,7 +32,7 @@ namespace Arius.Repositories
 
         public string FullName => _root.FullName;
         public bool Exists => _root.Exists;
-        public bool IsEmpty => _root.EnumerateFiles().Any();
+        public bool IsEmpty => !_root.EnumerateFiles().Any();
 
         public IArchivable GetById(HashValue id)
         {

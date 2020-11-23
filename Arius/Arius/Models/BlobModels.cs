@@ -27,7 +27,7 @@ namespace Arius.Models
     }
 
     [Extension(".7z.arius")]
-    internal class RemoteEncryptedChunkBlob : Blob, IRemoteEncryptedChunkBlob //, IRemote<IEncrypted<IChunk<ILocalContentFile>>>
+    internal class RemoteEncryptedChunkBlob : Blob, IRemoteEncryptedChunkBlobItem //, IRemote<IEncrypted<IChunk<ILocalContentFile>>>
     {
         public RemoteEncryptedChunkBlob(IRepository root, BlobItem blobItem, Func<IBlob, HashValue> hashValueProvider) : base(root, blobItem, hashValueProvider)
         {

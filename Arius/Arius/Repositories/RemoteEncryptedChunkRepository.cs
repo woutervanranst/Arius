@@ -17,7 +17,7 @@ namespace Arius.Repositories
         public string Container { get; }
     }
 
-    internal class RemoteEncryptedChunkRepository : IGetRepository<IRemoteEncryptedChunkBlob>, IPutRepository<IEncryptedChunkFile>, IDisposable
+    internal class RemoteEncryptedChunkRepository : IRepository  //: IGetRepository<IRemoteEncryptedChunkBlob>, IPutRepository<IEncryptedChunkFile>, IDisposable
     {
         public RemoteEncryptedChunkRepository(ICommandExecutorOptions options,
             Configuration config,
@@ -53,21 +53,17 @@ namespace Arius.Repositories
         
         public string FullName => _localTemp.FullName;
 
-        public IRemoteEncryptedChunkBlob GetById(HashValue id)
+        public IRemoteEncryptedChunkBlobItem GetById(string name)
         {
-            throw new NotImplementedException();
+            var bi = _bcc.GetBlobs(prefix: $"{SubDirectoryName}/{name}").Single();
+            return _factory.Create<IRemoteEncryptedChunkBlobItem>(bi, this);
         }
 
-        public IEnumerable<IRemoteEncryptedChunkBlob> GetAll()
+        public IEnumerable<IRemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
         {
             return _bcc.GetBlobs(prefix: SubDirectoryName)
-                .Select(bi => _factory.Create<IRemoteEncryptedChunkBlob>(bi, this))
+                .Select(bi => _factory.Create<IRemoteEncryptedChunkBlobItem>(bi, this))
                 .ToImmutableArray();
-        }
-
-        public void Put(IEncryptedChunkFile entity)
-        {
-            throw new NotImplementedException();
         }
 
         public void PutAll(IEnumerable<IEncryptedChunkFile> entities)
@@ -75,10 +71,9 @@ namespace Arius.Repositories
             _blobcopier.Upload(entities, $"/{SubDirectoryName}", overwrite: false);
         }
 
-
-        public void Dispose()
+        public void GetAll(IEnumerable<IRemoteEncryptedChunkBlobItem> chunks)
         {
-            throw new NotImplementedException();
+            _blobcopier.Download(chunks, _localTemp.Parent); //specifying .Parent as azcopy mirrors the  "/chunks/" structure they are in - otherwise /chunks/chunks"
         }
     }
 }
