@@ -25,6 +25,8 @@ namespace Arius.Services
 
             else if (IsMatch<EncryptedChunkFile>(fi))
                 return new EncryptedChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
+            else if (IsMatch<ChunkFile>(fi))
+                return new ChunkFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });
 
             else if (IsMatch<LocalManifestFile>(fi))
                 return new LocalManifestFile(root, fi, lf => new HashValue { Value = lf.NameWithoutExtension });

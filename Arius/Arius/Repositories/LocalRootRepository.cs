@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
@@ -53,18 +54,24 @@ namespace Arius.Repositories
 
         public FileInfo GetPointerFileInfo(Manifest.PointerFileEntry pfe)
         {
-            return new FileInfo(Path.Combine(_root.FullName, pfe.RelativeName));
+            return new FileInfo(GetPointerFileFullName(pfe));
+        }
+
+        public FileInfo GetLocalContentFileInfo(Manifest.PointerFileEntry pfe)
+        {
+            var pffn = GetPointerFileFullName(pfe).TrimEnd((typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>()!.Extension));
+            return new FileInfo(pffn);
+        }
+
+        private string GetPointerFileFullName(Manifest.PointerFileEntry pfe)
+        {
+            return Path.Combine(_root.FullName, pfe.RelativeName);
         }
 
         public void DeleteEmptySubdirectories()
         {
             _root.DeleteEmptySubdirectories();
         }
-
-        //public void Put(IManifestFile manifest)
-        //{
-        //    //manifest
-        //}
 
         //public void PutAll(IEnumerable<IManifestFile> manifestFiles)
         //{
