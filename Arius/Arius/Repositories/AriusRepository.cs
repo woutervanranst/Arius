@@ -75,17 +75,17 @@ namespace Arius.Repositories
              */
 
             //1.1 Ensure all chunks are uploaded
-            //var hasherProgress = new ConsoleProgress(localFiles.LongCount());
+            var hasherProgress = new ConsoleProgress(localFiles.LongCount(), TimeSpan.FromSeconds(1), _logger);
             var localContentPerHash = localFiles
                 .OfType<LocalContentFile>()
                 .AsParallel()
                 .WithDegreeOfParallelism(1)
-                //.Select(lcf =>
-                //{
-                //    var hash = lcf.Hash;
-                //    hasherProgress.AddProgress(1);
-                //    return lcf;
-                //})
+                .Select(lcf =>
+                {
+                    var hash = lcf.Hash;
+                    hasherProgress.AddProgress(1);
+                    return lcf;
+                })
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
 

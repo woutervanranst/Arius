@@ -32,6 +32,7 @@ namespace Arius.Repositories
 
         public string FullName => _root.FullName;
         public bool Exists => _root.Exists;
+        public bool IsEmpty => _root.EnumerateFiles().Any();
 
         public IArchivable GetById(HashValue id)
         {
@@ -44,7 +45,7 @@ namespace Arius.Repositories
         public IEnumerable<IArchivable> GetAll()
         {
             var localFiles = _root.GetFiles("*", SearchOption.AllDirectories)
-                .Select(fi => (IArchivable) _factory.Create(fi, this)) //TODO FILTER
+                .Select(fi => (IArchivable) _factory.Create(fi, this))
                 .ToImmutableArray();
 
             return localFiles;

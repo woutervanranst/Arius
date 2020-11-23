@@ -1,5 +1,9 @@
 {
   "profiles": {
+    "arius": {
+      "commandName": "Project",
+      "commandLineArgs": ""
+    },
     "arius archive": {
       "commandName": "Project",
       "commandLineArgs": "archive -n aurius -k %ACCOUNT_KEY% -p woutervr -c arius2 --keep-local --tier hot C:\\Users\\Wouter\\Documents\\Test"
