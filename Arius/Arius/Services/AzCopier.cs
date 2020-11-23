@@ -92,19 +92,52 @@ namespace Arius.Services
                 });
         }
 
+        //private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
+        //{
+        //    _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+
+        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
+        //    //Note the \* after the {dir}\*
+
+        //    string arguments;
+        //    var sas = GetContainerSasUri(_bcc, _skc);
+        //    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        //        arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite={overwrite}";
+        //    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        //        arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite={overwrite}";
+        //    else
+        //        throw new NotImplementedException("OS Platform is not Windows or Linux");
+
+        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+        //    var p = new ExternalProcess(_AzCopyPath.Result);
+
+        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+        //        out string rawOutput,
+        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+        //    _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
+
+        //    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        //}
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
         {
             _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
 
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
+            // Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+
+            var listOfFilesFullName = Path.GetTempFileName();
+            File.WriteAllLines(listOfFilesFullName, fileNames);
 
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite={overwrite}";
+                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --list-of-files '{listOfFilesFullName}' --block-blob-tier={tier} --overwrite={overwrite}";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite={overwrite}";
+                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
             else
                 throw new NotImplementedException("OS Platform is not Windows or Linux");
 

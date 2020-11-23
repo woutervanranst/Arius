@@ -55,7 +55,7 @@ namespace Arius.Repositories
 
         public void UploadModifiedManifests()
         {
-            var modifiedEncryptedManifsts = _modifiedManifestFiles.Values
+            var modifiedEncryptedManifsts = _modifiedManifestFiles.Values   //TODO BUG: bij modify 1 file worden alle manifests toch geupload
                 .AsParallelWithParallelism()
                 .Select(mf => (IEncryptedManifestFile)_encrypter.Encrypt(mf, false))
                 .ToImmutableArray();
@@ -70,7 +70,7 @@ namespace Arius.Repositories
         private readonly IBlobCopier _blobCopier;
         private readonly IEncrypter _encrypter;
         private readonly LocalFileFactory _factory;
-        private Task<Dictionary<HashValue, IManifestFile>> _manifestFiles;
+        private readonly Task<Dictionary<HashValue, IManifestFile>> _manifestFiles;
         private readonly Dictionary<HashValue, IManifestFile> _modifiedManifestFiles = new();
 
         public string FullName => _localTemp.FullName;

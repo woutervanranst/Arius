@@ -106,19 +106,5 @@ namespace Arius.Services
 
             return manifest;
         }
-
-        //public void Ha(IEnumerable<IManifestFile> manifestFiles)
-        //{
-        //    var pointerEntriesperManifest = manifestFiles
-        //        .AsParallelWithParallelism()
-        //        .Select(mf => ReadManifestFile(mf))
-
-
-        //}
-
-        //public IEnumerable<Manifest.PointerFileEntry> GetLastExistingEntriesPerRelativeName(IManifestFile manifestFile)
-        //{
-        //    return ReadManifestFile(manifestFile).GetLastExistingEntriesPerRelativeName();
-        //}
     }
 }
