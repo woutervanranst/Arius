@@ -76,10 +76,18 @@ namespace Arius.Models
         public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
     }
 
-    [Extension(".7z.arius")]
+    [Extension(".7z.arius", decryptedType: typeof(ChunkFile))]
     internal class EncryptedChunkFile : LocalFile, IEncryptedChunkFile
     {
         public EncryptedChunkFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        {
+        }
+    }
+
+    [Extension(".chunk.arius")]
+    internal class ChunkFile : LocalFile, IChunkFile
+    {
+        public ChunkFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
         }
     }

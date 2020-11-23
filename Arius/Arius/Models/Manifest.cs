@@ -9,17 +9,17 @@ namespace Arius.Models
     internal class Manifest //Marked as internal for Unit Testing
     {
         [JsonConstructor]
-        public Manifest(IEnumerable<PointerFileEntry> pointerFileEntries, IEnumerable<string> encryptedChunkNames, string hash)
+        public Manifest(IEnumerable<PointerFileEntry> pointerFileEntries, IEnumerable<string> chunkNames, string hash)
         {
             _PointerFileEntries = pointerFileEntries.ToList();
-            EncryptedChunkNames = encryptedChunkNames;
+            ChunkNames = chunkNames;
             Hash = hash;
         }
 
-        public Manifest(IEnumerable<string> encryptedChunks, string hash)
+        public Manifest(IEnumerable<string> chunkNames, string hash)
         {
             _PointerFileEntries = new List<PointerFileEntry>();
-            EncryptedChunkNames = encryptedChunks;
+            ChunkNames = chunkNames;
             Hash = hash;
         }
 
@@ -32,7 +32,7 @@ namespace Arius.Models
         private readonly List<PointerFileEntry> _PointerFileEntries;
 
         [JsonInclude]
-        public IEnumerable<string> EncryptedChunkNames { get; private set; }
+        public IEnumerable<string> ChunkNames { get; private set; }
 
         /// <summary>
         /// Hash of the unencrypted LocalContentFiles

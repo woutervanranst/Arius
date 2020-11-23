@@ -23,11 +23,13 @@ namespace Arius.Repositories
             Configuration config,
             IBlobCopier blobcopier,
             IEncrypter encrypter,
-            RemoteBlobFactory factory)
+            RemoteBlobFactory blobFactory,
+            LocalFileFactory localFactory)
         {
             _blobcopier = blobcopier;
             _encrypter = encrypter;
-            _factory = factory;
+            _blobFactory = blobFactory;
+            _localFactory = localFactory;
             _localTemp = config.TempDir.CreateSubdirectory(SubDirectoryName);
 
             var o = (IRemoteChunkRepositoryOptions) options;
@@ -48,7 +50,8 @@ namespace Arius.Repositories
         private readonly DirectoryInfo _localTemp;
         private readonly IBlobCopier _blobcopier;
         private readonly IEncrypter _encrypter;
-        private readonly RemoteBlobFactory _factory;
+        private readonly RemoteBlobFactory _blobFactory;
+        private readonly LocalFileFactory _localFactory;
         private readonly BlobContainerClient _bcc;
         
         public string FullName => _localTemp.FullName;
@@ -56,13 +59,13 @@ namespace Arius.Repositories
         public IRemoteEncryptedChunkBlobItem GetById(string name)
         {
             var bi = _bcc.GetBlobs(prefix: $"{SubDirectoryName}/{name}").Single();
-            return _factory.Create<IRemoteEncryptedChunkBlobItem>(bi, this);
+            return _blobFactory.Create<IRemoteEncryptedChunkBlobItem>(bi, this);
         }
 
         public IEnumerable<IRemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
         {
             return _bcc.GetBlobs(prefix: SubDirectoryName)
-                .Select(bi => _factory.Create<IRemoteEncryptedChunkBlobItem>(bi, this))
+                .Select(bi => _blobFactory.Create<IRemoteEncryptedChunkBlobItem>(bi, this))
                 .ToImmutableArray();
         }
 
@@ -71,9 +74,13 @@ namespace Arius.Repositories
             _blobcopier.Upload(entities, $"/{SubDirectoryName}", overwrite: false);
         }
 
-        public void GetAll(IEnumerable<IRemoteEncryptedChunkBlobItem> chunks)
+        public IEnumerable<IEncryptedChunkFile> DownloadAll(IEnumerable<IRemoteEncryptedChunkBlobItem> chunks)
         {
-            _blobcopier.Download(chunks, _localTemp.Parent); //specifying .Parent as azcopy mirrors the  "/chunks/" structure they are in - otherwise /chunks/chunks"
+            _blobcopier.Download(chunks, _localTemp);
+
+            return _localTemp.GetFiles("*.*", SearchOption.AllDirectories)
+                .Select(fi => (IEncryptedChunkFile)_localFactory.Create(fi, this))
+                .ToImmutableArray();
         }
     }
 }
