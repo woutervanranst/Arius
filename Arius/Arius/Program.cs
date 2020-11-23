@@ -96,7 +96,7 @@ namespace Arius
             }
             catch (Exception e)
             {
-                var logger = serviceProvider.GetRequiredService<ILogger>();
+                var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
                 logger.LogCritical(e.ToString());
 
                 return int.MinValue;

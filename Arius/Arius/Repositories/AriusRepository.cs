@@ -113,7 +113,7 @@ namespace Arius.Repositories
 
             _logger.LogInformation($"After deduplication... {unencryptedChunksPerLocalContentHash.Values.Count()} chunks to upload");
 
-            var remoteChunkHashes = _remoteChunkRepository.GetAll()
+            var remoteChunkHashes = _remoteChunkRepository.GetAllChunkBlobItems()
                 .Select(rcb => rcb.Hash)
                 .ToImmutableArray();
 
@@ -146,7 +146,7 @@ namespace Arius.Repositories
 
 
             //1.2 Create manifests for NEW Content (as they do not exist) - this does not yet include the references to the pointers
-            var encryptedChunkPerHash = _remoteChunkRepository.GetAll()
+            var encryptedChunkPerHash = _remoteChunkRepository.GetAllChunkBlobItems()
                 .ToDictionary(recb => recb.Hash, recb => recb);
 
             var createdManifestsPerHash = localContentFilesToUpload

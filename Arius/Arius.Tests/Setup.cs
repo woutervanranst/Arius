@@ -20,6 +20,8 @@ namespace Arius.Tests
         [OneTimeSetUp]
         public void OneTimeSetup()
         {
+            // Executes once before the test run. (Optional)
+
             sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
 
             // Create temp folder
@@ -42,29 +44,6 @@ namespace Arius.Tests
         {
             rootDirectoryInfo.Delete(true);
             container.Delete();
-        }
-
-        public static void CreateFolderAndContainer()
-        {
-            // Executes once before the test run. (Optional)
-
-            
-
-
-
-            //Copy files to temp folder
-            //CopyFolder(sourceFolder, tempFolder);
-
-            // Create temp container
-
-
-
-        }
-
-
-        public static void DeleteFolderAndContainer()
-        {
-
         }
 
 

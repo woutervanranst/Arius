@@ -26,7 +26,7 @@ namespace Arius.Services
             _factory = factory;
         }
 
-        public IManifestFile CreateManifestFile(IEnumerable<IRemoteEncryptedChunkBlob> encryptedChunks, HashValue hash)
+        public IManifestFile CreateManifestFile(IEnumerable<IRemoteEncryptedChunkBlobItem> encryptedChunks, HashValue hash)
         {
             var manifest = new Manifest(encryptedChunks.Select(recb => recb.Name), hash.Value);
 
