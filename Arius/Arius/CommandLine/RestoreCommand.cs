@@ -54,13 +54,17 @@ namespace Arius.CommandLine
             containerOption.AddAlias("-c");
             restoreCommand.AddOption(containerOption);
 
+            var syncOption = new Option<bool>("--synchronize",
+                "Create pointers on local for every remote file, without actually downloading the files");
+            restoreCommand.AddOption(syncOption);
+
             var downloadOption = new Option<bool>("--download",
-                "List the differences between the local and the remote, without making any changes to remote");
+                "Download file files for the given pointer in <path> (file) or all the pointers in <path> (folder)");
             restoreCommand.AddOption(downloadOption);
 
             var pathArgument = new Argument<string>("path",
                 getDefaultValue: () => Environment.CurrentDirectory,
-                "Path to archive. Default: current directory");
+                "Path to restore. Default: current directory");
             restoreCommand.AddArgument(pathArgument);
 
             restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
@@ -97,6 +101,7 @@ namespace Arius.CommandLine
         public string AccountKey { get; init; }
         public string Passphrase { get; init; }
         public string Container { get; init; }
+        public bool Synchronize { get; init; }
         public bool Download { get; init; }
         public string Path { get; init; }
 
@@ -109,7 +114,7 @@ namespace Arius.CommandLine
 
     internal class RestoreCommandExecutor : ICommandExecutor
     {
-        private readonly ICommandExecutorOptions _options;
+        private readonly RestoreOptions _options;
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootRepository _localRoot;
         private readonly AriusRepository _remoteArchive;
@@ -125,7 +130,7 @@ namespace Arius.CommandLine
             ManifestService manifestService,
             PointerService pointerService)
         {
-            _options = options;
+            _options = (RestoreOptions)options;
             _logger = logger;
             _localRoot = localRoot;
             _remoteArchive = remoteArchive;
@@ -138,12 +143,17 @@ namespace Arius.CommandLine
         {
             if (_localRoot.Exists)
             {
-                //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
+                if (!_localRoot.IsEmpty)
+                {
+                    _logger.LogWarning("The folder is not empty. There may be lingering files after the restore.");
+                    //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
+                }
 
-                Synchronize();
+                if (_options.Synchronize)
+                    Synchronize();
 
-                //if (download)
-                //    Download(archive, root, passphrase);
+                if (_options.Download)
+                    Download();
             }
             //else if (File.Exists(path) && path.EndsWith(".arius"))
             //{
@@ -163,10 +173,6 @@ namespace Arius.CommandLine
             var manifestFiles = _manifestRepository.GetAll();
 
             var pointerEntriesperManifest = manifestFiles.AsParallelWithParallelism()
-                //.Select(mf => _manifestService.ReadManifestFile(mf))
-                //.ToImmutableDictionary(
-                //    m => m,
-                //    m => m.GetLastExistingEntriesPerRelativeName().ToImmutableArray()
                 .ToImmutableDictionary(
                     mf => mf,
                     mf => _manifestService.ReadManifestFile(mf).GetLastExistingEntriesPerRelativeName().ToImmutableArray()
@@ -206,13 +212,14 @@ namespace Arius.CommandLine
 
             _localRoot.DeleteEmptySubdirectories();
         }
+
+        private void Download()
+        {
+
+        }
     }
 
-
-    //private static int Synchronize(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
-    //{
-
-
+    
 
 
 

@@ -12,14 +12,14 @@ namespace Arius
 {
     internal interface IConfigurationOptions : ICommandExecutorOptions
     {
-        public string Path { get; init; }
+        //public string Path { get; init; }
     }
     internal class Configuration
     {
         public Configuration(ICommandExecutorOptions options, IConfigurationRoot config)
         {
-            var root = ((ILocalRootDirectoryOptions)options).Path;
-            _root = new DirectoryInfo(root);
+            //var root = ((ILocalRootDirectoryOptions)options).Path;
+            //_root = new DirectoryInfo(root);
             
             _config = config;
 
@@ -28,7 +28,7 @@ namespace Arius
             TempDir.Create();
         }
 
-        private readonly DirectoryInfo _root;
+        //private readonly DirectoryInfo _root;
 
         private readonly IConfigurationRoot _config;
 

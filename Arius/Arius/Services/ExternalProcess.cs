@@ -59,12 +59,37 @@ namespace Arius.Services
             else
                 throw new NotImplementedException();
         }
+
+
         public ExternalProcess(string executableFullName)
         {
             _executableFullName = executableFullName;
         }
 
         private string _executableFullName;
+
+        //DataReceivedEventHandler? OutputDataReceived;
+
+        //public event DataReceivedEventHandler? ErrorDataReceived;
+
+//        internal void OutputReadNotifyUser(
+//#nullable disable
+//            string data)
+//        {
+//            DataReceivedEventHandler outputDataReceived = this.OutputDataReceived;
+//            if (outputDataReceived == null)
+//                return;
+//            DataReceivedEventArgs e = new DataReceivedEventArgs(data);
+//            ISynchronizeInvoke synchronizingObject = this.SynchronizingObject;
+//            if (synchronizingObject != null && synchronizingObject.InvokeRequired)
+//                synchronizingObject.Invoke((Delegate)outputDataReceived, new object[2]
+//                {
+//                    (object) this,
+//                    (object) e
+//                });
+//            else
+//                outputDataReceived((object)this, e);
+//        }
 
         public string Execute(string arguments)
         {
@@ -74,7 +99,6 @@ namespace Arius.Services
 
                 using var process = new Process();
 
-                bool hasError = false;
                 string errorMsg = string.Empty;
                 string output = string.Empty;
 
@@ -90,18 +114,9 @@ namespace Arius.Services
                 };
 
                 process.StartInfo = psi;
-                process.OutputDataReceived += (sender, data) => output += data.Data + Environment.NewLine; //System.Diagnostics.Debug.WriteLine(data.Data);
-                process.ErrorDataReceived += (sender, data) =>
-                {
-                    if (data.Data == null)
-                        return;
-
-                    System.Diagnostics.Debug.WriteLine(data.Data);
-
-                    hasError = true;
-                    errorMsg += data.Data;
-                };
-
+                process.OutputDataReceived += (_, data) => output += data.Data + Environment.NewLine;
+                process.ErrorDataReceived += (_, data) => errorMsg += data.Data ?? string.Empty;
+                
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
@@ -109,8 +124,8 @@ namespace Arius.Services
 
                 process.WaitForExit();
 
-                if (process.ExitCode != 0 || hasError)
-                    throw new ApplicationException(errorMsg);
+                if (process.ExitCode != 0)
+                    throw new ApplicationException(string.IsNullOrEmpty(errorMsg) ? output : errorMsg);
 
                 return output;
 

@@ -44,6 +44,8 @@ namespace Arius
 
             var r = rootCommand.InvokeAsync(args).Result;
 
+            if (r != 0)
+                return r; //eg when calling "arius" or "arius archive" without actual parameters
 
             var configurationRoot = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -92,10 +94,13 @@ namespace Arius
 
                 return commandExecutor.Execute();
             }
-            //catch (Exception e)
-            //{
-            //    throw;
-            //}
+            catch (Exception e)
+            {
+                var logger = serviceProvider.GetRequiredService<ILogger>();
+                logger.LogCritical(e.ToString());
+
+                return int.MinValue;
+            }
             finally
             {
                 //Delete the tempdir
