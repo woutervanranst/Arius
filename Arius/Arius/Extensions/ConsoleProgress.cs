@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Extensions
 {
@@ -6,13 +8,26 @@ namespace Arius.Extensions
     {
         private readonly long _max;
         private long _current;
+        private bool _finished;
 
         private readonly object _lock = new object();
 
-        public ConsoleProgress(long max)
+        public ConsoleProgress(long max, TimeSpan wait, ILogger logger)
         {
             _max = max;
             _current = 0;
+
+            Task.Run(async () =>
+            {
+                while (!_finished)
+                {
+                    logger.LogInformation($"{Math.Round(_current / ((float)_max) * 100)}%".PadLeft(4));
+
+                    await Task.Delay(wait);
+                }
+            });
+
+
         }
 
         public void AddProgress(int i)
@@ -23,9 +38,9 @@ namespace Arius.Extensions
             lock (_lock)
             {
                 _current += i;
-                Console.Write($"\b\b\b\b{Math.Round(_current / ((float)_max) * 100)}%".PadLeft(4));
-
             }
         }
+
+        public void Finished() => _finished = true;
     }
 }

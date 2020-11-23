@@ -32,33 +32,6 @@
 //        }
 
         
-//        public RemoteEncryptedAriusManifest(AriusRemoteArchive archive, BlobItem bi) : base(archive, bi)
-//        {
-//            if (!bi.Name.EndsWith(".manifest.7z.arius"))
-//                throw new ArgumentException("NOT A MANIFEST"); //TODO
-//        }
-
-//        public override string Hash => _bi.Name.TrimEnd(".manifest.7z.arius");
-
-
-//        /// <summary>
-//        /// Synchronize the remote manifest with the current local file system entries
-//        /// </summary>
-//        /// <param name="lcfs">The current (as per the file system) LocalContentFiles for this manifest</param>
-//        /// <param name="passphrase"></param>
-//        public void Update(IEnumerable<AriusPointerFile> lcfs, string passphrase)
-//        {
-//            var manifest = AriusManifest.FromRemote(this, passphrase);
-//            manifest.Update(lcfs, _archive, passphrase);
-//        }
-
-
-//        public IEnumerable<AriusManifest.AriusPointerFileEntry> GetAriusPointerFileEntries(string passphrase)
-//        {
-//            var manifest = AriusManifest.FromRemote(this, passphrase);
-//            return manifest.GetLastExistingEntriesPerRelativeName();
-//        }
-
 //        public IEnumerable<string> GetEncryptedChunkNames(string passphrase)
 //        {
 //            var manifest = AriusManifest.FromRemote(this, passphrase);
