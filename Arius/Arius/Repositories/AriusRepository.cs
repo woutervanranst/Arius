@@ -75,11 +75,11 @@ namespace Arius.Repositories
              */
 
             //1.1 Ensure all chunks are uploaded
-            var hasherProgress = new ConsoleProgress(localFiles.LongCount(), TimeSpan.FromSeconds(1), _logger);
+            var hasherProgress = new ConsoleProgress(localFiles.OfType<LocalContentFile>().LongCount(), 
+                (curr, max, pct, eta) => _logger.LogInformation($"Hashing... {curr}/{max} files {pct}% - ETA {eta:HH:mm:ss}"));
             var localContentPerHash = localFiles
                 .OfType<LocalContentFile>()
-                .AsParallel()
-                .WithDegreeOfParallelism(1)
+                .AsParallelWithParallelism()
                 .Select(lcf =>
                 {
                     var hash = lcf.Hash;
@@ -88,6 +88,7 @@ namespace Arius.Repositories
                 })
                 .GroupBy(lcf => lcf.Hash)
                 .ToImmutableArray();
+            hasherProgress.Finished();
 
             _logger.LogInformation($"Found {localContentPerHash.Count()} files");
             _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
@@ -105,8 +106,7 @@ namespace Arius.Repositories
             _logger.LogInformation($"After diff...  {localContentFilesToUpload.Length} files to upload");
 
             var unencryptedChunksPerLocalContentHash = localContentFilesToUpload
-                .AsParallel()
-                .WithDegreeOfParallelism(1) //moet dat hier staan om te paralleliseren of bij de GetChunks?
+                .AsParallelWithParallelism() //moet dat hier staan om te paralleliseren of bij de GetChunks?
                 .ToImmutableDictionary(
                     g => g.Key,
                     g => _chunker.Chunk(g.First()));
@@ -119,15 +119,22 @@ namespace Arius.Repositories
 
             _logger.LogInformation($"Found {remoteChunkHashes.Length} encrypted chunks remote");
 
+            var encrypterProgress = new ConsoleProgress(unencryptedChunksPerLocalContentHash.LongCount(),
+                (curr, max, pct, eta) => _logger.LogInformation($"Encrypting... {curr}/{max} chunks {pct}% - ETA {eta:HH:mm:ss}"));
             var encryptedChunksToUploadPerHash = unencryptedChunksPerLocalContentHash
-                .AsParallel()
-                .WithDegreeOfParallelism(1)
+                .AsParallelWithParallelism()
                 .ToImmutableDictionary(
                     p => p.Key,
                     p => p.Value
                         .Where(uec => !remoteChunkHashes.Contains(uec.Hash)) //TODO met Except
-                        .Select(c => (IEncryptedChunkFile)_encrypter.Encrypt(c, c is not ILocalContentFile)).ToImmutableArray()
+                        .Select(c =>
+                        {
+                            var r = (IEncryptedChunkFile) _encrypter.Encrypt(c, c is not ILocalContentFile);
+                            encrypterProgress.AddProgress(1);
+                            return r;
+                        }).ToImmutableArray()
                 ); //TODO naar temp folder
+            encrypterProgress.Finished();
 
             var encryptedChunksToUpload = encryptedChunksToUploadPerHash.Values
                 .SelectMany(eac => eac)

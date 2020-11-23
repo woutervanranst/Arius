@@ -63,7 +63,15 @@ namespace Arius
 
 
                     builder.AddConfiguration(configurationRoot.GetSection("Logging"))
-                        .AddConsole()
+                        .AddSimpleConsole(options =>
+                        {
+                            //TODO https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#set-formatter-with-configuration
+                            // https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                            // Alternative: https://stackoverflow.com/questions/44230373/is-there-a-way-to-format-the-output-format-in-net-core-logging/64967936#64967936
+                            options.SingleLine = true;
+                            options.IncludeScopes = false;
+                            options.TimestampFormat = "HH:mm:ss ";
+                        })
                         .AddFile(fileLoggingConfigurationSection);
                 })
                 .AddSingleton<Configuration>(config)

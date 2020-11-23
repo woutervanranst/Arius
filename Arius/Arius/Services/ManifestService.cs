@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -69,13 +70,16 @@ namespace Arius.Services
                     g => g.Key,
                     g => g.ToList());
 
-            //// TODO QUID BROKEN POINTERFILES
+            //// TODO QUID BROKEN POINTERFILES > test als point point naar oud/non extisting manifest
 
             // Update each manifest
             _localManifestRepository.GetAll()
                 .AsParallelWithParallelism()
                 .ForAll(mf =>
-                    UpdateManifest(mf, pointerFilesPerManifestName[mf.Hash]));
+                    UpdateManifest(mf, 
+                        pointerFilesPerManifestName.ContainsKey(mf.Hash) ?
+                            pointerFilesPerManifestName[mf.Hash] :
+                            Array.Empty<IPointerFile>()));  //if the pointer no longer exists and is the only one there will not be an entry for the hash, pass empty-- TODO test this
         }
 
         public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointerFiles)
