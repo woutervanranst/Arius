@@ -26,7 +26,7 @@ The name derives from the Greek for 'immortal'.
 * Never delete files on remote
 * Point in time restore (FUTURE)
 * No central store to avoid a single point of failure
-* File level deduplication
+* File level deduplication, optionally variable block size (rolling hash Rabin-Karp) deduplication
 * Leverage common tools, to allow restores even when this project would become deprecated
 
 ## Usage
@@ -85,9 +85,17 @@ If ``<path>`` is an `.arius` file `--download` flag is specified: the file is re
 
 Arius relies on the 7zip command line and Azure blob storage cli.
 
+
 ## Install
 
 ### Linux
+=======
+# Install
+## Linux
+### Prereqs
+* 7zip
+```sudo apt-get install p7zip-full```
+
 
 Run the following commands:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
