@@ -375,6 +375,9 @@
 //        //         *
 //        //         * #2
 //        //         * change a manifest without the binary present
+
+
+            //  * delete pointer, archive
 //        //         *
 //        //         */
 //    }
