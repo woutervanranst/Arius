@@ -7,6 +7,10 @@
 //using System.Linq;
 //using System.Reflection;
 //using Arius.CommandLine;
+//using Arius.Extensions;
+//using Arius.Models;
+//using Arius.Repositories;
+//using Arius.Services;
 //using Azure.Storage.Blobs;
 //using Azure.Storage.Blobs.Models;
 //using NUnit.Framework;
@@ -19,7 +23,7 @@
 //    public class ArchiveTests
 //    {
 //        //private AriusRemoteArchive archive;
-//        private LocalRootDirectory root;
+//        private LocalRootRepository root;
 
 //        [OneTimeSetUp]
 //        public void ClassInit()
@@ -48,7 +52,7 @@
 //            //        _ => throw new NotImplementedException()
 //            //    };
 
-//            root = new LocalRootDirectory(options, new LocalFileFactory(new SHA256Hasher(options)));
+//            root = new LocalRootRepository(options, new LocalFileFactory(new SHA256Hasher(options)));
 //        }
 //        [SetUp]
 //        public void TestInit()

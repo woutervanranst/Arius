@@ -67,7 +67,7 @@ namespace Arius.CommandLine
                 "Path to restore. Default: current directory");
             restoreCommand.AddArgument(pathArgument);
 
-            restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
+            restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, bool, string>((accountName, accountKey, passphrase, container, synchronize, download, path) =>
             {
                 pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
 
@@ -77,6 +77,7 @@ namespace Arius.CommandLine
                     AccountKey = accountKey,
                     Passphrase = passphrase,
                     Container = container,
+                    Synchronize = synchronize,
                     Download = download,
                     Path = path
                 };
@@ -106,10 +107,30 @@ namespace Arius.CommandLine
         public string Path { get; init; }
 
         public bool Dedup => false;
-        public AccessTier Tier { get => throw new NotImplementedException(); init => throw new NotImplementedException(); } // Should not be used
-        public bool KeepLocal { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
-        public int MinSize { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
-        public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+
+        public AccessTier Tier
+        {
+            get => throw new NotImplementedException();
+            init => throw new NotImplementedException();
+        } // Should not be used
+
+        public bool KeepLocal
+        {
+            get => throw new NotImplementedException();
+            init => throw new NotImplementedException();
+        }
+
+        public int MinSize
+        {
+            get => throw new NotImplementedException();
+            init => throw new NotImplementedException();
+        }
+
+        public bool Simulate
+        {
+            get => throw new NotImplementedException();
+            init => throw new NotImplementedException();
+        }
     }
 
     internal class RestoreCommandExecutor : ICommandExecutor
@@ -117,24 +138,27 @@ namespace Arius.CommandLine
         private readonly RestoreOptions _options;
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly LocalRootRepository _localRoot;
-        private readonly AriusRepository _remoteArchive;
+        //private readonly AriusRepository _remoteArchive;
         private readonly LocalManifestFileRepository _manifestRepository;
+        private readonly RemoteEncryptedChunkRepository _chunkRepository;
         private readonly ManifestService _manifestService;
         private readonly PointerService _pointerService;
 
         public RestoreCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
-            AriusRepository remoteArchive,
+            //AriusRepository remoteArchive,
             LocalManifestFileRepository manifestRepository,
+            RemoteEncryptedChunkRepository chunkRepository,
             ManifestService manifestService,
             PointerService pointerService)
         {
-            _options = (RestoreOptions)options;
+            _options = (RestoreOptions) options;
             _logger = logger;
             _localRoot = localRoot;
-            _remoteArchive = remoteArchive;
+            //_remoteArchive = remoteArchive;
             _manifestRepository = manifestRepository;
+            _chunkRepository = chunkRepository;
             _manifestService = manifestService;
             _pointerService = pointerService;
         }
@@ -164,6 +188,7 @@ namespace Arius.CommandLine
             {
                 throw new NotImplementedException();
             }
+
             return 0;
         }
 
@@ -215,102 +240,73 @@ namespace Arius.CommandLine
 
         private void Download()
         {
+            var pointerFilesPerManifestFile = _localRoot.GetAll().OfType<IPointerFile>()
+                .AsParallelWithParallelism()
+                .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
+                .GroupBy(pf => pf.ManifestFileName)
+                .ToImmutableDictionary(
+                    g => _manifestRepository.GetById(new HashValue {Value = g.Key}),
+                    g => g.ToList());
 
+            //TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
+
+            var chunksToDownload = pointerFilesPerManifestFile.Keys
+                .AsParallelWithParallelism()
+                .SelectMany(mf => _manifestService.ReadManifestFile(mf).EncryptedChunkNames)
+                .Distinct()
+                .Select(chunkName => _chunkRepository.GetById(chunkName))
+                .ToImmutableArray();
+
+            _chunkRepository.GetAll(chunksToDownload);
+
+            //var unencryptedChunks = downloadDirectory.GetFiles()
+            //    .AsParallel()
+            //    .Select(fi =>
+            //    {
+            //        var szu = new SevenZipUtils();
+
+            //        var extractedFile = fi.FullName.TrimEnd(".7z.arius");
+            //        szu.DecryptFile(fi.FullName, extractedFile, passphrase);
+            //        fi.Delete();
+
+            //        return new FileInfo(extractedFile);
+            //    })
+            //    .ToImmutableDictionary(x => x.Name, x => x);
+
+            //var pointersWithChunksPerHash = pointerFilesPerManifestFile.Keys
+            //    .GroupBy(ream => ream.Hash)
+            //    .ToDictionary(
+            //        g => g.Key,
+            //        g => new
+            //        {
+            //            PointerFileEntry = g.SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase)).ToImmutableArray(),
+            //            UnencryptedChunks = g.SelectMany(ream => ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn.TrimEnd(".7z.arius")])).ToImmutableArray()
+            //        });
+
+            //pointersWithChunksPerHash
+            //    .AsParallel()
+            //    .ForAll(p =>
+            //    {
+            //        Restore(root, p.Value.PointerFileEntry, p.Value.UnencryptedChunks);
+            //    });
+
+            //downloadDirectory.Delete();
+            //root.GetAriusPointerFiles().AsParallel().ForAll(apf => apf.Delete());
         }
     }
-
-    
-
+}
 
 
 
 
 
 
-    //    /*
-    //     * Test cases
-    //     *      empty dir
-    //     *      dir with files > not to be touched?
-    //     *      dir with pointers - too many pointers > to be deleted
-    //     *      dir with pointers > not enough pointers > to be synchronzed
-    //     *      remote with isdeleted and local present > should be deleted
-    //     *      remote with !isdeleted and local not present > should be created
-    //     *      also in subdirectories
-    //     *      in ariusfile : de verschillende extensions
-    //     *      files met duplicates enz upload download
-    //     *      al 1 file lokaal > kopieert de rest
-    //     *      restore > normal binary file remains untouched
-    //     * directory more than 2 deep without other files
-    //     *  download > local files exist s> don't download all
-            // * restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
-    //     * */
 
 
-    //    return 0;
-    //}
 
-    //private static int Download(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
-    //{
-    //    var pointerFilesPerRemoteEncryptedManifest = root.GetAriusPointerFiles()
-    //        .AsParallel()
-    //        .Where(apf => !File.Exists(apf.LocalContentFileFullName)) //TODO test dit
-    //        .GroupBy(apf => apf.EncryptedManifestName)
-    //        .ToImmutableDictionary(
-    //            apf => archive.GetRemoteEncryptedAriusManifestByBlobItemName(apf.Key),
-    //            apf => apf.ToList());
 
-    //TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
 
-    //    var chunkNamesToDownload = pointerFilesPerRemoteEncryptedManifest.Keys
-    //        .AsParallel()
-    //        .SelectMany(ream => ream.GetEncryptedChunkNames(passphrase))
-    //        .Distinct()
-    //        .ToImmutableArray();
-
-    //    var downloadDirectory = new DirectoryInfo(Path.Combine(root.FullName, ".ariusdownload"));
-    //    if (downloadDirectory.Exists)
-    //        downloadDirectory.Delete(true);
-    //    downloadDirectory.Create();
-    //    archive.Download(chunkNamesToDownload, downloadDirectory);
-
-    //    var unencryptedChunks = downloadDirectory.GetFiles()
-    //        .AsParallel()
-    //        .Select(fi =>
-    //        {
-    //            var szu = new SevenZipUtils();
-
-    //            var extractedFile = fi.FullName.TrimEnd(".7z.arius");
-    //            szu.DecryptFile(fi.FullName, extractedFile, passphrase);
-    //            fi.Delete();
-
-    //            return new FileInfo(extractedFile);
-    //        })
-    //        .ToImmutableDictionary(x => x.Name, x => x);
-
-    //    var pointersWithChunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
-    //        .GroupBy(ream => ream.Hash)
-    //        .ToDictionary(
-    //            g => g.Key,
-    //            g => new
-    //            {
-    //                PointerFileEntry = g.SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase)).ToImmutableArray(),
-    //                UnencryptedChunks = g.SelectMany(ream => ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn.TrimEnd(".7z.arius")])).ToImmutableArray()
-    //            });
-
-    //    pointersWithChunksPerHash
-    //        .AsParallel()
-    //        .ForAll(p =>
-    //        {
-    //            Restore(root, p.Value.PointerFileEntry, p.Value.UnencryptedChunks);
-    //        });
-
-    //    downloadDirectory.Delete();
-    //    root.GetAriusPointerFiles().AsParallel().ForAll(apf => apf.Delete());
-
-    //    return 0;
-    //}
-
-    //public static void Restore(AriusRootDirectory root, ImmutableArray<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> apfes, ImmutableArray<FileInfo> chunks)
+//public static void Restore(AriusRootDirectory root, ImmutableArray<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> apfes, ImmutableArray<FileInfo> chunks)
     //{
     //    if (chunks.Length == 1)
     //    {
@@ -339,5 +335,3 @@ namespace Arius.CommandLine
     //    }
 
     //}
-
-}

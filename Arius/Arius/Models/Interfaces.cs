@@ -35,10 +35,10 @@ namespace Arius.Models
         FileInfo PointerFileInfo { get; }
     }
 
-    internal interface IPointerFile/*<TObject>*/ : ILocalFile, IArchivable
+    internal interface IPointerFile : ILocalFile, IArchivable
     {
         FileInfo LocalContentFileInfo { get; }
-        //string RelativeContentName { get; }
+        string ManifestFileName { get; }
 
         //TObject GetObject();
         //HashValue ManifestHash { get; }
@@ -83,7 +83,7 @@ namespace Arius.Models
     internal interface IRemoteBlob : IBlob, IHashable
     {
     }
-    internal interface IRemoteEncryptedChunkBlob : IRemoteBlob
+    internal interface IRemoteEncryptedChunkBlobItem : IRemoteBlob
     {
     }
 

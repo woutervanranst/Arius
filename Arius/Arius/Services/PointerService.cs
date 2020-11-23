@@ -33,7 +33,7 @@ namespace Arius.Services
 
         private IPointerFile CreatePointerFile(LocalRootRepository root, FileInfo pointerFileInfo, IManifestFile manifestFile, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
         {
-            var encryptedManifestFileName = manifestFile.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetEncryptedFileInfo(manifestFile);
+            //var encryptedManifestFileName = manifestFile.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetEncryptedFileInfo(manifestFile);
 
             if (pointerFileInfo.Exists)
                 throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
@@ -41,7 +41,7 @@ namespace Arius.Services
             if (!pointerFileInfo.Directory!.Exists)
                 pointerFileInfo.Directory.Create();
 
-            File.WriteAllText(pointerFileInfo.FullName, encryptedManifestFileName.Name);
+            File.WriteAllText(pointerFileInfo.FullName, /*encryptedManifestFileName.Name*/ manifestFile.Hash.Value);
 
             pointerFileInfo.CreationTimeUtc = creationTimeUtc;
             pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
