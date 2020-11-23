@@ -65,6 +65,7 @@ arius restore
   (--container <containername>)
   (--synchronize)
   (--download)
+  (--keep-pointers)
   <path>
 ```
 
