@@ -5,6 +5,7 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>arius</AssemblyName>
     <Nullable>warnings</Nullable>
+    <UserSecretsId>ef1d6b98-049d-4a6d-91bd-7096aedf4ebf</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
