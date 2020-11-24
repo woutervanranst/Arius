@@ -237,11 +237,11 @@ namespace Arius.CommandLine
             var pointerFilesPerManifest = pointerFiles
                 .AsParallelWithParallelism()
                 .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
-                .GroupBy(pf => pf.ManifestFileName)
+                .GroupBy(pf => pf.Hash)
                 .ToImmutableDictionary(
                     g =>
                     {
-                        var hashValue = new HashValue {Value = g.Key};
+                        var hashValue = g.Key;
                         var manifestFile = _manifestRepository.GetById(hashValue);
                         return _manifestService.ReadManifestFile(manifestFile);
                     },

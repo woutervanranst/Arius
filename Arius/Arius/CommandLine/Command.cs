@@ -21,7 +21,7 @@ namespace Arius.CommandLine
     {
     }
 
-    class ParsedCommandProvider
+    internal class ParsedCommandProvider
     {
         public Type CommandExecutorType { get; set; }
         public ICommandExecutorOptions CommandExecutorOptions { get; set; }

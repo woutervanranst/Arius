@@ -35,10 +35,16 @@ namespace Arius.Models
         FileInfo PointerFileInfo { get; }
     }
 
-    internal interface IPointerFile : ILocalFile, IArchivable
+    internal interface IPointerFile : ILocalFile, IArchivable, IHashable
     {
         FileInfo LocalContentFileInfo { get; }
-        string ManifestFileName { get; }
+
+        /// <summary>
+        /// The HashValue of the Content of the ManifestFile
+        /// </summary>
+        new HashValue Hash { get; }
+
+        //string ManifestHashValue { get; }
 
         //TObject GetObject();
         //HashValue ManifestHash { get; }

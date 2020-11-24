@@ -19,7 +19,7 @@ namespace Arius.Repositories
     internal class LocalRootRepository : IGetRepository<IArchivable> //, IPutRepository<IManifestFile> // : IGetRepository<ILocalContentFile>, IGetRepository<IPointerFile>
 
     {
-        public LocalRootRepository(ICommandExecutorOptions options, Configuration config, LocalFileFactory factory)
+        public LocalRootRepository(ICommandExecutorOptions options, IConfiguration config, LocalFileFactory factory)
         {
             var root = ((ILocalRootDirectoryOptions) options).Path;
             _root = new DirectoryInfo(root);
@@ -28,7 +28,7 @@ namespace Arius.Repositories
         }
 
         private readonly DirectoryInfo _root;
-        private readonly Configuration _config;
+        private readonly IConfiguration _config;
         private readonly LocalFileFactory _factory;
 
         public string FullName => _root.FullName;

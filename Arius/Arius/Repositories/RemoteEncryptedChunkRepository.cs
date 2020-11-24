@@ -20,7 +20,7 @@ namespace Arius.Repositories
     internal class RemoteEncryptedChunkRepository : IRepository  //: IGetRepository<IRemoteEncryptedChunkBlob>, IPutRepository<IEncryptedChunkFile>, IDisposable
     {
         public RemoteEncryptedChunkRepository(ICommandExecutorOptions options,
-            Configuration config,
+            IConfiguration config,
             IBlobCopier blobcopier,
             IEncrypter encrypter,
             RemoteBlobFactory blobFactory,

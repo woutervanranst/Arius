@@ -16,17 +16,6 @@ using Microsoft.Extensions.Logging.Console;
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
 {
-   
-
-    //public static class ServiceProviderExtensions
-    //{
-    //    public static R1 Ka<R1, T1, K1>(this IServiceProvider sp, K1 t)
-    //    {
-
-    //    }
-    //}
-
-
     internal class Program
     {
         private static int Main(string[] args)
@@ -54,47 +43,7 @@ namespace Arius
 
             var config = new Configuration(pcp.CommandExecutorOptions, configurationRoot);
 
-            var serviceProvider = new ServiceCollection()
-                .AddLogging(builder =>
-                {
-                    //Hack
-                    var fileLoggingConfigurationSection = configurationRoot.GetSection("Logging:File");
-                    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
-
-
-                    builder.AddConfiguration(configurationRoot.GetSection("Logging"))
-                        .AddSimpleConsole(options =>
-                        {
-                            //TODO https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#set-formatter-with-configuration
-                            // https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                            // Alternative: https://stackoverflow.com/questions/44230373/is-there-a-way-to-format-the-output-format-in-net-core-logging/64967936#64967936
-                            options.SingleLine = true;
-                            options.IncludeScopes = false;
-                            options.TimestampFormat = "HH:mm:ss ";
-                        })
-                        .AddFile(fileLoggingConfigurationSection);
-                })
-                .AddSingleton<Configuration>(config)
-                .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                //Add Repositories
-                .AddSingleton<AriusRepository>()
-                .AddSingleton<LocalRootRepository>()
-                .AddSingleton<LocalManifestFileRepository>()
-                .AddSingleton<RemoteEncryptedChunkRepository>()
-                //Add Services
-                .AddSingleton<LocalFileFactory>()
-                .AddSingleton<RemoteBlobFactory>()
-                .AddSingleton<ManifestService>()
-                .AddSingleton<PointerService>()
-                .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
-                .AddSingleton<IEncrypter, SevenZipEncrypter>()
-                .AddSingleton<IBlobCopier, AzCopier>()
-                //Add Commmands
-                .AddSingleton<ArchiveCommandExecutor>()
-                .AddSingleton<RestoreCommandExecutor>()
-
-                .BuildServiceProvider();
+            var serviceProvider = GetServiceProvider(config, pcp);
 
             try
             {
@@ -114,6 +63,51 @@ namespace Arius
                 //Delete the tempdir
                 config.TempDir.Delete(true);
             }
+        }
+
+        internal static ServiceProvider GetServiceProvider(Configuration config, ParsedCommandProvider pcp)
+        {
+            var serviceProvider = new ServiceCollection()
+                .AddLogging(builder =>
+                {
+                    //Hack
+                    var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
+                    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
+
+
+                    builder.AddConfiguration(config.ConfigurationRoot.GetSection("Logging"))
+                        .AddSimpleConsole(options =>
+                        {
+                            //TODO https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#set-formatter-with-configuration
+                            // https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                            // Alternative: https://stackoverflow.com/questions/44230373/is-there-a-way-to-format-the-output-format-in-net-core-logging/64967936#64967936
+                            options.SingleLine = true;
+                            options.IncludeScopes = false;
+                            options.TimestampFormat = "HH:mm:ss ";
+                        })
+                        .AddFile(fileLoggingConfigurationSection);
+                })
+                .AddSingleton<IConfiguration>(config)
+                .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
+                //Add Repositories
+                .AddSingleton<AriusRepository>()
+                .AddSingleton<LocalRootRepository>()
+                .AddSingleton<LocalManifestFileRepository>()
+                .AddSingleton<RemoteEncryptedChunkRepository>()
+                //Add Services
+                .AddSingleton<LocalFileFactory>()
+                .AddSingleton<RemoteBlobFactory>()
+                .AddSingleton<ManifestService>()
+                .AddSingleton<PointerService>()
+                .AddSingleton<IHashValueProvider, SHA256Hasher>()
+                .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
+                .AddSingleton<IEncrypter, SevenZipEncrypter>()
+                .AddSingleton<IBlobCopier, AzCopier>()
+                //Add Commmands
+                .AddSingleton<ArchiveCommandExecutor>()
+                .AddSingleton<RestoreCommandExecutor>()
+                .BuildServiceProvider();
+            return serviceProvider;
         }
     }
 }

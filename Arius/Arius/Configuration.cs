@@ -14,14 +14,20 @@ namespace Arius
     {
         //public string Path { get; init; }
     }
-    internal class Configuration
+
+    internal interface IConfiguration
+    {
+        DirectoryInfo TempDir { get; }
+    }
+
+    internal class Configuration : IConfiguration
     {
         public Configuration(ICommandExecutorOptions options, IConfigurationRoot config)
         {
             //var root = ((ILocalRootDirectoryOptions)options).Path;
             //_root = new DirectoryInfo(root);
             
-            _config = config;
+            ConfigurationRoot = config;
 
             //Init TempDir
             if (TempDir.Exists) TempDir.Delete(true);
@@ -30,8 +36,8 @@ namespace Arius
 
         //private readonly DirectoryInfo _root;
 
-        private readonly IConfigurationRoot _config;
+        public IConfigurationRoot ConfigurationRoot { get; init; }
 
-        public DirectoryInfo TempDir => new DirectoryInfo(Path.Combine(Path.GetTempPath(), _config["TempDirName"]));
+        public DirectoryInfo TempDir => new DirectoryInfo(Path.Combine(Path.GetTempPath(), ConfigurationRoot["TempDirName"]));
     }
 }

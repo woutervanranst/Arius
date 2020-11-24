@@ -45,13 +45,13 @@ namespace Arius.Models
     {
         public LocalPointerFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
         {
-            _manifestFileName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
+            //_manifestFileName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
 
         private readonly Lazy<string> _manifestFileName;
 
         public FileInfo LocalContentFileInfo => new FileInfo(Path.Combine(DirectoryName, NameWithoutExtension));
-        public string ManifestFileName => _manifestFileName.Value;
+        //public string ManifestHashValue => _manifestFileName.Value;
 
         public string RelativeName => Path.GetRelativePath(Root.FullName, Path.Combine(DirectoryName, Name));
 

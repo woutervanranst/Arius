@@ -24,7 +24,7 @@ namespace Arius.Repositories
     internal class LocalManifestFileRepository : IGetRepository<IManifestFile>, IPutRepository<IManifestFile>
     {
         public LocalManifestFileRepository(ICommandExecutorOptions options, 
-            Configuration config, 
+            IConfiguration config, 
             ILogger<LocalManifestFileRepository> logger,
             IBlobCopier blobcopier,
             IEncrypter encrypter,
