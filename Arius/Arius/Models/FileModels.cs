@@ -37,7 +37,7 @@ namespace Arius.Models
             _fi.Delete();
         }
 
-        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
+        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>()!.Extension);
     }
 
     [Extension(".pointer.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
@@ -48,7 +48,7 @@ namespace Arius.Models
             //_manifestFileName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
         }
 
-        private readonly Lazy<string> _manifestFileName;
+        //private readonly Lazy<string> _manifestFileName;
 
         public FileInfo LocalContentFileInfo => new FileInfo(Path.Combine(DirectoryName, NameWithoutExtension));
         //public string ManifestHashValue => _manifestFileName.Value;

@@ -22,7 +22,7 @@ namespace Arius.Models
 
         public string FullName => _bi.Name;
         public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
-        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>().Extension);
+        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>()!.Extension);
         public HashValue Hash => _hash.Value;
     }
 

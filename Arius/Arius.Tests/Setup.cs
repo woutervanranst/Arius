@@ -22,7 +22,8 @@ namespace Arius.Tests
         {
             // Executes once before the test run. (Optional)
 
-            sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
+            //sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
+            sourceFolder = PopulateSourceDirectory();
 
             // Create temp folder
             var tempFolderName = RandomString(8).ToLower();
@@ -30,13 +31,45 @@ namespace Arius.Tests
             rootDirectoryInfo.Create();
 
 
-            // Create temmp container
-            accountName = "aurius";
+            // Create temp container
+            accountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
+            if (string.IsNullOrEmpty(accountName))
+                throw new ArgumentException("Environment variable ACCOUNT_NAME not specified");
+
             accountKey = Environment.GetEnvironmentVariable("ACCOUNT_KEY");
+            if (string.IsNullOrEmpty(accountKey))
+                throw new ArgumentException("Environment variable ACCOUNT_KEY not specified");
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
             var bsc = new BlobServiceClient(connectionString);
             container = bsc.CreateBlobContainer(tempFolderName);
+        }
+
+        private DirectoryInfo PopulateSourceDirectory()
+        {
+            var sourceDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), ".ariustestsourcedir"));
+            if (sourceDirectory.Exists) sourceDirectory.Delete(true);
+            sourceDirectory.Create();
+
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileA.1"), 0.5);
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileB.1"), 2);
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "file with space.txt"), 5);
+
+            return sourceDirectory;
+        }
+
+        private void CreateRandomFile(string fileFullName, double sizeInMB)
+        {
+            byte[] data = new byte[8192];
+            var rng = new Random();
+            using (FileStream stream = File.OpenWrite(fileFullName))
+            {
+                for (int i = 0; i < sizeInMB * 128; i++)
+                {
+                    rng.NextBytes(data);
+                    stream.Write(data, 0, data.Length);
+                }
+            }
         }
 
         [OneTimeTearDown]

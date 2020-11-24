@@ -22,7 +22,7 @@ namespace Arius.Services
 
         protected bool IsMatch<T>(BlobItem bi)
         {
-            return typeof(T).GetCustomAttribute<ExtensionAttribute>().IsMatch(bi);
+            return typeof(T).GetCustomAttribute<ExtensionAttribute>()!.IsMatch(bi);
         }
     }
 }

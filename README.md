@@ -89,9 +89,27 @@ Arius relies on the 7zip command line and Azure blob storage cli.
 
 ### Linux
 
+Prerequisites:
+
+* 7zip: `sudo apt-get install p7zip-full`
+<!-- https://www.thomasmaurer.ch/2019/05/how-to-install-azcopy-for-azure-storage/ -->
+* azcopy 
+```
+wget https://aka.ms/downloadazcopy-v10-linux
+tar -xvf downloadazcopy-v10-linux
+sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+```
+
+* 
+
+Install the latest linux Dapr CLI to `/usr/local/bin`
+
+```bash
+wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash
+
 Run the following commands:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
-```
+
 LATEST_RELEASE=$(curl -L -s -H 'Accept: application/json' https://github.com/woutervanranst/arius/releases/latest)
 LATEST_VERSION=$(echo $LATEST_RELEASE | sed -e 's/.*"tag_name":"\([^"]*\)".*/\1/')
 ARTIFACT_URL="https://github.com/woutervanranst/arius/releases/download/$LATEST_VERSION/release.zip"
@@ -102,6 +120,12 @@ dotnet arius.dll ...
 
 ### Windows
 
-TODO
+Install the latest windows Dapr CLI to `c:\dapr` and add this directory to User PATH environment variable. Use `-DaprRoot [path]` to change the default installation directory
+
+```powershell
+powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master/install/install.ps1 | iex"
+```
 
 ### Docker
+
+TODO

@@ -89,6 +89,7 @@ namespace Arius.Tests
         [Test, Order(10)]
         public void ArchiveFirstFile()
         {
+            
             //Set up the temp folder -- Copy First file to the temp folder
             var firstFile = TestSetup.sourceFolder.GetFiles().First();
             firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);

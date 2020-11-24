@@ -8,34 +8,36 @@ using System.Text.RegularExpressions;
 using Arius.Extensions;
 using Microsoft.Extensions.Logging;
 
-//using System.IO.FileSystem.AccessControl; // Security.AccessControl.DirectorySecurity;
-
 namespace Arius.Services
 {
     class ExternalProcess
     {
         public static string FindFullName(ILogger logger, string windowsExecutableName, string linuxExecutableName)
         {
+            logger.LogDebug($"Looking for windows:{windowsExecutableName} / linux:{linuxExecutableName}");
             var path = Environment.GetEnvironmentVariable("PATH");
-            
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                throw new NotImplementedException();
 
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (string.IsNullOrEmpty(path))
+                logger.LogWarning("Environment variable PATH not found");
+            
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // 1. Find in the PATH folders
-                var executables = path.Trim(';').Split(';')
-                    .Select(dir => new DirectoryInfo(dir))
-                    .SelectMany(dir => dir.TryGetFiles(windowsExecutableName))
-                    .ToArray();
+                if (!string.IsNullOrEmpty(path))
+                { 
+                    var executables = path.Trim(';').Split(';')
+                        .Select(dir => new DirectoryInfo(dir))
+                        .SelectMany(dir => dir.TryGetFiles(windowsExecutableName))
+                        .ToArray();
 
-                if (executables.Length > 0)
-                {
-                    var fullname = executables.First().FullName;
+                    if (executables.Length > 0)
+                    {
+                        var fullname = executables.First().FullName;
 
-                    logger.LogDebug($"Found {executables.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullname}");
+                        logger.LogDebug($"Found {executables.Length} instance(s) of {windowsExecutableName}. Returning the first one: {fullname}");
 
-                    return fullname;
+                        return fullname;
+                    }
                 }
 
                 // 2. Find using WHERE
@@ -56,8 +58,27 @@ namespace Arius.Services
                     throw new ArgumentException($"Could not find {windowsExecutableName} in {path}", nameof(windowsExecutableName), e);
                 }
             }
-            else
-                throw new NotImplementedException();
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // 1. Find using WHICH
+                var p = new ExternalProcess("which");
+
+                try
+                {
+                    var fullNames = p.Execute($" / {linuxExecutableName}").Split(Environment.NewLine);
+
+                    logger.LogDebug($"Found {fullNames.Length} instance(s) of {linuxExecutableName}. Returning the first one: {fullNames.First()}");
+
+                    return fullNames.First();
+                }
+                catch (ArgumentException e)
+                {
+                    throw new ArgumentException($"Could not find {linuxExecutableName} in /", nameof(linuxExecutableName), e);
+                }
+            }
+            
+            throw new NotImplementedException();
         }
 
 
