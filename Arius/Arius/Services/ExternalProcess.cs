@@ -53,7 +53,7 @@ namespace Arius.Services
 
                     return fullNames.First();
                 }
-                catch (ArgumentException e)
+                catch (ApplicationException e)
                 {
                     throw new ArgumentException($"Could not find {windowsExecutableName} in {path}", nameof(windowsExecutableName), e);
                 }
@@ -72,7 +72,7 @@ namespace Arius.Services
 
                     return fullNames.First();
                 }
-                catch (ArgumentException e)
+                catch (ApplicationException e)
                 {
                     throw new ArgumentException($"Could not find {linuxExecutableName} in /", nameof(linuxExecutableName), e);
                 }
