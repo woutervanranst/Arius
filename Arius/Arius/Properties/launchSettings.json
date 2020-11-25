@@ -1,8 +1,7 @@
 {
   "profiles": {
     "arius": {
-      "commandName": "Project",
-      "commandLineArgs": ""
+      "commandName": "Project"
     },
     "arius archive": {
       "commandName": "Project",
@@ -12,9 +11,14 @@
       "commandName": "Project",
       "commandLineArgs": "restore -n aurius -k %ACCOUNT_KEY% -p woutervr -c arius2 --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
     },
-    "WSL 2": {
-      "commandName": "WSL2",
-      "distributionName": "Ubuntu-18.04"
+    //"WSL 2": {
+    //  "commandName": "WSL2",
+    //  "distributionName": "Ubuntu-18.04"
+    //},
+    "Docker": {
+      "commandName": "Docker",
+      //"executablePath": "dotnet arius.dll",
+      "commandLineArgs": "arius.dll archive -n aurius -k %ACCOUNT_KEY% -p woutervr -c arius2 --keep-local --tier hot"
     }
   }
 }
