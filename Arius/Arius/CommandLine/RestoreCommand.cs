@@ -190,7 +190,7 @@ namespace Arius.CommandLine
             var pointerEntriesperManifest = manifestFiles.AsParallelWithParallelism()
                 .ToImmutableDictionary(
                     mf => mf,
-                    mf => _manifestService.ReadManifestFile(mf).GetLastExistingEntriesPerRelativeName().ToImmutableArray()
+                    mf => _manifestService.ReadManifestFile(mf).GetLastEntries().ToImmutableArray()
                 );
 
             _logger.LogInformation($"{pointerEntriesperManifest.Values.Sum(pfes => pfes.Length)} files in latest version of remote");

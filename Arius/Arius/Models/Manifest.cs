@@ -11,25 +11,23 @@ namespace Arius.Models
         [JsonConstructor]
         public Manifest(IEnumerable<PointerFileEntry> pointerFileEntries, IEnumerable<string> chunkNames, string hash)
         {
-            _PointerFileEntries = pointerFileEntries.ToList();
+            _pointerFileEntries = pointerFileEntries.ToList();
             ChunkNames = chunkNames;
             Hash = hash;
         }
 
         public Manifest(IEnumerable<string> chunkNames, string hash)
         {
-            _PointerFileEntries = new List<PointerFileEntry>();
+            _pointerFileEntries = new List<PointerFileEntry>();
             ChunkNames = chunkNames;
             Hash = hash;
         }
 
-        private static readonly PointerFileEntryEqualityComparer _pfeec = new PointerFileEntryEqualityComparer();
-
         // --- PROPERTIES
 
         [JsonInclude]
-        public IEnumerable<PointerFileEntry> PointerFileEntries => _PointerFileEntries;
-        private readonly List<PointerFileEntry> _PointerFileEntries;
+        public IEnumerable<PointerFileEntry> PointerFileEntries => _pointerFileEntries;
+        private readonly List<PointerFileEntry> _pointerFileEntries;
 
         [JsonInclude]
         public IEnumerable<string> ChunkNames { get; private set; }
@@ -41,9 +39,14 @@ namespace Arius.Models
         public string Hash { get; private set; }
 
         // --- METHODS
-        internal IEnumerable<PointerFileEntry> GetLastExistingEntriesPerRelativeName(bool includeLastDeleted = false)
+        /// <summary>
+        /// Get the last entries per RelativeName
+        /// </summary>
+        /// <param name="includeLastDeleted">include deleted items</param>
+        /// <returns></returns>
+        internal IEnumerable<PointerFileEntry> GetLastEntries(bool includeLastDeleted = false)
         {
-            var r = _PointerFileEntries
+            var r = _pointerFileEntries
                 .GroupBy(lcfe => lcfe.RelativeName)
                 .Select(g => g
                     .OrderBy(lcfe => lcfe.Version)
@@ -54,37 +57,15 @@ namespace Arius.Models
             else
                 return r.Where(afpe => !afpe.IsDeleted);
         }
-        /// <summary>
-        /// Synchronize the state of the manifest to the current state of the file system:
-        /// Additions, deletions, renames (= add + delete)
-        /// </summary>
-        public bool Update(IEnumerable<IPointerFile> pointerFiles)
+
+        internal void AddEntries(IEnumerable<PointerFileEntry> entries)
         {
-            var fileSystemEntries = GetPointerFileEntries(pointerFiles);
-            var lastEntries = GetLastExistingEntriesPerRelativeName().ToImmutableArray();
-
-            var addedFiles = fileSystemEntries.Except(lastEntries, _pfeec).ToList();
-            var deletedFiles = lastEntries
-                .Except(fileSystemEntries, _pfeec)
-                .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null })
-                .ToList();
-
-            //TODO add logging here, but the methods should move to the ManifestService / ie just a POCO remains
-            _PointerFileEntries.AddRange(addedFiles);
-            _PointerFileEntries.AddRange(deletedFiles);
-
-            return addedFiles.Any() || deletedFiles.Any();
+            _pointerFileEntries.AddRange(entries);
         }
-
-        //public RemoteEncryptedAriusManifest Create(AriusRemoteArchive archive, string passphrase)
-        //{
-        //    Update(archive, passphrase);
-
-        //    return archive.GetRemoteEncryptedAriusManifestByHash(Hash);
-        //}
+        
 
         // --- RECORD DEFINITION & HELPERS
-        private static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> pointerFiles)
+        internal static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> pointerFiles)
         {
             return pointerFiles.Select(pf => GetPointerFileEntry(pf)).ToList();
         }
@@ -99,28 +80,5 @@ namespace Arius.Models
 
 
         public sealed record PointerFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
-
-
-        private class PointerFileEntryEqualityComparer : IEqualityComparer<PointerFileEntry>
-        {
-
-            public bool Equals(PointerFileEntry x, PointerFileEntry y)
-            {
-                return x.RelativeName == y.RelativeName &&
-                       //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
-                       x.IsDeleted == y.IsDeleted &&
-                       x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
-                       x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
-            }
-
-            public int GetHashCode(PointerFileEntry obj)
-            {
-                return HashCode.Combine(obj.RelativeName,
-                    //obj.Version,  //DO NOT Compare on DateTime Version
-                    obj.IsDeleted,
-                    obj.CreationTimeUtc,
-                    obj.LastWriteTimeUtc);
-            }
-        }
     }
 }

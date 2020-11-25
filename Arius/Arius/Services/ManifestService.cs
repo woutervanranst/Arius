@@ -82,22 +82,6 @@ namespace Arius.Services
                             Array.Empty<IPointerFile>()));  //if the pointer no longer exists and is the only one there will not be an entry for the hash, pass empty-- TODO test this
         }
 
-        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointerFiles)
-        {
-            //TODO Assert all hashes equal to the manifest file hash
-            var manifest = ReadManifestFile(manifestFile);
-            
-            var writeback = manifest!.Update(pointerFiles);
-
-            if (writeback)
-            {
-                SaveManifest(manifest, manifestFile.FullName);
-
-                _localManifestRepository.Put(manifestFile);
-                _logger.LogInformation($"Manifest '{manifestFile.Hash}' has modified entries");
-            }
-        }
-
         public Manifest ReadManifestFile(IManifestFile manifestFile)
         {
             var manifestFileFullName = manifestFile.FullName;
@@ -106,5 +90,52 @@ namespace Arius.Services
 
             return manifest;
         }
+
+
+        public void UpdateManifest(IManifestFile manifestFile, IEnumerable<IPointerFile> pointerFiles)
+        {
+            //TODO Assert all hashes equal to the manifest file hash
+            var manifest = ReadManifestFile(manifestFile);
+
+            var writeback = UpdateManifest(manifest, pointerFiles);
+
+            if (writeback)
+            {
+                SaveManifest(manifest, manifestFile.FullName);
+
+                _localManifestRepository.Put(manifestFile);
+                _logger.LogInformation($"Manifest '{manifestFile.Hash}' has modified entries, marked for writeback");
+            }
+        }
+
+
+        /// <summary>
+        /// Synchronize the state of the manifest to the current state of the file system:
+        /// Additions, deletions, renames (= add + delete)
+        /// </summary>
+        private bool UpdateManifest(Manifest manifest, IEnumerable<IPointerFile> pointerFiles)
+        {
+            var fileSystemEntries = Manifest.GetPointerFileEntries(pointerFiles);
+            var lastEntries = manifest.GetLastEntries().ToImmutableArray();
+
+            var addedFiles = fileSystemEntries.Except(lastEntries, _pfeec).ToList();
+            var deletedFiles = lastEntries
+                .Except(fileSystemEntries, _pfeec)
+                .Select(lcfe => lcfe with { IsDeleted = true, CreationTimeUtc = null, LastWriteTimeUtc = null })
+                .ToList();
+
+            if (addedFiles.Any())
+                addedFiles.ForEach(pfe => _logger.LogInformation($"Added {pfe.RelativeName}"));
+            if (deletedFiles.Any())
+                deletedFiles.ForEach(pfe => _logger.LogInformation($"Removed {pfe.RelativeName}"));
+            //_logger.LogInformation($"Manifest {manifest.Hash} has deleted entries: {deletedFiles.Select(pfe => pfe.RelativeName)}"); 
+
+            manifest.AddEntries(addedFiles);
+            manifest.AddEntries(deletedFiles);
+
+            return addedFiles.Any() || deletedFiles.Any();
+        }
+
+        private static readonly PointerFileEntryEqualityComparer _pfeec = new PointerFileEntryEqualityComparer();
     }
 }
