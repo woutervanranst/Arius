@@ -70,7 +70,7 @@ namespace Arius.Extensions
             //            (DateTime?)null :
             //            DateTime.Now.AddSeconds((DateTime.Now - start).TotalSeconds / _current * _max);
 
-            //        write(_current, _max, Math.Round(_current / ((float)_max) * 100), eta);
+            write(_current, _max, Math.Round(_current / ((float)_max) * 100), null);
 
             //        await Task.Delay(wait);
             //    }

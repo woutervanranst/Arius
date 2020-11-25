@@ -127,7 +127,7 @@ namespace Arius.Services
             if (addedFiles.Any())
                 addedFiles.ForEach(pfe => _logger.LogInformation($"Added {pfe.RelativeName}"));
             if (deletedFiles.Any())
-                deletedFiles.ForEach(pfe => _logger.LogInformation($"Removed {pfe.RelativeName}"));
+                deletedFiles.ForEach(pfe => _logger.LogInformation($"Marked {pfe.RelativeName} as deleted"));
             //_logger.LogInformation($"Manifest {manifest.Hash} has deleted entries: {deletedFiles.Select(pfe => pfe.RelativeName)}"); 
 
             manifest.AddEntries(addedFiles);
