@@ -89,10 +89,10 @@ namespace Arius.Services
             
             var writeback = manifest!.Update(pointerFiles);
 
-            SaveManifest(manifest, manifestFile.FullName);
-
             if (writeback)
             {
+                SaveManifest(manifest, manifestFile.FullName);
+
                 _localManifestRepository.Put(manifestFile);
                 _logger.LogInformation($"Manifest '{manifestFile.Hash}' has modified entries");
             }
