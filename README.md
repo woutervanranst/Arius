@@ -134,17 +134,17 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master
 
 #### Archive
 
-| ``arius archive``  | Visual Studio Debug | Run |
+| ``arius archive``  | Visual Studio Debug | ``Docker Run`` |
 |---|---|---|
-| ``--accountname`` | argument in ``commandLineArgs`` | inline argument |
-| ``--accountkey`` | Environment Variable (``%ARIUS_ACCOUNT_KEY%``) > Pre-build event in Arius.csproj > ``DockerfileRunEnvironmentFiles`` | environment argument, eg. <br> ``-e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY%`` |
-| ``--passphrase`` | argument in ``commandLineArgs`` | inline argument |
-| ``(--container)`` | argument in ``commandLineArgs`` | inline argument |
-| ``(--keep-local)`` | argument in ``commandLineArgs`` | inline argument |
-| ``(--tier)`` | argument in ``commandLineArgs`` | inline argument |
-| ``(--min-size)`` | argument in ``commandLineArgs`` | inline argument |
-| ``(--simulate)``  | argument in ``commandLineArgs`` | inline argument |
-| ``<path>``  | ``DockerfileRunArguments`` in Arius.csproj, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  | volume argument, eg. <br> ``-v c:/Users/Wouter/Documents/Test:/archive`` |
+| ``--accountname`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``--accountkey`` | <ul><li>argument in ``commandLineArgs`` in ``launchSettings.json`` (but it would be in source control)</li><li>Environment Variable (``%ARIUS_ACCOUNT_KEY%``) &rarr; <br> Pre-build event in Arius.csproj &rarr; <br> ``<DockerfileRunEnvironmentFiles>``</li> | <ul><li>argument</li>  <li>environment argument, eg. <br> ``-e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY%``</li></ul> |
+| ``--passphrase`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``(--container)`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``(--keep-local)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``(--tier)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
+| ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |  argument |
+| ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  | volume argument, eg. <br> ``-v c:/Users/Wouter/Documents/Test:/archive`` |
 
 #### Example Build Command
 
