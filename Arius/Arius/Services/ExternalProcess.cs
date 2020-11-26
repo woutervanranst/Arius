@@ -62,11 +62,12 @@ namespace Arius.Services
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 // 1. Find using WHICH
+                // https://ss64.com/bash/which.html -- alternatief https://ss64.com/bash/whereis.html
                 var p = new ExternalProcess("which");
 
                 try
                 {
-                    var fullNames = p.Execute($" / {linuxExecutableName}").Split(Environment.NewLine);
+                    var fullNames = p.Execute($"{linuxExecutableName}").Split(Environment.NewLine);
 
                     logger.LogDebug($"Found {fullNames.Length} instance(s) of {linuxExecutableName}. Returning the first one: {fullNames.First()}");
 
