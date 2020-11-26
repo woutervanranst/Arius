@@ -6,6 +6,13 @@
 
 FROM mcr.microsoft.com/dotnet/runtime:5.0-buster-slim AS base
 WORKDIR /app
+#Install AzCopy -- put it here as per https://docs.microsoft.com/en-us/visualstudio/containers/container-build?view=vs-2019#debugging
+RUN apt-get update && apt-get install -y \
+    wget \
+    tar
+RUN wget https://aka.ms/downloadazcopy-v10-linux
+RUN tar -xvf downloadazcopy-v10-linux
+RUN cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
 WORKDIR /src
@@ -15,20 +22,16 @@ COPY . .
 WORKDIR "/src/Arius"
 RUN dotnet build "Arius.csproj" -c Release -o /app/build
 
+
 FROM build AS publish
 RUN dotnet publish "Arius.csproj" -c Release -o /app/publish
 
 FROM build AS tooling
-RUN apt-get update && apt-get install -y \
-    wget \
-    tar
-RUN wget https://aka.ms/downloadazcopy-v10-linux
-RUN tar -xvf downloadazcopy-v10-linux
-RUN cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-COPY --from=tooling /usr/bin/azcopy /usr/bin/
+COPY --from=base /usr/bin/azcopy /usr/bin/
 ## NOTE: Debugging in VS overwrites this
 #ENTRYPOINT ["dotnet", "arius.dll"]
