@@ -134,17 +134,17 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master
 
 #### Archive
 
-|   |  Debug | Run |
+| ``arius archive``  | Visual Studio Debug | Run |
 |---|---|---|
-| --accountname | argument | argument |
-| --accountkey | Environment Variable (%ARIUS_ACCOUNT_KEY%) > Pre-build event in Arius.csproj > DockerfileRunEnvironmentFiles | environment argument, eg. <br> -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% |
-| --passphrase | argument | argument |
-| (--container) | argument | argument |
-| (--keep-local) | argument | argument |
-| (--tier) | argument | argument |
-| (--min-size) | argument | argument |
-| (--simulate)  | argument | argument |
-| \<path>  | DockerfileRunArguments in Arius.csproj, eg.<br> -v "c:\Users\Wouter\Documents\Test:/archive"  | volume argument, eg. <br> -v c:/Users/Wouter/Documents/Test:/archive |
+| ``--accountname`` | argument in ``commandLineArgs`` | inline argument |
+| ``--accountkey`` | Environment Variable (``%ARIUS_ACCOUNT_KEY%``) > Pre-build event in Arius.csproj > ``DockerfileRunEnvironmentFiles`` | environment argument, eg. <br> ``-e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY%`` |
+| ``--passphrase`` | argument in ``commandLineArgs`` | inline argument |
+| ``(--container)`` | argument in ``commandLineArgs`` | inline argument |
+| ``(--keep-local)`` | argument in ``commandLineArgs`` | inline argument |
+| ``(--tier)`` | argument in ``commandLineArgs`` | inline argument |
+| ``(--min-size)`` | argument in ``commandLineArgs`` | inline argument |
+| ``(--simulate)``  | argument in ``commandLineArgs`` | inline argument |
+| ``<path>``  | ``DockerfileRunArguments`` in Arius.csproj, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  | volume argument, eg. <br> ``-v c:/Users/Wouter/Documents/Test:/archive`` |
 
 #### Example Build Command
 
