@@ -16,6 +16,10 @@ The name derives from the Greek for 'immortal'.
     - [Linux](#linux)
     - [Windows](#windows)
     - [Docker](#docker)
+      - [Archive](#archive)
+      - [Example Build Command](#example-build-command)
+      - [Example Run Command](#example-run-command)
+      - [Cleanup](#cleanup)
 
 ## Key design objectives
 
@@ -128,4 +132,39 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master
 
 ### Docker
 
-TODO
+#### Archive
+
+|   |  Debug | Run |
+|---|---|---|
+| --accountname | argument | argument |
+| --accountkey | Environment Variable (%ARIUS_ACCOUNT_KEY%) > Pre-build event in Arius.csproj > DockerfileRunEnvironmentFiles | environment argument, eg. <br> -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% |
+| --passphrase | argument | argument |
+| (--container) | argument | argument |
+| (--keep-local) | argument | argument |
+| (--tier) | argument | argument |
+| (--min-size) | argument | argument |
+| (--simulate)  | argument | argument |
+| \<path>  | DockerfileRunArguments in Arius.csproj, eg.<br> -v "c:\Users\Wouter\Documents\Test:/archive"  | volume argument, eg. <br> -v c:/Users/Wouter/Documents/Test:/archive |
+
+#### Example Build Command
+
+<!-- 
+cd C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius 
+-->
+
+```
+docker build -f Dockerfile .. -t arius:prd
+```
+
+#### Example Run Command
+
+```
+docker run -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% -v c:/Users/Wouter/Documents/Test:/archive arius:prd archive -n aurius -p woutervr
+```
+
+#### Cleanup
+
+```
+docker container prune -f
+docker image prune -f
+```

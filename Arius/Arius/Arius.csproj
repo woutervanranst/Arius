@@ -9,6 +9,12 @@
 
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <!--<ContainerDevelopmentMode>Regular</ContainerDevelopmentMode>-->
+
+    <!--See https://stackoverflow.com/questions/52370812/passing-environment-variables-to-docker-container-when-running-in-visual-studio -->
+    <DockerfileRunEnvironmentFiles>docker_env.prebuild.txt</DockerfileRunEnvironmentFiles>
+    <DockerfileRunArguments>-v "c:\Users\Wouter\Documents\Test:/archive"</DockerfileRunArguments>
+
+    <!--<DockerDebuggeeArguments>-a -v</DockerDebuggeeArguments>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,5 +35,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="echo ARIUS_ACCOUNT_KEY=%25ARIUS_ACCOUNT_KEY%25 &gt; docker_env.prebuild.txt" />
+  </Target>
 
 </Project>

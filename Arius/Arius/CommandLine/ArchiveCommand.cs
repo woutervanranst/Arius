@@ -41,11 +41,19 @@ namespace Arius.CommandLine
             accountNameOption.IsRequired = true;
             archiveCommand.AddOption(accountNameOption);
 
-
-            var accountKeyOption = new Option<string>("--accountkey",
-                "Account Key");
+            Option accountKeyOption;
+            //Inject from EnvironmentVariable, if it is defined
+            var accountKeyEnvironmentVariable = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
+            if (string.IsNullOrEmpty(accountKeyEnvironmentVariable))
+            {
+                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key");
+                accountKeyOption.IsRequired = true;
+            }
+            else
+            {
+                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key", getDefaultValue: () => accountKeyEnvironmentVariable);
+            }
             accountKeyOption.AddAlias("-k");
-            accountKeyOption.IsRequired = true;
             archiveCommand.AddOption(accountKeyOption);
 
             var passphraseOption = new Option<string>("--passphrase",
@@ -89,11 +97,20 @@ namespace Arius.CommandLine
                 "List the differences between the local and the remote, without making any changes to remote");
             archiveCommand.AddOption(simulateOption);
 
-            var pathArgument = new Argument<string>("path",
-                getDefaultValue: () => Environment.CurrentDirectory,
-                "Path to archive. Default: current directory");
-            archiveCommand.AddArgument(pathArgument);
-
+            Argument pathArgument;
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            {
+                pathArgument = new Argument<string>("path",
+                    getDefaultValue: () => "/archive");
+                archiveCommand.AddArgument(pathArgument);
+            }
+            else
+            { 
+                pathArgument = new Argument<string>("path",
+                    getDefaultValue: () => Environment.CurrentDirectory,
+                    "Path to archive. Default: current directory");
+                archiveCommand.AddArgument(pathArgument);
+            }
 
             archiveCommand.Handler = CommandHandlerExtensions
                 .Create<string, string, string, string, bool, string, int, bool, string>(
