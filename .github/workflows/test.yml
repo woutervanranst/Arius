@@ -1,4 +1,4 @@
-name: Build & Test Arius
+name: Test
 
 on:
   push:
