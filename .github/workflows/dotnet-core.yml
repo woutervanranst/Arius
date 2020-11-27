@@ -42,11 +42,10 @@ jobs:
         # For SSH / debug        
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
-    
+
       - name: Zip artifacts
-        uses: montudor/action-zip@v0.1.0
-        with:
-          args: zip -qq -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/
+        run: |
+          zip -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/
       
       - name: Create release
         id: create_release
