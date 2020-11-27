@@ -1,9 +1,10 @@
-name: Build Arius
+name: Build & Test Arius
 
 on:
   push:
     paths: 
       - 'Arius/**'
+      - '.github/**'
     # branches: [ master ]
   pull_request:
     paths:       
@@ -39,7 +40,9 @@ jobs:
       - name: Test
         run: dotnet test
         env:
-          ARIUS_ACCOUNT_NAME: test
+          ARIUS_ACCOUNT_NAME: ariusci
+          ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+          
 
       # - name: Publish with dotnet
       #   run: dotnet publish -c Release Arius -o ./artifacts
