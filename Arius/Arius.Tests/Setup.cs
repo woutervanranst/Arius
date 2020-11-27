@@ -32,13 +32,13 @@ namespace Arius.Tests
 
 
             // Create temp container
-            accountName = Environment.GetEnvironmentVariable("ACCOUNT_NAME");
+            accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
             if (string.IsNullOrEmpty(accountName))
-                throw new ArgumentException("Environment variable ACCOUNT_NAME not specified");
+                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_NAME not specified");
 
-            accountKey = Environment.GetEnvironmentVariable("ACCOUNT_KEY");
+            accountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
             if (string.IsNullOrEmpty(accountKey))
-                throw new ArgumentException("Environment variable ACCOUNT_KEY not specified");
+                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
             var bsc = new BlobServiceClient(connectionString);

@@ -35,39 +35,41 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 5.0.x
-      
-      - name: Publish with dotnet
-        run: dotnet publish -c Release Arius -o ./artifacts
+
+      - name: Test
+        run: dotnet test
+        env:
+          ARIUS_ACCOUNT_NAME: test
+
+      # - name: Publish with dotnet
+      #   run: dotnet publish -c Release Arius -o ./artifacts
 
       #   # For SSH / debug        
       # - name: Setup tmate session
       #   uses: mxschmitt/action-tmate@v3
 
-      - name: Zip artifacts
-        run: |
-          zip -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/
+      # - name: Zip artifacts
+      #   run: |
+      #     zip -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/
       
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+      # - name: Create release
+      #   id: create_release
+      #   uses: actions/create-release@v1.0.0
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     tag_name: ${{ github.ref }}
+      #     release_name: Release ${{ github.ref }}
+      #     draft: false
+      #     prerelease: false
     
-      - name: Upload Release Asset
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release.zip
-          asset_name: release.zip
-          asset_content_type: application/zip
-        
-        
-        
+      # - name: Upload Release Asset
+      #   id: upload-release-asset
+      #   uses: actions/upload-release-asset@v1.0.1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+      #     asset_path: ./release.zip
+      #     asset_name: release.zip
+      #     asset_content_type: application/zip
