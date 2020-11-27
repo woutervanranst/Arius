@@ -37,7 +37,7 @@ jobs:
           dotnet-version: 5.0.x
       
       - name: Publish with dotnet
-        run: dotnet publish -c Release Arius.csproj -o ./artifacts
+        run: dotnet publish -c Release Arius -o ./artifacts
     
       - name: Zip artifacts
         uses: montudor/action-zip@v0.1.0
