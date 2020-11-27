@@ -1,6 +1,6 @@
 # Arius
 
-![Build](https://github.com/woutervanranst/Arius/workflows/Build/badge.svg)
+![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
 
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
