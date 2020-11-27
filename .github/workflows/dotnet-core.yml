@@ -3,11 +3,11 @@ name: Build Arius
 on:
   push:
     paths: 
-      - 'code/**'
-    branches: [ master ]
+      - 'Arius/**'
+    # branches: [ master ]
   pull_request:
     paths:       
-      - 'code/**'
+      - 'Arius/**'
     branches: [ master ]
   workflow_dispatch:
     inputs:
@@ -33,6 +33,7 @@ jobs:
       
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
+          dotnet-version: 5.0.x
       
       - name: Publish with dotnet
         run: dotnet publish -c Release -o ./artifacts
