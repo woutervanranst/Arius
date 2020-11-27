@@ -35,12 +35,12 @@ jobs:
         uses: actions/setup-dotnet@v1
       
       - name: Publish with dotnet
-        run: dotnet publish -c Release -o ./artifacts
+        run: dotnet publish -c Release Arius.csproj -o ./artifacts
     
       - name: Zip artifacts
         uses: montudor/action-zip@v0.1.0
         with:
-          args: zip -qq -r ./release.zip ./artifacts
+          args: zip -qq -r ./release.zip /home/runner/work/Arius/Arius/Arius/artifacts/
       
       - name: Create release
         id: create_release
