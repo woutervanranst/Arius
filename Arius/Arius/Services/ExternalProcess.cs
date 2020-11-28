@@ -174,6 +174,12 @@ namespace Arius.Services
             return match;
         }
 
+        public void Execute<T1>(string arguments, string regex, string t1Name, out string rawOutput, out T1 t1)
+        {
+            var regexMatch = Execute(arguments, regex, out rawOutput);
+
+            t1 = (T1)Convert.ChangeType(regexMatch.Groups[t1Name].Value, typeof(T1));
+        }
         public void Execute<T1, T2, T3, T4>(string arguments, string regex, string t1Name, string t2Name, string t3Name, string t4Name, out string rawOutput, out T1 t1, out T2 t2, out T3 t3, out T4 t4)
         {
             var regexMatch = Execute(arguments, regex, out rawOutput);

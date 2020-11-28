@@ -35,7 +35,6 @@ namespace Arius.CommandLine
             accountNameOption.IsRequired = true;
             restoreCommand.AddOption(accountNameOption);
 
-
             var accountKeyOption = new Option<string>("--accountkey",
                 "Account Key");
             accountKeyOption.AddAlias("-k");

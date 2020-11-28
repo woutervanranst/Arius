@@ -22,12 +22,10 @@ namespace Arius.Repositories
         public RemoteEncryptedChunkRepository(ICommandExecutorOptions options,
             IConfiguration config,
             IBlobCopier blobcopier,
-            IEncrypter encrypter,
             RemoteBlobFactory blobFactory,
             LocalFileFactory localFactory)
         {
             _blobcopier = blobcopier;
-            _encrypter = encrypter;
             _blobFactory = blobFactory;
             _localFactory = localFactory;
             _localTemp = config.TempDir.CreateSubdirectory(SubDirectoryName);
@@ -49,7 +47,6 @@ namespace Arius.Repositories
         private const string SubDirectoryName = "chunks";
         private readonly DirectoryInfo _localTemp;
         private readonly IBlobCopier _blobcopier;
-        private readonly IEncrypter _encrypter;
         private readonly RemoteBlobFactory _blobFactory;
         private readonly LocalFileFactory _localFactory;
         private readonly BlobContainerClient _bcc;
