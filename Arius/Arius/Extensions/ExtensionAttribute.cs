@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Arius.Models;
+using Arius.Repositories;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Extensions
@@ -29,6 +30,13 @@ namespace Arius.Extensions
             var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
 
             return new FileInfo(Path.Combine(lf.Root.FullName, $"{lf.Hash}{encryptedTypeExtension}"));
+        }
+        public FileInfo GetEncryptedFileInfo(ILocalFile lf, RemoteEncryptedChunkRepository chunkRepository)
+        {
+            var encryptedType = lf.GetType().GetCustomAttribute<ExtensionAttribute>()!.EncryptedType;
+            var encryptedTypeExtension = encryptedType.GetCustomAttribute<ExtensionAttribute>()!.Extension;
+
+            return new FileInfo(Path.Combine(chunkRepository.FullName, $"{lf.Hash}{encryptedTypeExtension}"));
         }
         public FileInfo GetDecryptedFileInfo(ILocalFile lf)
         {
