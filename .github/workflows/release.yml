@@ -76,9 +76,9 @@ jobs:
 
 
 
-# For SSH / debug        
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+# # For SSH / debug        
+#     - name: Setup tmate session
+#       uses: mxschmitt/action-tmate@v3
 
 
     - name: Build image
