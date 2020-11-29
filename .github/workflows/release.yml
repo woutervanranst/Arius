@@ -18,8 +18,8 @@ on:
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
 # # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
-env:
-  IMAGE_NAME:arius
+#env:
+#  IMAGE_NAME:arius
 
 jobs:
   build:
