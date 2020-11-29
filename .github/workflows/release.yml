@@ -1,3 +1,5 @@
+name: Release Artifact & Docker
+
 on:
   push:
     # Sequence of patterns matched against refs/tags
@@ -12,23 +14,31 @@ on:
       tags:
         description: 'Test scenario tags' 
 
-name: On Tag Create Release with Artifact 
 
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
-# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+# # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+
+env:
+  IMAGE_NAME:arius
 
 jobs:
   build:
     defaults:
       run:
         working-directory: ./Arius
-        
-    name: Upload Release Asset
+    
+    name: BLA
     runs-on: ubuntu-latest
+
     steps:
     - name: Check out code
       uses: actions/checkout@v2
-          
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+        
     - name: Publish with dotnet
       run: dotnet publish Arius -c Release -o ./artifacts #Deploy only Arius project, not the tests
       
@@ -48,10 +58,6 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
-
-# For SSH / debug        
-#    - name: Setup tmate session
-#      uses: mxschmitt/action-tmate@v3
     
     - name: Upload Release Asset
       id: upload-release-asset 
@@ -59,7 +65,43 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
         asset_path: /home/runner/work/Arius/Arius/Arius/release.zip #./release.zip
         asset_name: release.zip
         asset_content_type: application/zip
+
+
+
+# For SSH / debug        
+#    - name: Setup tmate session
+#      uses: mxschmitt/action-tmate@v3
+
+
+    - name: Build poi image
+      run: docker build /Arius/Arius/Arius -f . --tag $IMAGE_NAME
+
+    - name: Log into GitHub Container Registry
+    # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
+      run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Push poi image to GitHub Container Registry
+      run: |
+        IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+        # Strip "v" prefix from tag name
+        [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+
+        docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
