@@ -85,6 +85,11 @@ namespace Arius.Services
 
             var p = new ExternalProcess(_7ZPath.Result);
 
+            foreach (var x in (new DirectoryInfo(fileToEncrypt.DirectoryName)).GetFiles())
+            {
+                Console.WriteLine(x.FullName);
+            }
+
             p.Execute(arguments, regex, out string rawOutput);
 
             _logger.LogDebug(rawOutput);
