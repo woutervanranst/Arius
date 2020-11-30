@@ -14,7 +14,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
-    class SevenZipCommandlineEncrypter : IEncrypter
+    internal interface IEncrypterOptions : ICommandExecutorOptions
+    {
+        string Passphrase { get; }
+    }
+
+    internal class SevenZipCommandlineEncrypter : IEncrypter
     {
         public SevenZipCommandlineEncrypter(ICommandExecutorOptions options,
             ILogger<SevenZipCommandlineEncrypter> logger,

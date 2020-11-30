@@ -89,36 +89,36 @@ namespace Arius.Tests
         [Test, Order(10)]
         public void ArchiveFirstFile()
         {
-            
-            ////Set up the temp folder -- Copy First file to the temp folder
-            //var firstFile = TestSetup.sourceFolder.GetFiles().First();
-            //firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
-            ////Execute Archive
-            //var services = ArchiveCommand(false, AccessTier.Cool);
+            //Set up the temp folder -- Copy First file to the temp folder
+            var firstFile = TestSetup.sourceFolder.GetFiles().First();
+            firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
-            ////Check outcome
-            //// One manifest and one binary should be uploaded
-            //var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-            //var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
-            //Assert.AreEqual(1, lmfr.GetAll().Count());
-            //Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
+            //Check outcome
+            // One manifest and one binary should be uploaded
+            var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
+            var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
 
-            ////Get the manifest entries
-            //var pointerFile = GetPointerFile(services, firstFile);
-            //var entries = GetManifestEntries(services, pointerFile);
+            Assert.AreEqual(1, lmfr.GetAll().Count());
+            Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
 
-            ////We have exactly one entry
-            //Assert.AreEqual(1, entries.Count());
+            //Get the manifest entries
+            var pointerFile = GetPointerFile(services, firstFile);
+            var entries = GetManifestEntries(services, pointerFile);
 
-            //var firstEntry = entries.First();
+            //We have exactly one entry
+            Assert.AreEqual(1, entries.Count());
 
-            //// Evaluate the the entry
-            //Assert.AreEqual(Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFile.FullName), firstEntry.RelativeName);
-            //Assert.AreEqual(false, firstEntry.IsDeleted);
-            //Assert.AreEqual(firstFile.CreationTimeUtc, firstEntry.CreationTimeUtc);
-            //Assert.AreEqual(firstFile.LastWriteTimeUtc, firstEntry.LastWriteTimeUtc);
+            var firstEntry = entries.First();
+
+            // Evaluate the the entry
+            Assert.AreEqual(Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFile.FullName), firstEntry.RelativeName);
+            Assert.AreEqual(false, firstEntry.IsDeleted);
+            Assert.AreEqual(firstFile.CreationTimeUtc, firstEntry.CreationTimeUtc);
+            Assert.AreEqual(firstFile.LastWriteTimeUtc, firstEntry.LastWriteTimeUtc);
         }
 
 
