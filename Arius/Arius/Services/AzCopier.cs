@@ -240,9 +240,8 @@ namespace Arius.Services
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}" +
-                                               $"{rawOutput}{Environment.NewLine}" +
-                                               $"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
+            //$"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
