@@ -94,6 +94,11 @@ namespace Arius.Tests
             var firstFile = TestSetup.sourceFolder.GetFiles().First();
             firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
+            foreach (var x in TestSetup.rootDirectoryInfo.GetFiles())
+            {
+                Console.WriteLine(x.FullName);
+            }
+
             //Execute Archive
             var services = ArchiveCommand(false, AccessTier.Cool);
 
