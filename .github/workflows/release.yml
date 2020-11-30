@@ -83,7 +83,7 @@ jobs:
 
     - name: Build image
       run: |
-        pushd /home/runner/work/Arius/Arius/Arius/
+        pushd /home/runner/work/Arius/Arius/Arius/Arius/
         docker build -f Dockerfile .. --tag $IMAGE_NAME
         popd
 
