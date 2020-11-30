@@ -53,7 +53,7 @@ namespace Arius.Tests
 
             CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileA.1"), 0.5);
             CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileB.1"), 2);
-            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "file with space.txt"), 5);
+            //CreateRandomFile(Path.Combine(sourceDirectory.FullName, "file with space.txt"), 5);
 
             return sourceDirectory;
         }
