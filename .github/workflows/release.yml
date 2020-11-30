@@ -93,7 +93,8 @@ jobs:
 
     - name: Push poi image to GitHub Container Registry
       run: |
-        IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+        # IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+        IMAGE_ID=ghcr.io/$IMAGE_NAME
 
         # Change all uppercase to lowercase
         IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
