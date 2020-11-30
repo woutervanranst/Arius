@@ -152,7 +152,7 @@ namespace Arius.Services
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{localDirectoryFullName}/*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --list-of-files '{listOfFilesFullName}' --block-blob-tier={tier} --overwrite={overwrite}";
+                arguments = $@"copy ""{localDirectoryFullName}/*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
             else
