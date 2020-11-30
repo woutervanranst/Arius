@@ -76,6 +76,10 @@ jobs:
 
 
 
+# # For SSH / debug        
+#     - name: Setup tmate session
+#       uses: mxschmitt/action-tmate@v3
+
 
     - name: Build image
       run: |
@@ -109,9 +113,3 @@ jobs:
 
         docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION
-
-
-
-# For SSH / debug        
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
