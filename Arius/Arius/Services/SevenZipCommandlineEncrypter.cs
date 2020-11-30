@@ -74,7 +74,7 @@ namespace Arius.Services
 
             string arguments;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $"a \"{targetFile.FullName}\" -p{_passphrase} -mhe {compressionLevel} -ms -mmt \"{fileToEncrypt.FullName}\"";
+                arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
             else
