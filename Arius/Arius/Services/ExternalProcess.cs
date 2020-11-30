@@ -147,7 +147,7 @@ namespace Arius.Services
                 process.WaitForExit();
 
                 if (process.ExitCode != 0)
-                    throw new ApplicationException($"Error in ExternalProcess: {(string.IsNullOrEmpty(errorMsg) ? output : errorMsg)}");
+                    throw new ApplicationException($"Error in process execution { _executableFullName} {arguments}: {(string.IsNullOrEmpty(errorMsg) ? output : errorMsg)}");
 
                 return output;
 

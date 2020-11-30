@@ -22,7 +22,9 @@ on:
         # TODO ON BRANCH MERGE
 
 jobs:
-  Build:
+  job1:
+    name: Execute Unit Tests
+    
     defaults:
       run:
         working-directory: ./Arius
@@ -39,10 +41,10 @@ jobs:
 
       - name: Setup Prereqs
         run: |
-          apt-get update && apt-get install -y \
-          wget \
-          tar \
-          p7zip-full
+          sudo apt-get update && apt-get install -y \
+            wget \
+            tar \
+            p7zip-full
           wget https://aka.ms/downloadazcopy-v10-linux
           tar -xvf downloadazcopy-v10-linux
           sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
