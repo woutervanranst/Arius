@@ -37,8 +37,18 @@ jobs:
         with:
           dotnet-version: 5.0.x
 
+      - name: Setup Prereqs
+        run: |
+          apt-get update && apt-get install -y \
+          wget \
+          tar \
+          p7zip-full
+          wget https://aka.ms/downloadazcopy-v10-linux
+          tar -xvf downloadazcopy-v10-linux
+          cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+
       - name: Test
-        run: dotnet test -l "console;verbosity=detailed" -v normal
+        run: dotnet test -l "console;verbosity=detailed" # -v normal
         env:
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
