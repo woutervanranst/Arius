@@ -24,7 +24,7 @@ on:
 jobs:
   job1:
     name: Execute Unit Tests
-    
+
     defaults:
       run:
         working-directory: ./Arius
@@ -33,11 +33,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      
-      - name: Setup .NET Core
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: 5.0.x
 
       - name: Setup Prereqs
         run: |
@@ -48,6 +43,13 @@ jobs:
           wget https://aka.ms/downloadazcopy-v10-linux
           tar -xvf downloadazcopy-v10-linux
           sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+      
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+
 
       - name: Test
         run: dotnet test -l "console;verbosity=detailed" # -v normal
