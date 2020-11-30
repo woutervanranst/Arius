@@ -45,7 +45,7 @@ jobs:
           p7zip-full
           wget https://aka.ms/downloadazcopy-v10-linux
           tar -xvf downloadazcopy-v10-linux
-          cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+          sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 
       - name: Test
         run: dotnet test -l "console;verbosity=detailed" # -v normal
