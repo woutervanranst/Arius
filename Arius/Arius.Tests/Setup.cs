@@ -75,7 +75,7 @@ namespace Arius.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            //rootDirectoryInfo.Delete(true);
+            rootDirectoryInfo.Delete(true);
             container.Delete();
         }
 
