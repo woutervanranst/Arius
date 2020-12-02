@@ -129,8 +129,8 @@ namespace Arius.Tests
             var secondFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo, $"Copy of {firstFile.Name}");
 
                 // Modify datetime slightly
-            secondFile.CreationTimeUtc += TimeSpan.FromSeconds(10);
-            secondFile.LastWriteTimeUtc += TimeSpan.FromSeconds(10);
+            secondFile.CreationTimeUtc += TimeSpan.FromSeconds(-10);
+            secondFile.LastWriteTimeUtc += TimeSpan.FromSeconds(-10);
 
 
             //Execute Archive
