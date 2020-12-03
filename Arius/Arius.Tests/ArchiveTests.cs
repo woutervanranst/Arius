@@ -125,7 +125,7 @@ namespace Arius.Tests
         {
             //Modify temp folder
                 //Add a duplicate of the first file
-            var firstFile = TestSetup.rootDirectoryInfo.GetFiles().First();
+            var firstFile = TestSetup.rootDirectoryInfo.GetLocalContentFiles().First();
             var secondFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo, $"Copy of {firstFile.Name}");
 
                 // Modify datetime slightly
