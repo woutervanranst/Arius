@@ -228,12 +228,11 @@ namespace Arius.Tests
             Assert.AreEqual(1, lmfr.GetAll().Count());
             Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
 
-                //Get the manifest
-            //var manifest = GetManifest(lrr, lmfr, ms, localContentFileFileInfo);
-            var k = GetPointerFile(services, pointerFileInfo);
-            var all = GetManifestEntries(services, k, PointerFileEntryFilter.All);
-            var lastExisting = GetManifestEntries(services, k, PointerFileEntryFilter.LastExisting);
-            var lastWithDeleted = GetManifestEntries(services, k, PointerFileEntryFilter.LastWithDeleted);
+                //Get the manifest entries
+            var pf = GetPointerFile(services, pointerFileInfo);
+            var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
+            var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
+            var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
 
             Assert.AreEqual(3 + 2, all.Count());
             Assert.AreEqual(3, lastExisting.Count());
@@ -249,47 +248,59 @@ namespace Arius.Tests
             Assert.AreEqual(false, movedEntry.IsDeleted);
         }
 
-        //        [Test, Order(50)]
-        //        public void RenameLocalContentFileWithoutPointer()
-        //        {
-        //            var file = root.GetNonAriusFiles().First();
-        //            var originalFileFullName = file.FullName;
-        //            TestSetup.MoveFile(file, $"Moving of {file.Name}");
-        //            var pointer = new FileInfo(originalFileFullName + ".arius");
-        //            //TestSetup.MoveFile(pointer, $"Moving of {pointer.Name}"); <---- DIT DOEN WE HIER NIET vs de vorige
+        [Test, Order(50)]
+        public void RenameLocalContentFileWithoutPointer()
+        {
+            //Modify temp folder
+                //Rename a file
+            var localContentFileFileInfo = TestSetup.rootDirectoryInfo.GetLocalContentFiles().First();
+            var pointerFileInfo = localContentFileFileInfo.GetPointerFileInfo(); // new FileInfo(originalFileFullName + ".pointer.arius");
+            var originalPointerFileInfoFullName = pointerFileInfo.FullName;
 
-        //            //Run archive again
-        //            ArchiveCommand(false, AccessTier.Cool);
+            TestSetup.MoveFile(localContentFileFileInfo, $"Moving of {localContentFileFileInfo.Name}");
+            //TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); <-- Dit doen we hier NIET vs de vorige
 
-        //            //One manifest and one binary should still be there
-        //            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
-        //            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
 
-        //            //Get the manifest entries
-        //            var manifest = GetManifest(AriusPointerFile.FromFile(root, pointer));
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
-        //            Assert.AreEqual(5 + 1, manifest.AriusPointerFileEntries.Count());
-        //            Assert.AreEqual(4, manifest.GetLastExistingEntriesPerRelativeName().Count());
 
-        //            var relativeNameOfOriginalFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalFileFullName);
-        //            var relativeNameOfMovedFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, file.FullName);
+            //Check outcome
+            var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
+            var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
 
-        //            var originalEntry =  manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfOriginalFile);
-        //            var movedEntry = manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfMovedFile);
+                //One manifest and one binary should still be there
+            Assert.AreEqual(1, lmfr.GetAll().Count());
+            Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
 
-        //            Assert.AreEqual(false, originalEntry.IsDeleted);
-        //            Assert.AreEqual(false, movedEntry.IsDeleted);
-        //        }
+                //Get the manifest entries
+            var pf = GetPointerFile(services, pointerFileInfo);
+            var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
+            var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
+            var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
 
-        //        [Test, Order(55)]
-        //        public void TestKeepLocal()
-        //        {
-        //            Assert.IsTrue(root.GetNonAriusFiles().Any());
+            Assert.AreEqual(5 + 1, all.Count());
+            Assert.AreEqual(4, lastExisting.Count());
 
-        //            ArchiveCommand(false, AccessTier.Cool, false);
+            var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
+            var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
 
-        //            Assert.IsTrue(!root.GetNonAriusFiles().Any());
-        //        }
+            var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
+            var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+
+            Assert.AreEqual(false, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
+        }
+
+        [Test, Order(55)]
+        public void TestKeepLocal()
+        {
+            Assert.IsTrue(TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
+
+            ArchiveCommand(false, AccessTier.Cool, false);
+
+            Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
+        }
 
         //        [Test, Order(60)]
         //        public void RenameJustPointer()
@@ -382,16 +393,9 @@ namespace Arius.Tests
         private IPointerFile GetPointerFileOfLocalContentFile(ServiceProvider services, FileInfo localContentFileInfo)
         {
             var lrr = services.GetRequiredService<LocalRootRepository>();
-            var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf =>
-            {
-                Console.WriteLine(pf.LocalContentFileInfo.FullName);
-                Console.WriteLine(localContentFileInfo.FullName);
-
-                return pf.LocalContentFileInfo.FullName == localContentFileInfo.FullName;
-            });
+            var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf => pf.LocalContentFileInfo.FullName == localContentFileInfo.FullName);
 
             return pointerFile;
-
         }
         private IPointerFile GetPointerFile(ServiceProvider services, FileInfo pointerFileFileInfo)
         {
