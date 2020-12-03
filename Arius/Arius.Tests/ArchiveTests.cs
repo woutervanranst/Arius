@@ -382,7 +382,13 @@ namespace Arius.Tests
         private IPointerFile GetPointerFileOfLocalContentFile(ServiceProvider services, FileInfo localContentFileInfo)
         {
             var lrr = services.GetRequiredService<LocalRootRepository>();
-            var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf => pf.LocalContentFileInfo.FullName == localContentFileInfo.FullName);
+            var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf =>
+            {
+                Console.WriteLine(pf.LocalContentFileInfo.FullName);
+                Console.WriteLine(localContentFileInfo.FullName);
+
+                return pf.LocalContentFileInfo.FullName == localContentFileInfo.FullName;
+            });
 
             return pointerFile;
 
