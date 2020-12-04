@@ -38,27 +38,31 @@ The name derives from the Greek for 'immortal'.
 
 ### Archive to blob storage
 
+General usage:
+
 ```
 arius archive
    --accountname <accountname>
    --accountkey <accountkey>
    --passphrase <passphrase>
-  (--container <containername>)
-  (--keep-local)
-  (--tier=(hot/cool/archive))
-  (--min-size=<minsizeinMB>)
-  (--simulate)
-  <path>
+  [--container <containername>]
+  [--keep-local]
+  [--tier=(hot/cool/archive)]
+  [--min-size=<minsizeinMB>]
+  [--simulate]
+  path
 ```
-Synchronize the `<path>` to the the remote archive.
 
-``--container`` the container name to use. Default: ``arius``
-
-``--keep-local`` do not delete the local files after archiving. Default: delete after archiving
-
-``--tier`` specify the blob tier. Default: archive
-
-``--min-size`` the minimum size as of which to archive files. Default: 1 MB. WARNING if >0 then a full restore will miss the smaller files
+| Flag | Description | Notes |
+| - | - | - |
+| &#x2011;&#x2011;accountname, &#x2011;n | Storage Account Name
+| &#x2011;&#x2011;accountkey, &#x2011;k | [Storage Account Key](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal) | Can be omitted if an environment variable `ARIUS_ACCOUNT_KEY` is defined
+| &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted
+| &#x2011;&#x2011;container, &#x2011;c | Blob container to use | OPTIONAL. Default: 'arius'.
+| &#x2011;&#x2011;keep-local | Do not delete the local files after archiving | OPTIONAL. Default: Local files are deleted after archiving.<br>NOTE: Setting this flag may result in long N+1 archive runs as all files need to be re-hashed.
+| &#x2011;&#x2011;tier | Blob tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
+| &#x2011;&#x2011;min&#x2011;size | Minimum size of files to archive (in MB) | OPTIONAL. Default: 0.<br>NOTE: when set to >0, a full restore will miss the smaller files
+| path | The path to the folder to archive
 
 ### Restore from blob storage
 
@@ -67,11 +71,11 @@ arius restore
    --accountname <accountname>
    --accountkey <accountkey>
    --passphrase <passphrase>
-  (--container <containername>)
-  (--synchronize)
-  (--download)
-  (--keep-pointers)
-  <path>
+  [--container <containername>]
+  [--synchronize]
+  [--download]
+  [--keep-pointers]
+  [path]
 ```
 
 If `<path>` is a Directory:
@@ -163,7 +167,7 @@ docker run -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% -v c:/Users/Wouter/Documents
 
 ```
 docker container prune -f
-docker image prune -f
+docker image prune --force --all
 ```
 
 ## Advanced
