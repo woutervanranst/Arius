@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius", "Arius\Arius.csproj", "{C6FD20ED-CD85-4B64-A1C9-59B3D17FEA42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Tests", "Arius.Tests\Arius.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Tests", "Arius.Tests\Arius.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

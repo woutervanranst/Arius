@@ -5,13 +5,38 @@
     <TargetFramework>net5.0</TargetFramework>
     <AssemblyName>arius</AssemblyName>
     <Nullable>warnings</Nullable>
+    <UserSecretsId>ef1d6b98-049d-4a6d-91bd-7096aedf4ebf</UserSecretsId>
+
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <!--<ContainerDevelopmentMode>Regular</ContainerDevelopmentMode>-->
+
+    <!--See https://stackoverflow.com/questions/52370812/passing-environment-variables-to-docker-container-when-running-in-visual-studio -->
+    <DockerfileRunEnvironmentFiles>docker_env.prebuild.txt</DockerfileRunEnvironmentFiles>
+    <DockerfileRunArguments>-v "c:\Users\Wouter\Documents\Test:/archive"</DockerfileRunArguments>
+
+    <!--<DockerDebuggeeArguments>-a -v</DockerDebuggeeArguments>-->
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.7.0" />
-    <PackageReference Include="SevenZipSharp.Interop" Version="19.0.0" />
-    <PackageReference Include="Squid-Box.SevenZipSharp" Version="1.3.283" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="5.0.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.9" />
+    <PackageReference Include="Serilog.Extensions.Logging.File" Version="2.0.0" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20371.2" />
+    <PackageReference Include="System.Linq" Version="4.3.0" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+    <Exec Command="echo ARIUS_ACCOUNT_KEY=%25ARIUS_ACCOUNT_KEY%25 &gt; docker_env.prebuild.txt" />
+  </Target>
 
 </Project>

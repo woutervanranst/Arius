@@ -20,7 +20,10 @@ namespace Arius.Tests
         [OneTimeSetUp]
         public void OneTimeSetup()
         {
-            sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
+            // Executes once before the test run. (Optional)
+
+            //sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
+            sourceFolder = PopulateSourceDirectory();
 
             // Create temp folder
             var tempFolderName = RandomString(8).ToLower();
@@ -28,13 +31,45 @@ namespace Arius.Tests
             rootDirectoryInfo.Create();
 
 
-            // Create temmp container
-            accountName = "aurius";
-            accountKey = Environment.GetEnvironmentVariable("ACCOUNT_KEY");
+            // Create temp container
+            accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
+            if (string.IsNullOrEmpty(accountName))
+                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_NAME not specified");
+
+            accountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
+            if (string.IsNullOrEmpty(accountKey))
+                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
             var bsc = new BlobServiceClient(connectionString);
             container = bsc.CreateBlobContainer(tempFolderName);
+        }
+
+        private DirectoryInfo PopulateSourceDirectory()
+        {
+            var sourceDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), ".ariustestsourcedir"));
+            if (sourceDirectory.Exists) sourceDirectory.Delete(true);
+            sourceDirectory.Create();
+
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileA.1"), 0.5);
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileB.1"), 2);
+            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "file with space.txt"), 5);
+
+            return sourceDirectory;
+        }
+
+        private void CreateRandomFile(string fileFullName, double sizeInMB)
+        {
+            byte[] data = new byte[8192];
+            var rng = new Random();
+            using (FileStream stream = File.OpenWrite(fileFullName))
+            {
+                for (int i = 0; i < sizeInMB * 128; i++)
+                {
+                    rng.NextBytes(data);
+                    stream.Write(data, 0, data.Length);
+                }
+            }
         }
 
         [OneTimeTearDown]
@@ -42,29 +77,6 @@ namespace Arius.Tests
         {
             rootDirectoryInfo.Delete(true);
             container.Delete();
-        }
-
-        public static void CreateFolderAndContainer()
-        {
-            // Executes once before the test run. (Optional)
-
-            
-
-
-
-            //Copy files to temp folder
-            //CopyFolder(sourceFolder, tempFolder);
-
-            // Create temp container
-
-
-
-        }
-
-
-        public static void DeleteFolderAndContainer()
-        {
-
         }
 
 
@@ -100,7 +112,7 @@ namespace Arius.Tests
             Directory.CreateDirectory(targetDir);
 
             foreach (var file in Directory.GetFiles(sourceDir))
-                File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+                System.IO.File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
 
             foreach (var directory in Directory.GetDirectories(sourceDir))
                 CopyFolder(directory, Path.Combine(targetDir, Path.GetFileName(directory)));

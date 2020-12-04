@@ -1,0 +1,63 @@
+name: Arius.Tests
+
+on:
+  push:
+    paths: 
+      - 'Arius/**'
+      - '.github/**'
+    # branches: [ master ]
+  pull_request:
+    paths:       
+      - 'Arius/**'
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      #logLevel:
+      #  description: 'Log level'     
+      #  required: true
+      #  default: 'warning'
+      tags:
+        description: 'Test scenario tags'  
+        
+        # TODO ON BRANCH MERGE
+
+jobs:
+  job1:
+    name: Execute Unit Tests
+
+    defaults:
+      run:
+        working-directory: ./Arius
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Setup Prereqs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            wget \
+            tar \
+            p7zip-full
+          wget https://aka.ms/downloadazcopy-v10-linux
+          tar -xvf downloadazcopy-v10-linux
+          sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+      
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: 5.0.x
+
+      - name: Test
+        run: dotnet test -l "console;verbosity=detailed" # -v normal
+        # continue-on-error: true
+        env:
+          ARIUS_ACCOUNT_NAME: ariusci
+          ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+          
+      #   # For SSH / debug        
+      # - name: Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
