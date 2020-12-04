@@ -10,17 +10,21 @@ The name derives from the Greek for 'immortal'.
   - [Key design objectives](#key-design-objectives)
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
+      - [CLI](#cli)
+      - [Docker](#docker)
+      - [Arguments](#arguments)
     - [Restore from blob storage](#restore-from-blob-storage)
   - [Install](#install)
     - [Linux](#linux)
     - [Windows](#windows)
-    - [Docker](#docker)
-      - [Archive](#archive)
+    - [Docker](#docker-1)
       - [Example Build Command](#example-build-command)
       - [Example Run Command](#example-run-command)
       - [Cleanup](#cleanup)
   - [Advanced](#advanced)
     - [Restore with common tools](#restore-with-common-tools)
+    - [Developer reference](#developer-reference)
+      - [Docker](#docker-2)
 
 ## Key design objectives
 
@@ -38,31 +42,54 @@ The name derives from the Greek for 'immortal'.
 
 ### Archive to blob storage
 
+#### CLI
+
 General usage:
 
 ```
 arius archive
    --accountname <accountname>
-   --accountkey <accountkey>
+  [--accountkey <accountkey>]
    --passphrase <passphrase>
   [--container <containername>]
   [--keep-local]
   [--tier=(hot/cool/archive)]
   [--min-size=<minsizeinMB>]
   [--simulate]
-  path
+  <path>
 ```
 
-| Flag | Description | Notes |
+#### Docker
+
+```
+docker run
+  -v <path>:/archive
+ [-e ARIUS_ACCOUNT_KEY=<accountkey>]
+  ghcr.io/woutervanranst/arius:latest
+
+  archive
+   --accountname <accountname>
+  [--accountkey <accountkey>]
+   --passphrase <passphrase>
+  [--container <containername>]
+  [--keep-local]
+  [--tier=(hot/cool/archive)]
+  [--min-size=<minsizeinMB>]
+  [--simulate]
+```
+
+#### Arguments
+
+| Argument | Description | Notes |
 | - | - | - |
 | &#x2011;&#x2011;accountname, &#x2011;n | Storage Account Name
-| &#x2011;&#x2011;accountkey, &#x2011;k | [Storage Account Key](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal) | Can be omitted if an environment variable `ARIUS_ACCOUNT_KEY` is defined
+| &#x2011;&#x2011;accountkey, &#x2011;k | [Storage Account Key](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal) | Can be set through:<ul><li>Argument<li>Environment variable `ARIUS_ACCOUNT_KEY`<li>Docker environment variable `ARIUS_ACCOUNT_KEY`</ul>
 | &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted
 | &#x2011;&#x2011;container, &#x2011;c | Blob container to use | OPTIONAL. Default: 'arius'.
 | &#x2011;&#x2011;keep-local | Do not delete the local files after archiving | OPTIONAL. Default: Local files are deleted after archiving.<br>NOTE: Setting this flag may result in long N+1 archive runs as all files need to be re-hashed.
 | &#x2011;&#x2011;tier | Blob tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
 | &#x2011;&#x2011;min&#x2011;size | Minimum size of files to archive (in MB) | OPTIONAL. Default: 0.<br>NOTE: when set to >0, a full restore will miss the smaller files
-| path | The path to the folder to archive
+| PATH | The path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
 
 ### Restore from blob storage
 
@@ -133,19 +160,6 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master
 
 ### Docker
 
-#### Archive
-
-| ``arius archive``  | Visual Studio Debug | ``Docker Run`` |
-|---|---|---|
-| ``--accountname`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``--accountkey`` | <ul><li>argument in ``commandLineArgs`` in ``launchSettings.json`` (but it would be in source control)</li><li>Environment Variable (``%ARIUS_ACCOUNT_KEY%``) &rarr; <br> Pre-build event in Arius.csproj &rarr; <br> ``<DockerfileRunEnvironmentFiles>``</li> | <ul><li>argument</li>  <li>environment argument, eg. <br> ``-e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY%``</li></ul> |
-| ``--passphrase`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``(--container)`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``(--keep-local)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``(--tier)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | argument |
-| ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |  argument |
-| ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  | volume argument, eg. <br> ``-v c:/Users/Wouter/Documents/Test:/archive`` |
 
 #### Example Build Command
 
@@ -175,3 +189,19 @@ docker image prune --force --all
 ### Restore with common tools
 
 Arius relies on the 7zip command line and Azure blob storage cli.
+
+### Developer reference
+
+#### Docker
+
+| Argument | Visual Studio Debug |
+| - | - |
+| ``--accountname`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``--accountkey`` | <ul><li>argument in ``commandLineArgs`` in ``launchSettings.json`` (but it would be in source control)</li><li>Environment Variable (``%ARIUS_ACCOUNT_KEY%``) &rarr; <br> Pre-build event in Arius.csproj &rarr; <br> ``<DockerfileRunEnvironmentFiles>``</li>
+| ``--passphrase`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``(--container)`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``(--keep-local)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``(--tier)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | 
+| ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |
+| ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  |
