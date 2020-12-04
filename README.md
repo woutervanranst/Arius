@@ -11,7 +11,6 @@ The name derives from the Greek for 'immortal'.
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
     - [Restore from blob storage](#restore-from-blob-storage)
-    - [Restore with common tools](#restore-with-common-tools)
   - [Install](#install)
     - [Linux](#linux)
     - [Windows](#windows)
@@ -20,6 +19,8 @@ The name derives from the Greek for 'immortal'.
       - [Example Build Command](#example-build-command)
       - [Example Run Command](#example-run-command)
       - [Cleanup](#cleanup)
+  - [Advanced](#advanced)
+    - [Restore with common tools](#restore-with-common-tools)
 
 ## Key design objectives
 
@@ -84,10 +85,6 @@ Synchronize the remote archive structure to the `<path>`:
 When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
 
 If ``<path>`` is an `.arius` file `--download` flag is specified: the file is restored.
-
-### Restore with common tools
-
-Arius relies on the 7zip command line and Azure blob storage cli.
 
 ## Install
 
@@ -168,3 +165,9 @@ docker run -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% -v c:/Users/Wouter/Documents
 docker container prune -f
 docker image prune -f
 ```
+
+## Advanced
+
+### Restore with common tools
+
+Arius relies on the 7zip command line and Azure blob storage cli.
