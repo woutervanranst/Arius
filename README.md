@@ -28,23 +28,21 @@ The name derives from the Greek for 'immortal'.
 
 ## Key design objectives
 
-* Local file structure (files/folders) by creating 'sparse' placeholders
-* Files, folders & filenames are encrypted clientside
-* The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
-* Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
-* Never delete files on remote
-* Point in time restore (FUTURE)
-* No central store to avoid a single point of failure
-* File level deduplication, optionally variable block size (rolling hash Rabin-Karp) deduplication
-* Leverage common tools, to allow restores even when this project would become deprecated
+- Local file structure (files/folders) by creating 'sparse' placeholders
+- Files, folders & filenames are encrypted clientside
+- The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
+- Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
+- Never delete files on remote
+- Point in time restore (FUTURE)
+- No central store to avoid a single point of failure
+- File level deduplication, optionally variable block size (rolling hash Rabin-Karp) deduplication
+- Leverage common tools, to allow restores even when this project would become deprecated
 
 ## Usage
 
 ### Archive to blob storage
 
 #### CLI
-
-General usage:
 
 ```
 arius archive
@@ -53,7 +51,7 @@ arius archive
    --passphrase <passphrase>
   [--container <containername>]
   [--keep-local]
-  [--tier=(hot/cool/archive)]
+  [--tier=<hot/cool/archive>]
   [--min-size=<minsizeinMB>]
   [--simulate]
   <path>
@@ -64,6 +62,7 @@ arius archive
 ```
 docker run
   -v <path>:/archive
+ [-v <logpath>:/log]
  [-e ARIUS_ACCOUNT_KEY=<accountkey>]
   ghcr.io/woutervanranst/arius:latest
 
@@ -73,7 +72,7 @@ docker run
    --passphrase <passphrase>
   [--container <containername>]
   [--keep-local]
-  [--tier=(hot/cool/archive)]
+  [--tier=<hot/cool/archive>]
   [--min-size=<minsizeinMB>]
   [--simulate]
 ```
@@ -89,7 +88,8 @@ docker run
 | &#x2011;&#x2011;keep-local | Do not delete the local files after archiving | OPTIONAL. Default: Local files are deleted after archiving.<br>NOTE: Setting this flag may result in long N+1 archive runs as all files need to be re-hashed.
 | &#x2011;&#x2011;tier | Blob tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
 | &#x2011;&#x2011;min&#x2011;size | Minimum size of files to archive (in MB) | OPTIONAL. Default: 0.<br>NOTE: when set to >0, a full restore will miss the smaller files
-| PATH | The path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
+| path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
+| logpath | Path to the folder to store the logs | NOTE: Only for Docker.
 
 ### Restore from blob storage
 
@@ -102,16 +102,16 @@ arius restore
   [--synchronize]
   [--download]
   [--keep-pointers]
-  [path]
+  path
 ```
 
 If `<path>` is a Directory:
 
 Synchronize the remote archive structure to the `<path>`:
 
-* This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
-* Pointers that exist in the archive but not remote are created
-* Pointers that exist locally but not in the archive are deleted
+- This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
+- Pointers that exist in the archive but not remote are created
+- Pointers that exist locally but not in the archive are deleted
 
 When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
 
@@ -123,17 +123,15 @@ If ``<path>`` is an `.arius` file `--download` flag is specified: the file is re
 
 Prerequisites:
 
-* 7zip: `sudo apt-get install p7zip-full`
+- 7zip: `sudo apt-get install p7zip-full`
 <!-- https://www.thomasmaurer.ch/2019/05/how-to-install-azcopy-for-azure-storage/ -->
-* azcopy 
+- azcopy
+
 ```
 wget https://aka.ms/downloadazcopy-v10-linux
 tar -xvf downloadazcopy-v10-linux
 sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 ```
-
-* 
-
 Install the latest linux Dapr CLI to `/usr/local/bin`
 
 ```bash
@@ -159,7 +157,6 @@ powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master
 ```
 
 ### Docker
-
 
 #### Example Build Command
 
@@ -202,6 +199,6 @@ Arius relies on the 7zip command line and Azure blob storage cli.
 | ``(--container)`` | argument  in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``(--keep-local)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``(--tier)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
-| ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` | 
+| ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |
-| ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"``  |
+| ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"`
