@@ -1,21 +1,13 @@
-﻿using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.CommandLine;
-using System.CommandLine.Invocation;
+﻿using System.CommandLine;
 using System.CommandLine.Parsing;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
 {
-    class Program
+    internal class Program
     {
-        static int Main(string[] args)
+        private static int Main(string[] args)
         {
             //var serviceProvider = new ServiceCollection()
             //    //.AddLogging()

@@ -12,7 +12,7 @@ on:
       tags:
         description: 'Test scenario tags' 
 
-name: Upload Release Asset
+name: On Tag Create Release with Artifact 
 
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
 # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages

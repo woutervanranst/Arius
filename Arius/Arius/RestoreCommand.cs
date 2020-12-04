@@ -5,11 +5,10 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace Arius
 {
-    class RestoreCommand
+    internal class RestoreCommand
     {
         /*
          * arius restore
@@ -57,38 +56,28 @@ namespace Arius
                 "Path to archive. Default: current directory");
             restoreCommand.AddArgument(pathArgument);
 
-            //root.Handler = CommandHandler.Create<GreeterOptions, IHost>(Run);
-
             restoreCommand.Handler = CommandHandler.Create<string, string, string, string, bool, string>((accountName, accountKey, passphrase, container, download, path) =>
             {
-                var bu = new BlobUtils(accountName, accountKey, container);
-                var szu = new SevenZipUtils();
+                var archive = new AriusRemoteArchive(accountName, accountKey, container);
 
-                var rc = new RestoreCommand(szu, bu);
-                return rc.Execute(passphrase, download, path);
+                return Execute(archive, passphrase, download, path);
             });
 
             return restoreCommand;
         }
 
-        public RestoreCommand(SevenZipUtils szu, BlobUtils bu)
-        {
-            _szu = szu;
-            _bu = bu;
-        }
-        private readonly SevenZipUtils _szu;
-        private readonly BlobUtils _bu;
-
-        public int Execute(string passphrase, bool download, string path)
+        public static int Execute(AriusRemoteArchive archive, string passphrase, bool download, string path)
         {
             if (Directory.Exists(path))
             {
-                var di = new DirectoryInfo(path);
-                Synchronize(di, passphrase);
+                // Synchronize a folder
+                var root = new AriusRootDirectory(path);
+
+                Synchronize(archive, root, passphrase);
 
                 if (download)
-                    Download(di, passphrase);
-            } 
+                    Download(archive, root, passphrase);
+            }
             else if (File.Exists(path) && path.EndsWith(".arius"))
             {
                 // Restore one file
@@ -101,48 +90,56 @@ namespace Arius
             return 0;
         }
 
-        private int Synchronize(DirectoryInfo root, string passphrase)
+        
+
+        private static int Synchronize(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
         {
-            var cbn = _bu.GetContentBlobNames().ToArray();
+            var cbn = archive.GetRemoteEncryptedAriusManifests().ToImmutableArray();
 
             Console.Write($"Getting {cbn.Length} manifests... ");
-            var cb = cbn.AsParallel().Select(contentBlobName => Manifest.GetManifest(_bu, _szu, contentBlobName, passphrase)).ToImmutableArray();
 
-            var remoteItems = cb
+            var pointerEntriesperManifest = cbn
                 .AsParallel()
-                .Select(m => m.GetLocalAriusFiles(root))
-                .SelectMany(laf => laf)
-                .ToImmutableArray();
-            Console.WriteLine($"Done. {remoteItems.Count()} files in latest version of remote");
+                .ToImmutableDictionary(
+                    ream => ream,
+                    ream => ream.GetAriusPointerFileEntries(passphrase).ToList());
 
-            
+            Console.WriteLine($"Done. {pointerEntriesperManifest.Values.Count()} files in latest version of remote");
+
+
             Console.WriteLine($"Synchronizing state of local folder with remote... ");
-            
+
             // 1. FILES THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
-            var ariusFilesToCreate = remoteItems.Where(laf => !laf.Exists);
-            Console.WriteLine($"{ariusFilesToCreate.Count()} file(s) present in latest version of remote but not locally... Creating...");
-            ariusFilesToCreate.AsParallel().ForAll(laf =>
-            {
-                laf.Create();
-                Console.WriteLine($"File '{laf.RelativeAriusFileName}' created");
-            });
+            var createdPointers = pointerEntriesperManifest
+                .AsParallel()
+                .WithDegreeOfParallelism(1)
+                .SelectMany(p => p.Value
+                        .Where(afpe => !root.Exists(afpe))
+                        .Select(afpe =>
+                        {
+                            var apf = AriusPointerFile.Create(root, afpe, p.Key);
+                            Console.WriteLine($"File '{apf.RelativeLocalContentFileName}' created");
+
+                            return apf;
+                        }))
+                .ToImmutableArray();
 
             Console.WriteLine();
 
             // 2. FILES THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
-            var ariusFilesToDelete = root.GetFiles("*.arius", SearchOption.AllDirectories)
-                .Select(localFileInfo => localFileInfo.FullName)
-                .Except(remoteItems.Select(laf => laf.AriusFileName))
-                .ToImmutableArray();
-            Console.WriteLine($"{ariusFilesToDelete.Count()} file(s) not present in latest version of remote... Deleting...");
-            ariusFilesToDelete.AsParallel().ForAll(filename =>
-            {
-                File.Delete(filename);
+            var relativeNamesThatShouldExist = pointerEntriesperManifest.Values.SelectMany(x => x).Select(x => x.RelativeName); //root.GetFullName(x));
 
-                //TODO Delete empty directories / recursively
+            root.GetAriusPointerFiles()
+                .Where(apf => !relativeNamesThatShouldExist.Contains(apf.RelativeLocalContentFileName))
+                .AsParallel()
+                .ForAll(apfe =>
+                {
+                    File.Delete(apfe.FullName);
 
-                Console.WriteLine($"File '{Path.GetRelativePath(root.FullName, filename)}' deleted");
-            });
+                    Console.WriteLine($"Pointer for '{apfe.RelativeLocalContentFileName}' deleted");
+                });
+
+            DirectoryExtensions.DeleteEmptySubdirectories(root.FullName);
 
 
 
@@ -160,54 +157,109 @@ namespace Arius
              *      files met duplicates enz upload download
              *      al 1 file lokaal > kopieert de rest
              *      restore > normal binary file remains untouched
+             * directory more than 2 deep without other files
+             *  download > local files exist s> don't download all
              * */
 
 
             return 0;
         }
 
-        private int Download(DirectoryInfo root, string passphrase)
+        private static int Download(AriusRemoteArchive archive, AriusRootDirectory root, string passphrase)
         {
-            var blobsToDownload = root.GetFiles("*.arius", SearchOption.AllDirectories)
+            var pointerFilesPerRemoteEncryptedManifest = root.GetAriusPointerFiles()
                 .AsParallel()
-                .WithDegreeOfParallelism(1)
-                .Select(localFileInfo => new LocalAriusFileWithoutManifest(root, Path.GetRelativePath(root.FullName, localFileInfo.FullName)))
-                .GroupBy(lafwm => lafwm.ContentBlobName, lafwm => lafwm).Select(g => g.ToImmutableArray());
+                .Where(apf => !File.Exists(apf.LocalContentFileFullName)) //TODO test dit
+                .GroupBy(apf => apf.EncryptedManifestName)
+                .ToImmutableDictionary(
+                    apf => archive.GetRemoteEncryptedAriusManifestByBlobItemName(apf.Key),
+                    apf => apf.ToList());
 
-            blobsToDownload
+            var chunkNamesToDownload = pointerFilesPerRemoteEncryptedManifest.Keys
                 .AsParallel()
-                .WithDegreeOfParallelism(1)
-                .ForAll(blobGroup =>
+                .SelectMany(ream => ream.GetEncryptedChunkNames(passphrase))
+                .Distinct()
+                .ToImmutableArray();
+
+            var downloadDirectory = new DirectoryInfo(Path.Combine(root.FullName, ".ariusdownload"));
+            if (downloadDirectory.Exists)
+                downloadDirectory.Delete(true);
+            downloadDirectory.Create();
+            archive.Download(chunkNamesToDownload, downloadDirectory);
+
+            var unencryptedChunks = downloadDirectory.GetFiles()
+                .AsParallel()
+                .Select(fi =>
                 {
-                    var contentFileName = blobGroup.First().ContentFileName;
+                    var szu = new SevenZipUtils();
 
-                    if (File.Exists(contentFileName))
+                    var extractedFile = fi.FullName.TrimEnd(".7z.arius");
+                    szu.DecryptFile(fi.FullName, extractedFile, passphrase);
+                    fi.Delete();
+
+                    return new FileInfo(extractedFile);
+                })
+                .ToImmutableDictionary(x => x.Name, x => x);
+
+            var pointersWithChunksPerHash = pointerFilesPerRemoteEncryptedManifest.Keys
+                .GroupBy(ream => ream.Hash)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
                     {
-                        //Already exists, check hash
-                        var hash = FileUtils.GetHash(passphrase, contentFileName);
-
-                        if (hash != blobGroup.First().Hash)
-                            //Hash differs > delete file
-                            File.Delete(contentFileName);
-                    }
-
-                    if (!File.Exists(contentFileName))
-                    {
-                        //Download
-                        var tempContentFileName = blobGroup.First().ContentBlob.Download(_bu, _szu, passphrase);
-                        File.Move(tempContentFileName, contentFileName);
-                    }
-
-                    blobGroup.Skip(1).AsParallel().ForAll(lafwm =>
-                    {
-                        // Copy & overwrite
-                        File.Copy(contentFileName, lafwm.ContentFileName, true);
-
-                        //TODO https://docs.microsoft.com/en-us/dotnet/api/system.io.file.setlastwritetime?view=netcore-3.1
+                        PointerFileEntry = g.SelectMany(ream => ream.GetAriusPointerFileEntries(passphrase)).ToImmutableArray(),
+                        UnencryptedChunks = g.SelectMany(ream => ream.GetEncryptedChunkNames(passphrase).Select(ecn => unencryptedChunks[ecn.TrimEnd(".7z.arius")])).ToImmutableArray()
                     });
+
+            pointersWithChunksPerHash
+                .AsParallel()
+                .ForAll(p =>
+                {
+                    Restore(root, p.Value.PointerFileEntry, p.Value.UnencryptedChunks);
                 });
 
+            downloadDirectory.Delete();
+            root.GetAriusPointerFiles().AsParallel().ForAll(apf => apf.Delete());
+
             return 0;
+        }
+
+        public static void Restore(AriusRootDirectory root, ImmutableArray<RemoteEncryptedAriusManifest.AriusManifest.AriusPointerFileEntry> apfes, ImmutableArray<FileInfo> chunks)
+        {
+            if (chunks.Length == 1)
+            {
+                //No dedup
+                var chunk = chunks.Single();
+
+                chunk.MoveTo(root.GetFullName(apfes.First()));
+
+                chunk.CreationTimeUtc = apfes.First().CreationTimeUtc!.Value;
+                chunk.LastWriteTimeUtc = apfes.First().LastWriteTimeUtc!.Value;
+
+                apfes.Skip(1)
+                    .AsParallel()
+                    .ForAll(apfe =>
+                    {
+                        var copy = chunk.CopyTo(root.GetFullName(apfe), true);
+
+                        copy.CreationTimeUtc = apfe.CreationTimeUtc!.Value;
+                        copy.LastWriteTimeUtc = apfe.LastWriteTimeUtc!.Value;
+                    });
+            }
+            else
+            {
+                //Dedup
+                throw new NotImplementedException();
+
+                //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
+                //var concaten = new ConcatenatedStream(chunkFiles);
+
+                //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+                //using var fff = File.Create(restorePath);
+                //concaten.CopyTo(fff);
+                //fff.Close();
+            }
+
         }
     }
 }
