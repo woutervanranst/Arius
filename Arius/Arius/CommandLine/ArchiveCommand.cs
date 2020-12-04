@@ -107,8 +107,9 @@ namespace Arius.CommandLine
             else
             { 
                 pathArgument = new Argument<string>("path",
-                    getDefaultValue: () => Environment.CurrentDirectory,
-                    "Path to archive. Default: current directory");
+                    //getDefaultValue: () => Environment.CurrentDirectory,
+                    //"Path to archive. Default: current directory");
+                    "Path to archive.");
                 archiveCommand.AddArgument(pathArgument);
             }
 
