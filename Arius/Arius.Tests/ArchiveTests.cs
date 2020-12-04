@@ -302,41 +302,49 @@ namespace Arius.Tests
             Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
         }
 
-        //        [Test, Order(60)]
-        //        public void RenameJustPointer()
-        //        {
-        //            var pointerFileInfo = root.GetAriusFiles().First();
-        //            var originalFileFullName = pointerFileInfo.FullName;
-        //            TestSetup.MoveFile(pointerFileInfo, $"Moving123 of {pointerFileInfo.Name}");
-        //            //var pointer = new FileInfo(originalFileFullName + ".arius");
-        //            //TestSetup.MoveFile(pointer, $"Moving of {pointer.Name}"); <---- DIT DOEN WE HIER NIET vs de vorige
+        [Test, Order(60)]
+        public void RenameJustPointer()
+        {
+            //Modify temp folder
+                //Rename a file
+            var pointerFileInfo = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
+            var originalPointerFileInfoFullName = pointerFileInfo.FullName;
 
-        //            //Run archive again
-        //            ArchiveCommand(false, AccessTier.Cool);
-
-        //            //One manifest and one binary should still be there
-        //            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusManifests().Count());
-        //            Assert.AreEqual(1, archive.GetRemoteEncryptedAriusChunks().Count());
-
-        //            //Get the manifest entries
-        //            var manifest = GetManifest(AriusPointerFile.FromFile(root, pointerFileInfo));
-
-        //            Assert.AreEqual(6 + 2, manifest.AriusPointerFileEntries.Count());
-        //            Assert.AreEqual(4 + 0, manifest.GetLastExistingEntriesPerRelativeName().Count());
-
-        //            var relativeNameOfOriginalFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalFileFullName.TrimEnd(".arius"));
-        //            var relativeNameOfMovedFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName.TrimEnd(".arius"));
-
-        //            var originalEntry = manifest.GetLastExistingEntriesPerRelativeName(true).Single(lcf => lcf.RelativeName == relativeNameOfOriginalFile);
-        //            var movedEntry = manifest.GetLastExistingEntriesPerRelativeName().Single(lcf => lcf.RelativeName == relativeNameOfMovedFile);
-
-        //            Assert.AreEqual(true, originalEntry.IsDeleted);
-        //            Assert.AreEqual(false, movedEntry.IsDeleted);
-        //        }
+            //TestSetup.MoveFile(localContentFileFileInfo, $"Moving of {localContentFileFileInfo.Name}");
+            TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); //< --Dit doen we hier NIET vs de vorige
 
 
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
-        //        private FileInfo GetAriusFileInfo(string contentFile) => new FileInfo($"{contentFile}.arius");
+
+            //Check outcome
+            var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
+            var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
+
+                //One manifest and one binary should still be there
+            Assert.AreEqual(1, lmfr.GetAll().Count());
+            Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
+
+                //Get the manifest entries
+            var pf = GetPointerFile(services, pointerFileInfo);
+            var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
+            var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
+            var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
+
+            Assert.AreEqual(6 + 2, all.Count());
+            Assert.AreEqual(4 + 0, lastExisting.Count());
+
+            var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
+            var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
+
+            var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
+            var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+
+            Assert.AreEqual(true, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
+        }
+
 
         private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
         {
