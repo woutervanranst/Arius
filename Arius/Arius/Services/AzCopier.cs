@@ -151,12 +151,12 @@ namespace Arius.Services
 
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --list-of-files '{listOfFilesFullName}' --block-blob-tier={tier} --overwrite={overwrite}";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //    arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
+            //else
+                //throw new NotImplementedException("OS Platform is not Windows or Linux");
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -190,12 +190,12 @@ namespace Arius.Services
 
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //    arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //else
+            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -223,12 +223,12 @@ namespace Arius.Services
 
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{target.FullName}'  --include-path '{string.Join(';', blobsToDownload.Select(b => b.FullName))}'";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //    arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{target.FullName}'  --include-path '{string.Join(';', blobsToDownload.Select(b => b.FullName))}'";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --include-path ""{string.Join(';', blobsToDownload.Select(b => b.FullName))}""";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //else
+            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -240,7 +240,8 @@ namespace Arius.Services
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
+            //$"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)

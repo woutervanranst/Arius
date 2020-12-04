@@ -14,7 +14,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
-    class SevenZipCommandlineEncrypter : IEncrypter
+    internal interface IEncrypterOptions : ICommandExecutorOptions
+    {
+        string Passphrase { get; }
+    }
+
+    internal class SevenZipCommandlineEncrypter : IEncrypter
     {
         public SevenZipCommandlineEncrypter(ICommandExecutorOptions options,
             ILogger<SevenZipCommandlineEncrypter> logger,
@@ -68,12 +73,12 @@ namespace Arius.Services
                 throw new NotImplementedException();
 
             string arguments;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"a '{targetFile.FullName}' -p{_passphrase} -mhe {compressionLevel} -ms -mmt '{fileToEncrypt.FullName}'";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //    arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //else
+            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
 
 
             var regex = "Everything is Ok";
@@ -98,12 +103,12 @@ namespace Arius.Services
 
             // Validate the archive
             string arguments;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"l '{fileToDecrypt.FullName}' -p{_passphrase}";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //    arguments = $@"l '{fileToDecrypt.FullName}' -p{_passphrase}";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"l ""{fileToDecrypt.FullName}"" -p{_passphrase}";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //else
+            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
 
             var regex = @"(?<numberOfFiles>\d*) files";
 
@@ -123,12 +128,12 @@ namespace Arius.Services
 
             var targetFile = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetDecryptedFileInfo(fileToDecrypt);
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"e '{fileToDecrypt.FullName}' -p{_passphrase} -o'{fileToDecrypt.DirectoryName}'";
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            //    arguments = $@"e '{fileToDecrypt.FullName}' -p{_passphrase} -o'{fileToDecrypt.DirectoryName}'";
+            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 arguments = $@"e ""{fileToDecrypt.FullName}"" -p{_passphrase} -o""{fileToDecrypt.DirectoryName}""";
-            else
-                throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //else
+            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
 
             regex = @"Everything is Ok";
 
