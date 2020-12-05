@@ -70,9 +70,12 @@ namespace Arius
             var serviceProvider = new ServiceCollection()
                 .AddLogging(builder =>
                 {
-                    //Hack
+                    //Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
                     var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
-                    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
+                    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/log"))
+                        fileLoggingConfigurationSection["PathFormat"] = Path.Combine(@"/log", "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log");
+                    else
+                        fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
 
 
                     builder.AddConfiguration(config.ConfigurationRoot.GetSection("Logging"))

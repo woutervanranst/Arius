@@ -45,6 +45,8 @@ namespace Arius.Repositories
         {
             _blobCopier.Download(SubDirectoryName, _localTemp);
 
+            _logger.LogInformation("Decrypting manifests...");
+
             var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
                 .Select(fi => (IEncryptedManifestFile)_factory.Create(fi, this))
                 .AsParallelWithParallelism()

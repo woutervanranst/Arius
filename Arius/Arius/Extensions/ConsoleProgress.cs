@@ -90,7 +90,7 @@ namespace Arius.Extensions
 
                 var eta = _current == 0 ?
                                 (DateTime?)null :
-                                DateTime.Now.AddSeconds((DateTime.Now - start).TotalSeconds / _current * _max);
+                                DateTime.Now.AddSeconds((DateTime.Now - start).TotalSeconds / _current * (_max - _current));
                 _write(_current, _max, Math.Round(_current / ((float)_max) * 100), eta);
             }
         }
