@@ -52,6 +52,8 @@ namespace Arius.Repositories
                 .AsParallelWithParallelism()
                 .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
 
+            _logger.LogInformation("Decrypting manifests... Done");
+
             return localManifests.ToDictionary(mf => mf.Hash, mf => mf);
         }
 

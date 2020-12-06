@@ -15,7 +15,11 @@ namespace Arius.Extensions
 
         public static ParallelQuery<TSource> AsParallelWithParallelism<TSource>(this IEnumerable<TSource> source)
         {
+#if DEBUG
+            return source.AsParallel().WithDegreeOfParallelism(_degreeOfParallelism);
+#else
             return source.AsParallel(); //.WithDegreeOfParallelism(_degreeOfParallelism);
+#endif
         }
 
         public static int _degreeOfParallelism = 1;

@@ -65,10 +65,21 @@ namespace Arius.CommandLine
                 "Keep pointer files after downloading content files");
             restoreCommand.AddOption(keepPointersOption);
 
-            var pathArgument = new Argument<string>("path",
-                getDefaultValue: () => Environment.CurrentDirectory,
-                "Path to restore. Default: current directory");
-            restoreCommand.AddArgument(pathArgument);
+            Argument pathArgument;
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            {
+                pathArgument = new Argument<string>("path",
+                    getDefaultValue: () => "/archive");
+                restoreCommand.AddArgument(pathArgument);
+            }
+            else
+            {
+                pathArgument = new Argument<string>("path",
+                    //getDefaultValue: () => Environment.CurrentDirectory,
+                    //"Path to archive. Default: current directory");
+                    "Path to archive.");
+                restoreCommand.AddArgument(pathArgument);
+            }
 
             restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>((accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
             {

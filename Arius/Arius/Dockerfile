@@ -16,6 +16,7 @@ RUN tar -xvf downloadazcopy-v10-linux
 RUN cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 RUN rm -rf /var/lib/apt/lists/*
 VOLUME ["/archive"]
+VOLUME ["/logs"]
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
 WORKDIR /src
