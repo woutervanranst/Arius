@@ -88,9 +88,13 @@ namespace Arius.Extensions
             {
                 _current += i;
 
+                var secondsSinceStart = (DateTime.Now - start).TotalSeconds;
+                var secondsToAdd = decimal.ToInt32((decimal) secondsSinceStart / _current * _max);
+
+
                 var eta = _current == 0 ?
                                 (DateTime?)null :
-                                DateTime.Now.AddSeconds((DateTime.Now - start).TotalSeconds / _current * (_max - _current));
+                                start.AddSeconds(secondsToAdd);
                 _write(_current, _max, Math.Round(_current / ((float)_max) * 100), eta);
             }
         }
