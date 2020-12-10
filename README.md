@@ -11,20 +11,21 @@ The name derives from the Greek for 'immortal'.
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
       - [CLI](#cli)
-      - [Docker](#docker)
+      - [Docker Run](#docker-run)
       - [Arguments](#arguments)
     - [Restore from blob storage](#restore-from-blob-storage)
   - [Install](#install)
     - [Linux](#linux)
-    - [Windows](#windows)
-    - [Docker](#docker-1)
-      - [Example Build Command](#example-build-command)
-      - [Example Run Command](#example-run-command)
-      - [Cleanup](#cleanup)
+    - [Docker](#docker)
   - [Advanced](#advanced)
     - [Restore with common tools](#restore-with-common-tools)
-    - [Developer reference](#developer-reference)
-      - [Docker](#docker-2)
+  - [Developer reference](#developer-reference)
+    - [Terminilogy](#terminilogy)
+    - [Functional Flows](#functional-flows)
+      - [Archive](#archive)
+    - [Docker](#docker-1)
+      - [Docker Build](#docker-build)
+      - [Debuuging Docker in Visual Studio](#debuuging-docker-in-visual-studio)
 
 ## Key design objectives
 
@@ -57,7 +58,7 @@ arius archive
   <path>
 ```
 
-#### Docker
+#### Docker Run
 
 ```
 docker run
@@ -132,14 +133,16 @@ wget https://aka.ms/downloadazcopy-v10-linux
 tar -xvf downloadazcopy-v10-linux
 sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 ```
-Install the latest linux Dapr CLI to `/usr/local/bin`
+
+<!-- Install the latest linux Dapr CLI to `/usr/local/bin`
 
 ```bash
-wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash
+wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -->
 
 Run the following commands:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
 
+```
 LATEST_RELEASE=$(curl -L -s -H 'Accept: application/json' https://github.com/woutervanranst/arius/releases/latest)
 LATEST_VERSION=$(echo $LATEST_RELEASE | sed -e 's/.*"tag_name":"\([^"]*\)".*/\1/')
 ARTIFACT_URL="https://github.com/woutervanranst/arius/releases/download/$LATEST_VERSION/release.zip"
@@ -150,15 +153,46 @@ dotnet arius.dll ...
 
 ### Windows
 
-Install the latest windows Dapr CLI to `c:\dapr` and add this directory to User PATH environment variable. Use `-DaprRoot [path]` to change the default installation directory
+TODO
+
+<!-- Install the latest windows Dapr CLI to `c:\dapr` and add this directory to User PATH environment variable. Use `-DaprRoot [path]` to change the default installation directory
 
 ```powershell
 powershell -Command "iwr -useb https://raw.githubusercontent.com/dapr/cli/master/install/install.ps1 | iex"
+https://chocolatey.org/install.ps1
+
 ```
+-->
 
 ### Docker
 
-#### Example Build Command
+```
+docker pull ghcr.io/woutervanranst/arius
+```
+
+## Advanced
+
+### Restore with common tools
+
+Arius relies on the 7zip command line and Azure blob storage cli.
+
+## Developer reference
+
+### Terminilogy
+
+- Manifest
+- Pointer
+- Chunk
+
+### Functional Flows
+
+#### Archive
+
+![alt](docs/archive_flow.png)
+
+### Docker
+
+#### Docker Build
 
 <!-- 
 cd C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius 
@@ -168,28 +202,7 @@ cd C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius
 docker build -f Dockerfile .. -t arius:prd
 ```
 
-#### Example Run Command
-
-```
-docker run -e ARIUS_ACCOUNT_KEY=%ARIUS_ACCOUNT_KEY% -v c:/Users/Wouter/Documents/Test:/archive arius:prd archive -n aurius -p woutervr
-```
-
-#### Cleanup
-
-```
-docker container prune -f
-docker image prune --force --all
-```
-
-## Advanced
-
-### Restore with common tools
-
-Arius relies on the 7zip command line and Azure blob storage cli.
-
-### Developer reference
-
-#### Docker
+#### Debuuging Docker in Visual Studio
 
 | Argument | Visual Studio Debug |
 | - | - |
