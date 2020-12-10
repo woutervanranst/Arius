@@ -50,7 +50,8 @@ namespace Arius.Repositories
             var localManifests = _localTemp.GetFiles("*.manifest.7z.arius")
                 .Select(fi => (IEncryptedManifestFile)_factory.Create(fi, this))
                 .AsParallelWithParallelism()
-                .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true));
+                .Select(encryptedManifest => (IManifestFile)_encrypter.Decrypt(encryptedManifest, true))
+                .ToImmutableArray();
 
             _logger.LogInformation("Decrypting manifests... Done");
 
