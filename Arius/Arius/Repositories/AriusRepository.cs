@@ -90,14 +90,16 @@ namespace Arius.Repositories
                 .ToImmutableArray();
             hasherProgress.Finished();
 
-            _logger.LogInformation($"Found {localContentPerHash.Count()} files");
+            _logger.LogInformation($"Found {localContentPerHash.Count()} distinct local files");
             _logger.LogDebug(string.Join("; ", localContentPerHash.SelectMany(lcfs => lcfs.Select(lcf => lcf.FullName))));
 
+
+            _logger.LogInformation($"Getting list of remote manifests...");
             var remoteManifestHashes = _manifestRepository.GetAll()
                 .Select(f => f.Hash)
                 .ToImmutableArray();
-
             _logger.LogInformation($"Found {remoteManifestHashes.Length} manifests on the remote");
+
 
             var localContentFilesToUpload = localContentPerHash
                 .Where(g => !remoteManifestHashes.Contains(g.Key)) //TODO to Except
