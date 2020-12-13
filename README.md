@@ -51,9 +51,9 @@ The name derives from the Greek for 'immortal'.
 
 Arius runs through the content of the local file system.
 
-For each file it encounters, it calculates the (SHA256) hash and checks whether a **manifest** for that hash already exists on blob storage.
+For each file it encounters, it calculates the (SHA256) hash and checks whether a **manifest** for that hash already exists on blob storage. Manifests are small and frequently accessed and are therefore stored in the cool tier.
 
-If it does not exist, the local file is **chunk**ed (deduplicated), encrypted & uploaded. A new manifest is created pointing to the chunks that make up the original file.
+If it does not exist, the local file is **chunk**ed (deduplicated), encrypted & uploaded. A new manifest is created pointing to the chunks that make up the original file. Chunks are large (they make up the binaries of the original file), they are only accessed when doing a `restore` and are therefore stored in the archive tier.
 
 On the local file system, a **pointer** is then created, pointing to the manifest.
 
