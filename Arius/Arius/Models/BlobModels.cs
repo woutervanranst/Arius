@@ -16,7 +16,7 @@ namespace Arius.Models
             _hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
         }
 
-        private readonly BlobItem _bi;
+        protected readonly BlobItem _bi;
         private readonly Lazy<HashValue> _hash;
 
 
@@ -32,6 +32,8 @@ namespace Arius.Models
         public RemoteEncryptedChunkBlob(IRepository root, BlobItem blobItem, Func<IBlob, HashValue> hashValueProvider) : base(root, blobItem, hashValueProvider)
         {
         }
+
+        public AccessTier? Tier => _bi.Properties.AccessTier;
 
         //public IEncrypted<IChunk<ILocalContentFile>> GetRemoteObject()
         //{

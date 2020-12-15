@@ -7,6 +7,7 @@ using Arius.CommandLine;
 using Arius.Models;
 using Arius.Services;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius.Repositories
 {
@@ -55,7 +56,8 @@ namespace Arius.Repositories
 
         public IRemoteEncryptedChunkBlobItem GetById(string name)
         {
-            var bi = _bcc.GetBlobs(prefix: $"{SubDirectoryName}/{name}").Single();
+            var bi = _bcc.GetBlobs(prefix: $"{SubDirectoryName}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus).Single();
+
             return _blobFactory.Create<IRemoteEncryptedChunkBlobItem>(bi, this);
         }
 
@@ -73,7 +75,7 @@ namespace Arius.Repositories
 
         public IEnumerable<IEncryptedChunkFile> DownloadAll(IEnumerable<IRemoteEncryptedChunkBlobItem> chunks)
         {
-            _blobcopier.Download(chunks, _localTemp);
+            _blobcopier.Download(SubDirectoryName, chunks, _localTemp);
 
             return _localTemp.GetFiles("*.*", SearchOption.AllDirectories)
                 .Select(fi => (IEncryptedChunkFile)_localFactory.Create(fi, this))

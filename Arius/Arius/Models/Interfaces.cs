@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Arius.Services;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
@@ -91,6 +92,7 @@ namespace Arius.Models
     }
     internal interface IRemoteEncryptedChunkBlobItem : IRemoteBlob
     {
+        AccessTier? Tier { get; }
     }
 
 
@@ -98,7 +100,7 @@ namespace Arius.Models
     internal interface IBlobCopier
     {
         public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite) where T : ILocalFile;
-        void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
+        void Download(string remoteDirectoryName, IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
         void Download(string remoteDirectoryName, DirectoryInfo target);
     }
 
