@@ -92,7 +92,10 @@ namespace Arius.Models
     }
     internal interface IRemoteEncryptedChunkBlobItem : IRemoteBlob
     {
-        AccessTier? Tier { get; }
+        AccessTier AccessTier { get; }
+        bool CanDownload();
+        IRemoteEncryptedChunkBlobItem Hydrated { get; }
+        string Folder { get; }
     }
 
 
