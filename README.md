@@ -10,7 +10,6 @@ The name derives from the Greek for 'immortal'.
   - [Key design objectives](#key-design-objectives)
   - [What does it do & how does it work?](#what-does-it-do--how-does-it-work)
     - [Overview](#overview)
-    - [Detail](#detail)
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
       - [CLI](#cli)
@@ -23,12 +22,9 @@ The name derives from the Greek for 'immortal'.
   - [Advanced](#advanced)
     - [Restore with common tools](#restore-with-common-tools)
   - [Developer reference](#developer-reference)
-    - [Terminilogy](#terminilogy)
     - [Functional Flows](#functional-flows)
       - [Archive](#archive)
-    - [Docker](#docker-1)
-      - [Docker Build](#docker-build)
-      - [Debuuging Docker in Visual Studio](#debuuging-docker-in-visual-studio)
+      - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
 
 ## Key design objectives
 
@@ -57,44 +53,10 @@ If it does not exist, the local file is **chunk**ed (deduplicated), encrypted & 
 
 On the local file system, a **pointer** is then created, pointing to the manifest.
 
-### Detail
-
-Consider the following example directory: three files of which two are a duplicate.
-Running `arius archive` on a local folder will yield the following:
-
+The result looks like this:
 ![](docs/archive.png)
 
-Arius creates pointer files (ending in .arius.pointer) that reflect the original file/folder structure, have the same name and dates as the original file, yet only 1KB in size.
-
-The original files can now be deleted. _NOTE: Not specifying `--keep-local` will delete the original files by default after a successful archive._
-
-The contents of the pointer files are as follows:
-
-![](docs/after_archive_withpointers.png)
-
-Note that the duplicate files (ie. 'Git-2.29.2.2-64-bit.exe' and 'Git-2.29.2.2-64-bit (1).exe') have the same hash and that the pointers thus point to the same manifest.
-
-The contents of the manifest container are:
-
-![alt](docs/pointers_with_manifests.png)
-
-Note that there are only two manifests.
-
-The contents of the first manifest (after decryption) are:
-
-![alt](docs/unzipped_manifest.png)
-
-The structure of the manifest is as follows:
-- PointerFileEntries: the list of pointers pointing to this manifest. From this list the `restore` operation can reconstitute the original file/folder structure.
-  - RelativeName: path relative to the root of the folder that was archived
-  - Version: date & time at which the local file system contained this entry. Multiple entries can exist for one RelativeName, eg when LastWriteTime is modified or the file is deleted. The `restore` operation takes the last version when restoring. Optionally, for point-in-time restores, this field is used to determine the files to restore.
-  - IsDeleted: flag marking the file existed once but is now deleted.
-  - CreationTimeUtc, LastWriteTimeUtc: respective properties from the original file. Used when deciding to make a new version of the entry.
-- ChunkNames: list of the chunks that make up the original file.
-- Hash: the SHA256 hash of the original file.
-
-NOTE: since this file consists of only one chunk, the hash of the chunk and the hash of the original file are the same.
-
+For a more detailed explanation, 
 
 ## Usage
 
@@ -235,31 +197,49 @@ Arius relies on the 7zip command line and Azure blob storage cli.
 
 ## Developer reference
 
-### Terminilogy
-
-- Manifest
-- Pointer
-- Chunk
-
 ### Functional Flows
 
 #### Archive
 
 ![alt](docs/archive_flow.png)
 
-### Docker
+Consider the following example directory: three files of which two are a duplicate.
+Running `arius archive` on a local folder will yield the following:
 
-#### Docker Build
+![](docs/archive.png)
 
-<!-- 
-cd C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius 
--->
+Arius creates pointer files (ending in .arius.pointer) that reflect the original file/folder structure, have the same name and dates as the original file, yet only 1KB in size.
 
-```
-docker build -f Dockerfile .. -t arius:prd
-```
+The original files can now be deleted. _NOTE: Not specifying `--keep-local` will delete the original files by default after a successful archive._
 
-#### Debuuging Docker in Visual Studio
+The contents of the pointer files are as follows:
+
+![](docs/after_archive_withpointers.png)
+
+Note that the duplicate files (ie. 'Git-2.29.2.2-64-bit.exe' and 'Git-2.29.2.2-64-bit (1).exe') have the same hash and that the pointers thus point to the same manifest.
+
+The contents of the manifest container are:
+
+![alt](docs/pointers_with_manifests.png)
+
+Note that there are only two manifests.
+
+The contents of the first manifest (after decryption) are:
+
+![alt](docs/unzipped_manifest.png)
+
+The structure of the manifest is as follows:
+- PointerFileEntries: the list of pointers pointing to this manifest. From this list the `restore` operation can reconstitute the original file/folder structure.
+  - RelativeName: path relative to the root of the folder that was archived
+  - Version: date & time at which the local file system contained this entry. Multiple entries can exist for one RelativeName, eg when LastWriteTime is modified or the file is deleted. The `restore` operation takes the last version when restoring. Optionally, for point-in-time restores, this field is used to determine the files to restore.
+  - IsDeleted: flag marking the file existed once but is now deleted.
+  - CreationTimeUtc, LastWriteTimeUtc: respective properties from the original file. Used when deciding to make a new version of the entry.
+- ChunkNames: list of the chunks that make up the original file.
+- Hash: the SHA256 hash of the original file.
+
+NOTE: since this file consists of only one chunk, the hash of the chunk and the hash of the original file are the same.
+
+#### Debugging Docker in Visual Studio
 
 | Argument | Visual Studio Debug |
 | - | - |
