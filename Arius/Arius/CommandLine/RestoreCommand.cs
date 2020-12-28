@@ -263,8 +263,18 @@ namespace Arius.CommandLine
                 .AsParallelWithParallelism()
                 .SelectMany(mf => mf.ChunkNames)
                 .Distinct()
-                .Select(chunkName => _chunkRepository.GetById(chunkName))
+                .Select(chunkName => _chunkRepository.GetByName(chunkName))
                 .ToImmutableArray();
+
+            var canDownloadAll = chunksToDownload.All(c => c.CanDownload());
+
+            if (!canDownloadAll)
+            {
+                _logger.LogCritical("Some blobs are still being rehydrated from Archive storage. Try again later.");
+                return;
+            }
+
+            chunksToDownload = chunksToDownload.Select(c => c.Hydrated).ToImmutableArray();
 
             var encryptedChunks = _chunkRepository.DownloadAll(chunksToDownload);
 

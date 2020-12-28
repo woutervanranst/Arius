@@ -101,23 +101,7 @@ namespace Arius.Services
         {
             _logger.LogDebug($"Decrypting {fileToDecrypt.Name}");
 
-            // Validate the archive
-            string arguments;
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //    arguments = $@"l '{fileToDecrypt.FullName}' -p{_passphrase}";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"l ""{fileToDecrypt.FullName}"" -p{_passphrase}";
-            //else
-            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
-
-            var regex = @"(?<numberOfFiles>\d*) files";
-
             var p = new ExternalProcess(_7ZPath.Result);
-            p.Execute<int>(arguments, regex, "numberOfFiles", out string rawOutput, out int numberOfFiles);
-
-            if (numberOfFiles > 1)
-                throw new ArgumentException($"ARFCHIVE TOO MANY FILES {rawOutput}"); //TODO
-
 
             // Extract the archive
             /*
@@ -126,27 +110,30 @@ namespace Arius.Services
              * -p       passphrase
              */
 
+            //Extract the archive to a separate folder
+            var randomThreadSafeDirectory = new DirectoryInfo($"{fileToDecrypt.DirectoryName}{Path.DirectorySeparatorChar}{Guid.NewGuid()}");
+            
+            string arguments = $@"e ""{fileToDecrypt.FullName}"" -p{_passphrase} -o""{randomThreadSafeDirectory.FullName}""";
+            var regex = @"Everything is Ok";
+
+            p.Execute(arguments, regex, out string rawOutput);
+
+            if (randomThreadSafeDirectory.GetFiles().Length > 1)
+                throw new ArgumentException($"ARFCHIVE TOO MANY FILES {rawOutput}"); //TODO
+
             var targetFile = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetDecryptedFileInfo(fileToDecrypt);
 
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //    arguments = $@"e '{fileToDecrypt.FullName}' -p{_passphrase} -o'{fileToDecrypt.DirectoryName}'";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"e ""{fileToDecrypt.FullName}"" -p{_passphrase} -o""{fileToDecrypt.DirectoryName}""";
-            //else
-            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
+            //Move the only file in the archive to where we expect it
+            randomThreadSafeDirectory.GetFiles().Single().MoveTo(targetFile.FullName);
 
-            regex = @"Everything is Ok";
+            randomThreadSafeDirectory.Delete();
 
-            p.Execute(arguments, regex, out rawOutput);
-            
             var decryptedLocalFile = _factory.Create(targetFile, fileToDecrypt.Root);
 
             if (deleteEncrypted)
                 fileToDecrypt.Delete();
 
             return decryptedLocalFile;
-
-
         }
     }
 }

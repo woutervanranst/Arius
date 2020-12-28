@@ -109,54 +109,19 @@ namespace Arius.Services
                 });
         }
 
-        //private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
-        //{
-        //    _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
-
-        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
-        //    //Note the \* after the {dir}\*
-
-        //    string arguments;
-        //    var sas = GetContainerSasUri(_bcc, _skc);
-        //    if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        //        arguments = $@"copy '{localDirectoryFullName}\*' '{_bcc.Uri}{remoteDirectoryName}?{sas}' --include-path '{string.Join(';', fileNames)}' --block-blob-tier={tier} --overwrite={overwrite}";
-        //    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        //        arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --include-path ""{string.Join(';', fileNames)}"" --block-blob-tier={tier} --overwrite={overwrite}";
-        //    else
-        //        throw new NotImplementedException("OS Platform is not Windows or Linux");
-
-        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
-
-        //    var p = new ExternalProcess(_AzCopyPath.Result);
-
-        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-        //        out string rawOutput,
-        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
-
-        //    _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
-
-        //    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
-        //}
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
         {
             _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
 
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
-            // Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+            //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
 
             var listOfFilesFullName = Path.GetTempFileName();
             File.WriteAllLines(listOfFilesFullName, fileNames);
 
-            string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            //    arguments = $@"copy ""{localDirectoryFullName}\*"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
-            //else
-                //throw new NotImplementedException("OS Platform is not Windows or Linux");
+            string arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -190,12 +155,7 @@ namespace Arius.Services
 
             string arguments;
             var sas = GetContainerSasUri(_bcc, _skc);
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //    arguments = $@"copy '{_bcc.Uri}/{remoteDirectoryName}/*?{sas}' '{target.FullName}' --recursive";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
-            //else
-            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
+            arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -213,22 +173,17 @@ namespace Arius.Services
         /// <summary>
         /// Download the blobsToDownload to the specified target
         /// </summary>
-        public void Download(IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
+        public void Download(string remoteDirectoryName, IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
         {
-            ////Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names-1
-            ////azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-or-directory-name><SAS-token>' '<local-directory-path>' --include-pattern <semicolon-separated-file-list-with-wildcard-characters>
-
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>
+            //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
 
-            string arguments;
+            var listOfFilesFullName = Path.GetTempFileName();
+            File.WriteAllLines(listOfFilesFullName, blobsToDownload.Select(b => b.Name));
+
             var sas = GetContainerSasUri(_bcc, _skc);
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //    arguments = $@"copy '{_bcc.Uri}/*?{sas}' '{target.FullName}'  --include-path '{string.Join(';', blobsToDownload.Select(b => b.FullName))}'";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --include-path ""{string.Join(';', blobsToDownload.Select(b => b.FullName))}""";
-            //else
-            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
+            string arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
 
             var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
