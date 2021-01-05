@@ -168,17 +168,27 @@ namespace Arius.CommandLine
         private readonly LocalRootRepository _localRoot;
         private readonly AriusRepository _ariusRepository;
 
+        SHA256Hasher _h;
+
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
-            AriusRepository remoteArchive)
+            AriusRepository remoteArchive,
+            SHA256Hasher h)
         {
             _logger = logger;
             _localRoot = localRoot;
             _ariusRepository = remoteArchive;
+
+            _h = h;
         }
         public int Execute()
         {
+            var x = new Arius5.ArchiveCommandExecutor(new DirectoryInfo(_localRoot.FullName));
+            x.Execute(_h);
+
+            return 0;
+
             var allLocalFiles = _localRoot.GetAll();
             _ariusRepository.PutAll(allLocalFiles);
 
