@@ -210,7 +210,7 @@ namespace Arius
             _c = c;
         }
 
-        private AriusArchiveItem AddChunks(BinaryFile f)
+        public override IEnumerable<BinaryFile> Work(BinaryFile f)
         {
             Console.WriteLine("Chunking BinaryFile " + f.Name);
 
@@ -219,7 +219,7 @@ namespace Arius
 
             Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
-            return f;
+            yield return f;
         }
     }
 
@@ -317,14 +317,13 @@ namespace Arius
                     lock (processedOrProcessingBinaries)
                     {
                         if (!processedOrProcessingBinaries.Contains(binaryFileItem.Hash!.Value))
-                        {
-                            processedOrProcessingBinaries.Add(binaryFileItem.Hash!.Value);
+                        { 
+                            processedOrProcessingBinaries.Add(binaryFileItem.Hash!.Value); 
                             addChunksStep.Enqueue(binaryFileItem);
                         }
                         else
                         {
                             pointerCreatorStep.Enqueue(binaryFileItem);
-                            Console.WriteLine("duplicate hash - skipping");
                         }
                     }
                 }
