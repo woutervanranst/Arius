@@ -10,6 +10,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Arius.Models;
 
 namespace Arius
 {
@@ -108,10 +109,17 @@ namespace Arius
     internal class BinaryFile : AriusArchiveItem
     {
         public BinaryFile(FileInfo fi) : base(fi) { }
+
+        public IEnumerable<ChunkFile2> Chunks { get; set; }
+    }
+
+    internal class ChunkFile2 : AriusArchiveItem
+    {
+        public ChunkFile2(FileInfo fi) : base(fi) { }
     }
 
 
-    internal class Indexer : ProcessStep<DirectoryInfo, AriusArchiveItem>
+    internal class DirectoryIndexStep : ProcessStep<DirectoryInfo, AriusArchiveItem>
     {
         //public override async IAsyncEnumerable<AriusArchiveItem> Work(DirectoryInfo di)
         //{
@@ -147,15 +155,11 @@ namespace Arius
                 {
                     Console.WriteLine("PointerFile " + fi.Name);
 
-                    //await Task.Yield();
-
                     yield return new PointerFile(fi);
                 }
                 else
                 {
                     Console.WriteLine("BinaryFile " + fi.Name);
-
-                    //await Task.Yield();
 
                     yield return new BinaryFile(fi);
                 }
@@ -204,6 +208,39 @@ namespace Arius
         }
     }
 
+    internal class Chunker2 : ProcessStep<AriusArchiveItem, AriusArchiveItem>
+    {
+        private readonly IChunker _c;
+
+        public Chunker2(IChunker c)
+        {
+            _c = c;
+        }
+
+        public override IEnumerable<AriusArchiveItem> Work(AriusArchiveItem workItem)
+        {
+            yield return Work2((dynamic)workItem);
+        }
+
+        private AriusArchiveItem Work2(PointerFile f)
+        {
+            Console.WriteLine("Chunking PointerFile " + f.Name + " - nothing to do");
+
+            return f;
+        }
+
+        private AriusArchiveItem Work2(BinaryFile f)
+        {
+            Console.WriteLine("Chunking BinaryFile " + f.Name);
+
+            var cs = ((Arius.Services.Chunker)_c).Chunk(f);
+            f.Chunks = cs;
+
+            Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
+
+            return f;
+        }
+    }
 
     //internal class Hasher : Worker<AriusFile, AriusFile>
     //{
@@ -321,12 +358,13 @@ namespace Arius
 
         private readonly DirectoryInfo _root;
 
-        internal void Execute(IHashValueProvider h)
+        internal void Execute(IHashValueProvider h, IChunker c)
         {
 
             //Create pipeline steps
-            var indexer = new Indexer();
+            var indexer = new DirectoryIndexStep();
             var hasher = new Hasher(h);
+            var chunker = new Chunker2(c);
 
             //Set up pipeline
             indexer.NextAction = item =>
@@ -335,7 +373,11 @@ namespace Arius
             };
             hasher.NextAction = item =>
             {
-                Console.WriteLine(item);
+                chunker.Enqueue(item);
+            };
+            chunker.NextAction = item =>
+            {
+                Console.WriteLine("chunked");
             };
 
             //Start pipeline

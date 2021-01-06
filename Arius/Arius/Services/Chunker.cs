@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Arius.CommandLine;
 using Arius.Models;
@@ -21,7 +22,17 @@ namespace Arius.Services
         {
             return (ILocalContentFile)chunksToJoin.Single();
         }
+
+
+
+
+
+        public IEnumerable<ChunkFile2> Chunk(BinaryFile item)
+        {
+            return new ChunkFile2[] {new(new FileInfo(item.FileFullName)) { Hash = item.Hash }};
+        }
     }
+
 
     internal class DedupChunker : IChunker
     {

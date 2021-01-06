@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
+using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
@@ -169,23 +170,27 @@ namespace Arius.CommandLine
         private readonly AriusRepository _ariusRepository;
 
         IHashValueProvider _h;
+        IChunker _c;
 
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
             AriusRepository remoteArchive,
-            IHashValueProvider h)
+
+            IHashValueProvider h,
+            IChunker c)
         {
             _logger = logger;
             _localRoot = localRoot;
             _ariusRepository = remoteArchive;
 
             _h = h;
+            _c = c;
         }
         public int Execute()
         {
             var x = new ArchiveCommandExecutor2(new DirectoryInfo(_localRoot.FullName));
-            x.Execute(_h);
+            x.Execute(_h, _c);
 
             return 0;
 
