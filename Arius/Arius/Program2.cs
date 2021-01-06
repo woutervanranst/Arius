@@ -5,103 +5,118 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius5
+namespace Arius
 {
     // https://docs.microsoft.com/en-us/dotnet/standard/asynchronous-programming-patterns/implementing-the-event-based-asynchronous-pattern
 
-    abstract class Worker<TWorker>
+    abstract class Worker<TIn, TOut>
     {
-        public Task StartWorkAsync()
+        public abstract Task GetTask(TIn t);
+        //{
+        //    return Task.Run(Work);
+        //}
+
+        //public abstract void Work();
+
+        public event WorkerEventHandler<TOut> NewTask;
+
+        protected void OnWorker(TOut t)
         {
-            return Task.Run(Work);
-        }
-
-        public abstract void Work();
-
-        public event StartWorkCompletedEventHandler StartWorkCompleted;
-
-        public event ProgressChangedEventHandler StartWorkProgressChanged;
-
-        protected void OnStartWorkProgressChanged(int progressPercentage, object userState)
-        {
-            StartWorkProgressChanged?.Invoke(this, new ProgressChangedEventArgs(progressPercentage, userState));
-        }
-
-        private ConcurrentQueue<TWorker> workerQueue = new ConcurrentQueue<TWorker>();
-        public ConcurrentQueue<TWorker> WorkerQueue => workerQueue; 
-    }
-
-    delegate void StartWorkCompletedEventHandler(object sender, StartWorkCompletedEventArgs e);
-
-    class StartWorkCompletedEventArgs : AsyncCompletedEventArgs
-    {
-        public StartWorkCompletedEventArgs(Exception error, bool cancelled, object userState) : base(error, cancelled, userState)
-        {
+            NewTask?.Invoke(this, new WorkerEventArgs<TOut>(t));
         }
     }
 
-    class Indexer : Worker<DirectoryInfo>
+    delegate void WorkerEventHandler<T>(object sender, WorkerEventArgs<T> e);
+
+    class WorkerEventArgs<T> : EventArgs
     {
-        public override void Work()
+        public WorkerEventArgs(T t)
         {
-            while (!WorkerQueue.IsEmpty)
+            _t = t;
+        }
+
+        private readonly T _t;
+
+        public T GetT => _t;
+    }
+
+    class Indexer : Worker<DirectoryInfo, AriusFile>
+    {
+        //public Indexer(DirectoryInfo di)
+        //{
+        //    _di = di;
+        //}
+
+        private readonly DirectoryInfo _di;
+
+        public override Task GetTask(DirectoryInfo di)
+        {
+            var t = new Task(() =>
             {
-                WorkerQueue.TryDequeue(out var di);
+                Console.WriteLine($"Indexing {di.FullName}");
 
                 foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories))
                 {
                     var af = new AriusFile(fi);
 
-                    OnStartWorkProgressChanged(0, af);
+                    OnWorker(af);
                 }
-            }
+
+                Console.WriteLine($"Indexing {di.FullName} done");
+            });
+
+            return t;
         }
     }
 
-    class Hasher : Worker<AriusFile>
+    class Hasher : Worker<AriusFile, AriusFile>
     {
-        public Hasher(SHA256Hasher h,  Func<bool> previousWorkerCompleted)
+        public Hasher(IHashValueProvider h)
         {
-            _previousWorkerCompleted = previousWorkerCompleted;
             _h = h;
         }
 
-        private readonly Func<bool> _previousWorkerCompleted;
-        SHA256Hasher _h;
+        readonly IHashValueProvider _h;
 
-        public override void Work()
+        public override Task GetTask(AriusFile af)
         {
-            var ll = new List<Task>();
-
-            do
+            var t = new Task(() =>
             {
-                if (WorkerQueue.IsEmpty)
-                    Task.Delay(1000);
-                else
-                {
-                    WorkerQueue.TryDequeue(out var af);
+                Console.WriteLine($"Hashing {af.FileFullName}");
+                af.HashValue = ((SHA256Hasher)_h).GetHashValue(af);
+                Console.WriteLine($"Hashing {af.FileFullName}...Done");
+            });
+
+            return t;
+
+            //var ll = new List<Task>();
+
+            //do
+            //{
+            //    if (WorkerQueue.IsEmpty)
+            //        Task.Delay(1000);
+            //    else
+            //    {
+            //        WorkerQueue.TryDequeue(out var af);
 
 
-                    var x = Environment.ProcessorCount;
-                    //System.Threading.
+            //        var x = Environment.ProcessorCount;
+            //        //System.Threading.
 
-                    //var t = new Task(() => Work(af));
-                    //ll.Add(t);
-                    //t.Start();
+            //        //var t = new Task(() => Work(af));
+            //        //ll.Add(t);
+            //        //t.Start();
 
-                    //TaskScheduler.Current.;
+            //        //TaskScheduler.Current.;
 
-                    //Parallel.;
+            //        //Parallel.;
 
-                    //ParallelOptions
-                }
-            } while (!_previousWorkerCompleted() || !WorkerQueue.IsEmpty);
-        }
-
-        private void Work(AriusFile f)
-        {
+            //        //ParallelOptions
+            //    }
+            //} while (!_previousWorkerCompleted() || !WorkerQueue.IsEmpty);
         }
     }
 
@@ -123,9 +138,9 @@ namespace Arius5
 
         private readonly FileInfo _fi;
 
-        public HashValue? HashValue { get; }
+        public HashValue? HashValue { get; set-; }
+        public string FileFullName => _fi.FullName;
     }
-
 
     //class AriusFileBuilder
     //{
@@ -164,36 +179,66 @@ namespace Arius5
     //}
 
 
-    public class ArchiveCommandExecutor
+    public class ArchiveCommandExecutor2
     {
-        public ArchiveCommandExecutor(DirectoryInfo root)
+        public ArchiveCommandExecutor2(DirectoryInfo root)
         {
             _root = root;
         }
 
         private readonly DirectoryInfo _root;
 
-        internal void Execute(SHA256Hasher h)
+        internal void Execute(IHashValueProvider h)
         {
+            var toStart = new ConcurrentQueue<Task>();
+
             var indexer = new Indexer();
-            var indexerTask = new Task(() => indexer.StartWorkAsync());
+            toStart.Enqueue(indexer.GetTask(_root));
 
-            var hasher = new Hasher(() => indexerTask.IsCompleted);
-            indexer.StartWorkProgressChanged += (sender, eventArgs) =>
+            var hasher = new Hasher(h);
+            indexer.NewTask += (sender, eventArgs) =>
             {
-                hasher.WorkerQueue.Enqueue((AriusFile)eventArgs.UserState);
+                toStart.Enqueue(hasher.GetTask(eventArgs.GetT));
             };
-            var hasherTask = new Task(() => hasher.StartWorkAsync());
+
+            var running = new ConcurrentDictionary<int, Task>();
+
+            int MAX_CONCURRENT = 5;
+
+            while (running.Any(t => !t.Value.IsCompleted) || !toStart.IsEmpty)
+            {
+                // Remove completed tasks
+                running.Where(t => t.Value.IsCompleted).ToList().ForEach(t => running.TryRemove(t.Key, out _));
+
+                // Select next task to start
+                toStart.TryDequeue(out var task);
+                if (task == null || running.Count >= MAX_CONCURRENT)
+                {
+                    Task.Delay(1000).Wait();
+                    continue;
+                }
+
+                running.AddOrUpdate(task.Id, task, (a, b) => throw new NotImplementedException());
+
+                Task.Run(() =>
+                {
+                    task.Start();
+                });
+            }
+
+            //Task.WaitAll(running.ToArray()); //.Any(t => !t.IsCompleted))
+
+            //var hasherTask = new Task(() => hasher.GetWorkerTask());
 
 
-            indexer.WorkerQueue.Enqueue(_root);
+            //indexer.WorkerQueue.Enqueue(_root);
 
-            //Start backwards
-            hasherTask.Start();
-            indexerTask.Start();
+            ////Start backwards
+            //hasherTask.Start();
+            //indexerTask.Start();
 
-            //Wait until all workers are finished
-            Task.WaitAll(indexerTask, hasherTask);
+            ////Wait until all workers are finished
+            //Task.WaitAll(indexerTask, hasherTask);
         }
     }
 }

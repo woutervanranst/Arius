@@ -63,6 +63,23 @@ namespace Arius.Services
             return new HashValue {Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
         }
 
+        public HashValue GetHashValue(AriusFile af)
+        {
+            byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
+            using Stream ss = new MemoryStream(byteArray);
+
+            using Stream fs = System.IO.File.OpenRead(af.FileFullName);
+
+            using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
+            using var sha256 = SHA256.Create();
+
+            var hash = sha256.ComputeHash(stream);
+
+            fs.Close();
+
+            return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
+        }
+
         public static string ByteArrayToString(byte[] ba)
         {
             // https://stackoverflow.com/questions/311165/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-and-vice-versa?page=1&tab=votes#tab-top
