@@ -97,6 +97,42 @@ namespace Arius.Services
             return encryptedLocalFile;
         }
 
+        public EncryptedChunkFile2 Encrypt(ChunkFile2 fileToEncrypt, bool deletePlaintext = false)
+        {
+            _logger.LogDebug($"Encrypting {fileToEncrypt.Name}");
+
+            //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
+            /*
+             * a        archive
+             * -mhe     header encryption
+             * -ms      solid archive
+             * -mx0     store only/no compression
+             * -mx1     light compression
+             * -mmt     multithreaded
+             * -p       passphrase
+             */
+
+            var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Directory.FullName, $"{fileToEncrypt.Hash}{EncryptedChunkFile2.Extension}"));
+            var compressionLevel = "-mx0";
+
+            string arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FileFullName}""";
+
+            var regex = "Everything is Ok";
+
+            var p = new ExternalProcess(_7ZPath.Result);
+
+            p.Execute(arguments, regex, out string rawOutput);
+
+            _logger.LogDebug(rawOutput);
+
+            var encryptedLocalFile = new EncryptedChunkFile2(targetFile);
+
+            if (deletePlaintext)
+                fileToEncrypt.Delete();
+
+            return encryptedLocalFile;
+        }
+
         public ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false)
         {
             _logger.LogDebug($"Decrypting {fileToDecrypt.Name}");

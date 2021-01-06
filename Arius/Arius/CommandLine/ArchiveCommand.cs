@@ -171,6 +171,7 @@ namespace Arius.CommandLine
 
         IHashValueProvider _h;
         IChunker _c;
+        private readonly IEncrypter _e;
 
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
@@ -178,7 +179,8 @@ namespace Arius.CommandLine
             AriusRepository remoteArchive,
 
             IHashValueProvider h,
-            IChunker c)
+            IChunker c,
+            IEncrypter e)
         {
             _logger = logger;
             _localRoot = localRoot;
@@ -186,11 +188,12 @@ namespace Arius.CommandLine
 
             _h = h;
             _c = c;
+            _e = e;
         }
         public int Execute()
         {
             var x = new ArchiveCommandExecutor2(new DirectoryInfo(_localRoot.FullName));
-            x.Execute(_h, _c);
+            x.Execute(_h, _c, _e);
 
             return 0;
 
