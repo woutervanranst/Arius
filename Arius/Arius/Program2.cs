@@ -4,143 +4,276 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius
 {
-    // https://docs.microsoft.com/en-us/dotnet/standard/asynchronous-programming-patterns/implementing-the-event-based-asynchronous-pattern
+    // https://www.c-sharpcorner.com/article/create-a-long-running-task-in-c-sharp-net-core/
 
-    abstract class Worker<TIn, TOut>
+    internal abstract class ProcessStep<TIn, TOut>
     {
-        public abstract Task GetTask(TIn t);
-        //{
-        //    return Task.Run(Work);
-        //}
+        private readonly CancellationTokenSource cts = new ();
+        private readonly AutoResetEvent are = new(false);
 
-        //public abstract void Work();
+        private Task workerTask;
 
-        public event WorkerEventHandler<TOut> NewTask;
 
-        protected void OnWorker(TOut t)
+        protected ProcessStep()
         {
-            NewTask?.Invoke(this, new WorkerEventArgs<TOut>(t));
-        }
-    }
-
-    delegate void WorkerEventHandler<T>(object sender, WorkerEventArgs<T> e);
-
-    class WorkerEventArgs<T> : EventArgs
-    {
-        public WorkerEventArgs(T t)
-        {
-            _t = t;
+            StartWork();
         }
 
-        private readonly T _t;
+        private readonly ConcurrentQueue<TIn> _queue = new();
 
-        public T GetT => _t;
-    }
-
-    class Indexer : Worker<DirectoryInfo, AriusFile>
-    {
-        //public Indexer(DirectoryInfo di)
-        //{
-        //    _di = di;
-        //}
-
-        private readonly DirectoryInfo _di;
-
-        public override Task GetTask(DirectoryInfo di)
+        public void Enqueue(TIn item)
         {
-            var t = new Task(() =>
+            _queue.Enqueue(item);
+            are.Set();
+        }
+
+        private void StartWork()
+        {
+            workerTask = Task.Run(async () =>
             {
-                Console.WriteLine($"Indexing {di.FullName}");
-
-                foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories))
+                while (!cts.IsCancellationRequested)
                 {
-                    var af = new AriusFile(fi);
+                    //are.WaitOne();
 
-                    OnWorker(af);
+                    while (_queue.IsEmpty)
+                        await Task.Yield();
+
+                    _queue.TryDequeue(out var wi1);
+
+                    Task.Run(() =>
+                    {
+                        foreach (var wi2 in Work(wi1).AsParallel())
+                            NextAction(wi2);
+                    });
                 }
-
-                Console.WriteLine($"Indexing {di.FullName} done");
             });
-
-            return t;
         }
+
+        public abstract IEnumerable<TOut> Work(TIn workItem);
+
+        public Action<TOut> NextAction { get; set; }
+
+        public void CancelTask()
+        {
+            cts.Cancel();
+        }
+
+        public Task WorkerTask => workerTask;
     }
 
-    class Hasher : Worker<AriusFile, AriusFile>
+
+
+
+    internal abstract class AriusArchiveItem
     {
-        public Hasher(IHashValueProvider h)
-        {
-            _h = h;
-        }
-
-        readonly IHashValueProvider _h;
-
-        public override Task GetTask(AriusFile af)
-        {
-            var t = new Task(() =>
-            {
-                Console.WriteLine($"Hashing {af.FileFullName}");
-                af.HashValue = ((SHA256Hasher)_h).GetHashValue(af);
-                Console.WriteLine($"Hashing {af.FileFullName}...Done");
-            });
-
-            return t;
-
-            //var ll = new List<Task>();
-
-            //do
-            //{
-            //    if (WorkerQueue.IsEmpty)
-            //        Task.Delay(1000);
-            //    else
-            //    {
-            //        WorkerQueue.TryDequeue(out var af);
-
-
-            //        var x = Environment.ProcessorCount;
-            //        //System.Threading.
-
-            //        //var t = new Task(() => Work(af));
-            //        //ll.Add(t);
-            //        //t.Start();
-
-            //        //TaskScheduler.Current.;
-
-            //        //Parallel.;
-
-            //        //ParallelOptions
-            //    }
-            //} while (!_previousWorkerCompleted() || !WorkerQueue.IsEmpty);
-        }
-    }
-
-    class AriusFile
-    {
-        public AriusFile(FileInfo fi)
-        {
-            _fi = fi;
-
-
-            // 1. Pointer
-
-            // 2. LocalFile
-        }
-        public AriusFile(BlobItem bi)
-        {
-            // 3. BlobItem
-        }
-
         private readonly FileInfo _fi;
 
-        public HashValue? HashValue { get; set-; }
+        protected AriusArchiveItem(FileInfo fi)
+        {
+            _fi = fi;
+        }
+
         public string FileFullName => _fi.FullName;
+        public string Name => _fi.Name;
+
+        public HashValue? Hash
+        {
+            get => _hashValue;
+            set
+            {
+                if (_hashValue.HasValue)
+                    throw new InvalidOperationException("CAN ONLY BE SET ONCE");
+
+                _hashValue = value;
+            }
+        }
+        private HashValue? _hashValue;
     }
+
+    internal class PointerFile : AriusArchiveItem
+    {
+        public const string Extension = ".pointer.arius";
+        public PointerFile(FileInfo fi) : base(fi) { }
+    }
+
+    internal class BinaryFile : AriusArchiveItem
+    {
+        public BinaryFile(FileInfo fi) : base(fi) { }
+    }
+
+
+    internal class Indexer : ProcessStep<DirectoryInfo, AriusArchiveItem>
+    {
+        //public override async IAsyncEnumerable<AriusArchiveItem> Work(DirectoryInfo di)
+        //{
+        //    foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
+        //    {
+        //        if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+        //        {
+        //            Console.WriteLine("PointerFile " + fi.Name);
+
+        //            //await Task.Yield();
+
+        //            yield return new PointerFile(fi);
+        //        }
+        //        else
+        //        {
+        //            Console.WriteLine("BinaryFile " + fi.Name);
+
+        //            //await Task.Yield();
+
+        //            yield return new BinaryFile(fi);
+        //        }
+        //    }
+        //}
+
+
+
+
+        public override IEnumerable<AriusArchiveItem> Work(DirectoryInfo di)
+        {
+            foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
+            {
+                if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    Console.WriteLine("PointerFile " + fi.Name);
+
+                    //await Task.Yield();
+
+                    yield return new PointerFile(fi);
+                }
+                else
+                {
+                    Console.WriteLine("BinaryFile " + fi.Name);
+
+                    //await Task.Yield();
+
+                    yield return new BinaryFile(fi);
+                }
+            }
+        }
+    }
+
+
+
+    internal class Hasher : ProcessStep<AriusArchiveItem, AriusArchiveItem>
+    {
+        private readonly IHashValueProvider _hvp;
+
+        public Hasher(IHashValueProvider hvp)
+        {
+            _hvp = hvp;
+        }
+
+        public override IEnumerable<AriusArchiveItem> Work(AriusArchiveItem workItem)
+        {
+            yield return Work2((dynamic) workItem);
+        }
+
+        private AriusArchiveItem Work2(PointerFile f)
+        {
+            Console.WriteLine("Hashing PointerFile " + f.Name);
+
+            var h = File.ReadAllText(f.FileFullName);
+            f.Hash = new HashValue {Value = h};
+
+            Console.WriteLine("Hashing PointerFile " + f.Name + " done");
+
+            return f;
+        }
+
+        private AriusArchiveItem Work2(BinaryFile f)
+        {
+            Console.WriteLine("Hashing BinaryFile " + f.Name);
+            
+            var h = ((SHA256Hasher)_hvp).GetHashValue(f); //TODO remove cast)
+            f.Hash = h;
+            
+            Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
+
+            return f;
+        }
+    }
+
+
+    //internal class Hasher : Worker<AriusFile, AriusFile>
+    //{
+    //    public Hasher(IHashValueProvider h)
+    //    {
+    //        _h = h;
+    //    }
+
+    //    private readonly IHashValueProvider _h;
+
+    //    public override Task GetTask(AriusFile af)
+    //    {
+    //        var t = new Task(() =>
+    //        {
+    //            Console.WriteLine($"Hashing {af.FileFullName}");
+    //            af.HashValue = ((SHA256Hasher)_h).GetHashValue(af);
+    //            Console.WriteLine($"Hashing {af.FileFullName}...Done");
+    //        });
+
+    //        return t;
+
+    //        //var ll = new List<Task>();
+
+    //        //do
+    //        //{
+    //        //    if (WorkerQueue.IsEmpty)
+    //        //        Task.Delay(1000);
+    //        //    else
+    //        //    {
+    //        //        WorkerQueue.TryDequeue(out var af);
+
+
+    //        //        var x = Environment.ProcessorCount;
+    //        //        //System.Threading.
+
+    //        //        //var t = new Task(() => Work(af));
+    //        //        //ll.Add(t);
+    //        //        //t.Start();
+
+    //        //        //TaskScheduler.Current.;
+
+    //        //        //Parallel.;
+
+    //        //        //ParallelOptions
+    //        //    }
+    //        //} while (!_previousWorkerCompleted() || !WorkerQueue.IsEmpty);
+    //    }
+    //}
+
+    //internal class AriusFile
+    //{
+    //    public AriusFile(FileInfo fi)
+    //    {
+    //        _fi = fi;
+
+
+    //        // 1. Pointer
+
+    //        // 2. LocalFile
+    //    }
+    //    public AriusFile(BlobItem bi)
+    //    {
+    //        // 3. BlobItem
+    //    }
+
+    //    private readonly FileInfo _fi;
+
+    //    public HashValue? HashValue { get; set-; }
+    //    public string FileFullName => _fi.FullName;
+    //}
 
     //class AriusFileBuilder
     //{
@@ -190,55 +323,80 @@ namespace Arius
 
         internal void Execute(IHashValueProvider h)
         {
-            var toStart = new ConcurrentQueue<Task>();
 
+            //Create pipeline steps
             var indexer = new Indexer();
-            toStart.Enqueue(indexer.GetTask(_root));
-
             var hasher = new Hasher(h);
-            indexer.NewTask += (sender, eventArgs) =>
+
+            //Set up pipeline
+            indexer.NextAction = item =>
             {
-                toStart.Enqueue(hasher.GetTask(eventArgs.GetT));
+                hasher.Enqueue(item);
+            };
+            hasher.NextAction = item =>
+            {
+                Console.WriteLine(item);
             };
 
-            var running = new ConcurrentDictionary<int, Task>();
-
-            int MAX_CONCURRENT = 5;
-
-            while (running.Any(t => !t.Value.IsCompleted) || !toStart.IsEmpty)
-            {
-                // Remove completed tasks
-                running.Where(t => t.Value.IsCompleted).ToList().ForEach(t => running.TryRemove(t.Key, out _));
-
-                // Select next task to start
-                toStart.TryDequeue(out var task);
-                if (task == null || running.Count >= MAX_CONCURRENT)
-                {
-                    Task.Delay(1000).Wait();
-                    continue;
-                }
-
-                running.AddOrUpdate(task.Id, task, (a, b) => throw new NotImplementedException());
-
-                Task.Run(() =>
-                {
-                    task.Start();
-                });
-            }
-
-            //Task.WaitAll(running.ToArray()); //.Any(t => !t.IsCompleted))
-
-            //var hasherTask = new Task(() => hasher.GetWorkerTask());
+            //Start pipeline
+            indexer.Enqueue(_root);
 
 
-            //indexer.WorkerQueue.Enqueue(_root);
+            Task.WaitAll(indexer.WorkerTask);
 
-            ////Start backwards
-            //hasherTask.Start();
-            //indexerTask.Start();
+            
 
-            ////Wait until all workers are finished
-            //Task.WaitAll(indexerTask, hasherTask);
+
+
+            //var toStart = new ConcurrentQueue<Task>();
+
+            //var indexer = new Indexer();
+            //toStart.Enqueue(indexer.GetTask(_root));
+
+            //var hasher = new Hasher(h);
+            //indexer.NewTask += (sender, eventArgs) =>
+            //{
+            //    toStart.Enqueue(hasher.GetTask(eventArgs.GetT));
+            //};
+
+            //var running = new ConcurrentDictionary<int, Task>();
+
+            //int MAX_CONCURRENT = 5;
+
+            //while (running.Any(t => !t.Value.IsCompleted) || !toStart.IsEmpty)
+            //{
+            //    // Remove completed tasks
+            //    running.Where(t => t.Value.IsCompleted).ToList().ForEach(t => running.TryRemove(t.Key, out _));
+
+            //    // Select next task to start
+            //    toStart.TryDequeue(out var task);
+            //    if (task == null || running.Count >= MAX_CONCURRENT)
+            //    {
+            //        Task.Delay(1000).Wait();
+            //        continue;
+            //    }
+
+            //    running.AddOrUpdate(task.Id, task, (a, b) => throw new NotImplementedException());
+
+            //    Task.Run(() =>
+            //    {
+            //        task.Start();
+            //    });
+            //}
+
+            ////Task.WaitAll(running.ToArray()); //.Any(t => !t.IsCompleted))
+
+            ////var hasherTask = new Task(() => hasher.GetWorkerTask());
+
+
+            ////indexer.WorkerQueue.Enqueue(_root);
+
+            //////Start backwards
+            ////hasherTask.Start();
+            ////indexerTask.Start();
+
+            //////Wait until all workers are finished
+            ////Task.WaitAll(indexerTask, hasherTask);
         }
     }
 }

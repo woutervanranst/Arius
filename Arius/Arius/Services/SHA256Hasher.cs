@@ -63,7 +63,7 @@ namespace Arius.Services
             return new HashValue {Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
         }
 
-        public HashValue GetHashValue(AriusFile af)
+        public HashValue GetHashValue(AriusArchiveItem af)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
