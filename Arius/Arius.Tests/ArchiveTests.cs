@@ -373,7 +373,7 @@ namespace Arius.Tests
 
                 var services = Program.GetServiceProvider(config, pcp);
 
-                var exec = services.GetRequiredService<ArchiveCommandExecutor>();
+                var exec = services.GetRequiredService<ArchiveCommandExecutor2>();
 
                 exec.Execute();
 

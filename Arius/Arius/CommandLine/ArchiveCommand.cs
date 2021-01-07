@@ -118,7 +118,7 @@ namespace Arius.CommandLine
                 .Create<string, string, string, string, bool, string, int, bool, string>(
                     (accountName, accountKey, passphrase, container, keepLocal, tier, minSize, simulate, path) =>
                     {
-                        pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
+                        pcp.CommandExecutorType = typeof(ArchiveCommandExecutor2);
 
                         pcp.CommandExecutorOptions = new ArchiveOptions()
                         {
@@ -169,36 +169,17 @@ namespace Arius.CommandLine
         private readonly LocalRootRepository _localRoot;
         private readonly AriusRepository _ariusRepository;
 
-        IHashValueProvider _h;
-        IChunker _c;
-        private readonly IEncrypter _e;
-
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             LocalRootRepository localRoot,
-            AriusRepository remoteArchive,
-
-            IHashValueProvider h,
-            IChunker c,
-            IEncrypter e)
+            AriusRepository remoteArchive)
         {
             _logger = logger;
             _localRoot = localRoot;
             _ariusRepository = remoteArchive;
-
-            _h = h;
-            _c = c;
-            _e = e;
         }
         public int Execute()
         {
-            var x = new ArchiveCommandExecutor2(new DirectoryInfo(_localRoot.FullName), _h, _c, _e);
-            x.Execute();
-
-            return 0;
-
-            Console.ReadLine();
-
             var allLocalFiles = _localRoot.GetAll();
             _ariusRepository.PutAll(allLocalFiles);
 

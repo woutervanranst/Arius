@@ -107,8 +107,9 @@ namespace Arius
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
                 //Add Commmands
-                .AddSingleton<ArchiveCommandExecutor>()
+                .AddSingleton<ArchiveCommandExecutor2>()
                 .AddSingleton<RestoreCommandExecutor>()
+                .AddSingleton<AriusRepository2>()
                 .BuildServiceProvider();
             return serviceProvider;
         }
