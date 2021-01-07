@@ -11,6 +11,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Arius.Models;
 
 namespace Arius
@@ -138,90 +139,90 @@ namespace Arius
     }
 
 
-    internal class IndexDirectoryStep : ProcessStep<DirectoryInfo, AriusArchiveItem>
-    {
-        public override IEnumerable<AriusArchiveItem> Work(DirectoryInfo di)
-        {
-            foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
-            {
-                if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
-                {
-                    Console.WriteLine("PointerFile " + fi.Name);
+    //internal class IndexDirectoryStep : ProcessStep<DirectoryInfo, AriusArchiveItem>
+    //{
+    //    public override IEnumerable<AriusArchiveItem> Work(DirectoryInfo di)
+    //    {
+    //        foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
+    //        {
+    //            if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+    //            {
+    //                Console.WriteLine("PointerFile " + fi.Name);
 
-                    yield return new PointerFile(fi);
-                }
-                else
-                {
-                    Console.WriteLine("BinaryFile " + fi.Name);
+    //                yield return new PointerFile(fi);
+    //            }
+    //            else
+    //            {
+    //                Console.WriteLine("BinaryFile " + fi.Name);
 
-                    yield return new BinaryFile(fi);
-                }
-            }
-        }
-    }
+    //                yield return new BinaryFile(fi);
+    //            }
+    //        }
+    //    }
+    //}
 
 
 
-    internal class AddHashStep : ProcessStep<AriusArchiveItem, AriusArchiveItem>
-    {
-        private readonly IHashValueProvider _hvp;
+    //internal class AddHashStep : ProcessStep<AriusArchiveItem, AriusArchiveItem>
+    //{
+    //    private readonly IHashValueProvider _hvp;
 
-        public AddHashStep(IHashValueProvider hvp)
-        {
-            _hvp = hvp;
-        }
+    //    public AddHashStep(IHashValueProvider hvp)
+    //    {
+    //        _hvp = hvp;
+    //    }
 
-        public override IEnumerable<AriusArchiveItem> Work(AriusArchiveItem workItem)
-        {
-            yield return AddHash((dynamic) workItem);
-        }
+    //    public override IEnumerable<AriusArchiveItem> Work(AriusArchiveItem workItem)
+    //    {
+    //        yield return AddHash((dynamic) workItem);
+    //    }
 
-        private AriusArchiveItem AddHash(PointerFile f)
-        {
-            Console.WriteLine("Hashing PointerFile " + f.Name);
+    //    private AriusArchiveItem AddHash(PointerFile f)
+    //    {
+    //        Console.WriteLine("Hashing PointerFile " + f.Name);
 
-            var h = File.ReadAllText(f.FileFullName);
-            f.Hash = new HashValue {Value = h};
+    //        var h = File.ReadAllText(f.FileFullName);
+    //        f.Hash = new HashValue {Value = h};
 
-            Console.WriteLine("Hashing PointerFile " + f.Name + " done");
+    //        Console.WriteLine("Hashing PointerFile " + f.Name + " done");
 
-            return f;
-        }
+    //        return f;
+    //    }
 
-        private AriusArchiveItem AddHash(BinaryFile f)
-        {
-            Console.WriteLine("Hashing BinaryFile " + f.Name);
+    //    private AriusArchiveItem AddHash(BinaryFile f)
+    //    {
+    //        Console.WriteLine("Hashing BinaryFile " + f.Name);
             
-            var h = ((SHA256Hasher)_hvp).GetHashValue(f); //TODO remove cast)
-            f.Hash = h;
+    //        var h = ((SHA256Hasher)_hvp).GetHashValue(f); //TODO remove cast)
+    //        f.Hash = h;
             
-            Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
+    //        Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
 
-            return f;
-        }
-    }
+    //        return f;
+    //    }
+    //}
 
-    internal class AddChunksStep : ProcessStep<BinaryFile, BinaryFile>
-    {
-        private readonly IChunker _c;
+    //internal class AddChunksStep : ProcessStep<BinaryFile, BinaryFile>
+    //{
+    //    private readonly IChunker _c;
 
-        public AddChunksStep(IChunker c)
-        {
-            _c = c;
-        }
+    //    public AddChunksStep(IChunker c)
+    //    {
+    //        _c = c;
+    //    }
 
-        public override IEnumerable<BinaryFile> Work(BinaryFile f)
-        {
-            Console.WriteLine("Chunking BinaryFile " + f.Name);
+    //    public override IEnumerable<BinaryFile> Work(BinaryFile f)
+    //    {
+    //        Console.WriteLine("Chunking BinaryFile " + f.Name);
 
-            var cs = ((Chunker)_c).Chunk(f);
-            f.Chunks = cs;
+    //        var cs = ((Chunker)_c).Chunk(f);
+    //        f.Chunks = cs;
 
-            Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
+    //        Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
-            yield return f;
-        }
-    }
+    //        yield return f;
+    //    }
+    //}
 
     internal class EncryptChunksStep : ProcessStep<ChunkFile2, ChunkFile2>
     {
@@ -278,136 +279,194 @@ namespace Arius
     }
 
 
-    public class ArchiveCommandExecutor2
+    internal class ArchiveCommandExecutor2
     {
-        public ArchiveCommandExecutor2(DirectoryInfo root)
+        public ArchiveCommandExecutor2(DirectoryInfo root, IHashValueProvider hvp, IChunker c, IEncrypter e)
         {
             _root = root;
+            _hvp = hvp;
+            _chunker = c;
+            _encrypter = e;
         }
 
         private readonly DirectoryInfo _root;
+        private readonly IHashValueProvider _hvp;
+        private readonly IChunker _chunker;
+        private readonly IEncrypter _encrypter;
 
-        internal void Execute(IHashValueProvider h, IChunker c, IEncrypter e)
+
+        internal void Execute()
         {
+            var indexDirectoryBlock = new TransformManyBlock<DirectoryInfo, AriusArchiveItem>(
+                di => IndexDirectory(di),
+                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1}
+                );
 
-            //Create pipeline steps
-            var indexDirectoryStep = new IndexDirectoryStep();
-            var addHashStep = new AddHashStep(h);
-            var addChunksStep = new AddChunksStep(c);
-            var encryptChunksStep = new EncryptChunksStep(e);
-            var uploadChunkStep = new UploadChunkStep();
-            var createManifestDbStep = new CreateManifestDbStep();
-            var pointerCreatorStep = new PointerCreatorStep();
-            var updateManifestDbStep = new UpdateManifestDbStep();
+            var addHashBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(
+                item => AddHash(item),
+                //item => item,
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4}
+            );
+
+            var castToBinaryBlock = new TransformBlock<AriusArchiveItem, BinaryFile>(item => (BinaryFile) item);
+            var castToPointerBlock = new TransformBlock<AriusArchiveItem, PointerFile>(item => (PointerFile) item);
+
+            var addChunksBlock = new TransformManyBlock<AriusArchiveItem, AriusArchiveItem>(
+                item => AddChunks(item),
+                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 4 }
+            );
+
+            //var encryptChunksBlock = new TransformBlock<>()
+
+            var pointerCreateBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(item => item);
+
+            var endBlock = new ActionBlock<AriusArchiveItem>(item => Console.WriteLine("done"));
 
 
-            var processedOrProcessingBinaries = new List<HashValue>();
-            
+            indexDirectoryBlock.LinkTo(
+                addHashBlock,
+                new DataflowLinkOptions {PropagateCompletion = true});
 
 
-            //Set up pipeline
-            indexDirectoryStep.NextAction = item =>
+            addHashBlock.LinkTo(
+                castToBinaryBlock,
+                new DataflowLinkOptions { PropagateCompletion = true },
+                x => x is BinaryFile);
+
+            addHashBlock.LinkTo(
+                castToPointerBlock,
+                new DataflowLinkOptions() {PropagateCompletion = true},
+                x => x is PointerFile);
+
+
+            castToBinaryBlock.LinkTo(
+                addChunksBlock,
+                new DataflowLinkOptions() {PropagateCompletion = true},
+                x => x);
+
+
+            //addHashBlock.LinkTo(
+            //    addChunksBlock,
+            //    new DataflowLinkOptions { PropagateCompletion = true },
+            //    x => GetDocumentLanguage(x) == Language.Spanish); //5
+
+
+
+            indexDirectoryBlock.Post(_root);
+            indexDirectoryBlock.Complete();
+
+            endBlock.Completion.Wait();
+
+
+            //var processedOrProcessingBinaries = new List<HashValue>();
+
+
+
+            ////Set up pipeline
+            //addHashStep.NextAction = item =>
+            //{
+            //    if (item is BinaryFile binaryFileItem)
+            //    {
+            //        lock (processedOrProcessingBinaries)
+            //        {
+            //            if (!processedOrProcessingBinaries.Contains(binaryFileItem.Hash!.Value))
+            //            { 
+            //                processedOrProcessingBinaries.Add(binaryFileItem.Hash!.Value); 
+            //                addChunksStep.Enqueue(binaryFileItem);
+            //            }
+            //            else
+            //            {
+            //                pointerCreatorStep.Enqueue(binaryFileItem);
+            //            }
+            //        }
+            //    }
+            //    else if (item is PointerFile pointerFileItem)
+            //    {
+            //        updateManifestDbStep.Enqueue(pointerFileItem);
+            //    }
+            //    else
+            //    {
+            //        throw new NotImplementedException();
+            //    }
+            //};
+            //addChunksStep.NextAction = item =>
+            //{
+            //    foreach (var i3 in item.Chunks)
+            //        encryptChunksStep.Enqueue(i3);
+            //};
+            //encryptChunksStep.NextAction = item =>
+            //{
+            //    Console.WriteLine("encrypted");
+            //};
+            //// Upload
+
+            //// Create pointers
+
+            ////Start pipeline
+            //indexDirectoryStep.Enqueue(_root);
+        }
+
+        private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo di)
+        {
+            foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
             {
-                addHashStep.Enqueue(item);
-            };
-            addHashStep.NextAction = item =>
-            {
-                if (item is BinaryFile binaryFileItem)
+                if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
                 {
-                    lock (processedOrProcessingBinaries)
-                    {
-                        if (!processedOrProcessingBinaries.Contains(binaryFileItem.Hash!.Value))
-                        { 
-                            processedOrProcessingBinaries.Add(binaryFileItem.Hash!.Value); 
-                            addChunksStep.Enqueue(binaryFileItem);
-                        }
-                        else
-                        {
-                            pointerCreatorStep.Enqueue(binaryFileItem);
-                        }
-                    }
-                }
-                else if (item is PointerFile pointerFileItem)
-                {
-                    updateManifestDbStep.Enqueue(pointerFileItem);
+                    Console.WriteLine("PointerFile " + fi.Name);
+
+                    yield return new PointerFile(fi);
                 }
                 else
                 {
-                    throw new NotImplementedException();
+                    Console.WriteLine("BinaryFile " + fi.Name);
+
+                    yield return new BinaryFile(fi);
                 }
-            };
-            addChunksStep.NextAction = item =>
-            {
-                foreach (var i3 in item.Chunks)
-                    encryptChunksStep.Enqueue(i3);
-            };
-            encryptChunksStep.NextAction = item =>
-            {
-                Console.WriteLine("encrypted");
-            };
-            // Upload
-
-            // Create pointers
-
-            //Start pipeline
-            indexDirectoryStep.Enqueue(_root);
+            }
+        }
 
 
-            Task.WaitAll(indexDirectoryStep.WorkerTask);
+        public AriusArchiveItem AddHash(AriusArchiveItem workItem)
+        {
+            return AddHash((dynamic)workItem);
+        }
 
-            
+        private AriusArchiveItem AddHash(PointerFile f)
+        {
+            Console.WriteLine("Hashing PointerFile " + f.Name);
 
+            var h = File.ReadAllText(f.FileFullName);
+            f.Hash = new HashValue { Value = h };
 
+            Console.WriteLine("Hashing PointerFile " + f.Name + " done");
 
-            //var toStart = new ConcurrentQueue<Task>();
+            return f;
+        }
 
-            //var indexer = new Indexer();
-            //toStart.Enqueue(indexer.GetTask(_root));
+        private AriusArchiveItem AddHash(BinaryFile f)
+        {
+            Console.WriteLine("Hashing BinaryFile " + f.Name);
 
-            //var hasher = new Hasher(h);
-            //indexer.NewTask += (sender, eventArgs) =>
-            //{
-            //    toStart.Enqueue(hasher.GetTask(eventArgs.GetT));
-            //};
+            var h = ((SHA256Hasher)_hvp).GetHashValue(f); //TODO remove cast)
+            f.Hash = h;
 
-            //var running = new ConcurrentDictionary<int, Task>();
+            Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
 
-            //int MAX_CONCURRENT = 5;
+            return f;
+        }
 
-            //while (running.Any(t => !t.Value.IsCompleted) || !toStart.IsEmpty)
-            //{
-            //    // Remove completed tasks
-            //    running.Where(t => t.Value.IsCompleted).ToList().ForEach(t => running.TryRemove(t.Key, out _));
+        public IEnumerable<BinaryFile> AddChunks(AriusArchiveItem f1)
+        {
+            var f = (BinaryFile)f1;
 
-            //    // Select next task to start
-            //    toStart.TryDequeue(out var task);
-            //    if (task == null || running.Count >= MAX_CONCURRENT)
-            //    {
-            //        Task.Delay(1000).Wait();
-            //        continue;
-            //    }
+            Console.WriteLine("Chunking BinaryFile " + f.Name);
 
-            //    running.AddOrUpdate(task.Id, task, (a, b) => throw new NotImplementedException());
+            var cs = ((Chunker)_chunker).Chunk(f);
+            f.Chunks = cs;
 
-            //    Task.Run(() =>
-            //    {
-            //        task.Start();
-            //    });
-            //}
+            Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
-            ////Task.WaitAll(running.ToArray()); //.Any(t => !t.IsCompleted))
-
-            ////var hasherTask = new Task(() => hasher.GetWorkerTask());
-
-
-            ////indexer.WorkerQueue.Enqueue(_root);
-
-            //////Start backwards
-            ////hasherTask.Start();
-            ////indexerTask.Start();
-
-            //////Wait until all workers are finished
-            ////Task.WaitAll(indexerTask, hasherTask);
+            yield return f;
         }
     }
 }
