@@ -192,8 +192,8 @@ namespace Arius.CommandLine
         }
         public int Execute()
         {
-            var x = new ArchiveCommandExecutor2(new DirectoryInfo(_localRoot.FullName), _h);
-            x.Execute(_c, _e);
+            var x = new ArchiveCommandExecutor2(new DirectoryInfo(_localRoot.FullName), _h, _c, _e);
+            x.Execute();
 
             return 0;
 

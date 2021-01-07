@@ -1,6 +1,7 @@
 ﻿using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -311,9 +312,29 @@ namespace Arius
             var castToBinaryBlock = new TransformBlock<AriusArchiveItem, BinaryFile>(item => (BinaryFile) item);
             var castToPointerBlock = new TransformBlock<AriusArchiveItem, PointerFile>(item => (PointerFile) item);
 
-            var addChunksBlock = new TransformManyBlock<AriusArchiveItem, AriusArchiveItem>(
-                item => AddChunks(item),
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 4 }
+            var processedOrProcessingBinaries = new List<HashValue>();
+
+            var addChunksBlock = new TransformManyBlock<BinaryFile, ChunkFile2>(binaryFile =>
+                {
+                    bool addChunks = false;
+
+                    lock (processedOrProcessingBinaries)
+                    {
+                        var h = binaryFile.Hash!.Value;
+                        if (!processedOrProcessingBinaries.Contains(h))
+                        {
+                            processedOrProcessingBinaries.Add(h);
+                            addChunks = true;
+                        }
+                        
+                    }
+
+                    if (addChunks)
+                        return AddChunks(binaryFile);
+                    else
+                        return Enumerable.Empty<ChunkFile2>();
+                },
+                new ExecutionDataflowBlockOptions() {MaxDegreeOfParallelism = 4}
             );
 
             //var encryptChunksBlock = new TransformBlock<>()
@@ -341,8 +362,8 @@ namespace Arius
 
             castToBinaryBlock.LinkTo(
                 addChunksBlock,
-                new DataflowLinkOptions() {PropagateCompletion = true},
-                x => x);
+                new DataflowLinkOptions() { PropagateCompletion = true },
+                x => true);
 
 
             //addHashBlock.LinkTo(
@@ -455,18 +476,15 @@ namespace Arius
             return f;
         }
 
-        public IEnumerable<BinaryFile> AddChunks(AriusArchiveItem f1)
+        public IEnumerable<ChunkFile2> AddChunks(BinaryFile f)
         {
-            var f = (BinaryFile)f1;
-
             Console.WriteLine("Chunking BinaryFile " + f.Name);
 
             var cs = ((Chunker)_chunker).Chunk(f);
-            f.Chunks = cs;
 
             Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
-            yield return f;
+            return cs;
         }
     }
 }
