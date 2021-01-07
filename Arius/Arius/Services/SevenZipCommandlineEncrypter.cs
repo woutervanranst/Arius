@@ -112,7 +112,7 @@ namespace Arius.Services
              * -p       passphrase
              */
 
-            var targetFile = new FileInfo(Path.Combine(fileToEncrypt.Directory.FullName, $"{fileToEncrypt.Hash}{EncryptedChunkFile2.Extension}"));
+            var targetFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"{fileToEncrypt.Hash}{EncryptedChunkFile2.Extension}"));
             var compressionLevel = "-mx0";
 
             string arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FileFullName}""";
