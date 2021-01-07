@@ -338,11 +338,8 @@ namespace Arius
             };
             addChunksStep.NextAction = item =>
             {
-                if (item is BinaryFile i2)
-                    foreach (var i3 in i2.Chunks)
-                        encryptChunksStep.Enqueue(i3);
-                else
-                    Console.WriteLine("chunked");
+                foreach (var i3 in item.Chunks)
+                    encryptChunksStep.Enqueue(i3);
             };
             encryptChunksStep.NextAction = item =>
             {
