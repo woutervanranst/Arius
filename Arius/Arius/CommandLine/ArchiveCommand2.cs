@@ -116,15 +116,14 @@ namespace Arius
                         }
                     }
 
+                    // Add this binaryFile to the list of pointers to be created, once this manifest is created
+                    var bag = manifestBeforePointers.GetOrAdd(binaryFile.Hash.Value, new ConcurrentBag<BinaryFile>());
+                    bag.Add(binaryFile);
+
                     if (addChunks)
                     {
-                        // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                        var bag = manifestBeforePointers.GetOrAdd(binaryFile.Hash.Value, new ConcurrentBag<BinaryFile>());
-                        bag.Add(binaryFile);
-
-
                         // Process the chunks
-                        var chunks = AddChunks(binaryFile).ToArray();
+                        var chunks = AddChunks(binaryFile);
 
                         chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.TryAdd(
                             binaryFile.Hash!.Value,
@@ -209,22 +208,34 @@ namespace Arius
                 });
 
 
-            var createManifestBlock = new TransformManyBlock<HashValue, AriusArchiveItem>(item =>
+            var createManifestBlock = new TransformManyBlock<HashValue, AriusArchiveItem>(manifestHash =>
             {
                 //Get & remove
-                if (!manifestBeforePointers.TryRemove(item, out var bag))
+                if (!manifestBeforePointers.TryRemove(manifestHash, out var binaryFilesBag))
                     throw new InvalidOperationException();
+
+                var binaryFiles = binaryFilesBag.ToArray();
+                var chunks = binaryFiles.Single(bf => bf.Chunks != null && bf.Chunks.Length > 0)
+                    .Chunks.Select(c => c.Hash!.Value).ToArray();
 
                 // Create the manifest
                 using (var db = new Context())
                 {
-                    db.Database.EnsureCreated();
-                    db.Manifests.Add(new Manifest2 {Hash = item.Value});
+                    db.Manifests.Add(new Manifest2
+                    {
+                        HashValue = manifestHash.Value,
+                        Chunks = chunks.Select((hv, i) => new OrderedChunk
+                        {
+                            ManifestHashValue = manifestHash.Value,
+                            ChunkHashValue = hv.Value, 
+                            Order = i
+                        }).ToList()
+                    });
                     db.SaveChanges();
                 }
 
                 // Return the items that need to be added to the manifest
-                return bag.AsEnumerable();
+                return binaryFiles;
             });
 
             var updateManifestBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(item =>
@@ -232,7 +243,7 @@ namespace Arius
                 // Update the manifest
                 using (var db = new Context())
                 {
-                    var me = db.Manifests.Single(m => m.Hash == item.Hash!.Value.Value);
+                    var me = db.Manifests.Single(m => m.HashValue == item.Hash!.Value.Value);
                     
                     me.Entries.Add(new PointerFileEntry{
                         RelativeName = Path.GetRelativePath(_root.FullName, item.FileFullName),
@@ -349,12 +360,12 @@ namespace Arius
             return f;
         }
 
-        public IEnumerable<ChunkFile2> AddChunks(BinaryFile f)
+        public ChunkFile2[] AddChunks(BinaryFile f)
         {
             Console.WriteLine("Chunking BinaryFile " + f.Name);
 
             var cs = ((Chunker)_chunker).Chunk(f);
-            
+            f.Chunks = cs;
 
             Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
@@ -416,7 +427,7 @@ namespace Arius
     {
         public BinaryFile(FileInfo fi) : base(fi) { }
 
-        public IEnumerable<ChunkFile2> Chunks { get; set; }
+        public ChunkFile2[] Chunks { get; set; }
     }
 
     internal class ChunkFile2 : AriusArchiveItem
@@ -520,6 +531,7 @@ namespace Arius
     internal class Context : DbContext
     {
         public DbSet<Manifest2> Manifests { get; set; }
+        public DbSet<OrderedChunk> Chunks { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
             => optionsBuilder.UseSqlite(@"Data Source=c:\arius.db");
@@ -527,73 +539,29 @@ namespace Arius
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             var me = modelBuilder.Entity<Manifest2>();
-            me.HasKey(m => m.Hash);
+            me.HasKey(m => m.HashValue);
             me.HasMany(m => m.Entries);
+            me.HasMany(m => m.Chunks);
 
             var pfee = modelBuilder.Entity<PointerFileEntry>();
-                pfee.HasKey(pfe => new { pfe.RelativeName, pfe.Version});
+            pfee.HasKey(pfe => new { pfe.RelativeName, pfe.Version});
+
+            var oce = modelBuilder.Entity<OrderedChunk>();
+            oce.HasKey(oc => new {oc.ManifestHashValue, oc.ChunkHashValue});
+
         }
     }
 
 
     internal class Manifest2
     {
-        public string Hash { get; set; }
+        public string HashValue { get; set; }
 
-        public List<PointerFileEntry> Entries { get; init; } = new List<PointerFileEntry>();
-
-        //public Manifest(IEnumerable<PointerFileEntry> pointerFileEntries, IEnumerable<string> chunkNames, string hash)
-        //    _pointerFileEntries = pointerFileEntries.ToList();
-        //    ChunkNames = chunkNames;
-        //    Hash = hash;
-        //}
-
-        //public IEnumerable<PointerFileEntry> PointerFileEntries => _pointerFileEntries;
-        //private readonly List<PointerFileEntry> _pointerFileEntries;
-
-        //public IEnumerable<string> ChunkNames { get; private set; }
-
-        //public string Hash { get; private set; }
-
-        //internal IEnumerable<PointerFileEntry> GetLastEntries(bool includeLastDeleted = false)
-        //{
-        //    var r = _pointerFileEntries
-        //        .GroupBy(lcfe => lcfe.RelativeName)
-        //        .Select(g => g
-        //            .OrderBy(lcfe => lcfe.Version)
-        //            .Last());
-
-        //    if (includeLastDeleted)
-        //        return r;
-        //    else
-        //        return r.Where(afpe => !afpe.IsDeleted);
-        //}
-
-        //internal void AddEntries(IEnumerable<PointerFileEntry> entries)
-        //{
-        //    _pointerFileEntries.AddRange(entries);
-        //}
-
-
-        //// --- RECORD DEFINITION & HELPERS
-        //internal static List<PointerFileEntry> GetPointerFileEntries(IEnumerable<IPointerFile> pointerFiles)
-        //{
-        //    return pointerFiles.Select(pf => GetPointerFileEntry(pf)).ToList();
-        //}
-        //private static PointerFileEntry GetPointerFileEntry(IPointerFile pointerFile)
-        //{
-        //    return new PointerFileEntry(pointerFile.RelativeName,
-        //        DateTime.UtcNow,
-        //        false,
-        //        pointerFile.CreationTimeUtc,
-        //        pointerFile.LastWriteTimeUtc);
-        //}
-
-
-        //public sealed record PointerFileEntry(string RelativeName, DateTime Version, bool IsDeleted, DateTime? CreationTimeUtc, DateTime? LastWriteTimeUtc);
+        public List<PointerFileEntry> Entries { get; init; } = new();
+        public List<OrderedChunk> Chunks { get; init; } = new();
     }
 
-    public class PointerFileEntry
+    internal class PointerFileEntry
     {
         public string RelativeName { get; set; }
         public DateTime Version { get; set; }
@@ -602,4 +570,15 @@ namespace Arius
         public DateTime? LastWriteTimeUtc { get; set; }
     }
 
+    //internal class Chunk
+    //{
+    //    public string HashValue { get; set; }
+    //}
+
+    internal class OrderedChunk
+    {
+        public string ManifestHashValue { get; set; }
+        public string ChunkHashValue { get; set; }
+        public int Order { get; set; }
+    }
 }

@@ -27,7 +27,7 @@ namespace Arius.Services
 
 
 
-        public IEnumerable<ChunkFile2> Chunk(BinaryFile item)
+        public ChunkFile2[] Chunk(BinaryFile item)
         {
             return new ChunkFile2[] {new(new FileInfo(item.FileFullName)) { Hash = item.Hash }};
         }
