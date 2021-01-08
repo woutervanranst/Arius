@@ -112,9 +112,6 @@ namespace Arius.Services
         public void Upload(EncryptedChunkFile2 fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
         { 
             Upload(fileToUpload.Directory.FullName, $"/{remoteDirectoryName}", new[] { fileToUpload.Name }, tier, overwrite);
-
-
-
         }
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
