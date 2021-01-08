@@ -21,6 +21,7 @@ using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Repositories;
 using Microsoft.Extensions.Logging;
+using HashValue = Arius.Services.HashValue;
 
 namespace Arius
 {
@@ -58,52 +59,65 @@ namespace Arius
 
         public int Execute()
         {
+
             var indexDirectoryBlock = new TransformManyBlock<DirectoryInfo, AriusArchiveItem>(
                 di => IndexDirectory(di),
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1 }
                 );
 
+
+
+
             var addHashBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(
-                item => (AriusArchiveItem)AddHash((dynamic)item),
-                //item => item,
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4 }
+                item => (AriusArchiveItem)AddHash((dynamic) item),
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded }
             );
 
             var castToBinaryBlock = new TransformBlock<AriusArchiveItem, BinaryFile>(item => (BinaryFile)item);
             var castToPointerBlock = new TransformBlock<AriusArchiveItem, PointerFile>(item => (PointerFile)item);
 
             var processedOrProcessingBinaries = new List<HashValue>();
+            //var allBinaryFiles = new ConcurrentDictionary<HashValue, BinaryFile>();
+
+            var manifestBeforePointers = new ConcurrentDictionary<HashValue, ConcurrentBag<AriusArchiveItem>>(); //Key = HashValue van de Manifest
+            var chunksBeforeManifest = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key = HashValue van de Manifest, ValueDict = HashValue van de Chunks
+
 
             var getChunksBlock = new TransformManyBlock<BinaryFile, ChunkFile2>(binaryFile =>
-            {
-                var addChunks = false;
-
-                lock (processedOrProcessingBinaries)
                 {
-                    var h = binaryFile.Hash!.Value;
-                    if (!processedOrProcessingBinaries.Contains(h))
+                    //if (!allBinaryFiles.TryAdd(binaryFile.Hash!.Value, binaryFile))
+                    //    throw new InvalidOperationException("TRYADD FAILED");
+
+
+                    var addChunks = false;
+
+                    lock (processedOrProcessingBinaries)
                     {
-                        processedOrProcessingBinaries.Add(h);
-                        addChunks = true;
+                        var h = binaryFile.Hash!.Value;
+                        if (!processedOrProcessingBinaries.Contains(h))
+                        {
+                            processedOrProcessingBinaries.Add(h);
+                            addChunks = true;
+                        }
+
                     }
 
-                }
-
-                if (addChunks)
-                    return AddChunks(binaryFile);
-                else
-                    return Enumerable.Empty<ChunkFile2>();
-            },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4 }
+                    if (addChunks)
+                        return AddChunks(binaryFile);
+                    else
+                        return Enumerable.Empty<ChunkFile2>();
+                },
+                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
             );
 
             var encryptChunksBlock = new TransformBlock<ChunkFile2, EncryptedChunkFile2>(
                 chunkFile => Encrypt(chunkFile),
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 4 });
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded });
 
 
-            var already = _ariusRepository.GetAllChunkBlobItems().ToDictionary(a => a.Hash, a => a);
-
+            var uploadedOrUploadingChunks = _ariusRepository.GetAllChunkBlobItems().ToDictionary(a => a.Hash, a => a);
+            
+            
 
             var uploadEncryptedChunksBlock = new TransformBlock<EncryptedChunkFile2, RemoteEncryptedChunkBlobItem2>(
                 encryptedChunkFile =>
@@ -111,11 +125,11 @@ namespace Arius
                     bool upload = false;
                     var h = encryptedChunkFile.Hash!.Value;
 
-                    lock (already)
+                    lock (uploadedOrUploadingChunks)
                     {
-                        if (!already.ContainsKey(h))
+                        if (!uploadedOrUploadingChunks.ContainsKey(h))
                         {
-                            already.Add(h, null);
+                            uploadedOrUploadingChunks.Add(h, null);
                             upload = true;
                         }
                     }
@@ -123,18 +137,27 @@ namespace Arius
                     if (upload)
                     {
                         var x = _ariusRepository.Upload(encryptedChunkFile, _options.Tier);
-                        already[h] = x;
+                        uploadedOrUploadingChunks[h] = x;
                     }
 
-                    return already[h];
+                    return uploadedOrUploadingChunks[h];
                 },
                 new ExecutionDataflowBlockOptions() {  MaxDegreeOfParallelism = 1 });
 
+            //var reconcileBlock = new TransformBlock<RemoteEncryptedChunkBlobItem2, AriusArchiveItem>(
+            //    recbi =>
+            //    {
+            //        return null;
+            //    });
 
 
 
 
-            var pointerCreateBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(item => item);
+            var pointerCreateBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(item =>
+            {
+
+                return item;
+            });
 
             var endBlock = new ActionBlock<AriusArchiveItem>(item => Console.WriteLine("done"));
 
@@ -153,6 +176,9 @@ namespace Arius
                 castToPointerBlock,
                 new DataflowLinkOptions { PropagateCompletion = true },
                 x => x is PointerFile);
+
+            //addHashBlock.LinkTo(
+            //    DataflowBlock.NullTarget<AriusArchiveItem>());
 
 
             castToBinaryBlock.LinkTo(
@@ -273,7 +299,6 @@ namespace Arius
             {
                 if (_hashValue.HasValue)
                     throw new InvalidOperationException("CAN ONLY BE SET ONCE");
-
                 _hashValue = value;
             }
         }
@@ -398,7 +423,7 @@ namespace Arius
 
         }
 
-        public override HashValue Hash => new HashValue {Value = NameWithoutExtension};
+        public override HashValue Hash => new HashValue { Value = NameWithoutExtension };
         protected override string Extension => ".7z.arius";
     }
 }
