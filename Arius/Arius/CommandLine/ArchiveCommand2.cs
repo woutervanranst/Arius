@@ -10,9 +10,11 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -63,6 +65,8 @@ namespace Arius
         {
             var version = DateTime.Now;
 
+            var fastHash = true;
+
             //Dowload db etc
             using (var db = new Context())
             {
@@ -75,7 +79,7 @@ namespace Arius
                 );
 
             var addHashBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(
-                item => (AriusArchiveItem)AddHash((dynamic) item),
+                item => (AriusArchiveItem)AddHash((dynamic) item, fastHash),
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded }
             );
 
@@ -85,14 +89,13 @@ namespace Arius
             //var processedOrProcessingBinaries = new List<HashValue>(); 
             //var allBinaryFiles = new ConcurrentDictionary<HashValue, BinaryFile>();
 
-            //List<HashValue> uploadedManifestHashes;
             var uploadedManifestHashes = new List<HashValue>();
             var uploadingManifestHashes = new List<HashValue>();
 
-            //using (var db = new Context())
-            //{
-            //    uploadingManifestHashes = d
-            //}
+            using (var db = new Context())
+            {
+                uploadingManifestHashes.AddRange(db.Manifests.Select(m => new HashValue() {Value = m.HashValue}));
+            }
 
 
             var manifestBeforePointers = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key = HashValue van de Manifest
@@ -101,6 +104,8 @@ namespace Arius
 
             var getChunksBlock = new TransformManyBlock<BinaryFile, ChunkFile2>(binaryFile =>
                 {
+                    Console.WriteLine("Chunking BinaryFile " + binaryFile.Name);
+
                     var addChunks = false;
 
                     lock (uploadedManifestHashes)
@@ -208,7 +213,7 @@ namespace Arius
                 });
 
 
-            var createManifestBlock = new TransformManyBlock<HashValue, AriusArchiveItem>(manifestHash =>
+            var createManifestBlock = new TransformManyBlock<HashValue, BinaryFile>(manifestHash =>
             {
                 //Get & remove
                 if (!manifestBeforePointers.TryRemove(manifestHash, out var binaryFilesBag))
@@ -238,28 +243,40 @@ namespace Arius
                 return binaryFiles;
             });
 
-            var updateManifestBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(item =>
+            var createPointersBlock = new TransformBlock<BinaryFile, PointerFile>(binaryFile =>
+            {
+                var p = binaryFile.CreatePointerFile();
+
+                return p;
+            });
+
+            var updateManifestBlock = new ActionBlock<PointerFile>(pointerFile =>
             {
                 // Update the manifest
                 using (var db = new Context())
                 {
-                    var me = db.Manifests.Single(m => m.HashValue == item.Hash!.Value.Value);
-                    
-                    me.Entries.Add(new PointerFileEntry{
-                        RelativeName = Path.GetRelativePath(_root.FullName, item.FileFullName),
+                    var me = db.Manifests.Single(m => m.HashValue == pointerFile.Hash!.Value.Value);
+
+                    var e = new PointerFileEntry
+                    {
+                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FileFullName),
                         Version = version,
-                        CreationTimeUtc = File.GetCreationTimeUtc(item.FileFullName), //TODO
-                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(item.FileFullName),
+                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FileFullName), //TODO
+                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FileFullName),
                         IsDeleted = false
-                    });
+                    };
+                    me.Entries.Add(e);
+
+                    _logger.LogInformation($"Added {e.RelativeName}");
 
                     db.SaveChanges();
                 }
 
-                return item;
+                //return item;
             });
 
-            var endBlock = new ActionBlock<AriusArchiveItem>(item => Console.WriteLine("done"));
+
+            //var endBlock = new ActionBlock<AriusArchiveItem>(item => Console.WriteLine("done"));
 
 
             indexDirectoryBlock.LinkTo(
@@ -276,6 +293,10 @@ namespace Arius
                 castToPointerBlock,
                 new DataflowLinkOptions { PropagateCompletion = true },
                 x => x is PointerFile);
+
+            castToPointerBlock.LinkTo(updateManifestBlock
+                // DO NOT PROPAGATE COMPLETION HERE
+            );
 
             //addHashBlock.LinkTo(
             //    DataflowBlock.NullTarget<AriusArchiveItem>());
@@ -304,18 +325,87 @@ namespace Arius
                 new DataflowLinkOptions() {PropagateCompletion = true});
 
             createManifestBlock.LinkTo(
-                updateManifestBlock,
-                new DataflowLinkOptions() {PropagateCompletion = true});
+                createPointersBlock,
+                new DataflowLinkOptions() {PropagateCompletion = true}
+                );
 
+            createPointersBlock.LinkTo(
+                updateManifestBlock
+                // DO NOT PROPAGATE
+            );
+
+
+
+            //updateManifestBlock.LinkTo(
+            //    endBlock,
+            //    new DataflowLinkOptions() {PropagateCompletion = true});
 
 
             indexDirectoryBlock.Post(_root);
             indexDirectoryBlock.Complete();
 
-            endBlock.Completion.Wait();
+            Task.WhenAll(createManifestBlock.Completion, castToPointerBlock.Completion)
+                .ContinueWith(_ => updateManifestBlock.Complete());
+
+            updateManifestBlock.Completion.Wait();
+
+            using (var db = new Context())
+            {
+                //Not parallel foreach since DbContext is not thread safe
+
+                foreach (var m in db.Manifests.Include(m => m.Entries))
+                {
+                    foreach (var e in m.GetLastEntries(false).Where(e => e.Version != version))
+                    {
+                        var p = Path.Combine(_root.FullName, e.RelativeName);
+                        if (!File.Exists(p))
+                        {
+                            m.Entries.Add(new PointerFileEntry(){
+                                RelativeName = e.RelativeName,
+                                Version = version,
+                                IsDeleted = true,
+                                CreationTimeUtc = null,
+                                LastWriteTimeUtc = null
+                            });
+
+                            _logger.LogInformation($"Marked {e.RelativeName} as deleted");
+                        }
+                    }
+                }
+            }
+
+            using (var db = new Context())
+            {
+                //using (System.IO.Stream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                //using (GZipInputStream gzipStream = new GZipInputStream(fs))
+                //using (StreamReader streamReader = new StreamReader(gzipStream))
+                //using (JsonTextReader reader = new JsonTextReader(streamReader))
+                //{
+                //    reader.SupportMultipleContent = true;
+                //    var serializer = new JsonSerializer();
+                //    while (reader.Read())
+                //    {
+                //        if (reader.TokenType == JsonToken.StartObject)
+                //        {
+                //            var t = serializer.Deserialize<Element>(reader);
+                //            //Add custom logic here - perhaps a yield return?
+                //        }
+                //    }
+                //}
+
+                using (Stream file = File.Create(@"c:\ha.json"))
+                {
+                    JsonSerializer.SerializeAsync(file, db.Manifests
+                            .Include(a => a.Chunks)
+                            .Include(a => a.Entries),
+                        new JsonSerializerOptions {WriteIndented = true});
+                }
+            }
 
             return 0;
         }
+
+        
 
         private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo di)
         {
@@ -336,28 +426,45 @@ namespace Arius
             }
         }
 
-        private AriusArchiveItem AddHash(PointerFile f)
+        private AriusArchiveItem AddHash(PointerFile f, bool _)
         {
             Console.WriteLine("Hashing PointerFile " + f.Name);
 
-            var h = File.ReadAllText(f.FileFullName);
-            f.Hash = new HashValue { Value = h };
+            f.Hash = ReadHashFromPointerFile(f.FileFullName);
 
             Console.WriteLine("Hashing PointerFile " + f.Name + " done");
 
             return f;
         }
 
-        private AriusArchiveItem AddHash(BinaryFile f)
+       
+
+        private AriusArchiveItem AddHash(BinaryFile f, bool fastHash)
         {
             Console.WriteLine("Hashing BinaryFile " + f.Name);
 
-            var h = ((SHA256Hasher)_hvp).GetHashValue(f); //TODO remove cast)
+            var h = default(HashValue?);
+
+            if (fastHash)
+            {
+                var pointerFileFullName = f.GetPointerFileFullName();
+                if (File.Exists(pointerFileFullName))
+                    h = ReadHashFromPointerFile(pointerFileFullName);
+            }
+
+            if (!h.HasValue)
+                h = ((SHA256Hasher) _hvp).GetHashValue(f); //TODO remove cast)
+
             f.Hash = h;
 
             Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
 
             return f;
+        }
+
+        private static HashValue ReadHashFromPointerFile(string fileName)
+        {
+            return new() { Value = File.ReadAllText(fileName) };
         }
 
         public ChunkFile2[] AddChunks(BinaryFile f)
@@ -382,6 +489,26 @@ namespace Arius
             Console.WriteLine("Encrypting ChunkFile2 " + f.Name + " done");
 
             return ecf;
+        }
+    }
+
+    internal static class ManifestService2
+    {
+        /// <summary>
+        /// Get the last entries per RelativeName
+        /// </summary>
+        /// <param name="includeLastDeleted">include deleted items</param>
+        /// <returns></returns>
+        public static IEnumerable<PointerFileEntry> GetLastEntries(this Manifest2 m, bool includeLastDeleted = false)
+        {
+            var r = m.Entries
+                .GroupBy(e => e.RelativeName)
+                .Select(g => g.OrderBy(e => e.Version).Last());
+
+            if (includeLastDeleted)
+                return r;
+            else
+                return r.Where(e => !e.IsDeleted);
         }
     }
 
@@ -421,6 +548,11 @@ namespace Arius
         public const string Extension = ".pointer.arius";
 
         public PointerFile(FileInfo fi) : base(fi) { }
+
+        public PointerFile(FileInfo fi, HashValue manifestHash) : base(fi)
+        {
+            this.Hash = manifestHash;
+        }
     }
 
     internal class BinaryFile : AriusArchiveItem
@@ -531,7 +663,7 @@ namespace Arius
     internal class Context : DbContext
     {
         public DbSet<Manifest2> Manifests { get; set; }
-        public DbSet<OrderedChunk> Chunks { get; set; }
+        //public DbSet<OrderedChunk> Chunks { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
             => optionsBuilder.UseSqlite(@"Data Source=c:\arius.db");
