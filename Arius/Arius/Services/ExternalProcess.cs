@@ -25,7 +25,8 @@ namespace Arius.Services
                 // 1. Find in the PATH folders
                 if (!string.IsNullOrEmpty(path))
                 { 
-                    var executables = path.Trim(';').Split(';')
+                    var executables = path.Split(';')
+                        .Where(dir => !string.IsNullOrWhiteSpace(dir))
                         .Select(dir => new DirectoryInfo(dir))
                         .SelectMany(dir => dir.TryGetFiles(windowsExecutableName))
                         .ToArray();

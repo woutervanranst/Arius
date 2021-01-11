@@ -8,7 +8,7 @@ namespace Arius.Models
 {
     internal abstract class AriusArchiveItem : IFileWithHash
     {
-        private readonly FileInfo _fi;
+        protected readonly FileInfo _fi;
 
         protected AriusArchiveItem(FileInfo fi)
         {
@@ -65,14 +65,19 @@ namespace Arius.Models
         //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
     }
 
-    internal class EncryptedChunkFile2 : AriusArchiveItem, IEncryptedFile
+    internal class EncryptedChunkFile : AriusArchiveItem, IEncryptedFile
     {
         public const string Extension = ".7z.arius";
 
-        public EncryptedChunkFile2(FileInfo fi, HashValue hash) : base(fi)
+        public EncryptedChunkFile(FileInfo fi, HashValue hash) : base(fi)
         {
             base.Hash = hash;
         }
+
+        /// <summary>
+        /// Size in Bytes
+        /// </summary>
+        public long Length => _fi.Length;
     }
 
 }

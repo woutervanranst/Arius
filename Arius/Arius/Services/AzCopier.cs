@@ -76,38 +76,55 @@ namespace Arius.Services
         private readonly IAzCopyUploaderOptions _options;
         private readonly ILogger<AzCopier> _logger;
 
-        ///// <summary>
-        ///// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
-        ///// </summary>
-        ///// <typeparam name="T"></typeparam>
-        ///// <param name="filesToUpload"></param>
-        ///// <param name="remoteDirectoryName"></param>
-        ///// <param name="overwrite"></param>
-        //public void Upload(IEnumerable<IFile> filesToUpload, string remoteDirectoryName, bool overwrite = false)
-        //{
-        //    AccessTier tier;
 
-        //    if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
-        //        tier = _options.Tier;
-        //    else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
-        //        tier = AccessTier.Cool;
-        //    else
-        //        throw new NotImplementedException();
-
-        //    filesToUpload.GroupBy(af => af.DirectoryName)
-        //        .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
-        //        .WithDegreeOfParallelism(1)
-        //        .ForAll(g =>
-        //        {
-        //            var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
-
-        //            Upload(g.Key, remoteDirectoryName, fileNames, tier, overwrite);
-        //        });
+        //public void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
+        //{ 
+        //    Upload(fileToUpload.Directory.FullName, $"/{remoteDirectoryName}", new[] { fileToUpload.Name }, tier, overwrite);
         //}
 
-        public void Upload(IFile fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
-        { 
-            Upload(fileToUpload.Directory.FullName, $"/{remoteDirectoryName}", new[] { fileToUpload.Name }, tier, overwrite);
+        //private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
+        //{
+        //    _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+
+        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
+        //    //Note the \* after the {dir}\*
+        //    //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+
+        //    var listOfFilesFullName = Path.GetTempFileName();
+        //    File.WriteAllLines(listOfFilesFullName, fileNames);
+
+        //    var sas = GetContainerSasUri(_bcc, _skc);
+        //    string arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
+
+        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+        //    var p = new ExternalProcess(_AzCopyPath.Result);
+
+        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+        //        out string rawOutput,
+        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+        //    _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
+
+        //    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        //}
+
+
+        /// <summary>
+        /// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
+        /// </summary>
+        public void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
+        {
+            filesToUpload.GroupBy(af => af.Directory.FullName)
+                .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+                .WithDegreeOfParallelism(1)
+                .ForAll(g =>
+                {
+                    var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+
+                    Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
+                });
         }
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
@@ -132,11 +149,16 @@ namespace Arius.Services
                 out string rawOutput,
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
 
+            File.Delete(listOfFilesFullName);
+
             _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         }
+
+
+
 
         /// <summary>
         /// Download all files in the given remoteDirectoryName to the local target

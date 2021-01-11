@@ -57,11 +57,11 @@ namespace Arius.Repositories
             return new RemoteEncryptedChunkBlobItem2(bi);
         }
 
-        public RemoteEncryptedChunkBlobItem2 Upload(EncryptedChunkFile2 ecf, AccessTier tier)
+        public IEnumerable<RemoteEncryptedChunkBlobItem2> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
-            _blobCopier.Upload(ecf, tier, EncryptedChunkDirectoryName, false);
+            _blobCopier.Upload(ecfs, tier, EncryptedChunkDirectoryName, false);
 
-            return GetByName(ecf.Name);
+            return ecfs.Select(ecf => GetByName(ecf.Name));
         }
     }
 }
