@@ -1,12 +1,14 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
+using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Repositories;
 
 namespace Arius.Services
 {
-    internal static class PointerService2
+    internal static class PointerService
     {
         public static string GetPointerFileFullName(this BinaryFile f)
         {
@@ -36,7 +38,7 @@ namespace Arius.Services
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public static PointerFile CreatePointerFile(DirectoryInfo root, PointerFileEntry pfe, Manifest2 manifestFile)
+        public static PointerFile CreatePointerFile(DirectoryInfo root, PointerFileEntry pfe, ManifestEntry manifestFile)
         {
             //return CreatePointerFile(root, root.GetPointerFileInfo(pfe), manifestFile, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
             throw new NotImplementedException();

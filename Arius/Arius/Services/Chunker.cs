@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using Arius.CommandLine;
 using Arius.Models;
 
@@ -35,39 +37,38 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
-        public IChunkFile[] Chunk(BinaryFile fileToChunk)
+        public IChunkFile[] Chunk(BinaryFile f)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
 
-//                //var sb = new StreamBreaker();
+            var sb = new StreamBreaker();
 
-//                //using var fs = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
-//                //var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
-//                //fs.Position = 0;
+            using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
+            var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
+            fs.Position = 0;
 
-//                //DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
-//                //tempDir.Create();
+            DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(f.Directory.FullName, f.Name + ".arius"));
+            tempDir.Create();
 
-//                //foreach (var chunk in chunks)
-//                //{
-//                //    var chunkFullName = Path.Combine(tempDir.FullName, BitConverter.ToString(chunk.Hash));
+            var chunkFiles = new List<ChunkFile2>();
 
-//                //    byte[] buff = new byte[chunk.Length];
-//                //    fs.Read(buff, 0, (int)chunk.Length);
+            foreach (var chunk in chunks)
+            {
+                var hashValue = new HashValue {Value = SHA256Hasher.ByteArrayToString(chunk.Hash)};
+                
+                var chunkFullName = Path.Combine(tempDir.FullName, hashValue.Value + ChunkFile2.Extension);
 
-//                //    using var fileStream = File.Create(chunkFullName);
-//                //    fileStream.Write(buff, 0, (int)chunk.Length);
-//                //    fileStream.Close();
-//                //}
+                byte[] buff = new byte[chunk.Length];
+                fs.Read(buff, 0, (int)chunk.Length);
 
-//                //fs.Close();
+                using var fileStream = File.Create(chunkFullName);
+                fileStream.Write(buff, 0, (int)chunk.Length);
+                fileStream.Close();
 
-//                //var laf = new LocalAriusManifest(this);
-//                //var lac = chunks.Select(c => new LocalAriusChunk("")).ToImmutableArray();
+                chunkFiles.Add(new ChunkFile2(new FileInfo(chunkFullName)){ Hash = hashValue });
+            }
 
-//                //var r = new AriusFile(this, laf, lac);
-
-//                //return r;
+            return chunkFiles.ToArray();
         }
 
         public BinaryFile Merge(IChunkFile[] chunksToJoin)

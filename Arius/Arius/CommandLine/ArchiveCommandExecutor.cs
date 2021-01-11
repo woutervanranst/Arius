@@ -1,37 +1,23 @@
-﻿using Arius.Services;
-using Azure.Storage.Blobs.Models;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Models;
-using Azure.Storage.Blobs;
-using Arius.CommandLine;
-using Arius.Extensions;
+using Arius.Repositories;
+using Arius.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using HashValue = Arius.Services.HashValue;
 
-namespace Arius
+namespace Arius.CommandLine
 {
-    internal class ArchiveCommandExecutor2 : ICommandExecutor
+    internal class ArchiveCommandExecutor : ICommandExecutor
     {
-        public ArchiveCommandExecutor2(ICommandExecutorOptions options,
-            ILogger<ArchiveCommandExecutor2> logger,
+        public ArchiveCommandExecutor(ICommandExecutorOptions options,
+            ILogger<ArchiveCommandExecutor> logger,
             AzureRepository ariusRepository,
 
             IHashValueProvider h,
@@ -49,7 +35,7 @@ namespace Arius
         }
 
         private readonly ArchiveOptions _options;
-        private readonly ILogger<ArchiveCommandExecutor2> _logger;
+        private readonly ILogger<ArchiveCommandExecutor> _logger;
 
         private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
@@ -60,12 +46,17 @@ namespace Arius
 
         public int Execute()
         {
+            //            ////TODO Simulate
+            //            ////TODO MINSIZE
+            //            ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
+
+
             var version = DateTime.Now;
 
             var fastHash = true;
 
             //Dowload db etc
-            using (var db = new Context())
+            using (var db = new Manifest())
             {
                 db.Database.EnsureCreated();
             }
@@ -89,7 +80,7 @@ namespace Arius
             var uploadedManifestHashes = new List<HashValue>();
             var uploadingManifestHashes = new List<HashValue>();
 
-            using (var db = new Context())
+            using (var db = new Manifest())
             {
                 uploadingManifestHashes.AddRange(db.Manifests.Select(m => new HashValue() {Value = m.HashValue}));
             }
@@ -221,9 +212,9 @@ namespace Arius
                     .Chunks.Select(c => c.Hash!.Value).ToArray();
 
                 // Create the manifest
-                using (var db = new Context())
+                using (var db = new Manifest())
                 {
-                    db.Manifests.Add(new Manifest2
+                    db.Manifests.Add(new ManifestEntry
                     {
                         HashValue = manifestHash.Value,
                         Chunks = chunks.Select((hv, i) => new OrderedChunk
@@ -250,7 +241,7 @@ namespace Arius
             var updateManifestBlock = new ActionBlock<PointerFile>(pointerFile =>
             {
                 // Update the manifest
-                using (var db = new Context())
+                using (var db = new Manifest())
                 {
                     var me = db.Manifests.Single(m => m.HashValue == pointerFile.Hash!.Value);
 
@@ -348,7 +339,7 @@ namespace Arius
 
             updateManifestBlock.Completion.Wait();
 
-            using (var db = new Context())
+            using (var db = new Manifest())
             {
                 //Not parallel foreach since DbContext is not thread safe
 
@@ -375,7 +366,7 @@ namespace Arius
                 }
             }
 
-            using (var db = new Context())
+            using (var db = new Manifest())
             {
                 //using (System.IO.Stream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
                 //using (GZipInputStream gzipStream = new GZipInputStream(fs))
@@ -463,16 +454,11 @@ namespace Arius
             return f;
         }
 
-        //private static HashValue ReadHashFromPointerFile(string fileName)
-        //{
-        //    return new() { Value = File.ReadAllText(fileName) };
-        //}
-
         public IChunkFile[] AddChunks(BinaryFile f)
         {
             Console.WriteLine("Chunking BinaryFile " + f.Name);
 
-            var cs = ((Chunker)_chunker).Chunk(f);
+            var cs = _chunker.Chunk(f);
             f.Chunks = cs;
 
             Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
@@ -497,235 +483,14 @@ namespace Arius
         }
     }
 
-    internal static class ManifestService2
-    {
-        /// <summary>
-        /// Get the last entries per RelativeName
-        /// </summary>
-        /// <param name="includeLastDeleted">include deleted items</param>
-        /// <returns></returns>
-        public static IEnumerable<PointerFileEntry> GetLastEntries(this Manifest2 m, bool includeLastDeleted = false)
-        {
-            var r = m.Entries
-                .GroupBy(e => e.RelativeName)
-                .Select(g => g.OrderBy(e => e.Version).Last());
+    
 
-            if (includeLastDeleted)
-                return r;
-            else
-                return r.Where(e => !e.IsDeleted);
-        }
-    }
+    
 
-    internal abstract class AriusArchiveItem : IFileWithHash
-    {
-        private readonly FileInfo _fi;
+    
 
-        protected AriusArchiveItem(FileInfo fi)
-        {
-            _fi = fi;
-        }
-
-        public string FullName => _fi.FullName;
-        public string Name => _fi.Name;
-        public DirectoryInfo Directory => _fi.Directory;
-
-        public HashValue Hash
-        {
-            get => _hashValue.Value;
-            set
-            {
-                if (_hashValue.HasValue)
-                    throw new InvalidOperationException("CAN ONLY BE SET ONCE");
-                _hashValue = value;
-            }
-        }
-        private HashValue? _hashValue;
-
-        public void Delete()
-        {
-            _fi.Delete();
-        }
-    }
-
-    internal class PointerFile : AriusArchiveItem
-    {
-        public const string Extension = ".pointer.arius";
-
-        public PointerFile(FileInfo fi) : base(fi) { }
-
-        public PointerFile(FileInfo fi, HashValue manifestHash) : base(fi)
-        {
-            this.Hash = manifestHash;
-        }
-    }
-
-    internal class BinaryFile : AriusArchiveItem, IChunkFile
-    {
-        public BinaryFile(FileInfo fi) : base(fi) { }
-
-        public IChunkFile[] Chunks { get; set; }
-    }
-
-    internal class ChunkFile2 : AriusArchiveItem, IChunkFile
-    {
-        public ChunkFile2(FileInfo fi) : base(fi) { }
-
-        //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
-    }
-
-    internal class EncryptedChunkFile2 : AriusArchiveItem, IEncryptedFile
-    {
-        public const string Extension = ".7z.arius";
-
-        public EncryptedChunkFile2(FileInfo fi, HashValue hash) : base(fi)
-        {
-            base.Hash = hash;
-        }
-    }
+    
 
 
-    internal class AzureRepository
-    {
-        internal interface IAzureRepositoryOptions : ICommandExecutorOptions
-        {
-            public string AccountName { get; }
-            public string AccountKey { get; }
-            public string Container { get; }
-        }
-
-        private readonly IBlobCopier _blobCopier;
-
-        public AzureRepository(ICommandExecutorOptions options, IBlobCopier b)
-        {
-            _blobCopier = b;
-
-            var o = (IAzureRepositoryOptions)options;
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
-            var bsc = new BlobServiceClient(connectionString);
-            _bcc = bsc.GetBlobContainerClient(o.Container);
-        }
-
-        private readonly BlobContainerClient _bcc;
-
-        private const string EncryptedChunkDirectoryName = "chunks";
-
-
-        public IEnumerable<RemoteEncryptedChunkBlobItem2> GetAllChunkBlobItems()
-        {
-            //var k = _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/").ToList();
-
-            return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
-                .Select(bi => new RemoteEncryptedChunkBlobItem2(bi));
-        }
-
-        public RemoteEncryptedChunkBlobItem2 GetByName(string name, string folder = EncryptedChunkDirectoryName)
-        {
-            var bi = _bcc
-                .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
-                .Single();
-
-            return new RemoteEncryptedChunkBlobItem2(bi);
-        }
-
-        public RemoteEncryptedChunkBlobItem2 Upload(EncryptedChunkFile2 ecf, AccessTier tier)
-        {
-            ((AzCopier)_blobCopier).Upload(ecf, tier,EncryptedChunkDirectoryName, false);
-
-            return GetByName(ecf.Name);
-        }
-    }
-
-    internal abstract class Blob2
-    {
-        protected Blob2(
-            //IRepository root, 
-            BlobItem blobItem //, 
-            //Func<IBlob, HashValue> hashValueProvider
-            )
-        {
-            //_root = root;
-            _bi = blobItem;
-
-            //_hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
-        }
-
-        //protected readonly IRepository _root;
-        protected readonly BlobItem _bi;
-        //private readonly Lazy<HashValue> _hash;
-
-
-        public string FullName => _bi.Name;
-        public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
-        public string Folder => _bi.Name.Split('/').First();
-        public string NameWithoutExtension => Name.TrimEnd(Extension);
-        public abstract HashValue Hash { get; }
-        protected abstract string Extension { get; }
-    }
-
-    class RemoteEncryptedChunkBlobItem2 : Blob2
-    {
-        public RemoteEncryptedChunkBlobItem2(BlobItem bi) : base(bi)
-        {
-        }
-
-        public override HashValue Hash => new HashValue { Value = NameWithoutExtension };
-        protected override string Extension => ".7z.arius";
-    }
-
-
-    internal class Context : DbContext
-    {
-        public DbSet<Manifest2> Manifests { get; set; }
-        //public DbSet<OrderedChunk> Chunks { get; set; }
-
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-            => optionsBuilder.UseSqlite(@"Data Source=c:\arius.db");
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            var me = modelBuilder.Entity<Manifest2>();
-            me.HasKey(m => m.HashValue);
-            me.HasMany(m => m.Entries);
-            me.HasMany(m => m.Chunks);
-
-            var pfee = modelBuilder.Entity<PointerFileEntry>();
-            pfee.HasKey(pfe => new { pfe.RelativeName, pfe.Version});
-
-            var oce = modelBuilder.Entity<OrderedChunk>();
-            oce.HasKey(oc => new {oc.ManifestHashValue, oc.ChunkHashValue});
-
-        }
-    }
-
-
-    internal class Manifest2
-    {
-        public string HashValue { get; set; }
-
-        public List<PointerFileEntry> Entries { get; init; } = new();
-        public List<OrderedChunk> Chunks { get; init; } = new();
-    }
-
-    internal class PointerFileEntry
-    {
-        public string RelativeName { get; set; }
-        public DateTime Version { get; set; }
-        public bool IsDeleted { get; set; }
-        public DateTime? CreationTimeUtc { get; set; }
-        public DateTime? LastWriteTimeUtc { get; set; }
-    }
-
-    //internal class Chunk
-    //{
-    //    public string HashValue { get; set; }
-    //}
-
-    internal class OrderedChunk
-    {
-        public string ManifestHashValue { get; set; }
-        public string ChunkHashValue { get; set; }
-        public int Order { get; set; }
-    }
+    
 }

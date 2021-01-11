@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
 
@@ -117,7 +118,7 @@ namespace Arius.CommandLine
                 .Create<string, string, string, string, bool, string, int, bool, string>(
                     (accountName, accountKey, passphrase, container, keepLocal, tier, minSize, simulate, path) =>
                     {
-                        pcp.CommandExecutorType = typeof(ArchiveCommandExecutor2);
+                        pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
 
                         pcp.CommandExecutorOptions = new ArchiveOptions()
                         {
@@ -158,28 +159,4 @@ namespace Arius.CommandLine
         public bool Dedup { get; init; }
         public string Path { get; init; }
     }
-
-    //internal class ArchiveCommandExecutor  : ICommandExecutor
-    //{
-    //    private readonly ILogger<ArchiveCommandExecutor> _logger;
-    //    private readonly LocalRootRepository _localRoot;
-    //    private readonly AriusRepository _ariusRepository;
-
-    //    public ArchiveCommandExecutor(ICommandExecutorOptions options,
-    //        ILogger<ArchiveCommandExecutor> logger,
-    //        LocalRootRepository localRoot,
-    //        AriusRepository remoteArchive)
-    //    {
-    //        _logger = logger;
-    //        _localRoot = localRoot;
-    //        _ariusRepository = remoteArchive;
-    //    }
-    //    public int Execute()
-    //    {
-    //        var allLocalFiles = _localRoot.GetAll();
-    //        _ariusRepository.PutAll(allLocalFiles);
-
-    //        return 0;
-    //    }
-    //}
 }
