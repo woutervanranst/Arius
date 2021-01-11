@@ -25,11 +25,9 @@ namespace Arius.Services
     internal class AzCopier : IBlobCopier
     {
         public AzCopier(ICommandExecutorOptions options, 
-            ILogger<AzCopier> logger, 
-            RemoteBlobFactory factory)
+            ILogger<AzCopier> logger)
         {
             _options = (IAzCopyUploaderOptions)options;
-            _factory = factory;
             _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
@@ -75,41 +73,39 @@ namespace Arius.Services
         private readonly Task<string> _AzCopyPath;
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
-        //private readonly AccessTier _contentAccessTier;
         private readonly IAzCopyUploaderOptions _options;
-        private readonly RemoteBlobFactory _factory;
         private readonly ILogger<AzCopier> _logger;
 
-        /// <summary>
-        /// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="filesToUpload"></param>
-        /// <param name="remoteDirectoryName"></param>
-        /// <param name="overwrite"></param>
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite = false) where T : ILocalFile
-        {
-            AccessTier tier;
+        ///// <summary>
+        ///// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
+        ///// </summary>
+        ///// <typeparam name="T"></typeparam>
+        ///// <param name="filesToUpload"></param>
+        ///// <param name="remoteDirectoryName"></param>
+        ///// <param name="overwrite"></param>
+        //public void Upload(IEnumerable<IFile> filesToUpload, string remoteDirectoryName, bool overwrite = false)
+        //{
+        //    AccessTier tier;
 
-            if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
-                tier = _options.Tier;
-            else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
-                tier = AccessTier.Cool;
-            else
-                throw new NotImplementedException();
+        //    if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
+        //        tier = _options.Tier;
+        //    else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
+        //        tier = AccessTier.Cool;
+        //    else
+        //        throw new NotImplementedException();
 
-            filesToUpload.GroupBy(af => af.DirectoryName)
-                .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
-                .WithDegreeOfParallelism(1)
-                .ForAll(g =>
-                {
-                    var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+        //    filesToUpload.GroupBy(af => af.DirectoryName)
+        //        .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+        //        .WithDegreeOfParallelism(1)
+        //        .ForAll(g =>
+        //        {
+        //            var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-                    Upload(g.Key, remoteDirectoryName, fileNames, tier, overwrite);
-                });
-        }
+        //            Upload(g.Key, remoteDirectoryName, fileNames, tier, overwrite);
+        //        });
+        //}
 
-        public void Upload(EncryptedChunkFile2 fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
+        public void Upload(IFile fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
         { 
             Upload(fileToUpload.Directory.FullName, $"/{remoteDirectoryName}", new[] { fileToUpload.Name }, tier, overwrite);
         }
@@ -178,7 +174,7 @@ namespace Arius.Services
         /// <summary>
         /// Download the blobsToDownload to the specified target
         /// </summary>
-        public void Download(string remoteDirectoryName, IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
+        public void Download(string remoteDirectoryName, IEnumerable<Blob2> blobsToDownload, DirectoryInfo target)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>

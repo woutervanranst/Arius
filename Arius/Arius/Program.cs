@@ -6,7 +6,6 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -92,16 +91,8 @@ namespace Arius
                 })
                 .AddSingleton<IConfiguration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                //Add Repositories
-                .AddSingleton<AriusRepository>()
-                .AddSingleton<LocalRootRepository>()
-                .AddSingleton<LocalManifestFileRepository>()
-                .AddSingleton<RemoteEncryptedChunkRepository>()
                 //Add Services
-                .AddSingleton<LocalFileFactory>()
-                .AddSingleton<RemoteBlobFactory>()
                 .AddSingleton<ManifestService>()
-                .AddSingleton<PointerService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
@@ -109,7 +100,7 @@ namespace Arius
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor2>()
                 .AddSingleton<RestoreCommandExecutor>()
-                .AddSingleton<AriusRepository2>()
+                .AddSingleton<AzureRepository>()
                 .BuildServiceProvider();
             return serviceProvider;
         }

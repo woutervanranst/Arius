@@ -13,30 +13,29 @@ namespace Arius.Services
     }
     internal class Chunker : IChunker
     {
-        public IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk)
+        public IChunkFile[] Chunk(BinaryFile item)
         {
-            return new IChunkFile[] { (IChunkFile)fileToChunk };
+            return new IChunkFile[] {item};
+
+            //                return new ChunkFile2[] 
+            //{ 
+            //    new(new FileInfo(item.FileFullName))
+            //    {
+            //        Hash = item.Hash
+            //    }
+            //};
         }
 
-        public ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        public BinaryFile Merge(IChunkFile[] chunksToJoin)
         {
-            return (ILocalContentFile)chunksToJoin.Single();
-        }
-
-
-
-
-
-        public ChunkFile2[] Chunk(BinaryFile item)
-        {
-            return new ChunkFile2[] {new(new FileInfo(item.FileFullName)) { Hash = item.Hash }};
+            return new BinaryFile(new FileInfo(chunksToJoin.Single().FullName));
         }
     }
 
 
     internal class DedupChunker : IChunker
     {
-        public IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk)
+        public IChunkFile[] Chunk(BinaryFile fileToChunk)
         {
             throw new NotImplementedException();
 
@@ -71,7 +70,7 @@ namespace Arius.Services
 //                //return r;
         }
 
-        public ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        public BinaryFile Merge(IChunkFile[] chunksToJoin)
         {
             throw new NotImplementedException();
 
@@ -83,5 +82,8 @@ namespace Arius.Services
 //        //concaten.CopyTo(fff);
 //        //fff.Close();
         }
+
+        
+        
     }
 }

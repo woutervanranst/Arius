@@ -18,7 +18,7 @@ namespace Arius.Services
 
     internal interface IHashValueProvider
     {
-        HashValue GetHashValue(IHashable hashable);
+        HashValue GetHashValue(IFile hashable);
     }
 
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
@@ -35,23 +35,25 @@ namespace Arius.Services
 
         private readonly string _salt;
 
-        public HashValue GetHashValue(IHashable hashable)
+        public HashValue GetHashValue(IFile hashable)
         {
-            return GetHashValue((dynamic) hashable);
+            return GetHashValue2((dynamic)hashable);
         }
 
-        //public HashValue GetHashValue(LocalPointerFile hashable)
-        //{
-        //    var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
-        //    return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
-        //}
+        public HashValue GetHashValue2(PointerFile f)
+        {
+            //var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
+            //return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
 
-        public HashValue GetHashValue(LocalContentFile hashable)
+            return new() { Value = File.ReadAllText(f.FullName) };
+        }
+
+        public HashValue GetHashValue2(BinaryFile f)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = System.IO.File.OpenRead(hashable.FullName);
+            using Stream fs = System.IO.File.OpenRead(f.FullName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();
@@ -68,7 +70,7 @@ namespace Arius.Services
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = System.IO.File.OpenRead(af.FileFullName);
+            using Stream fs = System.IO.File.OpenRead(af.FullName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();

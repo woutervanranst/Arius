@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
-using Arius.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
@@ -22,9 +21,7 @@ namespace Arius.Services
     internal class SevenZipCommandlineEncrypter : IEncrypter
     {
         public SevenZipCommandlineEncrypter(ICommandExecutorOptions options,
-            ILogger<SevenZipCommandlineEncrypter> logger,
-            LocalFileFactory factory,
-            RemoteEncryptedChunkRepository chunkRepository)
+            ILogger<SevenZipCommandlineEncrypter> logger)
         {
             _passphrase = ((IEncrypterOptions)options).Passphrase;
 
@@ -32,17 +29,23 @@ namespace Arius.Services
             _7ZPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.exe", "7z"));
 
             _logger = logger;
-            _factory = factory;
-            _chunkRepository = chunkRepository;
         }
 
         private readonly string _passphrase;
         private readonly Task<string> _7ZPath;
         private readonly ILogger<SevenZipCommandlineEncrypter> _logger;
-        private readonly LocalFileFactory _factory;
-        private readonly RemoteEncryptedChunkRepository _chunkRepository;
 
-        public IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false)
+        public class Compression
+        {
+            private Compression(string value) { Value = value; }
+
+            public string Value { get; set; }
+
+            public static Compression NoCompression => new("-mx0");
+            public static Compression LightCompression => new("-mx1");
+        }
+
+        public void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, Compression compressionLevel, bool deletePlaintext = false)
         {
             _logger.LogDebug($"Encrypting {fileToEncrypt.Name}");
 
@@ -57,29 +60,7 @@ namespace Arius.Services
              * -p       passphrase
              */
 
-            string compressionLevel;
-            FileInfo targetFile;
-            if (fileToEncrypt is IChunkFile) // CHUNK?
-            { 
-                compressionLevel = "-mx0";
-                targetFile = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetEncryptedFileInfo(fileToEncrypt, _chunkRepository);
-            }
-            else if (fileToEncrypt is IManifestFile)
-            { 
-                compressionLevel = "-mx1";
-                targetFile = fileToEncrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetEncryptedFileInfo(fileToEncrypt);
-            }
-            else
-                throw new NotImplementedException();
-
-            string arguments;
-            //if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            //    arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
-            //else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FullName}""";
-            //else
-            //    throw new NotImplementedException("OS Platform is not Windows or Linux");
-
+            var arguments = $@"a ""{encryptedFile.FullName}"" -p{_passphrase} -mhe {compressionLevel.Value} -ms -mmt ""{fileToEncrypt.FullName}""";
 
             var regex = "Everything is Ok";
 
@@ -89,51 +70,49 @@ namespace Arius.Services
 
             _logger.LogDebug(rawOutput);
 
-            var encryptedLocalFile = (IEncryptedLocalFile)_factory.Create(targetFile, fileToEncrypt.Root);
-
             if (deletePlaintext)
                 fileToEncrypt.Delete();
-
-            return encryptedLocalFile;
         }
 
-        public EncryptedChunkFile2 Encrypt(ChunkFile2 fileToEncrypt, bool deletePlaintext = false)
-        {
-            _logger.LogDebug($"Encrypting {fileToEncrypt.Name}");
+        
 
-            //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
-            /*
-             * a        archive
-             * -mhe     header encryption
-             * -ms      solid archive
-             * -mx0     store only/no compression
-             * -mx1     light compression
-             * -mmt     multithreaded
-             * -p       passphrase
-             */
+        //public EncryptedChunkFile2 Encrypt(ChunkFile2 fileToEncrypt, bool deletePlaintext = false)
+        //{
+        //    _logger.LogDebug($"Encrypting {fileToEncrypt.Name}");
 
-            var targetFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"{fileToEncrypt.Hash}{EncryptedChunkFile2.Extension}"));
-            var compressionLevel = "-mx0";
+        //    //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
+        //    /*
+        //     * a        archive
+        //     * -mhe     header encryption
+        //     * -ms      solid archive
+        //     * -mx0     store only/no compression
+        //     * -mx1     light compression
+        //     * -mmt     multithreaded
+        //     * -p       passphrase
+        //     */
 
-            string arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FileFullName}""";
+        //    var targetFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"{fileToEncrypt.Hash}{EncryptedChunkFile2.Extension}"));
+        //    var compressionLevel = "-mx0";
 
-            var regex = "Everything is Ok";
+        //    string arguments = $@"a ""{targetFile.FullName}"" -p{_passphrase} -mhe {compressionLevel} -ms -mmt ""{fileToEncrypt.FileFullName}""";
 
-            var p = new ExternalProcess(_7ZPath.Result);
+        //    var regex = "Everything is Ok";
 
-            p.Execute(arguments, regex, out string rawOutput);
+        //    var p = new ExternalProcess(_7ZPath.Result);
 
-            _logger.LogDebug(rawOutput);
+        //    p.Execute(arguments, regex, out string rawOutput);
 
-            var encryptedLocalFile = new EncryptedChunkFile2(targetFile);
+        //    _logger.LogDebug(rawOutput);
 
-            if (deletePlaintext)
-                fileToEncrypt.Delete();
+        //    var encryptedLocalFile = new EncryptedChunkFile2(targetFile);
 
-            return encryptedLocalFile;
-        }
+        //    if (deletePlaintext)
+        //        fileToEncrypt.Delete();
 
-        public ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false)
+        //    return encryptedLocalFile;
+        //}
+
+        public void Decrypt(IEncryptedFile fileToDecrypt, FileInfo decryptedFile, bool deleteEncrypted = false)
         {
             _logger.LogDebug($"Decrypting {fileToDecrypt.Name}");
 
@@ -147,7 +126,7 @@ namespace Arius.Services
              */
 
             //Extract the archive to a separate folder
-            var randomThreadSafeDirectory = new DirectoryInfo($"{fileToDecrypt.DirectoryName}{Path.DirectorySeparatorChar}{Guid.NewGuid()}");
+            var randomThreadSafeDirectory = new DirectoryInfo($"{fileToDecrypt.Directory.Name}{Path.DirectorySeparatorChar}{Guid.NewGuid()}");
             
             string arguments = $@"e ""{fileToDecrypt.FullName}"" -p{_passphrase} -o""{randomThreadSafeDirectory.FullName}""";
             var regex = @"Everything is Ok";
@@ -157,19 +136,14 @@ namespace Arius.Services
             if (randomThreadSafeDirectory.GetFiles().Length > 1)
                 throw new ArgumentException($"ARFCHIVE TOO MANY FILES {rawOutput}"); //TODO
 
-            var targetFile = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetDecryptedFileInfo(fileToDecrypt);
+            //var decryptedFile = fileToDecrypt.GetType().GetCustomAttribute<ExtensionAttribute>()!.GetDecryptedFileInfo(fileToDecrypt);
 
             //Move the only file in the archive to where we expect it
-            randomThreadSafeDirectory.GetFiles().Single().MoveTo(targetFile.FullName);
-
+            randomThreadSafeDirectory.GetFiles().Single().MoveTo(decryptedFile.FullName);
             randomThreadSafeDirectory.Delete();
-
-            var decryptedLocalFile = _factory.Create(targetFile, fileToDecrypt.Root);
 
             if (deleteEncrypted)
                 fileToDecrypt.Delete();
-
-            return decryptedLocalFile;
         }
     }
 }

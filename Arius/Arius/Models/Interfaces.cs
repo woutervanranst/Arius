@@ -6,122 +6,144 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal interface IItem
+    internal interface IFile
     {
-        string FullName { get; }
-        string Name { get; }
-        string NameWithoutExtension { get; }
-    }
-    internal interface IHashable
-    {
-        HashValue Hash { get; }
-    }
-    internal interface ILocalFile : IItem, IHashable
-    {
-        string DirectoryName { get; }
-        public IRepository Root { get; }
-
-        void Delete();
+        DirectoryInfo Directory { get; }
+        public string Name { get; }
+        public string FullName { get; }
+        public void Delete();
     }
 
-    internal interface IArchivable : ILocalFile
+    internal interface IFileWithHash : IFile
     {
-        string RelativeName { get; }
-        DateTime CreationTimeUtc { get; set; }
-        DateTime LastWriteTimeUtc { get; set; }
-
-    }
-    internal interface ILocalContentFile : ILocalFile, IArchivable
-    {
-        FileInfo PointerFileInfo { get; }
+        public HashValue Hash { get; }
     }
 
-    internal interface IPointerFile : ILocalFile, IArchivable, IHashable
-    {
-        FileInfo LocalContentFileInfo { get; }
-
-        /// <summary>
-        /// The HashValue of the Content of the ManifestFile
-        /// </summary>
-        new HashValue Hash { get; }
-
-        //string ManifestHashValue { get; }
-
-        //TObject GetObject();
-        //HashValue ManifestHash { get; }
-    }
-    internal interface IManifestFile : ILocalFile
+    internal interface IEncryptedFile : IFile
     {
     }
-    internal interface IChunkFile : IHashable, ILocalFile
+
+    internal interface IChunkFile : IFileWithHash
     {
     }
+
+    //internal interface IItem
+    //{
+    //    string FullName { get; }
+    //    string Name { get; }
+    //    //string NameWithoutExtension { get; }
+    //}
+    //    internal interface IHashable
+    //    {
+    //        HashValue Hash { get; }
+    //    }
+    //internal interface IFile : IItem //, IHashable
+    //{
+    //    string DirectoryFullName { get; }
+    //    //public IRepository Root { get; }
+
+    //    void Delete();
+    //}
+
+
+
+    //    internal interface IArchivable : ILocalFile
+    //    {
+    //        string RelativeName { get; }
+    //        DateTime CreationTimeUtc { get; set; }
+    //        DateTime LastWriteTimeUtc { get; set; }
+
+    //    }
+    //    internal interface ILocalContentFile : ILocalFile, IArchivable
+    //    {
+    //        FileInfo PointerFileInfo { get; }
+    //    }
+
+    //    internal interface IPointerFile : ILocalFile, IArchivable, IHashable
+    //    {
+    //        FileInfo LocalContentFileInfo { get; }
+
+    //        /// <summary>
+    //        /// The HashValue of the Content of the ManifestFile
+    //        /// </summary>
+    //        new HashValue Hash { get; }
+
+    //        //string ManifestHashValue { get; }
+
+    //        //TObject GetObject();
+    //        //HashValue ManifestHash { get; }
+    //    }
+    //    internal interface IManifestFile : ILocalFile
+    //    {
+    //    }
+    //    internal interface IChunkFile : IHashable, ILocalFile
+    //    {
+    //    }
     internal interface IChunker //<T> where T : ILocalContentFile
     {
-        IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk);
-        ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin);
+        IChunkFile[] Chunk(BinaryFile fileToChunk);
+        BinaryFile Merge(IChunkFile[] chunksToJoin);
     }
 
 
 
-    internal interface IEncryptedLocalFile : ILocalFile
-    {
-    }
+    //    internal interface IEncryptedLocalFile : ILocalFile
+    //    {
+    //    }
     internal interface IEncrypter
     {
-        IEncryptedLocalFile Encrypt(ILocalFile fileToEncrypt, bool deletePlaintext = false);
-        ILocalFile Decrypt(IEncryptedLocalFile fileToDecrypt, bool deleteEncrypted = false);
+        void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, SevenZipCommandlineEncrypter.Compression compressionLevel, bool deletePlaintext = false);
+        void Decrypt(IEncryptedFile fileToDecrypt, FileInfo decryptedFile, bool deleteEncrypted = false);
     }
-    internal interface IEncryptedManifestFile : ILocalFile, IEncryptedLocalFile
-    {
-    }
-
-
-    
-    internal interface IEncryptedChunkFile : IHashable, ILocalFile, IEncryptedLocalFile
-    {
-    }
+    //    internal interface IEncryptedManifestFile : ILocalFile, IEncryptedLocalFile
+    //    {
+    //    }
 
 
 
-    internal interface IBlob : IItem
-    {
-    }
-    internal interface IRemoteBlob : IBlob, IHashable
-    {
-    }
-    internal interface IRemoteEncryptedChunkBlobItem : IRemoteBlob
-    {
-        AccessTier AccessTier { get; }
-        bool CanDownload();
-        IRemoteEncryptedChunkBlobItem Hydrated { get; }
-        string Folder { get; }
-    }
+    //    internal interface IEncryptedChunkFile : IHashable, ILocalFile, IEncryptedLocalFile
+    //    {
+    //    }
+
+
+
+    //    internal interface IBlob : IItem
+    //    {
+    //    }
+    //    internal interface IRemoteBlob : IBlob, IHashable
+    //    {
+    //    }
+    //    internal interface IRemoteEncryptedChunkBlobItem : IRemoteBlob
+    //    {
+    //        AccessTier AccessTier { get; }
+    //        bool CanDownload();
+    //        IRemoteEncryptedChunkBlobItem Hydrated { get; }
+    //        string Folder { get; }
+    //    }
 
 
 
     internal interface IBlobCopier
     {
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite) where T : ILocalFile;
-        void Download(string remoteDirectoryName, IEnumerable<IBlob> blobsToDownload, DirectoryInfo target);
-        void Download(string remoteDirectoryName, DirectoryInfo target);
-    }
+        void Upload(IFile fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite);
+        void Download(string remoteDirectoryName, IEnumerable<Blob2> blobsToDownload, DirectoryInfo target);
+}
 
 
 
-    internal interface IRepository
-    {
-        string FullName { get; }
-    }
-    internal interface IGetRepository<out T> : IRepository
-    {
-        T GetById(HashValue id);
-        IEnumerable<T> GetAll();
-    }
+//    internal interface IRepository
+//    {
+//        string FullName { get; }
+//    }
+//    internal interface IGetRepository<out T> : IRepository
+//    {
+//        T GetById(HashValue id);
+//        IEnumerable<T> GetAll();
+//    }
 
-    internal interface IPutRepository<in T> : IRepository
-    {
-        void Put(T entity);
-        void PutAll(IEnumerable<T> entities);
-    }
+//    internal interface IPutRepository<in T> : IRepository
+//    {
+//        void Put(T entity);
+//        void PutAll(IEnumerable<T> entities);
+//    }
 }

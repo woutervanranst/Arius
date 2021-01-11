@@ -12,7 +12,6 @@ using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
 
@@ -141,15 +140,12 @@ namespace Arius.CommandLine
     }
 
     internal struct ArchiveOptions : ICommandExecutorOptions,
-        ILocalRootDirectoryOptions, 
         ISHA256HasherOptions, 
         IChunkerOptions, 
         IEncrypterOptions, 
         IAzCopyUploaderOptions,
-        IAriusRepositoryOptions,
         IConfigurationOptions,
-        //IManifestRepositoryOptions,
-        IRemoteChunkRepositoryOptions
+        AzureRepository.IAzureRepositoryOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -163,27 +159,27 @@ namespace Arius.CommandLine
         public string Path { get; init; }
     }
 
-    internal class ArchiveCommandExecutor  : ICommandExecutor
-    {
-        private readonly ILogger<ArchiveCommandExecutor> _logger;
-        private readonly LocalRootRepository _localRoot;
-        private readonly AriusRepository _ariusRepository;
+    //internal class ArchiveCommandExecutor  : ICommandExecutor
+    //{
+    //    private readonly ILogger<ArchiveCommandExecutor> _logger;
+    //    private readonly LocalRootRepository _localRoot;
+    //    private readonly AriusRepository _ariusRepository;
 
-        public ArchiveCommandExecutor(ICommandExecutorOptions options,
-            ILogger<ArchiveCommandExecutor> logger,
-            LocalRootRepository localRoot,
-            AriusRepository remoteArchive)
-        {
-            _logger = logger;
-            _localRoot = localRoot;
-            _ariusRepository = remoteArchive;
-        }
-        public int Execute()
-        {
-            var allLocalFiles = _localRoot.GetAll();
-            _ariusRepository.PutAll(allLocalFiles);
+    //    public ArchiveCommandExecutor(ICommandExecutorOptions options,
+    //        ILogger<ArchiveCommandExecutor> logger,
+    //        LocalRootRepository localRoot,
+    //        AriusRepository remoteArchive)
+    //    {
+    //        _logger = logger;
+    //        _localRoot = localRoot;
+    //        _ariusRepository = remoteArchive;
+    //    }
+    //    public int Execute()
+    //    {
+    //        var allLocalFiles = _localRoot.GetAll();
+    //        _ariusRepository.PutAll(allLocalFiles);
 
-            return 0;
-        }
-    }
+    //        return 0;
+    //    }
+    //}
 }

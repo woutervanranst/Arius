@@ -9,7 +9,6 @@ using System.Reflection;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;

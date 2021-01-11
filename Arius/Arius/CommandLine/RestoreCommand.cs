@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -105,13 +104,10 @@ namespace Arius.CommandLine
     }
 
     internal struct RestoreOptions : ICommandExecutorOptions,
-        ILocalRootDirectoryOptions,
         IChunkerOptions,
         ISHA256HasherOptions,
         IAzCopyUploaderOptions,
-        IEncrypterOptions,
-        IRemoteChunkRepositoryOptions,
-        IAriusRepositoryOptions
+        IEncrypterOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -131,204 +127,209 @@ namespace Arius.CommandLine
 
     internal class RestoreCommandExecutor : ICommandExecutor
     {
-        private readonly RestoreOptions _options;
-        private readonly ILogger<ArchiveCommandExecutor> _logger;
-        private readonly LocalRootRepository _localRoot;
-        //private readonly AriusRepository _remoteArchive;
-        private readonly LocalManifestFileRepository _manifestRepository;
-        private readonly RemoteEncryptedChunkRepository _chunkRepository;
-        private readonly ManifestService _manifestService;
-        private readonly PointerService _pointerService;
-        private readonly IEncrypter _encrypter;
+        //private readonly RestoreOptions _options;
+        //private readonly ILogger<RestoreCommandExecutor> _logger;
+        //private readonly LocalRootRepository _localRoot;
+        ////private readonly AriusRepository _remoteArchive;
+        //private readonly LocalManifestFileRepository _manifestRepository;
+        //private readonly RemoteEncryptedChunkRepository _chunkRepository;
+        //private readonly ManifestService _manifestService;
+        //private readonly PointerService _pointerService;
+        //private readonly IEncrypter _encrypter;
 
-        public RestoreCommandExecutor(ICommandExecutorOptions options,
-            ILogger<ArchiveCommandExecutor> logger,
-            LocalRootRepository localRoot,
-            //AriusRepository remoteArchive,
-            LocalManifestFileRepository manifestRepository,
-            RemoteEncryptedChunkRepository chunkRepository,
-            ManifestService manifestService,
-            PointerService pointerService,
-            IEncrypter encrypter)
-        {
-            _options = (RestoreOptions) options;
-            _logger = logger;
-            _localRoot = localRoot;
-            //_remoteArchive = remoteArchive;
-            _manifestRepository = manifestRepository;
-            _chunkRepository = chunkRepository;
-            _manifestService = manifestService;
-            _pointerService = pointerService;
-            _encrypter = encrypter;
-        }
+        //public RestoreCommandExecutor(ICommandExecutorOptions options,
+        //    ILogger<RestoreCommandExecutor> logger,
+        //    LocalRootRepository localRoot,
+        //    //AriusRepository remoteArchive,
+        //    LocalManifestFileRepository manifestRepository,
+        //    RemoteEncryptedChunkRepository chunkRepository,
+        //    ManifestService manifestService,
+        //    PointerService pointerService,
+        //    IEncrypter encrypter)
+        //{
+        //    _options = (RestoreOptions) options;
+        //    _logger = logger;
+        //    _localRoot = localRoot;
+        //    //_remoteArchive = remoteArchive;
+        //    _manifestRepository = manifestRepository;
+        //    _chunkRepository = chunkRepository;
+        //    _manifestService = manifestService;
+        //    _pointerService = pointerService;
+        //    _encrypter = encrypter;
+        //}
 
         public int Execute()
         {
-            if (_localRoot.Exists)
-            {
-                if (!_localRoot.IsEmpty)
-                {
-                    // use !pf.LocalContentFileInfo.Exists 
-                    _logger.LogWarning("The folder is not empty. There may be lingering files after the restore.");
-                    //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
-                }
-
-                if (_options.Synchronize)
-                    Synchronize();
-
-                if (_options.Download)
-                    Download();
-            }
-            //else if (File.Exists(path) && path.EndsWith(".arius"))
+            //if (_localRoot.Exists)
             //{
-            //    // Restore one file
+            //    if (!_localRoot.IsEmpty)
+            //    {
+            //        // use !pf.LocalContentFileInfo.Exists 
+            //        _logger.LogWarning("The folder is not empty. There may be lingering files after the restore.");
+            //        //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
+            //    }
 
+            //    if (_options.Synchronize)
+            //        Synchronize();
+
+            //    if (_options.Download)
+            //        Download();
             //}
-            else
-            {
-                throw new NotImplementedException();
-            }
+            ////else if (File.Exists(path) && path.EndsWith(".arius"))
+            ////{
+            ////    // Restore one file
+
+            ////}
+            //else
+            //{
+            //    throw new NotImplementedException();
+            //}
 
             return 0;
         }
 
         private void Synchronize()
         {
-            //Synchronize the local root to the remote repository
-            var manifestFiles = _manifestRepository.GetAll();
+            throw new NotImplementedException();
 
-            var pointerEntriesperManifest = manifestFiles.AsParallelWithParallelism()
-                .ToImmutableDictionary(
-                    mf => mf,
-                    mf => _manifestService.ReadManifestFile(mf).GetLastEntries().ToImmutableArray()
-                );
+            ////Synchronize the local root to the remote repository
+            //var manifestFiles = _manifestRepository.GetAll();
 
-            _logger.LogInformation($"{pointerEntriesperManifest.Values.Sum(pfes => pfes.Length)} files in latest version of remote");
+            //var pointerEntriesperManifest = manifestFiles.AsParallelWithParallelism()
+            //    .ToImmutableDictionary(
+            //        mf => mf,
+            //        mf => _manifestService.ReadManifestFile(mf).GetLastEntries().ToImmutableArray()
+            //    );
+
+            //_logger.LogInformation($"{pointerEntriesperManifest.Values.Sum(pfes => pfes.Length)} files in latest version of remote");
 
 
-            _logger.LogInformation($"Synchronizing state of local folder with remote... ");
+            //_logger.LogInformation($"Synchronizing state of local folder with remote... ");
 
-            //1. POINTERS THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
-            var createdPointers = pointerEntriesperManifest
-                .AsParallelWithParallelism()
-                .SelectMany(p => p.Value
-                    .Where(pfe => !_localRoot.GetPointerFileInfo(pfe).Exists)
-                    .Select(pfe =>
-                    {
-                        var apf = _pointerService.CreatePointerFile(_localRoot, pfe, p.Key);
-                        _logger.LogInformation($"Pointer '{apf.RelativeName}' created");
+            ////1. POINTERS THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
+            //var createdPointers = pointerEntriesperManifest
+            //    .AsParallelWithParallelism()
+            //    .SelectMany(p => p.Value
+            //        .Where(pfe => !_localRoot.GetPointerFileInfo(pfe).Exists)
+            //        .Select(pfe =>
+            //        {
+            //            var apf = _pointerService.CreatePointerFile(_localRoot, pfe, p.Key);
+            //            _logger.LogInformation($"Pointer '{apf.RelativeName}' created");
 
-                        return apf;
-                    }))
-                .ToImmutableArray();
+            //            return apf;
+            //        }))
+            //    .ToImmutableArray();
 
-            // 2. POINTERS THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
-            var relativeNamesThatShouldExist = pointerEntriesperManifest.Values
-                .SelectMany(x => x)
-                .Select(x => x.RelativeName); //root.GetFullName(x));
+            //// 2. POINTERS THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
+            //var relativeNamesThatShouldExist = pointerEntriesperManifest.Values
+            //    .SelectMany(x => x)
+            //    .Select(x => x.RelativeName); //root.GetFullName(x));
 
-            _localRoot.GetAll().OfType<IPointerFile>()
-                .AsParallelWithParallelism()
-                .Where(pf => !relativeNamesThatShouldExist.Contains(pf.RelativeName))
-                .ForAll(pf =>
-                {
-                    pf.Delete();
+            //_localRoot.GetAll().OfType<IPointerFile>()
+            //    .AsParallelWithParallelism()
+            //    .Where(pf => !relativeNamesThatShouldExist.Contains(pf.RelativeName))
+            //    .ForAll(pf =>
+            //    {
+            //        pf.Delete();
 
-                    Console.WriteLine($"Pointer for '{pf.RelativeName}' deleted");
-                });
+            //        Console.WriteLine($"Pointer for '{pf.RelativeName}' deleted");
+            //    });
 
-            _localRoot.DeleteEmptySubdirectories();
+            //_localRoot.DeleteEmptySubdirectories();
         }
 
         private void Download()
         {
-            var pointerFiles = _localRoot.GetAll().OfType<IPointerFile>().ToImmutableArray();
+            throw new NotImplementedException();
 
-            var pointerFilesPerManifest = pointerFiles
-                .AsParallelWithParallelism()
-                .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
-                .GroupBy(pf => pf.Hash)
-                .ToImmutableDictionary(
-                    g =>
-                    {
-                        var hashValue = g.Key;
-                        var manifestFile = _manifestRepository.GetById(hashValue);
-                        return _manifestService.ReadManifestFile(manifestFile);
-                    },
-                    g => g.ToList());
 
-            //TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
+            //var pointerFiles = _localRoot.GetAll().OfType<IPointerFile>().ToImmutableArray();
 
-            var chunksToDownload = pointerFilesPerManifest.Keys
-                .AsParallelWithParallelism()
-                .SelectMany(mf => mf.ChunkNames)
-                .Distinct()
-                .Select(chunkName => _chunkRepository.GetByName(chunkName))
-                .ToImmutableArray();
+            //var pointerFilesPerManifest = pointerFiles
+            //    .AsParallelWithParallelism()
+            //    .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
+            //    .GroupBy(pf => pf.Hash)
+            //    .ToImmutableDictionary(
+            //        g =>
+            //        {
+            //            var hashValue = g.Key;
+            //            var manifestFile = _manifestRepository.GetById(hashValue);
+            //            return _manifestService.ReadManifestFile(manifestFile);
+            //        },
+            //        g => g.ToList());
 
-            var canDownloadAll = chunksToDownload.All(c => c.CanDownload());
+            ////TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
 
-            if (!canDownloadAll)
-            {
-                _logger.LogCritical("Some blobs are still being rehydrated from Archive storage. Try again later.");
-                return;
-            }
+            //var chunksToDownload = pointerFilesPerManifest.Keys
+            //    .AsParallelWithParallelism()
+            //    .SelectMany(mf => mf.ChunkNames)
+            //    .Distinct()
+            //    .Select(chunkName => _chunkRepository.GetByName(chunkName))
+            //    .ToImmutableArray();
 
-            chunksToDownload = chunksToDownload.Select(c => c.Hydrated).ToImmutableArray();
+            //var canDownloadAll = chunksToDownload.All(c => c.CanDownload());
 
-            var encryptedChunks = _chunkRepository.DownloadAll(chunksToDownload);
+            //if (!canDownloadAll)
+            //{
+            //    _logger.LogCritical("Some blobs are still being rehydrated from Archive storage. Try again later.");
+            //    return;
+            //}
 
-            var unencryptedChunks = encryptedChunks
-                .AsParallelWithParallelism()
-                .Select(ec => (IChunkFile)_encrypter.Decrypt(ec, true))
-                .ToImmutableDictionary(
-                    c => c.Hash,
-                    c => c);
+            //chunksToDownload = chunksToDownload.Select(c => c.Hydrated).ToImmutableArray();
 
-            var pointersWithChunks = pointerFilesPerManifest.Keys
-                .GroupBy(mf => new HashValue {Value = mf.Hash})
-                .Select(
-                    g => new
-                    {
-                        PointerFileEntry = g.SelectMany(m => m.PointerFileEntries).ToImmutableArray(),
-                        UnencryptedChunks = g.SelectMany(m => m.ChunkNames.Select(ecn => unencryptedChunks[g.Key])).ToImmutableArray()
-                    })
-                .ToImmutableArray();
+            //var encryptedChunks = _chunkRepository.DownloadAll(chunksToDownload);
 
-            pointersWithChunks
-                .AsParallelWithParallelism()
-                .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
+            //var unencryptedChunks = encryptedChunks
+            //    .AsParallelWithParallelism()
+            //    .Select(ec => (IChunkFile)_encrypter.Decrypt(ec, true))
+            //    .ToImmutableDictionary(
+            //        c => c.Hash,
+            //        c => c);
 
-            if (!_options.KeepPointers)
-                pointerFiles.AsParallel().ForAll(apf => apf.Delete());
+            //var pointersWithChunks = pointerFilesPerManifest.Keys
+            //    .GroupBy(mf => new HashValue {Value = mf.Hash})
+            //    .Select(
+            //        g => new
+            //        {
+            //            PointerFileEntry = g.SelectMany(m => m.PointerFileEntries).ToImmutableArray(),
+            //            UnencryptedChunks = g.SelectMany(m => m.ChunkNames.Select(ecn => unencryptedChunks[g.Key])).ToImmutableArray()
+            //        })
+            //    .ToImmutableArray();
+
+            //pointersWithChunks
+            //    .AsParallelWithParallelism()
+            //    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
+
+            //if (!_options.KeepPointers)
+            //    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
         }
-        private void Restore(LocalRootRepository root, ImmutableArray<Manifest.PointerFileEntry> pfes, ImmutableArray<IChunkFile> chunks)
-        {
-            if (chunks.Length == 1)
-            {
-                //No dedup
-                var chunk = chunks.Single();
-                var chunkFileInfo = new FileInfo(chunk.FullName);
+        //private void Restore(LocalRootRepository root, ImmutableArray<Manifest.PointerFileEntry> pfes, ImmutableArray<IChunkFile> chunks)
+        //{
+        //    if (chunks.Length == 1)
+        //    {
+        //        //No dedup
+        //        var chunk = chunks.Single();
+        //        var chunkFileInfo = new FileInfo(chunk.FullName);
 
-                for (int i = 0; i < pfes.Length; i++)
-                {
-                    var pfe = pfes[i];
-                    var targetFileInfo = _localRoot.GetLocalContentFileInfo(pfe);
+        //        for (int i = 0; i < pfes.Length; i++)
+        //        {
+        //            var pfe = pfes[i];
+        //            var targetFileInfo = _localRoot.GetLocalContentFileInfo(pfe);
 
-                    if (i == 0)
-                        chunkFileInfo.MoveTo(targetFileInfo.FullName);
-                    else
-                        chunkFileInfo.CopyTo(targetFileInfo.FullName);
+        //            if (i == 0)
+        //                chunkFileInfo.MoveTo(targetFileInfo.FullName);
+        //            else
+        //                chunkFileInfo.CopyTo(targetFileInfo.FullName);
 
-                    targetFileInfo.CreationTimeUtc = pfe.CreationTimeUtc!.Value;
-                    targetFileInfo.LastWriteTimeUtc = pfe.LastWriteTimeUtc!.Value;
-                }
-            }
-            else
-            {
-                throw new NotImplementedException();
-            }
-        }
+        //            targetFileInfo.CreationTimeUtc = pfe.CreationTimeUtc!.Value;
+        //            targetFileInfo.LastWriteTimeUtc = pfe.LastWriteTimeUtc!.Value;
+        //        }
+        //    }
+        //    else
+        //    {
+        //        throw new NotImplementedException();
+        //    }
+        //}
     }
 }
 

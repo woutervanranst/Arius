@@ -4,9 +4,9 @@ using Arius.Models;
 
 namespace Arius.Extensions
 {
-    internal class PointerFileEntryEqualityComparer : IEqualityComparer<Manifest.PointerFileEntry>
+    internal class PointerFileEntryEqualityComparer : IEqualityComparer<PointerFileEntry>
     {
-        public bool Equals(Manifest.PointerFileEntry x, Manifest.PointerFileEntry y)
+        public bool Equals(PointerFileEntry x, PointerFileEntry y)
         {
             return x.RelativeName == y.RelativeName &&
                    //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
@@ -15,7 +15,7 @@ namespace Arius.Extensions
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
-        public int GetHashCode(Manifest.PointerFileEntry obj)
+        public int GetHashCode(PointerFileEntry obj)
         {
             return HashCode.Combine(obj.RelativeName,
                 //obj.Version,  //DO NOT Compare on DateTime Version

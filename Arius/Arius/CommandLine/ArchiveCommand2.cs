@@ -22,7 +22,6 @@ using Arius.Models;
 using Azure.Storage.Blobs;
 using Arius.CommandLine;
 using Arius.Extensions;
-using Arius.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HashValue = Arius.Services.HashValue;
@@ -32,9 +31,8 @@ namespace Arius
     internal class ArchiveCommandExecutor2 : ICommandExecutor
     {
         public ArchiveCommandExecutor2(ICommandExecutorOptions options,
-            ILogger<ArchiveCommandExecutor> logger,
-            LocalRootRepository localRoot,
-            AriusRepository2 ariusRepository,
+            ILogger<ArchiveCommandExecutor2> logger,
+            AzureRepository ariusRepository,
 
             IHashValueProvider h,
             IChunker c,
@@ -42,8 +40,7 @@ namespace Arius
         {
             _options = (ArchiveOptions)options;
             _logger = logger;
-            //_localRoot = localRoot;
-            _root = new DirectoryInfo(localRoot.FullName);
+            _root = new DirectoryInfo(_options.Path);
             _ariusRepository = ariusRepository;
 
             _hvp = h;
@@ -52,13 +49,13 @@ namespace Arius
         }
 
         private readonly ArchiveOptions _options;
-        private readonly ILogger<ArchiveCommandExecutor> _logger;
+        private readonly ILogger<ArchiveCommandExecutor2> _logger;
 
         private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
-        private readonly AriusRepository2 _ariusRepository;
+        private readonly AzureRepository _ariusRepository;
 
 
         public int Execute()
@@ -73,18 +70,18 @@ namespace Arius
                 db.Database.EnsureCreated();
             }
 
-            var indexDirectoryBlock = new TransformManyBlock<DirectoryInfo, AriusArchiveItem>(
+            var indexDirectoryBlock = new TransformManyBlock<DirectoryInfo, IFile>(
                 di => IndexDirectory(di),
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1 }
                 );
 
-            var addHashBlock = new TransformBlock<AriusArchiveItem, AriusArchiveItem>(
-                item => (AriusArchiveItem)AddHash((dynamic) item, fastHash),
+            var addHashBlock = new TransformBlock<IFile, IFileWithHash>(
+                file => (IFileWithHash)AddHash((dynamic) file, fastHash),
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded }
             );
 
-            var castToBinaryBlock = new TransformBlock<AriusArchiveItem, BinaryFile>(item => (BinaryFile)item);
-            var castToPointerBlock = new TransformBlock<AriusArchiveItem, PointerFile>(item => (PointerFile)item);
+            var castToBinaryBlock = new TransformBlock<IFileWithHash, BinaryFile>(item => (BinaryFile)item);
+            var castToPointerBlock = new TransformBlock<IFileWithHash, PointerFile>(item => (PointerFile)item);
 
             //var processedOrProcessingBinaries = new List<HashValue>(); 
             //var allBinaryFiles = new ConcurrentDictionary<HashValue, BinaryFile>();
@@ -102,7 +99,7 @@ namespace Arius
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key = HashValue van de Manifest, ValueDict = HashValue van de Chunks
             
 
-            var getChunksBlock = new TransformManyBlock<BinaryFile, ChunkFile2>(binaryFile =>
+            var getChunksBlock = new TransformManyBlock<BinaryFile, IChunkFile>(binaryFile =>
                 {
                     Console.WriteLine("Chunking BinaryFile " + binaryFile.Name);
 
@@ -112,7 +109,7 @@ namespace Arius
                     {
                         lock (uploadingManifestHashes)
                         {
-                            var h = binaryFile.Hash!.Value;
+                            var h = binaryFile.Hash;
                             if (!uploadedManifestHashes.Union(uploadingManifestHashes).Contains(h))
                             {
                                 uploadingManifestHashes.Add(h);
@@ -122,7 +119,7 @@ namespace Arius
                     }
 
                     // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                    var bag = manifestBeforePointers.GetOrAdd(binaryFile.Hash.Value, new ConcurrentBag<BinaryFile>());
+                    var bag = manifestBeforePointers.GetOrAdd(binaryFile.Hash, new ConcurrentBag<BinaryFile>());
                     bag.Add(binaryFile);
 
                     if (addChunks)
@@ -131,10 +128,10 @@ namespace Arius
                         var chunks = AddChunks(binaryFile);
 
                         chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.TryAdd(
-                            binaryFile.Hash!.Value,
+                            binaryFile.Hash,
                             new ConcurrentDictionary<HashValue, bool>(
                                 chunks.Select(a => 
-                                    new KeyValuePair<HashValue, bool>(a.Hash!.Value, false))));
+                                    new KeyValuePair<HashValue, bool>(a.Hash, false))));
 
                         return chunks;
                     }
@@ -144,7 +141,7 @@ namespace Arius
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
             );
 
-            var encryptChunksBlock = new TransformBlock<ChunkFile2, EncryptedChunkFile2>(
+            var encryptChunksBlock = new TransformBlock<IChunkFile, EncryptedChunkFile2>(
                 chunkFile => Encrypt(chunkFile),
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded });
 
@@ -157,7 +154,7 @@ namespace Arius
                 encryptedChunkFile =>
                 {
                     bool upload = false;
-                    var h = encryptedChunkFile.Hash!.Value;
+                    var h = encryptedChunkFile.Hash;
 
                     lock (uploadedOrUploadingChunks)
                     {
@@ -232,7 +229,7 @@ namespace Arius
                         Chunks = chunks.Select((hv, i) => new OrderedChunk
                         {
                             ManifestHashValue = manifestHash.Value,
-                            ChunkHashValue = hv.Value, 
+                            ChunkHashValue = hv, 
                             Order = i
                         }).ToList()
                     });
@@ -255,14 +252,16 @@ namespace Arius
                 // Update the manifest
                 using (var db = new Context())
                 {
-                    var me = db.Manifests.Single(m => m.HashValue == pointerFile.Hash!.Value.Value);
+                    var me = db.Manifests.Single(m => m.HashValue == pointerFile.Hash!.Value);
+
+                    //TODO iets met PointerFileEntryEqualityComparer?
 
                     var e = new PointerFileEntry
                     {
-                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FileFullName),
+                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FullName),
                         Version = version,
-                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FileFullName), //TODO
-                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FileFullName),
+                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FullName), //TODO
+                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
                         IsDeleted = false
                     };
                     me.Entries.Add(e);
@@ -357,6 +356,8 @@ namespace Arius
                 {
                     foreach (var e in m.GetLastEntries(false).Where(e => e.Version != version))
                     {
+                        //TODO iets met PointerFileEntryEqualityComparer?
+
                         var p = Path.Combine(_root.FullName, e.RelativeName);
                         if (!File.Exists(p))
                         {
@@ -426,11 +427,11 @@ namespace Arius
             }
         }
 
-        private AriusArchiveItem AddHash(PointerFile f, bool _)
+        private IFileWithHash AddHash(PointerFile f, bool _)
         {
             Console.WriteLine("Hashing PointerFile " + f.Name);
 
-            f.Hash = ReadHashFromPointerFile(f.FileFullName);
+            f.Hash = _hvp.GetHashValue(f); //) ReadHashFromPointerFile(f.FileFullName);
 
             Console.WriteLine("Hashing PointerFile " + f.Name + " done");
 
@@ -439,7 +440,7 @@ namespace Arius
 
        
 
-        private AriusArchiveItem AddHash(BinaryFile f, bool fastHash)
+        private IFileWithHash AddHash(BinaryFile f, bool fastHash)
         {
             Console.WriteLine("Hashing BinaryFile " + f.Name);
 
@@ -447,27 +448,27 @@ namespace Arius
 
             if (fastHash)
             {
-                var pointerFileFullName = f.GetPointerFileFullName();
-                if (File.Exists(pointerFileFullName))
-                    h = ReadHashFromPointerFile(pointerFileFullName);
+                var pointerFileInfo = new FileInfo(f.GetPointerFileFullName());
+                if (pointerFileInfo.Exists)
+                    h = _hvp.GetHashValue(new PointerFile(pointerFileInfo));
             }
 
             if (!h.HasValue)
-                h = ((SHA256Hasher) _hvp).GetHashValue(f); //TODO remove cast)
+                h = _hvp.GetHashValue(f); //TODO remove cast)
 
-            f.Hash = h;
+            f.Hash = h.Value;
 
             Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
 
             return f;
         }
 
-        private static HashValue ReadHashFromPointerFile(string fileName)
-        {
-            return new() { Value = File.ReadAllText(fileName) };
-        }
+        //private static HashValue ReadHashFromPointerFile(string fileName)
+        //{
+        //    return new() { Value = File.ReadAllText(fileName) };
+        //}
 
-        public ChunkFile2[] AddChunks(BinaryFile f)
+        public IChunkFile[] AddChunks(BinaryFile f)
         {
             Console.WriteLine("Chunking BinaryFile " + f.Name);
 
@@ -479,12 +480,16 @@ namespace Arius
             return cs;
         }
 
-        private EncryptedChunkFile2 Encrypt(ChunkFile2 f)
+        private EncryptedChunkFile2 Encrypt(IChunkFile f)
         {
             Console.WriteLine("Encrypting ChunkFile2 " + f.Name);
 
-            var ecf = ((SevenZipCommandlineEncrypter)_encrypter).Encrypt(f);
-            ecf.Hash = f.Hash;
+            //TODO separate directory in TempPath()
+            var targetFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"{f.Hash}{EncryptedChunkFile2.Extension}"));
+            
+            _encrypter.Encrypt(f, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, f is not BinaryFile);
+
+            var ecf = new EncryptedChunkFile2(targetFile, f.Hash);
 
             Console.WriteLine("Encrypting ChunkFile2 " + f.Name + " done");
 
@@ -512,7 +517,7 @@ namespace Arius
         }
     }
 
-    internal abstract class AriusArchiveItem
+    internal abstract class AriusArchiveItem : IFileWithHash
     {
         private readonly FileInfo _fi;
 
@@ -521,13 +526,13 @@ namespace Arius
             _fi = fi;
         }
 
-        public string FileFullName => _fi.FullName;
+        public string FullName => _fi.FullName;
         public string Name => _fi.Name;
         public DirectoryInfo Directory => _fi.Directory;
 
-        public HashValue? Hash
+        public HashValue Hash
         {
-            get => _hashValue;
+            get => _hashValue.Value;
             set
             {
                 if (_hashValue.HasValue)
@@ -555,37 +560,47 @@ namespace Arius
         }
     }
 
-    internal class BinaryFile : AriusArchiveItem
+    internal class BinaryFile : AriusArchiveItem, IChunkFile
     {
         public BinaryFile(FileInfo fi) : base(fi) { }
 
-        public ChunkFile2[] Chunks { get; set; }
+        public IChunkFile[] Chunks { get; set; }
     }
 
-    internal class ChunkFile2 : AriusArchiveItem
+    internal class ChunkFile2 : AriusArchiveItem, IChunkFile
     {
         public ChunkFile2(FileInfo fi) : base(fi) { }
 
-        public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
+        //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
     }
 
-    internal class EncryptedChunkFile2 : AriusArchiveItem
+    internal class EncryptedChunkFile2 : AriusArchiveItem, IEncryptedFile
     {
         public const string Extension = ".7z.arius";
 
-        public EncryptedChunkFile2(FileInfo fi) : base(fi) { }
+        public EncryptedChunkFile2(FileInfo fi, HashValue hash) : base(fi)
+        {
+            base.Hash = hash;
+        }
     }
 
 
-    internal class AriusRepository2
+    internal class AzureRepository
     {
+        internal interface IAzureRepositoryOptions : ICommandExecutorOptions
+        {
+            public string AccountName { get; }
+            public string AccountKey { get; }
+            public string Container { get; }
+        }
+
         private readonly IBlobCopier _blobCopier;
 
-        public AriusRepository2(ICommandExecutorOptions options, IBlobCopier b)
+        public AzureRepository(ICommandExecutorOptions options, IBlobCopier b)
         {
             _blobCopier = b;
 
-            var o = (IRemoteChunkRepositoryOptions)options;
+            var o = (IAzureRepositoryOptions)options;
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
             var bsc = new BlobServiceClient(connectionString);
