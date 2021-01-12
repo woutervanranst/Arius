@@ -5,7 +5,7 @@
     },
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius4 --keep-local --tier hot C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius2 --keep-local --tier hot C:\\Users\\Wouter\\Documents\\Test"
     },
     "arius restore": {
       "commandName": "Project",

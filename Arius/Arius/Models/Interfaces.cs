@@ -29,8 +29,8 @@ namespace Arius.Models
     
     internal interface IChunker
     {
-        IChunkFile[] Chunk(BinaryFile fileToChunk);
-        BinaryFile Merge(IChunkFile[] chunksToJoin);
+        IEnumerable<IChunkFile> Chunk(BinaryFile fileToChunk);
+        BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin);
     }
 
 

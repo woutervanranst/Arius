@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Arius.Extensions;
@@ -53,7 +54,7 @@ namespace Arius.Models
     {
         public BinaryFile(FileInfo fi) : base(fi) { }
 
-        public IChunkFile[] Chunks { get; set; }
+        public IEnumerable<IChunkFile> Chunks { get; set; }
     }
 
     internal class ChunkFile2 : AriusArchiveItem, IChunkFile

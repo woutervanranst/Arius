@@ -15,20 +15,12 @@ namespace Arius.Services
     }
     internal class Chunker : IChunker
     {
-        public IChunkFile[] Chunk(BinaryFile item)
+        public IEnumerable<IChunkFile> Chunk(BinaryFile item)
         {
-            return new IChunkFile[] {item};
-
-            //                return new ChunkFile2[] 
-            //{ 
-            //    new(new FileInfo(item.FileFullName))
-            //    {
-            //        Hash = item.Hash
-            //    }
-            //};
+            return new[] {item};
         }
 
-        public BinaryFile Merge(IChunkFile[] chunksToJoin)
+        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin)
         {
             return new BinaryFile(new FileInfo(chunksToJoin.Single().FullName));
         }
@@ -37,22 +29,17 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
-        public IChunkFile[] Chunk(BinaryFile f)
+        private static StreamBreaker _sb = new();
+
+        public IEnumerable<IChunkFile> Chunk(BinaryFile f)
         {
-            //throw new NotImplementedException();
-
-            var sb = new StreamBreaker();
-
             using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
-            var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
             fs.Position = 0;
-
+            
             DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(f.Directory.FullName, f.Name + ".arius"));
             tempDir.Create();
 
-            var chunkFiles = new List<ChunkFile2>();
-
-            foreach (var chunk in chunks)
+            foreach (var chunk in _sb.GetChunks(fs, fs.Length, SHA256.Create()))
             {
                 var hashValue = new HashValue {Value = SHA256Hasher.ByteArrayToString(chunk.Hash)};
                 
@@ -65,13 +52,11 @@ namespace Arius.Services
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                chunkFiles.Add(new ChunkFile2(new FileInfo(chunkFullName)){ Hash = hashValue });
+                yield return new ChunkFile2(new FileInfo(chunkFullName)){ Hash = hashValue };
             }
-
-            return chunkFiles.ToArray();
         }
 
-        public BinaryFile Merge(IChunkFile[] chunksToJoin)
+        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin)
         {
             throw new NotImplementedException();
 
