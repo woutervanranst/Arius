@@ -5,8 +5,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
@@ -97,8 +99,9 @@ namespace Arius.CommandLine
 
             var manifestBeforePointers = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key = HashValue van de Manifest
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key = HashValue van de Manifest, ValueDict = HashValue van de Chunks
-            
 
+            var uploadedOrUploadingChunks = _ariusRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList(); //a => a.Hash, a => a);
+            
             var getChunksBlock = new TransformManyBlock<IFileWithHash, IChunkFile>(item =>
                 {
                     var binaryFile = (BinaryFile) item;
@@ -128,9 +131,25 @@ namespace Arius.CommandLine
 
                     if (addChunks)
                     {
+                        var toUpload = new List<IChunkFile>();
+
                         // Process the chunks
-                        var chunks = AddChunks(binaryFile).Select(chunk =>
+                        var chunks = AddChunks(binaryFile).Where(chunk =>
                              {
+                                 var h = chunk.Hash;
+
+                                 lock (uploadedOrUploadingChunks)
+                                 {
+                                     if (uploadedOrUploadingChunks.Contains(h))
+                                     {
+                                         chunk.Delete();
+                                         return false;
+                                     }
+
+                                     uploadedOrUploadingChunks.Add(h);
+                                     toUpload.Add(chunk);
+                                 }
+
                                  ConcurrentDictionary<HashValue, bool> GetNewDictionary(HashValue hash)
                                  {
                                      var newDict = new ConcurrentDictionary<HashValue, bool>();
@@ -150,7 +169,7 @@ namespace Arius.CommandLine
                                      }
                                  );
  
-                                return chunk;
+                                return true;
                              });
 
 
@@ -184,7 +203,11 @@ namespace Arius.CommandLine
             {
                 return Task.Run(() =>
                 {
-                    while (!encryptChunksBlock.Completion.IsCompleted || uploadQueue.Count > 0)
+                    Thread.CurrentThread.Name = "Uploader";
+
+                    while (!encryptChunksBlock.Completion.IsCompleted || 
+                           //encryptChunksBlock.OutputCount > 0 || 
+                           uploadQueue.Count > 0)
                     {
                             var uploadBatch = new List<EncryptedChunkFile>();
                             long size = 0;
@@ -204,50 +227,23 @@ namespace Arius.CommandLine
             }
 
 
-            var uploadedOrUploadingChunks = _ariusRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList(); //a => a.Hash, a => a);
             var uploadEncryptedChunksBlock = new TransformManyBlock<EncryptedChunkFile[], RemoteEncryptedChunkBlobItem2>(
                 encryptedChunkFiles =>
                 {
-                    var toUpload = new List<EncryptedChunkFile>();
+                    //Upload the files
+                    var uploadedBlobs = _ariusRepository.Upload(encryptedChunkFiles, _options.Tier);
 
+                    //Delete the files
                     foreach (var encryptedChunkFile in encryptedChunkFiles)
-                    {
-                        var h = encryptedChunkFile.Hash;
+                        encryptedChunkFile.Delete();
 
-                        lock (uploadedOrUploadingChunks)
-                        {
-                            if (!uploadedOrUploadingChunks.Contains(h))
-                            {
-                                uploadedOrUploadingChunks.Add(h);
-                                toUpload.Add(encryptedChunkFile);
-                            }
-                            else
-                            {
-                                encryptedChunkFile.Delete();
-                            }
-                        }
-                    }
+                    //foreach (var uploadedBlob in uploadedBlobs)  //TODO dit duurt mega lang / concurrent dictionary of nieuwe select?
+                    //    uploadedOrUploadingChunks[uploadedBlob.Hash] = uploadedBlob;
 
-
-                    if (toUpload.Count > 0)
-                    {
-                        //Upload the files
-                        var uploadedBlobs = _ariusRepository.Upload(toUpload, _options.Tier);
-
-                        //Delete the files
-                        foreach (var encryptedChunkFile in encryptedChunkFiles)
-                            encryptedChunkFile.Delete();
-
-                        //foreach (var uploadedBlob in uploadedBlobs)  //TODO dit duurt mega lang / concurrent dictionary of nieuwe select?
-                        //    uploadedOrUploadingChunks[uploadedBlob.Hash] = uploadedBlob;
-
-                        return uploadedBlobs;
-                    }
-
-                    return Enumerable.Empty<RemoteEncryptedChunkBlobItem2>();
-
+                    return uploadedBlobs;
                 },
                 new ExecutionDataflowBlockOptions() {  MaxDegreeOfParallelism = 2 });
+
 
             var reconcileChunksWithManifestBlock = new TransformManyBlock<RemoteEncryptedChunkBlobItem2, HashValue>(
                 recbi =>
@@ -286,8 +282,10 @@ namespace Arius.CommandLine
                     throw new InvalidOperationException();
 
                 var binaryFiles = binaryFilesBag.ToArray();
-                var chunks = binaryFiles.Single(bf => bf.Chunks != null && bf.Chunks.Any())
-                    .Chunks.Select(c => c.Hash!.Value).ToArray();
+                var chunkHashValues = binaryFiles
+                    .Single(bf => bf.Chunks != null && bf.Chunks.Any()) //Only one fo the binaryFiles will have the chunks (the other BinaryFiles have the same set of chunks)
+                    .Chunks
+                    .Select(c => c.Hash!.Value).ToArray();
 
                 // Create the manifest
                 using (var db = new Manifest())
@@ -295,7 +293,7 @@ namespace Arius.CommandLine
                     db.Manifests.Add(new ManifestEntry
                     {
                         HashValue = manifestHash.Value,
-                        Chunks = chunks.Select((hv, i) => new OrderedChunk
+                        Chunks = chunkHashValues.Select((hv, i) => new OrderedChunk
                         {
                             ManifestHashValue = manifestHash.Value,
                             ChunkHashValue = hv, 
@@ -321,7 +319,9 @@ namespace Arius.CommandLine
                 // Update the manifest
                 using (var db = new Manifest())
                 {
-                    var me = db.Manifests.Single(m => m.HashValue == pointerFile.Hash!.Value);
+                    var me = db.Manifests
+                        .Include(me => me.Entries)
+                        .Single(m => m.HashValue == pointerFile.Hash!.Value);
 
                     //TODO iets met PointerFileEntryEqualityComparer?
 
@@ -333,7 +333,10 @@ namespace Arius.CommandLine
                         LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
                         IsDeleted = false
                     };
-                    me.Entries.Add(e);
+
+                    var xx = new PointerFileEntryEqualityComparer();
+                    if (!me.Entries.Contains(e, xx))
+                        me.Entries.Add(e);
 
                     _logger.LogInformation($"Added {e.RelativeName}");
 
@@ -379,16 +382,13 @@ namespace Arius.CommandLine
                 enqueueEncryptedChunksForUploadBlock,
                 new DataflowLinkOptions {PropagateCompletion = true});
 
+            Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
+                .ContinueWith(_ => uploadQueue.CompleteAdding());
+
             var uploadTask = GetUploadTask((ITargetBlock<EncryptedChunkFile[]>)uploadEncryptedChunksBlock);
             //uploadTask.Start();
 
-            //batchEncryptedChunks.LinkTo(
-            //    uploadEncryptedChunksBlock,
-            //    new DataflowLinkOptions {PropagateCompletion = true},
-            //    a => a.Length > 0);
-            //batchEncryptedChunks.LinkTo(
-            //    DataflowBlock.NullTarget<EncryptedChunkFile[]>());  //Discard all the Array.Empty<EncryptedChunkFile>[] that are coming out of batchEncryptedChunks
-
+            
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestBlock,
                 new DataflowLinkOptions() {PropagateCompletion = true});
