@@ -4,10 +4,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using System.Xml.Schema;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -158,6 +160,14 @@ namespace Arius.CommandLine
                                      return newDict;
                                  }
 
+                                 //ConcurrentDictionary<HashValue, bool> UpdateDictionary(HashValue _, ConcurrentDictionary<HashValue, bool> xx)
+                                 //{
+                                 //    var x = xx;
+                                 //    x.TryAdd(chunk.Hash, false);
+
+                                 //    return x;
+                                 //}
+
                                  chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.AddOrUpdate(binaryFile.Hash,
                                      GetNewDictionary(chunk.Hash),
                                      (a, dict) =>
@@ -181,7 +191,7 @@ namespace Arius.CommandLine
                     {
                         Console.WriteLine("Chunking BinaryFile " + binaryFile.Name + "... done (not chunked - already done)");
 
-                        return Enumerable.Empty<ChunkFile2>();
+                        return Enumerable.Empty<ChunkFile>();
                     }
                 },
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
@@ -215,12 +225,14 @@ namespace Arius.CommandLine
                             {
                                 uploadBatch.Add(ecf);
                                 size += ecf.Length;
+                            }
 
-                                if (size >= AzCopyBatchSize || uploadBatch.Count >= AzCopyBatchCount)
-                                {
-                                    b.Post(uploadBatch.ToArray());
-                                    break;
-                                }
+                            if (size >= AzCopyBatchSize || 
+                                uploadBatch.Count >= AzCopyBatchCount ||
+                                uploadQueue.IsCompleted)    //if we re at the end of the queue, upload the remainder
+                            {
+                                b.Post(uploadBatch.ToArray());
+                                break;
                             }
                     }
                 });
@@ -307,8 +319,9 @@ namespace Arius.CommandLine
                 return binaryFiles;
             });
 
-            var createPointersBlock = new TransformBlock<BinaryFile, PointerFile>(binaryFile =>
+            var createPointersBlock = new TransformBlock<IFileWithHash, PointerFile>(item =>
             {
+                var binaryFile = (BinaryFile)item;
                 var p = binaryFile.CreatePointerFile();
 
                 return p;
@@ -357,7 +370,12 @@ namespace Arius.CommandLine
 
             addHashBlock.LinkTo(
                 getChunksBlock,
-                new DataflowLinkOptions { PropagateCompletion = true },
+                new DataflowLinkOptions { PropagateCompletion = false }, // DO NOT PROPAGATE
+                x => x is BinaryFile);
+
+            addHashBlock.LinkTo(
+                createPointersBlock,
+                new DataflowLinkOptions() { PropagateCompletion = false },
                 x => x is BinaryFile);
 
             addHashBlock.LinkTo(
@@ -386,9 +404,13 @@ namespace Arius.CommandLine
                 .ContinueWith(_ => uploadQueue.CompleteAdding());
 
             var uploadTask = GetUploadTask((ITargetBlock<EncryptedChunkFile[]>)uploadEncryptedChunksBlock);
-            //uploadTask.Start();
 
-            
+            Task.WhenAll(uploadTask)
+                .ContinueWith(_ =>
+                {
+                    uploadEncryptedChunksBlock.Complete();
+                });
+
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestBlock,
                 new DataflowLinkOptions() {PropagateCompletion = true});
@@ -411,8 +433,7 @@ namespace Arius.CommandLine
             indexDirectoryBlock.Post(_root);
             indexDirectoryBlock.Complete();
 
-            Task.WhenAll(uploadTask)
-                .ContinueWith(_ => uploadEncryptedChunksBlock.Complete());
+            
 
             Task.WhenAll(createManifestBlock.Completion, castToPointerBlock.Completion)
                 .ContinueWith(_ => updateManifestBlock.Complete());

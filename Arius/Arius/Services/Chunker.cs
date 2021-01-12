@@ -50,7 +50,7 @@ namespace Arius.Services
             {
                 var hashValue = new HashValue {Value = SHA256Hasher.ByteArrayToString(chunk.Hash)};
                 
-                var chunkFullName = Path.Combine(tempDir.FullName, hashValue.Value + ChunkFile2.Extension);
+                var chunkFullName = Path.Combine(tempDir.FullName, hashValue.Value + ChunkFile.Extension);
 
                 byte[] buff = new byte[chunk.Length];
                 fs.Read(buff, 0, (int)chunk.Length);
@@ -59,7 +59,7 @@ namespace Arius.Services
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                yield return new ChunkFile2(new FileInfo(chunkFullName)){ Hash = hashValue };
+                yield return new ChunkFile(new FileInfo(chunkFullName)){ Hash = hashValue };
             }
         }
 

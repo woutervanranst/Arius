@@ -57,16 +57,16 @@ namespace Arius.Models
         public IEnumerable<IChunkFile> Chunks { get; set; }
     }
 
-    internal class ChunkFile2 : AriusArchiveItem, IChunkFile
+    internal class ChunkFile : AriusArchiveItem, IChunkFile
     {
         public const string Extension = ".chunk.arius";
 
-        public ChunkFile2(FileInfo fi) : base(fi) { }
+        public ChunkFile(FileInfo fi) : base(fi) { }
 
         //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
     }
 
-    internal class EncryptedChunkFile : AriusArchiveItem, IEncryptedFile
+    internal class EncryptedChunkFile : AriusArchiveItem, IEncryptedFile, IChunkFile
     {
         public const string Extension = ".7z.arius";
 
