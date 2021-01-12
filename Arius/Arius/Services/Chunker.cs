@@ -29,6 +29,13 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
+        private readonly IConfiguration _config;
+
+        public DedupChunker(IConfiguration config)
+        {
+            _config = config;
+        }
+
         private static StreamBreaker _sb = new();
 
         public IEnumerable<IChunkFile> Chunk(BinaryFile f)
@@ -36,7 +43,7 @@ namespace Arius.Services
             using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
             fs.Position = 0;
             
-            DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(f.Directory.FullName, f.Name + ".arius"));
+            var tempDir = new DirectoryInfo(Path.Combine(_config.TempDir.FullName, "chunks", f.Name + ".arius"));
             tempDir.Create();
 
             foreach (var chunk in _sb.GetChunks(fs, fs.Length, SHA256.Create()))

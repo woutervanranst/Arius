@@ -97,7 +97,7 @@ namespace Arius
                 //.AddSingleton<PointerService2>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 //.AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
-                .AddSingleton<IChunker>(new DedupChunker())
+                .AddSingleton<IChunker>(s => new DedupChunker(s.GetService<IConfiguration>()))
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
                 //Add Commmands

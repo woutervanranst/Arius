@@ -19,6 +19,8 @@ namespace Arius.CommandLine
     {
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
+
+            IConfiguration config,
             AzureRepository ariusRepository,
 
             IHashValueProvider h,
@@ -27,6 +29,7 @@ namespace Arius.CommandLine
         {
             _options = (ArchiveOptions)options;
             _logger = logger;
+            _config = config;
             _root = new DirectoryInfo(_options.Path);
             _ariusRepository = ariusRepository;
 
@@ -37,6 +40,7 @@ namespace Arius.CommandLine
 
         private readonly ArchiveOptions _options;
         private readonly ILogger<ArchiveCommandExecutor> _logger;
+        private readonly IConfiguration _config;
 
         private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
@@ -135,16 +139,20 @@ namespace Arius.CommandLine
                                      return newDict;
                                  }
 
-                                 chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.TryAdd(binaryFile.Hash, GetNewDictionary(chunk.Hash));
+                                 chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.AddOrUpdate(binaryFile.Hash,
+                                     GetNewDictionary(chunk.Hash),
+                                     (a, dict) =>
+                                     {
+                                         var x = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile.Hash];
+                                         x.TryAdd(chunk.Hash, false);
+
+                                         return x;
+                                     }
+                                 );
  
                                 return chunk;
                              });
 
-                        //chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.TryAdd(
-                        //    binaryFile.Hash,
-                        //    new ConcurrentDictionary<HashValue, bool>(
-                        //        chunks.Select(a => 
-                        //            new KeyValuePair<HashValue, bool>(a.Hash, false))));
 
                         //Console.WriteLine("Chunking BinaryFile " + binaryFile.Name + "... done & chunked");
 
@@ -172,34 +180,20 @@ namespace Arius.CommandLine
 
             const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
             const int AzCopyBatchCount = 128;
-
-
             Task GetUploadTask(ITargetBlock<EncryptedChunkFile[]> b)
             {
                 return Task.Run(() =>
                 {
                     while (!encryptChunksBlock.Completion.IsCompleted || uploadQueue.Count > 0)
                     {
-                            //var kkk = uploadQueue
-                            //    .GetConsumingEnumerable()
-                            //    .TakeWhile(_ =>
-                            //        uploadQueue.Sum(z => z.Length) < AzCopyBatchSize
-                            //        || uploadQueue.Count < AzCopyBatchCount
-                            //        || false)
-                            //    .ToArray();
-
-                            //b.Post(kkk);
-
                             var uploadBatch = new List<EncryptedChunkFile>();
                             long size = 0;
-                            int count = 0;
                             foreach (var ecf in uploadQueue.GetConsumingEnumerable())
                             {
                                 uploadBatch.Add(ecf);
                                 size += ecf.Length;
-                                count++;
 
-                                if (size >= AzCopyBatchSize || count >= AzCopyBatchCount)
+                                if (size >= AzCopyBatchSize || uploadBatch.Count >= AzCopyBatchCount)
                                 {
                                     b.Post(uploadBatch.ToArray());
                                     break;
@@ -208,31 +202,6 @@ namespace Arius.CommandLine
                     }
                 });
             }
-
-
-            //var encryptedChunkFileBuffer = new List<EncryptedChunkFile>();
-            //var batchEncryptedChunks = new TransformBlock<EncryptedChunkFile, EncryptedChunkFile[]>(
-            //    ecf =>
-            //    {
-            //        lock (encryptedChunkFileBuffer)
-            //        {
-            //            encryptedChunkFileBuffer.Add(ecf);
-
-            //            var bufferLength = encryptedChunkFileBuffer.Sum(ecf => ecf.Length);
-
-            //            if (bufferLength >= AzCopyBatchSize || encryptChunksBlock.Completion.IsCompleted)
-            //            {
-            //                var ecfs = encryptedChunkFileBuffer.ToArray();
-            //                encryptedChunkFileBuffer.Clear();
-
-            //                return ecfs;
-            //            }
-            //            else
-            //                return Array.Empty<EncryptedChunkFile>();
-            //        }
-            //    },
-            //    new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 1 });
-
 
 
             var uploadedOrUploadingChunks = _ariusRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList(); //a => a.Hash, a => a);
@@ -251,6 +220,10 @@ namespace Arius.CommandLine
                             {
                                 uploadedOrUploadingChunks.Add(h);
                                 toUpload.Add(encryptedChunkFile);
+                            }
+                            else
+                            {
+                                encryptedChunkFile.Delete();
                             }
                         }
                     }
@@ -577,9 +550,8 @@ namespace Arius.CommandLine
         {
             Console.WriteLine("Encrypting ChunkFile2 " + f.Name);
 
-            //TODO separate directory in TempPath()
-            var targetFile = new FileInfo(Path.Combine(Path.GetTempPath(), $"{f.Hash}{EncryptedChunkFile.Extension}"));
-            
+            var targetFile = new FileInfo(Path.Combine(_config.TempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
+
             _encrypter.Encrypt(f, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, f is not BinaryFile);
 
             var ecf = new EncryptedChunkFile(targetFile, f.Hash);
