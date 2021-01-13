@@ -17,10 +17,19 @@ namespace Arius.Services
 {
     internal class ManifestService
     {
-        public static IEnumerable<HashValue> GetManifestHashes()
+        public static void Init()
         {
             using var db = new ManifestStore();
-            return db.Manifests.Select(m => new HashValue {Value = m.HashValue});
+            db.Database.EnsureCreated();
+
+            //var xxx = db.Manifests.Include(x => x.Chunks).SelectMany(x => x.Chunks).AsEnumerable().GroupBy(g => g.ChunkHashValue).Where(h => h.Count() > 1).ToList();
+
+            //var yyy = xxx;
+        }
+        public static HashValue[] GetManifestHashes()
+        {
+            using var db = new ManifestStore();
+            return db.Manifests.Select(m => new HashValue {Value = m.HashValue}).ToArray();
         }
 
         public static ManifestEntry AddManifest(BinaryFile f)
@@ -30,7 +39,7 @@ namespace Arius.Services
             var me = new ManifestEntry()
             {
                 HashValue = f.ManifestHash!.Value.Value,
-                Chunks = f.Chunks.Select((cf, i) => 
+                Chunks = f.Chunks.Select((cf, i) => //TO CHECK zitten alle Chunks hierin of enkel de geuploade? to test: delete 1 chunk remote en run opnieuw
                     new OrderedChunk()
                     {
                         ManifestHashValue = f.ManifestHash.Value.Value,
