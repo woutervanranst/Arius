@@ -7,9 +7,12 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
 {
@@ -19,7 +22,7 @@ namespace Arius.CommandLine
         {
             return new(
                 di => IndexDirectory(di),
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1 }
+                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1}
             );
         }
 
@@ -53,11 +56,12 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _fastHash = fastHash;
         }
+
         public TransformBlock<IFile, IFileWithHash> GetBlock()
         {
             return new(
-                file => (IFileWithHash)AddHash((dynamic)file, _fastHash),
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded }
+                file => (IFileWithHash) AddHash((dynamic) file, _fastHash),
+                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
             );
         }
 
@@ -107,13 +111,13 @@ namespace Arius.CommandLine
 
         public TransformBlock<IFileWithHash, BinaryFile> GetBlock()
         {
-            return new (
+            return new(
                 item => AddRemoteManifest(item, _uploadedManifestHashes));
         }
 
         private BinaryFile AddRemoteManifest(IFileWithHash item, List<HashValue> uploadedManifestHashes)
         {
-            var binaryFile = (BinaryFile)item;
+            var binaryFile = (BinaryFile) item;
 
             // Check whether the binaryFile isn't already uploaded or in the course of being uploaded
             lock (uploadedManifestHashes)
@@ -136,7 +140,7 @@ namespace Arius.CommandLine
         private readonly Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
-        public GetChunksForUploadBlockProvider(IChunker chunker, 
+        public GetChunksForUploadBlockProvider(IChunker chunker,
             Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated,
             AzureRepository azureRepository)
         {
@@ -151,7 +155,7 @@ namespace Arius.CommandLine
         {
             return new(
                 binaryFile => GetChunksForUpload(binaryFile, _uploadedOrUploadingChunks, _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated),
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded });
+                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
         }
 
         private IEnumerable<IChunkFile> GetChunksForUpload(BinaryFile binaryFile, List<HashValue> uploadedOrUploadingChunks, Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
@@ -173,7 +177,7 @@ namespace Arius.CommandLine
                         {
                             if (!chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile.Hash))
                                 chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile.Hash,
-                                    new KeyValuePair<BinaryFile, List<HashValue>>(binaryFile, new List<HashValue>() { chunk.Hash }));
+                                    new KeyValuePair<BinaryFile, List<HashValue>>(binaryFile, new List<HashValue>() {chunk.Hash}));
                             else
                                 chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile.Hash].Value.Add(chunk.Hash);
                         }
@@ -261,7 +265,7 @@ namespace Arius.CommandLine
         const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
         const int AzCopyBatchCount = 128;
 
-        public UploadTaskProvider(BlockingCollection<EncryptedChunkFile> uploadQueue, 
+        public UploadTaskProvider(BlockingCollection<EncryptedChunkFile> uploadQueue,
             ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock,
             ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
         {
@@ -290,7 +294,7 @@ namespace Arius.CommandLine
 
                     if (size >= AzCopyBatchSize ||
                         uploadBatch.Count >= AzCopyBatchCount ||
-                        _uploadQueue.IsCompleted)    //if we re at the end of the queue, upload the remainder
+                        _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                     {
                         _uploadEncryptedChunksBlock.Post(uploadBatch.ToArray());
                         break;
@@ -325,7 +329,7 @@ namespace Arius.CommandLine
 
                     return uploadedBlobs.Select(recbi => recbi.Hash);
                 },
-                new ExecutionDataflowBlockOptions() { MaxDegreeOfParallelism = 2 });
+                new ExecutionDataflowBlockOptions() {MaxDegreeOfParallelism = 2});
         }
     }
 
@@ -334,14 +338,14 @@ namespace Arius.CommandLine
         private readonly Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
         public ReconcileChunksWithManifestsBlockProvider(
-        Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
         }
 
         public TransformManyBlock<HashValue, BinaryFile> GetBlock()
         {
-            return new(    // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
+            return new( // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
                 hashOfUploadedChunk =>
                 {
                     var manifestsToCreate = new List<BinaryFile>();
@@ -374,7 +378,9 @@ namespace Arius.CommandLine
 
     class CreateManifestBlockProvider
     {
-        public CreateManifestBlockProvider() { }
+        public CreateManifestBlockProvider()
+        {
+        }
 
         public TransformBlock<BinaryFile, BinaryFile> GetBlock()
         {
@@ -438,5 +444,120 @@ namespace Arius.CommandLine
                  */
             });
         }
+    }
+
+    class CreatePointerBlockProvider
+    {
+        public CreatePointerBlockProvider()
+        {
+        }
+
+        public TransformBlock<BinaryFile, PointerFile> GetBlock()
+        {
+            return new(binaryFile =>
+            {
+                var p = binaryFile.EnsurePointerExists();
+
+                return p;
+            });
+        }
+    }
+
+    class UpdateManifestBlockProvider
+    {
+        private readonly ILogger _logger;
+        private readonly DateTime _version;
+        private readonly DirectoryInfo _root;
+
+        public UpdateManifestBlockProvider(ILogger logger, DateTime version, DirectoryInfo root)
+        {
+            _logger = logger;
+            _version = version;
+            _root = root;
+        }
+
+        public ActionBlock<PointerFile> GetBlock()
+        {
+            return new(pointerFile =>
+            {
+                // Update the manifest
+                using (var db = new ManifestStore())
+                {
+                    var me = db.Manifests
+                        .Include(me => me.Entries)
+                        .Single(m => m.HashValue == pointerFile.Hash!.Value);
+
+                    //TODO iets met PointerFileEntryEqualityComparer?
+
+                    var e = new PointerFileEntry
+                    {
+                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FullName),
+                        Version = _version,
+                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FullName), //TODO
+                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
+                        IsDeleted = false
+                    };
+
+                    var pfeec = new PointerFileEntryEqualityComparer();
+                    if (!me.Entries.Contains(e, pfeec))
+                        me.Entries.Add(e);
+
+                    _logger.LogInformation($"Added {e.RelativeName}");
+
+                    db.SaveChanges();
+                }
+            });
+        }
+    }
+
+    class RemoveDeletedPointersTaskProvider
+    {
+        private readonly ILogger _logger;
+        private readonly DateTime _version;
+        private readonly DirectoryInfo _root;
+
+        public RemoveDeletedPointersTaskProvider(ILogger logger, DateTime version, DirectoryInfo root)
+        {
+            _logger = logger;
+            _version = version;
+            _root = root;
+        }
+
+        public Task GetTask()
+        {
+            return Task.Run(() =>
+            {
+                using var db = new ManifestStore();
+
+                //Not parallel foreach since DbContext is not thread safe
+                foreach (var m in db.Manifests.Include(m => m.Entries))
+                {
+                    foreach (var e in m.GetLastEntries(false).Where(e => e.Version != _version))
+                    {
+                        //TODO iets met PointerFileEntryEqualityComparer?
+
+                        var p = Path.Combine(_root.FullName, e.RelativeName);
+                        if (!File.Exists(p))
+                        {
+                            m.Entries.Add(new PointerFileEntry()
+                            {
+                                RelativeName = e.RelativeName,
+                                Version = _version,
+                                IsDeleted = true,
+                                CreationTimeUtc = null,
+                                LastWriteTimeUtc = null
+                            });
+
+                            _logger.LogInformation($"Marked {e.RelativeName} as deleted");
+                        }
+                    }
+                }
+
+                db.SaveChanges();
+            });
+            
+        }
+
+
     }
 }

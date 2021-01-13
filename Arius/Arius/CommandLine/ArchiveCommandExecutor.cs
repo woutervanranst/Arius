@@ -67,9 +67,10 @@ namespace Arius.CommandLine
 
             var fastHash = true;
 
-            //Dowload db etc
+            // Dowload db etc
             ManifestService.Init();
 
+            // Define blocks & intermediate variables
             var indexDirectoryBlock = new IndexDirectoryBlockProvider().GetBlock();
 
 
@@ -106,49 +107,15 @@ namespace Arius.CommandLine
             var reconcileBinaryFilesWithManifestBlock = new ReconcileBinaryFilesWithManifestBlockProvider(uploadedManifestHashes).GetBlock();
 
 
+            var createPointersBlock = new CreatePointerBlockProvider().GetBlock();
 
 
-            var createPointersBlock = new TransformBlock<BinaryFile, PointerFile>(binaryFile =>
-            {
-                var p = binaryFile.EnsurePointerExists();
-
-                return p;
-            });
+            var updateManifestBlock = new UpdateManifestBlockProvider(_logger, version, _root).GetBlock();
 
 
+            var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, version, _root).GetTask();
 
-
-            var updateManifestBlock = new ActionBlock<PointerFile>(pointerFile =>
-            {
-                // Update the manifest
-                using (var db = new ManifestStore())
-                {
-                    var me = db.Manifests
-                        .Include(me => me.Entries)
-                        .Single(m => m.HashValue == pointerFile.Hash!.Value);
-
-                    //TODO iets met PointerFileEntryEqualityComparer?
-
-                    var e = new PointerFileEntry
-                    {
-                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FullName),
-                        Version = version,
-                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FullName), //TODO
-                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
-                        IsDeleted = false
-                    };
-
-                    var xx = new PointerFileEntryEqualityComparer();
-                    if (!me.Entries.Contains(e, xx))
-                        me.Entries.Add(e);
-
-                    _logger.LogInformation($"Added {e.RelativeName}");
-
-                    db.SaveChanges();
-                }
-            });
-
-
+            // Set up linking
             var propagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = true};
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = false};
 
@@ -171,6 +138,9 @@ namespace Arius.CommandLine
                 x => x is PointerFile,
                 f => (PointerFile)f);
 
+            //addHashBlock.LinkTo(
+            //    DataflowBlock.NullTarget<AriusArchiveItem>());
+
 
             // 40
             addRemoteManifestBlock.LinkTo(
@@ -183,7 +153,6 @@ namespace Arius.CommandLine
                 reconcileBinaryFilesWithManifestBlock,
                 doNotPropagateCompletionOptions,
                 binaryFile => binaryFile.ManifestHash.HasValue);
-
 
 
             // 60
@@ -200,18 +169,10 @@ namespace Arius.CommandLine
                 cf => cf.Hash);
 
 
-            
-
-            //addHashBlock.LinkTo(
-            //    DataflowBlock.NullTarget<AriusArchiveItem>());
-
-
-
             // 80
             encryptChunksBlock.LinkTo(
                 enqueueEncryptedChunksForUploadBlock,
                 propagateCompletionOptions);
-
 
 
             // 90
@@ -224,13 +185,13 @@ namespace Arius.CommandLine
                 .ContinueWith(_ => uploadEncryptedChunksBlock.Complete());
 
             
-            
             // 110
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
                 doNotPropagateCompletionOptions);
 
-            // 190
+
+            // 115
             Task.WhenAll(uploadEncryptedChunksBlock.Completion, getChunksForUploadBlock.Completion)
                 .ContinueWith(_ => reconcileChunksWithManifestsBlock.Complete());
 
@@ -241,69 +202,47 @@ namespace Arius.CommandLine
                 propagateCompletionOptions);
 
             
-            
             // 130
             createManifestBlock.LinkTo(
                 reconcileBinaryFilesWithManifestBlock,
                 doNotPropagateCompletionOptions);
 
 
-            // 180
+            // 140
             Task.WhenAll(createManifestBlock.Completion, addRemoteManifestBlock.Completion)
                 .ContinueWith(_ => reconcileBinaryFilesWithManifestBlock.Complete());
 
-            // 140
+
+            // 150
             reconcileBinaryFilesWithManifestBlock.LinkTo(
                 createPointersBlock,
                 propagateCompletionOptions);
 
-            // 150
+
+            // 160
             createPointersBlock.LinkTo(updateManifestBlock, 
                 doNotPropagateCompletionOptions);
+
 
             // 170
             Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
                 .ContinueWith(_ => updateManifestBlock.Complete());
 
 
+            // 180
+            updateManifestBlock.Completion
+                .ContinueWith(_ => removeDeletedPointersTask);
 
-            
+
+            //Fill the flow
             indexDirectoryBlock.Post(_root);
             indexDirectoryBlock.Complete();
 
             
+            // Wait for the end
+            removeDeletedPointersTask.Wait();
 
             
-            updateManifestBlock.Completion.Wait();
-
-            using (var db = new ManifestStore())
-            {
-                //Not parallel foreach since DbContext is not thread safe
-
-                foreach (var m in db.Manifests.Include(m => m.Entries))
-                {
-                    foreach (var e in m.GetLastEntries(false).Where(e => e.Version != version))
-                    {
-                        //TODO iets met PointerFileEntryEqualityComparer?
-
-                        var p = Path.Combine(_root.FullName, e.RelativeName);
-                        if (!File.Exists(p))
-                        {
-                            m.Entries.Add(new PointerFileEntry(){
-                                RelativeName = e.RelativeName,
-                                Version = version,
-                                IsDeleted = true,
-                                CreationTimeUtc = null,
-                                LastWriteTimeUtc = null
-                            });
-
-                            _logger.LogInformation($"Marked {e.RelativeName} as deleted");
-                        }
-                    }
-                }
-
-                db.SaveChanges();
-            }
 
             using (var db = new ManifestStore())
             {
