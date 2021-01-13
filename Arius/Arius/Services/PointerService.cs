@@ -17,20 +17,20 @@ namespace Arius.Services
         /// <summary>
         /// Create a pointer from a BinaryFile
         /// </summary>
-        public static PointerFile CreatePointerFile(this BinaryFile f)
+        public static PointerFile EnsurePointerExists(this BinaryFile f)
         {
             var pointerFileInfo = new FileInfo(f.GetPointerFileFullName());
 
-            if (pointerFileInfo.Exists)
-                throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
+            if (!pointerFileInfo.Exists)
+            {
+                if (!pointerFileInfo.Directory!.Exists)
+                    pointerFileInfo.Directory.Create();
 
-            if (!pointerFileInfo.Directory!.Exists)
-                pointerFileInfo.Directory.Create();
+                File.WriteAllText(pointerFileInfo.FullName, f.Hash!.Value);
 
-            File.WriteAllText(pointerFileInfo.FullName, f.Hash!.Value);
-
-            pointerFileInfo.CreationTimeUtc = File.GetCreationTimeUtc(f.FullName);
-            pointerFileInfo.LastWriteTimeUtc = File.GetLastWriteTimeUtc(f.FullName);
+                pointerFileInfo.CreationTimeUtc = File.GetCreationTimeUtc(f.FullName);
+                pointerFileInfo.LastWriteTimeUtc = File.GetLastWriteTimeUtc(f.FullName);
+            }
 
             return new PointerFile(pointerFileInfo, f.Hash);
         }

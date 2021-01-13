@@ -85,40 +85,6 @@ namespace Arius.CommandLine
 
 
 
-            var castToPointerBlock = new TransformBlock<IFileWithHash, PointerFile>(item => (PointerFile)item);
-
-
-
-
-            //var uploadedManifestHashes = new List<HashValue>(ManifestService.GetManifestHashes());
-            //var uploadingManifestHashes = new List<HashValue>();
-
-            //var addRemoteManifestBlock = new TransformBlock<IFileWithHash, BinaryFile>(item =>
-            //{
-            //    var binaryFile = (BinaryFile)item;
-
-            //    // Check whether the binaryFile isn't already uploaded or in the course of being uploaded
-            //    lock (uploadedManifestHashes)
-            //    {
-            //        lock (uploadingManifestHashes)
-            //        {
-            //            var h = binaryFile.Hash;
-            //            if (uploadedManifestHashes.Union(uploadingManifestHashes).Contains(h))
-            //            {
-            //                //Chunks & Manifest are already present - set the ManifestHash
-            //                binaryFile.ManifestHash = h;
-            //            }
-            //            else
-            //            {
-            //                // Not yet uploaded or being uploaded --> add to the list of binary files that are being uploaded
-            //                uploadingManifestHashes.Add(h);
-            //            }
-            //        }
-            //    }
-            //    return binaryFile;
-            //});
-
-
             var uploadedManifestHashes = new List<HashValue>(ManifestService.GetManifestHashes());
             var addRemoteManifestBlock = new TransformBlock<IFileWithHash, BinaryFile>(item =>
             {
@@ -226,6 +192,7 @@ namespace Arius.CommandLine
 
 
 
+            
             var uploadEncryptedChunksBlock = new TransformManyBlock<EncryptedChunkFile[], HashValue>(
                 encryptedChunkFiles =>
                 {
@@ -241,6 +208,8 @@ namespace Arius.CommandLine
                 new ExecutionDataflowBlockOptions() {  MaxDegreeOfParallelism = 2 });
 
 
+            
+            
             var reconcileChunksWithManifestsBlock = new TransformManyBlock<HashValue, BinaryFile>(    // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
                 hashOfUploadedChunk =>
                 {
@@ -265,24 +234,6 @@ namespace Arius.CommandLine
                         // Remove all reconciled manifests from the waitlist
                         foreach (var manifestHash in manifestsToCreate)
                             chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(manifestHash.Hash);
-
-
-                        //foreach (var manifestHash in chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Keys) //Key = HashValue van de Manifest, List = HashValue van de Chunks
-                        //{
-                        //    // Remove the incoming ChunkHash from the list of prerequired
-                        //    chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[manifestHash].Value.Remove(hashOfUploadedChunk);
-
-                        //    // If the list of prereqs is empty
-                        //    if (!chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[manifestHash].Value.Any())
-                        //    {
-                        //        // Add it to the list of manifests to be created
-                        //        manifestsToCreate.Add(manifestHash);
-                        //    }
-                        //}
-
-                        //// Remove all reconciled manifests from the waitlist
-                        //foreach (var manifestHash in manifestsToCreate)
-                        //    chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(manifestHash);
                     }
 
                     return manifestsToCreate;
@@ -290,6 +241,7 @@ namespace Arius.CommandLine
 
 
 
+            
             var createManifestBlock = new TransformBlock<BinaryFile, BinaryFile>(binaryFile =>
             {
                 var me = ManifestService.AddManifest(binaryFile);
@@ -300,11 +252,7 @@ namespace Arius.CommandLine
 
 
 
-
             var binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
-
-            //var uploadedManifestHashes = new List<HashValue>();
-
             var reconcileBinaryFilesWithManifest = new TransformManyBlock<BinaryFile, BinaryFile>(binaryFile =>
             {
                 lock (binaryFilesPerManifestHash)
@@ -333,45 +281,7 @@ namespace Arius.CommandLine
                     }    
                     else
                         return Enumerable.Empty<BinaryFile>(); // NOTHING TO PASS ON TO THE NEXT STAGE
-
-
-
-                    //if (!binaryFile.ManifestHash.HasValue)
-                    //{
-                    //    //Add to the list an wait until EXACTLY ONE binaryFile with the 
-                    //    if (!binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
-                    //        binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
-
-                    //    // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                    //    binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
-                    //}
-                    //else
-                    //{
-                    //    //This binaryFile has been uploaded and contains the manifestHash - unlock the others
-                    //    lock (uploadedManifestHashes)
-                    //    {
-                    //        uploadedManifestHashes.Add(binaryFile.ManifestHash.Value);
-
-                    //        // BinaryFile has been uploaded, pass it on
-                    //        return new[] {binaryFile};
-                    //    }
-                    //}
-
-                    //if (uploadedManifestHashes.Contains(binaryFile.Hash))
-                    //{
-
-                    //}
-                    //else
                 }
-
-                //}
-                //    else
-                //    {
-
-                //    }
-                //}
-
-
 
                 /* Input is either
                     If the Manifest already existed remotely, the BinaryFile with Hash and ManifestHash, witout Chunks
@@ -379,87 +289,20 @@ namespace Arius.CommandLine
                     If the Manifest did not already exist, and the file is a duplicate, with Hash but NO ManifestHash
                     The manifest did initially not exist, but was uploaded in the mean time
                  */
-
-                //using var db = new ManifestStore();
-                //if (binaryFile.ManifestHash.HasValue)
-                //{
-                //    if (db.Manifests.Find(binaryFile.Hash) is null)
-                //    {
-                //        db.Manifests.Add(null);
-                //    }
-                //}
-
-                //    if (db.Manifests.Find(binaryFile.Hash) is not null)
-                //    {
-                //        binaryFile.ManifestHash = binaryFile.Hash;
-                //        return new[] {binaryFile};
-                //    }
-
-                if (!binaryFile.ManifestHash.HasValue)
-                    {
-                        //Add to the list an wait until EXACTLY ONE binaryFile with the 
-                        lock (binaryFilesPerManifestHash)
-                        {
-                            if (!binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
-                                binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
-
-                            // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                            binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
-                        }
-
-                        return Enumerable.Empty<BinaryFile>(); // NOTHING TO PASS ON TO THE NEXT STAGE
-                    }
-                    else
-                    {
-
-                    }
-
-
-
-
-                    ////Get & remove
-                    //if (!manifestBeforePointers.TryRemove(manifestHash, out var binaryFilesBag))
-                    //    throw new InvalidOperationException();
-
-                    //var binaryFiles = binaryFilesBag.ToArray();
-                    //var chunkHashValues = binaryFiles
-                    //    .Single(bf => bf.Chunks != null && bf.Chunks.Any()) //Only one fo the binaryFiles will have the chunks (the other BinaryFiles have the same set of chunks)
-                    //    .Chunks
-                    //    .Select(c => c.Hash!.Value).ToArray();
-
-                    //// Create the manifest
-                    //using (var db = new ManifestStore())
-                    //{
-                    //    db.Manifests.Add(new ManifestEntry
-                    //    {
-                    //        HashValue = manifestHash.Value,
-                    //        Chunks = chunkHashValues.Select((hv, i) => new OrderedChunk
-                    //        {
-                    //            ManifestHashValue = manifestHash.Value,
-                    //            ChunkHashValue = hv, 
-                    //            Order = i
-                    //        }).ToList()
-                    //    });
-                    //    db.SaveChanges();
-                    //}
-
-                    //// Return the items that need to be added to the manifest
-                    //return binaryFiles;
-
-
             });
-
-
 
 
 
 
             var createPointersBlock = new TransformBlock<BinaryFile, PointerFile>(binaryFile =>
             {
-                var p = binaryFile.CreatePointerFile();
+                var p = binaryFile.EnsurePointerExists();
 
                 return p;
             });
+
+
+
 
             var updateManifestBlock = new ActionBlock<PointerFile>(pointerFile =>
             {
@@ -494,6 +337,8 @@ namespace Arius.CommandLine
             });
 
 
+            
+            
             // 10
             indexDirectoryBlock.LinkTo(
                 addHashBlock,
@@ -508,9 +353,10 @@ namespace Arius.CommandLine
 
             // 30
             addHashBlock.LinkTo(
-                castToPointerBlock,
-                new DataflowLinkOptions { PropagateCompletion = true },
-                x => x is PointerFile);
+                updateManifestBlock,
+                new DataflowLinkOptions { PropagateCompletion = false }, // no prop
+                x => x is PointerFile,
+                f => (PointerFile)f);
 
 
             // 40
@@ -616,11 +462,8 @@ namespace Arius.CommandLine
             // 150
             createPointersBlock.LinkTo(updateManifestBlock); // DO NOT PROPAGATE
 
-            // 160
-            castToPointerBlock.LinkTo(updateManifestBlock); // DO NOT PROPAGATE COMPLETION HERE
-
             // 170
-            Task.WhenAll(createPointersBlock.Completion, castToPointerBlock.Completion)
+            Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
                 .ContinueWith(_ => updateManifestBlock.Complete());
 
 
@@ -659,6 +502,8 @@ namespace Arius.CommandLine
                         }
                     }
                 }
+
+                db.SaveChanges();
             }
 
             using (var db = new ManifestStore())
