@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -525,7 +526,7 @@ namespace Arius.CommandLine
 
         public Task GetTask()
         {
-            return Task.Run(() =>
+            return new (() =>
             {
                 using var db = new ManifestStore();
 
@@ -555,9 +556,54 @@ namespace Arius.CommandLine
 
                 db.SaveChanges();
             });
-            
+
         }
+    }
 
+    class ExportToJsonTaskProvider
+    {
+        //private readonly ILogger _logger;
+        //private readonly DateTime _version;
+        //private readonly DirectoryInfo _root;
 
+        //public ExportToJsonTaskProvider(ILogger logger, DateTime version, DirectoryInfo root)
+        //{
+        //    _logger = logger;
+        //    _version = version;
+        //    _root = root;
+        //}
+
+        public Task GetTask()
+        {
+            return new(async () => 
+            {
+
+                //using (System.IO.Stream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
+                //using (GZipInputStream gzipStream = new GZipInputStream(fs))
+                //using (StreamReader streamReader = new StreamReader(gzipStream))
+                //using (JsonTextReader reader = new JsonTextReader(streamReader))
+                //{
+                //    reader.SupportMultipleContent = true;
+                //    var serializer = new JsonSerializer();
+                //    while (reader.Read())
+                //    {
+                //        if (reader.TokenType == JsonToken.StartObject)
+                //        {
+                //            var t = serializer.Deserialize<Element>(reader);
+                //            //Add custom logic here - perhaps a yield return?
+                //        }
+                //    }
+                //}
+
+                using var db = new ManifestStore();
+
+                using Stream file = File.Create(@"c:\ha.json");
+
+                await JsonSerializer.SerializeAsync(file, db.Manifests
+                        .Include(a => a.Chunks)
+                        .Include(a => a.Entries),
+                    new JsonSerializerOptions {WriteIndented = true});
+            });
+        }
     }
 }

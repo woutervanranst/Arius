@@ -115,6 +115,10 @@ namespace Arius.CommandLine
 
             var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, version, _root).GetTask();
 
+
+            var exportToJsonTask = new ExportToJsonTaskProvider().GetTask();
+
+
             // Set up linking
             var propagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = true};
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = false};
@@ -231,7 +235,11 @@ namespace Arius.CommandLine
 
             // 180
             updateManifestBlock.Completion
-                .ContinueWith(_ => removeDeletedPointersTask);
+                .ContinueWith(_ => removeDeletedPointersTask.Start());
+
+            // 190
+            removeDeletedPointersTask
+                .ContinueWith(_ => exportToJsonTask.Start());
 
 
             //Fill the flow
@@ -240,62 +248,10 @@ namespace Arius.CommandLine
 
             
             // Wait for the end
-            removeDeletedPointersTask.Wait();
+            exportToJsonTask.Wait();
 
-            
-
-            using (var db = new ManifestStore())
-            {
-                //using (System.IO.Stream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                //using (GZipInputStream gzipStream = new GZipInputStream(fs))
-                //using (StreamReader streamReader = new StreamReader(gzipStream))
-                //using (JsonTextReader reader = new JsonTextReader(streamReader))
-                //{
-                //    reader.SupportMultipleContent = true;
-                //    var serializer = new JsonSerializer();
-                //    while (reader.Read())
-                //    {
-                //        if (reader.TokenType == JsonToken.StartObject)
-                //        {
-                //            var t = serializer.Deserialize<Element>(reader);
-                //            //Add custom logic here - perhaps a yield return?
-                //        }
-                //    }
-                //}
-
-                using (Stream file = File.Create(@"c:\ha.json"))
-                {
-                    JsonSerializer.SerializeAsync(file, db.Manifests
-                            .Include(a => a.Chunks)
-                            .Include(a => a.Entries),
-                        new JsonSerializerOptions {WriteIndented = true});
-                }
-            }
 
             return 0;
         }
-
-        
-
-
-        
-
-        
-
-        
-        
-
-        
     }
-
-    
-
-    
-
-    
-
-    
-
-
-    
 }
