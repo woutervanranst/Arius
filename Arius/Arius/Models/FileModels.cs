@@ -55,6 +55,8 @@ namespace Arius.Models
         public BinaryFile(FileInfo fi) : base(fi) { }
 
         public IEnumerable<IChunkFile> Chunks { get; set; }
+        public HashValue? ManifestHash { get; set; }
+        public bool Uploaded { get; set; }
     }
 
     internal class ChunkFile : AriusArchiveItem, IChunkFile
@@ -64,6 +66,7 @@ namespace Arius.Models
         public ChunkFile(FileInfo fi) : base(fi) { }
 
         //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
+        public bool Uploaded { get; set; }
     }
 
     internal class EncryptedChunkFile : AriusArchiveItem, IEncryptedFile, IChunkFile
@@ -79,6 +82,8 @@ namespace Arius.Models
         /// Size in Bytes
         /// </summary>
         public long Length => _fi.Length;
+
+        public bool Uploaded { get; set; }
     }
 
 }

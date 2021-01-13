@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Repositories
 {
-    internal class Manifest : DbContext
+    internal class ManifestStore : DbContext
     {
         public DbSet<ManifestEntry> Manifests { get; set; }
         //public DbSet<OrderedChunk> Chunks { get; set; }

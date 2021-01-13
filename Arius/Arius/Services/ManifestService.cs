@@ -4,17 +4,50 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
-    internal static class ManifestService
+    internal class ManifestService
     {
+        public static IEnumerable<HashValue> GetManifestHashes()
+        {
+            using var db = new ManifestStore();
+            return db.Manifests.Select(m => new HashValue {Value = m.HashValue});
+        }
+
+        public static ManifestEntry AddManifest(BinaryFile f)
+        {
+            using var db = new ManifestStore();
+
+            var me = new ManifestEntry()
+            {
+                HashValue = f.ManifestHash!.Value.Value,
+                Chunks = f.Chunks.Select((cf, i) => 
+                    new OrderedChunk()
+                    {
+                        ManifestHashValue = f.ManifestHash.Value.Value,
+                        ChunkHashValue = cf.Hash.Value,
+                        Order = i
+                    }).ToList()
+            };
+
+            db.Manifests.Add(me);
+            db.SaveChanges();
+
+            return me;
+        }
+    }
+
+    internal static class ManifestEntryExtensions
+    { 
         /// <summary>
         /// Get the last entries per RelativeName
         /// </summary>

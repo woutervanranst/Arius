@@ -21,6 +21,7 @@ namespace Arius.Models
     }
     internal interface IChunkFile : IFileWithHash
     {
+        public bool Uploaded { get; set; }
     }
     internal interface IEncryptedFile : IFile
     {
