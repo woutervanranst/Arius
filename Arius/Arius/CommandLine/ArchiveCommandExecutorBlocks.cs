@@ -138,11 +138,11 @@ namespace Arius.CommandLine
     class GetChunksForUploadBlockProvider
     {
         private readonly IChunker _chunker;
-        private readonly Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+        private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
         public GetChunksForUploadBlockProvider(IChunker chunker,
-            Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated,
+            Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated,
             AzureRepository azureRepository)
         {
             _chunker = chunker;
@@ -159,7 +159,7 @@ namespace Arius.CommandLine
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
         }
 
-        private IEnumerable<IChunkFile> GetChunksForUpload(BinaryFile binaryFile, List<HashValue> uploadedOrUploadingChunks, Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+        private IEnumerable<IChunkFile> GetChunksForUpload(BinaryFile binaryFile, List<HashValue> uploadedOrUploadingChunks, Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             var chunks = AddChunks(binaryFile);
 
@@ -176,11 +176,11 @@ namespace Arius.CommandLine
                     {
                         lock (chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                         {
-                            if (!chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile.Hash))
-                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile.Hash,
-                                    new KeyValuePair<BinaryFile, List<HashValue>>(binaryFile, new List<HashValue>() {chunk.Hash}));
+                            if (!chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
+                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile,
+                                    new List<HashValue>(new [] {chunk.Hash}));
                             else
-                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile.Hash].Value.Add(chunk.Hash);
+                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash);
                         }
 
                         chunk.Uploaded = false; //ie to upload
@@ -336,10 +336,10 @@ namespace Arius.CommandLine
 
     class ReconcileChunksWithManifestsBlockProvider
     {
-        private readonly Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+        private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
         public ReconcileChunksWithManifestsBlockProvider(
-            Dictionary<HashValue, KeyValuePair<BinaryFile, List<HashValue>>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
         }
@@ -356,20 +356,20 @@ namespace Arius.CommandLine
                         foreach (var kvp in _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated) //Key = HashValue van de Manifest, List = HashValue van de Chunks
                         {
                             // Remove the incoming ChunkHash from the list of prerequired
-                            kvp.Value.Value.Remove(hashOfUploadedChunk);
+                            kvp.Value.Remove(hashOfUploadedChunk);
 
                             // If the list of prereqs is empty
-                            if (!kvp.Value.Value.Any())
+                            if (!kvp.Value.Any())
                             {
                                 // Add it to the list of manifests to be created
-                                kvp.Value.Key.ManifestHash = kvp.Key;
-                                manifestsToCreate.Add(kvp.Value.Key);
+                                kvp.Key.ManifestHash = kvp.Key.Hash;
+                                manifestsToCreate.Add(kvp.Key);
                             }
                         }
 
                         // Remove all reconciled manifests from the waitlist
-                        foreach (var manifestHash in manifestsToCreate)
-                            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(manifestHash.Hash);
+                        foreach (var binaryFile in manifestsToCreate)
+                            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(binaryFile);
                     }
 
                     return manifestsToCreate;
