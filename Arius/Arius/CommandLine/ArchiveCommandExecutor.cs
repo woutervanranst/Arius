@@ -332,29 +332,28 @@ namespace Arius.CommandLine
 
                     db.SaveChanges();
                 }
-
-                //return item;
             });
 
 
-            
-            
+            var propagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = true};
+            var doNotPropagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = false};
+
             // 10
             indexDirectoryBlock.LinkTo(
                 addHashBlock,
-                new DataflowLinkOptions { PropagateCompletion = true });
+                propagateCompletionOptions);
 
 
             // 20
             addHashBlock.LinkTo(
                 addRemoteManifestBlock,
-                new DataflowLinkOptions { PropagateCompletion = true },
+                propagateCompletionOptions,
                 x => x is BinaryFile);
 
             // 30
             addHashBlock.LinkTo(
                 updateManifestBlock,
-                new DataflowLinkOptions { PropagateCompletion = false }, // no prop
+                doNotPropagateCompletionOptions,
                 x => x is PointerFile,
                 f => (PointerFile)f);
 
@@ -362,40 +361,28 @@ namespace Arius.CommandLine
             // 40
             addRemoteManifestBlock.LinkTo(
                 getChunksForUploadBlock,
-                new DataflowLinkOptions { PropagateCompletion = true }, 
-                binaryFile =>
-                {
-                    return !binaryFile.ManifestHash.HasValue;
-                });
+                propagateCompletionOptions, 
+                binaryFile => !binaryFile.ManifestHash.HasValue);
 
             // 50
             addRemoteManifestBlock.LinkTo(
                 reconcileBinaryFilesWithManifest,
-                new DataflowLinkOptions() { PropagateCompletion = false }, // DO NOT PROPAGATE
-                binaryFile =>
-                {
-                    return binaryFile.ManifestHash.HasValue;
-                });
+                doNotPropagateCompletionOptions,
+                binaryFile => binaryFile.ManifestHash.HasValue);
 
 
 
             // 60
             getChunksForUploadBlock.LinkTo(
                 encryptChunksBlock, 
-                new DataflowLinkOptions() { PropagateCompletion = true }, 
-                f =>
-                {
-                    return f.Uploaded == false;
-                });
+                propagateCompletionOptions, 
+                f => !f.Uploaded);
 
             // 70
             getChunksForUploadBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
-                new DataflowLinkOptions() {PropagateCompletion = false},
-                f =>
-                {
-                    return f.Uploaded == true;
-                },
+                doNotPropagateCompletionOptions,
+                f => f.Uploaded,
                 cf => cf.Hash);
 
 
@@ -409,7 +396,7 @@ namespace Arius.CommandLine
             // 80
             encryptChunksBlock.LinkTo(
                 enqueueEncryptedChunksForUploadBlock,
-                new DataflowLinkOptions {PropagateCompletion = true});
+                propagateCompletionOptions);
 
 
 
@@ -417,7 +404,7 @@ namespace Arius.CommandLine
             Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
                 .ContinueWith(_ => uploadQueue.CompleteAdding());
 
-            var uploadTask = GetUploadTask((ITargetBlock<EncryptedChunkFile[]>)uploadEncryptedChunksBlock);
+            var uploadTask = GetUploadTask(uploadEncryptedChunksBlock);
 
             // 100
             Task.WhenAll(uploadTask)
@@ -428,7 +415,7 @@ namespace Arius.CommandLine
             // 110
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
-                new DataflowLinkOptions() {PropagateCompletion = false});
+                doNotPropagateCompletionOptions);
 
             // 190
             Task.WhenAll(uploadEncryptedChunksBlock.Completion, getChunksForUploadBlock.Completion)
@@ -438,15 +425,14 @@ namespace Arius.CommandLine
             // 120
             reconcileChunksWithManifestsBlock.LinkTo(
                 createManifestBlock,
-                new DataflowLinkOptions() {PropagateCompletion = true});
+                propagateCompletionOptions);
 
             
             
             // 130
             createManifestBlock.LinkTo(
                 reconcileBinaryFilesWithManifest,
-                new DataflowLinkOptions() {PropagateCompletion = false} //do not propagate
-                );
+                doNotPropagateCompletionOptions);
 
 
             // 180
@@ -456,11 +442,11 @@ namespace Arius.CommandLine
             // 140
             reconcileBinaryFilesWithManifest.LinkTo(
                 createPointersBlock,
-                new DataflowLinkOptions() { PropagateCompletion = true }
-            );
+                propagateCompletionOptions);
 
             // 150
-            createPointersBlock.LinkTo(updateManifestBlock); // DO NOT PROPAGATE
+            createPointersBlock.LinkTo(updateManifestBlock, 
+                doNotPropagateCompletionOptions);
 
             // 170
             Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
