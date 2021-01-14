@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using Arius.CommandLine;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
 
@@ -28,8 +26,8 @@ namespace Arius.Models
     internal interface IEncryptedFile : IFile
     {
     }
-
     
+
     internal interface IChunker
     {
         IEnumerable<IChunkFile> Chunk(BinaryFile fileToChunk);

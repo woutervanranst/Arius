@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
@@ -120,7 +118,7 @@ namespace Arius.Repositories
             {
                 var query = _pointerEntryTable.CreateQuery<PointerFileEntry>();
 
-                throw new NotImplementedException();
+                //throw new NotImplementedException();
 
                 return query;
             }
@@ -207,6 +205,5 @@ namespace Arius.Repositories
             [IgnoreProperty]
             public HashValue Hash => new() {Value = PartitionKey};
         }
-
     }
 }

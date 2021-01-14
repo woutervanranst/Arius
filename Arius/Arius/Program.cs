@@ -1,7 +1,5 @@
 ﻿using System;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.Configuration;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
@@ -11,7 +9,6 @@ using Arius.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
-using Arius.Extensions;
 using Arius.Services;
 
 namespace Arius.Models
@@ -89,5 +87,4 @@ namespace Arius.Models
 
         public bool Uploaded { get; set; }
     }
-
 }

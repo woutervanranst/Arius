@@ -1,8 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
-using Arius.CommandLine;
-using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 
@@ -43,6 +40,5 @@ namespace Arius.Services
             //return CreatePointerFile(root, root.GetPointerFileInfo(pfe), manifestFile, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
             throw new NotImplementedException();
         }
-        
     }
 }

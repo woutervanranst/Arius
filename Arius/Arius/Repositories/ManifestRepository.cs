@@ -1,18 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Extensions;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.Services;
-using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 
@@ -42,8 +34,6 @@ namespace Arius.Repositories
             private readonly ILogger<ManifestRepository> _logger;
             private readonly CloudTable _manifestTable;
 
-            
-
             public async Task AddManifestAsync(BinaryFile f)
             {
                 try
@@ -69,19 +59,7 @@ namespace Arius.Repositories
 
                 return query.AsEnumerable();
             }
-
-
-
-
-
-
-
-
-
-
-
         }
-
         
         public class ManifestEntry : TableEntity
         {
@@ -93,17 +71,7 @@ namespace Arius.Repositories
                 Chunks = JsonSerializer.Serialize(bf.Chunks.Select(cf => cf.Hash.Value));
             }
 
-
-
             public string Chunks { get; set; }
         }
-
-
-
-        
-        
-
-        
-
     }
 }
