@@ -35,9 +35,9 @@ namespace Arius.Models
         protected abstract string Extension { get; }
     }
 
-    class RemoteEncryptedChunkBlobItem2 : Blob2
+    class RemoteEncryptedChunkBlobItem : Blob2
     {
-        public RemoteEncryptedChunkBlobItem2(BlobItem bi) : base(bi)
+        public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
         }
 

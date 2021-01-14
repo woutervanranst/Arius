@@ -40,24 +40,24 @@ namespace Arius.Repositories
         private const string EncryptedChunkDirectoryName = "chunks";
 
 
-        public IEnumerable<RemoteEncryptedChunkBlobItem2> GetAllChunkBlobItems()
+        public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
         {
             //var k = _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/").ToList();
 
             return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
-                .Select(bi => new RemoteEncryptedChunkBlobItem2(bi));
+                .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
         }
 
-        public RemoteEncryptedChunkBlobItem2 GetByName(string name, string folder = EncryptedChunkDirectoryName)
+        public RemoteEncryptedChunkBlobItem GetByName(string name, string folder = EncryptedChunkDirectoryName)
         {
             var bi = _bcc
                 .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
                 .Single();
 
-            return new RemoteEncryptedChunkBlobItem2(bi);
+            return new RemoteEncryptedChunkBlobItem(bi);
         }
 
-        public IEnumerable<RemoteEncryptedChunkBlobItem2> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
+        public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
             _blobCopier.Upload(ecfs, tier, EncryptedChunkDirectoryName, false);
 

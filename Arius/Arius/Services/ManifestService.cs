@@ -35,11 +35,11 @@ namespace Arius.Services
 
             //var yyy = xxx;
         }
-        public HashValue[] GetManifestHashes()
-        {
-            using var db = new ManifestStore();
-            return db.Manifests.Select(m => new HashValue {Value = m.HashValue}).ToArray();
-        }
+        //public HashValue[] GetManifestHashes()
+        //{
+        //    using var db = new ManifestStore();
+        //    return db.Manifests.Select(m => new HashValue {Value = m.HashValue}).ToArray();
+        //}
 
         public ManifestEntry AddManifest(BinaryFile f)
         {
