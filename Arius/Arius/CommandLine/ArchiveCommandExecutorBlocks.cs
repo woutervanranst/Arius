@@ -379,15 +379,18 @@ namespace Arius.CommandLine
 
     class CreateManifestBlockProvider
     {
-        public CreateManifestBlockProvider()
+        private readonly ManifestService _manifestService;
+
+        public CreateManifestBlockProvider(ManifestService manifestService)
         {
+            _manifestService = manifestService;
         }
 
         public TransformBlock<BinaryFile, BinaryFile> GetBlock()
         {
             return new(binaryFile =>
             {
-                var me = ManifestService.AddManifest(binaryFile);
+                var me = _manifestService.AddManifest(binaryFile);
 
                 return binaryFile;
             });
@@ -467,12 +470,14 @@ namespace Arius.CommandLine
     class UpdateManifestBlockProvider
     {
         private readonly ILogger _logger;
+        private readonly ManifestService _manifestService;
         private readonly DateTime _version;
         private readonly DirectoryInfo _root;
 
-        public UpdateManifestBlockProvider(ILogger logger, DateTime version, DirectoryInfo root)
+        public UpdateManifestBlockProvider(ILogger logger, ManifestService manifestService, DateTime version, DirectoryInfo root)
         {
             _logger = logger;
+            _manifestService = manifestService;
             _version = version;
             _root = root;
         }
@@ -481,32 +486,7 @@ namespace Arius.CommandLine
         {
             return new(pointerFile =>
             {
-                // Update the manifest
-                using (var db = new ManifestStore())
-                {
-                    var me = db.Manifests
-                        .Include(me => me.Entries)
-                        .Single(m => m.HashValue == pointerFile.Hash!.Value);
-
-                    //TODO iets met PointerFileEntryEqualityComparer?
-
-                    var e = new PointerFileEntry
-                    {
-                        RelativeName = Path.GetRelativePath(_root.FullName, pointerFile.FullName),
-                        Version = _version,
-                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FullName), //TODO
-                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
-                        IsDeleted = false
-                    };
-
-                    var pfeec = new PointerFileEntryEqualityComparer();
-                    if (!me.Entries.Contains(e, pfeec))
-                        me.Entries.Add(e);
-
-                    _logger.LogInformation($"Added {e.RelativeName}");
-
-                    db.SaveChanges();
-                }
+                _manifestService.UpdateManifest(_root, pointerFile, _version);
             });
         }
     }
@@ -514,12 +494,14 @@ namespace Arius.CommandLine
     class RemoveDeletedPointersTaskProvider
     {
         private readonly ILogger _logger;
+        private readonly ManifestService _manifestService;
         private readonly DateTime _version;
         private readonly DirectoryInfo _root;
 
-        public RemoveDeletedPointersTaskProvider(ILogger logger, DateTime version, DirectoryInfo root)
+        public RemoveDeletedPointersTaskProvider(ILogger logger, ManifestService manifestService, DateTime version, DirectoryInfo root)
         {
             _logger = logger;
+            _manifestService = manifestService;
             _version = version;
             _root = root;
         }
@@ -528,40 +510,24 @@ namespace Arius.CommandLine
         {
             return new (() =>
             {
-                using var db = new ManifestStore();
-
-                //Not parallel foreach since DbContext is not thread safe
-                foreach (var m in db.Manifests.Include(m => m.Entries))
+                Parallel.ForEach(_manifestService.GetAllEntries(), me =>
                 {
-                    foreach (var e in m.GetLastEntries(false).Where(e => e.Version != _version))
+                    foreach (var pfe in me.GetLastEntries(false).Where(e => e.Version != _version))
                     {
                         //TODO iets met PointerFileEntryEqualityComparer?
 
-                        var p = Path.Combine(_root.FullName, e.RelativeName);
+                        var p = Path.Combine(_root.FullName, pfe.RelativeName);
                         if (!File.Exists(p))
-                        {
-                            m.Entries.Add(new PointerFileEntry()
-                            {
-                                RelativeName = e.RelativeName,
-                                Version = _version,
-                                IsDeleted = true,
-                                CreationTimeUtc = null,
-                                LastWriteTimeUtc = null
-                            });
-
-                            _logger.LogInformation($"Marked {e.RelativeName} as deleted");
-                        }
+                            _manifestService.SetDeleted(me, pfe, _version);
                     }
-                }
-
-                db.SaveChanges();
+                });
             });
-
         }
     }
 
     class ExportToJsonTaskProvider
     {
+        private readonly ManifestService _manifestService;
         //private readonly ILogger _logger;
         //private readonly DateTime _version;
         //private readonly DirectoryInfo _root;
@@ -572,6 +538,11 @@ namespace Arius.CommandLine
         //    _version = version;
         //    _root = root;
         //}
+
+        public ExportToJsonTaskProvider(ManifestService manifestService)
+        {
+            _manifestService = manifestService;
+        }
 
         public Task GetTask()
         {
@@ -595,13 +566,9 @@ namespace Arius.CommandLine
                 //    }
                 //}
 
-                using var db = new ManifestStore();
-
                 using Stream file = File.Create(@"c:\ha.json");
 
-                await JsonSerializer.SerializeAsync(file, db.Manifests
-                        .Include(a => a.Chunks)
-                        .Include(a => a.Entries),
+                await JsonSerializer.SerializeAsync(file, _manifestService.GetAllManifestEntriesWithChunksAndPointerFileEntries() ,
                     new JsonSerializerOptions {WriteIndented = true});
             });
         }

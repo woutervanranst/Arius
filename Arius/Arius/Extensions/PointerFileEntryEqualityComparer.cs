@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Arius.CommandLine;
 using Arius.Models;
 using Arius.Repositories;
+using Arius.Services;
 
 namespace Arius.Extensions
 {
