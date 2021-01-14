@@ -78,7 +78,7 @@ namespace Arius.CommandLine
             var addHashBlock = new AddHashBlockProvider(_hvp, fastHash).GetBlock();
 
 
-            var uploadedManifestHashes = new List<HashValue>(_manifestService.GetManifestHashes());
+            var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash));
             var addRemoteManifestBlock = new AddRemoteManifestBlockProvider(uploadedManifestHashes).GetBlock();
 
 
