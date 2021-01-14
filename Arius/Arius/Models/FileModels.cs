@@ -22,7 +22,7 @@ namespace Arius.Models
 
         public HashValue Hash
         {
-            get => _hashValue.Value;
+            get => _hashValue!.Value;
             set
             {
                 if (_hashValue.HasValue)

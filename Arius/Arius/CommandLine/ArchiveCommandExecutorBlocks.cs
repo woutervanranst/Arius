@@ -379,18 +379,18 @@ namespace Arius.CommandLine
 
     class CreateManifestBlockProvider
     {
-        private readonly ManifestService _manifestService;
+        private readonly AzureRepository _azureRepository;
 
-        public CreateManifestBlockProvider(ManifestService manifestService)
+        public CreateManifestBlockProvider(AzureRepository azureRepository)
         {
-            _manifestService = manifestService;
+            _azureRepository = azureRepository;
         }
 
         public TransformBlock<BinaryFile, BinaryFile> GetBlock()
         {
             return new(binaryFile =>
             {
-                var me = _manifestService.AddManifest(binaryFile);
+                var me = _azureRepository.AddManifest(binaryFile);
 
                 return binaryFile;
             });
@@ -470,14 +470,14 @@ namespace Arius.CommandLine
     class UpdateManifestBlockProvider
     {
         private readonly ILogger _logger;
-        private readonly ManifestService _manifestService;
+        private readonly AzureRepository _azureRepository;
         private readonly DateTime _version;
         private readonly DirectoryInfo _root;
 
-        public UpdateManifestBlockProvider(ILogger logger, ManifestService manifestService, DateTime version, DirectoryInfo root)
+        public UpdateManifestBlockProvider(ILogger logger, AzureRepository azureRepository, DateTime version, DirectoryInfo root)
         {
             _logger = logger;
-            _manifestService = manifestService;
+            _azureRepository = azureRepository;
             _version = version;
             _root = root;
         }
@@ -486,7 +486,7 @@ namespace Arius.CommandLine
         {
             return new(pointerFile =>
             {
-                _manifestService.UpdateManifest(_root, pointerFile, _version);
+                _azureRepository.UpdateManifest(_root, pointerFile, _version);
             });
         }
     }
@@ -494,14 +494,14 @@ namespace Arius.CommandLine
     class RemoveDeletedPointersTaskProvider
     {
         private readonly ILogger _logger;
-        private readonly ManifestService _manifestService;
+        private readonly AzureRepository _azureRepository;
         private readonly DateTime _version;
         private readonly DirectoryInfo _root;
 
-        public RemoveDeletedPointersTaskProvider(ILogger logger, ManifestService manifestService, DateTime version, DirectoryInfo root)
+        public RemoveDeletedPointersTaskProvider(ILogger logger, AzureRepository azureRepository, DateTime version, DirectoryInfo root)
         {
             _logger = logger;
-            _manifestService = manifestService;
+            _azureRepository = azureRepository;
             _version = version;
             _root = root;
         }
@@ -510,7 +510,7 @@ namespace Arius.CommandLine
         {
             return new (() =>
             {
-                Parallel.ForEach(_manifestService.GetAllEntries(), me =>
+                Parallel.ForEach(_azureRepository.GetAllEntries(), me =>
                 {
                     foreach (var pfe in me.GetLastEntries(false).Where(e => e.Version != _version))
                     {
@@ -518,7 +518,7 @@ namespace Arius.CommandLine
 
                         var p = Path.Combine(_root.FullName, pfe.RelativeName);
                         if (!File.Exists(p))
-                            _manifestService.SetDeleted(me, pfe, _version);
+                            _azureRepository.SetDeleted(me, pfe, _version);
                     }
                 });
             });
@@ -527,7 +527,7 @@ namespace Arius.CommandLine
 
     class ExportToJsonTaskProvider
     {
-        private readonly ManifestService _manifestService;
+        private readonly AzureRepository _azureRepository;
         //private readonly ILogger _logger;
         //private readonly DateTime _version;
         //private readonly DirectoryInfo _root;
@@ -539,9 +539,9 @@ namespace Arius.CommandLine
         //    _root = root;
         //}
 
-        public ExportToJsonTaskProvider(ManifestService manifestService)
+        public ExportToJsonTaskProvider(AzureRepository azureRepository)
         {
-            _manifestService = manifestService;
+            _azureRepository = azureRepository;
         }
 
         public Task GetTask()
@@ -568,7 +568,7 @@ namespace Arius.CommandLine
 
                 using Stream file = File.Create(@"c:\ha.json");
 
-                await JsonSerializer.SerializeAsync(file, _manifestService.GetAllManifestEntriesWithChunksAndPointerFileEntries() ,
+                await JsonSerializer.SerializeAsync(file, _azureRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries() ,
                     new JsonSerializerOptions {WriteIndented = true});
             });
         }

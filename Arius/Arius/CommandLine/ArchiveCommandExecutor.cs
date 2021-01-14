@@ -30,8 +30,6 @@ namespace Arius.CommandLine
             IConfiguration config,
             AzureRepository ariusRepository,
 
-            ManifestService manifestService,
-
             IHashValueProvider h,
             IChunker c,
             IEncrypter e)
@@ -41,7 +39,6 @@ namespace Arius.CommandLine
             _config = config;
             _root = new DirectoryInfo(_options.Path);
             _azureRepository = ariusRepository;
-            _manifestService = manifestService;
 
             _hvp = h;
             _chunker = c;
@@ -57,7 +54,6 @@ namespace Arius.CommandLine
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
         private readonly AzureRepository _azureRepository;
-        private readonly ManifestService _manifestService;
 
 
         public int Execute()
@@ -102,7 +98,7 @@ namespace Arius.CommandLine
             var reconcileChunksWithManifestsBlock = new ReconcileChunksWithManifestsBlockProvider(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated).GetBlock();
 
             
-            var createManifestBlock = new CreateManifestBlockProvider(_manifestService).GetBlock();
+            var createManifestBlock = new CreateManifestBlockProvider(_azureRepository).GetBlock();
 
 
             var reconcileBinaryFilesWithManifestBlock = new ReconcileBinaryFilesWithManifestBlockProvider(uploadedManifestHashes).GetBlock();
@@ -111,13 +107,13 @@ namespace Arius.CommandLine
             var createPointersBlock = new CreatePointerBlockProvider().GetBlock();
 
 
-            var updateManifestBlock = new UpdateManifestBlockProvider(_logger, _manifestService, version, _root).GetBlock();
+            var updateManifestBlock = new UpdateManifestBlockProvider(_logger, _azureRepository, version, _root).GetBlock();
 
 
-            var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, _manifestService, version, _root).GetTask();
+            var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, _azureRepository, version, _root).GetTask();
 
 
-            var exportToJsonTask = new ExportToJsonTaskProvider(_manifestService).GetTask();
+            var exportToJsonTask = new ExportToJsonTaskProvider(_azureRepository).GetTask();
 
 
             // Set up linking

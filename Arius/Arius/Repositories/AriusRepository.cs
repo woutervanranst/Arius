@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Repositories
 {
-    internal class AzureRepository
+    internal partial class AzureRepository
     {
         internal interface IAzureRepositoryOptions : ICommandExecutorOptions
         {
@@ -22,46 +22,52 @@ namespace Arius.Repositories
             public string Container { get; }
         }
 
-        private readonly IBlobCopier _blobCopier;
-
-        public AzureRepository(ICommandExecutorOptions options, IBlobCopier b)
+        public AzureRepository(ICommandExecutorOptions options, 
+            ILoggerFactory loggerFactory,
+            IBlobCopier blobCopier)
         {
-            _blobCopier = b;
-
-            var o = (IAzureRepositoryOptions)options;
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
-            var bsc = new BlobServiceClient(connectionString);
-            _bcc = bsc.GetBlobContainerClient(o.Container);
+            _manifestRepository = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
+            _chunkRepository = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
         }
 
-        private readonly BlobContainerClient _bcc;
-
-        private const string EncryptedChunkDirectoryName = "chunks";
-
-
+        // -- CHUNK REPOSITORY
+        private readonly ChunkRepository _chunkRepository;
+        
         public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
         {
-            //var k = _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/").ToList();
-
-            return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
-                .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
-        }
-
-        public RemoteEncryptedChunkBlobItem GetByName(string name, string folder = EncryptedChunkDirectoryName)
-        {
-            var bi = _bcc
-                .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
-                .Single();
-
-            return new RemoteEncryptedChunkBlobItem(bi);
+            return _chunkRepository.GetAllChunkBlobItems();
         }
 
         public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
-            _blobCopier.Upload(ecfs, tier, EncryptedChunkDirectoryName, false);
+            return _chunkRepository.Upload(ecfs, tier);
+        }
 
-            return ecfs.Select(ecf => GetByName(ecf.Name));
+
+        // -- MANIFEST REPOSITORY
+        private readonly ManifestRepository _manifestRepository;
+
+        public ManifestEntry AddManifest(BinaryFile f)
+        {
+            return _manifestRepository.AddManifest(f);
+        }
+
+        public void UpdateManifest(DirectoryInfo root, PointerFile pointerFile, DateTime version)
+        {
+            _manifestRepository.UpdateManifest(root, pointerFile, version);
+        }
+        public IEnumerable<ManifestEntry> GetAllEntries()
+        {
+            return _manifestRepository.GetAllEntries();
+        }
+
+        public void SetDeleted(ManifestEntry me, PointerFileEntry pfe, DateTime version)
+        {
+            _manifestRepository.SetDeleted(me, pfe, version);
+        }
+        public List<ManifestEntry> GetAllManifestEntriesWithChunksAndPointerFileEntries()
+        {
+            return _manifestRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries();
         }
     }
 }
