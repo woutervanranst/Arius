@@ -6,10 +6,12 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
+using Arius.Services;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.EntityFrameworkCore;
@@ -25,167 +27,84 @@ namespace Arius.Repositories
             {
                 _logger = logger;
 
-                var o = (AzureRepository.IAzureRepositoryOptions) options;
+                var o = (IAzureRepositoryOptions) options;
+
                 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
 
-                _csa = CloudStorageAccount.Parse(connectionString);
+                var csa = CloudStorageAccount.Parse(connectionString);
+                var tc = csa.CreateCloudTableClient();
+                _manifestTable = tc.GetTableReference(o.Container + "manifests");
 
-                Init();
+                var r = _manifestTable.CreateIfNotExists();
+                if (r)
+                    _logger.LogInformation($"Created manifestTable for {o.Container}... ");
             }
 
             private readonly ILogger<ManifestRepository> _logger;
-            private readonly CloudStorageAccount _csa;
+            private readonly CloudTable _manifestTable;
 
-            private void Init()
+            
+
+            public async Task AddManifestAsync(BinaryFile f)
             {
-                //using var db = new ManifestStore();
-                //db.Database.EnsureCreated();
-
-                var tableclient = _csa.CreateCloudTableClient(new TableClientConfiguration());
-                var x = tableclient.GetTableReference("test");
-                x.CreateIfNotExists();
-
-
-            }
-
-            public ManifestEntry AddManifest(BinaryFile f)
-            {
-                using var db = new ManifestStore();
-
-                var me = new ManifestEntry()
+                try
                 {
-                    HashValue = f.ManifestHash!.Value.Value,
-                    Chunks = f.Chunks.Select((cf, i) => //TO CHECK zitten alle Chunks hierin of enkel de geuploade? to test: delete 1 chunk remote en run opnieuw
-                        new OrderedChunk()
-                        {
-                            ManifestHashValue = f.ManifestHash.Value.Value,
-                            ChunkHashValue = cf.Hash.Value,
-                            Order = i
-                        }).ToList()
-                };
+                    var me = new ManifestEntry(f);
 
-                db.Manifests.Add(me);
-                db.SaveChanges();
+                    var op = TableOperation.Insert(me); //TO CHECK zitten alle Chunks hierin of enkel de geuploade? to test: delete 1 chunk remote en run opnieuw
 
-                return me;
-            }
-
-            public void UpdateManifest(DirectoryInfo root, PointerFile pointerFile, DateTime version)
-            {
-                // Update the manifest
-                using (var db = new ManifestStore())
+                    await _manifestTable.ExecuteAsync(op);
+                }
+                catch (StorageException)
                 {
-                    var me = db.Manifests
-                        .Include(me => me.Entries)
-                        .Single(m => m.HashValue == pointerFile.Hash!.Value);
-
-                    //TODO iets met PointerFileEntryEqualityComparer?
-
-                    var e = new PointerFileEntry
-                    {
-                        RelativeName = Path.GetRelativePath(root.FullName, pointerFile.FullName),
-                        Version = version,
-                        CreationTimeUtc = File.GetCreationTimeUtc(pointerFile.FullName), //TODO
-                        LastWriteTimeUtc = File.GetLastWriteTimeUtc(pointerFile.FullName),
-                        IsDeleted = false
-                    };
-
-                    var pfeec = new PointerFileEntryEqualityComparer();
-                    if (!me.Entries.Contains(e, pfeec))
-                        me.Entries.Add(e);
-
-                    _logger.LogInformation($"Added {e.RelativeName}");
-
-                    db.SaveChanges();
+                    //Console.WriteLine(e.Message);
+                    //Console.ReadLine();
+                    throw;
                 }
             }
 
-            public IEnumerable<ManifestEntry> GetAllEntries()
+            public IEnumerable<HashValue> GetAllManifestHashes()
             {
-                using var db = new ManifestStore();
-                return db.Manifests.Include(m => m.Entries).ToList();
-            }
+                var query = _manifestTable.CreateQuery<TableEntity>()
+                    .Select(e => new HashValue() {Value = e.PartitionKey});
 
-            public void SetDeleted(ManifestEntry me, PointerFileEntry pfe, DateTime version)
-            {
-                using var db = new ManifestStore();
-                var m = db.Manifests.Single(me2 => me2.HashValue == me.HashValue);
-
-                m.Entries.Add(new PointerFileEntry()
-                {
-                    RelativeName = pfe.RelativeName,
-                    Version = version,
-                    IsDeleted = true,
-                    CreationTimeUtc = null,
-                    LastWriteTimeUtc = null
-                });
-
-                db.SaveChanges();
-
-                _logger.LogInformation($"Marked {pfe.RelativeName} as deleted");
-            }
-
-            public List<ManifestEntry> GetAllManifestEntriesWithChunksAndPointerFileEntries()
-            {
-                using var db = new ManifestStore();
-                return db.Manifests
-                    .Include(a => a.Chunks)
-                    .Include(a => a.Entries)
-                    .ToList();
+                return query.AsEnumerable();
             }
 
 
-            private class ManifestStore : DbContext
-            {
-                public DbSet<ManifestEntry> Manifests { get; set; }
-                //public DbSet<OrderedChunk> Chunks { get; set; }
 
-                protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-                    => optionsBuilder.UseSqlite(@"Data Source=c:\arius.db");
 
-                protected override void OnModelCreating(ModelBuilder modelBuilder)
-                {
-                    var me = modelBuilder.Entity<ManifestEntry>();
-                    me.HasKey(m => m.HashValue);
-                    me.HasMany(m => m.Entries);
-                    me.HasMany(m => m.Chunks);
 
-                    var pfee = modelBuilder.Entity<PointerFileEntry>();
-                    pfee.HasKey(pfe => new {pfe.RelativeName, pfe.Version});
 
-                    var oce = modelBuilder.Entity<OrderedChunk>();
-                    oce.HasKey(oc => new {oc.ManifestHashValue, oc.ChunkHashValue});
 
-                }
-            }
+
+
+
+
         }
 
-
-
-
-
-        internal class ManifestEntry
+        
+        public class ManifestEntry : TableEntity
         {
-            public string HashValue { get; set; }
-            public List<PointerFileEntry> Entries { get; init; } = new();
-            public List<OrderedChunk> Chunks { get; init; } = new();
+            public ManifestEntry(BinaryFile bf)
+            {
+                PartitionKey = bf.ManifestHash!.Value.Value;
+                RowKey = bf.ManifestHash!.Value.Value;
+
+                Chunks = JsonSerializer.Serialize(bf.Chunks.Select(cf => cf.Hash.Value));
+            }
+
+
+
+            public string Chunks { get; set; }
         }
 
-        internal class PointerFileEntry
-        {
-            public string RelativeName { get; set; }
-            public DateTime Version { get; set; }
-            public bool IsDeleted { get; set; }
-            public DateTime? CreationTimeUtc { get; set; }
-            public DateTime? LastWriteTimeUtc { get; set; }
-        }
 
-        internal class OrderedChunk
-        {
-            public string ManifestHashValue { get; set; }
-            public string ChunkHashValue { get; set; }
-            public int Order { get; set; }
-        }
+
+        
+        
+
+        
 
     }
 }

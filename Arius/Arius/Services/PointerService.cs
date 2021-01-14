@@ -17,7 +17,7 @@ namespace Arius.Services
         /// <summary>
         /// Create a pointer from a BinaryFile
         /// </summary>
-        public static PointerFile EnsurePointerExists(this BinaryFile f)
+        public static PointerFile CreatePointerFileIfNotExists(this BinaryFile f)
         {
             var pointerFileInfo = new FileInfo(f.GetPointerFileFullName());
 
@@ -32,13 +32,13 @@ namespace Arius.Services
                 pointerFileInfo.LastWriteTimeUtc = File.GetLastWriteTimeUtc(f.FullName);
             }
 
-            return new PointerFile(pointerFileInfo, f.Hash);
+            return new PointerFile(f.Root, pointerFileInfo, f.Hash);
         }
 
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public static PointerFile CreatePointerFile(DirectoryInfo root, AzureRepository.PointerFileEntry pfe, AzureRepository.ManifestEntry manifestFile)
+        public static PointerFile CreatePointerFile(DirectoryInfo root, AzureRepository.PointerFileEntry pfe, string manifestFile)
         {
             //return CreatePointerFile(root, root.GetPointerFileInfo(pfe), manifestFile, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
             throw new NotImplementedException();

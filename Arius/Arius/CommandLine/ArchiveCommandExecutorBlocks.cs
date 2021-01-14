@@ -27,21 +27,21 @@ namespace Arius.CommandLine
             );
         }
 
-        private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo di)
+        private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo root)
         {
-            foreach (var fi in di.GetFiles("*", SearchOption.AllDirectories).AsParallel())
+            foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
             {
                 if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
                 {
                     Console.WriteLine("PointerFile " + fi.Name);
 
-                    yield return new PointerFile(fi);
+                    yield return new PointerFile(root, fi);
                 }
                 else
                 {
                     Console.WriteLine("BinaryFile " + fi.Name);
 
-                    yield return new BinaryFile(fi);
+                    yield return new BinaryFile(root, fi);
                 }
             }
         }
@@ -85,9 +85,9 @@ namespace Arius.CommandLine
 
             if (fastHash)
             {
-                var pointerFileInfo = new FileInfo(f.GetPointerFileFullName());
+                var pointerFileInfo = new FileInfo(f.GetPointerFileFullName()); //TODO refactor into PointerServuce
                 if (pointerFileInfo.Exists)
-                    h = _hvp.GetHashValue(new PointerFile(pointerFileInfo));
+                    h = _hvp.GetHashValue(new PointerFile(f.Root, pointerFileInfo));
             }
 
             if (!h.HasValue)
@@ -234,7 +234,7 @@ namespace Arius.CommandLine
 
             _encrypter.Encrypt(f, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, f is not BinaryFile);
 
-            var ecf = new EncryptedChunkFile(targetFile, f.Hash);
+            var ecf = new EncryptedChunkFile(f.Root, targetFile, f.Hash);
 
             Console.WriteLine("Encrypting ChunkFile2 " + f.Name + " done");
 
@@ -388,9 +388,9 @@ namespace Arius.CommandLine
 
         public TransformBlock<BinaryFile, BinaryFile> GetBlock()
         {
-            return new(binaryFile =>
+            return new(async binaryFile =>
             {
-                var me = _azureRepository.AddManifest(binaryFile);
+                await _azureRepository.AddManifestAsync(binaryFile);
 
                 return binaryFile;
             });
@@ -400,26 +400,26 @@ namespace Arius.CommandLine
     class ReconcileBinaryFilesWithManifestBlockProvider
     {
         private readonly List<HashValue> _uploadedManifestHashes;
-        private readonly Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifetHash;
+        private readonly Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
 
         public ReconcileBinaryFilesWithManifestBlockProvider(List<HashValue> uploadedManifestHashes)
         {
             _uploadedManifestHashes = uploadedManifestHashes;
-            _binaryFilesPerManifetHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
+            _binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
         }
 
         public TransformManyBlock<BinaryFile, BinaryFile> GetBlock()
         {
             return new(binaryFile =>
             {
-                lock (_binaryFilesPerManifetHash)
+                lock (_binaryFilesPerManifestHash)
                 {
                     //Add to the list an wait until EXACTLY ONE binaryFile with the 
-                    if (!_binaryFilesPerManifetHash.ContainsKey(binaryFile.Hash))
-                        _binaryFilesPerManifetHash.Add(binaryFile.Hash, new List<BinaryFile>());
+                    if (!_binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
+                        _binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
 
                     // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                    _binaryFilesPerManifetHash[binaryFile.Hash].Add(binaryFile);
+                    _binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
 
                     if (binaryFile.ManifestHash.HasValue)
                     {
@@ -431,8 +431,8 @@ namespace Arius.CommandLine
 
                     if (_uploadedManifestHashes.Contains(binaryFile.Hash))
                     {
-                        var pointersToCreate = _binaryFilesPerManifetHash[binaryFile.Hash].ToArray();
-                        _binaryFilesPerManifetHash[binaryFile.Hash].Clear();
+                        var pointersToCreate = _binaryFilesPerManifestHash[binaryFile.Hash].ToArray();
+                        _binaryFilesPerManifestHash[binaryFile.Hash].Clear();
 
                         return pointersToCreate;
                     }
@@ -460,33 +460,31 @@ namespace Arius.CommandLine
         {
             return new(binaryFile =>
             {
-                var p = binaryFile.EnsurePointerExists();
+                var p = binaryFile.CreatePointerFileIfNotExists();
 
                 return p;
             });
         }
     }
 
-    class UpdateManifestBlockProvider
+    class CreatePointerFileEntryIfNotExistsBlockProvider
     {
         private readonly ILogger _logger;
         private readonly AzureRepository _azureRepository;
         private readonly DateTime _version;
-        private readonly DirectoryInfo _root;
 
-        public UpdateManifestBlockProvider(ILogger logger, AzureRepository azureRepository, DateTime version, DirectoryInfo root)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger logger, AzureRepository azureRepository, DateTime version)
         {
             _logger = logger;
             _azureRepository = azureRepository;
             _version = version;
-            _root = root;
         }
 
         public ActionBlock<PointerFile> GetBlock()
         {
-            return new(pointerFile =>
+            return new(async pointerFile =>
             {
-                _azureRepository.UpdateManifest(_root, pointerFile, _version);
+                await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, _version);
             });
         }
     }
@@ -510,16 +508,19 @@ namespace Arius.CommandLine
         {
             return new (() =>
             {
-                Parallel.ForEach(_azureRepository.GetAllEntries(), me =>
-                {
-                    foreach (var pfe in me.GetLastEntries(false).Where(e => e.Version != _version))
-                    {
-                        //TODO iets met PointerFileEntryEqualityComparer?
+                var es = _azureRepository
+                    .GetLastEntries(_version, true) //Get all entries until NOW and include the entries marked as deleted
+                    .Where(e => e.Version < _version); // that were not created in the current run (those are assumed to be up to date)
 
-                        var p = Path.Combine(_root.FullName, pfe.RelativeName);
-                        if (!File.Exists(p))
-                            _azureRepository.SetDeleted(me, pfe, _version);
-                    }
+                var xx = es.ToList(); //TODO DELETE
+
+                Parallel.ForEach(es, async pfe =>
+                {
+                    //TODO iets met PointerFileEntryEqualityComparer?
+
+                    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+                    if (!File.Exists(pointerFullName))
+                        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
                 });
             });
         }

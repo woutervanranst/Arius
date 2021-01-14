@@ -10,7 +10,9 @@ namespace Arius.Models
     internal interface IFile
     {
         DirectoryInfo Directory { get; }
+        DirectoryInfo Root { get; }
         public string Name { get; }
+        public string RelativeName { get; }
         public string FullName { get; }
         public void Delete();
     }

@@ -58,16 +58,8 @@ namespace Arius.Services
             var bsc = new BlobServiceClient(connectionString);
             //var bsc = new BlobServiceClient(new Uri($"{accountName}", _skc));
 
-            var bcc = bsc.GetBlobContainerClient(_options.Container);
-
-            if (!bcc.Exists())
-            {
-                logger.LogInformation($"Creating container {_options.Container}... ");
-                bcc = bsc.CreateBlobContainer(_options.Container);
-                logger.LogInformation("Done");
-            }
-
-            _bcc = bcc;
+            _bcc = bsc.GetBlobContainerClient(_options.Container);
+            
         }
 
         private readonly Task<string> _AzCopyPath;

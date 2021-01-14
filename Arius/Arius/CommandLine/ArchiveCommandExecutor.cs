@@ -63,9 +63,9 @@ namespace Arius.CommandLine
             ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
 
 
-            var version = DateTime.Now;
+            var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
 
-            var fastHash = true;
+            var fastHash = false;
 
             // Define blocks & intermediate variables
             var indexDirectoryBlock = new IndexDirectoryBlockProvider().GetBlock();
@@ -74,7 +74,7 @@ namespace Arius.CommandLine
             var addHashBlock = new AddHashBlockProvider(_hvp, fastHash).GetBlock();
 
 
-            var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash));
+            var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
             var addRemoteManifestBlock = new AddRemoteManifestBlockProvider(uploadedManifestHashes).GetBlock();
 
 
@@ -107,7 +107,7 @@ namespace Arius.CommandLine
             var createPointersBlock = new CreatePointerBlockProvider().GetBlock();
 
 
-            var updateManifestBlock = new UpdateManifestBlockProvider(_logger, _azureRepository, version, _root).GetBlock();
+            var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlockProvider(_logger, _azureRepository, version).GetBlock();
 
 
             var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, _azureRepository, version, _root).GetTask();
@@ -134,7 +134,7 @@ namespace Arius.CommandLine
 
             // 30
             addHashBlock.LinkTo(
-                updateManifestBlock,
+                createPointerFileEntryIfNotExistsBlock,
                 doNotPropagateCompletionOptions,
                 x => x is PointerFile,
                 f => (PointerFile)f);
@@ -221,18 +221,21 @@ namespace Arius.CommandLine
 
 
             // 160
-            createPointersBlock.LinkTo(updateManifestBlock, 
+            createPointersBlock.LinkTo(createPointerFileEntryIfNotExistsBlock, 
                 doNotPropagateCompletionOptions);
 
 
             // 170
             Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
-                .ContinueWith(_ => updateManifestBlock.Complete());
+                .ContinueWith(_ => createPointerFileEntryIfNotExistsBlock.Complete());
 
 
             // 180
-            updateManifestBlock.Completion
-                .ContinueWith(_ => removeDeletedPointersTask.Start());
+            createPointerFileEntryIfNotExistsBlock.Completion
+                .ContinueWith(_ =>
+                {
+                    removeDeletedPointersTask.Start();
+                });
 
             // 190
             removeDeletedPointersTask

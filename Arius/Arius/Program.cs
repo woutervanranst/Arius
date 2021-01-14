@@ -92,6 +92,7 @@ namespace Arius
                 })
                 .AddSingleton<IConfiguration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
+                
                 //Add Services
                 //.AddSingleton<ManifestService>()
                 //.AddSingleton<PointerService2>()
@@ -100,9 +101,11 @@ namespace Arius
                 .AddSingleton<IChunker>(s => new DedupChunker(s.GetService<IConfiguration>()))
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
+                
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
                 .AddSingleton<RestoreCommandExecutor>()
+
                 .AddSingleton<AzureRepository>()
                 .BuildServiceProvider();
             return serviceProvider;

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
@@ -26,8 +28,9 @@ namespace Arius.Repositories
             ILoggerFactory loggerFactory,
             IBlobCopier blobCopier)
         {
-            _manifestRepository = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
             _chunkRepository = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
+            _manifestRepository = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
+            _pointerFileEntryRepository = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>());
         }
 
         // -- CHUNK REPOSITORY
@@ -47,27 +50,59 @@ namespace Arius.Repositories
         // -- MANIFEST REPOSITORY
         private readonly ManifestRepository _manifestRepository;
 
-        public ManifestEntry AddManifest(BinaryFile f)
+        public async Task AddManifestAsync(BinaryFile f)
         {
-            return _manifestRepository.AddManifest(f);
+            await _manifestRepository.AddManifestAsync(f);
         }
 
-        public void UpdateManifest(DirectoryInfo root, PointerFile pointerFile, DateTime version)
+        public IEnumerable<HashValue> GetAllManifestHashes()
         {
-            _manifestRepository.UpdateManifest(root, pointerFile, version);
-        }
-        public IEnumerable<ManifestEntry> GetAllEntries()
-        {
-            return _manifestRepository.GetAllEntries();
+            return _manifestRepository.GetAllManifestHashes();
         }
 
-        public void SetDeleted(ManifestEntry me, PointerFileEntry pfe, DateTime version)
+        
+        // -- POINTERFILEENTRY REPOSITORY
+        private readonly PointerFileEntryRepository _pointerFileEntryRepository;
+
+        internal IEnumerable<PointerFileEntry> GetLastEntries(DateTime pointInTime, bool includeLastDeleted)
         {
-            _manifestRepository.SetDeleted(me, pfe, version);
+            return _pointerFileEntryRepository.GetLastEntries(pointInTime, includeLastDeleted);
         }
+
+        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
+        {
+            await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+        }
+
+        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe, DateTime version, bool isDeleted = false)
+        {
+            await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, version, isDeleted);
+        }
+
         public List<ManifestEntry> GetAllManifestEntriesWithChunksAndPointerFileEntries()
         {
-            return _manifestRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries();
+            //var x = new ExpandoObject();
+
+            //foreach (var yy in _pointerFileEntryRepository.GetAllEntries())
+            //{
+
+            //}
+
+            return null; // TODO
+
+
+            //public List<ManifestEntry2> GetAllManifestEntriesWithChunksAndPointerFileEntries()
+            //{
+            //    throw new NotImplementedException();
+
+            //    //using var db = new ManifestStore();
+            //    //return db.Manifests
+            //    //    .Include(a => a.Chunks)
+            //    //    .Include(a => a.Entries)
+            //    //    .ToList();
+            //}
+
+            //return _manifestRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries();
         }
     }
 }

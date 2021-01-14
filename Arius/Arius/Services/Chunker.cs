@@ -22,7 +22,9 @@ namespace Arius.Services
 
         public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin)
         {
-            return new BinaryFile(new FileInfo(chunksToJoin.Single().FullName));
+            throw new NotImplementedException();
+
+            //return new BinaryFile(new FileInfo(chunksToJoin.Single().FullName));
         }
     }
 
@@ -59,7 +61,7 @@ namespace Arius.Services
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                yield return new ChunkFile(new FileInfo(chunkFullName)){ Hash = hashValue };
+                yield return new ChunkFile(null, new FileInfo(chunkFullName)){ Hash = hashValue }; //TODO keep null here? for chunkfile we don't really need the root?
             }
         }
 

@@ -19,15 +19,21 @@ namespace Arius.Repositories
                 ILogger<ChunkRepository> logger,
                     IBlobCopier b)
             {
+                _logger = logger;
                 _blobCopier = b;
 
                 var o = (IAzureRepositoryOptions)options;
-
                 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
+                
                 var bsc = new BlobServiceClient(connectionString);
                 _bcc = bsc.GetBlobContainerClient(o.Container);
+                var r = _bcc.CreateIfNotExists(PublicAccessType.None);
+                
+                if (r is not null && r.GetRawResponse().Status == 201) // Created
+                    _logger.LogInformation($"Created container {o.Container}... ");
             }
 
+            private readonly ILogger<ChunkRepository> _logger;
             private readonly IBlobCopier _blobCopier;
             private readonly BlobContainerClient _bcc;
             private const string EncryptedChunkDirectoryName = "chunks";

@@ -9,16 +9,20 @@ namespace Arius.Models
 {
     internal abstract class AriusArchiveItem : IFileWithHash
     {
+        private readonly DirectoryInfo _root;
         protected readonly FileInfo _fi;
 
-        protected AriusArchiveItem(FileInfo fi)
+        protected AriusArchiveItem(DirectoryInfo root, FileInfo fi)
         {
+            _root = root;
             _fi = fi;
         }
 
         public string FullName => _fi.FullName;
+        public string RelativeName => Path.GetRelativePath(_root.FullName, _fi.FullName);
         public string Name => _fi.Name;
         public DirectoryInfo Directory => _fi.Directory;
+        public DirectoryInfo Root => _root;
 
         public HashValue Hash
         {
@@ -42,9 +46,9 @@ namespace Arius.Models
     {
         public const string Extension = ".pointer.arius";
 
-        public PointerFile(FileInfo fi) : base(fi) { }
+        public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
-        public PointerFile(FileInfo fi, HashValue manifestHash) : base(fi)
+        public PointerFile(DirectoryInfo root, FileInfo fi, HashValue manifestHash) : base(root, fi)
         {
             this.Hash = manifestHash;
         }
@@ -52,7 +56,7 @@ namespace Arius.Models
 
     internal class BinaryFile : AriusArchiveItem, IChunkFile
     {
-        public BinaryFile(FileInfo fi) : base(fi) { }
+        public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
         public IEnumerable<IChunkFile> Chunks { get; set; }
         public HashValue? ManifestHash { get; set; }
@@ -63,7 +67,7 @@ namespace Arius.Models
     {
         public const string Extension = ".chunk.arius";
 
-        public ChunkFile(FileInfo fi) : base(fi) { }
+        public ChunkFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
         //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
         public bool Uploaded { get; set; }
@@ -73,7 +77,7 @@ namespace Arius.Models
     {
         public const string Extension = ".7z.arius";
 
-        public EncryptedChunkFile(FileInfo fi, HashValue hash) : base(fi)
+        public EncryptedChunkFile(DirectoryInfo root, FileInfo fi, HashValue hash) : base(root, fi)
         {
             base.Hash = hash;
         }
