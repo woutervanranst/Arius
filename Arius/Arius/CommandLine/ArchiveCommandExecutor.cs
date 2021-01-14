@@ -16,8 +16,6 @@ using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine

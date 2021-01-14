@@ -14,7 +14,6 @@ using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Repositories

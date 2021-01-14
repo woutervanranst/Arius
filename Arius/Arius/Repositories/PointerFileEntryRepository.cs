@@ -116,9 +116,11 @@ namespace Arius.Repositories
                 }
             }
 
-            public IEnumerable<PointerFileEntry> GetAllEntries()
+            public TableQuery<PointerFileEntry> GetAllEntries()
             {
                 var query = _pointerEntryTable.CreateQuery<PointerFileEntry>();
+
+                throw new NotImplementedException();
 
                 return query;
             }

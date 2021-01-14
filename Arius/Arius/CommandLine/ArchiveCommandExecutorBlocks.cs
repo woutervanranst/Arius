@@ -12,7 +12,6 @@ using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
@@ -519,7 +518,7 @@ namespace Arius.CommandLine
                     //TODO iets met PointerFileEntryEqualityComparer?
 
                     var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-                    if (!File.Exists(pointerFullName))
+                    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                         await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
                 });
             });
