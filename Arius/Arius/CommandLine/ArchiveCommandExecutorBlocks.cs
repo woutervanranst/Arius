@@ -17,10 +17,19 @@ namespace Arius.CommandLine
 {
     internal class IndexDirectoryBlockProvider
     {
+        private readonly ILogger<IndexDirectoryBlockProvider> _logger;
+        private readonly DirectoryInfo _root;
+
+        public IndexDirectoryBlockProvider(ILogger<IndexDirectoryBlockProvider> logger, ArchiveOptions options)
+        {
+            _logger = logger;
+            _root = new DirectoryInfo(options.Path);
+        }
+
         public TransformManyBlock<DirectoryInfo, IFile> GetBlock()
         {
             return new(
-                di => IndexDirectory(di),
+                di => IndexDirectory(_root),
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1}
             );
         }
@@ -31,13 +40,13 @@ namespace Arius.CommandLine
             {
                 if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
                 {
-                    Console.WriteLine("PointerFile " + fi.Name);
+                    _logger.LogInformation("PointerFile " + fi.Name);
 
                     yield return new PointerFile(root, fi);
                 }
                 else
                 {
-                    Console.WriteLine("BinaryFile " + fi.Name);
+                    _logger.LogInformation("BinaryFile " + fi.Name);
 
                     yield return new BinaryFile(root, fi);
                 }
@@ -47,13 +56,15 @@ namespace Arius.CommandLine
 
     internal class AddHashBlockProvider
     {
+        private readonly ILogger<IndexDirectoryBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly bool _fastHash;
 
-        public AddHashBlockProvider(IHashValueProvider hvp, bool fastHash)
+        public AddHashBlockProvider(ILogger<IndexDirectoryBlockProvider> logger, IHashValueProvider hvp, ArchiveOptions options)
         {
+            _logger = logger;
             _hvp = hvp;
-            _fastHash = fastHash;
+            _fastHash = options.FastHash;
         }
 
         public TransformBlock<IFile, IFileWithHash> GetBlock()
@@ -66,18 +77,18 @@ namespace Arius.CommandLine
 
         private IFileWithHash AddHash(PointerFile f, bool _)
         {
-            Console.WriteLine("Hashing PointerFile " + f.Name);
+            _logger.LogInformation("Hashing PointerFile " + f.Name);
 
             f.Hash = _hvp.GetHashValue(f); //) ReadHashFromPointerFile(f.FileFullName);
 
-            Console.WriteLine("Hashing PointerFile " + f.Name + " done");
+            _logger.LogInformation("Hashing PointerFile " + f.Name + " done");
 
             return f;
         }
 
         private IFileWithHash AddHash(BinaryFile f, bool fastHash)
         {
-            Console.WriteLine("Hashing BinaryFile " + f.Name);
+            _logger.LogInformation("Hashing BinaryFile " + f.Name);
 
             var h = default(HashValue?);
 
@@ -93,7 +104,7 @@ namespace Arius.CommandLine
 
             f.Hash = h.Value;
 
-            Console.WriteLine("Hashing BinaryFile " + f.Name + " done");
+            _logger.LogInformation("Hashing BinaryFile " + f.Name + " done");
 
             return f;
         }

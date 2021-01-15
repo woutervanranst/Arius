@@ -86,9 +86,14 @@ namespace Arius.CommandLine
                 description: "Minimum size of files to archive in MB");
             archiveCommand.AddOption(minSizeOption);
 
-            var simulateOption = new Option<bool>("--simulate",
-                "List the differences between the local and the remote, without making any changes to remote");
-            archiveCommand.AddOption(simulateOption);
+            //var simulateOption = new Option<bool>("--simulate",
+            //    "List the differences between the local and the remote, without making any changes to remote");
+            //archiveCommand.AddOption(simulateOption);
+
+            var fastHashOption = new Option<bool>("--fasthash", 
+                () => false,
+                "Use the cached hash of a file (faster, do not use in an archive where file contents change)");
+            archiveCommand.AddOption(fastHashOption);
 
             Argument pathArgument;
             if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
@@ -108,7 +113,7 @@ namespace Arius.CommandLine
 
             archiveCommand.Handler = CommandHandlerExtensions
                 .Create<string, string, string, string, bool, string, int, bool, string>(
-                    (accountName, accountKey, passphrase, container, keepLocal, tier, minSize, simulate, path) =>
+                    (accountName, accountKey, passphrase, container, keepLocal, tier, minSize, fastHash, path) =>
                     {
                         pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
 
@@ -117,11 +122,12 @@ namespace Arius.CommandLine
                             AccountName = accountName,
                             AccountKey = accountKey,
                             Passphrase = passphrase,
+                            FastHash = fastHash,
                             Container = container,
                             KeepLocal = keepLocal,
                             Tier = tier,
                             MinSize = minSize,
-                            Simulate = simulate,
+                            //Simulate = simulate,
                             Path = path
                         };
 
@@ -132,7 +138,7 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct ArchiveOptions : ICommandExecutorOptions,
+    internal class ArchiveOptions : ICommandExecutorOptions,
         ISHA256HasherOptions, 
         IChunkerOptions, 
         IEncrypterOptions, 
@@ -143,11 +149,12 @@ namespace Arius.CommandLine
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Passphrase { get; init; }
+        public bool FastHash { get; init; }
         public string Container { get; init; }
         public bool KeepLocal { get; init; }
         public AccessTier Tier { get; init; } 
         public int MinSize { get; init; }
-        public bool Simulate { get; init; }
+        //public bool Simulate { get; init; }
         public bool Dedup { get; init; }
         public string Path { get; init; }
     }

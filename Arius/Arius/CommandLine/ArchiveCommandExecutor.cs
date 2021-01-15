@@ -8,6 +8,7 @@ using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
@@ -16,6 +17,7 @@ namespace Arius.CommandLine
     {
         public ArchiveCommandExecutor(ICommandExecutorOptions options,
             ILogger<ArchiveCommandExecutor> logger,
+            ILoggerFactory loggerFactory,
 
             IConfiguration config,
             AzureRepository ariusRepository,
@@ -26,6 +28,7 @@ namespace Arius.CommandLine
         {
             _options = (ArchiveOptions)options;
             _logger = logger;
+            _loggerFactory = loggerFactory;
             _config = config;
             _root = new DirectoryInfo(_options.Path);
             _azureRepository = ariusRepository;
@@ -37,13 +40,15 @@ namespace Arius.CommandLine
 
         private readonly ArchiveOptions _options;
         private readonly ILogger<ArchiveCommandExecutor> _logger;
+        private readonly ILoggerFactory _loggerFactory;
+
         private readonly IConfiguration _config;
+        private readonly AzureRepository _azureRepository;
 
         private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
-        private readonly AzureRepository _azureRepository;
 
 
         public int Execute()
@@ -55,13 +60,24 @@ namespace Arius.CommandLine
 
             var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
 
-            var fastHash = false;
-
             // Define blocks & intermediate variables
-            var indexDirectoryBlock = new IndexDirectoryBlockProvider().GetBlock();
+            var blocks = new ServiceCollection()
+                .AddSingleton<ILoggerFactory>(_loggerFactory)
+                .AddLogging()
+                    
+                .AddSingleton<ArchiveOptions>(_options)
+                .AddSingleton<IHashValueProvider>(_hvp)
+
+                .AddSingleton<IndexDirectoryBlockProvider>()
+                .AddSingleton<AddHashBlockProvider>()
+
+                .BuildServiceProvider();
+
+            
+            var indexDirectoryBlock = blocks.GetService<IndexDirectoryBlockProvider>()!.GetBlock();
 
 
-            var addHashBlock = new AddHashBlockProvider(_hvp, fastHash).GetBlock();
+            var addHashBlock = blocks.GetService<AddHashBlockProvider>()!.GetBlock();
 
 
             var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
