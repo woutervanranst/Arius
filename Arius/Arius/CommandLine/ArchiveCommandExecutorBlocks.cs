@@ -517,8 +517,6 @@ namespace Arius.CommandLine
 
                 Parallel.ForEach(pfes, async pfe =>
                 {
-                    //TODO iets met PointerFileEntryEqualityComparer?
-
                     var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
                     if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                         await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
