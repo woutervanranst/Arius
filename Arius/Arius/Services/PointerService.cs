@@ -35,7 +35,7 @@ namespace Arius.Services
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public static PointerFile CreatePointerFile(DirectoryInfo root, AzureRepository.PointerFileEntry pfe, string manifestFile)
+        public static PointerFile CreatePointerFile(DirectoryInfo root, AzureRepository.PointerFileEntry2 pfe, string manifestFile)
         {
             //return CreatePointerFile(root, root.GetPointerFileInfo(pfe), manifestFile, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
             throw new NotImplementedException();

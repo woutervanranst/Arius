@@ -16,6 +16,7 @@ namespace Arius.Repositories
             public string AccountName { get; }
             public string AccountKey { get; }
             public string Container { get; }
+            public string Passphrase { get; }
         }
 
         public AzureRepository(ICommandExecutorOptions options, 
@@ -58,7 +59,7 @@ namespace Arius.Repositories
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 
-        internal IEnumerable<PointerFileEntry> GetLastEntries(DateTime pointInTime, bool includeLastDeleted)
+        internal IEnumerable<PointerFileEntry2> GetLastEntries(DateTime pointInTime, bool includeLastDeleted)
         {
             return _pointerFileEntryRepository.GetLastEntries(pointInTime, includeLastDeleted);
         }
@@ -68,7 +69,7 @@ namespace Arius.Repositories
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
         }
 
-        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe, DateTime version, bool isDeleted = false)
+        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry2 pfe, DateTime version, bool isDeleted = false)
         {
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, version, isDeleted);
         }
