@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -505,10 +506,8 @@ namespace Arius.CommandLine
         {
             return new (async () =>
             {
-                var pfes = await _azureRepository.GetCurrentEntries(true);
+                var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
                 pfes = pfes.Where(e => e.Version < _version); // that were not created in the current run (those are assumed to be up to date)
-
-                var xx = pfes.ToList(); //TODO DELETE
 
                 Parallel.ForEach(pfes, async pfe =>
                 {
@@ -545,28 +544,86 @@ namespace Arius.CommandLine
         {
             return new(async () => 
             {
+                //using Stream file = File.Create(@"c:\ha.json");
 
-                //using (System.IO.Stream fs = new FileStream(filename, FileMode.Open, FileAccess.Read))
-                //using (GZipInputStream gzipStream = new GZipInputStream(fs))
-                //using (StreamReader streamReader = new StreamReader(gzipStream))
-                //using (JsonTextReader reader = new JsonTextReader(streamReader))
+                //var json = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
+
+                //json.WriteStartObject();
+
+
+                //foreach (var pfe in await _azureRepository.GetCurrentEntries(false))
                 //{
-                //    reader.SupportMultipleContent = true;
-                //    var serializer = new JsonSerializer();
-                //    while (reader.Read())
-                //    {
-                //        if (reader.TokenType == JsonToken.StartObject)
-                //        {
-                //            var t = serializer.Deserialize<Element>(reader);
-                //            //Add custom logic here - perhaps a yield return?
-                //        }
-                //    }
+
+                //    json.WriteStartObject("ha");
+
+                //    var zz = JsonSerializer.Serialize(pfe, new JsonSerializerOptions() { WriteIndented = true });
+                //    var x = JsonEncodedText.Encode(zz, JavaScriptEncoder.UnsafeRelaxedJsonEscaping);
+                //    json.WriteString(JsonEncodedText.Encode("he"), x);
+
+                //    //json.WriteNumber("age", 15, escape: false);
+                //    //json.WriteString("date", DateTime.Now);
+                //    //json.WriteString("first", "John");
+                //    //json.WriteString("last", "Smith");
+
+                //    //json.WriteStartArray("phoneNumbers", escape: false);
+                //    //json.WriteStringValue("425-000-1212", escape: false);
+                //    //json.WriteStringValue("425-000-1213");
+                //    //json.WriteEndArray();
+
+                //    //json.WriteStartObject("address");
+                //    //json.WriteString("street", "1 Microsoft Way");
+                //    //json.WriteString("city", "Redmond");
+                //    //json.WriteNumber("zip", 98052);
+                //    //json.WriteEndObject();
+
+                //    //json.WriteStartArray("ExtraArray");
+                //    //for (var i = 0; i < extraData.Length; i++)
+                //    //{
+                //    //    json.WriteNumberValue(extraData[i]);
+                //    //}
+                //    //json.WriteEndArray();
+
+                //    //json.WriteEndObject();
+
+                //    //json.Flush(isFinalBlock: true);
+
+                //    //return (int)json.BytesWritten;
+
+
+
+                //    //Stream stream = ...;
+
+                //    //using (var streamWriter = new StreamWriter(stream))
+                //    //using (var writer = new JsonTextWriter(streamWriter))
+                //    //{
+                //    //    writer.Formatting = Formatting.Indented;
+
+                //    //    writer.WriteStartArray();
+                //    //    {
+                //    //        writer.WriteStartObject();
+                //    //        {
+                //    //            writer.WritePropertyName("foo");
+                //    //            writer.WriteValue(1);
+                //    //            writer.WritePropertyName("bar");
+                //    //            writer.WriteValue(2.3);
+                //    //        }
+                //    //        writer.WriteEndObject();
+                //    //    }
+                //    //    writer.WriteEndArray();
+                //    //}
+
+                //    json.WriteEndObject();
+
+
                 //}
+                ////await JsonSerializer.SerializeAsync(file, _azureRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries() ,
+                ////    new JsonSerializerOptions {WriteIndented = true});
 
-                using Stream file = File.Create(@"c:\ha.json");
+                //json.WriteEndObject();
 
-                await JsonSerializer.SerializeAsync(file, _azureRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries() ,
-                    new JsonSerializerOptions {WriteIndented = true});
+
+                //json.Flush();
+
             });
         }
     }

@@ -44,13 +44,13 @@ namespace Arius.Repositories
 
                 private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;
                 private readonly CloudTable _pointerEntryTable;
-                private readonly Task<List<PointerFileEntry2>> _pointerFileEntries;
+                private readonly Task<List<PointerFileEntry>> _pointerFileEntries;
                 private readonly string _passphrase;
 
 
-                public Task<List<PointerFileEntry2>> CurrentEntries => _pointerFileEntries;
+                public Task<List<PointerFileEntry>> CurrentEntries => _pointerFileEntries;
 
-                public async Task InsertPointerFileEntry(PointerFileEntry2 pfe)
+                public async Task InsertPointerFileEntry(PointerFileEntry pfe)
                 {
                     try
                     {
@@ -71,7 +71,7 @@ namespace Arius.Repositories
                     }
                 }
 
-                private PointerFileEntryDto CreatePointerFileEntryDto(PointerFileEntry2 pfe)
+                private PointerFileEntryDto CreatePointerFileEntryDto(PointerFileEntry pfe)
                 {
                     var rn = ToPlatformNeutralPath(pfe.RelativeName);
                     rn = StringCipher.Encrypt(rn, _passphrase);
@@ -100,7 +100,7 @@ namespace Arius.Repositories
                 private static readonly Crc32 Crc32Provider = new();
 
 
-                private List<PointerFileEntry2> GetStateOn(DateTime pointInTime)
+                private List<PointerFileEntry> GetStateOn(DateTime pointInTime)
                 {
                     /* //TODO KARL is this optimal?
                      * https://docs.microsoft.com/en-us/azure/cosmos-db/table-storage-design-guide#solution-6
@@ -121,7 +121,7 @@ namespace Arius.Repositories
                     return r.ToList();
                 }
 
-                private PointerFileEntry2 CreatePointerFileEntry(PointerFileEntryDto dto)
+                private PointerFileEntry CreatePointerFileEntry(PointerFileEntryDto dto)
                 {
                     var rn = StringCipher.Decrypt(dto.EncryptedRelativeName, _passphrase);
                     rn = ToPlatformSpecificPath(rn);

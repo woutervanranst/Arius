@@ -8,9 +8,11 @@ using System.IO;
 using System.Linq;
 using System.Net.Security;
 using System.Reflection;
+using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -62,123 +64,118 @@ namespace Arius.Tests
             // Runs before each test. (Optional)
         }
 
-        
-        //[Test, Order(10)]
-        //public void ArchiveFirstFile()
-        //{
-        //    //Set up the temp folder -- Copy First file to the temp folder
-        //    var firstFile = TestSetup.sourceFolder.GetFiles().First();
-        //    firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
-        //    //Execute Archive
-        //    var services = ArchiveCommand(false, AccessTier.Cool);
+        [Test, Order(10)]
+        public async Task ArchiveFirstFile()
+        {
+            //Set up the temp folder -- Copy First file to the temp folder
+            var firstFile = TestSetup.sourceFolder.GetFiles().First();
+            firstFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo);
 
-        //    //Check outcome
-        //    var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-        //    var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool, dedup: false);
 
-        //    // One manifest and one binary should be uploaded
-        //    Assert.AreEqual(1, lmfr.GetAll().Count());
-        //    Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
+            //Check outcome
+            var repo = services.GetRequiredService<AzureRepository>();
 
-        //    //Get the manifest entries
-        //    var pointerFile = GetPointerFileOfLocalContentFile(services, firstFile);
-        //    var entries = GetManifestEntries(services, pointerFile, PointerFileEntryFilter.All);
+            //One binary should be uploaded
+            //Assert.AreEqual(1, (await repo.GetCurrentEntriesAsync(true)).Count());
+            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
-        //    //We have exactly one entry
-        //    Assert.AreEqual(1, entries.Count());
+            //Get the manifest entries
+            var pointerFile = GetPointerFileOfLocalContentFile(services, firstFile);
+            var entries = await repo.GetCurrentEntriesAsync(true);
+            //var entries = await GetManifestEntries(repo, pointerFile, PointerFileEntryFilter.LastWithDeleted);
 
-        //    var firstEntry = entries.First();
+            //We have exactly one entry
+            Assert.AreEqual(1, entries.Count());
 
-        //    // Evaluate the the entry
-        //    Assert.AreEqual(Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFile.FullName), firstEntry.RelativeName);
-        //    Assert.AreEqual(false, firstEntry.IsDeleted);
-        //    Assert.AreEqual(firstFile.CreationTimeUtc, firstEntry.CreationTimeUtc);
-        //    Assert.AreEqual(firstFile.LastWriteTimeUtc, firstEntry.LastWriteTimeUtc);
-        //}
+            var firstEntry = entries.First();
 
-        //[Test, Order(20)]
-        //public void ArchiveSecondFileDuplicate()
-        //{
-        //    //Modify temp folder
-        //        //Add a duplicate of the first file
-        //    var firstFile = TestSetup.rootDirectoryInfo.GetLocalContentFiles().First();
-        //    var secondFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo, $"Copy of {firstFile.Name}");
+            // Evaluate the the entry
+            Assert.AreEqual(Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFile.FullName), firstEntry.RelativeName);
+            Assert.AreEqual(false, firstEntry.IsDeleted);
+            Assert.AreEqual(firstFile.CreationTimeUtc, firstEntry.CreationTimeUtc);
+            Assert.AreEqual(firstFile.LastWriteTimeUtc, firstEntry.LastWriteTimeUtc);
+        }
 
-        //        // Modify datetime slightly
-        //    secondFile.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
-        //    secondFile.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+        [Test, Order(20)]
+        public async Task ArchiveSecondFileDuplicate()
+        {
+            //Modify temp folder
+            //Add a duplicate of the first file
+            var firstFile = TestSetup.rootDirectoryInfo.GetLocalContentFiles().First();
+            var secondFile = TestSetup.CopyFile(firstFile, TestSetup.rootDirectoryInfo, $"Copy of {firstFile.Name}");
 
-
-        //    //Execute Archive
-        //    var services = ArchiveCommand(false, AccessTier.Cool);
+            // Modify datetime slightly
+            secondFile.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            secondFile.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
 
 
-        //    //Check outcome
-        //    var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-        //    var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
-
-        //        //One manifest and one binary should still be there
-        //    Assert.AreEqual(1, lmfr.GetAll().Count());
-        //    Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
-
-        //        //Get the manifest entries
-        //    var pointerSecondFile = GetPointerFileOfLocalContentFile(services, secondFile);
-        //    var entries = GetManifestEntries(services, pointerSecondFile, PointerFileEntryFilter.All);
-
-        //        //We have exactly two entries
-        //    Assert.AreEqual(2, entries.Count());
-
-        //    var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerSecondFile.FullName);
-        //    var secondEntry = entries.Single(pfe => pfe.RelativeName == relativeName);
-
-        //        // Evaluate the the entry
-        //    Assert.AreEqual(false, secondEntry.IsDeleted);
-        //    Assert.AreEqual(secondFile.CreationTimeUtc, secondEntry.CreationTimeUtc);
-        //    Assert.AreEqual(secondFile.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
-        //}
-
-        //[Test, Order(30)]
-        //public void ArchiveJustAPointer()
-        //{
-        //    //Modify temp folder
-        //        //Add a duplicate of the pointer
-        //    var firstPointer = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
-        //    var secondPointerFileInfo = TestSetup.CopyFile(firstPointer, $"Copy2 of {firstPointer.Name}");
-
-        //        // Modify datetime slightly
-        //    secondPointerFileInfo.CreationTimeUtc += TimeSpan.FromSeconds(-10);
-        //    secondPointerFileInfo.LastWriteTimeUtc += TimeSpan.FromSeconds(-10);
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
 
-        //    //Execute Archive
-        //    var services = ArchiveCommand(false, AccessTier.Cool);
+            //Check outcome
+            var repo = services.GetRequiredService<AzureRepository>();
+
+            //One manifest and one binary should still be there
+            //Assert.AreEqual(2, (await repo.GetCurrentEntriesAsync(true)).Count());
+            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+
+            //Get the manifest entries
+            var pointerSecondFile = GetPointerFileOfLocalContentFile(services, secondFile);
+            var entries = await repo.GetCurrentEntriesAsync(true);
+
+            //We have exactly two entries
+            Assert.AreEqual(2, entries.Count());
+
+            var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerSecondFile.FullName);
+            var secondEntry = entries.Single(pfe => pfe.RelativeName == relativeName);
+
+            // Evaluate the the entry
+            Assert.AreEqual(false, secondEntry.IsDeleted);
+            Assert.AreEqual(secondFile.CreationTimeUtc, secondEntry.CreationTimeUtc);
+            Assert.AreEqual(secondFile.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
+        }
+
+        [Test, Order(30)]
+        public void ArchiveJustAPointer()
+        {
+            //Modify temp folder
+            //Add a duplicate of the pointer
+            var firstPointer = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
+            var secondPointerFileInfo = TestSetup.CopyFile(firstPointer, $"Copy2 of {firstPointer.Name}");
+
+            // Modify datetime slightly
+            secondPointerFileInfo.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            secondPointerFileInfo.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
 
 
-        //    //Check outcome
-        //    var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-        //    var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
-        //    var secondPointer = GetPointerFile(services, secondPointerFileInfo);
 
-        //    //One manifest and one binary should still be there
-        //    Assert.AreEqual(1, lmfr.GetAll().Count());
-        //    Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
+            //Check outcome
+            var repo = services.GetRequiredService<AzureRepository>();
 
-        //    //Get the manifest entries
-        //    var entries = GetManifestEntries(services, secondPointer, PointerFileEntryFilter.All);
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
-        //    //We have exactly two entries
-        //    Assert.AreEqual(3, entries.Count());
+            //Get the manifest entries
+            var entries = repo.GetCurrentEntries(true);
 
-        //    //var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondFile.FullName);
-        //    var secondEntry = entries.Single(lcf => lcf.RelativeName == secondPointer.RelativeName);
+            //We have exactly three entries
+            Assert.AreEqual(3, entries.Count());
 
-        //    // Evaluate the the entry
-        //    Assert.AreEqual(false, secondEntry.IsDeleted);
-        //    Assert.AreEqual(secondPointerFileInfo.CreationTimeUtc, secondEntry.CreationTimeUtc);
-        //    Assert.AreEqual(secondPointerFileInfo.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
-        //}
+            var relativeName = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, secondPointerFileInfo.FullName);
+            var secondEntry = entries.Single(pfe => pfe.RelativeName == relativeName);
+
+            // Evaluate the the entry
+            Assert.AreEqual(false, secondEntry.IsDeleted);
+            Assert.AreEqual(secondPointerFileInfo.CreationTimeUtc, secondEntry.CreationTimeUtc);
+            Assert.AreEqual(secondPointerFileInfo.LastWriteTimeUtc, secondEntry.LastWriteTimeUtc);
+        }
 
         //[Test, Order(40)]
         //public void RenameLocalContentFileWithPointer()
@@ -323,65 +320,68 @@ namespace Arius.Tests
         //}
 
 
-        //private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
-        //{
-        //    if (executeAsCli)
-        //    { 
-        //        TestSetup.ExecuteCommandline($"archive " +
-        //                                     $"-n {TestSetup.accountName} " +
-        //                                     $"-k {TestSetup.accountKey} " +
-        //                                     $"-p {TestSetup.passphrase} " +
-        //                                     $"-c {TestSetup.container.Name} " +
-        //                                     $"{(keepLocal ? "--keep-local" : "")} --tier hot {TestSetup.rootDirectoryInfo.FullName}");
-        //        throw new NotImplementedException();
-        //    }
-        //    else
-        //    {
-        //        var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup.container.Name,
-        //            keepLocal, tier.ToString(), minSize, simulate, TestSetup.rootDirectoryInfo.FullName);
+        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
+        {
+            if (executeAsCli)
+            {
+                TestSetup.ExecuteCommandline($"archive " +
+                                             $"-n {TestSetup.accountName} " +
+                                             $"-k {TestSetup.accountKey} " +
+                                             $"-p {TestSetup.passphrase} " +
+                                             $"-c {TestSetup._container.Name} " +
+                                             $"{(keepLocal ? "--keep-local" : "")} --tier hot {TestSetup.rootDirectoryInfo.FullName}");
+                throw new NotImplementedException();
+            }
+            else
+            {
+                var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup._container.Name,
+                    keepLocal, tier.ToString(), minSize, simulate, TestSetup.rootDirectoryInfo.FullName);
 
-        //        var configurationRoot = new ConfigurationBuilder()
-        //            .AddInMemoryCollection(new Dictionary<string, string> { { "TempDirName", ".ariustemp" } })
-        //            .Build();
+                var configurationRoot = new ConfigurationBuilder()
+                    .AddInMemoryCollection(new Dictionary<string, string> { { "TempDirName", ".ariustemp" } })
+                    .Build();
 
-        //        var config = new Configuration(options, configurationRoot);
+                var config = new Configuration(options, configurationRoot);
 
-        //        var pcp = new ParsedCommandProvider{CommandExecutorOptions = options, CommandExecutorType = typeof(ArchiveCommandExecutor)};
+                var pcp = new ParsedCommandProvider { CommandExecutorOptions = options, CommandExecutorType = typeof(ArchiveCommandExecutor) };
 
-        //        var services = Program.GetServiceProvider(config, pcp);
+                var services = Program.GetServiceProvider(config, pcp);
 
-        //        var exec = services.GetRequiredService<ArchiveCommandExecutor2>();
+                var exec = services.GetRequiredService<ArchiveCommandExecutor>();
 
-        //        exec.Execute();
+                exec.Execute();
 
-        //        return services;
-        //    }
-                
-        //}
+                return services;
+            }
 
-        //private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
-        //{
-        //    return new()
-        //    {
-        //        AccountName = accountName,
-        //        AccountKey = accountKey,
-        //        Passphrase = passphrase,
-        //        Container = container,
-        //        KeepLocal = keepLocal,
-        //        Tier = tier,
-        //        MinSize = minSize,
-        //        Simulate = simulate,
-        //        Path = path
-        //    };
-        //}
+        }
 
-        //private IPointerFile GetPointerFileOfLocalContentFile(ServiceProvider services, FileInfo localContentFileInfo)
-        //{
-        //    var lrr = services.GetRequiredService<LocalRootRepository>();
-        //    var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf => pf.LocalContentFileInfo.FullName == localContentFileInfo.FullName);
+        private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool simulate, string path)
+        {
+            return new()
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                Container = container,
+                KeepLocal = keepLocal,
+                Tier = tier,
+                MinSize = minSize,
+                Simulate = simulate,
+                Path = path
+            };
+        }
 
-        //    return pointerFile;
-        //}
+        private PointerFile GetPointerFileOfLocalContentFile(ServiceProvider services, FileInfo binaryFile)
+        {
+            var pf = new PointerFile(binaryFile.Directory, binaryFile.GetPointerFileInfo());
+
+            var hvp = services.GetService<IHashValueProvider>();
+            var hv = hvp.GetHashValue(pf);
+            pf.Hash = hv;
+
+            return pf;
+        }
         //private IPointerFile GetPointerFile(ServiceProvider services, FileInfo pointerFileFileInfo)
         //{
         //    var lrr = services.GetRequiredService<LocalRootRepository>();
@@ -392,21 +392,17 @@ namespace Arius.Tests
 
         //enum PointerFileEntryFilter { All, LastWithDeleted, LastExisting }
 
-        //private IEnumerable<Manifest.PointerFileEntry> GetManifestEntries(ServiceProvider services, IPointerFile pointerFile, PointerFileEntryFilter whichones)
+        //private async Task<IEnumerable<AzureRepository.PointerFileEntry>> GetManifestEntries(AzureRepository repo, PointerFile pointerFile, PointerFileEntryFilter whichones)
         //{
-        //    var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-        //    var ms = services.GetRequiredService<ManifestService>();
-
-        //    var mf = lmfr.GetById(pointerFile.Hash);
-
         //    switch (whichones)
         //    {
         //        case PointerFileEntryFilter.All:
-        //            return ms.ReadManifestFile(mf).PointerFileEntries;
+        //            throw new NotImplementedException();
+        //            //return ms.ReadManifestFile(mf).PointerFileEntries;
         //        case PointerFileEntryFilter.LastWithDeleted:
-        //            return ms.ReadManifestFile(mf).GetLastEntries(true);
+        //            return await repo.GetCurrentEntriesAsync(true, pointerFile.Hash);
         //        case PointerFileEntryFilter.LastExisting:
-        //            return ms.ReadManifestFile(mf).GetLastEntries(false);
+        //            return await repo.GetCurrentEntriesAsync(false, pointerFile.Hash);
         //        default:
         //            throw new ArgumentOutOfRangeException(nameof(whichones), whichones, null);
         //    }

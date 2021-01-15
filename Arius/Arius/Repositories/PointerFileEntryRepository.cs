@@ -19,11 +19,11 @@ namespace Arius.Repositories
         // TODO KARL quid pattern of nested pratial classes
         private partial class PointerFileEntryRepository
         {
-            public PointerFileEntryRepository(ICommandExecutorOptions options, ILogger<PointerFileEntryRepository> logger)
+            public PointerFileEntryRepository(ICommandExecutorOptions options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
             {
                 _logger = logger;
 
-                _repo = new CachedEncryptedPointerFileEntryRepository(options, null);
+                _repo = new CachedEncryptedPointerFileEntryRepository(options, loggerFactory.CreateLogger<CachedEncryptedPointerFileEntryRepository>());
             }
 
             private readonly ILogger<PointerFileEntryRepository> _logger;
@@ -40,14 +40,14 @@ namespace Arius.Repositories
                 await CreatePointerFileEntryIfNotExistsAsync(pfe);
             }
 
-            public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry2 pfe, DateTime version, bool isDeleted = false)
+            public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe, DateTime version, bool isDeleted = false)
             {
                 var pfe2 = CreatePointerFileEntry(pfe, version, isDeleted);
 
                 await CreatePointerFileEntryIfNotExistsAsync(pfe2);
             }
 
-            private async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry2 pfe)
+            private async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
                 var pfes = await _repo.CurrentEntries;
 
@@ -63,7 +63,7 @@ namespace Arius.Repositories
             }
 
 
-            private PointerFileEntry2 CreatePointerFileEntry(PointerFile pf, DateTime version)
+            private PointerFileEntry CreatePointerFileEntry(PointerFile pf, DateTime version)
             {
                 return new()
                 {
@@ -76,7 +76,7 @@ namespace Arius.Repositories
                 };
             }
 
-            private PointerFileEntry2 CreatePointerFileEntry(PointerFileEntry2 pfe, DateTime version, bool isDeleted)
+            private PointerFileEntry CreatePointerFileEntry(PointerFileEntry pfe, DateTime version, bool isDeleted)
             {
                 if (isDeleted)
                     return pfe with
@@ -90,9 +90,11 @@ namespace Arius.Repositories
                     throw new NotImplementedException();
             }
 
+            //TODO KARL return values of method see before it returns?
 
 
-            public async Task<IEnumerable<PointerFileEntry2>> GetCurrentEntries(bool includeDeleted)
+
+            public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeDeleted)
             {
                 var pfes = await _repo.CurrentEntries;
 
@@ -103,7 +105,7 @@ namespace Arius.Repositories
             }
         }
 
-        public record PointerFileEntry2
+        public record PointerFileEntry
         {
             internal HashValue ManifestHash { get; init; }
             public string RelativeName { get; init; }
