@@ -513,7 +513,7 @@ namespace Arius.CommandLine
             return new (async () =>
             {
                 var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
-                pfes = pfes.Where(e => e.Version < _version); // that were not created in the current run (those are assumed to be up to date)
+                pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
                 Parallel.ForEach(pfes, async pfe =>
                 {

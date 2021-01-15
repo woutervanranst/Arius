@@ -276,48 +276,50 @@ namespace Arius.Tests
             Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
         }
 
-        //[Test, Order(60)]
-        //public void RenameJustPointer()
-        //{
-        //    //Modify temp folder
-        //        //Rename a file
-        //    var pointerFileInfo = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
-        //    var originalPointerFileInfoFullName = pointerFileInfo.FullName;
+        [Test, Order(60)]
+        public void RenameJustPointer()
+        {
+            //Modify temp folder
+            //Rename a file
+            var pointerFileInfo = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
+            var originalPointerFileInfoFullName = pointerFileInfo.FullName;
 
-        //    //TestSetup.MoveFile(localContentFileFileInfo, $"Moving of {localContentFileFileInfo.Name}");
-        //    TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); //< --Dit doen we hier NIET vs de vorige
-
-
-        //    //Execute Archive
-        //    var services = ArchiveCommand(false, AccessTier.Cool);
+            //TestSetup.MoveFile(localContentFileFileInfo, $"Moving of {localContentFileFileInfo.Name}");
+            TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); //< --Dit doen we hier NIET vs de vorige
 
 
-        //    //Check outcome
-        //    var lmfr = services.GetRequiredService<LocalManifestFileRepository>();
-        //    var recr = services.GetRequiredService<RemoteEncryptedChunkRepository>();
+            //Execute Archive
+            var services = ArchiveCommand(false, AccessTier.Cool);
 
-        //        //One manifest and one binary should still be there
-        //    Assert.AreEqual(1, lmfr.GetAll().Count());
-        //    Assert.AreEqual(1, recr.GetAllChunkBlobItems().Count());
 
-        //        //Get the manifest entries
-        //    var pf = GetPointerFile(services, pointerFileInfo);
-        //    var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
-        //    var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
-        //    var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
+            //Check outcome
+            var repo = services.GetRequiredService<AzureRepository>();
 
-        //    Assert.AreEqual(6 + 2, all.Count());
-        //    Assert.AreEqual(4 + 0, lastExisting.Count());
+            //One manifest and one binary should still be there
+            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
-        //    var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
-        //    var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
+            //Get the manifest entries
+            //var pf = GetPointerFile(services, pointerFileInfo);
+            //var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
+            //var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
+            //var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
+            var lastExisting = repo.GetCurrentEntries(false).ToList();
+            var lastWithDeleted = repo.GetCurrentEntries(true).ToList();
 
-        //    var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
-        //    var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+            Assert.AreEqual(4 + 0, lastExisting.Count());
+            Assert.AreEqual(5 + 1, lastWithDeleted.Count());
+            //Assert.AreEqual(6 + 2, all.Count());
 
-        //    Assert.AreEqual(true, originalEntry.IsDeleted);
-        //    Assert.AreEqual(false, movedEntry.IsDeleted);
-        //}
+
+            var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
+            var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
+
+            var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
+            var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+
+            Assert.AreEqual(true, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
+        }
 
 
         private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool simulate = false, bool dedup = false)
@@ -382,40 +384,6 @@ namespace Arius.Tests
 
             return pf;
         }
-        //private IPointerFile GetPointerFile(ServiceProvider services, FileInfo pointerFileFileInfo)
-        //{
-        //    var lrr = services.GetRequiredService<LocalRootRepository>();
-        //    var pointerFile = lrr.GetAll().OfType<IPointerFile>().Single(pf => pf.FullName == pointerFileFileInfo.FullName);
-
-        //    return pointerFile;
-        //}
-
-        //enum PointerFileEntryFilter { All, LastWithDeleted, LastExisting }
-
-        //private async Task<IEnumerable<AzureRepository.PointerFileEntry>> GetManifestEntries(AzureRepository repo, PointerFile pointerFile, PointerFileEntryFilter whichones)
-        //{
-        //    switch (whichones)
-        //    {
-        //        case PointerFileEntryFilter.All:
-        //            throw new NotImplementedException();
-        //            //return ms.ReadManifestFile(mf).PointerFileEntries;
-        //        case PointerFileEntryFilter.LastWithDeleted:
-        //            return await repo.GetCurrentEntriesAsync(true, pointerFile.Hash);
-        //        case PointerFileEntryFilter.LastExisting:
-        //            return await repo.GetCurrentEntriesAsync(false, pointerFile.Hash);
-        //        default:
-        //            throw new ArgumentOutOfRangeException(nameof(whichones), whichones, null);
-        //    }
-        //}
-
-        ////private Manifest GetManifest(LocalRootRepository lrr, LocalManifestFileRepository lmfr, ManifestService ms, FileInfo localContentFileFileInfo)
-        ////{
-        ////    var pf = lrr.GetAll().OfType<IPointerFile>().Single(ipf => ipf.LocalContentFileInfo.FullName == localContentFileFileInfo.FullName);
-        ////    return ms.ReadManifestFile(lmfr.GetById(pf.Hash));
-        ////}
-
-
-        [TearDown]
         public void TestCleanup()
         {
             // Runs after each test. (Optional)
