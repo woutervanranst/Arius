@@ -2,6 +2,8 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Authentication.ExtendedProtection;
+using System.Threading.Tasks;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
 using NUnit.Framework;
@@ -13,12 +15,19 @@ namespace Arius.Tests
     {
         public static DirectoryInfo sourceFolder;
         public static DirectoryInfo rootDirectoryInfo;
+        
+        private static BlobServiceClient _bsc;
         public static BlobContainerClient _container;
+
+        public static CloudTableClient _ctc;
         public static CloudTable _manifestTable;
         public static CloudTable _pointerEntryTable;
+        
         public static string accountName;
         public static string accountKey;
         public static string passphrase = "myPassphrase";
+
+        private const string TestContainerNamePrefix = "unittest";
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -29,8 +38,8 @@ namespace Arius.Tests
             sourceFolder = PopulateSourceDirectory();
 
             // Create temp folder
-            var tempFolderName = "z" + RandomString(8).ToLower();
-            rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), tempFolderName));
+            var containerName = TestContainerNamePrefix  + RandomString(8).ToLower();
+            rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
             rootDirectoryInfo.Create();
 
 
@@ -43,17 +52,19 @@ namespace Arius.Tests
             if (string.IsNullOrEmpty(accountKey))
                 throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
 
+
             // Create new blob container
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-            var bsc = new BlobServiceClient(connectionString);
-            _container = bsc.CreateBlobContainer(tempFolderName);
+            _bsc = new BlobServiceClient(connectionString);
+            _container = _bsc.CreateBlobContainer(containerName);
+
 
             // Create reference to the storage tables
             var csa = CloudStorageAccount.Parse(connectionString);
-            var tc = csa.CreateCloudTableClient();
+            _ctc = csa.CreateCloudTableClient();
 
-            _manifestTable = tc.GetTableReference(tempFolderName + "manifests");
-            _pointerEntryTable = tc.GetTableReference(tempFolderName + "pointers");
+            _manifestTable = _ctc.GetTableReference(containerName + "manifests");
+            _pointerEntryTable = _ctc.GetTableReference(containerName + "pointers");
 
         }
 
@@ -94,9 +105,12 @@ namespace Arius.Tests
         public void OneTimeTearDown()
         {
             rootDirectoryInfo.Delete(true);
-            _container.Delete();
-            _manifestTable.Delete();
-            _pointerEntryTable.Delete();
+
+            foreach (var c in _bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
+                _bsc.GetBlobContainerClient(c.Name).Delete();
+
+            foreach (var t in _ctc.ListTables(prefix: TestContainerNamePrefix))
+                t.Delete();
         }
 
 
