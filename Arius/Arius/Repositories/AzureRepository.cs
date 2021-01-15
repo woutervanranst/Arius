@@ -75,6 +75,7 @@ namespace Arius.Repositories
             return (await GetCurrentEntriesAsync(includeLastDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
         }
 
+
         public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
         {
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
