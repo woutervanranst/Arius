@@ -59,9 +59,9 @@ namespace Arius.Repositories
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 
-        internal IEnumerable<PointerFileEntry2> GetLastEntries(DateTime pointInTime, bool includeLastDeleted)
+        internal async Task<IEnumerable<PointerFileEntry2>> GetCurrentEntries(bool includeLastDeleted)
         {
-            return _pointerFileEntryRepository.GetLastEntries(pointInTime, includeLastDeleted);
+            return await _pointerFileEntryRepository.GetCurrentEntries(includeLastDeleted);
         }
 
         public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)

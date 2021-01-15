@@ -503,15 +503,14 @@ namespace Arius.CommandLine
 
         public Task GetTask()
         {
-            return new (() =>
+            return new (async () =>
             {
-                var es = _azureRepository
-                    .GetLastEntries(_version, true) //Get all entries until NOW and include the entries marked as deleted
-                    .Where(e => e.Version < _version); // that were not created in the current run (those are assumed to be up to date)
+                var pfes = await _azureRepository.GetCurrentEntries(true);
+                pfes = pfes.Where(e => e.Version < _version); // that were not created in the current run (those are assumed to be up to date)
 
-                var xx = es.ToList(); //TODO DELETE
+                var xx = pfes.ToList(); //TODO DELETE
 
-                Parallel.ForEach(es, async pfe =>
+                Parallel.ForEach(pfes, async pfe =>
                 {
                     //TODO iets met PointerFileEntryEqualityComparer?
 
