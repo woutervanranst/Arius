@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
 {
-    class IndexDirectoryBlockProvider
+    internal class IndexDirectoryBlockProvider
     {
         public TransformManyBlock<DirectoryInfo, IFile> GetBlock()
         {
@@ -45,7 +45,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class AddHashBlockProvider
+    internal class AddHashBlockProvider
     {
         private readonly IHashValueProvider _hvp;
         private readonly bool _fastHash;
@@ -99,7 +99,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class AddRemoteManifestBlockProvider
+    internal class AddRemoteManifestBlockProvider
     {
         private readonly List<HashValue> _uploadedManifestHashes;
 
@@ -133,7 +133,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class GetChunksForUploadBlockProvider
+    internal class GetChunksForUploadBlockProvider
     {
         private readonly IChunker _chunker;
         private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
@@ -206,7 +206,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class EncryptChunksBlockProvider
+    internal class EncryptChunksBlockProvider
     {
         private readonly IConfiguration _config;
         private readonly IEncrypter _encrypter;
@@ -240,7 +240,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class EnqueueEncryptedChunksForUploadBlockProvider
+    internal class EnqueueEncryptedChunksForUploadBlockProvider
     {
         private readonly BlockingCollection<EncryptedChunkFile> _uploadQueue;
 
@@ -255,14 +255,14 @@ namespace Arius.CommandLine
         }
     }
 
-    class UploadTaskProvider
+    internal class UploadTaskProvider
     {
         private readonly BlockingCollection<EncryptedChunkFile> _uploadQueue;
         private readonly ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
         private readonly ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
 
-        const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
-        const int AzCopyBatchCount = 128;
+        private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
+        private const int AzCopyBatchCount = 128;
 
         public UploadTaskProvider(BlockingCollection<EncryptedChunkFile> uploadQueue,
             ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock,
@@ -303,7 +303,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class UploadEncryptedChunksBlockProvider
+    internal class UploadEncryptedChunksBlockProvider
     {
         private readonly ArchiveOptions _options;
         private readonly AzureRepository _azureRepository;
@@ -332,7 +332,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class ReconcileChunksWithManifestsBlockProvider
+    internal class ReconcileChunksWithManifestsBlockProvider
     {
         private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
@@ -375,7 +375,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class CreateManifestBlockProvider
+    internal class CreateManifestBlockProvider
     {
         private readonly AzureRepository _azureRepository;
 
@@ -395,7 +395,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class ReconcileBinaryFilesWithManifestBlockProvider
+    internal class ReconcileBinaryFilesWithManifestBlockProvider
     {
         private readonly List<HashValue> _uploadedManifestHashes;
         private readonly Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
@@ -448,24 +448,30 @@ namespace Arius.CommandLine
         }
     }
 
-    class CreatePointerBlockProvider
+    internal class CreatePointerBlockProvider
     {
-        public CreatePointerBlockProvider()
+        private readonly List<BinaryFile> _binaryFilesToDelete;
+
+        public CreatePointerBlockProvider(List<BinaryFile> binaryFilesToDelete)
         {
+            _binaryFilesToDelete = binaryFilesToDelete;
         }
 
         public TransformBlock<BinaryFile, PointerFile> GetBlock()
         {
             return new(binaryFile =>
             {
+                // Create the pointer
                 var p = binaryFile.CreatePointerFileIfNotExists();
 
+                // Add the binary file to the list of binaries to be deleted after successful archiving & if !keepLocal
+                _binaryFilesToDelete.Add(binaryFile);
                 return p;
             });
         }
     }
 
-    class CreatePointerFileEntryIfNotExistsBlockProvider
+    internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
         private readonly ILogger _logger;
         private readonly AzureRepository _azureRepository;
@@ -487,7 +493,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class RemoveDeletedPointersTaskProvider
+    internal class RemoveDeletedPointersTaskProvider
     {
         private readonly ILogger _logger;
         private readonly AzureRepository _azureRepository;
@@ -521,7 +527,7 @@ namespace Arius.CommandLine
         }
     }
 
-    class ExportToJsonTaskProvider
+    internal class ExportToJsonTaskProvider
     {
         private readonly AzureRepository _azureRepository;
         //private readonly ILogger _logger;
@@ -624,6 +630,29 @@ namespace Arius.CommandLine
 
                 //json.Flush();
 
+            });
+        }
+    }
+
+    internal class DeleteBinaryFilesTaskProvider
+    {
+        public DeleteBinaryFilesTaskProvider(ArchiveOptions options, List<BinaryFile> binaryFilesToDelete)
+        {
+            _options = options;
+            _binaryFilesToDelete = binaryFilesToDelete;
+        }
+
+        private readonly ArchiveOptions _options;
+        private readonly List<BinaryFile> _binaryFilesToDelete;
+
+        public Task GetTask()
+        {
+            return new(() =>
+            {
+                if (_options.KeepLocal)
+                    return;
+
+                Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
             });
         }
     }

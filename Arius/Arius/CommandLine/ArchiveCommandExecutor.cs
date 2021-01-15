@@ -94,7 +94,8 @@ namespace Arius.CommandLine
             var reconcileBinaryFilesWithManifestBlock = new ReconcileBinaryFilesWithManifestBlockProvider(uploadedManifestHashes).GetBlock();
 
 
-            var createPointersBlock = new CreatePointerBlockProvider().GetBlock();
+            var binaryFilesToDelete = new List<BinaryFile>();
+            var createPointersBlock = new CreatePointerBlockProvider(binaryFilesToDelete).GetBlock();
 
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlockProvider(_logger, _azureRepository, version).GetBlock();
@@ -104,6 +105,9 @@ namespace Arius.CommandLine
 
 
             var exportToJsonTask = new ExportToJsonTaskProvider(_azureRepository).GetTask();
+
+
+            var deleteBinaryFilesTask = new DeleteBinaryFilesTaskProvider(_options, binaryFilesToDelete).GetTask();
 
 
             // Set up linking
@@ -231,14 +235,18 @@ namespace Arius.CommandLine
             removeDeletedPointersTask
                 .ContinueWith(_ => exportToJsonTask.Start());
 
+            // 200
+            exportToJsonTask
+                .ContinueWith(_ => deleteBinaryFilesTask.Start());
+
 
             //Fill the flow
             indexDirectoryBlock.Post(_root);
             indexDirectoryBlock.Complete();
 
-            
+
             // Wait for the end
-            exportToJsonTask.Wait();
+            deleteBinaryFilesTask.Wait();
 
 
             return 0;

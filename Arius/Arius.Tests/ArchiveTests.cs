@@ -249,8 +249,6 @@ namespace Arius.Tests
             //Get the manifest entries
             //    var pf = GetPointerFile(services, pointerFileInfo);
             //    var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
-            //    var lastExisting = GetManifestEntries(services, pf, PointerFileEntryFilter.LastExisting);
-            //    var lastWithDeleted = GetManifestEntries(services, pf, PointerFileEntryFilter.LastWithDeleted);
             var lastExisting = repo.GetCurrentEntries(false).ToList();
             var lastWithDeleted = repo.GetCurrentEntries(true).ToList();
 
@@ -268,15 +266,15 @@ namespace Arius.Tests
             Assert.AreEqual(false, movedEntry.IsDeleted);
         }
 
-        //[Test, Order(55)]
-        //public void TestKeepLocal()
-        //{
-        //    Assert.IsTrue(TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
+        [Test, Order(55)]
+        public void TestKeepLocal()
+        {
+            Assert.IsTrue(TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
 
-        //    ArchiveCommand(false, AccessTier.Cool, false);
+            ArchiveCommand(false, AccessTier.Cool, false);
 
-        //    Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
-        //}
+            Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
+        }
 
         //[Test, Order(60)]
         //public void RenameJustPointer()
