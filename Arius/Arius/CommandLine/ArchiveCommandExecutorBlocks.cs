@@ -147,18 +147,25 @@ namespace Arius.CommandLine
     internal class GetChunksForUploadBlockProvider
     {
         private readonly IChunker _chunker;
-        private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
+        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+
+
         public GetChunksForUploadBlockProvider(IChunker chunker,
-            Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated,
             AzureRepository azureRepository)
         {
             _chunker = chunker;
-            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
             _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
 
+        }
+
+        public GetChunksForUploadBlockProvider SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+        {
+            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+
+            return this;
         }
 
         public TransformManyBlock<BinaryFile, IChunkFile> GetBlock()

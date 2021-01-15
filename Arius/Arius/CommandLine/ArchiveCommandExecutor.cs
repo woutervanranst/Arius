@@ -8,6 +8,7 @@ using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -67,9 +68,12 @@ namespace Arius.CommandLine
                     
                 .AddSingleton<ArchiveOptions>(_options)
                 .AddSingleton<IHashValueProvider>(_hvp)
+                .AddSingleton<IChunker>(_chunker)
+                .AddSingleton<AzureRepository>(_azureRepository)
 
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()
+                .AddSingleton<GetChunksForUploadBlockProvider>()
 
                 .BuildServiceProvider();
 
@@ -85,7 +89,9 @@ namespace Arius.CommandLine
 
 
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            var getChunksForUploadBlock = new GetChunksForUploadBlockProvider(_chunker, chunksThatNeedToBeUploadedBeforeManifestCanBeCreated, _azureRepository).GetBlock();
+            var getChunksForUploadBlock = blocks.GetService<GetChunksForUploadBlockProvider>()!
+                .SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                .GetBlock();
 
             
             var encryptChunksBlock = new EncryptChunksBlockProvider(_config, _encrypter).GetBlock();
