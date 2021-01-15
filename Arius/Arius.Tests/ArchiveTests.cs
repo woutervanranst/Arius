@@ -209,17 +209,18 @@ namespace Arius.Tests
             var lastWithDeleted = repo.GetCurrentEntries(true);
 
             Assert.AreEqual(3 + 0, lastExisting.Count());
-            Assert.AreEqual(3 + 2, lastWithDeleted.Count());
+            Assert.AreEqual(3 + 1, lastWithDeleted.Count());
+            //Assert.AreEqual(3 + 2, all.Count());
 
-            //    var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
-            //    var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
+            var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
+            var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
 
-            //    Assert.IsNull(lastExisting.SingleOrDefault(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile));
-            //    var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
-            //    var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+            Assert.IsNull(lastExisting.SingleOrDefault(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile));
+            var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
+            var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
 
-            //    Assert.AreEqual(true, originalEntry.IsDeleted);
-            //    Assert.AreEqual(false, movedEntry.IsDeleted);
+            Assert.AreEqual(true, originalEntry.IsDeleted);
+            Assert.AreEqual(false, movedEntry.IsDeleted);
         }
 
         //[Test, Order(50)]

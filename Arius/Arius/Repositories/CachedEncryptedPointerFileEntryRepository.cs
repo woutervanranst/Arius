@@ -54,9 +54,13 @@ namespace Arius.Repositories
                 {
                     try
                     {
-                        //Insert into Cache
-                        var c = await _pointerFileEntries;
-                        c.Add(pfe);
+                        //Upsert into Cache
+                        var pfes = await _pointerFileEntries;
+                            //Remove the old value, if present
+                        var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
+                        pfes.Remove(pfeToRemove);
+                            //Add the new value
+                        pfes.Add(pfe);
 
                         //Insert into Table Storage
                         var dto = CreatePointerFileEntryDto(pfe);
@@ -119,6 +123,22 @@ namespace Arius.Repositories
                         .Select(dto => CreatePointerFileEntry(dto));
 
                     return r.ToList();
+
+
+                    //var r = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>()
+                    //    .AsEnumerable()
+                    //    .GroupBy(pfe => pfe.RelativeNameHash)   //more or less equiv as GroupBy(RelativeName) but the hash is tolower and platform neutral
+                    //    .Select(g => g
+                    //        .Where(dto => dto.Version <= pointInTime)
+                    //        .OrderBy(dto => dto.Version).Last())
+                    //    .Select(dto => CreatePointerFileEntry(dto))
+                    //    .ToDictionary(pfe => pfe.ManifestHash, pfe => new Dictionary<string, PointerFileEntry>()
+                    //    {
+                    //        {  pfe.RelativeName, pfe }
+                    //    });
+
+                    //return r;
                 }
 
                 private PointerFileEntry CreatePointerFileEntry(PointerFileEntryDto dto)
