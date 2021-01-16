@@ -13,6 +13,7 @@ namespace Arius.Models
         public string RelativeName { get; }
         public string FullName { get; }
         public void Delete();
+        public long Length { get; }
     }
 
     internal interface IFileWithHash : IFile
@@ -43,7 +44,7 @@ namespace Arius.Models
 
     internal interface IBlobCopier
     {
-        void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite);
-        void Download(string remoteDirectoryName, IEnumerable<Blob> blobsToDownload, DirectoryInfo target);
+        void Upload(IFile[] fileToUpload, string remoteDirectoryName, bool overwrite);
+        void Download(string remoteDirectoryName, Blob[] blobsToDownload, DirectoryInfo target);
     }
 }

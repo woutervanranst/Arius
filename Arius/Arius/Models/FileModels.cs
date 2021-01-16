@@ -23,6 +23,11 @@ namespace Arius.Models
         public DirectoryInfo Directory => _fi.Directory;
         public DirectoryInfo Root => _root;
 
+        /// <summary>
+        /// Size in bytes
+        /// </summary>
+        public long Length => _fi.Length;
+
         public HashValue Hash
         {
             get => _hashValue!.Value;
@@ -102,7 +107,7 @@ namespace Arius.Models
         /// <summary>
         /// Size in Bytes
         /// </summary>
-        public long Length => _fi.Length;
+        //public long Length => _fi.Length;
 
         public bool Uploaded { get; set; }
     }
