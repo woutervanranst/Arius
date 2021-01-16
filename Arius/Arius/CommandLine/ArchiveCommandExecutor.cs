@@ -23,6 +23,7 @@ namespace Arius.CommandLine
             IConfiguration config,
             AzureRepository ariusRepository,
 
+            PointerService ps,
             IHashValueProvider h,
             IChunker c,
             IEncrypter e)
@@ -33,6 +34,7 @@ namespace Arius.CommandLine
             _config = config;
             _root = new DirectoryInfo(_options.Path);
             _azureRepository = ariusRepository;
+            _ps = ps;
 
             _hvp = h;
             _chunker = c;
@@ -45,6 +47,7 @@ namespace Arius.CommandLine
 
         private readonly IConfiguration _config;
         private readonly AzureRepository _azureRepository;
+        private readonly PointerService _ps;
 
         private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
@@ -67,8 +70,11 @@ namespace Arius.CommandLine
                 .AddLogging()
                     
                 .AddSingleton<ArchiveOptions>(_options)
+
                 .AddSingleton<IHashValueProvider>(_hvp)
                 .AddSingleton<IChunker>(_chunker)
+                .AddSingleton<PointerService>(_ps)
+
                 .AddSingleton<AzureRepository>(_azureRepository)
 
                 .AddSingleton<IndexDirectoryBlockProvider>()
@@ -117,7 +123,7 @@ namespace Arius.CommandLine
 
 
             var binaryFilesToDelete = new List<BinaryFile>();
-            var createPointersBlock = new CreatePointerBlockProvider(binaryFilesToDelete).GetBlock();
+            var createPointersBlock = new CreatePointerBlockProvider(_ps, binaryFilesToDelete).GetBlock();
 
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlockProvider(_logger, _azureRepository, version).GetBlock();

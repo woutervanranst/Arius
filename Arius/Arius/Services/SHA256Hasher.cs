@@ -18,7 +18,7 @@ namespace Arius.Services
 
     internal interface IHashValueProvider
     {
-        HashValue GetHashValue(IFile hashable);
+        HashValue GetHashValue(BinaryFile hashable);
     }
 
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
@@ -35,20 +35,20 @@ namespace Arius.Services
 
         private readonly string _salt;
 
-        public HashValue GetHashValue(IFile hashable)
-        {
-            return GetHashValue2((dynamic)hashable);
-        }
+        //public HashValue GetHashValue(IFile hashable)
+        //{
+        //    return GetHashValue2((dynamic)hashable);
+        //}
 
-        public HashValue GetHashValue2(PointerFile f)
-        {
-            //var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
-            //return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
+        //public HashValue GetHashValue2(PointerFile f)
+        //{
+        //    //var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
+        //    //return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
 
-            return new() { Value = File.ReadAllText(f.FullName) };
-        }
+        //    return new() { Value = File.ReadAllText(f.FullName) };
+        //}
 
-        public HashValue GetHashValue2(BinaryFile f)
+        public HashValue GetHashValue(BinaryFile f)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
@@ -65,22 +65,22 @@ namespace Arius.Services
             return new HashValue {Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
         }
 
-        public HashValue GetHashValue(AriusArchiveItem af)
-        {
-            byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
-            using Stream ss = new MemoryStream(byteArray);
+        //public HashValue GetHashValue(AriusArchiveItem af)
+        //{
+        //    byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
+        //    using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = System.IO.File.OpenRead(af.FullName);
+        //    using Stream fs = System.IO.File.OpenRead(af.FullName);
 
-            using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
-            using var sha256 = SHA256.Create();
+        //    using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
+        //    using var sha256 = SHA256.Create();
 
-            var hash = sha256.ComputeHash(stream);
+        //    var hash = sha256.ComputeHash(stream);
 
-            fs.Close();
+        //    fs.Close();
 
-            return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
-        }
+        //    return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
+        //}
 
         public static string ByteArrayToString(byte[] ba)
         {

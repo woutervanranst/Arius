@@ -6,9 +6,9 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob2
+    internal abstract class Blob
     {
-        protected Blob2(
+        protected Blob(
             //IRepository root, 
             BlobItem blobItem //, 
             //Func<IBlob, HashValue> hashValueProvider
@@ -28,18 +28,18 @@ namespace Arius.Models
         public string FullName => _bi.Name;
         public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
         public string Folder => _bi.Name.Split('/').First();
-        public string NameWithoutExtension => Name.TrimEnd(Extension);
+        //protected string NameWithoutExtension => Name.TrimEnd(Extension);
         public abstract HashValue Hash { get; }
-        protected abstract string Extension { get; }
+        //protected abstract string Extension { get; }
     }
 
-    class RemoteEncryptedChunkBlobItem : Blob2
+    class RemoteEncryptedChunkBlobItem : Blob
     {
         public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
         }
 
-        public override HashValue Hash => new HashValue {Value = NameWithoutExtension};
-        protected override string Extension => ".7z.arius";
+        public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
+        protected string Extension => ".7z.arius";
     }
 }

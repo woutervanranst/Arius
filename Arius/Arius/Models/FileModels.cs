@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Arius.Extensions;
 using Arius.Services;
 
 namespace Arius.Models
@@ -44,12 +45,28 @@ namespace Arius.Models
     {
         public const string Extension = ".pointer.arius";
 
-        public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
-
-        public PointerFile(DirectoryInfo root, FileInfo fi, HashValue manifestHash) : base(root, fi)
+        /// <summary>
+        /// Create a new PointerFile and read the Hash from the file
+        /// </summary>
+        /// <param name="root"></param>
+        /// <param name="fi"></param>
+        public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
         {
-            this.Hash = manifestHash;
+            this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
+
+        ///// <summary>
+        ///// Create a new PointerFile with the given hash
+        ///// </summary>
+        ///// <param name="root"></param>
+        ///// <param name="fi"></param>
+        ///// <param name="manifestHash"></param>
+        //public PointerFile(DirectoryInfo root, FileInfo fi, HashValue manifestHash) : base(root, fi)
+        //{
+        //    this.Hash = manifestHash;
+        //}
+
+        public FileInfo BinaryFileInfo => new FileInfo(_fi.FullName.TrimEnd(Extension));
     }
 
     internal class BinaryFile : AriusArchiveItem, IChunkFile
@@ -59,6 +76,8 @@ namespace Arius.Models
         public IEnumerable<IChunkFile> Chunks { get; set; }
         public HashValue? ManifestHash { get; set; }
         public bool Uploaded { get; set; }
+
+        public FileInfo PointerFileInfo => new FileInfo(_fi.FullName + PointerFile.Extension);
     }
 
     internal class ChunkFile : AriusArchiveItem, IChunkFile

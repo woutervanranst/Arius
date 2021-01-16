@@ -2,43 +2,67 @@
 using System.IO;
 using Arius.Models;
 using Arius.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
-    internal static class PointerService
+    internal class PointerService
     {
-        public static string GetPointerFileFullName(this BinaryFile f)
+        private readonly ILogger<PointerService> _logger;
+
+        public PointerService(ILogger<PointerService> logger)
         {
-            return f.FullName + PointerFile.Extension;
+            _logger = logger;
         }
+
         /// <summary>
         /// Create a pointer from a BinaryFile
         /// </summary>
-        public static PointerFile CreatePointerFileIfNotExists(this BinaryFile f)
+        public PointerFile CreatePointerFileIfNotExists(BinaryFile f)
         {
-            var pointerFileInfo = new FileInfo(f.GetPointerFileFullName());
+            var pointerFileInfo = f.PointerFileInfo;
 
-            if (!pointerFileInfo.Exists)
-            {
-                if (!pointerFileInfo.Directory!.Exists)
-                    pointerFileInfo.Directory.Create();
-
-                File.WriteAllText(pointerFileInfo.FullName, f.Hash!.Value);
-
-                pointerFileInfo.CreationTimeUtc = File.GetCreationTimeUtc(f.FullName);
-                pointerFileInfo.LastWriteTimeUtc = File.GetLastWriteTimeUtc(f.FullName);
-            }
-
-            return new PointerFile(f.Root, pointerFileInfo, f.Hash);
+            return CreatePointerFileIfNotExists(
+                f.Root, 
+                pointerFileInfo, 
+                f.Hash, 
+                File.GetCreationTimeUtc(f.FullName),
+                File.GetLastWriteTimeUtc(f.FullName));
         }
 
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public static PointerFile CreatePointerFile(DirectoryInfo root, AzureRepository.PointerFileEntry pfe, string manifestFile)
+        public PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, AzureRepository.PointerFileEntry pfe)
         {
-            //return CreatePointerFile(root, root.GetPointerFileInfo(pfe), manifestFile, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
-            throw new NotImplementedException();
+            var pointerFileInfo = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+
+            //if (pointerFileInfo.Exists)
+            //    throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
+            
+            return CreatePointerFileIfNotExists(root,
+                pointerFileInfo, 
+                pfe.ManifestHash, 
+                pfe.CreationTimeUtc!.Value, 
+                pfe.LastWriteTimeUtc!.Value);
+        }
+
+        private PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, FileInfo pointerFileInfo, HashValue manifestHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+        {
+            if (!pointerFileInfo.Exists)
+            {
+                if (!pointerFileInfo.Directory!.Exists)
+                    pointerFileInfo.Directory.Create();
+
+                File.WriteAllText(pointerFileInfo.FullName, manifestHash.Value);
+
+                pointerFileInfo.CreationTimeUtc = creationTimeUtc;
+                pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
+
+                _logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, pointerFileInfo.FullName)}'");
+            }
+
+            return new PointerFile(root, pointerFileInfo);
         }
     }
 }

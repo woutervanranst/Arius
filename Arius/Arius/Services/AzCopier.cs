@@ -187,7 +187,7 @@ namespace Arius.Services
         /// <summary>
         /// Download the blobsToDownload to the specified target
         /// </summary>
-        public void Download(string remoteDirectoryName, IEnumerable<Blob2> blobsToDownload, DirectoryInfo target)
+        public void Download(string remoteDirectoryName, IEnumerable<Blob> blobsToDownload, DirectoryInfo target)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>

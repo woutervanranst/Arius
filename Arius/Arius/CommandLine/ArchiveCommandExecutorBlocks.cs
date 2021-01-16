@@ -77,11 +77,11 @@ namespace Arius.CommandLine
 
         private IFileWithHash AddHash(PointerFile f, bool _)
         {
-            _logger.LogInformation("Hashing PointerFile " + f.Name);
+            //_logger.LogInformation("Hashing PointerFile " + f.Name);
 
-            f.Hash = _hvp.GetHashValue(f); //) ReadHashFromPointerFile(f.FileFullName);
+            //f.Hash = _hvp.GetHashValue(f); //) ReadHashFromPointerFile(f.FileFullName);
 
-            _logger.LogInformation("Hashing PointerFile " + f.Name + " done");
+            //_logger.LogInformation("Hashing PointerFile " + f.Name + " done");
 
             return f;
         }
@@ -94,9 +94,12 @@ namespace Arius.CommandLine
 
             if (fastHash)
             {
-                var pointerFileInfo = new FileInfo(f.GetPointerFileFullName()); //TODO refactor into PointerServuce
+                var pointerFileInfo = f.PointerFileInfo;
                 if (pointerFileInfo.Exists)
-                    h = _hvp.GetHashValue(new PointerFile(f.Root, pointerFileInfo));
+                {
+                    var pf = new PointerFile(f.Root, pointerFileInfo);
+                    h = pf.Hash;
+                }
             }
 
             if (!h.HasValue)
@@ -468,10 +471,12 @@ namespace Arius.CommandLine
 
     internal class CreatePointerBlockProvider
     {
+        private readonly PointerService _ps;
         private readonly List<BinaryFile> _binaryFilesToDelete;
 
-        public CreatePointerBlockProvider(List<BinaryFile> binaryFilesToDelete)
+        public CreatePointerBlockProvider(PointerService ps, List<BinaryFile> binaryFilesToDelete)
         {
+            _ps = ps;
             _binaryFilesToDelete = binaryFilesToDelete;
         }
 
@@ -480,7 +485,7 @@ namespace Arius.CommandLine
             return new(binaryFile =>
             {
                 // Create the pointer
-                var p = binaryFile.CreatePointerFileIfNotExists();
+                var p = _ps.CreatePointerFileIfNotExists(binaryFile);
 
                 // Add the binary file to the list of binaries to be deleted after successful archiving & if !keepLocal
                 _binaryFilesToDelete.Add(binaryFile);
