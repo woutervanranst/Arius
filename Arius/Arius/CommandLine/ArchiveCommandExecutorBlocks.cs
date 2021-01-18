@@ -115,11 +115,13 @@ namespace Arius.CommandLine
 
     internal class AddRemoteManifestBlockProvider
     {
-        private readonly List<HashValue> _uploadedManifestHashes;
+        private List<HashValue> _uploadedManifestHashes;
 
-        public AddRemoteManifestBlockProvider(List<HashValue> uploadedManifestHashes)
+        public AddRemoteManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
         {
             _uploadedManifestHashes = uploadedManifestHashes;
+
+            return this;
         }
 
         public TransformBlock<IFileWithHash, BinaryFile> GetBlock()
@@ -263,11 +265,13 @@ namespace Arius.CommandLine
 
     internal class EnqueueEncryptedChunksForUploadBlockProvider
     {
-        private readonly BlockingCollection<EncryptedChunkFile> _uploadQueue;
+        private BlockingCollection<EncryptedChunkFile> _uploadQueue;
 
-        public EnqueueEncryptedChunksForUploadBlockProvider(BlockingCollection<EncryptedChunkFile> uploadQueue)
+        public EnqueueEncryptedChunksForUploadBlockProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
             _uploadQueue = uploadQueue;
+
+            return this;
         }
 
         public ActionBlock<EncryptedChunkFile> GetBlock()
@@ -278,21 +282,40 @@ namespace Arius.CommandLine
 
     internal class UploadTaskProvider
     {
-        private readonly BlockingCollection<EncryptedChunkFile> _uploadQueue;
-        private readonly ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
-        private readonly ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
+        public UploadTaskProvider(IConfiguration config)
+        {
+
+        }
+
+        private BlockingCollection<EncryptedChunkFile> _uploadQueue;
+        private ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
+        private ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
 
         private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
         private const int AzCopyBatchCount = 128;
 
-        public UploadTaskProvider(BlockingCollection<EncryptedChunkFile> uploadQueue,
-            ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock,
-            ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
+        public UploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
             _uploadQueue = uploadQueue;
-            _uploadEncryptedChunksBlock = uploadEncryptedChunksBlock;
-            _enqueueEncryptedChunksForUploadBlock = enqueueEncryptedChunksForUploadBlock;
+
+            return this;
         }
+
+        public UploadTaskProvider AddUploadEncryptedChunkBlock(ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock)
+        {
+            _uploadEncryptedChunksBlock = uploadEncryptedChunksBlock;
+
+            return this;
+        }
+
+        public UploadTaskProvider AddEnqueueEncryptedChunksForUploadBlock(ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
+        {
+            _enqueueEncryptedChunksForUploadBlock = enqueueEncryptedChunksForUploadBlock;
+
+            return this;
+        }
+
+
 
         public Task GetTask()
         {
@@ -355,12 +378,14 @@ namespace Arius.CommandLine
 
     internal class ReconcileChunksWithManifestsBlockProvider
     {
-        private readonly Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
-        public ReconcileChunksWithManifestsBlockProvider(
+        public ReconcileChunksWithManifestsBlockProvider AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(
             Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+
+            return this;
         }
 
         public TransformManyBlock<HashValue, BinaryFile> GetBlock()
@@ -418,13 +443,15 @@ namespace Arius.CommandLine
 
     internal class ReconcileBinaryFilesWithManifestBlockProvider
     {
-        private readonly List<HashValue> _uploadedManifestHashes;
-        private readonly Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
+        private List<HashValue> _uploadedManifestHashes;
+        private Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
 
-        public ReconcileBinaryFilesWithManifestBlockProvider(List<HashValue> uploadedManifestHashes)
+        public ReconcileBinaryFilesWithManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
         {
             _uploadedManifestHashes = uploadedManifestHashes;
             _binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
+
+            return this;
         }
 
         public TransformManyBlock<BinaryFile, BinaryFile> GetBlock()
@@ -472,12 +499,18 @@ namespace Arius.CommandLine
     internal class CreatePointerBlockProvider
     {
         private readonly PointerService _ps;
-        private readonly List<BinaryFile> _binaryFilesToDelete;
+        private List<BinaryFile> _binaryFilesToDelete;
 
-        public CreatePointerBlockProvider(PointerService ps, List<BinaryFile> binaryFilesToDelete)
+        public CreatePointerBlockProvider(PointerService ps)
         {
             _ps = ps;
+        }
+
+        public CreatePointerBlockProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
+        {
             _binaryFilesToDelete = binaryFilesToDelete;
+
+            return this;
         }
 
         public TransformBlock<BinaryFile, PointerFile> GetBlock()
@@ -496,15 +529,21 @@ namespace Arius.CommandLine
 
     internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> _logger;
         private readonly AzureRepository _azureRepository;
-        private readonly DateTime _version;
+        private DateTime _version;
 
-        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger logger, AzureRepository azureRepository, DateTime version)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository, DateTime version)
         {
             _logger = logger;
             _azureRepository = azureRepository;
+        }
+
+        public CreatePointerFileEntryIfNotExistsBlockProvider AddVersion(DateTime version)
+        {
             _version = version;
+
+            return this;
         }
 
         public ActionBlock<PointerFile> GetBlock()
@@ -518,17 +557,25 @@ namespace Arius.CommandLine
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
         private readonly AzureRepository _azureRepository;
-        private readonly DateTime _version;
         private readonly DirectoryInfo _root;
+        private DateTime _version;
 
-        public RemoveDeletedPointersTaskProvider(ILogger logger, AzureRepository azureRepository, DateTime version, DirectoryInfo root)
+
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveOptions options, AzureRepository azureRepository)      
         {
             _logger = logger;
             _azureRepository = azureRepository;
+
+            _root = new DirectoryInfo(options.Path);
+        }
+
+        public RemoveDeletedPointersTaskProvider AddVersion(DateTime version)
+        {
             _version = version;
-            _root = root;
+
+            return this;
         }
 
         public Task GetTask()
@@ -657,14 +704,20 @@ namespace Arius.CommandLine
 
     internal class DeleteBinaryFilesTaskProvider
     {
-        public DeleteBinaryFilesTaskProvider(ArchiveOptions options, List<BinaryFile> binaryFilesToDelete)
+        public DeleteBinaryFilesTaskProvider(ArchiveOptions options)
         {
             _options = options;
-            _binaryFilesToDelete = binaryFilesToDelete;
         }
 
         private readonly ArchiveOptions _options;
-        private readonly List<BinaryFile> _binaryFilesToDelete;
+        private List<BinaryFile> _binaryFilesToDelete;
+
+        public DeleteBinaryFilesTaskProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
+        {
+            _binaryFilesToDelete = binaryFilesToDelete;
+
+            return this;
+        }
 
         public Task GetTask()
         {

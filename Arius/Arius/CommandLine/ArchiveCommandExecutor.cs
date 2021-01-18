@@ -70,16 +70,32 @@ namespace Arius.CommandLine
                 .AddLogging()
                     
                 .AddSingleton<ArchiveOptions>(_options)
+                .AddSingleton<IConfiguration>(_config)
 
                 .AddSingleton<IHashValueProvider>(_hvp)
                 .AddSingleton<IChunker>(_chunker)
+                .AddSingleton<IEncrypter>(_encrypter)
+
                 .AddSingleton<PointerService>(_ps)
 
                 .AddSingleton<AzureRepository>(_azureRepository)
 
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()
+                .AddSingleton<AddRemoteManifestBlockProvider>()
                 .AddSingleton<GetChunksForUploadBlockProvider>()
+                .AddSingleton<EncryptChunksBlockProvider>()
+                .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
+                .AddSingleton<UploadEncryptedChunksBlockProvider>()
+                .AddSingleton<UploadTaskProvider>()
+                .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
+                .AddSingleton<CreateManifestBlockProvider>()
+                .AddSingleton<ReconcileBinaryFilesWithManifestBlockProvider>()
+                .AddSingleton<CreatePointerBlockProvider>()
+                .AddSingleton<CreatePointerFileEntryIfNotExistsBlockProvider>()
+                .AddSingleton<RemoveDeletedPointersTaskProvider>()
+                .AddSingleton<ExportToJsonTaskProvider>()
+                .AddSingleton<DeleteBinaryFilesTaskProvider>()
 
                 .BuildServiceProvider();
 
@@ -91,51 +107,71 @@ namespace Arius.CommandLine
 
 
             var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
-            var addRemoteManifestBlock = new AddRemoteManifestBlockProvider(uploadedManifestHashes).GetBlock();
+            var addRemoteManifestBlock = blocks.GetService<AddRemoteManifestBlockProvider>()
+                !.AddUploadedManifestHashes(uploadedManifestHashes)
+                .GetBlock();
 
 
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            var getChunksForUploadBlock = blocks.GetService<GetChunksForUploadBlockProvider>()!
-                .SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            var getChunksForUploadBlock = blocks.GetService<GetChunksForUploadBlockProvider>()
+                !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                 .GetBlock();
 
             
-            var encryptChunksBlock = new EncryptChunksBlockProvider(_config, _encrypter).GetBlock();
+            var encryptChunksBlock = blocks.GetService<EncryptChunksBlockProvider>()!.GetBlock();
 
 
             var uploadQueue = new BlockingCollection<EncryptedChunkFile>();
-            var enqueueEncryptedChunksForUploadBlock = new EnqueueEncryptedChunksForUploadBlockProvider(uploadQueue).GetBlock();
+            var enqueueEncryptedChunksForUploadBlock = blocks.GetService<EnqueueEncryptedChunksForUploadBlockProvider>()
+                !.AddUploadQueue(uploadQueue)
+                .GetBlock();
 
 
-            var uploadEncryptedChunksBlock = new UploadEncryptedChunksBlockProvider(_options, _azureRepository).GetBlock();
+            var uploadEncryptedChunksBlock =  blocks.GetService<UploadEncryptedChunksBlockProvider>()!.GetBlock();
 
 
-            var uploadTask = new UploadTaskProvider(uploadQueue, uploadEncryptedChunksBlock, enqueueEncryptedChunksForUploadBlock).GetTask();
+            var uploadTask = blocks.GetService<UploadTaskProvider>()
+                !.AddUploadQueue(uploadQueue)
+                .AddUploadEncryptedChunkBlock(uploadEncryptedChunksBlock)
+                .AddEnqueueEncryptedChunksForUploadBlock(enqueueEncryptedChunksForUploadBlock)
+                .GetTask();
 
 
-            var reconcileChunksWithManifestsBlock = new ReconcileChunksWithManifestsBlockProvider(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated).GetBlock();
+            var reconcileChunksWithManifestsBlock = blocks.GetService<ReconcileChunksWithManifestsBlockProvider>()
+                !.AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                .GetBlock();
 
             
-            var createManifestBlock = new CreateManifestBlockProvider(_azureRepository).GetBlock();
+            var createManifestBlock = blocks.GetService<CreateManifestBlockProvider>()!.GetBlock();
 
 
-            var reconcileBinaryFilesWithManifestBlock = new ReconcileBinaryFilesWithManifestBlockProvider(uploadedManifestHashes).GetBlock();
+            var reconcileBinaryFilesWithManifestBlock = blocks.GetService<ReconcileBinaryFilesWithManifestBlockProvider>()
+                !.AddUploadedManifestHashes(uploadedManifestHashes)
+                .GetBlock();
 
 
             var binaryFilesToDelete = new List<BinaryFile>();
-            var createPointersBlock = new CreatePointerBlockProvider(_ps, binaryFilesToDelete).GetBlock();
+            var createPointersBlock = blocks.GetService<CreatePointerBlockProvider>()
+                !.AddBinaryFilesToDelete(binaryFilesToDelete)
+                .GetBlock();
 
 
-            var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlockProvider(_logger, _azureRepository, version).GetBlock();
+            var createPointerFileEntryIfNotExistsBlock = blocks.GetService<CreatePointerFileEntryIfNotExistsBlockProvider>()
+                !.AddVersion(version)
+                .GetBlock();
 
 
-            var removeDeletedPointersTask = new RemoveDeletedPointersTaskProvider(_logger, _azureRepository, version, _root).GetTask();
+            var removeDeletedPointersTask = blocks.GetService<RemoveDeletedPointersTaskProvider>()
+                !.AddVersion(version)
+                .GetTask();
 
 
-            var exportToJsonTask = new ExportToJsonTaskProvider(_azureRepository).GetTask();
+            var exportToJsonTask = blocks.GetService<ExportToJsonTaskProvider>()!.GetTask();
 
 
-            var deleteBinaryFilesTask = new DeleteBinaryFilesTaskProvider(_options, binaryFilesToDelete).GetTask();
+            var deleteBinaryFilesTask = blocks.GetService<DeleteBinaryFilesTaskProvider>()
+                !.AddBinaryFilesToDelete(binaryFilesToDelete)
+                .GetTask();
 
 
             // Set up linking

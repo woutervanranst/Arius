@@ -44,7 +44,7 @@ namespace Arius.Models
 
     internal interface IBlobCopier
     {
-        void Upload(IFile[] fileToUpload, string remoteDirectoryName, bool overwrite);
-        void Download(string remoteDirectoryName, Blob[] blobsToDownload, DirectoryInfo target);
+        void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite);
+        void Download(string remoteDirectoryName, IEnumerable<Blob> blobsToDownload, DirectoryInfo target);
     }
 }
