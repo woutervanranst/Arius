@@ -5,8 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
+using Arius.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.CommandLine
@@ -14,12 +16,16 @@ namespace Arius.CommandLine
     internal class SynchronizeBlockProvider
     {
         private readonly ILogger<SynchronizeBlockProvider> _logger;
+        private readonly DirectoryInfo _root;
         private readonly AzureRepository _repo;
+        private readonly PointerService _ps;
 
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, AzureRepository repo)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, RestoreOptions options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
+            _root = new DirectoryInfo(options.Path);
             _repo = repo;
+            _ps = ps;
         }
 
         /// <summary>
@@ -30,13 +36,13 @@ namespace Arius.CommandLine
         {
             return new TransformManyBlock<DirectoryInfo, PointerFile>(async item =>
             {
-                var pfes = await _repo.GetCurrentEntriesAsync(false);
-                pfes = pfes.ToArray();
+                var currentPfes = await _repo.GetCurrentEntriesAsync(false);
+                currentPfes = currentPfes.ToArray();
 
-                _logger.LogInformation($"{pfes.Count()} files in latest version of remote");
+                _logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");
 
-                var t1 = Task.Run(() => SynchronizeLocalWithRemote(pfes));
-                var t2 = Task.Run(RemoveDeletedPointers);
+                var t1 = Task.Run(() => CreateIfNotExists(currentPfes));
+                var t2 = Task.Run(() => DeleteIfExists(currentPfes));
 
                 Task.WaitAll(t1, t2);
 
@@ -45,56 +51,48 @@ namespace Arius.CommandLine
 
         }
 
-        private Task<IEnumerable<PointerFile>> SynchronizeLocalWithRemote(IEnumerable<AzureRepository.PointerFileEntry> pfes)
+        /// <summary>
+        /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
+        /// </summary>
+        /// <returns></returns>
+        private IEnumerable<PointerFile> CreateIfNotExists(IEnumerable<AzureRepository.PointerFileEntry> pfes)
         {
-            //    //1. POINTERS THAT EXIST REMOTE BUT NOT LOCAL --> TO BE CREATED
-            //    var pointersThatShouldExist = pfes.AsParallelWithParallelism()
-            //        .Select(pfe => pfe.CreatePointerFileIfNotExists(_root))
-            //});
-            ////var createdPointers = pointerEntriesperManifest
-            ////    .AsParallelWithParallelism()
-            ////    .SelectMany(p => p.Value
-            ////        .Where(pfe => !_localRoot.GetPointerFileInfo(pfe).Exists)
-            ////        .Select(pfe =>
-            ////        {
-            ////            var apf = _pointerService.CreatePointerFile(_localRoot, pfe, p.Key);
-            ////            _logger.LogInformation($"Pointer '{apf.RelativeName}' created");
+            var pfs = pfes
+                .AsParallelWithParallelism()
+                .Select(pfe => _ps.CreatePointerFileIfNotExists(_root, pfe));
 
-            ////            return apf;
-            ////        }))
-            ////    .ToImmutableArray();
-
-            throw new NotImplementedException();
+            return pfs.ToArray();
         }
 
-        private Task RemoveDeletedPointers()
+        /// <summary>
+        /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
+        /// </summary>
+        /// <param name="pfes"></param>
+        private void DeleteIfExists(IEnumerable<AzureRepository.PointerFileEntry> pfes)
         {
-            //// 2. POINTERS THAT EXIST LOCAL BUT NOT REMOTE --> TO BE DELETED
-            //var relativeNamesThatShouldExist = pointerEntriesperManifest.Values
-            //    .SelectMany(x => x)
-            //    .Select(x => x.RelativeName); //root.GetFullName(x));
+            var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
-            //_localRoot.GetAll().OfType<IPointerFile>()
-            //    .AsParallelWithParallelism()
-            //    .Where(pf => !relativeNamesThatShouldExist.Contains(pf.RelativeName))
-            //    .ForAll(pf =>
-            //    {
-            //        pf.Delete();
+            Parallel.ForEach(_root.GetFiles($"*{PointerFile.Extension}", SearchOption.AllDirectories), pfi =>
+            {
+                var relativeName = Path.GetRelativePath(_root.FullName, pfi.FullName);
 
-            //        Console.WriteLine($"Pointer for '{pf.RelativeName}' deleted");
-            //    });
+                if (!relativeNames.Contains(relativeName))
+                {
+                    pfi.Delete();
 
-            //_localRoot.DeleteEmptySubdirectories();
+                    _logger.LogInformation($"Pointer for '{relativeName}' deleted");
+                }
+            });
 
-            return Task.CompletedTask;
+            _root.DeleteEmptySubdirectories();
         }
     }
 
-    internal class FilterAlreadyDownloadedItemsBlockProvider
+    internal class DiscardDownloadedPointerFilesBlockProvider
     {
         private readonly IHashValueProvider _hvp;
 
-        public FilterAlreadyDownloadedItemsBlockProvider(IHashValueProvider hvp)
+        public DiscardDownloadedPointerFilesBlockProvider(IHashValueProvider hvp)
         {
             _hvp = hvp;
         }
@@ -105,15 +103,11 @@ namespace Arius.CommandLine
             {
                 if (pf.BinaryFileInfo is var bfi && bfi.Exists)
                 {
-                    //}
-                    //var bfi = pf.BinaryFileInfo;
-                    //if (bfi.Exists)
-                    //{
-
-                    //var bf = new BinaryFile(pf.Root, bfi);
-                    //if (_hvp.GetHashValue(bf).Equals(pf.Hash))
                     if (new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
                         return Enumerable.Empty<PointerFile>(); //This file is already restored -- skip
+
+
+                    //TODO TEST: binary file already exist - do not 
 
                 }
 

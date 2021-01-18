@@ -82,28 +82,57 @@ namespace Arius.CommandLine
 
 
                 .AddSingleton<SynchronizeBlockProvider>()
+                .AddSingleton<DiscardDownloadedPointerFilesBlockProvider>()
 
                 .BuildServiceProvider();
 
 
             var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
 
+            var discardDownloadedPointerFilesBlock = blocks.GetService<DiscardDownloadedPointerFilesBlockProvider>()!.GetBlock();
+
+            var endBlock = new ActionBlock<object>(_ =>
+            {
+
+            });
+
             // Set up linking
             var propagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = true };
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = false };
 
-            // 10
-            //indexDirectoryBlock.LinkTo(
-            //    addHashBlock,
-            //    propagateCompletionOptions);
+            
+            // 30
+            synchronizeBlock.LinkTo(
+                endBlock, 
+                propagateCompletionOptions, 
+                _ => !_options.Download);
+
+            // 40
+            synchronizeBlock.LinkTo(
+                discardDownloadedPointerFilesBlock,
+                propagateCompletionOptions,
+                _ => _options.Download);
+
 
             //Fill the flow
-            synchronizeBlock.Post(_root);
-            synchronizeBlock.Complete();
+            if (_options.Synchronize)
+            {
+                //10
+                synchronizeBlock.Post(_root);
+                synchronizeBlock.Complete();
+            }
+            else if (_options.Download)
+            {
+                //20
+                throw new NotFiniteNumberException();
+            }
+
+
 
 
             // Wait for the end
-            synchronizeBlock.Completion.Wait();
+            endBlock.Completion.Wait();
+            discardDownloadedPointerFilesBlock.Completion.Wait();
 
 
             return 0;

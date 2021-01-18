@@ -107,11 +107,7 @@ namespace Arius.Services
             //    hex.AppendFormat("{0:x2}", b);
             //return hex.ToString();
 
-            //return BitConverter.ToString(ba).Replace("-", "").ToLower();
-
-            var xx = BitConverter.ToString(ba).Replace("-", "").ToLower();
-            
-            return $"{ba:x8}";
+            return BitConverter.ToString(ba).Replace("-", "").ToLower();
         }
     }
 }
