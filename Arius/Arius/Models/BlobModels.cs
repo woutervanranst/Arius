@@ -41,5 +41,6 @@ namespace Arius.Models
 
         public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
         protected string Extension => ".7z.arius";
+        public long Length => _bi.Properties.ContentLength!.Value;
     }
 }

@@ -37,6 +37,11 @@ namespace Arius.Repositories
             return _chunkRepository.GetAllChunkBlobItems();
         }
 
+        public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash)
+        {
+            return _chunkRepository.GetByName(chunkHash.Value);
+        }
+
         public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
             return _chunkRepository.Upload(ecfs, tier);
@@ -56,7 +61,12 @@ namespace Arius.Repositories
             return _manifestRepository.GetAllManifestHashes();
         }
 
-        
+        public IEnumerable<HashValue> GetChunkHashes(HashValue manifestHash)
+        {
+            return _manifestRepository.GetChunkHashes(manifestHash);
+        }
+
+
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 

@@ -46,7 +46,7 @@ namespace Arius.Repositories
                     .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
             }
 
-            private RemoteEncryptedChunkBlobItem GetByName(string name, string folder = EncryptedChunkDirectoryName)
+            public RemoteEncryptedChunkBlobItem GetByName(string name, string folder = EncryptedChunkDirectoryName)
             {
                 var bi = _bcc
                     .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)

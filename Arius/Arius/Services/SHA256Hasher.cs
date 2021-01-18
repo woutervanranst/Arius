@@ -10,36 +10,43 @@ namespace Arius.Services
 {
     internal struct HashValue
     {
-        public string Value { get; set; }
+        public string Value { get; init; }
         public override string ToString() => Value;
 
 
-        //public static bool operator ==(HashValue c1, HashValue c2)
-        //{
-        //    return c1.Equals(c2);
-        //}
+        public static bool operator ==(HashValue c1, HashValue c2)
+        {
+            return c1.Equals(c2);
+        }
 
-        //public static bool operator !=(HashValue c1, HashValue c2)
-        //{
-        //    return !c1.Equals(c2);
-        //}
+        public static bool operator !=(HashValue c1, HashValue c2)
+        {
+            return !c1.Equals(c2);
+        }
 
-        //public override bool Equals(object obj)
-        //{
-        //    // If parameter is null return false.
-        //    if (obj == null)
-        //        return false;
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value);
+        }
 
-        //    // If parameter cannot be cast to Point return false.
-        //    var p = obj as HashValue;
-        //    if (p == null)
-        //    {
-        //        return false;
-        //    }
+        public override bool Equals(object obj)
+        {
+            // If parameter is null return false.
+            if (obj == null)
+                return false;
 
-        //    // Return true if the fields match:
-        //    return (x == p.x) && (y == p.y);
-        //}
+            // If parameter cannot be cast to HashValue return false.
+            if (obj is not HashValue)
+                return false;
+
+            // Return true if the fields match:
+            return Equals((HashValue) obj);
+        }
+
+        public bool Equals(HashValue obj)
+        {
+            return (this.Value == obj.Value);
+        }
     }
 
     

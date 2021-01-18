@@ -90,10 +90,12 @@ namespace Arius.CommandLine
 
     internal class DiscardDownloadedPointerFilesBlockProvider
     {
+        private readonly ILogger<DiscardDownloadedPointerFilesBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
 
-        public DiscardDownloadedPointerFilesBlockProvider(IHashValueProvider hvp)
+        public DiscardDownloadedPointerFilesBlockProvider(ILogger<DiscardDownloadedPointerFilesBlockProvider> logger, IHashValueProvider hvp)
         {
+            _logger = logger;
             _hvp = hvp;
         }
 
@@ -101,17 +103,85 @@ namespace Arius.CommandLine
         {
             return new(pf =>
             {
-                if (pf.BinaryFileInfo is var bfi && bfi.Exists)
+                if (pf.BinaryFileInfo is var bfi && bfi.Exists &&
+                    new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
-                    if (new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
-                        return Enumerable.Empty<PointerFile>(); //This file is already restored -- skip
+                    _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
 
-
-                    //TODO TEST: binary file already exist - do not 
-
+                    return Enumerable.Empty<PointerFile>(); //This file is already restored -- skip
                 }
 
+                //TODO TEST: binary file already exist - do not 
+
                 return new[] {pf};
+            });
+        }
+    }
+
+    internal class ChunkDownloadQueueBlockProvider
+    {
+        public ChunkDownloadQueueBlockProvider(IConfiguration config, AzureRepository repo)
+        {
+            _config = config;
+            _repo = repo;
+        }
+
+        public ChunkDownloadQueueBlockProvider AddSourceBlock(ISourceBlock<PointerFile> source)
+        {
+            _source = source;
+
+            return this;
+        }
+
+        private readonly Dictionary<HashValue, RemoteEncryptedChunkBlobItem> _notYetDownloading = new(); //Key = ChunkHashValue
+        //private readonly List<HashValue> _notYetDownloading = new(); //Key = ChunkHashValue
+        private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
+        private readonly IConfiguration _config;
+        private readonly AzureRepository _repo;
+
+        private ISourceBlock<PointerFile> _source;
+
+        public TransformManyBlock<PointerFile, RemoteEncryptedChunkBlobItem[]> GetBlock()
+        {
+            return new(pf =>
+            {
+                var chunkHashValues = _repo.GetChunkHashes(pf.Hash);
+
+                lock (_notYetDownloading)
+                {
+                    lock (_downloadedOrDownloading)
+                    {
+                        foreach (var chunkHash in chunkHashValues)
+                        {
+                            if (!(_notYetDownloading.ContainsKey(chunkHash) || _downloadedOrDownloading.Contains(chunkHash)))
+                            {
+                                var recbi = _repo.GetChunkBlobItemByHash(chunkHash);
+
+                                _notYetDownloading.Add(chunkHash, recbi);
+                            }
+                        }
+
+                        if (_notYetDownloading.Values.Sum(recbi => recbi.Length) >= _config.BatchSize ||
+                            _notYetDownloading.Count >= _config.BatchCount ||
+                            _source.Completion.IsCompleted)
+                        {
+                            //Emit a batch
+                            var batch = new[] {_notYetDownloading.Values.ToArray()};
+
+                            _downloadedOrDownloading.AddRange(_notYetDownloading.Keys);
+                            _notYetDownloading.Clear();
+
+                            // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?
+
+                            return batch;
+                        }
+                        else
+                        {
+                            //Wait unil more values accumulate
+                            return Enumerable.Empty<RemoteEncryptedChunkBlobItem[]>();
+                        }
+                    }
+                }
             });
         }
     }

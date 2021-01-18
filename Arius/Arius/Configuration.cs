@@ -12,6 +12,8 @@ namespace Arius
     internal interface IConfiguration
     {
         DirectoryInfo TempDir { get; }
+        long BatchSize { get; }
+        int BatchCount { get; }
     }
 
     internal class Configuration : IConfiguration
@@ -33,5 +35,9 @@ namespace Arius
         public IConfigurationRoot ConfigurationRoot { get; init; }
 
         public DirectoryInfo TempDir => new DirectoryInfo(Path.Combine(Path.GetTempPath(), ConfigurationRoot["TempDirName"]));
+
+        public long BatchSize => ConfigurationRoot.GetValue<long>("AzCopier:BatchSize");
+
+        public int BatchCount => ConfigurationRoot.GetValue<int>("AzCopier:BatchCount");
     }
 }

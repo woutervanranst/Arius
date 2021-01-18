@@ -83,6 +83,7 @@ namespace Arius.CommandLine
 
                 .AddSingleton<SynchronizeBlockProvider>()
                 .AddSingleton<DiscardDownloadedPointerFilesBlockProvider>()
+                .AddSingleton<ChunkDownloadQueueBlockProvider>()
 
                 .BuildServiceProvider();
 
@@ -90,6 +91,11 @@ namespace Arius.CommandLine
             var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
 
             var discardDownloadedPointerFilesBlock = blocks.GetService<DiscardDownloadedPointerFilesBlockProvider>()!.GetBlock();
+
+            var chunkDownloadQueueBlock = blocks.GetService<ChunkDownloadQueueBlockProvider>()
+                !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
+                .GetBlock();
+
 
             var endBlock = new ActionBlock<object>(_ =>
             {
@@ -113,6 +119,11 @@ namespace Arius.CommandLine
                 propagateCompletionOptions,
                 _ => _options.Download);
 
+            //50
+            discardDownloadedPointerFilesBlock.LinkTo(
+                chunkDownloadQueueBlock,
+                propagateCompletionOptions);
+
 
             //Fill the flow
             if (_options.Synchronize)
@@ -132,7 +143,7 @@ namespace Arius.CommandLine
 
             // Wait for the end
             endBlock.Completion.Wait();
-            discardDownloadedPointerFilesBlock.Completion.Wait();
+            chunkDownloadQueueBlock.Completion.Wait();
 
 
             return 0;

@@ -265,17 +265,19 @@ namespace Arius.CommandLine
 
     internal class UploadTaskProvider
     {
+        private readonly IConfiguration _config;
+
         public UploadTaskProvider(IConfiguration config)
         {
-
+            _config = config;
         }
 
         private BlockingCollection<EncryptedChunkFile> _uploadQueue;
         private ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
         private ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
 
-        private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
-        private const int AzCopyBatchCount = 128;
+        //private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
+        //private const int AzCopyBatchCount = 128;
 
         public UploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
@@ -318,8 +320,8 @@ namespace Arius.CommandLine
                         size += ecf.Length;
                     }
 
-                    if (size >= AzCopyBatchSize ||
-                        uploadBatch.Count >= AzCopyBatchCount ||
+                    if (size >= _config.BatchSize ||
+                        uploadBatch.Count >= _config.BatchCount ||
                         _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                     {
                         _uploadEncryptedChunksBlock.Post(uploadBatch.ToArray());

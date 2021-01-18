@@ -62,7 +62,13 @@ namespace Arius.Services
                 _logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, pointerFileInfo.FullName)}'");
             }
 
-            return new PointerFile(root, pointerFileInfo);
+            var pf = new PointerFile(root, pointerFileInfo);
+
+            //Check whether the PointerFile is in sync / not malformed
+            if (!pf.Hash.Equals(manifestHash))
+                throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
+
+            return pf;
         }
     }
 }

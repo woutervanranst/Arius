@@ -34,13 +34,13 @@ namespace Arius.Repositories
             private readonly ILogger<ManifestRepository> _logger;
             private readonly CloudTable _manifestTable;
 
-            public async Task AddManifestAsync(BinaryFile f)
+            public async Task AddManifestAsync(BinaryFile bf)
             {
                 try
                 {
-                    var me = new ManifestEntry(f);
+                    var dto = new ManifestEntry(bf).GetDto();
 
-                    var op = TableOperation.Insert(me); //TO CHECK zitten alle Chunks hierin of enkel de geuploade? to test: delete 1 chunk remote en run opnieuw
+                    var op = TableOperation.Insert(dto); //TO CHECK zitten alle Chunks hierin of enkel de geuploade? to test: delete 1 chunk remote en run opnieuw
 
                     await _manifestTable.ExecuteAsync(op);
                 }
@@ -59,19 +59,56 @@ namespace Arius.Repositories
 
                 return query.AsEnumerable();
             }
-        }
-        
-        public class ManifestEntry : TableEntity
-        {
-            public ManifestEntry(BinaryFile bf)
-            {
-                PartitionKey = bf.ManifestHash!.Value.Value;
-                RowKey = bf.ManifestHash!.Value.Value;
 
-                Chunks = JsonSerializer.Serialize(bf.Chunks.Select(cf => cf.Hash.Value));
+            public IEnumerable<HashValue> GetChunkHashes(HashValue manifestHash)
+            {
+                var dto = _manifestTable.CreateQuery<ManifestEntryDto>()
+                    .Where(dto2 =>
+                        dto2.PartitionKey == manifestHash.Value &&
+                        dto2.RowKey == manifestHash.Value) // LINQ provider does not support Single() natively
+                    .AsEnumerable().Single();
+
+                return new ManifestEntry(dto).Chunks;
             }
 
-            public string Chunks { get; set; }
+
+            private class ManifestEntry
+            {
+                private readonly ManifestEntryDto _dto;
+
+                public ManifestEntry(BinaryFile bf)
+                {
+                    _dto = new ManifestEntryDto()
+                    {
+                        PartitionKey = bf.ManifestHash!.Value.Value,
+                        RowKey = bf.ManifestHash!.Value.Value,
+
+                        Chunks = JsonSerializer.Serialize(bf.Chunks.Select(cf => cf.Hash.Value))
+                    };
+                }
+                public ManifestEntry(ManifestEntryDto dto)
+                {
+                    _dto = dto;
+                }
+
+                public ManifestEntryDto GetDto()
+                {
+                    return _dto;
+                }
+
+                public IEnumerable<HashValue> Chunks
+                {
+                    get
+                    {
+                        return JsonSerializer.Deserialize<IEnumerable<string>>(_dto.Chunks)?.Select(hv => new HashValue() {Value = hv});
+                    }
+                }
+            }
+
+            private class ManifestEntryDto : TableEntity
+            {
+                public string Chunks { get; init; }
+            }
         }
     }
 }
