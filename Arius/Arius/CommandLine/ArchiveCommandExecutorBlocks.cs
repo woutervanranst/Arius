@@ -56,26 +56,24 @@ namespace Arius.CommandLine
 
     internal class AddHashBlockProvider
     {
-        private readonly ILogger<IndexDirectoryBlockProvider> _logger;
+        private readonly ILogger<AddHashBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
-        private readonly bool _fastHash;
 
-        public AddHashBlockProvider(ILogger<IndexDirectoryBlockProvider> logger, IHashValueProvider hvp, ArchiveOptions options)
+        public AddHashBlockProvider(ILogger<AddHashBlockProvider> logger, IHashValueProvider hvp, ArchiveOptions options)
         {
             _logger = logger;
             _hvp = hvp;
-            _fastHash = options.FastHash;
         }
 
         public TransformBlock<IFile, IFileWithHash> GetBlock()
         {
             return new(
-                file => (IFileWithHash) AddHash((dynamic) file, _fastHash),
+                file => (IFileWithHash) AddHash((dynamic) file),
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
             );
         }
 
-        private IFileWithHash AddHash(PointerFile f, bool _)
+        private IFileWithHash AddHash(PointerFile f)
         {
             //_logger.LogInformation("Hashing PointerFile " + f.Name);
 
@@ -86,26 +84,11 @@ namespace Arius.CommandLine
             return f;
         }
 
-        private IFileWithHash AddHash(BinaryFile f, bool fastHash)
+        private IFileWithHash AddHash(BinaryFile f)
         {
             _logger.LogInformation("Hashing BinaryFile " + f.Name);
 
-            var h = default(HashValue?);
-
-            if (fastHash)
-            {
-                var pointerFileInfo = f.PointerFileInfo;
-                if (pointerFileInfo.Exists)
-                {
-                    var pf = new PointerFile(f.Root, pointerFileInfo);
-                    h = pf.Hash;
-                }
-            }
-
-            if (!h.HasValue)
-                h = _hvp.GetHashValue(f); //TODO remove cast)
-
-            f.Hash = h.Value;
+            f.Hash = _hvp.GetHashValue(f);
 
             _logger.LogInformation("Hashing BinaryFile " + f.Name + " done");
 
@@ -533,7 +516,7 @@ namespace Arius.CommandLine
         private readonly AzureRepository _azureRepository;
         private DateTime _version;
 
-        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository, DateTime version)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;

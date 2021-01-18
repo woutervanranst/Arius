@@ -19,7 +19,7 @@ namespace Arius.Services
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Container { get; init; }
-        public AccessTier Tier { get; init; }
+        //public AccessTier Tier { get; init; }
     }
 
     internal class AzCopier : IBlobCopier
@@ -134,7 +134,7 @@ namespace Arius.Services
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
         {
-            _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+            //_logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
 
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
@@ -156,7 +156,7 @@ namespace Arius.Services
 
             File.Delete(listOfFilesFullName);
 
-            _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
+            //_logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");

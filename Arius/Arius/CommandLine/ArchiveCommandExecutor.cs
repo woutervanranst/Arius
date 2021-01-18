@@ -21,7 +21,7 @@ namespace Arius.CommandLine
             ILoggerFactory loggerFactory,
 
             IConfiguration config,
-            AzureRepository ariusRepository,
+            AzureRepository azureRepository,
 
             PointerService ps,
             IHashValueProvider h,
@@ -29,27 +29,26 @@ namespace Arius.CommandLine
             IEncrypter e)
         {
             _options = (ArchiveOptions)options;
+            _root = new DirectoryInfo(_options.Path);
             _logger = logger;
             _loggerFactory = loggerFactory;
-            _config = config;
-            _root = new DirectoryInfo(_options.Path);
-            _azureRepository = ariusRepository;
-            _ps = ps;
 
+            _config = config;
+            _azureRepository = azureRepository;
+            _ps = ps;
             _hvp = h;
             _chunker = c;
             _encrypter = e;
         }
 
         private readonly ArchiveOptions _options;
+        private readonly DirectoryInfo _root;
         private readonly ILogger<ArchiveCommandExecutor> _logger;
         private readonly ILoggerFactory _loggerFactory;
 
         private readonly IConfiguration _config;
         private readonly AzureRepository _azureRepository;
         private readonly PointerService _ps;
-
-        private readonly DirectoryInfo _root;
         private readonly IHashValueProvider _hvp;
         private readonly IChunker _chunker;
         private readonly IEncrypter _encrypter;
@@ -70,15 +69,14 @@ namespace Arius.CommandLine
                 .AddLogging()
                     
                 .AddSingleton<ArchiveOptions>(_options)
+                
                 .AddSingleton<IConfiguration>(_config)
-
+                .AddSingleton<AzureRepository>(_azureRepository)
+                .AddSingleton<PointerService>(_ps)
                 .AddSingleton<IHashValueProvider>(_hvp)
                 .AddSingleton<IChunker>(_chunker)
                 .AddSingleton<IEncrypter>(_encrypter)
 
-                .AddSingleton<PointerService>(_ps)
-
-                .AddSingleton<AzureRepository>(_azureRepository)
 
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()

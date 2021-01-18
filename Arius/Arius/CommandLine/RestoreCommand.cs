@@ -2,6 +2,7 @@
 using System.CommandLine;
 using System.Threading.Tasks;
 using Arius.Extensions;
+using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
 
@@ -96,15 +97,17 @@ namespace Arius.CommandLine
         }
     }
 
-    internal struct RestoreOptions : ICommandExecutorOptions,
+    internal class RestoreOptions : ICommandExecutorOptions,
         IChunkerOptions,
         ISHA256HasherOptions,
         IAzCopyUploaderOptions,
-        IEncrypterOptions
+        IEncrypterOptions,
+        AzureRepository.IAzureRepositoryOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Passphrase { get; init; }
+        public bool FastHash { get; init; }
         public string Container { get; init; }
         public bool Synchronize { get; init; }
         public bool Download { get; init; }

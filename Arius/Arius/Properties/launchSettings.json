@@ -9,7 +9,7 @@
     },
     "arius restore": {
       "commandName": "Project",
-      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius3 --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
+      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
     },
     //"WSL 2": {
     //  "commandName": "WSL2",

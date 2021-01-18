@@ -27,14 +27,18 @@ namespace Arius.Models
     internal interface IEncryptedFile : IFile
     {
     }
-    
+
+
+    internal interface IHashValueProvider
+    {
+        HashValue GetHashValue(BinaryFile hashable);
+    }
 
     internal interface IChunker
     {
         IEnumerable<IChunkFile> Chunk(BinaryFile fileToChunk);
         BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin);
     }
-
 
     internal interface IEncrypter
     {
