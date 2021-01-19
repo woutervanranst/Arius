@@ -10,6 +10,7 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
+using Enumerable = System.Linq.Enumerable;
 
 namespace Arius.CommandLine
 {
@@ -88,32 +89,99 @@ namespace Arius.CommandLine
         }
     }
 
+    //    internal class GetCunksToDownloadPerPointerFileBlockProvider
+    //    {
+    //        public GetCunksToDownloadPerPointerFileBlockProvider(RestoreOptions options, 
+    //            IConfiguration config, 
+    //            ILogger<GetCunksToDownloadPerPointerFileBlockProvider> logger, 
+    //            IHashValueProvider hvp,
+    //            )
+    //        {
+    //            _options = options;
+    //            _config = config;
+    //            _logger = logger;
+    //            _hvp = hvp;
+    //            _repo = repo;
+
+    //            _root = new DirectoryInfo(options.Path);
+    //        }
+
+    //        private readonly RestoreOptions _options;
+    //        private readonly IConfiguration _config;
+    //        private readonly ILogger<GetCunksToDownloadPerPointerFileBlockProvider> _logger;
+    //        private readonly IHashValueProvider _hvp;
+    //        private readonly AzureRepository _repo;
+    //        private readonly DirectoryInfo _root;
+
+
+    //        public GetCunksToDownloadPerPointerFileBlockProvider AddAndInitializeAlreadyDownloaded(Dictionary<HashValue, IChunkFile> alreadyDownloaded)
+    //        {
+    //            foreach (var fi in _config.DownloadTempDir(_root).GetFiles())
+    //            {
+    //                if (fi.Name.EndsWith(EncryptedChunkFile.Extension))
+    //                {
+    //                    var ecf = new EncryptedChunkFile(_root, fi, new HashValue() {Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension)});
+    //                    alreadyDownloaded.Add(ecf.Hash, ecf);
+    //                }
+    //                else if (fi.Name.EndsWith(ChunkFile.Extension))
+    //                {
+    //                    var cf = new ChunkFile(_root, fi, new HashValue() {Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension)});
+    //                    alreadyDownloaded.Add(cf.Hash, cf);
+    //                }
+    //            }
+
+    //            return this;
+    //        }
+
+    enum PointerState
+    {
+        AlreadyDownloaded,
+        //ToHydrate,
+        //Hydrating,
+        ToDownload,
+        //ChunksDownloaded
+        NotYetHydrated
+    }
+    
     internal class DiscardDownloadedPointerFilesBlockProvider
     {
         private readonly ILogger<DiscardDownloadedPointerFilesBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
+        private readonly AzureRepository _repo;
 
-        public DiscardDownloadedPointerFilesBlockProvider(ILogger<DiscardDownloadedPointerFilesBlockProvider> logger, IHashValueProvider hvp)
+        public DiscardDownloadedPointerFilesBlockProvider(
+            ILogger<DiscardDownloadedPointerFilesBlockProvider> logger, 
+            IHashValueProvider hvp,
+            AzureRepository repo)
         {
             _logger = logger;
             _hvp = hvp;
+            _repo = repo;
         }
 
-        public TransformManyBlock<PointerFile, PointerFile> GetBlock()
+        public TransformBlock<PointerFile, (PointerFile PointerFile, PointerState State, IEnumerable<RemoteEncryptedChunkBlobItem> Chunks) /*object*/> GetBlock()
         {
             return new(pf =>
             {
+                // Already downloaded?
                 if (pf.BinaryFileInfo is var bfi && bfi.Exists &&
                     new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
+                    return (PointerFile: pf, PointerState: PointerState.AlreadyDownloaded, Chunks: Enumerable.Empty<RemoteEncryptedChunkBlobItem>());
 
-                    return Enumerable.Empty<PointerFile>(); //This file is already restored -- skip
+                    //TODO TEST: binary file already exist - do not 
                 }
 
-                //TODO TEST: binary file already exist - do not 
 
-                return new[] {pf};
+                // The PointerFile is not yet downloaded - all chunks in Cold/Hot storage? --> to download
+                var chunkHashValues = _repo.GetChunkHashes(pf.Hash);
+                var chunkBlobItems = chunkHashValues.Select(chunkHash => _repo.GetChunkBlobItemByHash(chunkHash)).ToArray();
+                if (chunkBlobItems.All(recbi => recbi.Downloadable))
+                    return (pf, PointerState.ToDownload, chunkBlobItems);
+
+                // here some (or all pointers are not yet hydrated)
+                return (pf, PointerState.NotYetHydrated, chunkBlobItems);
             });
         }
     }

@@ -9,11 +9,12 @@ namespace Arius
         //public string Path { get; init; }
     }
 
-    internal interface IConfiguration
+    internal interface IConfiguration //TODO can be removed i think
     {
-        DirectoryInfo TempDir { get; }
+        DirectoryInfo UploadTempDir { get; }
         long BatchSize { get; }
         int BatchCount { get; }
+        DirectoryInfo DownloadTempDir(DirectoryInfo root);
     }
 
     internal class Configuration : IConfiguration
@@ -26,15 +27,23 @@ namespace Arius
             ConfigurationRoot = config;
 
             //Init TempDir
-            if (TempDir.Exists) TempDir.Delete(true);
-            TempDir.Create();
+            if (UploadTempDir.Exists) UploadTempDir.Delete(true);
+            UploadTempDir.Create();
         }
 
         //private readonly DirectoryInfo _root;
 
         public IConfigurationRoot ConfigurationRoot { get; init; }
 
-        public DirectoryInfo TempDir => new DirectoryInfo(Path.Combine(Path.GetTempPath(), ConfigurationRoot["TempDirName"]));
+        public DirectoryInfo UploadTempDir => new DirectoryInfo(Path.Combine(Path.GetTempPath(), ConfigurationRoot["UploadTempDirName"]));
+        public DirectoryInfo DownloadTempDir(DirectoryInfo root)
+        {
+            var di = new DirectoryInfo(Path.Combine(root.FullName, ConfigurationRoot.GetValue<string>("DownloadTempDir")));
+            if (!di.Exists)
+                di.Create();
+
+            return di;
+        }
 
         public long BatchSize => ConfigurationRoot.GetValue<long>("AzCopier:BatchSize");
 

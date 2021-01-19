@@ -92,12 +92,12 @@ namespace Arius.CommandLine
 
             var discardDownloadedPointerFilesBlock = blocks.GetService<DiscardDownloadedPointerFilesBlockProvider>()!.GetBlock();
 
-            var chunkDownloadQueueBlock = blocks.GetService<ChunkDownloadQueueBlockProvider>()
-                !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
-                .GetBlock();
+            //var chunkDownloadQueueBlock = blocks.GetService<ChunkDownloadQueueBlockProvider>()
+            //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
+            //    .GetBlock();
 
 
-            var endBlock = new ActionBlock<object>(_ =>
+            var endBlock = new ActionBlock<PointerFile>(_ =>
             {
 
             });
@@ -109,20 +109,35 @@ namespace Arius.CommandLine
             
             // 30
             synchronizeBlock.LinkTo(
-                endBlock, 
-                propagateCompletionOptions, 
+                endBlock,
+                doNotPropagateCompletionOptions, 
                 _ => !_options.Download);
 
             // 40
             synchronizeBlock.LinkTo(
                 discardDownloadedPointerFilesBlock,
-                propagateCompletionOptions,
+                doNotPropagateCompletionOptions,
                 _ => _options.Download);
 
             //50
             discardDownloadedPointerFilesBlock.LinkTo(
-                chunkDownloadQueueBlock,
-                propagateCompletionOptions);
+                endBlock,
+                doNotPropagateCompletionOptions,
+                r =>
+                {
+                    var x = r is (PointerFile _, PointerState s) && s == PointerState.AlreadyDownloaded;
+                    return x;
+                },
+            r =>
+            {
+                var (pointerFile, _) = (ValueTuple<PointerFile, PointerState>) r;
+                return pointerFile;
+            });
+
+
+            //(PointerFile pf, PointerState s) => s == PointerState.AlreadyDownloaded);
+            //r => r is (AzureRepository repository, PointerState s) b && b. r.State == PointerState.AlreadyDownloaded, 
+            //x => x.PointerFile); 
 
 
             //Fill the flow
@@ -142,8 +157,9 @@ namespace Arius.CommandLine
 
 
             // Wait for the end
+            discardDownloadedPointerFilesBlock.Completion.Wait();
+
             endBlock.Completion.Wait();
-            chunkDownloadQueueBlock.Completion.Wait();
 
 
             return 0;

@@ -89,9 +89,11 @@ namespace Arius.Models
     {
         public const string Extension = ".chunk.arius";
 
-        public ChunkFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
+        public ChunkFile(DirectoryInfo root, FileInfo fi, HashValue hash) : base(root, fi)
+        {
+            base.Hash = hash;
+        }
 
-        //public EncryptedChunkFile2 EncryptedChunkFile { get; set; }
         public bool Uploaded { get; set; }
     }
 

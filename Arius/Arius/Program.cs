@@ -58,7 +58,7 @@ namespace Arius
             finally
             {
                 //Delete the tempdir
-                config.TempDir.Delete(true);
+                config.UploadTempDir.Delete(true);
             }
         }
 

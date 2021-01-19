@@ -43,7 +43,7 @@ namespace Arius.Services
             using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
             fs.Position = 0;
             
-            var tempDir = new DirectoryInfo(Path.Combine(_config.TempDir.FullName, "chunks", f.Name + ".arius"));
+            var tempDir = new DirectoryInfo(Path.Combine(_config.UploadTempDir.FullName, "chunks", f.Name + ".arius"));
             tempDir.Create();
 
             foreach (var chunk in _sb.GetChunks(fs, fs.Length, SHA256.Create()))
@@ -59,7 +59,7 @@ namespace Arius.Services
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                yield return new ChunkFile(null, new FileInfo(chunkFullName)){ Hash = hashValue }; //TODO keep null here? for chunkfile we don't really need the root?
+                yield return new ChunkFile(f.Root, new FileInfo(chunkFullName), hashValue);
             }
         }
 
