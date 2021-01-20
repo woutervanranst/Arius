@@ -95,6 +95,42 @@ namespace Arius.Repositories
 
 
             // PUT
+            public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
+            {
+                if (itemToHydrate.AccessTier == AccessTier.Hot ||
+                    itemToHydrate.AccessTier == AccessTier.Cool)
+                    throw new InvalidOperationException("Already hydrated");
+
+                var hydratedItem = _bcc.GetBlobClient($"{RehydrationDirectoryName}/{itemToHydrate.Name}");
+
+                if (!hydratedItem.Exists())
+                {
+                    //Start hydration
+                    var archiveItem = _bcc.GetBlobClient(itemToHydrate.FullName);
+                    hydratedItem.StartCopyFromUri(archiveItem.Uri, new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
+
+                    //var xx = archiveTierBlobClient.GetProperties().Value;
+                    //var xxx = xx.ArchiveStatus == ; //Azure.Storage.Shared. RehydratePendingToCool
+
+                    _logger.LogInformation($"Hydration started for {itemToHydrate.Name}");
+                }
+                else
+                {
+                    // Get hydration status
+                    // https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-rehydration
+
+                    var status = hydratedItem.GetProperties().Value.ArchiveStatus;
+                    if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
+                        _logger.LogInformation($"Hydration pending for {itemToHydrate.Name}");
+                    else if (status == null)
+                        _logger.LogInformation($"Hydration done for {itemToHydrate.Name}");
+                    //return GetByName(itemToHydrate.Name, RehydrationSubdirectoryName);
+                    else
+                        throw new ArgumentException("TODO");
+                }
+            }
+
+            // POST
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
             {

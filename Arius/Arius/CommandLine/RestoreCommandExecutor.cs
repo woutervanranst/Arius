@@ -84,9 +84,10 @@ namespace Arius.CommandLine
 
                 .AddSingleton<SynchronizeBlockProvider>()
                 .AddSingleton<ProcessPointerChunksBlockProvider>()
-                .AddSingleton<ProcessHydrateQueueBlockProvider>()
-                .AddSingleton<ProcessDownloadQueueBlockProvider>()
-                .AddSingleton<ProcessDecryptQueueBlockProvider>()
+                .AddSingleton<HydrateBlockProvider>()
+                .AddSingleton<DownloadBlockProvider>()
+                .AddSingleton<DecryptBlockProvider>()
+                .AddSingleton<ReconcilePointersWithChunksBlockProvider>()
                 .AddSingleton<MergeBlockProvider>()
 
                 .BuildServiceProvider();
@@ -94,35 +95,31 @@ namespace Arius.CommandLine
 
             var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
 
-            
-            var hydrateQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
-            var downloadQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
-            var decryptQueue = new BlockingCollection<EncryptedChunkFile>();
+
+            //var hydrateQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
+            //var downloadQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
+            //var decryptQueue = new BlockingCollection<EncryptedChunkFile>();
+
+            var hydrateBlockProvider = blocks.GetService<HydrateBlockProvider>();
+            var hydrateBlock = hydrateBlockProvider!.GetBlock();
+            var downloadBlock = blocks.GetService<DownloadBlockProvider>()
+                //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
+                !.GetBlock();
+            var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
+
+
             var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
-                !.AddHydrateQueue(hydrateQueue)
-                .AddDownloadQueue(downloadQueue)
-                .AddDecryptQueue(decryptQueue)
+                !.SetHydrateBlock(hydrateBlock)
+                .SetDownloadBlock(downloadBlock)
+                .SetDecryptBlock(decryptBlock)
                 .GetBlock();
 
 
-            var processHydrateQueueBlock = blocks.GetService<ProcessHydrateQueueBlockProvider>()!.GetBlock();
+            var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
 
-            
-            var processDownloadQueueBlock = blocks.GetService<ProcessDownloadQueueBlockProvider>()
-                //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
-                !.GetBlock();
 
-            
-            var processDecryptQueueBlock = blocks.GetService<ProcessDecryptQueueBlockProvider>()!.GetBlock();
-
-            
             var mergeBlock = blocks.GetService<MergeBlockProvider>()!.GetBlock();
 
-
-            var endBlock = new ActionBlock<PointerFile>(_ =>
-            {
-
-            });
 
             // Set up linking
             var propagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = true };
@@ -131,8 +128,8 @@ namespace Arius.CommandLine
             
             // 30
             synchronizeBlock.LinkTo(
-                endBlock,
-                doNotPropagateCompletionOptions, 
+                DataflowBlock.NullTarget<PointerFile>(),
+                doNotPropagateCompletionOptions,
                 _ => !_options.Download);
 
             // 40
@@ -143,15 +140,32 @@ namespace Arius.CommandLine
 
             //50
             processPointerChunksBlock.LinkTo(
-                endBlock,
+                DataflowBlock.NullTarget<PointerFile>(),
                 doNotPropagateCompletionOptions,
                 r => r.State == PointerState.Restored,
                 r => r.PointerFile);
 
+            //60
+            processPointerChunksBlock.LinkTo(
+                mergeBlock,
+                doNotPropagateCompletionOptions,
+                r => r.State == PointerState.NotYetMerged,
+                r => r.PointerFile);
 
-            //(PointerFile pf, PointerState s) => s == PointerState.AlreadyDownloaded);
-            //r => r is (AzureRepository repository, PointerState s) b && b. r.State == PointerState.AlreadyDownloaded, 
-            //x => x.PointerFile); 
+            // 81
+            downloadBlock.LinkTo(
+                decryptBlock,
+                doNotPropagateCompletionOptions);
+
+            //71
+            decryptBlock.LinkTo(
+                reconcilePointersWithChunksBlock,
+                doNotPropagateCompletionOptions);
+
+            //110
+            reconcilePointersWithChunksBlock.LinkTo(
+                mergeBlock,
+                doNotPropagateCompletionOptions);
 
 
             //Fill the flow
@@ -168,13 +182,20 @@ namespace Arius.CommandLine
             }
 
 
-
-
             // Wait for the end
-            processPointerChunksBlock.Completion.Wait();
+            // 130
+            Task.WaitAll(processPointerChunksBlock.Completion,
+                mergeBlock.Completion,
+                hydrateBlock.Completion);
 
-            endBlock.Completion.Wait();
-
+            if (hydrateBlockProvider.AtLeastOneHydrated)
+            {
+                // Show a warning
+            }
+            else
+            {
+                // Delete all
+            }
 
             return 0;
 

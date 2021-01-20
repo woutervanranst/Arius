@@ -300,8 +300,6 @@ namespace Arius.CommandLine
             return this;
         }
 
-
-
         public Task GetTask()
         {
             return Task.Run(() =>
@@ -601,7 +599,7 @@ namespace Arius.CommandLine
 
         public Task GetTask()
         {
-            return new(async () => 
+            return new(() => 
             {
                 //using Stream file = File.Create(@"c:\ha.json");
 

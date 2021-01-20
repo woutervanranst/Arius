@@ -47,6 +47,11 @@ namespace Arius.Repositories
             return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
         }
 
+        public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
+        {
+            _chunkRepository.Hydrate(itemToHydrate);
+        }
+
         public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
             return _chunkRepository.Upload(ecfs, tier);
