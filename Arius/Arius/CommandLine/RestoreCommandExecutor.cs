@@ -102,8 +102,8 @@ namespace Arius.CommandLine
 
             var hydrateBlockProvider = blocks.GetService<HydrateBlockProvider>();
             var hydrateBlock = hydrateBlockProvider!.GetBlock();
-            var downloadBlock = blocks.GetService<DownloadBlockProvider>()
-                //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
+            var downloadBlockProvider = blocks.GetService<DownloadBlockProvider>();
+            var downloadBlock = downloadBlockProvider
                 !.GetBlock();
             var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
 
@@ -114,6 +114,7 @@ namespace Arius.CommandLine
                 .SetDecryptBlock(decryptBlock)
                 .GetBlock();
 
+            downloadBlockProvider.AddSourceBlock(processPointerChunksBlock);
 
             var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
 
@@ -129,43 +130,53 @@ namespace Arius.CommandLine
             // 30
             synchronizeBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
-                doNotPropagateCompletionOptions,
                 _ => !_options.Download);
 
             // 40
             synchronizeBlock.LinkTo(
                 processPointerChunksBlock,
-                doNotPropagateCompletionOptions,
+                propagateCompletionOptions,
                 _ => _options.Download);
 
             //50
             processPointerChunksBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
-                doNotPropagateCompletionOptions,
+                propagateCompletionOptions,
                 r => r.State == PointerState.Restored,
                 r => r.PointerFile);
 
             //60
             processPointerChunksBlock.LinkTo(
-                mergeBlock,
+                reconcilePointersWithChunksBlock,
                 doNotPropagateCompletionOptions,
-                r => r.State == PointerState.NotYetMerged,
+                r => true, // r.State == PointerState.NotYetMerged, //don't care what the state is we propagate to reconciliatoin
                 r => r.PointerFile);
 
+            processPointerChunksBlock.Completion.ContinueWith(_ => 
+            {
+                decryptBlock.Complete(); //72
+                //downloadBlock.Complete(); //82
+                hydrateBlock.Complete(); //92
+            }); 
+                                             
             // 81
             downloadBlock.LinkTo(
                 decryptBlock,
-                doNotPropagateCompletionOptions);
+                propagateCompletionOptions);
 
             //71
             decryptBlock.LinkTo(
                 reconcilePointersWithChunksBlock,
                 doNotPropagateCompletionOptions);
 
+            //73
+            Task.WhenAll(processPointerChunksBlock.Completion, decryptBlock.Completion)
+                .ContinueWith(_ => reconcilePointersWithChunksBlock.Complete());
+
             //110
             reconcilePointersWithChunksBlock.LinkTo(
                 mergeBlock,
-                doNotPropagateCompletionOptions);
+                propagateCompletionOptions);
 
 
             //Fill the flow

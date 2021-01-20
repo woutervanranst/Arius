@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Arius.CommandLine;
 using Arius.Models;
@@ -130,7 +131,7 @@ namespace Arius.Repositories
                 }
             }
 
-            // POST
+            // UPLOAD & DOWNLOAD
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
             {
@@ -140,10 +141,25 @@ namespace Arius.Repositories
 
                 return ecfs.Select(ecf =>
                 {
-                    if (GetByName(EncryptedChunkDirectoryName, ecf.Name) is { } r)
+                    if (GetByName(EncryptedChunkDirectoryName, ecf.Name) is var r)
                         return r;
 
                     throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(RemoteEncryptedChunkBlobItem)} of uploaded chunk {ecf.Hash}");
+                });
+            }
+
+            public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target)
+            {
+                recbis = recbis.ToArray();
+
+                _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target);
+
+                return recbis.Select(recbi =>
+                {
+                    if (new FileInfo(Path.Combine(target.FullName, recbi.Name)) is var fi)
+                        return new EncryptedChunkFile(null, fi, recbi.Hash);
+
+                    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
                 });
             }
         }

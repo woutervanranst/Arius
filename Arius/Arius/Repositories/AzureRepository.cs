@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
@@ -55,6 +56,11 @@ namespace Arius.Repositories
         public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
             return _chunkRepository.Upload(ecfs, tier);
+        }
+
+        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target)
+        {
+            return _chunkRepository.Download(recbis, target);
         }
 
 

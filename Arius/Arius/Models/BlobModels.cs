@@ -44,5 +44,6 @@ namespace Arius.Models
         public long Length => _bi.Properties.ContentLength!.Value;
         public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
+        public BlobItem BlobItem => _bi;
     }
 }
