@@ -37,9 +37,14 @@ namespace Arius.Repositories
             return _chunkRepository.GetAllChunkBlobItems();
         }
 
-        public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash)
+        public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
         {
-            return _chunkRepository.GetByName(chunkHash.Value);
+            return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
+        }
+
+        public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+        {
+            return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
         }
 
         public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)

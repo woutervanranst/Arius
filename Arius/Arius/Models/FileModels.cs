@@ -60,18 +60,9 @@ namespace Arius.Models
             this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
-        ///// <summary>
-        ///// Create a new PointerFile with the given hash
-        ///// </summary>
-        ///// <param name="root"></param>
-        ///// <param name="fi"></param>
-        ///// <param name="manifestHash"></param>
-        //public PointerFile(DirectoryInfo root, FileInfo fi, HashValue manifestHash) : base(root, fi)
-        //{
-        //    this.Hash = manifestHash;
-        //}
-
         public FileInfo BinaryFileInfo => new FileInfo(_fi.FullName.TrimEnd(Extension));
+
+        public IEnumerable<HashValue> ChunkHashes { get; set; }
     }
 
     internal class BinaryFile : AriusArchiveItem, IChunkFile

@@ -83,7 +83,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
             //Get the manifest entries
-            var pointerFile = GetPointerFileOfLocalContentFile(services, firstFile);
+            var pointerFile = GetPointerFileOfLocalContentFile(firstFile);
             var entries = await repo.GetCurrentEntriesAsync(true);
             //var entries = await GetManifestEntries(repo, pointerFile, PointerFileEntryFilter.LastWithDeleted);
 
@@ -124,7 +124,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
             //Get the manifest entries
-            var pointerSecondFile = GetPointerFileOfLocalContentFile(services, secondFile);
+            var pointerSecondFile = GetPointerFileOfLocalContentFile(secondFile);
             var entries = await repo.GetCurrentEntriesAsync(true);
 
             //We have exactly two entries
@@ -375,15 +375,9 @@ namespace Arius.Tests
             };
         }
 
-        private PointerFile GetPointerFileOfLocalContentFile(ServiceProvider services, FileInfo binaryFile)
+        private PointerFile GetPointerFileOfLocalContentFile(FileInfo binaryFile)
         {
-            var pf = new PointerFile(binaryFile.Directory, binaryFile.GetPointerFileInfo());
-
-            var hvp = services.GetService<IHashValueProvider>();
-            var hv = hvp.GetHashValue(pf);
-            pf.Hash = hv;
-
-            return pf;
+            return new PointerFile(binaryFile.Directory, binaryFile.GetPointerFileInfo());
         }
         public void TestCleanup()
         {

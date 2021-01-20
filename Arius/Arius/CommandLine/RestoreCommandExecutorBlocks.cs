@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -135,53 +136,129 @@ namespace Arius.CommandLine
 
     enum PointerState
     {
-        AlreadyDownloaded,
+        Restored,
         //ToHydrate,
         //Hydrating,
-        ToDownload,
+        NotYetDownloaded,
         //ChunksDownloaded
-        NotYetHydrated
+        NotYetHydrated,
+        NotYetDecrypted,
+        NotYetMerged
     }
     
-    internal class DiscardDownloadedPointerFilesBlockProvider
+    internal class ProcessPointerChunksBlockProvider
     {
-        private readonly ILogger<DiscardDownloadedPointerFilesBlockProvider> _logger;
-        private readonly IHashValueProvider _hvp;
-        private readonly AzureRepository _repo;
-
-        public DiscardDownloadedPointerFilesBlockProvider(
-            ILogger<DiscardDownloadedPointerFilesBlockProvider> logger, 
+        public ProcessPointerChunksBlockProvider(
+            ILogger<ProcessPointerChunksBlockProvider> logger, 
+            IConfiguration config,
+            RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
             _logger = logger;
             _hvp = hvp;
             _repo = repo;
+
+            _root = new DirectoryInfo(options.Path);
+            _downloadTempDir = config.DownloadTempDir(_root);
         }
 
-        public TransformBlock<PointerFile, (PointerFile PointerFile, PointerState State, IEnumerable<RemoteEncryptedChunkBlobItem> Chunks) /*object*/> GetBlock()
+        private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
+        private readonly IHashValueProvider _hvp;
+        private readonly AzureRepository _repo;
+        private readonly DirectoryInfo _root;
+        private readonly DirectoryInfo _downloadTempDir;
+
+        private BlockingCollection<RemoteEncryptedChunkBlobItem> _hydrateQueue;
+        private BlockingCollection<RemoteEncryptedChunkBlobItem> _downloadQueue;
+        private BlockingCollection<EncryptedChunkFile> _decryptQueue;
+
+        public ProcessPointerChunksBlockProvider AddHydrateQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> hydrateQueue)
+        {
+            _hydrateQueue = hydrateQueue;
+            return this;
+        }
+        public ProcessPointerChunksBlockProvider AddDownloadQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> downloadQueue)
+        {
+            _downloadQueue = downloadQueue;
+            return this;
+        }
+        public ProcessPointerChunksBlockProvider AddDecryptQueue(BlockingCollection<EncryptedChunkFile> decryptQueue)
+        {
+            _decryptQueue = decryptQueue;
+            return this;
+        }
+
+        public TransformBlock<PointerFile, (PointerFile PointerFile, PointerState State)> GetBlock()
         {
             return new(pf =>
             {
-                // Already downloaded?
+                // Chunks Downloaded & Merged?
                 if (pf.BinaryFileInfo is var bfi && bfi.Exists &&
                     new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
-                    return (PointerFile: pf, PointerState: PointerState.AlreadyDownloaded, Chunks: Enumerable.Empty<RemoteEncryptedChunkBlobItem>());
+                    return (pf, PointerState.Restored);
 
                     //TODO TEST: binary file already exist - do not 
                 }
+                
+                pf.ChunkHashes = _repo.GetChunkHashes(pf.Hash).ToArray();
 
+                bool atLeastOneToMerge = false, atLeastOneToDecrypt = false, atLeastOneToDownload = false, atLeastOneToHydrate = false;
 
-                // The PointerFile is not yet downloaded - all chunks in Cold/Hot storage? --> to download
-                var chunkHashValues = _repo.GetChunkHashes(pf.Hash);
-                var chunkBlobItems = chunkHashValues.Select(chunkHash => _repo.GetChunkBlobItemByHash(chunkHash)).ToArray();
-                if (chunkBlobItems.All(recbi => recbi.Downloadable))
-                    return (pf, PointerState.ToDownload, chunkBlobItems);
+                foreach (var chunkHash in pf.ChunkHashes)
+                {
+                    // Chunk already downloaded & decrypted?
+                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}.{ChunkFile.Extension}")) is var cffi && cffi.Exists)
+                    {
+                        // 60
+                        atLeastOneToMerge = true;
+                        continue;
+                    }
 
-                // here some (or all pointers are not yet hydrated)
-                return (pf, PointerState.NotYetHydrated, chunkBlobItems);
+                    // Chunk already downloaded but not yet decryped?
+                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}.{EncryptedChunkFile.Extension}")) is var ecffi && ecffi.Exists)
+                    {
+                        // 70
+                        atLeastOneToDecrypt = true;
+                        _decryptQueue.Add(new EncryptedChunkFile(_root, ecffi, chunkHash));
+                        continue;
+                    }
+
+                    // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
+                    if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && hrecbi.Downloadable)
+                    {
+                        // 80
+                        atLeastOneToDownload = true;
+                        _downloadQueue.Add(hrecbi);
+                        continue;
+                    }
+
+                    // Chunk not yet hydrated
+                    if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
+                    {
+                        // 90
+                        atLeastOneToHydrate = true;
+                        _hydrateQueue.Add(arecbi);
+                        continue;
+                    }
+                }
+
+                if (atLeastOneToHydrate)
+                    // At least one chunk is waiting for hydration
+                    return (pf, PointerState.NotYetHydrated); //91
+                else if (atLeastOneToDownload)
+                    // At least one chunk is waiting for download
+                    return (pf, PointerState.NotYetDownloaded); //81
+                else if (atLeastOneToDecrypt)
+                    // At least one chunk is waiting for decryption
+                    return (pf, PointerState.NotYetDecrypted); //71
+                else if (atLeastOneToMerge)
+                    // At least one chunk needs to be merged
+                    return (pf, PointerState.NotYetMerged); //61
+                else
+                    throw new ApplicationException("huh?"); //TODO
             });
         }
     }
@@ -223,9 +300,11 @@ namespace Arius.CommandLine
                         {
                             if (!(_notYetDownloading.ContainsKey(chunkHash) || _downloadedOrDownloading.Contains(chunkHash)))
                             {
-                                var recbi = _repo.GetChunkBlobItemByHash(chunkHash);
 
-                                _notYetDownloading.Add(chunkHash, recbi);
+                                throw new NotImplementedException();
+                                //var recbi = _repo.GetChunkBlobItemByHash(chunkHash);
+
+                                //_notYetDownloading.Add(chunkHash, recbi);
                             }
                         }
 

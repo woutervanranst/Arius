@@ -42,7 +42,7 @@ namespace Arius.Models
         public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
         protected string Extension => ".7z.arius";
         public long Length => _bi.Properties.ContentLength!.Value;
-        private AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
+        public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -82,7 +83,7 @@ namespace Arius.CommandLine
 
 
                 .AddSingleton<SynchronizeBlockProvider>()
-                .AddSingleton<DiscardDownloadedPointerFilesBlockProvider>()
+                .AddSingleton<ProcessPointerChunksBlockProvider>()
                 .AddSingleton<ChunkDownloadQueueBlockProvider>()
 
                 .BuildServiceProvider();
@@ -90,7 +91,14 @@ namespace Arius.CommandLine
 
             var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
 
-            var discardDownloadedPointerFilesBlock = blocks.GetService<DiscardDownloadedPointerFilesBlockProvider>()!.GetBlock();
+            var hydrateQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
+            var downloadQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
+            var decryptQueue = new BlockingCollection<EncryptedChunkFile>();
+            var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
+                !.AddHydrateQueue(hydrateQueue)
+                .AddDownloadQueue(downloadQueue)
+                .AddDecryptQueue(decryptQueue)
+                .GetBlock();
 
             //var chunkDownloadQueueBlock = blocks.GetService<ChunkDownloadQueueBlockProvider>()
             //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
@@ -115,24 +123,16 @@ namespace Arius.CommandLine
 
             // 40
             synchronizeBlock.LinkTo(
-                discardDownloadedPointerFilesBlock,
+                processPointerChunksBlock,
                 doNotPropagateCompletionOptions,
                 _ => _options.Download);
 
             //50
-            discardDownloadedPointerFilesBlock.LinkTo(
+            processPointerChunksBlock.LinkTo(
                 endBlock,
                 doNotPropagateCompletionOptions,
-                r =>
-                {
-                    var x = r is (PointerFile _, PointerState s) && s == PointerState.AlreadyDownloaded;
-                    return x;
-                },
-            r =>
-            {
-                var (pointerFile, _) = (ValueTuple<PointerFile, PointerState>) r;
-                return pointerFile;
-            });
+                r => r.State == PointerState.Restored,
+                r => r.PointerFile);
 
 
             //(PointerFile pf, PointerState s) => s == PointerState.AlreadyDownloaded);
@@ -157,7 +157,7 @@ namespace Arius.CommandLine
 
 
             // Wait for the end
-            discardDownloadedPointerFilesBlock.Completion.Wait();
+            processPointerChunksBlock.Completion.Wait();
 
             endBlock.Completion.Wait();
 

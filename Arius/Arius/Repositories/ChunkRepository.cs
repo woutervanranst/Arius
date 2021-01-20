@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Arius.CommandLine;
 using Arius.Models;
+using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -34,32 +36,79 @@ namespace Arius.Repositories
             private readonly IBlobCopier _blobCopier;
             private readonly BlobContainerClient _bcc;
             private const string EncryptedChunkDirectoryName = "chunks";
+            private const string RehydrationDirectoryName = "chunks-rehydrated";
+
+
+            // GET
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
             {
-                //var k = _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/").ToList();
-
-                //return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
-                //    .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
-
                 return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
                     .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
             }
 
-            public RemoteEncryptedChunkBlobItem GetByName(string name, string folder = EncryptedChunkDirectoryName)
+            /// <summary>
+            /// Get a hydrated RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
+            /// Throws exception if not found.
+            /// </summary>
+            /// <param name="chunkHash"></param>
+            /// <returns></returns>
+            public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
+            {
+                if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi1 
+                    && recbi1 is not null 
+                    && recbi1.Downloadable)
+                    return recbi1;
+
+                if (GetByName(RehydrationDirectoryName, chunkHash.Value) is var recbi2 
+                    && recbi2 is not null
+                    && recbi2.Downloadable)
+                    return recbi2;
+
+                throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
+            }
+
+            public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+            {
+                if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi
+                    && recbi is not null
+                    && recbi.AccessTier == AccessTier.Archive)
+                    return recbi;
+
+                throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} in Archive tier not found for hash {chunkHash.Value}");
+            }
+
+            /// <summary>
+            /// Get a RemoteEncryptedChunkBlobItem by Name. Return null if it doesn't exist.
+            /// </summary>
+            /// <returns></returns>
+            private RemoteEncryptedChunkBlobItem GetByName(string folder, string name)
             {
                 var bi = _bcc
                     .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
-                    .Single();
+                    .SingleOrDefault();
 
-                return new RemoteEncryptedChunkBlobItem(bi);
+                return bi is null 
+                    ? null 
+                    : new RemoteEncryptedChunkBlobItem(bi);
             }
+
+
+            // PUT
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
             {
+                ecfs = ecfs.ToArray();
+
                 _blobCopier.Upload(ecfs, tier, EncryptedChunkDirectoryName, false);
 
-                return ecfs.Select(ecf => GetByName(ecf.Name));
+                return ecfs.Select(ecf =>
+                {
+                    if (GetByName(EncryptedChunkDirectoryName, ecf.Name) is { } r)
+                        return r;
+
+                    throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(RemoteEncryptedChunkBlobItem)} of uploaded chunk {ecf.Hash}");
+                });
             }
         }
     }
