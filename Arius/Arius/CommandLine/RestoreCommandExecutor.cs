@@ -84,13 +84,17 @@ namespace Arius.CommandLine
 
                 .AddSingleton<SynchronizeBlockProvider>()
                 .AddSingleton<ProcessPointerChunksBlockProvider>()
-                .AddSingleton<ChunkDownloadQueueBlockProvider>()
+                .AddSingleton<ProcessHydrateQueueBlockProvider>()
+                .AddSingleton<ProcessDownloadQueueBlockProvider>()
+                .AddSingleton<ProcessDecryptQueueBlockProvider>()
+                .AddSingleton<MergeBlockProvider>()
 
                 .BuildServiceProvider();
 
 
             var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
 
+            
             var hydrateQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
             var downloadQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
             var decryptQueue = new BlockingCollection<EncryptedChunkFile>();
@@ -100,9 +104,19 @@ namespace Arius.CommandLine
                 .AddDecryptQueue(decryptQueue)
                 .GetBlock();
 
-            //var chunkDownloadQueueBlock = blocks.GetService<ChunkDownloadQueueBlockProvider>()
-            //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
-            //    .GetBlock();
+
+            var processHydrateQueueBlock = blocks.GetService<ProcessHydrateQueueBlockProvider>()!.GetBlock();
+
+            
+            var processDownloadQueueBlock = blocks.GetService<ProcessDownloadQueueBlockProvider>()
+                //    !.AddSourceBlock(discardDownloadedPointerFilesBlock) //51
+                !.GetBlock();
+
+            
+            var processDecryptQueueBlock = blocks.GetService<ProcessDecryptQueueBlockProvider>()!.GetBlock();
+
+            
+            var mergeBlock = blocks.GetService<MergeBlockProvider>()!.GetBlock();
 
 
             var endBlock = new ActionBlock<PointerFile>(_ =>

@@ -263,15 +263,23 @@ namespace Arius.CommandLine
         }
     }
 
-    internal class ChunkDownloadQueueBlockProvider
+    internal class ProcessHydrateQueueBlockProvider
     {
-        public ChunkDownloadQueueBlockProvider(IConfiguration config, AzureRepository repo)
+        public TransformBlock<PointerFile, PointerFile> GetBlock()
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
+    internal class ProcessDownloadQueueBlockProvider
+    {
+        public ProcessDownloadQueueBlockProvider(IConfiguration config, AzureRepository repo)
         {
             _config = config;
             _repo = repo;
         }
 
-        public ChunkDownloadQueueBlockProvider AddSourceBlock(ISourceBlock<PointerFile> source)
+        public ProcessDownloadQueueBlockProvider AddSourceBlock(ISourceBlock<PointerFile> source)
         {
             _source = source;
 
@@ -329,84 +337,86 @@ namespace Arius.CommandLine
                         }
                     }
                 }
+
+                //var pointerFiles = _localRoot.GetAll().OfType<IPointerFile>().ToImmutableArray();
+
+                //var pointerFilesPerManifest = pointerFiles
+                //    .AsParallelWithParallelism()
+                //    .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
+                //    .GroupBy(pf => pf.Hash)
+                //    .ToImmutableDictionary(
+                //        g =>
+                //        {
+                //            var hashValue = g.Key;
+                //            var manifestFile = _manifestRepository.GetById(hashValue);
+                //            return _manifestService.ReadManifestFile(manifestFile);
+                //        },
+                //        g => g.ToList());
+
+                ////TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
+
+                //var chunksToDownload = pointerFilesPerManifest.Keys
+                //    .AsParallelWithParallelism()
+                //    .SelectMany(mf => mf.ChunkNames)
+                //    .Distinct()
+                //    .Select(chunkName => _chunkRepository.GetByName(chunkName))
+                //    .ToImmutableArray();
+
+                //var canDownloadAll = chunksToDownload.All(c => c.CanDownload());
+
+                //if (!canDownloadAll)
+                //{
+                //    _logger.LogCritical("Some blobs are still being rehydrated from Archive storage. Try again later.");
+                //    return;
+                //}
+
+                //chunksToDownload = chunksToDownload.Select(c => c.Hydrated).ToImmutableArray();
+
+                //var encryptedChunks = _chunkRepository.DownloadAll(chunksToDownload);
+
+                //var unencryptedChunks = encryptedChunks
+                //    .AsParallelWithParallelism()
+                //    .Select(ec => (IChunkFile)_encrypter.Decrypt(ec, true))
+                //    .ToImmutableDictionary(
+                //        c => c.Hash,
+                //        c => c);
+
+                //var pointersWithChunks = pointerFilesPerManifest.Keys
+                //    .GroupBy(mf => new HashValue {Value = mf.Hash})
+                //    .Select(
+                //        g => new
+                //        {
+                //            PointerFileEntry = g.SelectMany(m => m.PointerFileEntries).ToImmutableArray(),
+                //            UnencryptedChunks = g.SelectMany(m => m.ChunkNames.Select(ecn => unencryptedChunks[g.Key])).ToImmutableArray()
+                //        })
+                //    .ToImmutableArray();
+
+                //pointersWithChunks
+                //    .AsParallelWithParallelism()
+                //    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
+
+                //if (!_options.KeepPointers)
+                //    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
             });
         }
     }
 
-    internal class DownloadBlockProvider
+    internal class ProcessDecryptQueueBlockProvider
     {
-
-
-
-        private void Download()
+        public TransformBlock<PointerFile, PointerFile> GetBlock()
         {
             throw new NotImplementedException();
-
-
-            //var pointerFiles = _localRoot.GetAll().OfType<IPointerFile>().ToImmutableArray();
-
-            //var pointerFilesPerManifest = pointerFiles
-            //    .AsParallelWithParallelism()
-            //    .Where(pf => !pf.LocalContentFileInfo.Exists) //TODO test dit + same hash?
-            //    .GroupBy(pf => pf.Hash)
-            //    .ToImmutableDictionary(
-            //        g =>
-            //        {
-            //            var hashValue = g.Key;
-            //            var manifestFile = _manifestRepository.GetById(hashValue);
-            //            return _manifestService.ReadManifestFile(manifestFile);
-            //        },
-            //        g => g.ToList());
-
-            ////TODO QUID FILES THAT ALREADY EXIST / WITH DIFFERNT HASH?
-
-            //var chunksToDownload = pointerFilesPerManifest.Keys
-            //    .AsParallelWithParallelism()
-            //    .SelectMany(mf => mf.ChunkNames)
-            //    .Distinct()
-            //    .Select(chunkName => _chunkRepository.GetByName(chunkName))
-            //    .ToImmutableArray();
-
-            //var canDownloadAll = chunksToDownload.All(c => c.CanDownload());
-
-            //if (!canDownloadAll)
-            //{
-            //    _logger.LogCritical("Some blobs are still being rehydrated from Archive storage. Try again later.");
-            //    return;
-            //}
-
-            //chunksToDownload = chunksToDownload.Select(c => c.Hydrated).ToImmutableArray();
-
-            //var encryptedChunks = _chunkRepository.DownloadAll(chunksToDownload);
-
-            //var unencryptedChunks = encryptedChunks
-            //    .AsParallelWithParallelism()
-            //    .Select(ec => (IChunkFile)_encrypter.Decrypt(ec, true))
-            //    .ToImmutableDictionary(
-            //        c => c.Hash,
-            //        c => c);
-
-            //var pointersWithChunks = pointerFilesPerManifest.Keys
-            //    .GroupBy(mf => new HashValue {Value = mf.Hash})
-            //    .Select(
-            //        g => new
-            //        {
-            //            PointerFileEntry = g.SelectMany(m => m.PointerFileEntries).ToImmutableArray(),
-            //            UnencryptedChunks = g.SelectMany(m => m.ChunkNames.Select(ecn => unencryptedChunks[g.Key])).ToImmutableArray()
-            //        })
-            //    .ToImmutableArray();
-
-            //pointersWithChunks
-            //    .AsParallelWithParallelism()
-            //    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
-
-            //if (!_options.KeepPointers)
-            //    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
         }
     }
 
-    class RestoreBlockProvider
+    
+    internal class MergeBlockProvider
     {
+        public TransformBlock<PointerFile, PointerFile> GetBlock()
+        {
+            throw new NotImplementedException();
+        }
+
 
         //private void Restore(LocalRootRepository root, ImmutableArray<Manifest.PointerFileEntry> pfes, ImmutableArray<IChunkFile> chunks)
         //{
