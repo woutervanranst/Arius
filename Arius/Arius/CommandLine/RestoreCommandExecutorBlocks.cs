@@ -170,6 +170,7 @@ namespace Arius.CommandLine
                     {
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
+                        throw new NotImplementedException("nog _reconcileblock.post doen");
                         continue;
                     }
 
@@ -380,8 +381,6 @@ namespace Arius.CommandLine
         {
             return new(ecf =>
             {
-                //var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
-
                 var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
 
                 _encrypter.Decrypt(ecf, targetFile, true);
@@ -395,22 +394,53 @@ namespace Arius.CommandLine
 
     internal class ReconcilePointersWithChunksBlockProvider
     {
+        //public ReconcilePointersWithChunksBlockProvider()
+        //{
+
+        //}
+
+        //private readonly ConcurrentDictionary<HashValue, ChunkFile> _processedChunks = new(); //, IEnumerable<>>
+        ////private readonly ConcurrentDictionary<HashValue, PointerFile> _processedPointerFiles = new ();
+        //private readonly ConcurrentDictionary<HashValue, List<HashValue>> _haha = new(); //Key = PointerFile.Hash, List<HashValue> = ChunkHashes
+
+        private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
+        private readonly Dictionary<PointerFile, List<HashValue>> _inFlightPointers = new();
+
         public TransformManyBlock<object, PointerFile> GetBlock()
         {
             return new(item =>
             {
-                // either Pointer from 60
-                // or Chunk from 71
+                lock (_processedChunks)
+                {
+                    lock (_inFlightPointers)
+                    {
+                        if (item is PointerFile pf) //A pointer from R60
+                        {
+                            var chunksStillWaitingFor = pf.ChunkHashes.Except(_processedChunks.Keys).ToList();
+                            _inFlightPointers.Add(pf, chunksStillWaitingFor); //TODO
+                        }
+                        else if (item is ChunkFile cf) //A chunk from R72
+                        {
+                            _processedChunks.Add(cf.Hash, cf);
 
-                return Enumerable.Empty<PointerFile>();
+                            foreach (var requiredChunks in _inFlightPointers.Values.Where(kvp => kvp.Contains(cf.Hash)))
+                                requiredChunks.Remove(cf.Hash);
+                        }
+                        else
+                            throw new InvalidOperationException(); //TODO
+
+                        var readyPointers = _inFlightPointers.Where(a => !a.Value.Any()).Select(a => a.Key).ToArray();
+
+                        foreach (var readyPointer in readyPointers)
+                            _inFlightPointers.Remove(readyPointer);
+
+                        if (readyPointers.Any())
+                            return readyPointers;
+                        else
+                            return Enumerable.Empty<PointerFile>();
+                    }
+                }
             });
-
-            ////var unencryptedChunks = encryptedChunks
-            ////    .AsParallelWithParallelism()
-            ////    .Select(ec => (IChunkFile)_encrypter.Decrypt(ec, true))
-            ////    .ToImmutableDictionary(
-            ////        c => c.Hash,
-            ////        c => c);
 
             ////var pointersWithChunks = pointerFilesPerManifest.Keys
             ////    .GroupBy(mf => new HashValue {Value = mf.Hash})
