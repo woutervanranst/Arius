@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Services;
 using Azure.Storage.Blobs;
@@ -148,19 +149,29 @@ namespace Arius.Repositories
                 });
             }
 
-            public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target)
+            public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target, bool flatten)
             {
                 recbis = recbis.ToArray();
 
-                _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target);
+                var downloadedFiles = _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target, flatten);
 
-                return recbis.Select(recbi =>
+                if (recbis.Count() != downloadedFiles.Count())
+                    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
+
+                return downloadedFiles.Select(fi =>
                 {
-                    if (new FileInfo(Path.Combine(target.FullName, recbi.Name)) is var fi)
-                        return new EncryptedChunkFile(null, fi, recbi.Hash);
+                    var hash = new HashValue { Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension) };
 
-                    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
+                    return new EncryptedChunkFile(null, fi, hash);
                 });
+
+                //return downloadedFiles.Select(fi2=>
+                //{
+                //    if (new FileInfo(Path.Combine(target.FullName, fi2.Name)) is var fi)
+                //        return new EncryptedChunkFile(null, fi, fi2.Hash);
+
+                //    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
+                //});
             }
         }
     }

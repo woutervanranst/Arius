@@ -164,7 +164,7 @@ namespace Arius.Services
         {
             rawOutput = Execute(arguments);
 
-            var match = Regex.Match(rawOutput, regex);
+            var match = Regex.Match(rawOutput, regex, RegexOptions.Singleline);
 
             if (!match.Success)
             {
@@ -189,6 +189,16 @@ namespace Arius.Services
             t2 = (T2)Convert.ChangeType(regexMatch.Groups[t2Name].Value, typeof(T2));
             t3 = (T3)Convert.ChangeType(regexMatch.Groups[t3Name].Value, typeof(T3));
             t4 = (T4)Convert.ChangeType(regexMatch.Groups[t4Name].Value, typeof(T4));
+        }
+        public void Execute<T1, T2, T3, T4, T5>(string arguments, string regex, string t1Name, string t2Name, string t3Name, string t4Name, string t5Name, out string rawOutput, out T1 t1, out T2 t2, out T3 t3, out T4 t4, out T5 t5)
+        {
+            var regexMatch = Execute(arguments, regex, out rawOutput);
+
+            t1 = (T1)Convert.ChangeType(regexMatch.Groups[t1Name].Value, typeof(T1));
+            t2 = (T2)Convert.ChangeType(regexMatch.Groups[t2Name].Value, typeof(T2));
+            t3 = (T3)Convert.ChangeType(regexMatch.Groups[t3Name].Value, typeof(T3));
+            t4 = (T4)Convert.ChangeType(regexMatch.Groups[t4Name].Value, typeof(T4));
+            t5 = (T5)Convert.ChangeType(regexMatch.Groups[t5Name].Value, typeof(T5));
         }
     }
 }

@@ -58,9 +58,9 @@ namespace Arius.Repositories
             return _chunkRepository.Upload(ecfs, tier);
         }
 
-        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target)
+        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target, bool flatten)
         {
-            return _chunkRepository.Download(recbis, target);
+            return _chunkRepository.Download(recbis, target, flatten);
         }
 
 

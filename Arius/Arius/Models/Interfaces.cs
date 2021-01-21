@@ -50,6 +50,7 @@ namespace Arius.Models
     {
         void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite);
         //void Download(string remoteDirectoryName, IEnumerable<Blob> blobsToDownload, DirectoryInfo target);
-        void Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target);
+        //void Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target);
+        IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobsToDownload, DirectoryInfo target, bool flatten);
     }
 }

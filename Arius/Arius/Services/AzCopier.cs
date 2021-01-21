@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
@@ -198,7 +199,7 @@ namespace Arius.Services
         //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         //}
 
-        public void Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target)
+        public IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target, bool flatten)
         {
             blobItems = blobItems.ToArray();
 
@@ -208,19 +209,21 @@ namespace Arius.Services
 
             var start = DateTime.Now;
 
-            Download(blobItems.Select(bi => bi.Name), target);
+            var r = Download(blobItems.Select(bi => bi.Name), target, flatten);
 
             // TODO test 1 download die vanuit verschillende folders komt
 
             var elapsed = DateTime.Now - start;
 
             _logger.LogInformation($"Download complete. Avg. speed {((long)(size / elapsed.TotalSeconds)).GetBytesReadable()}/s");
+
+            return r;
         }
 
         /// <summary>
         /// Download the blobsToDownload to the specified target
         /// </summary>
-        private void Download(IEnumerable<string> blobsToDownload, DirectoryInfo target)
+        private IEnumerable<FileInfo> Download(IEnumerable<string> blobsToDownload, DirectoryInfo target, bool flatten)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>
@@ -232,18 +235,42 @@ namespace Arius.Services
             var sas = GetContainerSasUri(_bcc, _skc);
             string arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
 
-            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            //var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            //var regex = @$"Log file is located at: (?<log>.[^\\n]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var regex = @$"Log file is located at: (?<logFullName>.[^{Environment.NewLine}]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(_AzCopyPath.Result);
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
+            p.Execute(arguments, regex, "logFullName", "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput, out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
+
+            var downloadedFiles = ParseLogDownloadedFiles(logFullName).ToArray();
+
+            if (flatten)
+                foreach (var downloadedFile in downloadedFiles)
+                    downloadedFile.MoveTo(Path.Combine(target.FullName, downloadedFile.Name));
+
+            return downloadedFiles;
+
             //$"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
+        }
+
+        private IEnumerable<FileInfo> ParseLogDownloadedFiles(string logFullName)
+        {
+            var log = File.ReadAllText(@"C:\Users\Wouter\.azcopy\3934f085-adcf-b348-4d58-35a9a791067a.log");
+
+            var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
+
+            var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
+
+            var downloadedFiles = downloadedFilesMatches.Select(match => new FileInfo(match.Groups["downloadedFileFullName"].Value));
+
+            return downloadedFiles;
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
