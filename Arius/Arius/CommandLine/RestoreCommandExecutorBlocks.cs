@@ -240,7 +240,7 @@ namespace Arius.CommandLine
                     // Chunk already downloaded but not yet decryped?
                     if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}.{EncryptedChunkFile.Extension}")) is var ecffi && ecffi.Exists)
                     {
-                        // 70
+                        // R70
                         atLeastOneToDecrypt = true;
                         _decryptBlock.Post(new EncryptedChunkFile(_root, ecffi, chunkHash));
                         continue;
@@ -249,7 +249,7 @@ namespace Arius.CommandLine
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
                     if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && hrecbi.Downloadable)
                     {
-                        // 80
+                        // R80
                         atLeastOneToDownload = true;
                         _downloadBlock.Post(hrecbi);
                         continue;
@@ -258,7 +258,7 @@ namespace Arius.CommandLine
                     // Chunk not yet hydrated
                     if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
                     {
-                        // 90
+                        // R90
                         atLeastOneToHydrate = true;
                         _hydrateBlock.Post(arecbi);
                         continue;
@@ -317,27 +317,11 @@ namespace Arius.CommandLine
             _downloadTempDir = config.DownloadTempDir(root);
         }
 
-        //public DownloadBlockProvider AddSourceBlock(ISourceBlock<(PointerFile PointerFile, PointerState State)> source)
-        //{
-        //    _source = source;
-
-        //    return this;
-        //}
-
-        //public DownloadBlockProvider AddDownloadQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> downloadQueue)
-        //{
-        //    _downloadQueue = downloadQueue;
-
-        //    return this;
-        //}
-
         private readonly IConfiguration _config;
         private readonly AzureRepository _repo;
         private readonly DirectoryInfo _downloadTempDir;
 
-        //private readonly Dictionary<HashValue, RemoteEncryptedChunkBlobItem> _downloadQueue = new(); //Key = ChunkHashValue
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-
         private BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
 
         public ActionBlock<RemoteEncryptedChunkBlobItem> GetEnqueueBlock()
@@ -362,14 +346,13 @@ namespace Arius.CommandLine
                     }
                 });
 
-                _enqueueBlock.Completion.ContinueWith(_ => _downloadQueue.CompleteAdding()); //R301
+                _enqueueBlock.Completion.ContinueWith(_ => _downloadQueue.CompleteAdding()); //R811
             }
             //}
 
             return _enqueueBlock;
         }
         private ActionBlock<RemoteEncryptedChunkBlobItem> _enqueueBlock = null;
-
 
 
         public Task GetBatchingTask()
@@ -405,32 +388,13 @@ namespace Arius.CommandLine
                                 break;
                         }
 
-
-
-                        //do
-                        //{
-                        //    var item = _downloadQueue.GetConsumingEnumerable().Take(1).Single(); //must be outside of lock to avoid deadlock
-
-                        //    lock (_downloadedOrDownloading)
-                        //    {
-                        //        // WARNING potential thread safety issue? where element is taken from the queue and just after the GetEnqueueBlock() method starts checking the Contains
-                        //        _downloadedOrDownloading.Add(item.Key);
-                        //    }
-
-                        //    batch.Add(item.Value);
-                        //    size += item.Value.Length;
-
-                        //} while (size >= _config.BatchSize ||
-                        //         batch.Count >= _config.BatchCount ||
-                        //         !_downloadQueue.IsCompleted);
-
                         // TODO // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?
 
                         //Emit a batch
-                        GetDownloadBlock().Post(batch.ToArray()); //R300
+                        GetDownloadBlock().Post(batch.ToArray()); //R812
                     }
 
-                    GetDownloadBlock().Complete(); //R302
+                    GetDownloadBlock().Complete(); //R813
                 });
                 //}
             }

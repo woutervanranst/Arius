@@ -130,25 +130,25 @@ namespace Arius.CommandLine
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = false };
 
             
-            // 30
+            // R30
             synchronizeBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
                 _ => !_options.Download);
 
-            // 40
+            // R40
             synchronizeBlock.LinkTo(
                 processPointerChunksBlock,
                 propagateCompletionOptions,
                 _ => _options.Download);
 
-            //50
+            // R50
             processPointerChunksBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
                 propagateCompletionOptions,
                 r => r.State == PointerState.Restored,
                 r => r.PointerFile);
 
-            //60
+            // R60
             processPointerChunksBlock.LinkTo(
                 reconcilePointersWithChunksBlock,
                 doNotPropagateCompletionOptions,
@@ -157,27 +157,30 @@ namespace Arius.CommandLine
 
             processPointerChunksBlock.Completion.ContinueWith(_ => 
             {
-                decryptBlock.Complete(); //72
-                enqueueDownloadBlock.Complete(); //82
-                hydrateBlock.Complete(); //92
-            }); 
+                enqueueDownloadBlock.Complete(); //R81
+                hydrateBlock.Complete(); //R91
+            });
+
+            // R71
+            Task.WhenAll(processPointerChunksBlock.Completion, downloadBlock.Completion)
+                .ContinueWith(_ => decryptBlock.Complete());
 
                                              
-            // R83
+            // R82
             downloadBlock.LinkTo(
                 decryptBlock,
-                propagateCompletionOptions);
+                doNotPropagateCompletionOptions);
 
-            //71
+            // R72
             decryptBlock.LinkTo(
                 reconcilePointersWithChunksBlock,
                 doNotPropagateCompletionOptions);
 
-            //73
+            // R61
             Task.WhenAll(processPointerChunksBlock.Completion, decryptBlock.Completion)
                 .ContinueWith(_ => reconcilePointersWithChunksBlock.Complete());
 
-            //110
+            //R62
             reconcilePointersWithChunksBlock.LinkTo(
                 mergeBlock,
                 propagateCompletionOptions);
@@ -186,19 +189,19 @@ namespace Arius.CommandLine
             //Fill the flow
             if (_options.Synchronize)
             {
-                //10
+                // R10
                 synchronizeBlock.Post(_root);
                 synchronizeBlock.Complete();
             }
             else if (_options.Download)
             {
-                //20
+                // R20
                 throw new NotFiniteNumberException();
             }
 
 
             // Wait for the end
-            // 130
+            // R110
             Task.WaitAll(
                 synchronizeBlock.Completion,
                 processPointerChunksBlock.Completion,
