@@ -304,7 +304,7 @@ namespace Arius.CommandLine
         {
             return Task.Run(() =>
             {
-                Thread.CurrentThread.Name = "Upload Enqueuer";
+                Thread.CurrentThread.Name = "Upload Batcher";
 
                 while (!_enqueueEncryptedChunksForUploadBlock.Completion.IsCompleted ||
                        //encryptChunksBlock.OutputCount > 0 || 
@@ -312,7 +312,7 @@ namespace Arius.CommandLine
                 {
                     var uploadBatch = new List<EncryptedChunkFile>();
                     long size = 0;
-                    foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
+                    foreach (var ecf in _uploadQueue.GetConsumingEnumerable()) //TODO DIT KLOPT NIET gaat gewoon heel de queue uitlezen
                     {
                         uploadBatch.Add(ecf);
                         size += ecf.Length;

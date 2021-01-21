@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Extensions;
@@ -316,73 +317,151 @@ namespace Arius.CommandLine
             _downloadTempDir = config.DownloadTempDir(root);
         }
 
-        public DownloadBlockProvider AddSourceBlock(ISourceBlock<(PointerFile PointerFile, PointerState State)> source)
-        {
-            _source = source;
+        //public DownloadBlockProvider AddSourceBlock(ISourceBlock<(PointerFile PointerFile, PointerState State)> source)
+        //{
+        //    _source = source;
 
-            return this;
-        }
+        //    return this;
+        //}
+
+        //public DownloadBlockProvider AddDownloadQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> downloadQueue)
+        //{
+        //    _downloadQueue = downloadQueue;
+
+        //    return this;
+        //}
 
         private readonly IConfiguration _config;
         private readonly AzureRepository _repo;
         private readonly DirectoryInfo _downloadTempDir;
 
-        private readonly Dictionary<HashValue, RemoteEncryptedChunkBlobItem> _downloadQueue = new(); //Key = ChunkHashValue
+        //private readonly Dictionary<HashValue, RemoteEncryptedChunkBlobItem> _downloadQueue = new(); //Key = ChunkHashValue
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-        
-        private ISourceBlock<(PointerFile PointerFile, PointerState State)> _source;
 
-        public TransformManyBlock<RemoteEncryptedChunkBlobItem, RemoteEncryptedChunkBlobItem[]> GetEnqueueBlock()
+        private BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
+
+        public ActionBlock<RemoteEncryptedChunkBlobItem> GetEnqueueBlock()
         {
-            return new(recbi =>
+            //lock (_enqueueBlock)
+            //{
+            if (_enqueueBlock is null)
             {
-                RemoteEncryptedChunkBlobItem[] batch = null;
-
-                lock (_downloadQueue)
+                _enqueueBlock = new(recbi =>
                 {
-                    lock (_downloadedOrDownloading)
+                    lock (_downloadQueue)
                     {
-                        if (!(_downloadQueue.ContainsKey(recbi.Hash) || _downloadedOrDownloading.Contains(recbi.Hash)))
+                        lock (_downloadedOrDownloading)
                         {
-                            // Chunk is not yet downloaded or being downlaoded -- add to queue
-                            _downloadQueue.Add(recbi.Hash, recbi);
+                            if (!(_downloadQueue.Select(kvp => kvp.Key).Contains(recbi.Hash) ||
+                                _downloadedOrDownloading.Contains(recbi.Hash)))
+                            {
+                                    // Chunk is not yet downloaded or being downlaoded -- add to queue
+                                    _downloadQueue.Add(new(recbi.Hash, recbi));
+                            }
                         }
+                    }
+                });
 
-                        if (_downloadQueue.Values.Sum(recbi2 => recbi2.Length) >= _config.BatchSize ||
-                            _downloadQueue.Count >= _config.BatchSize ||
-                            _source.Completion.IsCompleted)
-                        {
-                            // Emit a batch
-                            batch = _downloadQueue.Values.ToArray();
+                _enqueueBlock.Completion.ContinueWith(_ => _downloadQueue.CompleteAdding()); //R301
+            }
+            //}
 
-                            _downloadedOrDownloading.AddRange(_downloadQueue.Keys);
-                            _downloadQueue.Clear();
-
-                            // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?
-                        }
-                    } 
-                }
-
-                if (batch is not null)
-                    // Emit this batch
-                    return new[] { batch };
-                else
-                    //Wait unil more values accumulate
-                    return Enumerable.Empty<RemoteEncryptedChunkBlobItem[]>();
-            });
+            return _enqueueBlock;
         }
+        private ActionBlock<RemoteEncryptedChunkBlobItem> _enqueueBlock = null;
+
+
+
+        public Task GetBatchingTask()
+        {
+            //lock (_createBatchTask)
+            //{
+            if (_createBatchTask is null)
+            {
+                _createBatchTask = Task.Run(() =>
+                {
+                    Thread.CurrentThread.Name = "Download Batcher";
+
+                    while (!GetEnqueueBlock().Completion.IsCompleted ||
+                           !_downloadQueue.IsCompleted) //_downloadQueue.Count > 0)
+                    {
+                        var batch = new List<RemoteEncryptedChunkBlobItem>();
+                        long size = 0;
+
+                        foreach (var item in _downloadQueue.GetConsumingEnumerable())
+                        {
+                            lock (_downloadedOrDownloading)
+                            {
+                                // WARNING potential thread safety issue? where element is taken from the queue and just after the GetEnqueueBlock() method starts checking the Contains
+                                _downloadedOrDownloading.Add(item.Key);
+                            }
+
+                            batch.Add(item.Value);
+                            size += item.Value.Length;
+
+                            if (size >= _config.BatchSize ||
+                                batch.Count >= _config.BatchCount ||
+                                _downloadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
+                                break;
+                        }
+
+
+
+                        //do
+                        //{
+                        //    var item = _downloadQueue.GetConsumingEnumerable().Take(1).Single(); //must be outside of lock to avoid deadlock
+
+                        //    lock (_downloadedOrDownloading)
+                        //    {
+                        //        // WARNING potential thread safety issue? where element is taken from the queue and just after the GetEnqueueBlock() method starts checking the Contains
+                        //        _downloadedOrDownloading.Add(item.Key);
+                        //    }
+
+                        //    batch.Add(item.Value);
+                        //    size += item.Value.Length;
+
+                        //} while (size >= _config.BatchSize ||
+                        //         batch.Count >= _config.BatchCount ||
+                        //         !_downloadQueue.IsCompleted);
+
+                        // TODO // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?
+
+                        //Emit a batch
+                        GetDownloadBlock().Post(batch.ToArray()); //R300
+                    }
+
+                    GetDownloadBlock().Complete(); //R302
+                });
+                //}
+            }
+
+            return _createBatchTask;
+        }
+        private Task _createBatchTask = null;
+
+        
 
         public TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> GetDownloadBlock()
         {
-            return new(batch =>
-            {
-                //Download this batch
-                var ecfs = _repo.Download(batch, _downloadTempDir);
-                return ecfs;
+            //lock (_downloadBlock)
+            //{
+                if (_downloadBlock is null)
+                {
+                    _downloadBlock = new(batch =>
+                    {
+                        //Download this batch
+                        var ecfs = _repo.Download(batch, _downloadTempDir);
+                        return ecfs;
 
-            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
+                    }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
+                }
+            //}
+
+            return _downloadBlock;
         }
+        private TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> _downloadBlock;
     }
+
 
     internal class DecryptBlockProvider
     {

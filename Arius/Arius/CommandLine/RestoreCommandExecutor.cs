@@ -102,9 +102,12 @@ namespace Arius.CommandLine
 
             var hydrateBlockProvider = blocks.GetService<HydrateBlockProvider>();
             var hydrateBlock = hydrateBlockProvider!.GetBlock();
+
             var downloadBlockProvider = blocks.GetService<DownloadBlockProvider>();
             var enqueueDownloadBlock = downloadBlockProvider!.GetEnqueueBlock();
+            var batchingTask = downloadBlockProvider!.GetBatchingTask();
             var downloadBlock = downloadBlockProvider!.GetDownloadBlock();
+
             var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
 
 
@@ -114,7 +117,7 @@ namespace Arius.CommandLine
                 .SetDecryptBlock(decryptBlock)
                 .GetBlock();
 
-            downloadBlockProvider.AddSourceBlock(processPointerChunksBlock);
+            //downloadBlockProvider.AddSourceBlock(processPointerChunksBlock);
 
             var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
 
@@ -155,16 +158,12 @@ namespace Arius.CommandLine
             processPointerChunksBlock.Completion.ContinueWith(_ => 
             {
                 decryptBlock.Complete(); //72
-                //downloadBlock.Complete(); //82
+                enqueueDownloadBlock.Complete(); //82
                 hydrateBlock.Complete(); //92
             }); 
-                                             
-            // 81
-            enqueueDownloadBlock.LinkTo(
-                downloadBlock,
-                propagateCompletionOptions);
 
-            // 83
+                                             
+            // R83
             downloadBlock.LinkTo(
                 decryptBlock,
                 propagateCompletionOptions);
@@ -200,7 +199,9 @@ namespace Arius.CommandLine
 
             // Wait for the end
             // 130
-            Task.WaitAll(processPointerChunksBlock.Completion,
+            Task.WaitAll(
+                synchronizeBlock.Completion,
+                processPointerChunksBlock.Completion,
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
