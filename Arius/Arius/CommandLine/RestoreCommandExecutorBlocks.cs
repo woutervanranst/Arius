@@ -91,62 +91,8 @@ namespace Arius.CommandLine
         }
     }
 
-    //    internal class GetCunksToDownloadPerPointerFileBlockProvider
-    //    {
-    //        public GetCunksToDownloadPerPointerFileBlockProvider(RestoreOptions options, 
-    //            IConfiguration config, 
-    //            ILogger<GetCunksToDownloadPerPointerFileBlockProvider> logger, 
-    //            IHashValueProvider hvp,
-    //            )
-    //        {
-    //            _options = options;
-    //            _config = config;
-    //            _logger = logger;
-    //            _hvp = hvp;
-    //            _repo = repo;
-
-    //            _root = new DirectoryInfo(options.Path);
-    //        }
-
-    //        private readonly RestoreOptions _options;
-    //        private readonly IConfiguration _config;
-    //        private readonly ILogger<GetCunksToDownloadPerPointerFileBlockProvider> _logger;
-    //        private readonly IHashValueProvider _hvp;
-    //        private readonly AzureRepository _repo;
-    //        private readonly DirectoryInfo _root;
-
-
-    //        public GetCunksToDownloadPerPointerFileBlockProvider AddAndInitializeAlreadyDownloaded(Dictionary<HashValue, IChunkFile> alreadyDownloaded)
-    //        {
-    //            foreach (var fi in _config.DownloadTempDir(_root).GetFiles())
-    //            {
-    //                if (fi.Name.EndsWith(EncryptedChunkFile.Extension))
-    //                {
-    //                    var ecf = new EncryptedChunkFile(_root, fi, new HashValue() {Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension)});
-    //                    alreadyDownloaded.Add(ecf.Hash, ecf);
-    //                }
-    //                else if (fi.Name.EndsWith(ChunkFile.Extension))
-    //                {
-    //                    var cf = new ChunkFile(_root, fi, new HashValue() {Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension)});
-    //                    alreadyDownloaded.Add(cf.Hash, cf);
-    //                }
-    //            }
-
-    //            return this;
-    //        }
-
-    enum PointerState
-    {
-        Restored,
-        //ToHydrate,
-        //Hydrating,
-        NotYetDownloaded,
-        //ChunksDownloaded
-        NotYetHydrated,
-        NotYetDecrypted,
-        NotYetMerged
-    }
     
+
     internal class ProcessPointerChunksBlockProvider
     {
         public ProcessPointerChunksBlockProvider(
@@ -170,29 +116,18 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
-        //private BlockingCollection<RemoteEncryptedChunkBlobItem> _hydrateQueue;
-        //private BlockingCollection<RemoteEncryptedChunkBlobItem> _downloadQueue;
-        //private BlockingCollection<EncryptedChunkFile> _decryptQueue;
-
-        //public ProcessPointerChunksBlockProvider AddHydrateQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> hydrateQueue)
-        //{
-        //    _hydrateQueue = hydrateQueue;
-        //    return this;
-        //}
-        //public ProcessPointerChunksBlockProvider AddDownloadQueue(BlockingCollection<RemoteEncryptedChunkBlobItem> downloadQueue)
-        //{
-        //    _downloadQueue = downloadQueue;
-        //    return this;
-        //}
-        //public ProcessPointerChunksBlockProvider AddDecryptQueue(BlockingCollection<EncryptedChunkFile> decryptQueue)
-        //{
-        //    _decryptQueue = decryptQueue;
-        //    return this;
-        //}
-
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _hydrateBlock;
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _downloadBlock;
         private ITargetBlock<EncryptedChunkFile> _decryptBlock;
+
+        public enum PointerState
+        {
+            Restored,
+            NotYetMerged,
+            NotYetDecrypted,
+            NotYetDownloaded,
+            NotYetHydrated
+        }
 
         public ProcessPointerChunksBlockProvider SetHydrateBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> hydrateBlock)
         {
@@ -231,16 +166,18 @@ namespace Arius.CommandLine
                 foreach (var chunkHash in pf.ChunkHashes)
                 {
                     // Chunk already downloaded & decrypted?
-                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}.{ChunkFile.Extension}")) is var cffi && cffi.Exists)
+                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}{ChunkFile.Extension}")) is var cffi && cffi.Exists)
                     {
+                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
                         continue;
                     }
 
                     // Chunk already downloaded but not yet decryped?
-                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}.{EncryptedChunkFile.Extension}")) is var ecffi && ecffi.Exists)
+                    if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}{EncryptedChunkFile.Extension}")) is var ecffi && ecffi.Exists)
                     {
                         // R70
+                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded but not yet decrypted. Decrypting.");
                         atLeastOneToDecrypt = true;
                         _decryptBlock.Post(new EncryptedChunkFile(_root, ecffi, chunkHash));
                         continue;
@@ -250,6 +187,7 @@ namespace Arius.CommandLine
                     if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && hrecbi.Downloadable)
                     {
                         // R80
+                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} not yet downloaded. Queueing for download.");
                         atLeastOneToDownload = true;
                         _downloadBlock.Post(hrecbi);
                         continue;
@@ -259,6 +197,7 @@ namespace Arius.CommandLine
                     if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
                     {
                         // R90
+                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in archive tier. Hydrating.");
                         atLeastOneToHydrate = true;
                         _hydrateBlock.Post(arecbi);
                         continue;
@@ -391,7 +330,8 @@ namespace Arius.CommandLine
                         // TODO // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?
 
                         //Emit a batch
-                        GetDownloadBlock().Post(batch.ToArray()); //R812
+                        if (batch.Any()) //op het einde - als alles al gedownload was
+                            GetDownloadBlock().Post(batch.ToArray()); //R812
                     }
 
                     GetDownloadBlock().Complete(); //R813
@@ -403,22 +343,22 @@ namespace Arius.CommandLine
         }
         private Task _createBatchTask = null;
 
-        
+
 
         public TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> GetDownloadBlock()
         {
             //lock (_downloadBlock)
             //{
-                if (_downloadBlock is null)
+            if (_downloadBlock is null)
+            {
+                _downloadBlock = new(batch =>
                 {
-                    _downloadBlock = new(batch =>
-                    {
-                        //Download this batch
-                        var ecfs = _repo.Download(batch, _downloadTempDir);
-                        return ecfs;
+                    //Download this batch
+                    var ecfs = _repo.Download(batch, _downloadTempDir, true);
+                    return ecfs;
 
-                    }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
-                }
+                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
+            }
             //}
 
             return _downloadBlock;
@@ -429,11 +369,26 @@ namespace Arius.CommandLine
 
     internal class DecryptBlockProvider
     {
+        private readonly IEncrypter _encrypter;
+
+        public DecryptBlockProvider(IEncrypter encrypter)
+        {
+            _encrypter = encrypter;
+        }
+
         public TransformBlock<EncryptedChunkFile, ChunkFile> GetBlock()
         {
-            return new(item =>
+            return new(ecf =>
             {
-                return default(ChunkFile);
+                //var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
+
+                var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
+
+                _encrypter.Decrypt(ecf, targetFile, true);
+
+                var cf = new ChunkFile(null, targetFile, ecf.Hash);
+
+                return cf;
             });
         }
     }

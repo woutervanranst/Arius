@@ -145,7 +145,7 @@ namespace Arius.CommandLine
             processPointerChunksBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
                 propagateCompletionOptions,
-                r => r.State == PointerState.Restored,
+                r => r.State == ProcessPointerChunksBlockProvider.PointerState.Restored,
                 r => r.PointerFile);
 
             // R60
