@@ -85,7 +85,7 @@ namespace Arius.CommandLine
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
-                .AddSingleton<UploadTaskProvider>()
+                .AddSingleton<EnqueueUploadTaskProvider>()
                 .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
                 .AddSingleton<CreateManifestBlockProvider>()
                 .AddSingleton<ReconcileBinaryFilesWithManifestBlockProvider>()
@@ -128,7 +128,7 @@ namespace Arius.CommandLine
             var uploadEncryptedChunksBlock =  blocks.GetService<UploadEncryptedChunksBlockProvider>()!.GetBlock();
 
 
-            var uploadTask = blocks.GetService<UploadTaskProvider>()
+            var uploadTask = blocks.GetService<EnqueueUploadTaskProvider>()
                 !.AddUploadQueue(uploadQueue)
                 .AddUploadEncryptedChunkBlock(uploadEncryptedChunksBlock)
                 .AddEnqueueEncryptedChunksForUploadBlock(enqueueEncryptedChunksForUploadBlock)

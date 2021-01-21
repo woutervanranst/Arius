@@ -263,11 +263,11 @@ namespace Arius.CommandLine
         }
     }
 
-    internal class UploadTaskProvider
+    internal class EnqueueUploadTaskProvider
     {
         private readonly IConfiguration _config;
 
-        public UploadTaskProvider(IConfiguration config)
+        public EnqueueUploadTaskProvider(IConfiguration config)
         {
             _config = config;
         }
@@ -279,21 +279,21 @@ namespace Arius.CommandLine
         //private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
         //private const int AzCopyBatchCount = 128;
 
-        public UploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
+        public EnqueueUploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
             _uploadQueue = uploadQueue;
 
             return this;
         }
 
-        public UploadTaskProvider AddUploadEncryptedChunkBlock(ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock)
+        public EnqueueUploadTaskProvider AddUploadEncryptedChunkBlock(ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock)
         {
             _uploadEncryptedChunksBlock = uploadEncryptedChunksBlock;
 
             return this;
         }
 
-        public UploadTaskProvider AddEnqueueEncryptedChunksForUploadBlock(ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
+        public EnqueueUploadTaskProvider AddEnqueueEncryptedChunksForUploadBlock(ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
         {
             _enqueueEncryptedChunksForUploadBlock = enqueueEncryptedChunksForUploadBlock;
 
@@ -304,7 +304,7 @@ namespace Arius.CommandLine
         {
             return Task.Run(() =>
             {
-                Thread.CurrentThread.Name = "Uploader";
+                Thread.CurrentThread.Name = "Upload Enqueuer";
 
                 while (!_enqueueEncryptedChunksForUploadBlock.Completion.IsCompleted ||
                        //encryptChunksBlock.OutputCount > 0 || 
@@ -343,8 +343,7 @@ namespace Arius.CommandLine
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> GetBlock()
         {
-            return new(
-                encryptedChunkFiles =>
+            return new(encryptedChunkFiles =>
                 {
                     //Upload the files
                     var uploadedBlobs = _azureRepository.Upload(encryptedChunkFiles, _options.Tier);
@@ -354,8 +353,7 @@ namespace Arius.CommandLine
                         encryptedChunkFile.Delete();
 
                     return uploadedBlobs.Select(recbi => recbi.Hash);
-                },
-                new ExecutionDataflowBlockOptions() {MaxDegreeOfParallelism = 2});
+                }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 2});
         }
     }
 

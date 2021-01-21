@@ -198,7 +198,7 @@ namespace Arius.CommandLine
             _hydrateBlock = hydrateBlock;
             return this;
         }
-        public ProcessPointerChunksBlockProvider SetDownloadBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> downloadBlock)
+        public ProcessPointerChunksBlockProvider SetEnqueueDownloadBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> downloadBlock)
         {
             _downloadBlock = downloadBlock;
             return this;
@@ -332,7 +332,7 @@ namespace Arius.CommandLine
         
         private ISourceBlock<(PointerFile PointerFile, PointerState State)> _source;
 
-        public TransformManyBlock<RemoteEncryptedChunkBlobItem, EncryptedChunkFile> GetBlock()
+        public TransformManyBlock<RemoteEncryptedChunkBlobItem, RemoteEncryptedChunkBlobItem[]> GetEnqueueBlock()
         {
             return new(recbi =>
             {
@@ -364,15 +364,23 @@ namespace Arius.CommandLine
                 }
 
                 if (batch is not null)
-                {
-                    //Download this batch
-                    var ecfs = _repo.Download(batch, _downloadTempDir);
-                    return ecfs;
-                }
+                    // Emit this batch
+                    return new[] { batch };
                 else
                     //Wait unil more values accumulate
-                    return Enumerable.Empty<EncryptedChunkFile>();
+                    return Enumerable.Empty<RemoteEncryptedChunkBlobItem[]>();
             });
+        }
+
+        public TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> GetDownloadBlock()
+        {
+            return new(batch =>
+            {
+                //Download this batch
+                var ecfs = _repo.Download(batch, _downloadTempDir);
+                return ecfs;
+
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
         }
     }
 

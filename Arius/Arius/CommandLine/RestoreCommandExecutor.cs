@@ -103,14 +103,14 @@ namespace Arius.CommandLine
             var hydrateBlockProvider = blocks.GetService<HydrateBlockProvider>();
             var hydrateBlock = hydrateBlockProvider!.GetBlock();
             var downloadBlockProvider = blocks.GetService<DownloadBlockProvider>();
-            var downloadBlock = downloadBlockProvider
-                !.GetBlock();
+            var enqueueDownloadBlock = downloadBlockProvider!.GetEnqueueBlock();
+            var downloadBlock = downloadBlockProvider!.GetDownloadBlock();
             var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
 
 
             var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
                 !.SetHydrateBlock(hydrateBlock)
-                .SetDownloadBlock(downloadBlock)
+                .SetEnqueueDownloadBlock(enqueueDownloadBlock)
                 .SetDecryptBlock(decryptBlock)
                 .GetBlock();
 
@@ -160,6 +160,11 @@ namespace Arius.CommandLine
             }); 
                                              
             // 81
+            enqueueDownloadBlock.LinkTo(
+                downloadBlock,
+                propagateCompletionOptions);
+
+            // 83
             downloadBlock.LinkTo(
                 decryptBlock,
                 propagateCompletionOptions);
