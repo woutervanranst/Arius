@@ -83,17 +83,17 @@ namespace Arius.Services
             }
 
             if (!h.HasValue)
-                h = GetHashValue2(f);
+                h = GetHashValue(f.FullName);
 
             return h.Value;
         }
 
-        private HashValue GetHashValue2(BinaryFile f)
+        public HashValue GetHashValue(string fullName)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = System.IO.File.OpenRead(f.FullName);
+            using Stream fs = File.OpenRead(fullName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();
@@ -102,7 +102,7 @@ namespace Arius.Services
 
             fs.Close();
 
-            return new HashValue {Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
+            return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
         }
 
         public static string ByteArrayToString(byte[] ba)

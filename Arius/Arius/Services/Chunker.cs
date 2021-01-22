@@ -15,12 +15,12 @@ namespace Arius.Services
     }
     internal class Chunker : IChunker
     {
-        public IEnumerable<IChunkFile> Chunk(BinaryFile item)
+        public IChunkFile[] Chunk(BinaryFile item)
         {
             return new[] {item};
         }
 
-        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin, FileInfo target)
+        public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
         {
             File.Move(chunksToJoin.Single().FullName, target.FullName);
 
@@ -31,52 +31,116 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
-        private readonly IConfiguration _config;
-
-        public DedupChunker(IConfiguration config)
+        public DedupChunker(IConfiguration config, IHashValueProvider hvp)
         {
-            _config = config;
+            _uploadTempDir = config.UploadTempDir;
+            _hvp = hvp;
         }
 
-        private static StreamBreaker _sb = new();
+        private static readonly StreamBreaker _sb = new();
+        private readonly IHashValueProvider _hvp;
+        private readonly DirectoryInfo _uploadTempDir;
 
-        public IEnumerable<IChunkFile> Chunk(BinaryFile f)
+        public IChunkFile[] Chunk(BinaryFile bf)
         {
-            using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
-            fs.Position = 0;
-            
-            var tempDir = new DirectoryInfo(Path.Combine(_config.UploadTempDir.FullName, "chunks", f.Name + ".arius"));
-            tempDir.Create();
+            var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.Name}.arius"));
+            if (di.Exists)
+                di.Delete();
+            di.Create();
 
-            foreach (var chunk in _sb.GetChunks(fs, fs.Length, SHA256.Create()))
+
+            //var streamBreaker = _sb; // new StreamBreaker();
+            using var bffs = new FileStream(bf.FullName, FileMode.Open, FileAccess.Read);
+            var chunkDefs = _sb.GetChunks(bffs, bffs.Length, SHA256.Create()).ToArray();
+
+
+            //using var fs = new FileStream(bf.FullName, FileMode.Open, FileAccess.Read);
+            bffs.Position = 0;
+
+            var chunks = new List<ChunkFile>();
+
+            for (int i = 0; i < chunkDefs.Count(); i++)
             {
-                var hashValue = new HashValue {Value = SHA256Hasher.ByteArrayToString(chunk.Hash)};
-                
-                var chunkFullName = Path.Combine(tempDir.FullName, hashValue.Value + ChunkFile.Extension);
+                var chunk = chunkDefs[i];
 
                 byte[] buff = new byte[chunk.Length];
-                fs.Read(buff, 0, (int)chunk.Length);
+                bffs.Read(buff, 0, (int)chunk.Length);
 
+                var chunkFullName = $@"{di.FullName}\{i}";
                 using var fileStream = File.Create(chunkFullName);
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                yield return new ChunkFile(f.Root, new FileInfo(chunkFullName), hashValue);
+                var hashValue = _hvp.GetHashValue(chunkFullName);
+                chunks.Add(new ChunkFile(bf.Root, new FileInfo($@"{di.FullName}\{i}"), hashValue));
             }
+
+            return chunks.ToArray();
+
+
+
+
+            //var tempDir = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{f.Name}.arius"));
+            //if (tempDir.Exists)
+            //    tempDir.Delete();
+            //tempDir.Create();
+
+            ////using var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read);
+            //////fs.Position = 0;
+
+            ////using var hasher = SHA256.Create();
+
+            ////var chunkDefs = _sb.GetChunks(fs, fs.Length, hasher).ToArray();
+            //var cfs = new List<ChunkFile>();
+
+            //StreamBreaker.Chunk[] chunkDefs;
+            //using (var hasher = SHA256.Create())
+            //{
+            //    var streamBreaker = new StreamBreaker();
+            //    using (var fs = new FileStream(f.FullName, FileMode.Open, FileAccess.Read))
+            //    {
+            //        chunkDefs = streamBreaker.GetChunks(fs, fs.Length, hasher).ToArray();
+
+
+
+            //        for (int i = 0; i < chunkDefs.Length; i++)
+            //        //foreach (var chunk in chunkDefs)
+            //        {
+            //            //var hashValue = new HashValue { Value = SHA256Hasher.ByteArrayToString(chunk.Hash) };
+
+            //            var chunk = chunkDefs[i];
+            //            byte[] buff = new byte[chunk.Length];
+            //            fs.Read(buff, 0, (int)chunk.Length);
+
+            //            var chunkFullName = Path.Combine(tempDir.FullName, $"{i}{ChunkFile.Extension}");
+            //            using var fileStream = File.Create(chunkFullName);
+            //            fileStream.Write(buff, 0, (int)chunk.Length);
+            //            fileStream.Close();
+
+            //            var hashValue = _hvp.GetHashValue(chunkFullName);
+
+            //            cfs.Add(new ChunkFile(f.Root, new FileInfo(chunkFullName), hashValue));
+            //        }
+
+            //        fs.Close();
+            //    }
+            //}
+
+
+            //return cfs.ToArray();
         }
 
-        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin, FileInfo target)
+        public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
         {
-            var chunkStreams = chunksToJoin.Select(c => new FileStream(c.FullName, FileMode.Open, FileAccess.Read));
+            var chunkStreams = new List<Stream>();
+            for (int i = 0; i < chunksToJoin.Length; i++)
+                chunkStreams.Add(new FileStream(chunksToJoin[i].FullName, FileMode.Open, FileAccess.Read));
+
             var stream = new ConcatenatedStream(chunkStreams);
 
-            //var xx = chunksToJoin.Sum(a => a.Length);
-
-            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-            //using var fff = File.Create(restorePath);
-            using var fff = target.Create();
-            stream.CopyTo(fff);
-            fff.Close();
+            using var targetStream = File.Create(target.FullName); // target.Create();
+            stream.CopyTo(targetStream);
+            targetStream.Close();
 
             return new BinaryFile(null, target);
         }

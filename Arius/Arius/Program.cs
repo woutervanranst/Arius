@@ -64,7 +64,7 @@ namespace Arius
 
         internal static ServiceProvider GetServiceProvider(Configuration config, ParsedCommandProvider pcp)
         {
-            var serviceProvider = new ServiceCollection()
+            var serviceCollection = new ServiceCollection()
                 .AddLogging(builder =>
                 {
                     //Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
@@ -94,19 +94,27 @@ namespace Arius
                 //.AddSingleton<ManifestService>()
                 .AddSingleton<PointerService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker>(s => ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ? 
-                    new DedupChunker(s.GetService<IConfiguration>()) : 
-                    new Chunker())
+                //.AddSingleton<IChunker>(s => ((IChunkerOptions)pcp.CommandExecutorOptions).Dedup ?
+                //    new DedupChunker(s.GetService<IConfiguration>()) :
+                //    new Chunker())
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
-                
+
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
                 .AddSingleton<RestoreCommandExecutor>()
 
-                .AddSingleton<AzureRepository>()
-                .BuildServiceProvider();
-            return serviceProvider;
+                .AddSingleton<AzureRepository>();
+
+            // Add Chunkers
+            if (((IChunkerOptions)pcp.CommandExecutorOptions).Dedup)
+                serviceCollection.AddSingleton<IChunker, DedupChunker>();
+            else
+                serviceCollection.AddSingleton<IChunker, Chunker>();
+            serviceCollection.AddSingleton<Chunker>();
+            serviceCollection.AddSingleton<DedupChunker>();
+
+            return serviceCollection.BuildServiceProvider();
         }
     }
 }

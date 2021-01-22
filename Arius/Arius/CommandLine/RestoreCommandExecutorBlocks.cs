@@ -408,12 +408,15 @@ namespace Arius.CommandLine
         {
             if (_reconcilePointerBlock is null)
             {
-                _reconcilePointerBlock = new(pf => {
+                _reconcilePointerBlock = new(pf => 
+                {
+                    lock (_inFlightPointers)
+                    {
+                        if (!_inFlightPointers.ContainsKey(pf.Hash))
+                            _inFlightPointers.Add(pf.Hash, new(new List<PointerFile>(), pf.ChunkHashes.ToList()));
 
-                    if (!_inFlightPointers.ContainsKey(pf.Hash))
-                        _inFlightPointers.Add(pf.Hash, new(new List<PointerFile>(), pf.ChunkHashes.ToList()));
-
-                    _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
+                        _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
+                    }
                 });
             }
 
@@ -430,7 +433,7 @@ namespace Arius.CommandLine
 
                 
                 // Wait until all pointers have been reconciled and we have a full view of what chunks are needed for which files
-                Task.WaitAll(_reconcilePointerBlock.Completion);
+                Task.WaitAll(_reconcilePointerBlock.Completion); // R603
 
                 lock (_inFlightPointers)
                 {
@@ -473,10 +476,10 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(RestoreOptions options, IConfiguration config, IHashValueProvider hvp)
+        public MergeBlockProvider(RestoreOptions options, IConfiguration config, IHashValueProvider hvp, Chunker chunker, DedupChunker dedupChunker)
         {
             _chunker = new();
-            _dedupChunker = new(config);
+            _dedupChunker = dedupChunker;
             _hvp = hvp;
             _keepPointers = options.KeepPointers;
         }
@@ -531,7 +534,7 @@ namespace Arius.CommandLine
             });
         }
 
-        private BinaryFile Merge(IEnumerable<IChunkFile> chunks, FileInfo target)
+        private BinaryFile Merge(IChunkFile[] chunks, FileInfo target)
         {
             if (chunks.Count() == 1)
                 return _chunker.Merge(chunks, target);
