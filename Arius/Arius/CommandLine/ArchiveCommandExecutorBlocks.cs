@@ -289,23 +289,28 @@ namespace Arius.CommandLine
 
                 while (!_enqueueEncryptedChunksForUploadBlock.Completion.IsCompleted ||
                        //encryptChunksBlock.OutputCount > 0 || 
-                       _uploadQueue.Count > 0)
+                       //_uploadQueue.Count > 0)
+                       !_uploadQueue.IsCompleted)
                 {
-                    var uploadBatch = new List<EncryptedChunkFile>();
+                    var batch = new List<EncryptedChunkFile>();
                     long size = 0;
+
                     foreach (var ecf in _uploadQueue.GetConsumingEnumerable()) //TODO DIT KLOPT NIET gaat gewoon heel de queue uitlezen
                     {
-                        uploadBatch.Add(ecf);
+                        batch.Add(ecf);
                         size += ecf.Length;
+
+                        if (size >= _config.BatchSize ||
+                            batch.Count >= _config.BatchCount ||
+                            _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
+                        {
+                            break;
+                        }
                     }
 
-                    if (size >= _config.BatchSize ||
-                        uploadBatch.Count >= _config.BatchCount ||
-                        _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
-                    {
-                        _uploadEncryptedChunksBlock.Post(uploadBatch.ToArray());
-                        break;
-                    }
+                    //Emit a batch
+                    if (batch.Any())
+                        _uploadEncryptedChunksBlock.Post(batch.ToArray());
                 }
             });
         }
@@ -324,14 +329,14 @@ namespace Arius.CommandLine
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> GetBlock()
         {
-            return new(encryptedChunkFiles =>
+            return new(ecfs =>
                 {
                     //Upload the files
-                    var uploadedBlobs = _azureRepository.Upload(encryptedChunkFiles, _options.Tier);
+                    var uploadedBlobs = _azureRepository.Upload(ecfs, _options.Tier);
 
                     //Delete the files
-                    foreach (var encryptedChunkFile in encryptedChunkFiles)
-                        encryptedChunkFile.Delete();
+                    foreach (var ecf in ecfs)
+                        ecf.Delete();
 
                     return uploadedBlobs.Select(recbi => recbi.Hash);
                 }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 2});
