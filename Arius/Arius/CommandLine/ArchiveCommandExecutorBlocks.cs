@@ -26,10 +26,9 @@ namespace Arius.CommandLine
             _root = new DirectoryInfo(options.Path);
         }
 
-        public TransformManyBlock<DirectoryInfo, IFile> GetBlock()
+        public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
         {
-            return new(
-                di => IndexDirectory(_root),
+            return new(di => IndexDirectory(_root),
                 new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1}
             );
         }
@@ -65,34 +64,26 @@ namespace Arius.CommandLine
             _hvp = hvp;
         }
 
-        public TransformBlock<IFile, IFileWithHash> GetBlock()
+        public TransformBlock<AriusArchiveItem, AriusArchiveItem> GetBlock()
         {
-            return new(
-                file => (IFileWithHash) AddHash((dynamic) file),
-                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded}
-            );
-        }
+            return new(item =>
+            {
+                if (item is PointerFile pf)
+                    return pf;
+                else if (item is BinaryFile bf)
+                {
+                    _logger.LogInformation("Hashing BinaryFile " + bf.Name);
 
-        private IFileWithHash AddHash(PointerFile f)
-        {
-            //_logger.LogInformation("Hashing PointerFile " + f.Name);
+                    bf.Hash = _hvp.GetHashValue(bf);
 
-            //f.Hash = _hvp.GetHashValue(f); //) ReadHashFromPointerFile(f.FileFullName);
+                    _logger.LogInformation("Hashing BinaryFile " + bf.Name + " done");
 
-            //_logger.LogInformation("Hashing PointerFile " + f.Name + " done");
-
-            return f;
-        }
-
-        private IFileWithHash AddHash(BinaryFile f)
-        {
-            _logger.LogInformation("Hashing BinaryFile " + f.Name);
-
-            f.Hash = _hvp.GetHashValue(f);
-
-            _logger.LogInformation("Hashing BinaryFile " + f.Name + " done");
-
-            return f;
+                    return bf;
+                }
+                else
+                    throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+            },
+            new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
         }
     }
 
@@ -107,47 +98,43 @@ namespace Arius.CommandLine
             return this;
         }
 
-        public TransformBlock<IFileWithHash, BinaryFile> GetBlock()
-        {
-            return new(
-                item => AddRemoteManifest(item, _uploadedManifestHashes));
-        }
 
-        private BinaryFile AddRemoteManifest(IFileWithHash item, List<HashValue> uploadedManifestHashes)
+        public TransformBlock<BinaryFile, BinaryFile> GetBlock()
         {
-            var binaryFile = (BinaryFile) item;
-
-            // Check whether the binaryFile isn't already uploaded or in the course of being uploaded
-            lock (uploadedManifestHashes)
+            return new(binaryFile =>
             {
-                var h = binaryFile.Hash;
-                if (uploadedManifestHashes.Contains(h))
+                // Check whether the binaryFile isn't already uploaded or in the course of being uploaded
+                lock (_uploadedManifestHashes)
                 {
-                    //Chunks & Manifest are already present - set the ManifestHash
-                    binaryFile.ManifestHash = h;
+                    var h = binaryFile.Hash;
+                    if (_uploadedManifestHashes.Contains(h))
+                    {
+                        //Chunks & Manifest are already present - set the ManifestHash
+                        binaryFile.ManifestHash = h;
+                    }
                 }
-            }
 
-            return binaryFile;
+                return binaryFile;
+
+            });
         }
     }
 
     internal class GetChunksForUploadBlockProvider
     {
-        private readonly IChunker _chunker;
-        private readonly List<HashValue> _uploadedOrUploadingChunks;
-
-        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
-
-
         public GetChunksForUploadBlockProvider(IChunker chunker,
             AzureRepository azureRepository)
         {
             _chunker = chunker;
 
             _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
-
         }
+
+        private readonly IChunker _chunker;
+        private readonly List<HashValue> _uploadedOrUploadingChunks;
+
+        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+
 
         public GetChunksForUploadBlockProvider SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
@@ -156,47 +143,44 @@ namespace Arius.CommandLine
             return this;
         }
 
-        public TransformManyBlock<BinaryFile, IChunkFile> GetBlock()
+        public TransformManyBlock<BinaryFile, (IChunkFile ChunkFile, bool Uploaded)> GetBlock()
         {
-            return new(
-                binaryFile => GetChunksForUpload(binaryFile, _uploadedOrUploadingChunks, _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated),
-                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
-        }
-
-        private IEnumerable<IChunkFile> GetChunksForUpload(BinaryFile binaryFile, List<HashValue> uploadedOrUploadingChunks, Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
-        {
-            var chunks = AddChunks(binaryFile);
-
-            chunks = chunks.Select(chunk =>
+            return new(binaryFile => 
             {
-                lock (uploadedOrUploadingChunks)
+                var chunks = AddChunks(binaryFile);
+
+                var r = chunks.Select(chunk =>
                 {
-                    if (uploadedOrUploadingChunks.Contains(chunk.Hash))
+                    bool uploaded;
+
+                    lock (_uploadedOrUploadingChunks)
                     {
-                        chunk.Delete();
-                        chunk.Uploaded = true;
-                    }
-                    else
-                    {
-                        lock (chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                        if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                         {
-                            if (!chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
-                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile,
-                                    new List<HashValue>(new [] {chunk.Hash}));
-                            else
-                                chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash);
+                            chunk.Delete();
+                            uploaded = true;
+                        }
+                        else
+                        {
+                            lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                            {
+                                if (!_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
+                                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile, new List<HashValue>(new[] { chunk.Hash }));
+                                else
+                                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash);
+                            }
+
+                            uploaded = false; //ie to upload
                         }
 
-                        chunk.Uploaded = false; //ie to upload
+                        _uploadedOrUploadingChunks.Add(chunk.Hash);
                     }
 
-                    uploadedOrUploadingChunks.Add(chunk.Hash);
-                }
+                    return (chunk, uploaded);
+                });
 
-                return chunk;
-            });
-
-            return chunks;
+                return r;
+            }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
         }
 
         private IEnumerable<IChunkFile> AddChunks(BinaryFile f)
@@ -214,14 +198,14 @@ namespace Arius.CommandLine
 
     internal class EncryptChunksBlockProvider
     {
-        private readonly IConfiguration _config;
-        private readonly IEncrypter _encrypter;
-
         public EncryptChunksBlockProvider(IConfiguration config, IEncrypter encrypter)
         {
             _config = config;
             _encrypter = encrypter;
         }
+
+        private readonly IConfiguration _config;
+        private readonly IEncrypter _encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
         {
@@ -275,9 +259,6 @@ namespace Arius.CommandLine
         private BlockingCollection<EncryptedChunkFile> _uploadQueue;
         private ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
         private ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
-
-        //private const int AzCopyBatchSize = 256 * 1024 * 1024; //256 MB
-        //private const int AzCopyBatchCount = 128;
 
         public EnqueueUploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {

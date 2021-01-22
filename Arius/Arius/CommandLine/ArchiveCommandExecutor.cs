@@ -176,24 +176,25 @@ namespace Arius.CommandLine
             var propagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = true};
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = false};
 
-            // 10
+            // A10
             indexDirectoryBlock.LinkTo(
                 addHashBlock,
                 propagateCompletionOptions);
 
 
-            // 20
+            // A20
             addHashBlock.LinkTo(
                 addRemoteManifestBlock,
                 propagateCompletionOptions,
-                x => x is BinaryFile);
+                item => item is BinaryFile,
+                item => (BinaryFile)item);
 
-            // 30
+            // A30
             addHashBlock.LinkTo(
                 createPointerFileEntryIfNotExistsBlock,
                 doNotPropagateCompletionOptions,
-                x => x is PointerFile,
-                f => (PointerFile)f);
+                item => item is PointerFile,
+                item => (PointerFile)item);
 
             //addHashBlock.LinkTo(
             //    DataflowBlock.NullTarget<AriusArchiveItem>());
@@ -216,14 +217,15 @@ namespace Arius.CommandLine
             getChunksForUploadBlock.LinkTo(
                 encryptChunksBlock, 
                 propagateCompletionOptions, 
-                f => !f.Uploaded);
+                f => !f.Uploaded,
+                f => f.ChunkFile);
 
             // 70
             getChunksForUploadBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
                 doNotPropagateCompletionOptions,
                 f => f.Uploaded,
-                cf => cf.Hash);
+                cf => cf.ChunkFile.Hash);
 
 
             // 80
