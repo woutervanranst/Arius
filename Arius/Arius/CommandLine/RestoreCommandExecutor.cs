@@ -110,15 +110,19 @@ namespace Arius.CommandLine
 
             var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
 
-            var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
+
+            var reconcilePointersWithChunksBlockProvider = blocks.GetService<ReconcilePointersWithChunksBlockProvider>();
+            var reconcilePointerBlock = reconcilePointersWithChunksBlockProvider!.GetReconcilePointerBlock();
+            var reconcileChunkBlock = reconcilePointersWithChunksBlockProvider!.GetReconcileChunkBlock();
 
 
             var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
-                !.SetReconcileBlock(reconcilePointersWithChunksBlock)
+                !.SetReconcileChunkBlock(reconcileChunkBlock)
                 .SetHydrateBlock(hydrateBlock)
                 .SetEnqueueDownloadBlock(enqueueDownloadBlock)
                 .SetDecryptBlock(decryptBlock)
                 .GetBlock();
+
 
 
 
@@ -150,8 +154,8 @@ namespace Arius.CommandLine
 
             // R602
             processPointerChunksBlock.LinkTo(
-                reconcilePointersWithChunksBlock,
-                doNotPropagateCompletionOptions,
+                reconcilePointerBlock,
+                propagateCompletionOptions,
                 r => true, // r.State == PointerState.NotYetMerged, //don't care what the state is we propagate to reconciliatoin
                 r => r.PointerFile);
 
@@ -173,15 +177,15 @@ namespace Arius.CommandLine
 
             // R72
             decryptBlock.LinkTo(
-                reconcilePointersWithChunksBlock,
+                reconcileChunkBlock,
                 doNotPropagateCompletionOptions);
 
             // R61
             Task.WhenAll(processPointerChunksBlock.Completion, decryptBlock.Completion)
-                .ContinueWith(_ => reconcilePointersWithChunksBlock.Complete());
+                .ContinueWith(_ => reconcileChunkBlock.Complete());
 
             //R62
-            reconcilePointersWithChunksBlock.LinkTo(
+            reconcileChunkBlock.LinkTo(
                 mergeBlock,
                 propagateCompletionOptions);
 

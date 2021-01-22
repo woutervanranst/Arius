@@ -116,7 +116,7 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
-        private ITargetBlock<ChunkFile> _reconcileBlock;
+        private ITargetBlock<ChunkFile> _reconcileChunkBlock;
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _hydrateBlock;
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _downloadBlock;
         private ITargetBlock<EncryptedChunkFile> _decryptBlock;
@@ -130,9 +130,9 @@ namespace Arius.CommandLine
             NotYetHydrated // Chunks to be hydrated from archive storage
         }
 
-        public ProcessPointerChunksBlockProvider SetReconcileBlock(ITargetBlock<ChunkFile> reconcileBlock)
+        public ProcessPointerChunksBlockProvider SetReconcileChunkBlock(ITargetBlock<ChunkFile> reconcileChunkBlock)
         {
-            _reconcileBlock = reconcileBlock;
+            _reconcileChunkBlock = reconcileChunkBlock;
             return this;
         }
         public ProcessPointerChunksBlockProvider SetHydrateBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> hydrateBlock)
@@ -177,7 +177,7 @@ namespace Arius.CommandLine
                         // R601
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
-                        _reconcileBlock.Post(new ChunkFile(_root, cffi, chunkHash));
+                        _reconcileChunkBlock.Post(new ChunkFile(_root, cffi, chunkHash));
                         continue;
                     }
 
@@ -402,14 +402,18 @@ namespace Arius.CommandLine
     internal class ReconcilePointersWithChunksBlockProvider
     {
         private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
-        private readonly Dictionary<PointerFile, List<HashValue>> _inFlightPointers = new();
+        private readonly Dictionary<HashValue, (List<PointerFile> PointerFiles, List<HashValue> ChunkHashes)> _inFlightPointers = new(); // Key = ManifestHash
 
         public ActionBlock<PointerFile> GetReconcilePointerBlock()
         {
             if (_reconcilePointerBlock is null)
             {
-                _reconcilePointerBlock = new(pf => { 
+                _reconcilePointerBlock = new(pf => {
 
+                    if (!_inFlightPointers.ContainsKey(pf.Hash))
+                        _inFlightPointers.Add(pf.Hash, new(new List<PointerFile>(), pf.ChunkHashes.ToList()));
+
+                    _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
                 });
             }
 
@@ -418,52 +422,49 @@ namespace Arius.CommandLine
 
         private ActionBlock<PointerFile> _reconcilePointerBlock = null;
 
-        public ActionBlock<ChunkFile> GetReconcileChunkBlock()
+        public TransformManyBlock<ChunkFile, (PointerFile[], ChunkFile[], ChunkFile[])> GetReconcileChunkBlock()
         {
             return new(cf =>
             {
+                _processedChunks.Add(cf.Hash, cf);
 
-            });
-        }
+                
+                // Wait until all pointers have been reconciled and we have a full view of what chunks are needed for which files
+                Task.WaitAll(_reconcilePointerBlock.Completion);
 
-        public TransformManyBlock<object, (PointerFile, ChunkFile[])> GetBlock()
-        {
-            return new(item =>
-            {
-                lock (_processedChunks)
+                lock (_inFlightPointers)
                 {
-                    lock (_inFlightPointers)
+                    // Remove this chunk from all pointers that require it
+                    foreach (var pointer in _inFlightPointers.Values.Where(kvp => kvp.ChunkHashes.Contains(cf.Hash)))
+                        pointer.ChunkHashes.Remove(cf.Hash);
+
+                    // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)
+                    var hashesOfReadyPointers = _inFlightPointers.Where(kvp => !kvp.Value.ChunkHashes.Any()).Select(kvp => kvp.Key).ToArray();
+
+                    if (hashesOfReadyPointers.Any())
                     {
-                        if (item is PointerFile pf) //A pointer from R60
+                        var r = hashesOfReadyPointers.Select(manifestHash =>
                         {
-                            var chunksStillWaitingFor = pf.ChunkHashes.Except(_processedChunks.Keys).ToList();
-                            _inFlightPointers.Add(pf, chunksStillWaitingFor); //TODO
-                        }
-                        else if (item is ChunkFile cf) //A chunk from R72
-                        {
-                            _processedChunks.Add(cf.Hash, cf);
+                            var pointersToRestore = _inFlightPointers[manifestHash].PointerFiles.ToArray();
 
-                            foreach (var requiredChunks in _inFlightPointers.Values.Where(kvp => kvp.Contains(cf.Hash)))
-                                requiredChunks.Remove(cf.Hash);
-                        }
-                        else
-                            throw new InvalidOperationException(); //TODO
+                            var chunkHashes = pointersToRestore.First().ChunkHashes;
+                            var withChunks = chunkHashes
+                                .Select(chunkHash => _processedChunks[chunkHash]).ToArray();
+                            var chunksThatCanBeDeleted = chunkHashes
+                                .Except(_inFlightPointers.Values.SelectMany(e => e.ChunkHashes))
+                                .Select(chunkHash => _processedChunks[chunkHash]).ToArray();
 
-                        // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)
-                        var readyPointers = _inFlightPointers.Where(a => !a.Value.Any()).Select(a => a.Key).ToArray();
+                            return (pointersToRestore, withChunks, chunksThatCanBeDeleted);
+                        }).ToArray();
 
                         // Remove ready pointers from the in flight pointers
-                        foreach (var readyPointer in readyPointers)
-                            _inFlightPointers.Remove(readyPointer);
+                        foreach (var hash in hashesOfReadyPointers)
+                            _inFlightPointers.Remove(hash);
 
-                        if (readyPointers.Any())
-                        {
-                            var r = readyPointers.Select(rp => (rp, rp.ChunkHashes.Select(ch => _processedChunks[ch]).ToArray()));
-                            return r;
-                        }
-                        else
-                            return Enumerable.Empty<(PointerFile, ChunkFile[])>();
+                        return r;
                     }
+                    else
+                        return Enumerable.Empty<(PointerFile[], ChunkFile[], ChunkFile[])>();
                 }
             });
         }
@@ -479,10 +480,10 @@ namespace Arius.CommandLine
 
         private readonly IChunker _chunker;
 
-        public ActionBlock<(PointerFile, ChunkFile[])> GetBlock()
+        public ActionBlock<(PointerFile[], ChunkFile[], ChunkFile[])> GetBlock()
         {
             return new(item => {
-                (PointerFile pf, ChunkFile[] chunks) = item;
+                (PointerFile[] pf, ChunkFile[] chunks, ChunkFile[] ha) = item;
 
                 _chunker.Merge(chunks);
 
