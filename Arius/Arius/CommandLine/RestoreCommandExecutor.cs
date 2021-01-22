@@ -25,7 +25,7 @@ namespace Arius.CommandLine
 
                 PointerService ps,
                 IHashValueProvider h,
-                IChunker c,
+                /*IChunker c, */Chunker chunker, DedupChunker dedupChunker,
                 IEncrypter e)
         {
             _options = (RestoreOptions)options;
@@ -38,7 +38,9 @@ namespace Arius.CommandLine
 
             _ps = ps;
             _hvp = h;
-            _chunker = c;
+            //_chunker = c;
+            _chunker = chunker;
+            _dedupChunker = dedupChunker;
             _encrypter = e;
         }
 
@@ -53,7 +55,9 @@ namespace Arius.CommandLine
         
         private readonly PointerService _ps;
         private readonly IHashValueProvider _hvp;
-        private readonly IChunker _chunker;
+        //private readonly IChunker _chunker;
+        private readonly Chunker _chunker;
+        private readonly DedupChunker _dedupChunker;
         private readonly IEncrypter _encrypter;
 
 
@@ -78,7 +82,8 @@ namespace Arius.CommandLine
                 .AddSingleton<AzureRepository>(_azureRepository)
                 .AddSingleton<PointerService>(_ps)
                 .AddSingleton<IHashValueProvider>(_hvp)
-                .AddSingleton<IChunker>(_chunker)
+                .AddSingleton<Chunker>(_chunker)
+                .AddSingleton<DedupChunker>(_dedupChunker)
                 .AddSingleton<IEncrypter>(_encrypter)
 
 
