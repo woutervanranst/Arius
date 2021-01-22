@@ -70,7 +70,7 @@ namespace Arius.Services
             var chunkStreams = chunksToJoin.Select(c => new FileStream(c.FullName, FileMode.Open, FileAccess.Read));
             var stream = new ConcatenatedStream(chunkStreams);
 
-            var xx = chunksToJoin.Sum(a => a.Length);
+            //var xx = chunksToJoin.Sum(a => a.Length);
 
             //var restorePath = Path.Combine(clf.FullName, "haha.exe");
             //using var fff = File.Create(restorePath);

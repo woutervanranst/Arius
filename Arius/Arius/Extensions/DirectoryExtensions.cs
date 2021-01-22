@@ -22,9 +22,13 @@ namespace Arius.Extensions
                 return Array.Empty<FileInfo>();
             }
         }
-        public static void DeleteEmptySubdirectories(this DirectoryInfo parentDirectory)
+        public static void DeleteEmptySubdirectories(this DirectoryInfo parentDirectory, bool includeSelf = false)
         {
             DeleteEmptySubdirectories(parentDirectory.FullName);
+
+            if (includeSelf)
+                if (!parentDirectory.EnumerateFileSystemInfos().Any())
+                    parentDirectory.Delete();
         }
         private static void DeleteEmptySubdirectories(string parentDirectory)
         {

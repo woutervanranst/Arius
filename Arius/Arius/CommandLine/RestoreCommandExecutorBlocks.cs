@@ -473,33 +473,61 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(IConfiguration config)
+        public MergeBlockProvider(RestoreOptions options, IConfiguration config, IHashValueProvider hvp)
         {
             _chunker = new();
             _dedupChunker = new(config);
+            _hvp = hvp;
+            _keepPointers = options.KeepPointers;
         }
 
         private readonly Chunker _chunker;
         private readonly DedupChunker _dedupChunker;
+        private readonly IHashValueProvider _hvp;
+        private readonly bool _keepPointers;
 
         public ActionBlock<(PointerFile[], ChunkFile[], ChunkFile[])> GetBlock()
         {
-            return new(item => {
-                (PointerFile[] pf, ChunkFile[] chunks, ChunkFile[] ha) = item;
+            return new(item =>
+            {
+                (PointerFile[] pointersToRestore, ChunkFile[] withChunks, ChunkFile[] chunksThatCanBeDeleted) = item;
 
-                var target = new FileInfo(pf.First().FullName.TrimEnd(PointerFile.Extension));
-                var bf = Merge(chunks, target);
+                var target = GetBinaryFileInfo(pointersToRestore.First());
+                var bf = Merge(withChunks, target);
 
+                // Verify hash
+                var h = _hvp.GetHashValue(bf);
 
+                if (h != pointersToRestore.First().Hash)
+                    throw new Exception("HASH DOES NOT MATCH"); //TODO
 
-                ////pointersWithChunks
-                ////    .AsParallelWithParallelism()
-                ////    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
+                // Delete chunks
+                chunksThatCanBeDeleted.AsParallel().ForAll(c => c.Delete());
 
-                ////if (!_options.KeepPointers)
-                ////    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
+                //Copy to other pointerfiles and set DateTime
+                for (int i = 0; i < pointersToRestore.Length; i++)
+                {
+                    var pfe = pointersToRestore[i];
+                    FileInfo fi;
 
+                    if (i == 0)
+                    {
+                        fi = target;
+                    }
+                    else
+                    {
+                        fi = GetBinaryFileInfo(pfe);
 
+                        target.CopyTo(fi.FullName);
+                    }
+
+                    fi.CreationTimeUtc = File.GetCreationTimeUtc(pfe.FullName);
+                    fi.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pfe.FullName);
+                }
+
+                // Delete Pointers
+                if (!_keepPointers)
+                    pointersToRestore.AsParallel().ForAll(pf => pf.Delete());
             });
         }
 
@@ -511,6 +539,10 @@ namespace Arius.CommandLine
                 return _dedupChunker.Merge(chunks, target);
         }
 
+        private FileInfo GetBinaryFileInfo(PointerFile pf)
+        {
+            return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
+        }
 
         //private void Restore(LocalRootRepository root, ImmutableArray<Manifest.PointerFileEntry> pfes, ImmutableArray<IChunkFile> chunks)
         //{

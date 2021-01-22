@@ -150,7 +150,7 @@ namespace Arius.CommandLine
                 DataflowBlock.NullTarget<PointerFile>(),
                 propagateCompletionOptions,
                 r => r.State == ProcessPointerChunksBlockProvider.PointerState.Restored,
-                r => r.PointerFile);
+                r => r.PointerFile); //TODO delete pointer if !keepPointer
 
             // R602
             processPointerChunksBlock.LinkTo(
@@ -211,6 +211,8 @@ namespace Arius.CommandLine
                 processPointerChunksBlock.Completion,
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
+
+            _config.DownloadTempDir(_root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrated)
             {
