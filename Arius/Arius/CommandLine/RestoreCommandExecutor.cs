@@ -110,16 +110,16 @@ namespace Arius.CommandLine
 
             var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
 
+            var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
+
 
             var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
-                !.SetHydrateBlock(hydrateBlock)
+                !.SetReconcileBlock(reconcilePointersWithChunksBlock)
+                .SetHydrateBlock(hydrateBlock)
                 .SetEnqueueDownloadBlock(enqueueDownloadBlock)
                 .SetDecryptBlock(decryptBlock)
                 .GetBlock();
 
-            //downloadBlockProvider.AddSourceBlock(processPointerChunksBlock);
-
-            var reconcilePointersWithChunksBlock = blocks.GetService<ReconcilePointersWithChunksBlockProvider>()!.GetBlock();
 
 
             var mergeBlock = blocks.GetService<MergeBlockProvider>()!.GetBlock();
@@ -148,7 +148,7 @@ namespace Arius.CommandLine
                 r => r.State == ProcessPointerChunksBlockProvider.PointerState.Restored,
                 r => r.PointerFile);
 
-            // R60
+            // R602
             processPointerChunksBlock.LinkTo(
                 reconcilePointersWithChunksBlock,
                 doNotPropagateCompletionOptions,

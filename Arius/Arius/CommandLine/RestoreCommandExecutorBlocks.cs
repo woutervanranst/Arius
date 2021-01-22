@@ -116,19 +116,25 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
+        private ITargetBlock<ChunkFile> _reconcileBlock;
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _hydrateBlock;
         private ITargetBlock<RemoteEncryptedChunkBlobItem> _downloadBlock;
         private ITargetBlock<EncryptedChunkFile> _decryptBlock;
 
         public enum PointerState
         {
-            Restored,
-            NotYetMerged,
-            NotYetDecrypted,
-            NotYetDownloaded,
-            NotYetHydrated
+            Restored, // Pointer already restored
+            NotYetMerged, // Chunks to be merged
+            NotYetDecrypted, // Chunks to be decrypted
+            NotYetDownloaded, // Chunks to be downloaded
+            NotYetHydrated // Chunks to be hydrated from archive storage
         }
 
+        public ProcessPointerChunksBlockProvider SetReconcileBlock(ITargetBlock<ChunkFile> reconcileBlock)
+        {
+            _reconcileBlock = reconcileBlock;
+            return this;
+        }
         public ProcessPointerChunksBlockProvider SetHydrateBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> hydrateBlock)
         {
             _hydrateBlock = hydrateBlock;
@@ -168,9 +174,10 @@ namespace Arius.CommandLine
                     // Chunk already downloaded & decrypted?
                     if (new FileInfo(Path.Combine(_downloadTempDir.FullName, $"{chunkHash.Value}{ChunkFile.Extension}")) is var cffi && cffi.Exists)
                     {
+                        // R601
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
-                        throw new NotImplementedException("nog _reconcileblock.post doen");
+                        _reconcileBlock.Post(new ChunkFile(_root, cffi, chunkHash));
                         continue;
                     }
 
@@ -394,19 +401,32 @@ namespace Arius.CommandLine
 
     internal class ReconcilePointersWithChunksBlockProvider
     {
-        //public ReconcilePointersWithChunksBlockProvider()
-        //{
-
-        //}
-
-        //private readonly ConcurrentDictionary<HashValue, ChunkFile> _processedChunks = new(); //, IEnumerable<>>
-        ////private readonly ConcurrentDictionary<HashValue, PointerFile> _processedPointerFiles = new ();
-        //private readonly ConcurrentDictionary<HashValue, List<HashValue>> _haha = new(); //Key = PointerFile.Hash, List<HashValue> = ChunkHashes
-
         private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
         private readonly Dictionary<PointerFile, List<HashValue>> _inFlightPointers = new();
 
-        public TransformManyBlock<object, PointerFile> GetBlock()
+        public ActionBlock<PointerFile> GetReconcilePointerBlock()
+        {
+            if (_reconcilePointerBlock is null)
+            {
+                _reconcilePointerBlock = new(pf => { 
+
+                });
+            }
+
+            return _reconcilePointerBlock;
+        }
+
+        private ActionBlock<PointerFile> _reconcilePointerBlock = null;
+
+        public ActionBlock<ChunkFile> GetReconcileChunkBlock()
+        {
+            return new(cf =>
+            {
+
+            });
+        }
+
+        public TransformManyBlock<object, (PointerFile, ChunkFile[])> GetBlock()
         {
             return new(item =>
             {
@@ -429,44 +449,54 @@ namespace Arius.CommandLine
                         else
                             throw new InvalidOperationException(); //TODO
 
+                        // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)
                         var readyPointers = _inFlightPointers.Where(a => !a.Value.Any()).Select(a => a.Key).ToArray();
 
+                        // Remove ready pointers from the in flight pointers
                         foreach (var readyPointer in readyPointers)
                             _inFlightPointers.Remove(readyPointer);
 
                         if (readyPointers.Any())
-                            return readyPointers;
+                        {
+                            var r = readyPointers.Select(rp => (rp, rp.ChunkHashes.Select(ch => _processedChunks[ch]).ToArray()));
+                            return r;
+                        }
                         else
-                            return Enumerable.Empty<PointerFile>();
+                            return Enumerable.Empty<(PointerFile, ChunkFile[])>();
                     }
                 }
             });
-
-            ////var pointersWithChunks = pointerFilesPerManifest.Keys
-            ////    .GroupBy(mf => new HashValue {Value = mf.Hash})
-            ////    .Select(
-            ////        g => new
-            ////        {
-            ////            PointerFileEntry = g.SelectMany(m => m.PointerFileEntries).ToImmutableArray(),
-            ////            UnencryptedChunks = g.SelectMany(m => m.ChunkNames.Select(ecn => unencryptedChunks[g.Key])).ToImmutableArray()
-            ////        })
-            ////    .ToImmutableArray();
-
-            ////pointersWithChunks
-            ////    .AsParallelWithParallelism()
-            ////    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
-
-            ////if (!_options.KeepPointers)
-            ////    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
         }
     }
 
     
     internal class MergeBlockProvider
     {
-        public ActionBlock<PointerFile> GetBlock()
+        public MergeBlockProvider(IChunker chunker)
         {
-            return new(item => { });
+            _chunker = chunker;
+        }
+
+        private readonly IChunker _chunker;
+
+        public ActionBlock<(PointerFile, ChunkFile[])> GetBlock()
+        {
+            return new(item => {
+                (PointerFile pf, ChunkFile[] chunks) = item;
+
+                _chunker.Merge(chunks);
+
+
+
+                ////pointersWithChunks
+                ////    .AsParallelWithParallelism()
+                ////    .ForAll(p => Restore(_localRoot, p.PointerFileEntry, p.UnencryptedChunks));
+
+                ////if (!_options.KeepPointers)
+                ////    pointerFiles.AsParallel().ForAll(apf => apf.Delete());
+
+
+            });
         }
 
 
@@ -499,3 +529,4 @@ namespace Arius.CommandLine
         //}
     }
 }
+
