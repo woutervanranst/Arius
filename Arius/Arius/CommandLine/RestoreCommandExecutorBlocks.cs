@@ -452,7 +452,7 @@ namespace Arius.CommandLine
                                 .Select(chunkHash => _processedChunks[chunkHash]).ToArray();
                             var chunksThatCanBeDeleted = chunkHashes
                                 .Except(_inFlightPointers.Values.SelectMany(e => e.ChunkHashes))
-                                .Select(chunkHash => _processedChunks[chunkHash]).ToArray();
+                                .Select(chunkHash => _processedChunks[chunkHash]).ToArray(); //TODO TESTEN
 
                             return (pointersToRestore, withChunks, chunksThatCanBeDeleted);
                         }).ToArray();
@@ -473,19 +473,22 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(IChunker chunker)
+        public MergeBlockProvider(IConfiguration config)
         {
-            _chunker = chunker;
+            _chunker = new();
+            _dedupChunker = new(config);
         }
 
-        private readonly IChunker _chunker;
+        private readonly Chunker _chunker;
+        private readonly DedupChunker _dedupChunker;
 
         public ActionBlock<(PointerFile[], ChunkFile[], ChunkFile[])> GetBlock()
         {
             return new(item => {
                 (PointerFile[] pf, ChunkFile[] chunks, ChunkFile[] ha) = item;
 
-                _chunker.Merge(chunks);
+                var target = new FileInfo(pf.First().FullName.TrimEnd(PointerFile.Extension));
+                var bf = Merge(chunks, target);
 
 
 
@@ -498,6 +501,14 @@ namespace Arius.CommandLine
 
 
             });
+        }
+
+        private BinaryFile Merge(IEnumerable<IChunkFile> chunks, FileInfo target)
+        {
+            if (chunks.Count() == 1)
+                return _chunker.Merge(chunks, target);
+            else
+                return _dedupChunker.Merge(chunks, target);
         }
 
 

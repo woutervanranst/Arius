@@ -37,7 +37,7 @@ namespace Arius.Models
     internal interface IChunker
     {
         IEnumerable<IChunkFile> Chunk(BinaryFile fileToChunk);
-        BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin);
+        BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin, FileInfo target);
     }
 
     internal interface IEncrypter

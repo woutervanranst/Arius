@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 
 namespace Arius.Services
@@ -18,11 +20,11 @@ namespace Arius.Services
             return new[] {item};
         }
 
-        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin, FileInfo target)
         {
-            throw new NotImplementedException();
+            File.Move(chunksToJoin.Single().FullName, target.FullName);
 
-            //return new BinaryFile(new FileInfo(chunksToJoin.Single().FullName));
+            return new BinaryFile(null, target);
         }
     }
 
@@ -63,20 +65,23 @@ namespace Arius.Services
             }
         }
 
-        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        public BinaryFile Merge(IEnumerable<IChunkFile> chunksToJoin, FileInfo target)
         {
-            throw new NotImplementedException();
+            var chunkStreams = chunksToJoin.Select(c => new FileStream(c.FullName, FileMode.Open, FileAccess.Read));
+            var stream = new ConcatenatedStream(chunkStreams);
 
-//        //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-//        //var concaten = new ConcatenatedStream(chunkFiles);
+            var xx = chunksToJoin.Sum(a => a.Length);
 
-//        //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-//        //using var fff = File.Create(restorePath);
-//        //concaten.CopyTo(fff);
-//        //fff.Close();
+            //var restorePath = Path.Combine(clf.FullName, "haha.exe");
+            //using var fff = File.Create(restorePath);
+            using var fff = target.Create();
+            stream.CopyTo(fff);
+            fff.Close();
+
+            return new BinaryFile(null, target);
         }
 
-        
-        
+
+
     }
 }
