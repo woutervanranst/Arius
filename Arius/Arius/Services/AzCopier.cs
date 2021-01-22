@@ -261,7 +261,7 @@ namespace Arius.Services
 
         private IEnumerable<FileInfo> ParseLogDownloadedFiles(string logFullName)
         {
-            var log = File.ReadAllText(@"C:\Users\Wouter\.azcopy\3934f085-adcf-b348-4d58-35a9a791067a.log");
+            var log = File.ReadAllText(logFullName);
 
             var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
 
