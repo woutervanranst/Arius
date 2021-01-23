@@ -80,8 +80,8 @@ namespace Arius.Repositories
                 {
                     _dto = new ManifestEntryDto()
                     {
-                        PartitionKey = bf.ManifestHash!.Value.Value,
-                        RowKey = bf.ManifestHash!.Value.Value,
+                        PartitionKey = bf.Hash.Value,
+                        RowKey = bf.Hash.Value,
 
                         Chunks = JsonSerializer.Serialize(bf.Chunks.Select(cf => cf.Hash.Value))
                     };

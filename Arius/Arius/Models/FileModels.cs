@@ -70,7 +70,7 @@ namespace Arius.Models
         public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
         public IEnumerable<IChunkFile> Chunks { get; set; }
-        public HashValue? ManifestHash { get; set; }
+        //public HashValue? ManifestHash { get; set; }
         public bool Uploaded { get; set; }
 
         public FileInfo PointerFileInfo => new FileInfo(_fi.FullName + PointerFile.Extension);

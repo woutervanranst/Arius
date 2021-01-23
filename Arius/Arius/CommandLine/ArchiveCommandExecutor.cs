@@ -80,15 +80,15 @@ namespace Arius.CommandLine
 
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()
-                .AddSingleton<AddRemoteManifestBlockProvider>()
-                .AddSingleton<GetChunksForUploadBlockProvider>()
+                .AddSingleton<ManifestBlocksProvider>()
+                .AddSingleton<ChunkBlockProvider>()
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
                 .AddSingleton<EnqueueUploadTaskProvider>()
                 .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
                 .AddSingleton<CreateManifestBlockProvider>()
-                .AddSingleton<ReconcileBinaryFilesWithManifestBlockProvider>()
+                //.AddSingleton<ReconcileBinaryFilesWithManifestBlockProvider>()
                 .AddSingleton<CreatePointerBlockProvider>()
                 .AddSingleton<CreatePointerFileEntryIfNotExistsBlockProvider>()
                 .AddSingleton<RemoveDeletedPointersTaskProvider>()
@@ -103,19 +103,30 @@ namespace Arius.CommandLine
 
             var addHashBlock = blocks.GetService<AddHashBlockProvider>()!.GetBlock();
 
+            
 
-            var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
-            var addRemoteManifestBlock = blocks.GetService<AddRemoteManifestBlockProvider>()
-                !.AddUploadedManifestHashes(uploadedManifestHashes)
-                .GetBlock();
+
+            //var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
+            //var addRemoteManifestBlock = blocks.GetService<AddRemoteManifestBlockProvider>()
+            //    !.AddUploadedManifestHashes(uploadedManifestHashes)
+            //    .GetBlock();
 
 
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            var getChunksForUploadBlock = blocks.GetService<GetChunksForUploadBlockProvider>()
+            var chunkBlock = blocks.GetService<ChunkBlockProvider>()
                 !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                 .GetBlock();
 
-            
+
+
+            var manifestBlocksProvider = blocks.GetService<ManifestBlocksProvider>()
+                !.SetUploadBinaryFileBlock(chunkBlock);
+
+            var createIfNotExistManifestBlock = manifestBlocksProvider!.GetCreateIfNotExistsBlock();
+            var reconcileManifestBlock = manifestBlocksProvider.GetReconcileBlock();
+
+
+
             var encryptChunksBlock = blocks.GetService<EncryptChunksBlockProvider>()!.GetBlock();
 
 
@@ -143,9 +154,9 @@ namespace Arius.CommandLine
             var createManifestBlock = blocks.GetService<CreateManifestBlockProvider>()!.GetBlock();
 
 
-            var reconcileBinaryFilesWithManifestBlock = blocks.GetService<ReconcileBinaryFilesWithManifestBlockProvider>()
-                !.AddUploadedManifestHashes(uploadedManifestHashes)
-                .GetBlock();
+            //var reconcileBinaryFilesWithManifestBlock = blocks.GetService<ReconcileBinaryFilesWithManifestBlockProvider>()
+            //    !.AddUploadedManifestHashes(uploadedManifestHashes)
+            //    .GetBlock();
 
 
             var binaryFilesToDelete = new List<BinaryFile>();
@@ -184,7 +195,7 @@ namespace Arius.CommandLine
 
             // A20
             addHashBlock.LinkTo(
-                addRemoteManifestBlock,
+                createIfNotExistManifestBlock,
                 propagateCompletionOptions,
                 item => item is BinaryFile,
                 item => (BinaryFile)item);
@@ -200,106 +211,110 @@ namespace Arius.CommandLine
             //    DataflowBlock.NullTarget<AriusArchiveItem>());
 
 
-            // 40
-            addRemoteManifestBlock.LinkTo(
-                getChunksForUploadBlock,
-                propagateCompletionOptions, 
-                binaryFile => !binaryFile.ManifestHash.HasValue);
+            //A41
+            Task.WhenAll(createIfNotExistManifestBlock.Completion)
+                .ContinueWith(_ => chunkBlock.Complete());
 
-            // 50
-            addRemoteManifestBlock.LinkTo(
-                reconcileBinaryFilesWithManifestBlock,
-                doNotPropagateCompletionOptions,
-                binaryFile => binaryFile.ManifestHash.HasValue);
+            //// A40
+            //addRemoteManifestBlock.LinkTo(
+            //    getChunksForUploadBlock,
+            //    propagateCompletionOptions, 
+            //    binaryFile => !binaryFile.ManifestHash.HasValue);
 
+            // A50
+            createIfNotExistManifestBlock.LinkTo(
+                reconcileManifestBlock,
+                doNotPropagateCompletionOptions); //,
+                //binaryFile => binaryFile.ManifestHash.HasValue);
 
-            // 60
-            getChunksForUploadBlock.LinkTo(
+            // A60
+            chunkBlock.LinkTo(
                 encryptChunksBlock, 
                 propagateCompletionOptions, 
                 f => !f.Uploaded,
                 f => f.ChunkFile);
 
-            // 70
-            getChunksForUploadBlock.LinkTo(
+            // A70
+            chunkBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
                 doNotPropagateCompletionOptions,
                 f => f.Uploaded,
                 cf => cf.ChunkFile.Hash);
 
-
-            // 80
+            // A80
             encryptChunksBlock.LinkTo(
                 enqueueEncryptedChunksForUploadBlock,
                 propagateCompletionOptions);
 
 
-            // 90
+            // A90
             Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
                 .ContinueWith(_ => uploadQueue.CompleteAdding());
 
 
-            // 100
+            // A100
             Task.WhenAll(uploadTask)
                 .ContinueWith(_ => uploadEncryptedChunksBlock.Complete());
 
             
-            // 110
+            // A110
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
                 doNotPropagateCompletionOptions);
 
 
-            // 115
-            Task.WhenAll(uploadEncryptedChunksBlock.Completion, getChunksForUploadBlock.Completion)
+            // A115
+            Task.WhenAll(uploadEncryptedChunksBlock.Completion, chunkBlock.Completion)
                 .ContinueWith(_ => reconcileChunksWithManifestsBlock.Complete());
 
 
-            // 120
+            // A120
             reconcileChunksWithManifestsBlock.LinkTo(
                 createManifestBlock,
                 propagateCompletionOptions);
 
             
-            // 130
+            // A130
             createManifestBlock.LinkTo(
-                reconcileBinaryFilesWithManifestBlock,
-                doNotPropagateCompletionOptions);
+                reconcileManifestBlock,
+                doNotPropagateCompletionOptions,
+                _ => true,
+                x => (object)x);
 
 
-            // 140
-            Task.WhenAll(createManifestBlock.Completion, addRemoteManifestBlock.Completion)
-                .ContinueWith(_ => reconcileBinaryFilesWithManifestBlock.Complete());
+            // A140
+            Task.WhenAll(createManifestBlock.Completion, createIfNotExistManifestBlock.Completion)
+                .ContinueWith(_ => reconcileManifestBlock.Complete());
 
 
-            // 150
-            reconcileBinaryFilesWithManifestBlock.LinkTo(
+            // A150
+            reconcileManifestBlock.LinkTo(
                 createPointersBlock,
                 propagateCompletionOptions);
 
 
-            // 160
+            // A160
             createPointersBlock.LinkTo(createPointerFileEntryIfNotExistsBlock, 
                 doNotPropagateCompletionOptions);
 
 
-            // 170
+            // A170
             Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
                 .ContinueWith(_ => createPointerFileEntryIfNotExistsBlock.Complete());
 
 
-            // 180
+            // A180
             createPointerFileEntryIfNotExistsBlock.Completion
                 .ContinueWith(_ =>
                 {
                     removeDeletedPointersTask.Start();
                 });
 
-            // 190
+            // A190
             removeDeletedPointersTask
                 .ContinueWith(_ => exportToJsonTask.Start());
 
-            // 200
+            // A200
             exportToJsonTask
                 .ContinueWith(_ => deleteBinaryFilesTask.Start());
 

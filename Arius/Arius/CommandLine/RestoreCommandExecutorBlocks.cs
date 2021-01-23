@@ -318,16 +318,16 @@ namespace Arius.CommandLine
                         var batch = new List<RemoteEncryptedChunkBlobItem>();
                         long size = 0;
 
-                        foreach (var item in _downloadQueue.GetConsumingEnumerable())
+                        foreach (var kvp in _downloadQueue.GetConsumingEnumerable())
                         {
                             lock (_downloadedOrDownloading)
                             {
                                 // WARNING potential thread safety issue? where element is taken from the queue and just after the GetEnqueueBlock() method starts checking the Contains
-                                _downloadedOrDownloading.Add(item.Key);
+                                _downloadedOrDownloading.Add(kvp.Key);
                             }
 
-                            batch.Add(item.Value);
-                            size += item.Value.Length;
+                            batch.Add(kvp.Value);
+                            size += kvp.Value.Length;
 
                             if (size >= _config.BatchSize ||
                                 batch.Count >= _config.BatchCount ||

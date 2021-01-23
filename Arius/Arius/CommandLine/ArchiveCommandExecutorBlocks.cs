@@ -53,6 +53,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class AddHashBlockProvider
     {
         private readonly ILogger<AddHashBlockProvider> _logger;
@@ -87,42 +88,101 @@ namespace Arius.CommandLine
         }
     }
 
-    internal class AddRemoteManifestBlockProvider
+
+    internal class ManifestBlocksProvider
     {
-        private List<HashValue> _uploadedManifestHashes;
-
-        public AddRemoteManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
+        public ManifestBlocksProvider(AzureRepository repo)
         {
-            _uploadedManifestHashes = uploadedManifestHashes;
-
-            return this;
+            _createdManifests = new (repo.GetAllManifestHashes());
         }
 
+        private readonly List<HashValue> _createdManifests;
 
-        public TransformBlock<BinaryFile, BinaryFile> GetBlock()
+        private readonly Dictionary<HashValue, List<BinaryFile>> _creatingManifests = new(); // Key = ManifestHash
+
+        public ManifestBlocksProvider SetUploadBinaryFileBlock(ITargetBlock<BinaryFile> uploadBinaryFileBlock)
         {
-            return new(binaryFile =>
+            _uploadBinaryFileBlock = uploadBinaryFileBlock;
+            return this;
+        }
+        private ITargetBlock<BinaryFile> _uploadBinaryFileBlock;
+
+        public TransformBlock<BinaryFile, BinaryFile> GetCreateIfNotExistsBlock()
+        {
+            /*
+             * Three possibilities:
+             *      1. BinaryFile arrives, remote manifest already exists --> send to next block
+             *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
+             *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
+             */
+            return new(bf =>
             {
-                // Check whether the binaryFile isn't already uploaded or in the course of being uploaded
-                lock (_uploadedManifestHashes)
+                lock (_createdManifests)
                 {
-                    var h = binaryFile.Hash;
-                    if (_uploadedManifestHashes.Contains(h))
+                    lock (_creatingManifests)
                     {
-                        //Chunks & Manifest are already present - set the ManifestHash
-                        binaryFile.ManifestHash = h;
+                        if (_createdManifests.Contains(bf.Hash))
+                            // 1 - Exists remote
+                            return bf;
+                        else if (!_creatingManifests.ContainsKey(bf.Hash))
+                        {
+                            // 2 Does not yet exist remote and not yet being created --> upload
+                            _uploadBinaryFileBlock.Post(bf); //A40
+                            _creatingManifests.Add(bf.Hash, new());
+                            _creatingManifests[bf.Hash].Add(bf);
+
+                            return bf;
+                        }
+                        else
+                        {
+                            // 3 Does not exist remote but is being created
+                            _creatingManifests[bf.Hash].Add(bf);
+
+                            return bf;
+                        }
                     }
                 }
+            });
+        }
 
-                return binaryFile;
+        public TransformManyBlock<object, BinaryFile> GetReconcileBlock()
+        {
+            return new(item =>
+            {
+                lock (_createdManifests)
+                {
+                    lock (_creatingManifests)
+                    {
+                        if (item is BinaryFile bf)
+                        {
+                            if (_createdManifests.Contains(bf.Hash))
+                                return new[] { bf }; // Manifest already uploaded
+                            else if (_creatingManifests.ContainsKey(bf.Hash))
+                                // it is alreayd in de _pending list // do nothing
+                                return Enumerable.Empty<BinaryFile>();
+                            else
+                                throw new InvalidOperationException("huh??");
+                        }
+                        else if (item is HashValue completedManifestHash)
+                        {
+                            _createdManifests.Add(completedManifestHash); // add to the list of uploaded hashes
 
+                            var r = _creatingManifests[completedManifestHash].ToArray();
+                            _creatingManifests.Remove(completedManifestHash);
+
+                            return r;
+                        }
+                        else
+                            throw new ArgumentException();
+                    }
+                }
             });
         }
     }
 
-    internal class GetChunksForUploadBlockProvider
+    internal class ChunkBlockProvider
     {
-        public GetChunksForUploadBlockProvider(IChunker chunker,
+        public ChunkBlockProvider(IChunker chunker,
             AzureRepository azureRepository)
         {
             _chunker = chunker;
@@ -136,7 +196,7 @@ namespace Arius.CommandLine
         private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
 
-        public GetChunksForUploadBlockProvider SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+        public ChunkBlockProvider SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
@@ -157,7 +217,7 @@ namespace Arius.CommandLine
                     {
                         if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                         {
-                            chunk.Delete();
+                            chunk.Delete(); //TDO never delete a binary file here?
                             uploaded = true;
                         }
                         else
@@ -176,7 +236,7 @@ namespace Arius.CommandLine
                         _uploadedOrUploadingChunks.Add(chunk.Hash);
                     }
 
-                    return (chunk, uploaded);
+                    return (ChunkFile: chunk, Uploaded: uploaded);
                 });
 
                 return r;
@@ -216,7 +276,7 @@ namespace Arius.CommandLine
 
         private EncryptedChunkFile EncryptChunks(IChunkFile f)
         {
-            Console.WriteLine("Encrypting ChunkFile2 " + f.Name);
+            Console.WriteLine($"Encrypting ChunkFile {f.Name}");
 
             var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
 
@@ -224,7 +284,7 @@ namespace Arius.CommandLine
 
             var ecf = new EncryptedChunkFile(f.Root, targetFile, f.Hash);
 
-            Console.WriteLine("Encrypting ChunkFile2 " + f.Name + " done");
+            Console.WriteLine($"Encrypting ChunkFile {f.Name} done");
 
             return ecf;
         }
@@ -339,7 +399,7 @@ namespace Arius.CommandLine
                         ecf.Delete();
 
                     return uploadedBlobs.Select(recbi => recbi.Hash);
-                }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 2});
+                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
         }
     }
 
@@ -354,6 +414,40 @@ namespace Arius.CommandLine
 
             return this;
         }
+
+
+        //public TransformManyBlock<HashValue, HashValue> GetBlock()
+        //{
+        //    return new( // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
+        //        hashOfUploadedChunk =>
+        //        {
+        //            var manifestsToCreate = new List<BinaryFile>();
+
+        //            lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+        //            {
+        //                foreach (var kvp in _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated) //Key = HashValue van de Manifest, List = HashValue van de Chunks
+        //                {
+        //                    // Remove the incoming ChunkHash from the list of prerequired
+        //                    kvp.Value.Remove(hashOfUploadedChunk);
+
+        //                    // If the list of prereqs is empty
+        //                    if (!kvp.Value.Any())
+        //                    {
+        //                        // Add it to the list of manifests to be created
+        //                        //kvp.Key.ManifestHash = kvp.Key.Hash;
+        //                        manifestsToCreate.Add(kvp.Key);
+        //                    }
+        //                }
+
+        //                // Remove all reconciled manifests from the waitlist
+        //                foreach (var binaryFile in manifestsToCreate)
+        //                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(binaryFile);
+        //            }
+
+        //            return manifestsToCreate.Select(bf => bf.Hash);
+        //        });
+        //}
+
 
         public TransformManyBlock<HashValue, BinaryFile> GetBlock()
         {
@@ -373,7 +467,7 @@ namespace Arius.CommandLine
                             if (!kvp.Value.Any())
                             {
                                 // Add it to the list of manifests to be created
-                                kvp.Key.ManifestHash = kvp.Key.Hash;
+                                //kvp.Key.ManifestHash = kvp.Key.Hash;
                                 manifestsToCreate.Add(kvp.Key);
                             }
                         }
@@ -390,78 +484,88 @@ namespace Arius.CommandLine
 
     internal class CreateManifestBlockProvider
     {
-        private readonly AzureRepository _azureRepository;
-
         public CreateManifestBlockProvider(AzureRepository azureRepository)
         {
             _azureRepository = azureRepository;
         }
 
-        public TransformBlock<BinaryFile, BinaryFile> GetBlock()
+        private readonly AzureRepository _azureRepository;
+
+        //public TransformBlock<BinaryFile, BinaryFile> GetBlock()
+        //{
+        //    return new(async binaryFile =>
+        //    {
+        //        await _azureRepository.AddManifestAsync(binaryFile);
+
+        //        return binaryFile;
+        //    });
+        //}
+
+        public TransformBlock<BinaryFile, HashValue> GetBlock()
         {
             return new(async binaryFile =>
             {
                 await _azureRepository.AddManifestAsync(binaryFile);
 
-                return binaryFile;
+                return binaryFile.Hash;
             });
         }
     }
 
-    internal class ReconcileBinaryFilesWithManifestBlockProvider
-    {
-        private List<HashValue> _uploadedManifestHashes;
-        private Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
+    //internal class ReconcileBinaryFilesWithManifestBlockProvider
+    //{
+    //    public ReconcileBinaryFilesWithManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
+    //    {
+    //        _uploadedManifestHashes = uploadedManifestHashes;
+    //        _binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
 
-        public ReconcileBinaryFilesWithManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
-        {
-            _uploadedManifestHashes = uploadedManifestHashes;
-            _binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
+    //        return this;
+    //    }
 
-            return this;
-        }
+    //    private List<HashValue> _uploadedManifestHashes;
+    //    private Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
 
-        public TransformManyBlock<BinaryFile, BinaryFile> GetBlock()
-        {
-            return new(binaryFile =>
-            {
-                lock (_binaryFilesPerManifestHash)
-                {
-                    //Add to the list an wait until EXACTLY ONE binaryFile with the 
-                    if (!_binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
-                        _binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
+    //    public TransformManyBlock<BinaryFile, BinaryFile> GetBlock()
+    //    {
+    //        return new(binaryFile =>
+    //        {
+    //            lock (_binaryFilesPerManifestHash)
+    //            {
+    //                //Add to the list an wait until EXACTLY ONE binaryFile with the 
+    //                if (!_binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
+    //                    _binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
 
-                    // Add this binaryFile to the list of pointers to be created, once this manifest is created
-                    _binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
+    //                // Add this binaryFile to the list of pointers to be created, once this manifest is created
+    //                _binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
 
-                    if (binaryFile.ManifestHash.HasValue)
-                    {
-                        lock (_uploadedManifestHashes)
-                        {
-                            _uploadedManifestHashes.Add(binaryFile.ManifestHash.Value);
-                        }
-                    }
+    //                if (binaryFile.ManifestHash.HasValue)
+    //                {
+    //                    lock (_uploadedManifestHashes)
+    //                    {
+    //                        _uploadedManifestHashes.Add(binaryFile.ManifestHash.Value);
+    //                    }
+    //                }
 
-                    if (_uploadedManifestHashes.Contains(binaryFile.Hash))
-                    {
-                        var pointersToCreate = _binaryFilesPerManifestHash[binaryFile.Hash].ToArray();
-                        _binaryFilesPerManifestHash[binaryFile.Hash].Clear();
+    //                if (_uploadedManifestHashes.Contains(binaryFile.Hash))
+    //                {
+    //                    var pointersToCreate = _binaryFilesPerManifestHash[binaryFile.Hash].ToArray();
+    //                    _binaryFilesPerManifestHash[binaryFile.Hash].Clear();
 
-                        return pointersToCreate;
-                    }
-                    else
-                        return Enumerable.Empty<BinaryFile>(); // NOTHING TO PASS ON TO THE NEXT STAGE
-                }
+    //                    return pointersToCreate;
+    //                }
+    //                else
+    //                    return Enumerable.Empty<BinaryFile>(); // NOTHING TO PASS ON TO THE NEXT STAGE
+    //            }
 
-                /* Input is either
-                    If the Manifest already existed remotely, the BinaryFile with Hash and ManifestHash, witout Chunks
-                    If the Manifest did not already exist, it will be uploaded by now - wit Hash and ManifestHash
-                    If the Manifest did not already exist, and the file is a duplicate, with Hash but NO ManifestHash
-                    The manifest did initially not exist, but was uploaded in the mean time
-                 */
-            });
-        }
-    }
+    //            /* Input is either
+    //                If the Manifest already existed remotely, the BinaryFile with Hash and ManifestHash, witout Chunks
+    //                If the Manifest did not already exist, it will be uploaded by now - wit Hash and ManifestHash
+    //                If the Manifest did not already exist, and the file is a duplicate, with Hash but NO ManifestHash
+    //                The manifest did initially not exist, but was uploaded in the mean time
+    //             */
+    //        });
+    //    }
+    //}
 
     internal class CreatePointerBlockProvider
     {
@@ -524,12 +628,6 @@ namespace Arius.CommandLine
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
-        private readonly AzureRepository _azureRepository;
-        private readonly DirectoryInfo _root;
-        private DateTime _version;
-
-
         public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveOptions options, AzureRepository azureRepository)      
         {
             _logger = logger;
@@ -537,6 +635,11 @@ namespace Arius.CommandLine
 
             _root = new DirectoryInfo(options.Path);
         }
+
+        private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
+        private readonly AzureRepository _azureRepository;
+        private readonly DirectoryInfo _root;
+        private DateTime _version;
 
         public RemoveDeletedPointersTaskProvider AddVersion(DateTime version)
         {
