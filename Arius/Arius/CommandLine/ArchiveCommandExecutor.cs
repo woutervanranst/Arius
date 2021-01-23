@@ -273,13 +273,14 @@ namespace Arius.CommandLine
                 createManifestBlock,
                 propagateCompletionOptions);
 
-            
+
             // A130
             createManifestBlock.LinkTo(
                 reconcileManifestBlock,
-                doNotPropagateCompletionOptions,
-                _ => true,
-                x => (object)x);
+                doNotPropagateCompletionOptions);
+            //,
+            //    _ => true,
+            //    x => (object)x);
 
 
             // A140

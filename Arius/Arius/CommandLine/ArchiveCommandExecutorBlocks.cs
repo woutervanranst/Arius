@@ -501,7 +501,7 @@ namespace Arius.CommandLine
         //    });
         //}
 
-        public TransformBlock<BinaryFile, HashValue> GetBlock()
+        public TransformBlock<BinaryFile, object> GetBlock()
         {
             return new(async binaryFile =>
             {
