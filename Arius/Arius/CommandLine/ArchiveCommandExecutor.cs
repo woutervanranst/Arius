@@ -82,7 +82,7 @@ namespace Arius.CommandLine
                 .AddSingleton<AddHashBlockProvider>()
                 .AddSingleton<ManifestBlocksProvider>()
                 .AddSingleton<ChunkBlockProvider>() //TO REMOVE
-                .AddSingleton<ChunkBlocksProvider>()
+                //.AddSingleton<ChunkBlocksProvider>()
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
@@ -113,16 +113,16 @@ namespace Arius.CommandLine
             //    .GetBlock();
 
 
-            //var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            //var chunkBlock = blocks.GetService<ChunkBlockProvider>()
-            //    !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
-            //    .GetBlock();
+            var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
+            var chunkBlock = blocks.GetService<ChunkBlockProvider>()
+                !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                .GetBlock();
 
-            var chunkBlocksProvider = blocks.GetService<ChunkBlocksProvider>();
-            //!.SetTargetPostBlock(null);
+            //var chunkBlocksProvider = blocks.GetService<ChunkBlocksProvider>();
+            ////!.SetTargetPostBlock(null);
             //var chunkBlock = chunkBlocksProvider!.GetChunkBlock();
-            var createIfNotExistsChunkBlock = chunkBlocksProvider.GetCreateIfNotExistsBlock();
-            var reconcileChunksBlock = chunkBlocksProvider.GetReconcileBlock();
+            //var createIfNotExistsChunkBlock = chunkBlocksProvider.GetCreateIfNotExistsBlock();
+            //var reconcileChunksBlock = chunkBlocksProvider.GetReconcileBlock();
 
 
 

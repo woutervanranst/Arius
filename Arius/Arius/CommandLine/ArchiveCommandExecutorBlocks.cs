@@ -128,7 +128,6 @@ namespace Arius.CommandLine
                             else if (!_creating.ContainsKey(item.Hash))
                             {
                                 // 2 Does not yet exist remote and not yet being created --> upload
-                                //_postBlock.Post(item); //A40
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);
 
@@ -189,30 +188,114 @@ namespace Arius.CommandLine
         }
     }
 
-    internal class ChunkBlocksProvider : ProcessIfNotExistBlocksProvider<ChunkFile>
-    {
-        public ChunkBlocksProvider(AzureRepository repo, IChunker chunker) : base(repo.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList())
-        {
-            _chunker = chunker;
-        }
+    //internal abstract class ProcessManyIfNotExistBlocksProvider<TKey, TElement> where TKey : IFileWithHash 
+    //                                                                            where TElement : IFileWithHash
+    //{
+    //    public ProcessManyIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
+    //    {
+    //        _created = new(createdInital);
+    //    }
 
-        private readonly IChunker _chunker;
+    //    private readonly List<HashValue> _created; //HashValue = Chunk.Hash
+    //    private readonly Dictionary<HashValue, (List<BinaryFile> BinaryFiles, List<IChunkFile> ChunkFiles)> _creating = new(); //HashValue = BinaryFile.Hash
 
-        public TransformManyBlock<BinaryFile, IChunkFile> GetChunkBlock()
-        {
-            return new(bf =>
-            {
-                Console.WriteLine("Chunking BinaryFile " + bf.Name);
+    //    public TransformManyBlock<(IChunkFile Chunk, BinaryFile BelongsTo), (IChunkFile Chunk, BinaryFile BelongsTo, bool Process)> GetCreateIfNotExistsBlock()
+    //    {
+    //        /*
+    //         * Three possibilities:
+    //         *      1. BinaryFile arrives, remote manifest already exists --> send to next block
+    //         *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
+    //         *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
+    //         */
+    //        return new(item =>
+    //        {
+    //            lock (_created)
+    //            {
+    //                lock (_creating)
+    //                {
+    //                    if (_created.Contains(item.Chunk.Hash))
+    //                        // 1 - Exists remote
+    //                        return Enumerable.Empty<(IChunkFile, BinaryFile, bool)>(); // new[] { (item.Chunk, false) };
+    //                    else if (!_creating.ContainsKey(item.BelongsTo.Hash))
+    //                    {
+    //                        // 2 Does not yet exist remote and not yet being created --> upload
+    //                        _creating.Add(item.BelongsTo.Hash, new());
+    //                        _creating[item.BelongsTo.Hash].BinaryFiles.Add(item.BelongsTo);
+    //                        _creating[item.BelongsTo.Hash].ChunkFiles.Add(item.BelongsTo);
 
-                var cs = _chunker.Chunk(bf).ToArray();
-                bf.Chunks = cs;
+    //                        return new[] { (item.Chunk, true), (item.Chunk, false) };
+    //                    }
+    //                    else
+    //                    {
+    //                        // 3 Does not exist remote but is being created
+    //                        _creating[item.BelongsTo].Add(item.Chunk);
 
-                Console.WriteLine("Chunking BinaryFile " + bf.Name + " done");
+    //                        return new[] { (item.Chunk, false) };
+    //                    }
+    //                }
+    //            }
+    //        });
+    //    }
 
-                return cs;
-            });
-        }
-    }
+    //    public TransformManyBlock<object, BinaryFile> GetReconcileBlock()
+    //    {
+    //        return new(item =>
+    //        {
+    //            lock (_created)
+    //            {
+    //                lock (_creating)
+    //                {
+    //                    if (item is IChunkFile bf)
+    //                    {
+    //                        if (_created.Contains(bf.Hash))
+    //                            return new[] { bf }; // Manifest already uploaded
+    //                        else if (_creating.ContainsKey(bf.Hash))
+    //                            // it is alreayd in de _pending list // do nothing
+    //                            return Enumerable.Empty<IChunkFile>();
+    //                        else
+    //                            throw new InvalidOperationException("huh??");
+    //                    }
+    //                    else if (item is HashValue completedManifestHash)
+    //                    {
+    //                        _created.Add(completedManifestHash); // add to the list of uploaded hashes
+
+    //                        var r = _creating[completedManifestHash].ToArray();
+    //                        _creating.Remove(completedManifestHash);
+
+    //                        return r;
+    //                    }
+    //                    else
+    //                        throw new ArgumentException();
+    //                }
+    //            }
+    //        });
+    //    }
+    //}
+
+    //internal class ChunkBlocksProvider : ProcessManyIfNotExistBlocksProvider<BinaryFile, ChunkFile>
+    //{
+    //    public ChunkBlocksProvider(AzureRepository repo, IChunker chunker) : base(repo.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList())
+    //    {
+    //        _chunker = chunker;
+    //    }
+
+    //    private readonly IChunker _chunker;
+
+    //    public TransformManyBlock<BinaryFile, (IChunkFile Chunk, BinaryFile BelongsTo)> GetChunkBlock()
+    //    {
+    //        return new(bf =>
+    //        {
+    //            Console.WriteLine("Chunking BinaryFile " + bf.Name);
+
+    //            var cs = _chunker.Chunk(bf).ToArray();
+    //            //bf.Chunks = cs;
+
+    //            Console.WriteLine("Chunking BinaryFile " + bf.Name + " done");
+
+    //            return cs.Select(c => (c, bf));
+    //        });
+    //    }
+    //}
 
     internal class ChunkBlockProvider
     {
