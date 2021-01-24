@@ -81,7 +81,8 @@ namespace Arius.CommandLine
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()
                 .AddSingleton<ManifestBlocksProvider>()
-                .AddSingleton<ChunkBlockProvider>()
+                .AddSingleton<ChunkBlockProvider>() //TO REMOVE
+                .AddSingleton<ChunkBlocksProvider>()
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
@@ -103,7 +104,7 @@ namespace Arius.CommandLine
 
             var addHashBlock = blocks.GetService<AddHashBlockProvider>()!.GetBlock();
 
-            
+
 
 
             //var uploadedManifestHashes = new List<HashValue>(_azureRepository.GetAllManifestHashes());
@@ -112,16 +113,21 @@ namespace Arius.CommandLine
             //    .GetBlock();
 
 
-            var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            var chunkBlock = blocks.GetService<ChunkBlockProvider>()
-                !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
-                .GetBlock();
+            //var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
+            //var chunkBlock = blocks.GetService<ChunkBlockProvider>()
+            //    !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            //    .GetBlock();
+
+            var chunkBlocksProvider = blocks.GetService<ChunkBlocksProvider>();
+            //!.SetTargetPostBlock(null);
+            //var chunkBlock = chunkBlocksProvider!.GetChunkBlock();
+            var createIfNotExistsChunkBlock = chunkBlocksProvider.GetCreateIfNotExistsBlock();
+            var reconcileChunksBlock = chunkBlocksProvider.GetReconcileBlock();
 
 
 
-            var manifestBlocksProvider = blocks.GetService<ManifestBlocksProvider>()
-                !.SetTargetPostBlock(chunkBlock);
-
+            var manifestBlocksProvider = blocks.GetService<ManifestBlocksProvider>();
+                //!.SetTargetPostBlock(createIfNotExistsChunkBlock);
             var createIfNotExistManifestBlock = manifestBlocksProvider!.GetCreateIfNotExistsBlock();
             var reconcileManifestBlock = manifestBlocksProvider.GetReconcileBlock();
 
@@ -211,20 +217,22 @@ namespace Arius.CommandLine
             //    DataflowBlock.NullTarget<AriusArchiveItem>());
 
 
-            //A41
-            Task.WhenAll(createIfNotExistManifestBlock.Completion)
-                .ContinueWith(_ => chunkBlock.Complete());
+            ////A41
+            //Task.WhenAll(createIfNotExistManifestBlock.Completion)
+            //    .ContinueWith(_ => chunkBlock.Complete());
 
-            //// A40
-            //addRemoteManifestBlock.LinkTo(
-            //    getChunksForUploadBlock,
-            //    propagateCompletionOptions, 
-            //    binaryFile => !binaryFile.ManifestHash.HasValue);
+            // A40
+            createIfNotExistManifestBlock.LinkTo(
+                chunkBlock,
+                propagateCompletionOptions,
+                x => x.Process,
+                x => x.Item);
 
             // A50
             createIfNotExistManifestBlock.LinkTo(
                 reconcileManifestBlock,
-                doNotPropagateCompletionOptions); //,
+                doNotPropagateCompletionOptions,
+                x => x.Item); //,
                 //binaryFile => binaryFile.ManifestHash.HasValue);
 
             // A60

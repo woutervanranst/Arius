@@ -91,25 +91,24 @@ namespace Arius.CommandLine
 
 
 
-    internal abstract class CreateAndWaitBlocksProvider<T> where T : IFileWithHash
+    internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
     {
-            public CreateAndWaitBlocksProvider(IEnumerable<HashValue> createdInital)
+            public ProcessIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
             {
                 _created = new(createdInital);
             }
 
             private readonly List<HashValue> _created;
-
             private readonly Dictionary<HashValue, List<T>> _creating = new();
 
-            public CreateAndWaitBlocksProvider<T> SetTargetPostBlock(ITargetBlock<T> postBlock)
-            {
-                _postBlock = postBlock;
-                return this;
-            }
-            private ITargetBlock<T> _postBlock;
+            //public ProcessIfNotExistBlocksProvider<T> SetTargetPostBlock(ITargetBlock<T> postBlock)
+            //{
+            //    _postBlock = postBlock;
+            //    return this;
+            //}
+            //private ITargetBlock<T> _postBlock;
 
-            public TransformBlock<T, T> GetCreateIfNotExistsBlock()
+            public TransformManyBlock<T, (T Item, bool Process)> GetCreateIfNotExistsBlock()
             {
                 /*
                  * Three possibilities:
@@ -125,22 +124,22 @@ namespace Arius.CommandLine
                         {
                             if (_created.Contains(item.Hash))
                                 // 1 - Exists remote
-                                return item;
+                                return new[] { (item, false) };
                             else if (!_creating.ContainsKey(item.Hash))
                             {
                                 // 2 Does not yet exist remote and not yet being created --> upload
-                                _postBlock.Post(item); //A40
+                                //_postBlock.Post(item); //A40
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);
 
-                                return item;
+                                return new[] { (item, true), (item, false) };
                             }
                             else
                             {
                                 // 3 Does not exist remote but is being created
                                 _creating[item.Hash].Add(item);
 
-                                return item;
+                                return new[] { (item, false) };
                             }
                         }
                     }
@@ -183,14 +182,14 @@ namespace Arius.CommandLine
     }
 
 
-    internal class ManifestBlocksProvider : CreateAndWaitBlocksProvider<BinaryFile>
+    internal class ManifestBlocksProvider : ProcessIfNotExistBlocksProvider<BinaryFile>
     {
         public ManifestBlocksProvider(AzureRepository repo) : base(repo.GetAllManifestHashes())
         {
         }
     }
 
-    internal class ChunkBlocksProvider : CreateAndWaitBlocksProvider<ChunkFile>
+    internal class ChunkBlocksProvider : ProcessIfNotExistBlocksProvider<ChunkFile>
     {
         public ChunkBlocksProvider(AzureRepository repo, IChunker chunker) : base(repo.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList())
         {
@@ -211,7 +210,8 @@ namespace Arius.CommandLine
                 Console.WriteLine("Chunking BinaryFile " + bf.Name + " done");
 
                 return cs;
-            }
+            });
+        }
     }
 
     internal class ChunkBlockProvider
