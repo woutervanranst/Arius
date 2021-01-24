@@ -89,95 +89,129 @@ namespace Arius.CommandLine
     }
 
 
-    internal class ManifestBlocksProvider
+
+
+    internal abstract class CreateAndWaitBlocksProvider<T> where T : IFileWithHash
     {
-        public ManifestBlocksProvider(AzureRepository repo)
+            public CreateAndWaitBlocksProvider(IEnumerable<HashValue> createdInital)
+            {
+                _created = new(createdInital);
+            }
+
+            private readonly List<HashValue> _created;
+
+            private readonly Dictionary<HashValue, List<T>> _creating = new();
+
+            public CreateAndWaitBlocksProvider<T> SetTargetPostBlock(ITargetBlock<T> postBlock)
+            {
+                _postBlock = postBlock;
+                return this;
+            }
+            private ITargetBlock<T> _postBlock;
+
+            public TransformBlock<T, T> GetCreateIfNotExistsBlock()
+            {
+                /*
+                 * Three possibilities:
+                 *      1. BinaryFile arrives, remote manifest already exists --> send to next block
+                 *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
+                 *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
+                 */
+                return new(item =>
+                {
+                    lock (_created)
+                    {
+                        lock (_creating)
+                        {
+                            if (_created.Contains(item.Hash))
+                                // 1 - Exists remote
+                                return item;
+                            else if (!_creating.ContainsKey(item.Hash))
+                            {
+                                // 2 Does not yet exist remote and not yet being created --> upload
+                                _postBlock.Post(item); //A40
+                                _creating.Add(item.Hash, new());
+                                _creating[item.Hash].Add(item);
+
+                                return item;
+                            }
+                            else
+                            {
+                                // 3 Does not exist remote but is being created
+                                _creating[item.Hash].Add(item);
+
+                                return item;
+                            }
+                        }
+                    }
+                });
+            }
+
+            public TransformManyBlock<object, T> GetReconcileBlock()
+            {
+                return new(item =>
+                {
+                    lock (_created)
+                    {
+                        lock (_creating)
+                        {
+                            if (item is T bf)
+                            {
+                                if (_created.Contains(bf.Hash))
+                                    return new[] { bf }; // Manifest already uploaded
+                                else if (_creating.ContainsKey(bf.Hash))
+                                    // it is alreayd in de _pending list // do nothing
+                                    return Enumerable.Empty<T>();
+                                else
+                                    throw new InvalidOperationException("huh??");
+                            }
+                            else if (item is HashValue completedManifestHash)
+                            {
+                                _created.Add(completedManifestHash); // add to the list of uploaded hashes
+
+                                var r = _creating[completedManifestHash].ToArray();
+                                _creating.Remove(completedManifestHash);
+
+                                return r;
+                            }
+                            else
+                                throw new ArgumentException();
+                        }
+                    }
+                });
+            }
+    }
+
+
+    internal class ManifestBlocksProvider : CreateAndWaitBlocksProvider<BinaryFile>
+    {
+        public ManifestBlocksProvider(AzureRepository repo) : base(repo.GetAllManifestHashes())
         {
-            _createdManifests = new (repo.GetAllManifestHashes());
+        }
+    }
+
+    internal class ChunkBlocksProvider : CreateAndWaitBlocksProvider<ChunkFile>
+    {
+        public ChunkBlocksProvider(AzureRepository repo, IChunker chunker) : base(repo.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList())
+        {
+            _chunker = chunker;
         }
 
-        private readonly List<HashValue> _createdManifests;
+        private readonly IChunker _chunker;
 
-        private readonly Dictionary<HashValue, List<BinaryFile>> _creatingManifests = new(); // Key = ManifestHash
-
-        public ManifestBlocksProvider SetUploadBinaryFileBlock(ITargetBlock<BinaryFile> uploadBinaryFileBlock)
+        public TransformManyBlock<BinaryFile, IChunkFile> GetChunkBlock()
         {
-            _uploadBinaryFileBlock = uploadBinaryFileBlock;
-            return this;
-        }
-        private ITargetBlock<BinaryFile> _uploadBinaryFileBlock;
-
-        public TransformBlock<BinaryFile, BinaryFile> GetCreateIfNotExistsBlock()
-        {
-            /*
-             * Three possibilities:
-             *      1. BinaryFile arrives, remote manifest already exists --> send to next block
-             *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
-             *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
-             */
             return new(bf =>
             {
-                lock (_createdManifests)
-                {
-                    lock (_creatingManifests)
-                    {
-                        if (_createdManifests.Contains(bf.Hash))
-                            // 1 - Exists remote
-                            return bf;
-                        else if (!_creatingManifests.ContainsKey(bf.Hash))
-                        {
-                            // 2 Does not yet exist remote and not yet being created --> upload
-                            _uploadBinaryFileBlock.Post(bf); //A40
-                            _creatingManifests.Add(bf.Hash, new());
-                            _creatingManifests[bf.Hash].Add(bf);
+                Console.WriteLine("Chunking BinaryFile " + bf.Name);
 
-                            return bf;
-                        }
-                        else
-                        {
-                            // 3 Does not exist remote but is being created
-                            _creatingManifests[bf.Hash].Add(bf);
+                var cs = _chunker.Chunk(bf).ToArray();
+                bf.Chunks = cs;
 
-                            return bf;
-                        }
-                    }
-                }
-            });
-        }
+                Console.WriteLine("Chunking BinaryFile " + bf.Name + " done");
 
-        public TransformManyBlock<object, BinaryFile> GetReconcileBlock()
-        {
-            return new(item =>
-            {
-                lock (_createdManifests)
-                {
-                    lock (_creatingManifests)
-                    {
-                        if (item is BinaryFile bf)
-                        {
-                            if (_createdManifests.Contains(bf.Hash))
-                                return new[] { bf }; // Manifest already uploaded
-                            else if (_creatingManifests.ContainsKey(bf.Hash))
-                                // it is alreayd in de _pending list // do nothing
-                                return Enumerable.Empty<BinaryFile>();
-                            else
-                                throw new InvalidOperationException("huh??");
-                        }
-                        else if (item is HashValue completedManifestHash)
-                        {
-                            _createdManifests.Add(completedManifestHash); // add to the list of uploaded hashes
-
-                            var r = _creatingManifests[completedManifestHash].ToArray();
-                            _creatingManifests.Remove(completedManifestHash);
-
-                            return r;
-                        }
-                        else
-                            throw new ArgumentException();
-                    }
-                }
-            });
-        }
+                return cs;
+            }
     }
 
     internal class ChunkBlockProvider

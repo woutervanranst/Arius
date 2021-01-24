@@ -120,7 +120,7 @@ namespace Arius.CommandLine
 
 
             var manifestBlocksProvider = blocks.GetService<ManifestBlocksProvider>()
-                !.SetUploadBinaryFileBlock(chunkBlock);
+                !.SetTargetPostBlock(chunkBlock);
 
             var createIfNotExistManifestBlock = manifestBlocksProvider!.GetCreateIfNotExistsBlock();
             var reconcileManifestBlock = manifestBlocksProvider.GetReconcileBlock();
