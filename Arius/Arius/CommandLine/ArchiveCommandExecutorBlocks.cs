@@ -327,7 +327,10 @@ namespace Arius.CommandLine
                     {
                         if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                         {
-                            chunk.Delete(); //TDO never delete a binary file here?
+                            if (chunk is BinaryFile)
+                                throw new InvalidOperationException();
+
+                            chunk.Delete();
                             uploaded = true;
                         }
                         else
@@ -569,11 +572,11 @@ namespace Arius.CommandLine
 
         public TransformBlock<BinaryFile, object> GetBlock()
         {
-            return new(async binaryFile =>
+            return new(async bf =>
             {
-                await _azureRepository.AddManifestAsync(binaryFile);
+                await _azureRepository.AddManifestAsync(bf, bf.Chunks.ToArray());
 
-                return binaryFile.Hash;
+                return bf.Hash;
             });
         }
     }

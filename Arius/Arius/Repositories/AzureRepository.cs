@@ -67,9 +67,9 @@ namespace Arius.Repositories
         // -- MANIFEST REPOSITORY
         private readonly ManifestRepository _manifestRepository;
 
-        public async Task AddManifestAsync(BinaryFile f)
+        public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
         {
-            await _manifestRepository.AddManifestAsync(f);
+            await _manifestRepository.AddManifestAsync(bf, cfs);
         }
 
         public IEnumerable<HashValue> GetAllManifestHashes()
@@ -77,9 +77,9 @@ namespace Arius.Repositories
             return _manifestRepository.GetAllManifestHashes();
         }
 
-        public IEnumerable<HashValue> GetChunkHashes(HashValue manifestHash)
+        public async Task<IEnumerable<HashValue>> GetChunkHashes(HashValue manifestHash)
         {
-            return _manifestRepository.GetChunkHashes(manifestHash);
+            return await _manifestRepository.GetChunkHashes(manifestHash);
         }
 
 
