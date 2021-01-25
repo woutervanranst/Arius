@@ -114,7 +114,9 @@ namespace Arius.Services
             //    hex.AppendFormat("{0:x2}", b);
             //return hex.ToString();
 
-            return BitConverter.ToString(ba).Replace("-", "").ToLower();
+            return Convert.ToHexString(ba).ToLower();
+
+            //return BitConverter.ToString(ba).Replace("-", "").ToLower();
         }
     }
 }
