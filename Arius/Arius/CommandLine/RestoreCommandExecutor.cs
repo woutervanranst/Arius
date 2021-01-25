@@ -161,7 +161,7 @@ namespace Arius.CommandLine
             processPointerChunksBlock.LinkTo(
                 reconcilePointerBlock,
                 propagateCompletionOptions,
-                r => true, // r.State == PointerState.NotYetMerged, //don't care what the state is we propagate to reconciliatoin
+                //r => true, // r.State == PointerState.NotYetMerged, //don't care what the state is we propagate to reconciliatoin
                 r => r.PointerFile);
 
             processPointerChunksBlock.Completion.ContinueWith(_ => 

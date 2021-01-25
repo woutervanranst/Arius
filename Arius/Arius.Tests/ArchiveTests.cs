@@ -398,7 +398,7 @@ namespace Arius.Tests
         }
 
 
-        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, int minSize = 0, bool fastHash = false, bool dedup = false)
+        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             if (executeAsCli)
             {
@@ -413,7 +413,7 @@ namespace Arius.Tests
             else
             {
                 var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup._container.Name,
-                    removeLocal, tier.ToString(), minSize, fastHash, TestSetup.rootDirectoryInfo.FullName);
+                    removeLocal, tier.ToString(), fastHash, TestSetup.rootDirectoryInfo.FullName);
 
                 var configurationRoot = new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string> { 
@@ -437,7 +437,7 @@ namespace Arius.Tests
 
         }
 
-        private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, int minSize, bool fastHash, string path)
+        private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, bool fastHash, string path)
         {
             return new()
             {
@@ -448,7 +448,7 @@ namespace Arius.Tests
                 Container = container,
                 RemoveLocal = removeLocal,
                 Tier = tier,
-                MinSize = minSize,
+                //MinSize = minSize,
                 //Simulate = simulate,
                 Path = path
             };

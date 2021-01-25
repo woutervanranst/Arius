@@ -45,7 +45,7 @@ namespace Arius.Repositories
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
             {
-                return _bcc.GetBlobs(prefix: EncryptedChunkDirectoryName + "/")
+                return _bcc.GetBlobs(prefix: $"{EncryptedChunkDirectoryName}/")
                     .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
             }
 

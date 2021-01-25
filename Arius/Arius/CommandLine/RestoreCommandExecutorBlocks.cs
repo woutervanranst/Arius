@@ -124,6 +124,7 @@ namespace Arius.CommandLine
         public enum PointerState
         {
             Restored, // Pointer already restored
+            Restoring, // Manifest already being restored
             NotYetMerged, // Chunks to be merged
             NotYetDecrypted, // Chunks to be decrypted
             NotYetDownloaded, // Chunks to be downloaded
@@ -151,10 +152,22 @@ namespace Arius.CommandLine
             return this;
         }
 
+        private readonly List<HashValue> _inFlightManifests = new();
+
         public TransformBlock<PointerFile, (PointerFile PointerFile, PointerState State)> GetBlock()
         {
-            return new(pf =>
+            return new(async pf =>
             {
+                lock (_inFlightManifests)
+                {
+                    if (_inFlightManifests.Contains(pf.Hash))
+                    {
+                        return (pf, PointerState.Restoring);
+                    }
+
+                    _inFlightManifests.Add(pf.Hash);
+                }
+
                 // Chunks Downloaded & Merged?
                 if (pf.BinaryFileInfo is var bfi && bfi.Exists &&
                     new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
@@ -164,8 +177,12 @@ namespace Arius.CommandLine
 
                     //TODO TEST: binary file already exist - do not 
                 }
+
+                ////TODO: check whether the manifest is already being restored?! - to see again: archive two duplicates, restore, we're reading the chunkhashes again
+                //var x = 5;
+
                 
-                pf.ChunkHashes = _repo.GetChunkHashes(pf.Hash).ToArray();
+                pf.ChunkHashes = (await _repo.GetChunkHashes(pf.Hash)).ToArray();
 
                 bool atLeastOneToMerge = false, atLeastOneToDecrypt = false, atLeastOneToDownload = false, atLeastOneToHydrate = false;
 
@@ -377,22 +394,28 @@ namespace Arius.CommandLine
 
     internal class DecryptBlockProvider
     {
-        private readonly IEncrypter _encrypter;
-
-        public DecryptBlockProvider(IEncrypter encrypter)
+        public DecryptBlockProvider(ILogger<DecryptBlockProvider> logger, IEncrypter encrypter)
         {
+            _logger = logger;
             _encrypter = encrypter;
         }
+
+        private readonly ILogger<DecryptBlockProvider> _logger;
+        private readonly IEncrypter _encrypter;
 
         public TransformBlock<EncryptedChunkFile, ChunkFile> GetBlock()
         {
             return new(ecf =>
             {
+                _logger.LogInformation($"Decrypting chunk {ecf.Hash}...");
+                
                 var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
 
                 _encrypter.Decrypt(ecf, targetFile, true);
 
                 var cf = new ChunkFile(null, targetFile, ecf.Hash);
+
+                _logger.LogInformation($"Decrypting chunk {ecf.Hash}... done");
 
                 return cf;
             });
