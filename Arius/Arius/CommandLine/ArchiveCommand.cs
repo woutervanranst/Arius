@@ -81,17 +81,22 @@ namespace Arius.CommandLine
             });
             archiveCommand.AddOption(tierOption);
 
-            var minSizeOption = new Option<int>("--min-size",
-                getDefaultValue: () => 0,
-                description: "Minimum size of files to archive in MB");
-            archiveCommand.AddOption(minSizeOption);
+            //var minSizeOption = new Option<int>("--min-size",
+            //    getDefaultValue: () => 0,
+            //    description: "Minimum size of files to archive in MB");
+            //archiveCommand.AddOption(minSizeOption);
 
             //var simulateOption = new Option<bool>("--simulate",
             //    "List the differences between the local and the remote, without making any changes to remote");
             //archiveCommand.AddOption(simulateOption);
 
-            var fastHashOption = new Option<bool>("--fasthash", 
-                () => false,
+            var dedupOption = new Option<bool>("--dedup",
+                getDefaultValue: () => false,
+                "Deduplicate the chunks in the binary files"); //TODO better explanation
+            archiveCommand.AddOption(dedupOption);
+
+            var fastHashOption = new Option<bool>("--fasthash",
+                getDefaultValue: () => false,
                 "Use the cached hash of a file (faster, do not use in an archive where file contents change)");
             archiveCommand.AddOption(fastHashOption);
 
@@ -112,8 +117,8 @@ namespace Arius.CommandLine
             }
 
             archiveCommand.Handler = CommandHandlerExtensions
-                .Create<string, string, string, string, bool, string, int, bool, string>(
-                    (accountName, accountKey, passphrase, container, removeLocal, tier, minSize, fastHash, path) =>
+                .Create<string, string, string, string, bool, string, bool, bool, string>(
+                    (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
                     {
                         pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
 
@@ -126,8 +131,7 @@ namespace Arius.CommandLine
                             Container = container,
                             RemoveLocal = removeLocal,
                             Tier = tier,
-                            MinSize = minSize,
-                            //Simulate = simulate,
+                            Dedup = dedup,
                             Path = path
                         };
 
@@ -153,7 +157,7 @@ namespace Arius.CommandLine
         public string Container { get; init; }
         public bool RemoveLocal { get; init; }
         public AccessTier Tier { get; init; } 
-        public int MinSize { get; init; }
+        //public int MinSize { get; init; }
         //public bool Simulate { get; init; }
         public bool Dedup { get; init; }
         public string Path { get; init; }

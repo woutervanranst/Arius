@@ -56,11 +56,6 @@ namespace Arius.CommandLine
 
         public int Execute()
         {
-            ////TODO Simulate
-            ////TODO MINSIZE
-            ////TODO CHeck if the archive is deduped and password by checking the first amnifest file
-
-
             var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
 
             // Define blocks & intermediate variables
