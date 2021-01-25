@@ -11,7 +11,7 @@ namespace Arius.Tests
 {
     static class Extensions
     {
-        public static IEnumerable<FileInfo> GetLocalContentFiles(this DirectoryInfo directoryInfo)
+        public static IEnumerable<FileInfo> GetBinaryFiles(this DirectoryInfo directoryInfo)
         {
             //var lcfa = typeof(LocalContentFile).GetCustomAttributes<Arius.Extensions.ExtensionAttribute>().First();
             //return Arius.Extensions.ExtensionAttribute.GetFilesWithExtension(directoryInfo, lcfa);
