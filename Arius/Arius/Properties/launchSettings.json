@@ -5,7 +5,7 @@
     },
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --keep-local --tier hot C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --tier hot C:\\Users\\Wouter\\Documents\\Test"
     },
     "arius restore": {
       "commandName": "Project",
@@ -20,7 +20,7 @@
       //"environmentVariables": {
       //  "ACCOUNT_KEY": "%ACCOUNT_KEY%" //, //This overwrites the values from <DockerfileRunEnvironmentFiles> in the .csproj
       //},
-      "commandLineArgs": "arius.dll archive -n aurius -p woutervr -c arius --keep-local --tier hot /archive" //Reads account key from the Docker ARIUS_ACCOUNT_KEY env variable
+      "commandLineArgs": "arius.dll archive -n aurius -p woutervr -c arius --tier hot /archive" //Reads account key from the Docker ARIUS_ACCOUNT_KEY env variable
     }
   }
 }

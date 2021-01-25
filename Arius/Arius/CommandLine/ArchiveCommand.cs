@@ -18,7 +18,7 @@ namespace Arius.CommandLine
             --accountkey <accountkey> 
             --passphrase <passphrase>
             (--container <containername>) 
-            (--keep-local)
+            (--remove-local)
             (--tier=(hot/cool/archive))
             (--min-size=<minsizeinMB>)
             (--simulate)
@@ -61,9 +61,9 @@ namespace Arius.CommandLine
             containerOption.AddAlias("-c");
             archiveCommand.AddOption(containerOption);
 
-            var keepLocalOption = new Option<bool>("--keep-local",
-                "Do not delete the local copies of the file after a successful upload");
-            archiveCommand.AddOption(keepLocalOption);
+            var removeLocalOption = new Option<bool>("--remove-local",
+                "Remove local file after a successful upload");
+            archiveCommand.AddOption(removeLocalOption);
 
             var tierOption = new Option<string>("--tier",
                 getDefaultValue: () => "archive",
@@ -113,7 +113,7 @@ namespace Arius.CommandLine
 
             archiveCommand.Handler = CommandHandlerExtensions
                 .Create<string, string, string, string, bool, string, int, bool, string>(
-                    (accountName, accountKey, passphrase, container, keepLocal, tier, minSize, fastHash, path) =>
+                    (accountName, accountKey, passphrase, container, removeLocal, tier, minSize, fastHash, path) =>
                     {
                         pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
 
@@ -124,7 +124,7 @@ namespace Arius.CommandLine
                             Passphrase = passphrase,
                             FastHash = fastHash,
                             Container = container,
-                            KeepLocal = keepLocal,
+                            RemoveLocal = removeLocal,
                             Tier = tier,
                             MinSize = minSize,
                             //Simulate = simulate,
@@ -151,7 +151,7 @@ namespace Arius.CommandLine
         public string Passphrase { get; init; }
         public bool FastHash { get; init; }
         public string Container { get; init; }
-        public bool KeepLocal { get; init; }
+        public bool RemoveLocal { get; init; }
         public AccessTier Tier { get; init; } 
         public int MinSize { get; init; }
         //public bool Simulate { get; init; }

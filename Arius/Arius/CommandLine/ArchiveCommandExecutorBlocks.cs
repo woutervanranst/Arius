@@ -602,7 +602,7 @@ namespace Arius.CommandLine
                 // Create the pointer
                 var p = _ps.CreatePointerFileIfNotExists(binaryFile);
 
-                // Add the binary file to the list of binaries to be deleted after successful archiving & if !keepLocal
+                // Add the binary file to the list of binaries to be deleted after successful archiving & if removeLocal
                 _binaryFilesToDelete.Add(binaryFile);
                 return p;
             });
@@ -804,7 +804,7 @@ namespace Arius.CommandLine
         {
             return new(() =>
             {
-                if (_options.KeepLocal)
+                if (!_options.RemoveLocal)
                     return;
 
                 Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());

@@ -267,11 +267,11 @@ namespace Arius.Tests
         }
 
         [Test, Order(55)]
-        public void TestKeepLocal()
+        public void TestRemoveLocal()
         {
             Assert.IsTrue(TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
 
-            ArchiveCommand(false, AccessTier.Cool, false);
+            ArchiveCommand(false, AccessTier.Cool, removeLocal: true);
 
             Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetLocalContentFiles().Any());
         }
@@ -322,7 +322,7 @@ namespace Arius.Tests
         }
 
 
-        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool keepLocal = true, int minSize = 0, bool fastHash = false, bool dedup = false)
+        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, int minSize = 0, bool fastHash = false, bool dedup = false)
         {
             if (executeAsCli)
             {
@@ -331,13 +331,13 @@ namespace Arius.Tests
                                              $"-k {TestSetup.accountKey} " +
                                              $"-p {TestSetup.passphrase} " +
                                              $"-c {TestSetup._container.Name} " +
-                                             $"{(keepLocal ? "--keep-local" : "")} --tier hot {TestSetup.rootDirectoryInfo.FullName}");
+                                             $"{(removeLocal ? "--remove-local" : "")} --tier hot {TestSetup.rootDirectoryInfo.FullName}");
                 throw new NotImplementedException();
             }
             else
             {
                 var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup._container.Name,
-                    keepLocal, tier.ToString(), minSize, fastHash, TestSetup.rootDirectoryInfo.FullName);
+                    removeLocal, tier.ToString(), minSize, fastHash, TestSetup.rootDirectoryInfo.FullName);
 
                 var configurationRoot = new ConfigurationBuilder()
                     .AddInMemoryCollection(new Dictionary<string, string> { { "TempDirName", ".ariustemp" } })
@@ -358,7 +358,7 @@ namespace Arius.Tests
 
         }
 
-        private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool keepLocal, string tier, int minSize, bool fastHash, string path)
+        private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, int minSize, bool fastHash, string path)
         {
             return new()
             {
@@ -367,7 +367,7 @@ namespace Arius.Tests
                 Passphrase = passphrase,
                 FastHash = fastHash,
                 Container = container,
-                KeepLocal = keepLocal,
+                RemoveLocal = removeLocal,
                 Tier = tier,
                 MinSize = minSize,
                 //Simulate = simulate,

@@ -116,7 +116,7 @@ namespace Arius.CommandLine
 
         public bool Dedup => false;
         public AccessTier Tier { get => throw new NotImplementedException(); init => throw new NotImplementedException(); } // Should not be used
-        public bool KeepLocal { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+        public bool RemoveLocal { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
         public int MinSize { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
         public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
     }
