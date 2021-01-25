@@ -33,7 +33,7 @@ namespace Arius.Models
         //protected abstract string Extension { get; }
     }
 
-    class RemoteEncryptedChunkBlobItem : Blob
+    internal class RemoteEncryptedChunkBlobItem : Blob
     {
         public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
@@ -45,5 +45,14 @@ namespace Arius.Models
         public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
         public BlobItem BlobItem => _bi;
+    }
+
+    internal class RemoteManifestBlobItem : Blob
+    {
+        public RemoteManifestBlobItem(BlobItem bi) : base(bi)
+        {
+        }
+
+        public override HashValue Hash => new HashValue { Value = Name };
     }
 }

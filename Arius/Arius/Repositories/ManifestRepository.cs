@@ -76,15 +76,15 @@ namespace Arius.Repositories
                 try
                 {
                     return _bcc.GetBlobs(prefix: ($"{ManifestDirectoryName}/"))
-                        .Select(bi => new HashValue { Value = bi.Name });
+                        .Select(bi => new RemoteManifestBlobItem(bi).Hash).ToArray();
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting all manifests... done");
+                    _logger.LogInformation($"Getting all manifests... done"); // TODO KARL logging pattern
                 }
             }
 
-            public async Task<IEnumerable<HashValue>> GetChunkHashes(HashValue manifestHash)
+            public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
             {
                 try
                 {

@@ -77,9 +77,9 @@ namespace Arius.Repositories
             return _manifestRepository.GetAllManifestHashes();
         }
 
-        public async Task<IEnumerable<HashValue>> GetChunkHashes(HashValue manifestHash)
+        public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
         {
-            return await _manifestRepository.GetChunkHashes(manifestHash);
+            return await _manifestRepository.GetChunkHashesAsync(manifestHash);
         }
 
 

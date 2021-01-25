@@ -178,7 +178,7 @@ namespace Arius.CommandLine
                     //TODO TEST: binary file already exist - do not 
                 }
 
-                pf.ChunkHashes = (await _repo.GetChunkHashes(pf.Hash)).ToArray();
+                pf.ChunkHashes = (await _repo.GetChunkHashesAsync(pf.Hash)).ToArray();
 
                 bool atLeastOneToMerge = false, atLeastOneToDecrypt = false, atLeastOneToDownload = false, atLeastOneToHydrate = false;
 

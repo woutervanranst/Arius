@@ -92,71 +92,71 @@ namespace Arius.CommandLine
                 .BuildServiceProvider();
 
             
-            var indexDirectoryBlock = blocks.GetService<IndexDirectoryBlockProvider>()!.GetBlock();
+            var indexDirectoryBlock = blocks.GetRequiredService<IndexDirectoryBlockProvider>().GetBlock();
 
 
-            var addHashBlock = blocks.GetService<AddHashBlockProvider>()!.GetBlock();
+            var addHashBlock = blocks.GetRequiredService<AddHashBlockProvider>().GetBlock();
 
 
             var chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = new Dictionary<BinaryFile, List<HashValue>>(); //Key = BinaryFile, List = HashValue van de Chunks
-            var chunkBlock = blocks.GetService<ChunkBlockProvider>()
-                !.SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            var chunkBlock = blocks.GetRequiredService<ChunkBlockProvider>()
+                .SetChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                 .GetBlock();
 
 
-            var manifestBlocksProvider = blocks.GetService<ManifestBlocksProvider>();
-            var createIfNotExistManifestBlock = manifestBlocksProvider!.GetCreateIfNotExistsBlock();
+            var manifestBlocksProvider = blocks.GetRequiredService<ManifestBlocksProvider>();
+            var createIfNotExistManifestBlock = manifestBlocksProvider.GetCreateIfNotExistsBlock();
             var reconcileManifestBlock = manifestBlocksProvider.GetReconcileBlock();
 
 
-            var encryptChunksBlock = blocks.GetService<EncryptChunksBlockProvider>()!.GetBlock();
+            var encryptChunksBlock = blocks.GetRequiredService<EncryptChunksBlockProvider>().GetBlock();
 
 
             var uploadQueue = new BlockingCollection<EncryptedChunkFile>();
-            var enqueueEncryptedChunksForUploadBlock = blocks.GetService<EnqueueEncryptedChunksForUploadBlockProvider>()
-                !.AddUploadQueue(uploadQueue)
+            var enqueueEncryptedChunksForUploadBlock = blocks.GetRequiredService<EnqueueEncryptedChunksForUploadBlockProvider>()
+                .AddUploadQueue(uploadQueue)
                 .GetBlock();
 
 
-            var uploadEncryptedChunksBlock =  blocks.GetService<UploadEncryptedChunksBlockProvider>()!.GetBlock();
+            var uploadEncryptedChunksBlock =  blocks.GetRequiredService<UploadEncryptedChunksBlockProvider>().GetBlock();
 
 
-            var uploadTask = blocks.GetService<EnqueueUploadTaskProvider>()
-                !.AddUploadQueue(uploadQueue)
+            var uploadTask = blocks.GetRequiredService<EnqueueUploadTaskProvider>()
+                .AddUploadQueue(uploadQueue)
                 .AddUploadEncryptedChunkBlock(uploadEncryptedChunksBlock)
                 .AddEnqueueEncryptedChunksForUploadBlock(enqueueEncryptedChunksForUploadBlock)
                 .GetTask();
 
 
-            var reconcileChunksWithManifestsBlock = blocks.GetService<ReconcileChunksWithManifestsBlockProvider>()
-                !.AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+            var reconcileChunksWithManifestsBlock = blocks.GetRequiredService<ReconcileChunksWithManifestsBlockProvider>()
+                .AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                 .GetBlock();
 
             
-            var createManifestBlock = blocks.GetService<CreateManifestBlockProvider>()!.GetBlock();
+            var createManifestBlock = blocks.GetRequiredService<CreateManifestBlockProvider>().GetBlock();
 
 
             var binaryFilesToDelete = new List<BinaryFile>();
-            var createPointersBlock = blocks.GetService<CreatePointerBlockProvider>()
-                !.AddBinaryFilesToDelete(binaryFilesToDelete)
+            var createPointersBlock = blocks.GetRequiredService<CreatePointerBlockProvider>()
+                .AddBinaryFilesToDelete(binaryFilesToDelete)
                 .GetBlock();
 
 
-            var createPointerFileEntryIfNotExistsBlock = blocks.GetService<CreatePointerFileEntryIfNotExistsBlockProvider>()
-                !.AddVersion(version)
+            var createPointerFileEntryIfNotExistsBlock = blocks.GetRequiredService<CreatePointerFileEntryIfNotExistsBlockProvider>()
+                .AddVersion(version)
                 .GetBlock();
 
 
-            var removeDeletedPointersTask = blocks.GetService<RemoveDeletedPointersTaskProvider>()
-                !.AddVersion(version)
+            var removeDeletedPointersTask = blocks.GetRequiredService<RemoveDeletedPointersTaskProvider>()
+                .AddVersion(version)
                 .GetTask();
 
 
-            var exportToJsonTask = blocks.GetService<ExportToJsonTaskProvider>()!.GetTask();
+            var exportToJsonTask = blocks.GetRequiredService<ExportToJsonTaskProvider>().GetTask();
 
 
-            var deleteBinaryFilesTask = blocks.GetService<DeleteBinaryFilesTaskProvider>()
-                !.AddBinaryFilesToDelete(binaryFilesToDelete)
+            var deleteBinaryFilesTask = blocks.GetRequiredService<DeleteBinaryFilesTaskProvider>()
+                .AddBinaryFilesToDelete(binaryFilesToDelete)
                 .GetTask();
 
 

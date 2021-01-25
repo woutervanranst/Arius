@@ -97,32 +97,34 @@ namespace Arius.CommandLine
 
                 .BuildServiceProvider();
 
+            //var dedupedItems = _azureRepository.GetAllManifestHashes()
+            //    .SelectMany(manifestHash => _azureRepository
+            //        .GetChunkHashesAsync(manifestHash).Result
+            //            .Select(chunkHash => new { manifestHash, chunkHash }))
+            //    .GroupBy(zz => zz.chunkHash)
+            //    .Where(kk => kk.Count() > 1)
+            //    .ToList();
 
-            var synchronizeBlock = blocks.GetService<SynchronizeBlockProvider>()!.GetBlock();
+            var synchronizeBlock = blocks.GetRequiredService<SynchronizeBlockProvider>().GetBlock();
 
+            var hydrateBlockProvider = blocks.GetRequiredService<HydrateBlockProvider>();
+            var hydrateBlock = hydrateBlockProvider.GetBlock();
 
-            //var hydrateQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
-            //var downloadQueue = new BlockingCollection<RemoteEncryptedChunkBlobItem>();
-            //var decryptQueue = new BlockingCollection<EncryptedChunkFile>();
+            var downloadBlockProvider = blocks.GetRequiredService<DownloadBlockProvider>();
+            var enqueueDownloadBlock = downloadBlockProvider.GetEnqueueBlock();
+            var batchingTask = downloadBlockProvider.GetBatchingTask();
+            var downloadBlock = downloadBlockProvider.GetDownloadBlock();
 
-            var hydrateBlockProvider = blocks.GetService<HydrateBlockProvider>();
-            var hydrateBlock = hydrateBlockProvider!.GetBlock();
-
-            var downloadBlockProvider = blocks.GetService<DownloadBlockProvider>();
-            var enqueueDownloadBlock = downloadBlockProvider!.GetEnqueueBlock();
-            var batchingTask = downloadBlockProvider!.GetBatchingTask();
-            var downloadBlock = downloadBlockProvider!.GetDownloadBlock();
-
-            var decryptBlock = blocks.GetService<DecryptBlockProvider>()!.GetBlock();
-
-
-            var reconcilePointersWithChunksBlockProvider = blocks.GetService<ReconcilePointersWithChunksBlockProvider>();
-            var reconcilePointerBlock = reconcilePointersWithChunksBlockProvider!.GetReconcilePointerBlock();
-            var reconcileChunkBlock = reconcilePointersWithChunksBlockProvider!.GetReconcileChunkBlock();
+            var decryptBlock = blocks.GetRequiredService<DecryptBlockProvider>().GetBlock();
 
 
-            var processPointerChunksBlock = blocks.GetService<ProcessPointerChunksBlockProvider>()
-                !.SetReconcileChunkBlock(reconcileChunkBlock)
+            var reconcilePointersWithChunksBlockProvider = blocks.GetRequiredService<ReconcilePointersWithChunksBlockProvider>();
+            var reconcilePointerBlock = reconcilePointersWithChunksBlockProvider.GetReconcilePointerBlock();
+            var reconcileChunkBlock = reconcilePointersWithChunksBlockProvider.GetReconcileChunkBlock();
+
+
+            var processPointerChunksBlock = blocks.GetRequiredService<ProcessPointerChunksBlockProvider>()
+                .SetReconcileChunkBlock(reconcileChunkBlock)
                 .SetHydrateBlock(hydrateBlock)
                 .SetEnqueueDownloadBlock(enqueueDownloadBlock)
                 .SetDecryptBlock(decryptBlock)
@@ -131,7 +133,7 @@ namespace Arius.CommandLine
 
 
 
-            var mergeBlock = blocks.GetService<MergeBlockProvider>()!.GetBlock();
+            var mergeBlock = blocks.GetRequiredService<MergeBlockProvider>().GetBlock();
 
 
             // Set up linking
