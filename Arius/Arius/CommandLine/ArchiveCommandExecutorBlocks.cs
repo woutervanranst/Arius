@@ -90,7 +90,6 @@ namespace Arius.CommandLine
 
 
 
-
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
     {
             public ProcessIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
@@ -101,14 +100,8 @@ namespace Arius.CommandLine
             private readonly List<HashValue> _created;
             private readonly Dictionary<HashValue, List<T>> _creating = new();
 
-            //public ProcessIfNotExistBlocksProvider<T> SetTargetPostBlock(ITargetBlock<T> postBlock)
-            //{
-            //    _postBlock = postBlock;
-            //    return this;
-            //}
-            //private ITargetBlock<T> _postBlock;
 
-            public TransformManyBlock<T, (T Item, bool Process)> GetCreateIfNotExistsBlock()
+            public TransformManyBlock<T, (T Item, bool ToProcess)> GetCreateIfNotExistsBlock()
             {
                 /*
                  * Three possibilities:
@@ -532,40 +525,6 @@ namespace Arius.CommandLine
             return this;
         }
 
-
-        //public TransformManyBlock<HashValue, HashValue> GetBlock()
-        //{
-        //    return new( // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
-        //        hashOfUploadedChunk =>
-        //        {
-        //            var manifestsToCreate = new List<BinaryFile>();
-
-        //            lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
-        //            {
-        //                foreach (var kvp in _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated) //Key = HashValue van de Manifest, List = HashValue van de Chunks
-        //                {
-        //                    // Remove the incoming ChunkHash from the list of prerequired
-        //                    kvp.Value.Remove(hashOfUploadedChunk);
-
-        //                    // If the list of prereqs is empty
-        //                    if (!kvp.Value.Any())
-        //                    {
-        //                        // Add it to the list of manifests to be created
-        //                        //kvp.Key.ManifestHash = kvp.Key.Hash;
-        //                        manifestsToCreate.Add(kvp.Key);
-        //                    }
-        //                }
-
-        //                // Remove all reconciled manifests from the waitlist
-        //                foreach (var binaryFile in manifestsToCreate)
-        //                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(binaryFile);
-        //            }
-
-        //            return manifestsToCreate.Select(bf => bf.Hash);
-        //        });
-        //}
-
-
         public TransformManyBlock<HashValue, BinaryFile> GetBlock()
         {
             return new( // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
@@ -608,16 +567,6 @@ namespace Arius.CommandLine
 
         private readonly AzureRepository _azureRepository;
 
-        //public TransformBlock<BinaryFile, BinaryFile> GetBlock()
-        //{
-        //    return new(async binaryFile =>
-        //    {
-        //        await _azureRepository.AddManifestAsync(binaryFile);
-
-        //        return binaryFile;
-        //    });
-        //}
-
         public TransformBlock<BinaryFile, object> GetBlock()
         {
             return new(async binaryFile =>
@@ -628,61 +577,6 @@ namespace Arius.CommandLine
             });
         }
     }
-
-    //internal class ReconcileBinaryFilesWithManifestBlockProvider
-    //{
-    //    public ReconcileBinaryFilesWithManifestBlockProvider AddUploadedManifestHashes(List<HashValue> uploadedManifestHashes)
-    //    {
-    //        _uploadedManifestHashes = uploadedManifestHashes;
-    //        _binaryFilesPerManifestHash = new Dictionary<HashValue, List<BinaryFile>>(); //Key = HashValue van de Manifest
-
-    //        return this;
-    //    }
-
-    //    private List<HashValue> _uploadedManifestHashes;
-    //    private Dictionary<HashValue, List<BinaryFile>> _binaryFilesPerManifestHash;
-
-    //    public TransformManyBlock<BinaryFile, BinaryFile> GetBlock()
-    //    {
-    //        return new(binaryFile =>
-    //        {
-    //            lock (_binaryFilesPerManifestHash)
-    //            {
-    //                //Add to the list an wait until EXACTLY ONE binaryFile with the 
-    //                if (!_binaryFilesPerManifestHash.ContainsKey(binaryFile.Hash))
-    //                    _binaryFilesPerManifestHash.Add(binaryFile.Hash, new List<BinaryFile>());
-
-    //                // Add this binaryFile to the list of pointers to be created, once this manifest is created
-    //                _binaryFilesPerManifestHash[binaryFile.Hash].Add(binaryFile);
-
-    //                if (binaryFile.ManifestHash.HasValue)
-    //                {
-    //                    lock (_uploadedManifestHashes)
-    //                    {
-    //                        _uploadedManifestHashes.Add(binaryFile.ManifestHash.Value);
-    //                    }
-    //                }
-
-    //                if (_uploadedManifestHashes.Contains(binaryFile.Hash))
-    //                {
-    //                    var pointersToCreate = _binaryFilesPerManifestHash[binaryFile.Hash].ToArray();
-    //                    _binaryFilesPerManifestHash[binaryFile.Hash].Clear();
-
-    //                    return pointersToCreate;
-    //                }
-    //                else
-    //                    return Enumerable.Empty<BinaryFile>(); // NOTHING TO PASS ON TO THE NEXT STAGE
-    //            }
-
-    //            /* Input is either
-    //                If the Manifest already existed remotely, the BinaryFile with Hash and ManifestHash, witout Chunks
-    //                If the Manifest did not already exist, it will be uploaded by now - wit Hash and ManifestHash
-    //                If the Manifest did not already exist, and the file is a duplicate, with Hash but NO ManifestHash
-    //                The manifest did initially not exist, but was uploaded in the mean time
-    //             */
-    //        });
-    //    }
-    //}
 
     internal class CreatePointerBlockProvider
     {
