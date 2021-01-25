@@ -178,10 +178,6 @@ namespace Arius.CommandLine
                     //TODO TEST: binary file already exist - do not 
                 }
 
-                ////TODO: check whether the manifest is already being restored?! - to see again: archive two duplicates, restore, we're reading the chunkhashes again
-                //var x = 5;
-
-                
                 pf.ChunkHashes = (await _repo.GetChunkHashes(pf.Hash)).ToArray();
 
                 bool atLeastOneToMerge = false, atLeastOneToDecrypt = false, atLeastOneToDownload = false, atLeastOneToHydrate = false;
@@ -436,7 +432,15 @@ namespace Arius.CommandLine
                     lock (_inFlightPointers)
                     {
                         if (!_inFlightPointers.ContainsKey(pf.Hash))
-                            _inFlightPointers.Add(pf.Hash, new(new List<PointerFile>(), pf.ChunkHashes.ToList()));
+                            _inFlightPointers.Add(pf.Hash, new(new(), new()));
+
+                        var entry = _inFlightPointers[pf.Hash];
+
+                        if (entry.ChunkHashes.Count == 0 && pf.ChunkHashes is not null)
+                            entry.ChunkHashes.AddRange(pf.ChunkHashes);
+                        else if (entry.ChunkHashes.Count > 0 && pf.ChunkHashes is not null)
+                            throw new InvalidOperationException("Too many chunk hash definitions"); //the list of thunks for this manfiest should be mastered once
+
 
                         _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
                     }
