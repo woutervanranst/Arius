@@ -41,7 +41,7 @@ namespace Arius.Tests
             var hvp = new SHA256Hasher(options);
 
 
-            var dc = new DedupChunker(config, hvp);
+            var dc = new DedupChunker(null, config, hvp);
 
             var file = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
             var fi = new FileInfo(file);
@@ -211,7 +211,7 @@ namespace Arius.Tests
 
 
 
-            var dc = new DedupChunker(config, hvp);
+            var dc = new DedupChunker(null, config, hvp);
 
 
             var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
@@ -251,7 +251,7 @@ namespace Arius.Tests
             var hvp = new SHA256Hasher(options);
 
 
-            var dc = new DedupChunker(config, hvp);
+            var dc = new DedupChunker(null, config, hvp);
 
             var file = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
             var fi = new FileInfo(file);

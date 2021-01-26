@@ -29,23 +29,25 @@ namespace Arius.CommandLine
         public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
         {
             return new(di => IndexDirectory(_root),
-                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 1}
+                new ExecutionDataflowBlockOptions { SingleProducerConstrained = true }
             );
         }
 
         private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo root)
         {
+            _logger.LogInformation($"Indexing {root.FullName}");
+
             foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
             {
                 if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
                 {
-                    _logger.LogInformation("PointerFile " + fi.Name);
+                    _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
                     yield return new PointerFile(root, fi);
                 }
                 else
                 {
-                    _logger.LogInformation("BinaryFile " + fi.Name);
+                    _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
                     yield return new BinaryFile(root, fi);
                 }
@@ -73,18 +75,18 @@ namespace Arius.CommandLine
                     return pf;
                 else if (item is BinaryFile bf)
                 {
-                    _logger.LogInformation("Hashing BinaryFile " + bf.Name);
+                    _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName}");
 
                     bf.Hash = _hvp.GetHashValue(bf);
 
-                    _logger.LogInformation("Hashing BinaryFile " + bf.Name + " done");
+                    _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done");
 
                     return bf;
                 }
                 else
                     throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
             },
-            new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
+            new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = 15 });
         }
     }
 
@@ -353,17 +355,17 @@ namespace Arius.CommandLine
                 });
 
                 return r;
-            }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = DataflowBlockOptions.Unbounded});
+            }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
         private IEnumerable<IChunkFile> AddChunks(BinaryFile f)
         {
-            Console.WriteLine("Chunking BinaryFile " + f.Name);
+            //Console.WriteLine("Chunking BinaryFile " + f.Name);
 
             var cs = _chunker.Chunk(f).ToArray();
             f.Chunks = cs;
 
-            Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
+            //Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
             return cs;
         }
@@ -371,12 +373,14 @@ namespace Arius.CommandLine
 
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(IConfiguration config, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IConfiguration config, IEncrypter encrypter)
         {
+            _logger = logger;
             _config = config;
             _encrypter = encrypter;
         }
 
+        private readonly ILogger<EncryptChunksBlockProvider> _logger;
         private readonly IConfiguration _config;
         private readonly IEncrypter _encrypter;
 
@@ -389,7 +393,7 @@ namespace Arius.CommandLine
 
         private EncryptedChunkFile EncryptChunks(IChunkFile f)
         {
-            Console.WriteLine($"Encrypting ChunkFile {f.Name}");
+            _logger.LogInformation($"Encrypting ChunkFile {f.Name}");
 
             var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
 
@@ -397,7 +401,7 @@ namespace Arius.CommandLine
 
             var ecf = new EncryptedChunkFile(f.Root, targetFile, f.Hash);
 
-            Console.WriteLine($"Encrypting ChunkFile {f.Name} done");
+            _logger.LogInformation($"Encrypting ChunkFile {f.Name} done");
 
             return ecf;
         }
@@ -468,7 +472,7 @@ namespace Arius.CommandLine
                     var batch = new List<EncryptedChunkFile>();
                     long size = 0;
 
-                    foreach (var ecf in _uploadQueue.GetConsumingEnumerable()) //TODO DIT KLOPT NIET gaat gewoon heel de queue uitlezen
+                    foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
                     {
                         batch.Add(ecf);
                         size += ecf.Length;

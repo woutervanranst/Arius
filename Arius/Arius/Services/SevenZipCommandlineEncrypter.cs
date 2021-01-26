@@ -42,7 +42,7 @@ namespace Arius.Services
 
         public void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, Compression compressionLevel, bool deletePlaintext = false)
         {
-            _logger.LogDebug($"Encrypting {fileToEncrypt.Name}");
+            _logger.LogDebug($"Encrypting {fileToEncrypt.FullName}");
 
             //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
             /*
