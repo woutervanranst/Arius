@@ -70,8 +70,8 @@ namespace Arius.Repositories
                     RelativeName = pf.RelativeName,
                     Version = version,
                     IsDeleted = false,
-                    CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName), //TODO
-                    LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName),
+                    CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(), //TODO
+                    LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
                 };
             }
 
