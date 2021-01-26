@@ -48,14 +48,7 @@ namespace Arius.Repositories
                     if (bc.Exists())
                         throw new InvalidOperationException("Manifest Already Exists");
 
-                    //public static Stream ToStream(this string str, Encoding enc = null)
-                    //{
-                    //    enc = enc ?? Encoding.UTF8;
-                    //    return new MemoryStream(enc.GetBytes(str ?? ""));
-                    //}
-
                     var json = JsonSerializer.Serialize(cfs.Select(cf => cf.Hash.Value));
-                    //var bytes = Convert.FromHexString(chunks);
                     var bytes = Encoding.UTF8.GetBytes(json);
                     var ms = new MemoryStream(bytes);
 

@@ -205,7 +205,9 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
-                    if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && hrecbi.Downloadable)
+                    if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && 
+                        hrecbi is not null && 
+                        hrecbi.Downloadable)
                     {
                         // R80
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} not yet downloaded. Queueing for download.");
@@ -218,7 +220,7 @@ namespace Arius.CommandLine
                     if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
                     {
                         // R90
-                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in archive tier. Hydrating.");
+                        _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in Archive tier. Starting hydration or getting hydration status...");
                         atLeastOneToHydrate = true;
                         _hydrateBlock.Post(arecbi);
                         continue;
@@ -257,11 +259,11 @@ namespace Arius.CommandLine
             {
                 _repo.Hydrate(recbi);
 
-                AtLeastOneHydrated = true;
+                AtLeastOneHydrating = true;
             });
         }
 
-        public bool AtLeastOneHydrated { get; private set; }
+        public bool AtLeastOneHydrating { get; private set; }
     }
     
     internal class DownloadBlockProvider
@@ -420,6 +422,13 @@ namespace Arius.CommandLine
 
     internal class ReconcilePointersWithChunksBlockProvider
     {
+        public ReconcilePointersWithChunksBlockProvider(ILogger<ReconcilePointersWithChunksBlockProvider> logger)
+        {
+            _logger = logger;
+        }
+
+        private readonly ILogger<ReconcilePointersWithChunksBlockProvider> _logger;
+        
         private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
         private readonly Dictionary<HashValue, (List<PointerFile> PointerFiles, List<HashValue> ChunkHashes)> _inFlightPointers = new(); // Key = ManifestHash
 
@@ -431,18 +440,24 @@ namespace Arius.CommandLine
                 {
                     lock (_inFlightPointers)
                     {
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Set up for Pointers with ManifestHash {pf.Hash}...");
+
                         if (!_inFlightPointers.ContainsKey(pf.Hash))
                             _inFlightPointers.Add(pf.Hash, new(new(), new()));
 
                         var entry = _inFlightPointers[pf.Hash];
 
                         if (entry.ChunkHashes.Count == 0 && pf.ChunkHashes is not null)
+                        {
                             entry.ChunkHashes.AddRange(pf.ChunkHashes);
+                            _logger.LogInformation($"Reconciliation Pointers/Chunks - ManifestHash {pf.Hash}... {pf.ChunkHashes.Count()} chunk(s) required");
+                        }
                         else if (entry.ChunkHashes.Count > 0 && pf.ChunkHashes is not null)
                             throw new InvalidOperationException("Too many chunk hash definitions"); //the list of thunks for this manfiest should be mastered once
 
 
                         _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - ManifestHash {pf.Hash}... added PointerFile {pf.RelativeName}");
                     }
                 });
             }
@@ -466,13 +481,18 @@ namespace Arius.CommandLine
                 {
                     // Remove this chunk from all pointers that require it
                     foreach (var pointer in _inFlightPointers.Values.Where(kvp => kvp.ChunkHashes.Contains(cf.Hash)))
+                    {
                         pointer.ChunkHashes.Remove(cf.Hash);
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Chunk {cf.Hash} reconciled with {pointer.PointerFiles.Count()} PointerFile(s). {pointer.ChunkHashes.Count()} Chunks remaining.");
+                    }
 
                     // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)
                     var hashesOfReadyPointers = _inFlightPointers.Where(kvp => !kvp.Value.ChunkHashes.Any()).Select(kvp => kvp.Key).ToArray();
 
                     if (hashesOfReadyPointers.Any())
                     {
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - {hashesOfReadyPointers.Count()} Pointer(s) ready for merge");
+
                         var r = hashesOfReadyPointers.Select(manifestHash =>
                         {
                             var pointersToRestore = _inFlightPointers[manifestHash].PointerFiles.ToArray();
@@ -503,16 +523,18 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(RestoreOptions options, IConfiguration config, IHashValueProvider hvp, Chunker chunker, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, Chunker chunker, DedupChunker dedupChunker)
         {
+            _logger = logger;
+            _hvp = hvp;
             _chunker = new();
             _dedupChunker = dedupChunker;
-            _hvp = hvp;
             _keepPointers = options.KeepPointers;
         }
 
         private readonly Chunker _chunker;
         private readonly DedupChunker _dedupChunker;
+        private readonly ILogger<MergeBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly bool _keepPointers;
 
@@ -521,6 +543,8 @@ namespace Arius.CommandLine
             return new(item =>
             {
                 (PointerFile[] pointersToRestore, ChunkFile[] withChunks, ChunkFile[] chunksThatCanBeDeleted) = item;
+
+                _logger.LogInformation($"Merging {withChunks.Count()} Chunk(s) into {pointersToRestore.Count()} Pointer(s)");
 
                 var target = GetBinaryFileInfo(pointersToRestore.First());
                 var bf = Merge(withChunks, target);

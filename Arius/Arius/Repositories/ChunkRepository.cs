@@ -51,23 +51,34 @@ namespace Arius.Repositories
 
             /// <summary>
             /// Get a hydrated RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
-            /// Throws exception if not found.
+            /// Returns null if not found.
             /// </summary>
-            /// <param name="chunkHash"></param>
-            /// <returns></returns>
             public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
             {
+                // Return, in order of preference,
+                // 1. in cold storage
                 if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi1 
                     && recbi1 is not null 
                     && recbi1.Downloadable)
                     return recbi1;
 
+                // 2. rehydrated item
                 if (GetByName(RehydrationDirectoryName, chunkHash.Value) is var recbi2 
                     && recbi2 is not null
                     && recbi2.Downloadable)
                     return recbi2;
 
-                throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
+                //// 3. in archive storage
+                //if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi3
+                //    && recbi3 is not null
+                //    && recbi3.AccessTier == AccessTier.Archive)
+                //    return recbi3;
+
+                _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
+
+                return null;
+
+                //throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
             }
 
             public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
@@ -99,6 +110,8 @@ namespace Arius.Repositories
             // PUT
             public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
             {
+                _logger.LogInformation($"Hydrating chunk {itemToHydrate.Name}");
+
                 if (itemToHydrate.AccessTier == AccessTier.Hot ||
                     itemToHydrate.AccessTier == AccessTier.Cool)
                     throw new InvalidOperationException("Already hydrated");
