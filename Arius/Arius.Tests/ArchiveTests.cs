@@ -504,6 +504,11 @@ namespace Arius.Tests
 
 
               //* delete pointer, archive
+
+
+        // * archive a file for which ONLY the chunk (not deduped) exists (ie no pointer, no entries no manifest)
+        // * archive a duplicated chunkfile
+        // * chunk1, 2, 3 are already uploaded. file 2 = chunk 2,3. archive.
         //         *
         //         */
     }

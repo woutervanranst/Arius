@@ -440,7 +440,7 @@ namespace Arius.CommandLine
                 {
                     lock (_inFlightPointers)
                     {
-                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Set up for Pointers with ManifestHash {pf.Hash}...");
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Setting up for Pointers with ManifestHash {pf.Hash}...");
 
                         if (!_inFlightPointers.ContainsKey(pf.Hash))
                             _inFlightPointers.Add(pf.Hash, new(new(), new()));

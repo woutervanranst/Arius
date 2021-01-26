@@ -224,10 +224,12 @@ namespace Arius.CommandLine
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {
                 // Show a warning
+                _logger.LogWarning("WARNING: Not all files are restored as chunks are still being hydrated. Please run the restore operation again in 12-24 hours.");
             }
             else
             {
-                // Delete all
+                // Delete all local + blob hydration directory
+                //TODO
             }
 
             return 0;
