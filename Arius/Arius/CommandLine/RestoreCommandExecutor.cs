@@ -105,6 +105,16 @@ namespace Arius.CommandLine
             //    .Where(kk => kk.Count() > 1)
             //    .ToList();
 
+            //var orphanedChunksWithoutPointers = _azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).Except(_azureRepository.GetCurrentEntries(true).Select(z => z.ManifestHash)).ToArray();
+            //var orphanedChunksWithoutManifest_Cannotberestored = _azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).Except(_azureRepository.GetAllManifestHashes()).ToArray();
+
+            //var zz = _azureRepository.GetCurrentEntries(true).ToArray();
+
+            //var ozz = zz.Where(a => orphanedChunksWithoutPointers.Contains(a.ManifestHash));
+
+
+
+
             var synchronizeBlock = blocks.GetRequiredService<SynchronizeBlockProvider>().GetBlock();
 
             var hydrateBlockProvider = blocks.GetRequiredService<HydrateBlockProvider>();
@@ -228,8 +238,11 @@ namespace Arius.CommandLine
             }
             else
             {
-                // Delete all local + blob hydration directory
+                // Delete all local
                 //TODO
+
+                //Delete hydration directory
+                _azureRepository.DeleteHydrateFolder();
             }
 
             return 0;
@@ -255,6 +268,4 @@ namespace Arius.CommandLine
             //return 0;
         }
     }
-
-    
 }

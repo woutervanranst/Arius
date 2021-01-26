@@ -144,6 +144,17 @@ namespace Arius.Repositories
                 }
             }
 
+            public void DeleteHydrateFolder()
+            {
+                _logger.LogInformation("Deleting temporary hydration folder");
+
+                foreach (var bi in _bcc.GetBlobs(prefix: RehydrationDirectoryName))
+                {
+                    var bc = _bcc.GetBlobClient(bi.Name);
+                    bc.Delete();
+                }
+            }
+
             // UPLOAD & DOWNLOAD
 
             public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
