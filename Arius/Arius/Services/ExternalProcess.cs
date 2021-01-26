@@ -56,7 +56,7 @@ namespace Arius.Services
                 }
                 catch (ApplicationException e)
                 {
-                    throw new ArgumentException($"Could not find {windowsExecutableName} in {path}", nameof(windowsExecutableName), e);
+                    throw new ArgumentException($"Could not find {windowsExecutableName} in {path}", nameof(windowsExecutableName), e); //TODO Karl this should terminate the application flow
                 }
             }
 

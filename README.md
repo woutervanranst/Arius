@@ -172,6 +172,9 @@ dotnet arius.dll ...
 
 ### Windows
 
+* AzCopy: https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy
+* 7zip: https://www.7-zip.org/download.html
+
 TODO
 
 <!-- Install the latest windows Dapr CLI to `c:\dapr` and add this directory to User PATH environment variable. Use `-DaprRoot [path]` to change the default installation directory
