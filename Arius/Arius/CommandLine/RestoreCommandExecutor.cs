@@ -173,7 +173,7 @@ namespace Arius.CommandLine
             });
 
             // R71
-            Task.WhenAll(processPointerChunksBlock.Completion, downloadBlock.Completion)
+            Task.WhenAll(reconcilePointerBlock.Completion, /*processPointerChunksBlock.Completion, */downloadBlock.Completion)
                 .ContinueWith(_ => decryptBlock.Complete());
 
                                              
@@ -221,7 +221,7 @@ namespace Arius.CommandLine
 
             _config.DownloadTempDir(_root).DeleteEmptySubdirectories(true);
 
-            if (hydrateBlockProvider.AtLeastOneHydrated)
+            if (hydrateBlockProvider.AtLeastOneHydrating)
             {
                 // Show a warning
             }
