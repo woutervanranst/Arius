@@ -39,7 +39,7 @@ namespace Arius.Tests
 
             var config = new Configuration(options, configurationRoot);
 
-            var hvp = new SHA256Hasher(options);
+            var hvp = new SHA256Hasher(null, options);
 
 
             var dc = new DedupChunker(null, config, hvp);
@@ -75,7 +75,7 @@ namespace Arius.Tests
                 FastHash = false
             };
 
-            var hvp = new SHA256Hasher(options);
+            var hvp = new SHA256Hasher(null, options);
 
 
 
@@ -154,7 +154,7 @@ namespace Arius.Tests
                 FastHash = false
             };
 
-            var hvp = new SHA256Hasher(options);
+            var hvp = new SHA256Hasher(null, options);
 
 
 
@@ -253,7 +253,7 @@ namespace Arius.Tests
 
             var config = new Configuration(options, configurationRoot);
 
-            var hvp = new SHA256Hasher(options);
+            var hvp = new SHA256Hasher(null, options);
 
 
             var dc = new DedupChunker(null, config, hvp);
