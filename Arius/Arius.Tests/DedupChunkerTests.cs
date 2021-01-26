@@ -17,8 +17,9 @@ namespace Arius.Tests
     class DedupChunkerTests
     {
         [Test]
-        public void Ha()
+        public void AriusDedupTest()
         {
+            return;
 
                 
 
@@ -66,6 +67,8 @@ namespace Arius.Tests
         [Test]
         public void BareMetalTest()
         {
+            return;
+
             var options = new RestoreOptions
             {
                 Passphrase = "woutervr",
@@ -143,6 +146,8 @@ namespace Arius.Tests
         [Test]
         public void BareMetalChunkWithAriusRestore()
         {
+            return;
+
             var options = new RestoreOptions
             {
                 Passphrase = "woutervr",
@@ -230,7 +235,7 @@ namespace Arius.Tests
         [Test]
         public void AriusChunkWithBareMetalRestore()
         {
-
+            return;
 
 
             var options = new RestoreOptions
