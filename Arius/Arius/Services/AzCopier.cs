@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 using Azure.Storage;
 using Azure.Storage.Blobs;
@@ -19,21 +20,20 @@ namespace Arius.Services
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Container { get; init; }
-        public AccessTier Tier { get; init; }
+        //public AccessTier Tier { get; init; }
     }
 
     internal class AzCopier : IBlobCopier
     {
-        public AzCopier(ICommandExecutorOptions options, 
-            ILogger<AzCopier> logger, 
-            RemoteBlobFactory factory)
+        public AzCopier(ICommandExecutorOptions options,
+            ILogger<AzCopier> logger)
         {
             _options = (IAzCopyUploaderOptions)options;
-            _factory = factory;
             _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
             _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "azcopy.exe", "azcopy"));
+            // TODO KARL 
             //    .ContinueWith(tsk =>
             //{
             //    if (tsk.IsFaulted)
@@ -60,58 +60,82 @@ namespace Arius.Services
             var bsc = new BlobServiceClient(connectionString);
             //var bsc = new BlobServiceClient(new Uri($"{accountName}", _skc));
 
-            var bcc = bsc.GetBlobContainerClient(_options.Container);
+            _bcc = bsc.GetBlobContainerClient(_options.Container);
 
-            if (!bcc.Exists())
-            {
-                logger.LogInformation($"Creating container {_options.Container}... ");
-                bcc = bsc.CreateBlobContainer(_options.Container);
-                logger.LogInformation("Done");
-            }
-
-            _bcc = bcc;
         }
 
         private readonly Task<string> _AzCopyPath;
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
-        //private readonly AccessTier _contentAccessTier;
         private readonly IAzCopyUploaderOptions _options;
-        private readonly RemoteBlobFactory _factory;
         private readonly ILogger<AzCopier> _logger;
+
+
+        //public void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
+        //{ 
+        //    Upload(fileToUpload.Directory.FullName, $"/{remoteDirectoryName}", new[] { fileToUpload.Name }, tier, overwrite);
+        //}
+
+        //private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
+        //{
+        //    _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+
+        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
+        //    //Note the \* after the {dir}\*
+        //    //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
+
+        //    var listOfFilesFullName = Path.GetTempFileName();
+        //    File.WriteAllLines(listOfFilesFullName, fileNames);
+
+        //    var sas = GetContainerSasUri(_bcc, _skc);
+        //    string arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}";
+
+        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+        //    var p = new ExternalProcess(_AzCopyPath.Result);
+
+        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+        //        out string rawOutput,
+        //        out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+        //    _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
+
+        //    if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        //}
+
 
         /// <summary>
         /// Upload IEncryptedChunkFiles or IEncryptedManifestFiles
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="filesToUpload"></param>
-        /// <param name="remoteDirectoryName"></param>
-        /// <param name="overwrite"></param>
-        public void Upload<T>(IEnumerable<T> filesToUpload, string remoteDirectoryName, bool overwrite = false) where T : ILocalFile
+        public void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
         {
-            AccessTier tier;
+            filesToUpload = filesToUpload.ToArray();
 
-            if (typeof(T).IsAssignableTo(typeof(IEncryptedChunkFile)))
-                tier = _options.Tier;
-            else if (typeof(T).IsAssignableTo(typeof(IEncryptedManifestFile)))
-                tier = AccessTier.Cool;
-            else
-                throw new NotImplementedException();
+            var size = filesToUpload.Sum(f => f.Length);
 
-            filesToUpload.GroupBy(af => af.DirectoryName)
+            _logger.LogInformation($"Uploading {size.GetBytesReadable()} in {filesToUpload.Count()} files to '{remoteDirectoryName}'");
+
+            var start = DateTime.Now;
+
+            filesToUpload.GroupBy(f => f.Directory.FullName)
                 .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
                 .WithDegreeOfParallelism(1)
                 .ForAll(g =>
                 {
                     var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-                    Upload(g.Key, remoteDirectoryName, fileNames, tier, overwrite);
+                    Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
                 });
+
+            var elapsed = DateTime.Now - start;
+
+            _logger.LogInformation($"Upload complete. Avg. speed {((long)(size / elapsed.TotalSeconds)).GetBytesReadable()}/s");
         }
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
         {
-            _logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
+            //_logger.LogInformation($"Uploading {fileNames.Count()} files to '{remoteDirectoryName}'");
 
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#specify-multiple-complete-file-names
             //Note the \* after the {dir}\*
@@ -131,72 +155,121 @@ namespace Arius.Services
                 out string rawOutput,
                 out int completed, out int failed, out int skipped, out string finalJobStatus);
 
-            _logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
+            File.Delete(listOfFilesFullName);
+
+            //_logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
         }
 
-        /// <summary>
-        /// Download all files in the given remoteDirectoryName to the local target
-        /// </summary>
-        public void Download(string remoteDirectoryName, DirectoryInfo target)
+
+
+
+        ///// <summary>
+        ///// Download all files in the given remoteDirectoryName to the local target
+        ///// </summary>
+        //public void Download(string remoteDirectoryName, DirectoryInfo target)
+        //{
+        //    if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
+        //    {
+        //        _logger.LogInformation($"No files to download in '{remoteDirectoryName}', skipping AzCopy");
+        //        return;
+        //    }
+
+        //    _logger.LogInformation($"Downloading remote '{remoteDirectoryName}' to '{target.FullName}'");
+
+        //    //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
+        //    //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
+
+        //    string arguments;
+        //    var sas = GetContainerSasUri(_bcc, _skc);
+        //    arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
+
+        //    var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+
+        //    var p = new ExternalProcess(_AzCopyPath.Result);
+
+        //    p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+        //        out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
+
+        //    _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
+
+        //    if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+        //        throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+        //}
+
+        public IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target, bool flatten)
         {
-            if (!_bcc.GetBlobs(prefix: remoteDirectoryName).Any())
-            {
-                _logger.LogInformation($"No files to download in '{remoteDirectoryName}', skipping AzCopy");
-                return;
-            }
+            blobItems = blobItems.ToArray();
 
-            _logger.LogInformation($"Downloading remote '{remoteDirectoryName}' to '{target.FullName}'");
+            var size = blobItems.Sum(bi => bi.Properties.ContentLength!.Value);
 
-            //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#download-a-directory
-            //azcopy copy 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>/<directory-path>' '<local-directory-path>' --recursive
+            _logger.LogInformation($"Downloading {size.GetBytesReadable()} in {blobItems.Count()} files to '{target.FullName}'");
 
-            string arguments;
-            var sas = GetContainerSasUri(_bcc, _skc);
-            arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}"" --recursive";
+            var start = DateTime.Now;
 
-            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var r = Download(blobItems.Select(bi => bi.Name), target, flatten);
 
-            var p = new ExternalProcess(_AzCopyPath.Result);
+            // TODO test 1 download die vanuit verschillende folders komt
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
+            var elapsed = DateTime.Now - start;
 
-            _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
+            _logger.LogInformation($"Download complete. Avg. speed {((long)(size / elapsed.TotalSeconds)).GetBytesReadable()}/s");
 
-            if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
-                throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+            return r;
         }
 
         /// <summary>
         /// Download the blobsToDownload to the specified target
         /// </summary>
-        public void Download(string remoteDirectoryName, IEnumerable<IBlob> blobsToDownload, DirectoryInfo target)
+        private IEnumerable<FileInfo> Download(IEnumerable<string> blobsToDownload, DirectoryInfo target, bool flatten)
         {
             //Syntax https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs#specify-multiple-complete-file-names
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>
             //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
 
             var listOfFilesFullName = Path.GetTempFileName();
-            File.WriteAllLines(listOfFilesFullName, blobsToDownload.Select(b => b.Name));
+            File.WriteAllLines(listOfFilesFullName, blobsToDownload);
 
             var sas = GetContainerSasUri(_bcc, _skc);
-            string arguments = $@"copy ""{_bcc.Uri}/{remoteDirectoryName}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
+            string arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
 
-            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            //var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var regex = @$"Log file is located at: (?<logFullName>.[^{Environment.NewLine}]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(_AzCopyPath.Result);
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput, out int completed, out int failed, out int skipped, out string finalJobStatus);
+            p.Execute(arguments, regex, "logFullName", "completed", "failed", "skipped", "finalJobStatus",
+                out string rawOutput, out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
+
+            var downloadedFiles = ParseLogDownloadedFiles(logFullName).ToArray();
+
+            if (flatten)
+                foreach (var downloadedFile in downloadedFiles)
+                    downloadedFile.MoveTo(Path.Combine(target.FullName, downloadedFile.Name));
+
+            return downloadedFiles;
+
             //$"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
+        }
+
+        private IEnumerable<FileInfo> ParseLogDownloadedFiles(string logFullName)
+        {
+            var log = File.ReadAllText(logFullName);
+
+            var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
+
+            var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
+
+            var downloadedFiles = downloadedFilesMatches.Select(match => new FileInfo(match.Groups["downloadedFileFullName"].Value));
+
+            return downloadedFiles;
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
@@ -223,7 +296,7 @@ namespace Arius.Services
             return sasToken;
         }
 
-        
+
 
 
 

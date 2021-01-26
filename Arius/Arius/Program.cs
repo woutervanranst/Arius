@@ -1,7 +1,5 @@
 ﻿using System;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.Configuration;
 using System.IO;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
@@ -11,7 +9,6 @@ using Arius.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
@@ -61,13 +58,13 @@ namespace Arius
             finally
             {
                 //Delete the tempdir
-                config.TempDir.Delete(true);
+                config.UploadTempDir.Delete(true);
             }
         }
 
         internal static ServiceProvider GetServiceProvider(Configuration config, ParsedCommandProvider pcp)
         {
-            var serviceProvider = new ServiceCollection()
+            var serviceCollection = new ServiceCollection()
                 .AddLogging(builder =>
                 {
                     //Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
@@ -92,25 +89,28 @@ namespace Arius
                 })
                 .AddSingleton<IConfiguration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
-                //Add Repositories
-                .AddSingleton<AriusRepository>()
-                .AddSingleton<LocalRootRepository>()
-                .AddSingleton<LocalManifestFileRepository>()
-                .AddSingleton<RemoteEncryptedChunkRepository>()
+
                 //Add Services
-                .AddSingleton<LocalFileFactory>()
-                .AddSingleton<RemoteBlobFactory>()
-                .AddSingleton<ManifestService>()
                 .AddSingleton<PointerService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IChunker>(((IChunkerOptions) pcp.CommandExecutorOptions).Dedup ? new DedupChunker() : new Chunker())
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
+
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
                 .AddSingleton<RestoreCommandExecutor>()
-                .BuildServiceProvider();
-            return serviceProvider;
+
+                .AddSingleton<AzureRepository>();
+
+            // Add Chunkers
+            if (((IChunkerOptions)pcp.CommandExecutorOptions).Dedup)
+                serviceCollection.AddSingleton<IChunker, DedupChunker>();
+            else
+                serviceCollection.AddSingleton<IChunker, Chunker>();
+            serviceCollection.AddSingleton<Chunker>();
+            serviceCollection.AddSingleton<DedupChunker>();
+
+            return serviceCollection.BuildServiceProvider();
         }
     }
 }

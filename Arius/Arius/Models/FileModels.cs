@@ -1,116 +1,106 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Arius.Extensions;
-using Arius.Services;
 
 namespace Arius.Models
 {
-    internal abstract class LocalFile : ILocalFile //, IFile
+    internal abstract class AriusArchiveItem : IFileWithHash
     {
-
-        protected LocalFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider)
-        {
-            if (!fi.Exists)
-                throw new ArgumentException("The LocalFile does not exist");
-
-            Root = root;
-
-            _fi = fi;
-
-            _hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
-        }
-
-        protected readonly Lazy<HashValue> _hash;
-
+        private readonly DirectoryInfo _root;
         protected readonly FileInfo _fi;
 
-        public HashValue Hash => _hash.Value;
+        protected AriusArchiveItem(DirectoryInfo root, FileInfo fi)
+        {
+            _root = root;
+            _fi = fi;
+        }
 
         public string FullName => _fi.FullName;
+        public string RelativeName => Path.GetRelativePath(_root.FullName, _fi.FullName);
         public string Name => _fi.Name;
-        public string DirectoryName => _fi.DirectoryName;
-        public IRepository Root { get; }
+        public DirectoryInfo Directory => _fi.Directory;
+        public DirectoryInfo Root => _root;
+
+        /// <summary>
+        /// Size in bytes
+        /// </summary>
+        public long Length => _fi.Length;
+
+        public HashValue Hash
+        {
+            get => _hashValue!.Value;
+            set
+            {
+                if (_hashValue.HasValue)
+                    throw new InvalidOperationException("CAN ONLY BE SET ONCE");
+                _hashValue = value;
+            }
+        }
+        private HashValue? _hashValue;
 
         public void Delete()
         {
             _fi.Delete();
         }
-
-        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>()!.Extension);
     }
 
-    [Extension(".pointer.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
-    internal class LocalPointerFile : LocalFile, IPointerFile
+    internal class PointerFile : AriusArchiveItem
     {
-        public LocalPointerFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public const string Extension = ".pointer.arius";
+
+        /// <summary>
+        /// Create a new PointerFile and read the Hash from the file
+        /// </summary>
+        /// <param name="root"></param>
+        /// <param name="fi"></param>
+        public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
         {
-            //_manifestFileName = new Lazy<string>(() => File.ReadAllText(fi.FullName));
+            this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
-        //private readonly Lazy<string> _manifestFileName;
+        public FileInfo BinaryFileInfo => new FileInfo(_fi.FullName.TrimEnd(Extension));
 
-        public FileInfo LocalContentFileInfo => new FileInfo(Path.Combine(DirectoryName, NameWithoutExtension));
-        //public string ManifestHashValue => _manifestFileName.Value;
-
-        public string RelativeName => Path.GetRelativePath(Root.FullName, Path.Combine(DirectoryName, Name));
-
-        public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
-        public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
+        public IEnumerable<HashValue> ChunkHashes { get; set; }
     }
 
-    [Extension(".*", encryptedType: typeof(RemoteEncryptedChunkBlob))]
-    internal class LocalContentFile : LocalFile, ILocalContentFile, IChunkFile
+    internal class BinaryFile : AriusArchiveItem, IChunkFile
     {
-        public LocalContentFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
+
+        public IEnumerable<IChunkFile> Chunks { get; set; }
+        //public HashValue? ManifestHash { get; set; }
+        //public bool Uploaded { get; set; }
+
+        public FileInfo PointerFileInfo => new FileInfo(_fi.FullName + PointerFile.Extension);
+    }
+
+    internal class ChunkFile : AriusArchiveItem, IChunkFile
+    {
+        public const string Extension = ".chunk.arius";
+
+        public ChunkFile(DirectoryInfo root, FileInfo fi, HashValue hash) : base(root, fi)
         {
+            base.Hash = hash;
         }
 
-        private static readonly string _pointerFileExtension = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>()!.Extension;
-
-        public FileInfo PointerFileInfo => new FileInfo($"{FullName}{_pointerFileExtension}");
-
-        public string RelativeName => Path.GetRelativePath(Root.FullName, FullName);
-
-        public DateTime CreationTimeUtc { get => _fi.CreationTimeUtc; set => _fi.CreationTimeUtc = value; }
-        public DateTime LastWriteTimeUtc { get => _fi.LastWriteTimeUtc; set => _fi.LastWriteTimeUtc = value; }
+        public bool Uploaded { get; set; }
     }
 
-    [Extension(".7z.arius", decryptedType: typeof(ChunkFile))]
-    internal class EncryptedChunkFile : LocalFile, IEncryptedChunkFile
+    internal class EncryptedChunkFile : AriusArchiveItem, IEncryptedFile, IChunkFile
     {
-        public EncryptedChunkFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
+        public const string Extension = ".7z.arius";
+
+        public EncryptedChunkFile(DirectoryInfo root, FileInfo fi, HashValue hash) : base(root, fi)
         {
+            base.Hash = hash;
         }
+
+        /// <summary>
+        /// Size in Bytes
+        /// </summary>
+        //public long Length => _fi.Length;
+
+        public bool Uploaded { get; set; }
     }
-
-    [Extension(".chunk.arius")]
-    internal class ChunkFile : LocalFile, IChunkFile
-    {
-        public ChunkFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
-        {
-        }
-    }
-
-
-
-
-    [Extension(".manifest.arius", encryptedType: typeof(LocalEncryptedManifestFile))]
-    internal class LocalManifestFile : LocalFile, IManifestFile //, IRemote<IEncrypted<IManifestFile>>
-    {
-        public LocalManifestFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
-        {
-        }
-    }
-    [Extension(".manifest.7z.arius", decryptedType: typeof(LocalManifestFile))]
-    internal class LocalEncryptedManifestFile : LocalFile, IEncryptedManifestFile //, IRemote<IEncrypted<IManifestFile>>
-    {
-        public LocalEncryptedManifestFile(IRepository root, FileInfo fi, Func<ILocalFile, HashValue> hashValueProvider) : base(root, fi, hashValueProvider)
-        {
-        }
-    }
-
-    
-
-
 }

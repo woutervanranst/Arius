@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
@@ -12,65 +16,114 @@ namespace Arius.Services
     }
     internal class Chunker : IChunker
     {
-        public IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk)
+        public IChunkFile[] Chunk(BinaryFile item)
         {
-            return new IChunkFile[] { (IChunkFile)fileToChunk };
+            return new[] {item};
         }
 
-        public ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
         {
-            return (ILocalContentFile)chunksToJoin.Single();
+            File.Move(chunksToJoin.Single().FullName, target.FullName);
+
+            return new BinaryFile(null, target);
         }
     }
 
+
     internal class DedupChunker : IChunker
     {
-        public IEnumerable<IChunkFile> Chunk(ILocalContentFile fileToChunk)
+        public DedupChunker(ILogger<DedupChunker> logger, IConfiguration config, IHashValueProvider hvp)
         {
-            throw new NotImplementedException();
+            _logger = logger;
+            _hvp = hvp;
 
-//                //var sb = new StreamBreaker();
+            _uploadTempDir = config.UploadTempDir;
 
-//                //using var fs = new FileStream(_fi.FullName, FileMode.Open, FileAccess.Read);
-//                //var chunks = sb.GetChunks(fs, fs.Length, SHA256.Create()).ToImmutableArray();
-//                //fs.Position = 0;
-
-//                //DirectoryInfo tempDir = new DirectoryInfo(Path.Combine(_fi.Directory.FullName, _fi.Name + ".arius"));
-//                //tempDir.Create();
-
-//                //foreach (var chunk in chunks)
-//                //{
-//                //    var chunkFullName = Path.Combine(tempDir.FullName, BitConverter.ToString(chunk.Hash));
-
-//                //    byte[] buff = new byte[chunk.Length];
-//                //    fs.Read(buff, 0, (int)chunk.Length);
-
-//                //    using var fileStream = File.Create(chunkFullName);
-//                //    fileStream.Write(buff, 0, (int)chunk.Length);
-//                //    fileStream.Close();
-//                //}
-
-//                //fs.Close();
-
-//                //var laf = new LocalAriusManifest(this);
-//                //var lac = chunks.Select(c => new LocalAriusChunk("")).ToImmutableArray();
-
-//                //var r = new AriusFile(this, laf, lac);
-
-//                //return r;
         }
 
-        public ILocalContentFile Merge(IEnumerable<IChunkFile> chunksToJoin)
+        private static readonly StreamBreaker _sb = new();
+        private readonly ILogger<DedupChunker> _logger;
+        private readonly IHashValueProvider _hvp;
+        private readonly DirectoryInfo _uploadTempDir;
+
+        public IChunkFile[] Chunk(BinaryFile bf)
         {
-            throw new NotImplementedException();
+            _logger.LogInformation($"Chunking {bf.RelativeName}...");
 
-//        //var chunkFiles = chunks.Select(c => new FileStream(Path.Combine(clf.FullName, BitConverter.ToString(c.Hash)), FileMode.Open, FileAccess.Read));
-//        //var concaten = new ConcatenatedStream(chunkFiles);
+            var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.RelativeName}"));
+            if (di.Exists)
+                di.Delete();
+            di.Create();
 
-//        //var restorePath = Path.Combine(clf.FullName, "haha.exe");
-//        //using var fff = File.Create(restorePath);
-//        //concaten.CopyTo(fff);
-//        //fff.Close();
+            using var bffs = new FileStream(bf.FullName, FileMode.Open, FileAccess.Read);
+            var chunkDefs = _sb.GetChunks(bffs, bffs.Length, SHA256.Create()).ToArray();
+            bffs.Position = 0;
+
+            var chunks = new List<ChunkFile>();
+
+            for (int i = 0; i < chunkDefs.Count(); i++)
+            {
+                _logger.LogInformation($"Writing chunk {i}/{chunkDefs.Count()} of {bf.RelativeName}");
+                var chunk = chunkDefs[i];
+
+                byte[] buff = new byte[chunk.Length];
+                bffs.Read(buff, 0, (int)chunk.Length);
+
+                //TODO KARL if exception thrown here it 'vanishes'
+
+                var chunkFullName = Path.Combine(di.FullName, $@"{bf.Name}.{i.ToString().PadLeft(chunkDefs.Count().ToString().Length, '0')}");
+                using var fileStream = File.Create(chunkFullName);
+                fileStream.Write(buff, 0, (int)chunk.Length);
+                fileStream.Close();
+
+                var hashValue = _hvp.GetHashValue(chunkFullName);
+                chunks.Add(new ChunkFile(null, new FileInfo(chunkFullName), hashValue));
+
+                //var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.Name}.arius"));
+                //if (di.Exists)
+                //    di.Delete();
+                //di.Create();
+
+                //using var bffs = new FileStream(bf.FullName, FileMode.Open, FileAccess.Read);
+                //var chunkDefs = _sb.GetChunks(bffs, bffs.Length, SHA256.Create()).ToArray();
+                //bffs.Position = 0;
+
+                //var chunks = new List<ChunkFile>();
+
+                //for (int i = 0; i < chunkDefs.Count(); i++)
+                //{
+                //    var chunk = chunkDefs[i];
+
+                //    byte[] buff = new byte[chunk.Length];
+                //    bffs.Read(buff, 0, (int)chunk.Length);
+
+                //    var chunkFullName = $@"{di.FullName}\{i}";
+                //    using var fileStream = File.Create(chunkFullName);
+                //    fileStream.Write(buff, 0, (int)chunk.Length);
+                //    fileStream.Close();
+
+                //    var hashValue = _hvp.GetHashValue(chunkFullName);
+                //    chunks.Add(new ChunkFile(bf.Root, new FileInfo($@"{di.FullName}\{i}"), hashValue));
+            }
+
+            _logger.LogInformation($"Chunking {bf.RelativeName}... done");
+
+            return chunks.ToArray();
+        }
+
+        public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
+        {
+            var chunkStreams = new List<Stream>();
+            for (int i = 0; i < chunksToJoin.Length; i++)
+                chunkStreams.Add(new FileStream(chunksToJoin[i].FullName, FileMode.Open, FileAccess.Read));
+
+            var stream = new ConcatenatedStream(chunkStreams);
+
+            using var targetStream = File.Create(target.FullName); // target.Create();
+            stream.CopyTo(targetStream);
+            targetStream.Close();
+
+            return new BinaryFile(null, target);
         }
     }
 }

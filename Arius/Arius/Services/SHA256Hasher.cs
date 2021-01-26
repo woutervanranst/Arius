@@ -5,53 +5,59 @@ using System.Text;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
-
-    internal struct HashValue
-    {
-        public string Value { get; set; }
-
-        public override string ToString() => Value;
-    }
-
-    internal interface IHashValueProvider
-    {
-        HashValue GetHashValue(IHashable hashable);
-    }
-
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
     {
         public string Passphrase { get; }
+        public bool FastHash { get; }
     }
 
     internal class SHA256Hasher : IHashValueProvider
     {
-        public SHA256Hasher(ICommandExecutorOptions options)
+        public SHA256Hasher(ILogger<SHA256Hasher> logger, ICommandExecutorOptions options)
         {
-            _salt = ((ISHA256HasherOptions)options).Passphrase;
+            var o = (ISHA256HasherOptions) options;
+            _salt = o.Passphrase;
+            _fastHash = o.FastHash;
+            _logger = logger;
         }
 
         private readonly string _salt;
+        private readonly bool _fastHash;
+        private readonly ILogger<SHA256Hasher> _logger;
 
-        public HashValue GetHashValue(IHashable hashable)
+        public HashValue GetHashValue(BinaryFile f)
         {
-            return GetHashValue((dynamic) hashable);
+            var h = default(HashValue?);
+
+            if (_fastHash)
+            {
+                var pointerFileInfo = f.PointerFileInfo;
+                if (pointerFileInfo.Exists &&
+                    pointerFileInfo.LastWriteTimeUtc == File.GetLastWriteTimeUtc(f.FullName))
+                {
+                    _logger.LogDebug($"Using fasthash for {f.RelativeName}");
+
+                    var pf = new PointerFile(f.Root, pointerFileInfo);
+                    h = pf.Hash;
+                }
+            }
+
+            if (!h.HasValue)
+                h = GetHashValue(f.FullName);
+
+            return h.Value;
         }
 
-        //public HashValue GetHashValue(LocalPointerFile hashable)
-        //{
-        //    var k = typeof(LocalPointerFile).GetCustomAttribute<ExtensionAttribute>().Extension;
-        //    return new HashValue { Value = hashable.GetObjectName().TrimEnd(k) };
-        //}
-
-        public HashValue GetHashValue(LocalContentFile hashable)
+        public HashValue GetHashValue(string fullName)
         {
             byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
             using Stream ss = new MemoryStream(byteArray);
 
-            using Stream fs = System.IO.File.OpenRead(hashable.FullName);
+            using Stream fs = File.OpenRead(fullName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();
@@ -60,7 +66,7 @@ namespace Arius.Services
 
             fs.Close();
 
-            return new HashValue {Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
+            return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
         }
 
         public static string ByteArrayToString(byte[] ba)
@@ -72,7 +78,9 @@ namespace Arius.Services
             //    hex.AppendFormat("{0:x2}", b);
             //return hex.ToString();
 
-            return BitConverter.ToString(ba).Replace("-", "").ToLower();
+            return Convert.ToHexString(ba).ToLower();
+
+            //return BitConverter.ToString(ba).Replace("-", "").ToLower();
         }
     }
 }

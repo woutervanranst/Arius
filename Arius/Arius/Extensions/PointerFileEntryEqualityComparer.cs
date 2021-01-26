@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Arius.Models;
+using Arius.Repositories;
 
 namespace Arius.Extensions
 {
-    internal class PointerFileEntryEqualityComparer : IEqualityComparer<Manifest.PointerFileEntry>
+    internal class PointerFileEntryEqualityComparer : IEqualityComparer<AzureRepository.PointerFileEntry>
     {
-        public bool Equals(Manifest.PointerFileEntry x, Manifest.PointerFileEntry y)
+        public bool Equals(AzureRepository.PointerFileEntry x, AzureRepository.PointerFileEntry y)
         {
             return x.RelativeName == y.RelativeName &&
                    //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
@@ -15,7 +15,7 @@ namespace Arius.Extensions
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
-        public int GetHashCode(Manifest.PointerFileEntry obj)
+        public int GetHashCode(AzureRepository.PointerFileEntry obj)
         {
             return HashCode.Combine(obj.RelativeName,
                 //obj.Version,  //DO NOT Compare on DateTime Version
@@ -24,4 +24,5 @@ namespace Arius.Extensions
                 obj.LastWriteTimeUtc);
         }
     }
+
 }

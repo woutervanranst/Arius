@@ -1,56 +1,57 @@
-﻿using System;
-using System.Linq;
-using System.Reflection;
+﻿using System.Linq;
 using Arius.Extensions;
 using Arius.Repositories;
-using Arius.Services;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob : IBlob
+    internal abstract class Blob
     {
-        protected Blob(IRepository root, BlobItem blobItem, Func<IBlob, HashValue> hashValueProvider)
+        protected Blob(
+            //IRepository root, 
+            BlobItem blobItem //, 
+            //Func<IBlob, HashValue> hashValueProvider
+        )
         {
-            _root = root;
+            //_root = root;
             _bi = blobItem;
 
-            _hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
+            //_hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
         }
 
-        protected readonly IRepository _root;
+        //protected readonly IRepository _root;
         protected readonly BlobItem _bi;
-        private readonly Lazy<HashValue> _hash;
+        //private readonly Lazy<HashValue> _hash;
 
 
         public string FullName => _bi.Name;
         public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
         public string Folder => _bi.Name.Split('/').First();
-        public string NameWithoutExtension => Name.TrimEnd(this.GetType().GetCustomAttribute<ExtensionAttribute>()!.Extension);
-        public HashValue Hash => _hash.Value;
+        //protected string NameWithoutExtension => Name.TrimEnd(Extension);
+        public abstract HashValue Hash { get; }
+        //protected abstract string Extension { get; }
     }
 
-    [Extension(".7z.arius")]
-    internal class RemoteEncryptedChunkBlob : Blob, IRemoteEncryptedChunkBlobItem //, IRemote<IEncrypted<IChunk<ILocalContentFile>>>
+    internal class RemoteEncryptedChunkBlobItem : Blob
     {
-        public RemoteEncryptedChunkBlob(IRepository root, BlobItem blobItem, Func<IBlob, HashValue> hashValueProvider) : base(root, blobItem, hashValueProvider)
+        public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
-            _hydratedBlob = new Lazy<IRemoteEncryptedChunkBlobItem>(() =>
-            {
-                var root = (RemoteEncryptedChunkRepository) _root;
-                return root.GetHydratedChunkBlobItem(this);
-            });
         }
 
-        private readonly Lazy<IRemoteEncryptedChunkBlobItem> _hydratedBlob;
-
-
+        public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
+        protected string Extension => ".7z.arius";
+        public long Length => _bi.Properties.ContentLength!.Value;
         public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
-        public bool CanDownload()
+        public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
+        public BlobItem BlobItem => _bi;
+    }
+
+    internal class RemoteManifestBlobItem : Blob
+    {
+        public RemoteManifestBlobItem(BlobItem bi) : base(bi)
         {
-            return _hydratedBlob.Value != null;
         }
 
-        public IRemoteEncryptedChunkBlobItem Hydrated => _hydratedBlob.Value;
+        public override HashValue Hash => new HashValue { Value = Name };
     }
 }
