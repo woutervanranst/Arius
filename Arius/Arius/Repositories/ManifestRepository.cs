@@ -7,7 +7,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Models;
-using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;

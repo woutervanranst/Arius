@@ -36,7 +36,7 @@ The name derives from the Greek for 'immortal'.
 - [ ] Point in time restore (FUTURE)
 - [x] No central store to avoid a single point of failure
 - [x] File level deduplication
-- [ ] Variable block size (rolling hash Rabin-Karp) deduplication
+- [x] Variable block size (rolling hash Rabin-Karp) deduplication
 - [x] Leverage common tools, to allow restores even when this project would become deprecated
 
 ## What does it do & how does it work?
@@ -197,6 +197,10 @@ docker pull ghcr.io/woutervanranst/arius
 ### Restore with common tools
 
 Arius relies on the 7zip command line and Azure blob storage cli.
+
+### Deduplication
+
+A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
 
 ## Developer reference
 

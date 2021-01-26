@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
@@ -94,85 +95,85 @@ namespace Arius.CommandLine
 
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
     {
-            public ProcessIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
+        public ProcessIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
+        {
+            _created = new(createdInital);
+        }
+
+        private readonly List<HashValue> _created;
+        private readonly Dictionary<HashValue, List<T>> _creating = new();
+
+
+        public TransformManyBlock<T, (T Item, bool ToProcess)> GetCreateIfNotExistsBlock()
+        {
+            /*
+             * Three possibilities:
+             *      1. BinaryFile arrives, remote manifest already exists --> send to next block
+             *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
+             *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
+             */
+            return new(item =>
             {
-                _created = new(createdInital);
-            }
-
-            private readonly List<HashValue> _created;
-            private readonly Dictionary<HashValue, List<T>> _creating = new();
-
-
-            public TransformManyBlock<T, (T Item, bool ToProcess)> GetCreateIfNotExistsBlock()
-            {
-                /*
-                 * Three possibilities:
-                 *      1. BinaryFile arrives, remote manifest already exists --> send to next block
-                 *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
-                 *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
-                 */
-                return new(item =>
+                lock (_created)
                 {
-                    lock (_created)
+                    lock (_creating)
                     {
-                        lock (_creating)
+                        if (_created.Contains(item.Hash))
+                            // 1 - Exists remote
+                            return new[] { (item, false) };
+                        else if (!_creating.ContainsKey(item.Hash))
                         {
-                            if (_created.Contains(item.Hash))
-                                // 1 - Exists remote
-                                return new[] { (item, false) };
-                            else if (!_creating.ContainsKey(item.Hash))
-                            {
-                                // 2 Does not yet exist remote and not yet being created --> upload
-                                _creating.Add(item.Hash, new());
-                                _creating[item.Hash].Add(item);
+                            // 2 Does not yet exist remote and not yet being created --> upload
+                            _creating.Add(item.Hash, new());
+                            _creating[item.Hash].Add(item);
 
-                                return new[] { (item, true), (item, false) };
-                            }
-                            else
-                            {
-                                // 3 Does not exist remote but is being created
-                                _creating[item.Hash].Add(item);
+                            return new[] { (item, true), (item, false) };
+                        }
+                        else
+                        {
+                            // 3 Does not exist remote but is being created
+                            _creating[item.Hash].Add(item);
 
-                                return new[] { (item, false) };
-                            }
+                            return new[] { (item, false) };
                         }
                     }
-                });
-            }
+                }
+            });
+        }
 
-            public TransformManyBlock<object, T> GetReconcileBlock()
+        public TransformManyBlock<object, T> GetReconcileBlock()
+        {
+            return new(item =>
             {
-                return new(item =>
+                lock (_created)
                 {
-                    lock (_created)
+                    lock (_creating)
                     {
-                        lock (_creating)
+                        if (item is T bf)
                         {
-                            if (item is T bf)
-                            {
-                                if (_created.Contains(bf.Hash))
-                                    return new[] { bf }; // Manifest already uploaded
-                                else if (_creating.ContainsKey(bf.Hash))
-                                    // it is alreayd in de _pending list // do nothing
-                                    return Enumerable.Empty<T>();
-                                else
-                                    throw new InvalidOperationException("huh??");
-                            }
-                            else if (item is HashValue completedManifestHash)
-                            {
-                                _created.Add(completedManifestHash); // add to the list of uploaded hashes
-
-                                var r = _creating[completedManifestHash].ToArray();
-                                _creating.Remove(completedManifestHash);
-
-                                return r;
-                            }
+                            if (_created.Contains(bf.Hash))
+                                return new[] { bf }; // Manifest already uploaded
+                            else if (_creating.ContainsKey(bf.Hash))
+                                // it is alreayd in de _pending list // do nothing
+                                return Enumerable.Empty<T>();
                             else
-                                throw new ArgumentException();
+                                throw new InvalidOperationException("huh??");
                         }
+                        else if (item is HashValue completedManifestHash)
+                        {
+                            _created.Add(completedManifestHash); // add to the list of uploaded hashes
+
+                            var r = _creating[completedManifestHash].ToArray();
+                            _creating.Remove(completedManifestHash);
+
+                            return r;
+                        }
+                        else
+                            throw new ArgumentException();
                     }
-                });
-            }
+                }
+            });
+        }
     }
 
 
@@ -315,49 +316,51 @@ namespace Arius.CommandLine
             return this;
         }
 
+        /// <summary>
+        /// IN: BinaryFile for which the Manifest does not exist
+        /// OUT: a list of ChunkFiles with each an indication of whethery they need to be uploaded
+        /// </summary>
+        /// <returns></returns>
         public TransformManyBlock<BinaryFile, (IChunkFile ChunkFile, bool Uploaded)> GetBlock()
         {
-            return new(binaryFile => 
+            return new(binaryFile =>
             {
                 var chunks = AddChunks(binaryFile);
 
-                var r = chunks.Select(chunk =>
+                lock (_uploadedOrUploadingChunks)
                 {
-                    bool uploaded;
-
-                    lock (_uploadedOrUploadingChunks)
+                    lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                     {
-                        if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
-                        {
-                            //if (chunk is BinaryFile)
-                            //    throw new InvalidOperationException();
+                        if (!_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
+                            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile, new());
 
-                            if (chunk is ChunkFile)
-                                chunk.Delete(); //The chunk is already uploaded, delete it
-
-                            uploaded = true;
-                        }
-                        else
+                        var r = chunks.Select(chunk =>
                         {
-                            lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                            bool uploaded;
+
+                            if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                             {
-                                if (!_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
-                                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile, new List<HashValue>(new[] { chunk.Hash }));
-                                else
-                                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash);
+                                if (chunk is ChunkFile)
+                                    chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
+
+                                uploaded = true;
+                            }
+                            else
+                            {
+                                uploaded = false; //ie to upload
+                                _uploadedOrUploadingChunks.Add(chunk.Hash); //add this chunk to the list of chunks that (will be/is) present in the archive
                             }
 
-                            uploaded = false; //ie to upload
-                        }
+                            if (!uploaded)
+                                _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash); //Add this chunk to the list of chunks that need to be uploaded before the manifest can be created
 
-                        _uploadedOrUploadingChunks.Add(chunk.Hash);
+                            return (ChunkFile: chunk, Uploaded: uploaded);
+                        });
+
+                        return r;
                     }
-
-                    return (ChunkFile: chunk, Uploaded: uploaded);
-                });
-
-                return r;
-            }, new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = Environment.ProcessorCount });
+                }
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
         private IEnumerable<IChunkFile> AddChunks(BinaryFile f)
@@ -390,7 +393,7 @@ namespace Arius.CommandLine
         {
             return new(
                 chunkFile => EncryptChunks(chunkFile),
-                new ExecutionDataflowBlockOptions {MaxDegreeOfParallelism = 8});
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 8 });
         }
 
         private EncryptedChunkFile EncryptChunks(IChunkFile f)
@@ -526,8 +529,7 @@ namespace Arius.CommandLine
     {
         private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
-        public ReconcileChunksWithManifestsBlockProvider AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(
-            Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+        public ReconcileChunksWithManifestsBlockProvider AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
 
@@ -648,7 +650,7 @@ namespace Arius.CommandLine
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveOptions options, AzureRepository azureRepository)      
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveOptions options, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
@@ -670,18 +672,18 @@ namespace Arius.CommandLine
 
         public Task GetTask()
         {
-            return new (async () =>
-            {
-                var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
-                pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+            return new(async () =>
+           {
+               var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+               pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
                 Parallel.ForEach(pfes, async pfe =>
-                {
-                    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-                    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                });
-            });
+               {
+                   var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+                   if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                       await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+               });
+           });
         }
     }
 
@@ -706,7 +708,7 @@ namespace Arius.CommandLine
 
         public Task GetTask()
         {
-            return new(() => 
+            return new(() =>
             {
                 //using Stream file = File.Create(@"c:\ha.json");
 

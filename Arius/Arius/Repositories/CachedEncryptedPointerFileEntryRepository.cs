@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
+using Arius.Models;
 using Arius.Services;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;

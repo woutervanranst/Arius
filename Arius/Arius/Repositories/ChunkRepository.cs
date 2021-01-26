@@ -5,7 +5,6 @@ using System.Linq;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
-using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
