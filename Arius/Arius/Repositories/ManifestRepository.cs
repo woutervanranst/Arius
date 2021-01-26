@@ -69,6 +69,7 @@ namespace Arius.Repositories
                 try
                 {
                     return _bcc.GetBlobs(prefix: ($"{ManifestDirectoryName}/"))
+                        .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
                         .Select(bi => new RemoteManifestBlobItem(bi).Hash).ToArray();
                 }
                 finally

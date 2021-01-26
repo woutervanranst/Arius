@@ -329,10 +329,12 @@ namespace Arius.CommandLine
                     {
                         if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                         {
-                            if (chunk is BinaryFile)
-                                throw new InvalidOperationException();
+                            //if (chunk is BinaryFile)
+                            //    throw new InvalidOperationException();
 
-                            chunk.Delete();
+                            if (chunk is ChunkFile)
+                                chunk.Delete(); //The chunk is already uploaded, delete it
+
                             uploaded = true;
                         }
                         else
