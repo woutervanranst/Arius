@@ -20,10 +20,14 @@ The name derives from the Greek for 'immortal'.
     - [Linux](#linux)
     - [Docker](#docker)
   - [Advanced](#advanced)
-    - [Restore with common tools](#restore-with-common-tools)
-  - [Developer reference](#developer-reference)
     - [Functional Flows](#functional-flows)
       - [Archive](#archive)
+      - [Restore](#restore)
+    - [Restore with common tools](#restore-with-common-tools)
+    - [Deduplication](#deduplication)
+  - [Developer reference](#developer-reference)
+    - [Flow Walkthrough](#flow-walkthrough)
+      - [Archive](#archive-1)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
 
 ## Key design objectives
@@ -194,6 +198,16 @@ docker pull ghcr.io/woutervanranst/arius
 
 ## Advanced
 
+### Functional Flows
+
+#### Archive
+
+![alt](docs/Arius%20-%20Archive%205.1.png)
+
+#### Restore
+
+![](docs/Arius%20-%20Restore.png)
+
 ### Restore with common tools
 
 Arius relies on the 7zip command line and Azure blob storage cli.
@@ -202,13 +216,13 @@ Arius relies on the 7zip command line and Azure blob storage cli.
 
 A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
 
+((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
+
 ## Developer reference
 
-### Functional Flows
+### Flow Walkthrough
 
 #### Archive
-
-![alt](docs/archive_flow.png)
 
 Consider the following example directory: three files of which two are a duplicate.
 Running `arius archive` on a local folder will yield the following:
@@ -245,6 +259,7 @@ The structure of the manifest is as follows:
 - Hash: the SHA256 hash of the original file.
 
 NOTE: since this file consists of only one chunk, the hash of the chunk and the hash of the original file are the same.
+
 
 #### Debugging Docker in Visual Studio
 

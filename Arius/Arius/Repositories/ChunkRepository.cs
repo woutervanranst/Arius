@@ -67,12 +67,6 @@ namespace Arius.Repositories
                     && recbi2.Downloadable)
                     return recbi2;
 
-                //// 3. in archive storage
-                //if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi3
-                //    && recbi3 is not null
-                //    && recbi3.AccessTier == AccessTier.Archive)
-                //    return recbi3;
-
                 _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
 
                 return null;
