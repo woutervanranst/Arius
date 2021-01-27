@@ -11,7 +11,7 @@ namespace Arius.Extensions
             return x.RelativeName == y.RelativeName &&
                    //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
                    x.IsDeleted == y.IsDeleted &&
-                   x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
+                   //x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
@@ -20,7 +20,7 @@ namespace Arius.Extensions
             return HashCode.Combine(obj.RelativeName,
                 //obj.Version,  //DO NOT Compare on DateTime Version
                 obj.IsDeleted,
-                obj.CreationTimeUtc,
+                //obj.CreationTimeUtc,
                 obj.LastWriteTimeUtc);
         }
     }
