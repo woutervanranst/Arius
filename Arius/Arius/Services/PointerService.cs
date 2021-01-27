@@ -56,12 +56,12 @@ namespace Arius.Services
 
                 File.WriteAllText(pointerFileInfo.FullName, manifestHash.Value);
 
-                File.SetCreationTimeUtc(pointerFileInfo.FullName, creationTimeUtc);
-                File.SetLastWriteTimeUtc(pointerFileInfo.FullName, lastWriteTimeUtc);
-
-                //FileInfo does not work according to https://stackoverflow.com/a/17126045/1582323
+                //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
                 //pointerFileInfo.CreationTimeUtc = creationTimeUtc;
                 //pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
+
+                File.SetCreationTimeUtc(pointerFileInfo.FullName, creationTimeUtc);
+                File.SetLastWriteTimeUtc(pointerFileInfo.FullName, lastWriteTimeUtc);
 
                 _logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, pointerFileInfo.FullName)}'");
             }
