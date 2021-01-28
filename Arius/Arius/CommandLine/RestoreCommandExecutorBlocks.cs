@@ -18,11 +18,6 @@ namespace Arius.CommandLine
 {
     internal class SynchronizeBlockProvider
     {
-        private readonly ILogger<SynchronizeBlockProvider> _logger;
-        private readonly DirectoryInfo _root;
-        private readonly AzureRepository _repo;
-        private readonly PointerService _ps;
-
         public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, RestoreOptions options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
@@ -30,6 +25,11 @@ namespace Arius.CommandLine
             _repo = repo;
             _ps = ps;
         }
+
+        private readonly ILogger<SynchronizeBlockProvider> _logger;
+        private readonly DirectoryInfo _root;
+        private readonly AzureRepository _repo;
+        private readonly PointerService _ps;
 
         /// <summary>
         /// Synchronize the local root to the remote repository
