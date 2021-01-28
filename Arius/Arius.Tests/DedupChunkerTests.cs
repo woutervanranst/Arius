@@ -26,8 +26,7 @@ namespace Arius.Tests
 
 
             var options = new RestoreOptions { 
-                Passphrase = "woutervr",
-                FastHash = false
+                Passphrase = "woutervr"
             };
 
             var configurationRoot = new ConfigurationBuilder()
@@ -71,8 +70,7 @@ namespace Arius.Tests
 
             var options = new RestoreOptions
             {
-                Passphrase = "woutervr",
-                FastHash = false
+                Passphrase = "woutervr"
             };
 
             var hvp = new SHA256Hasher(null, options);
@@ -150,8 +148,7 @@ namespace Arius.Tests
 
             var options = new RestoreOptions
             {
-                Passphrase = "woutervr",
-                FastHash = false
+                Passphrase = "woutervr"
             };
 
             var hvp = new SHA256Hasher(null, options);
@@ -240,8 +237,7 @@ namespace Arius.Tests
 
             var options = new RestoreOptions
             {
-                Passphrase = "woutervr",
-                FastHash = false
+                Passphrase = "woutervr"
             };
 
             var configurationRoot = new ConfigurationBuilder()
