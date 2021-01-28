@@ -39,7 +39,7 @@ namespace Arius.CommandLine
             var accountKeyEnvironmentVariable = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
             if (string.IsNullOrEmpty(accountKeyEnvironmentVariable))
             {
-                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key");
+                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key"); //TODO to --accountkey to const
                 accountKeyOption.IsRequired = true;
             }
             else

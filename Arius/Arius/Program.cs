@@ -17,7 +17,7 @@ namespace Arius
     {
         private static int Main(string[] args)
         {
-            var pcp = new ParsedCommandProvider();
+            var parsedCommandProvider = new ParsedCommandProvider();
 
             IAriusCommand archiveCommand = new ArchiveCommand();
             IAriusCommand restoreCommand = new RestoreCommand();
@@ -25,8 +25,8 @@ namespace Arius
             var rootCommand = new RootCommand();
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
-            rootCommand.AddCommand(archiveCommand.GetCommand(pcp));
-            rootCommand.AddCommand(restoreCommand.GetCommand(pcp));
+            rootCommand.AddCommand(archiveCommand.GetCommand(parsedCommandProvider));
+            rootCommand.AddCommand(restoreCommand.GetCommand(parsedCommandProvider));
 
             var r = rootCommand.InvokeAsync(args).Result;
 
@@ -38,13 +38,13 @@ namespace Arius
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            var config = new Configuration(pcp.CommandExecutorOptions, configurationRoot);
+            var config = new Configuration(parsedCommandProvider.CommandExecutorOptions, configurationRoot);
 
-            var serviceProvider = GetServiceProvider(config, pcp);
+            var serviceProvider = GetServiceProvider(config, parsedCommandProvider);
 
             try
             {
-                var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(pcp.CommandExecutorType);
+                var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
 
                 return commandExecutor.Execute();
             }
