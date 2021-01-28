@@ -12,6 +12,13 @@ namespace Arius.Extensions
                    //x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version
                    x.IsDeleted == y.IsDeleted &&
                    //x.CreationTimeUtc.Equals(y.CreationTimeUtc) &&
+                    /*
+                        * Commenting out comparison on creationtime - this fails on docker on Synology (setting the value has no effect)
+                        *      Works on Windows
+                        *      Works on ubuntu (github runner)
+                        *      Doesn't work in docker / on synology
+                        */
+
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
