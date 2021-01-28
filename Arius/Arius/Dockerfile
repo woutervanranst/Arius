@@ -1,10 +1,8 @@
-#See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+# Local build:    docker build -f Dockerfile .. -t arius
 
 
-# BUILD WITH            docker build -f Dockerfile .. -t arius
-
-
-FROM mcr.microsoft.com/dotnet/runtime:5.0-buster-slim AS base
+FROM mcr.microsoft.com/dotnet/runtime:5.0 AS base
 WORKDIR /app
 #Install AzCopy & 7z -- put it here as per https://docs.microsoft.com/en-us/visualstudio/containers/container-build?view=vs-2019#debugging
 RUN apt-get update && apt-get install -y \
@@ -18,7 +16,7 @@ RUN rm -rf /var/lib/apt/lists/*
 VOLUME ["/archive"]
 VOLUME ["/logs"]
 
-FROM mcr.microsoft.com/dotnet/sdk:5.0-buster-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
 COPY ["Arius/Arius.csproj", "Arius/"]
 RUN dotnet restore "Arius/Arius.csproj"
