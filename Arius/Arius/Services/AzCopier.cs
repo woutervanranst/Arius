@@ -113,20 +113,23 @@ namespace Arius.Services
             var sas = GetContainerSasUri(_bcc, _skc);
             string arguments = $@"copy ""{Path.Combine(localDirectoryFullName, "*")}"" ""{_bcc.Uri}{remoteDirectoryName}?{sas}"" --list-of-files ""{listOfFilesFullName}"" --block-blob-tier={tier} --overwrite={overwrite}"/* + " --cap-mbps 1"*/;
 
-            var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
+            var regex = @$"Log file is located at: (?<logFullName>.[^{Environment.NewLine}]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(_AzCopyPath.Result);
 
-            p.Execute(arguments, regex, "completed", "failed", "skipped", "finalJobStatus",
+            p.Execute(arguments, regex, "logFullName", "completed", "failed", "skipped", "finalJobStatus",
                 out string rawOutput,
-                out int completed, out int failed, out int skipped, out string finalJobStatus);
+                out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             File.Delete(listOfFilesFullName);
 
             //_logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
             if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+            {
+                _logger.LogError("Full Log: " + File.ReadAllText(logFullName));
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
+            }
         }
 
 
@@ -172,12 +175,16 @@ namespace Arius.Services
             var p = new ExternalProcess(_AzCopyPath.Result);
 
             p.Execute(arguments, regex, "logFullName", "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput, out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
+                out string rawOutput, 
+                out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
             if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+            {
+                _logger.LogError("Full Log: " + File.ReadAllText(logFullName));
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
+            }
 
             var downloadedFiles = ParseLogDownloadedFiles(logFullName).ToArray();
 
