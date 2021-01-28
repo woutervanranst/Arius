@@ -3,12 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
@@ -29,7 +27,18 @@ namespace Arius.CommandLine
 
         public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
         {
-            return new(di => IndexDirectory(_root),
+            return new(di =>
+            {
+                try
+                {
+                    return IndexDirectory(_root);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", di);
+                    throw;
+                }
+            },
                 new ExecutionDataflowBlockOptions { SingleProducerConstrained = true }
             );
         }
@@ -72,20 +81,28 @@ namespace Arius.CommandLine
         {
             return new(item =>
             {
-                if (item is PointerFile pf)
-                    return pf;
-                else if (item is BinaryFile bf)
+                try
                 {
-                    _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName}");
+                    if (item is PointerFile pf)
+                        return pf;
+                    else if (item is BinaryFile bf)
+                    {
+                        _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName}");
 
-                    bf.Hash = _hvp.GetHashValue(bf);
+                        bf.Hash = _hvp.GetHashValue(bf);
 
-                    _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done");
+                        _logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done");
 
-                    return bf;
+                        return bf;
+                    }
+                    else
+                        throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
                 }
-                else
-                    throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", item);
+                    throw;
+                }
             },
             new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = 15 });
         }
@@ -95,82 +112,100 @@ namespace Arius.CommandLine
 
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
     {
-        public ProcessIfNotExistBlocksProvider(IEnumerable<HashValue> createdInital)
+        public ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
         {
+            _logger = logger;
             _created = new(createdInital);
         }
 
+        private readonly ILogger _logger;
         private readonly List<HashValue> _created;
         private readonly Dictionary<HashValue, List<T>> _creating = new();
 
 
         public TransformManyBlock<T, (T Item, bool ToProcess)> GetCreateIfNotExistsBlock()
         {
-            /*
+            /* 
              * Three possibilities:
-             *      1. BinaryFile arrives, remote manifest already exists --> send to next block
+             *      1. BinaryFile arrives, remote manifest already exists --> send to next block //TODO explain WHY
              *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
              *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
              */
             return new(item =>
             {
-                lock (_created)
+                try
                 {
-                    lock (_creating)
+                    lock (_created)
                     {
-                        if (_created.Contains(item.Hash))
-                            // 1 - Exists remote
-                            return new[] { (item, false) };
-                        else if (!_creating.ContainsKey(item.Hash))
+                        lock (_creating)
                         {
-                            // 2 Does not yet exist remote and not yet being created --> upload
-                            _creating.Add(item.Hash, new());
-                            _creating[item.Hash].Add(item);
+                            if (_created.Contains(item.Hash))
+                                // 1 - Exists remote
+                                return new[] { (item, false) };
+                            else if (!_creating.ContainsKey(item.Hash))
+                            {
+                                // 2 Does not yet exist remote and not yet being created --> upload
+                                _creating.Add(item.Hash, new());
+                                _creating[item.Hash].Add(item);
 
-                            return new[] { (item, true), (item, false) };
-                        }
-                        else
-                        {
-                            // 3 Does not exist remote but is being created
-                            _creating[item.Hash].Add(item);
+                                return new[] { (item, true), (item, false) };
+                            }
+                            else
+                            {
+                                // 3 Does not exist remote but is being created
+                                _creating[item.Hash].Add(item);
 
-                            return new[] { (item, false) };
+                                return new[] { (item, false) };
+                            }
                         }
                     }
                 }
-            });
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", item);
+                    throw;
+                }
+        });
         }
 
         public TransformManyBlock<object, T> GetReconcileBlock()
         {
             return new(item =>
             {
-                lock (_created)
+                try
                 {
-                    lock (_creating)
+                    lock (_created)
                     {
-                        if (item is T bf)
+                        lock (_creating)
                         {
-                            if (_created.Contains(bf.Hash))
-                                return new[] { bf }; // Manifest already uploaded
-                            else if (_creating.ContainsKey(bf.Hash))
-                                // it is alreayd in de _pending list // do nothing
-                                return Enumerable.Empty<T>();
+                            if (item is T bf)
+                            {
+                                if (_created.Contains(bf.Hash))
+                                    return new[] { bf }; // Manifest already uploaded
+                                else if (_creating.ContainsKey(bf.Hash))
+                                    // it is alreayd in de _pending list // do nothing
+                                    return Enumerable.Empty<T>();
+                                else
+                                    throw new InvalidOperationException("huh??");
+                            }
+                            else if (item is HashValue completedManifestHash)
+                            {
+                                _created.Add(completedManifestHash); // add to the list of uploaded hashes
+
+                                var r = _creating[completedManifestHash].ToArray();
+                                _creating.Remove(completedManifestHash);
+
+                                return r;
+                            }
                             else
-                                throw new InvalidOperationException("huh??");
+                                throw new ArgumentException();
                         }
-                        else if (item is HashValue completedManifestHash)
-                        {
-                            _created.Add(completedManifestHash); // add to the list of uploaded hashes
-
-                            var r = _creating[completedManifestHash].ToArray();
-                            _creating.Remove(completedManifestHash);
-
-                            return r;
-                        }
-                        else
-                            throw new ArgumentException();
                     }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", item);
+                    throw;
                 }
             });
         }
@@ -179,7 +214,7 @@ namespace Arius.CommandLine
 
     internal class ManifestBlocksProvider : ProcessIfNotExistBlocksProvider<BinaryFile>
     {
-        public ManifestBlocksProvider(AzureRepository repo) : base(repo.GetAllManifestHashes())
+        public ManifestBlocksProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository repo) : base(logger, repo.GetAllManifestHashes())
         {
         }
     }
@@ -295,15 +330,17 @@ namespace Arius.CommandLine
 
     internal class ChunkBlockProvider
     {
-        public ChunkBlockProvider(IChunker chunker,
-            AzureRepository azureRepository)
+        public ChunkBlockProvider(ILogger<ChunkBlockProvider> logger, IChunker chunker, AzureRepository azureRepository)
         {
+            _logger = logger;
             _chunker = chunker;
-
+            this.azureRepository = azureRepository;
             _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
         }
 
+        private readonly ILogger<ChunkBlockProvider> _logger;
         private readonly IChunker _chunker;
+        private readonly AzureRepository azureRepository;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
         private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
@@ -323,52 +360,63 @@ namespace Arius.CommandLine
         /// <returns></returns>
         public TransformManyBlock<BinaryFile, (IChunkFile ChunkFile, bool Uploaded)> GetBlock()
         {
-            return new(binaryFile =>
+            return new(bf =>
             {
-                var chunks = AddChunks(binaryFile);
-
-                lock (_uploadedOrUploadingChunks)
+                try
                 {
-                    lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                    _logger.LogInformation($"Chunking BinaryFile {bf.RelativeName}...");
+                    var chunks = AddChunks(bf);
+                    _logger.LogInformation($"Chunking BinaryFile {bf.RelativeName}... in {chunks.Count()} chunks");
+
+                    lock (_uploadedOrUploadingChunks)
                     {
-                        if (!_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(binaryFile))
-                            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(binaryFile, new());
-
-                        var r = chunks.Select(chunk =>
+                        lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                         {
-                            bool uploaded;
+                            if (!_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.ContainsKey(bf))
+                                _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Add(bf, new());
 
-                            if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
+                            var r = chunks.Select(chunk =>
                             {
-                                if (chunk is ChunkFile)
-                                    chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
+                                bool uploaded;
 
-                                uploaded = true;
-                            }
-                            else
-                            {
-                                uploaded = false; //ie to upload
-                                _uploadedOrUploadingChunks.Add(chunk.Hash); //add this chunk to the list of chunks that (will be/is) present in the archive
-                            }
+                                if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
+                                {
+                                    if (chunk is ChunkFile)
+                                        chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
 
-                            if (!uploaded)
-                                _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[binaryFile].Add(chunk.Hash); //Add this chunk to the list of chunks that need to be uploaded before the manifest can be created
+                                    uploaded = true;
+                                }
+                                else
+                                {
+                                    uploaded = false; //ie to upload
+                                    _uploadedOrUploadingChunks.Add(chunk.Hash); //add this chunk to the list of chunks that (will be/is) present in the archive
+                                }
 
-                            return (ChunkFile: chunk, Uploaded: uploaded);
-                        });
+                                if (!uploaded)
+                                    _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[bf].Add(chunk.Hash); //Add this chunk to the list of chunks that need to be uploaded before the manifest can be created
 
-                        return r;
+                                return (ChunkFile: chunk, Uploaded: uploaded);
+                            });
+
+                            return r;
+                        }
                     }
+                }
+                catch (Exception e)
+                {
+                    //TODO ADD LOGGING IN TRY BLOCK
+                    _logger.LogError(e, "ERRORTODO", bf);
+                    throw;
                 }
             }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
-        private IEnumerable<IChunkFile> AddChunks(BinaryFile f)
+        private IEnumerable<IChunkFile> AddChunks(BinaryFile bf)
         {
             //Console.WriteLine("Chunking BinaryFile " + f.Name);
 
-            var cs = _chunker.Chunk(f).ToArray();
-            f.Chunks = cs;
+            var cs = _chunker.Chunk(bf).ToArray();
+            bf.Chunks = cs;
 
             //Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
@@ -391,30 +439,41 @@ namespace Arius.CommandLine
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
         {
-            return new(
-                chunkFile => EncryptChunks(chunkFile),
+            return new(chunkFile =>
+                {
+                    try
+                    {
+                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
+
+                        var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
+
+                        _encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
+
+                        var ecf = new EncryptedChunkFile(chunkFile.Root, targetFile, chunkFile.Hash);
+
+                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
+
+                        return ecf;
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "ERRORTODO", chunkFile);
+                        throw;
+                    }
+                },
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 8 });
-        }
-
-        private EncryptedChunkFile EncryptChunks(IChunkFile f)
-        {
-            _logger.LogInformation($"Encrypting ChunkFile {f.Name}");
-
-            var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{f.Hash}{EncryptedChunkFile.Extension}"));
-
-            _encrypter.Encrypt(f, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, f is not BinaryFile);
-
-            var ecf = new EncryptedChunkFile(f.Root, targetFile, f.Hash);
-
-            _logger.LogInformation($"Encrypting ChunkFile {f.Name} done");
-
-            return ecf;
         }
     }
 
     internal class EnqueueEncryptedChunksForUploadBlockProvider
     {
+        public EnqueueEncryptedChunksForUploadBlockProvider(ILogger<EnqueueEncryptedChunksForUploadBlockProvider> logger)
+        {
+            _logger = logger;
+        }
+
         private BlockingCollection<EncryptedChunkFile> _uploadQueue;
+        private readonly ILogger<EnqueueEncryptedChunksForUploadBlockProvider> _logger;
 
         public EnqueueEncryptedChunksForUploadBlockProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
@@ -425,74 +484,104 @@ namespace Arius.CommandLine
 
         public ActionBlock<EncryptedChunkFile> GetBlock()
         {
-            return new(item => _uploadQueue.Add(item));
+            return new(item =>
+            {
+                try
+                {
+                    _logger.LogInformation($"Enqueueing item {item.Hash} for upload. Queue length: {_uploadQueue.Count}");
+
+                    _uploadQueue.Add(item);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", item);
+                    throw;
+                }
+            });
         }
     }
 
-    internal class EnqueueUploadTaskProvider
+    internal class CreateUploadBatchesTaskProvider
     {
-        private readonly IConfiguration _config;
-
-        public EnqueueUploadTaskProvider(IConfiguration config)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IConfiguration config)
         {
+            _logger = logger;
             _config = config;
         }
 
-        private BlockingCollection<EncryptedChunkFile> _uploadQueue;
-        private ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
-        private ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
+        private readonly ILogger<CreateUploadBatchesTaskProvider> _logger;
+        private readonly IConfiguration _config;
 
-        public EnqueueUploadTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
+
+        public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
             _uploadQueue = uploadQueue;
-
             return this;
         }
+        private BlockingCollection<EncryptedChunkFile> _uploadQueue;
 
-        public EnqueueUploadTaskProvider AddUploadEncryptedChunkBlock(ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock)
+        public CreateUploadBatchesTaskProvider AddUploadEncryptedChunkBlock(ITargetBlock<EncryptedChunkFile[]> uploadEncryptedChunksBlock)
         {
             _uploadEncryptedChunksBlock = uploadEncryptedChunksBlock;
-
             return this;
         }
+        private ITargetBlock<EncryptedChunkFile[]> _uploadEncryptedChunksBlock;
 
-        public EnqueueUploadTaskProvider AddEnqueueEncryptedChunksForUploadBlock(ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
+        public CreateUploadBatchesTaskProvider AddEnqueueEncryptedChunksForUploadBlock(ActionBlock<EncryptedChunkFile> enqueueEncryptedChunksForUploadBlock)
         {
             _enqueueEncryptedChunksForUploadBlock = enqueueEncryptedChunksForUploadBlock;
-
             return this;
         }
+        private ActionBlock<EncryptedChunkFile> _enqueueEncryptedChunksForUploadBlock;
+
 
         public Task GetTask()
         {
             return Task.Run(() =>
             {
-                Thread.CurrentThread.Name = "Upload Batcher";
-
-                while (!_enqueueEncryptedChunksForUploadBlock.Completion.IsCompleted ||
-                       //encryptChunksBlock.OutputCount > 0 || 
-                       //_uploadQueue.Count > 0)
-                       !_uploadQueue.IsCompleted)
+                try
                 {
-                    var batch = new List<EncryptedChunkFile>();
-                    long size = 0;
+                    Thread.CurrentThread.Name = "Upload Batcher";
 
-                    foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
+                    while (!_enqueueEncryptedChunksForUploadBlock.Completion.IsCompleted ||
+                           //encryptChunksBlock.OutputCount > 0 || 
+                           //_uploadQueue.Count > 0)
+                           !_uploadQueue.IsCompleted)
                     {
-                        batch.Add(ecf);
-                        size += ecf.Length;
+                        var batch = new List<EncryptedChunkFile>();
+                        long size = 0;
 
-                        if (size >= _config.BatchSize ||
-                            batch.Count >= _config.BatchCount ||
-                            _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
+                        _logger.LogInformation("Starting new upload batch");
+
+                        foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
                         {
-                            break;
-                        }
-                    }
+                            batch.Add(ecf);
+                            size += ecf.Length;
 
-                    //Emit a batch
-                    if (batch.Any())
-                        _uploadEncryptedChunksBlock.Post(batch.ToArray());
+                            _logger.LogInformation($"Added {ecf.Hash} to the batch. Batch Count: {batch.Count}, Batch Size: {size.GetBytesReadable()}, Remaining Queue Count: {_uploadQueue.Count}");
+
+                            if (size >= _config.BatchSize ||
+                                batch.Count >= _config.BatchCount ||
+                                _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
+                            {
+                                break;
+                            }
+                        }
+
+                        //Emit a batch
+                        if (batch.Any())
+                        {
+                            _logger.LogInformation($"Emitting batch for upload. Size: {size.GetBytesReadable()},  Count: {batch.Count}");
+                            _uploadEncryptedChunksBlock.Post(batch.ToArray());
+                        }
+
+                        _logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count}, IsCompleted:{_uploadQueue.IsCompleted}");
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", _enqueueEncryptedChunksForUploadBlock, _uploadQueue);
+                    throw;
                 }
             });
         }
@@ -500,150 +589,201 @@ namespace Arius.CommandLine
 
     internal class UploadEncryptedChunksBlockProvider
     {
-        private readonly ArchiveOptions _options;
-        private readonly AzureRepository _azureRepository;
-
-        public UploadEncryptedChunksBlockProvider(ArchiveOptions options, AzureRepository azureRepository)
+        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, ArchiveOptions options, AzureRepository azureRepository)
         {
+            _logger = logger;
             _options = options;
             _azureRepository = azureRepository;
         }
+
+        private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
+        private readonly ArchiveOptions _options;
+        private readonly AzureRepository _azureRepository;
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> GetBlock()
         {
             return new(ecfs =>
                 {
-                    //Upload the files
-                    var uploadedBlobs = _azureRepository.Upload(ecfs, _options.Tier);
+                    try
+                    {
+                        //Upload the files
+                        var uploadedBlobs = _azureRepository.Upload(ecfs, _options.Tier);
 
-                    //Delete the files
-                    foreach (var ecf in ecfs)
-                        ecf.Delete();
+                        //Delete the files
+                        foreach (var ecf in ecfs)
+                            ecf.Delete();
 
-                    return uploadedBlobs.Select(recbi => recbi.Hash);
+                        return uploadedBlobs.Select(recbi => recbi.Hash);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "ERRORTODO", ecfs);
+                        throw;
+                    }
                 }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
         }
     }
 
     internal class ReconcileChunksWithManifestsBlockProvider
     {
-        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+        public ReconcileChunksWithManifestsBlockProvider(ILogger<ReconcileChunksWithManifestsBlockProvider> logger)
+        {
+            _logger = logger;
+        }
 
+        private readonly ILogger<ReconcileChunksWithManifestsBlockProvider> _logger;
+
+        
         public ReconcileChunksWithManifestsBlockProvider AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
-
             return this;
         }
+        private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
+
 
         public TransformManyBlock<HashValue, BinaryFile> GetBlock()
         {
-            return new( // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
-                hashOfUploadedChunk =>
+            return new(hashOfUploadedChunk => // IN: HashValue of Chunk , OUT: BinaryFiles for which to create Manifest
                 {
-                    var manifestsToCreate = new List<BinaryFile>();
-
-                    lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                    try
                     {
-                        foreach (var kvp in _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated) //Key = HashValue van de Manifest, List = HashValue van de Chunks
-                        {
-                            // Remove the incoming ChunkHash from the list of prerequired
-                            kvp.Value.Remove(hashOfUploadedChunk);
+                        var manifestsToCreate = new List<BinaryFile>();
 
-                            // If the list of prereqs is empty
-                            if (!kvp.Value.Any())
+                        lock (_chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
+                        {
+                            foreach (var kvp in _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated) //Key = HashValue van de Manifest, List = HashValue van de Chunks
                             {
-                                // Add it to the list of manifests to be created
-                                //kvp.Key.ManifestHash = kvp.Key.Hash;
-                                manifestsToCreate.Add(kvp.Key);
+                                // Remove the incoming ChunkHash from the list of prerequired
+                                kvp.Value.Remove(hashOfUploadedChunk);
+
+                                // If the list of prereqs is empty
+                                if (!kvp.Value.Any())
+                                {
+                                    // Add it to the list of manifests to be created  //TODO WHY?!
+                                    //kvp.Key.ManifestHash = kvp.Key.Hash;
+                                    manifestsToCreate.Add(kvp.Key);
+                                }
                             }
+
+                            // Remove all reconciled manifests from the waitlist
+                            foreach (var binaryFile in manifestsToCreate)
+                                _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(binaryFile);
                         }
 
-                        // Remove all reconciled manifests from the waitlist
-                        foreach (var binaryFile in manifestsToCreate)
-                            _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated.Remove(binaryFile);
+                        return manifestsToCreate;
                     }
-
-                    return manifestsToCreate;
+                    catch (Exception e)
+                    {
+                        _logger.LogError(e, "ERRORTODO", hashOfUploadedChunk);
+                        throw;
+                    }
                 });
         }
     }
 
     internal class CreateManifestBlockProvider
     {
-        public CreateManifestBlockProvider(AzureRepository azureRepository)
+        public CreateManifestBlockProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository azureRepository)
         {
+            _logger = logger;
             _azureRepository = azureRepository;
         }
 
+        private readonly ILogger<CreateManifestBlockProvider> _logger;
         private readonly AzureRepository _azureRepository;
 
         public TransformBlock<BinaryFile, object> GetBlock()
         {
             return new(async bf =>
             {
-                await _azureRepository.AddManifestAsync(bf, bf.Chunks.ToArray());
+                try
+                {
+                    await _azureRepository.AddManifestAsync(bf, bf.Chunks.ToArray());
 
-                return bf.Hash;
+                    return bf.Hash;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", bf);
+                    throw;
+                }
             });
         }
     }
 
     internal class CreatePointerBlockProvider
     {
-        private readonly PointerService _ps;
-        private List<BinaryFile> _binaryFilesToDelete;
-
-        public CreatePointerBlockProvider(PointerService ps)
+        public CreatePointerBlockProvider(ILogger<CreatePointerBlockProvider> logger, PointerService ps)
         {
+            _logger = logger;
             _ps = ps;
         }
+
+        private readonly ILogger<CreatePointerBlockProvider> _logger;
+        private readonly PointerService _ps;
+
 
         public CreatePointerBlockProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
         {
             _binaryFilesToDelete = binaryFilesToDelete;
-
             return this;
         }
+        private List<BinaryFile> _binaryFilesToDelete;
+
 
         public TransformBlock<BinaryFile, PointerFile> GetBlock()
         {
-            return new(binaryFile =>
+            return new(bf =>
             {
-                // Create the pointer
-                var p = _ps.CreatePointerFileIfNotExists(binaryFile);
-
-                // Add the binary file to the list of binaries to be deleted after successful archiving & if removeLocal
-                _binaryFilesToDelete.Add(binaryFile);
-                return p;
+                try
+                {
+                    var p = _ps.CreatePointerFileIfNotExists(bf);
+                    _binaryFilesToDelete.Add(bf);
+                    return p;
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", bf);
+                    throw;
+                }
             });
         }
     }
 
     internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
-        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> _logger;
-        private readonly AzureRepository _azureRepository;
-        private DateTime _version;
-
         public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
         }
 
+        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> _logger;
+        private readonly AzureRepository _azureRepository;
+
+
         public CreatePointerFileEntryIfNotExistsBlockProvider AddVersion(DateTime version)
         {
             _version = version;
-
             return this;
         }
+        private DateTime _version;
+
 
         public ActionBlock<PointerFile> GetBlock()
         {
             return new(async pointerFile =>
             {
-                await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, _version);
+                try
+                {
+                    await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, _version);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
             });
         }
     }
@@ -661,29 +801,37 @@ namespace Arius.CommandLine
         private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
         private readonly AzureRepository _azureRepository;
         private readonly DirectoryInfo _root;
-        private DateTime _version;
 
         public RemoveDeletedPointersTaskProvider AddVersion(DateTime version)
         {
             _version = version;
-
             return this;
         }
+        private DateTime _version;
+
 
         public Task GetTask()
         {
             return new(async () =>
-           {
-               var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
-               pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+            {
+                try
+                {
+                    var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+                    pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                Parallel.ForEach(pfes, async pfe =>
-               {
-                   var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-                   if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                       await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-               });
-           });
+                    Parallel.ForEach(pfes, async pfe =>
+                    {
+                        var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+                        if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                    });
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
+            });
         }
     }
 
@@ -796,29 +944,39 @@ namespace Arius.CommandLine
 
     internal class DeleteBinaryFilesTaskProvider
     {
-        public DeleteBinaryFilesTaskProvider(ArchiveOptions options)
+        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, ArchiveOptions options)
         {
+            _logger = logger;
             _options = options;
         }
 
+        private readonly ILogger<DeleteBinaryFilesTaskProvider> _logger;
         private readonly ArchiveOptions _options;
-        private List<BinaryFile> _binaryFilesToDelete;
 
         public DeleteBinaryFilesTaskProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
         {
             _binaryFilesToDelete = binaryFilesToDelete;
-
             return this;
         }
+        private List<BinaryFile> _binaryFilesToDelete;
+
 
         public Task GetTask()
         {
             return new(() =>
             {
-                if (!_options.RemoveLocal)
-                    return;
+                try
+                {
+                    if (!_options.RemoveLocal)
+                        return;
 
-                Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
+                    Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
             });
         }
     }

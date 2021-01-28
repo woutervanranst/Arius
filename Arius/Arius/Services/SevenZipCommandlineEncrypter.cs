@@ -63,7 +63,7 @@ namespace Arius.Services
 
             p.Execute(arguments, regex, out string rawOutput);
 
-            _logger.LogDebug(rawOutput);
+            _logger.LogDebug(rawOutput); //TODO this is a bit much
 
             if (deletePlaintext)
                 fileToEncrypt.Delete();

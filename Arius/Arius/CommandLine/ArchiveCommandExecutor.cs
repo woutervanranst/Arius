@@ -80,7 +80,7 @@ namespace Arius.CommandLine
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
-                .AddSingleton<EnqueueUploadTaskProvider>()
+                .AddSingleton<CreateUploadBatchesTaskProvider>()
                 .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
                 .AddSingleton<CreateManifestBlockProvider>()
                 .AddSingleton<CreatePointerBlockProvider>()
@@ -121,7 +121,7 @@ namespace Arius.CommandLine
             var uploadEncryptedChunksBlock =  blocks.GetRequiredService<UploadEncryptedChunksBlockProvider>().GetBlock();
 
 
-            var uploadTask = blocks.GetRequiredService<EnqueueUploadTaskProvider>()
+            var createUploadBatchesTaskProvider = blocks.GetRequiredService<CreateUploadBatchesTaskProvider>()
                 .AddUploadQueue(uploadQueue)
                 .AddUploadEncryptedChunkBlock(uploadEncryptedChunksBlock)
                 .AddEnqueueEncryptedChunksForUploadBlock(enqueueEncryptedChunksForUploadBlock)
@@ -226,7 +226,7 @@ namespace Arius.CommandLine
 
 
             // A100
-            Task.WhenAll(uploadTask)
+            Task.WhenAll(createUploadBatchesTaskProvider)
                 .ContinueWith(_ => uploadEncryptedChunksBlock.Complete());
 
             
@@ -289,6 +289,13 @@ namespace Arius.CommandLine
             exportToJsonTask
                 .ContinueWith(_ => deleteBinaryFilesTask.Start());
 
+            //TODO
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                _logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
+                throw e.Exception;
+            };
+
 
             //Fill the flow
             indexDirectoryBlock.Post(_root);
@@ -300,6 +307,11 @@ namespace Arius.CommandLine
 
 
             return 0;
+        }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }
