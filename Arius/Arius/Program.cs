@@ -7,6 +7,7 @@ using Arius.CommandLine;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -97,6 +98,8 @@ namespace Arius
                                 options.RootPath = "/logs";
                             else
                                 options.RootPath = AppContext.BaseDirectory;
+
+                            options.Files = new [] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
                             
                             //options.TextBuilder = Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
                         });

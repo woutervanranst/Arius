@@ -381,6 +381,8 @@ namespace Arius.CommandLine
 
                                 if (_uploadedOrUploadingChunks.Contains(chunk.Hash))
                                 {
+                                    _logger.LogInformation($"Chunk {chunk.FullName} is already uploaded.");
+
                                     if (chunk is ChunkFile)
                                         chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
 
@@ -388,6 +390,8 @@ namespace Arius.CommandLine
                                 }
                                 else
                                 {
+                                    _logger.LogInformation($"Chunk {chunk.FullName} to be uploaded.");
+
                                     uploaded = false; //ie to upload
                                     _uploadedOrUploadingChunks.Add(chunk.Hash); //add this chunk to the list of chunks that (will be/is) present in the archive
                                 }
@@ -571,12 +575,12 @@ namespace Arius.CommandLine
                         //Emit a batch
                         if (batch.Any())
                         {
-                            _logger.LogInformation($"Emitting batch for upload. Size: {size.GetBytesReadable()},  Count: {batch.Count}");
+                            _logger.LogInformation($"Emitting batch for upload. Batch Size: {size.GetBytesReadable()}, Batch Count: {batch.Count}, Batches Queue depth: {((dynamic)_uploadEncryptedChunksBlock).InputCount}");
                             _uploadEncryptedChunksBlock.Post(batch.ToArray());
                         }
-
-                        _logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count}, IsCompleted:{_uploadQueue.IsCompleted}");
                     }
+
+                    _logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count} (should be 0), IsCompleted:{_uploadQueue.IsCompleted}");
                 }
                 catch (Exception e)
                 {
@@ -594,35 +598,43 @@ namespace Arius.CommandLine
             _logger = logger;
             _options = options;
             _azureRepository = azureRepository;
+
+            _block = new(InitBlock());
         }
 
         private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
         private readonly ArchiveOptions _options;
         private readonly AzureRepository _azureRepository;
 
-        public TransformManyBlock<EncryptedChunkFile[], HashValue> GetBlock()
+        public TransformManyBlock<EncryptedChunkFile[], HashValue> InitBlock()
         {
             return new(ecfs =>
+            {
+                try
                 {
-                    try
-                    {
-                        //Upload the files
-                        var uploadedBlobs = _azureRepository.Upload(ecfs, _options.Tier);
+                    _logger.LogInformation($"Uploading batch. Remaining Batches queue depth: {_block!.Value.InputCount}");
 
-                        //Delete the files
-                        foreach (var ecf in ecfs)
-                            ecf.Delete();
+                    //Upload the files
+                    var uploadedBlobs = _azureRepository.Upload(ecfs, _options.Tier);
 
-                        return uploadedBlobs.Select(recbi => recbi.Hash);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(e, "ERRORTODO", ecfs);
-                        throw;
-                    }
-                }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
+                    //Delete the files
+                    foreach (var ecf in ecfs)
+                        ecf.Delete();
+
+                    return uploadedBlobs.Select(recbi => recbi.Hash);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "ERRORTODO", ecfs);
+                    throw;
+                }
+            }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
         }
+        private readonly Lazy<TransformManyBlock<EncryptedChunkFile[], HashValue>> _block;
+
+        public TransformManyBlock<EncryptedChunkFile[], HashValue> GetBlock() => _block.Value;
     }
+
 
     internal class ReconcileChunksWithManifestsBlockProvider
     {
