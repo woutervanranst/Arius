@@ -42,31 +42,41 @@ namespace Arius.Services
 
         public void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, Compression compressionLevel, bool deletePlaintext = false)
         {
-            _logger.LogDebug($"Encrypting {fileToEncrypt.FullName}");
+            string rawOutput = "";
 
-            //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
-            /*
-             * a        archive
-             * -mhe     header encryption
-             * -ms      solid archive
-             * -mx0     store only/no compression
-             * -mx1     light compression
-             * -mmt     multithreaded
-             * -p       passphrase
-             */
+            try
+            {
+                _logger.LogDebug($"Encrypting {fileToEncrypt.FullName}");
 
-            var arguments = $@"a ""{encryptedFile.FullName}"" -p{_passphrase} -mhe {compressionLevel.Value} -ms -mmt ""{fileToEncrypt.FullName}""";
+                //  7z a test.7z.arius -p<pw> -mhe -mx0 -ms "<file>"
+                /*
+                 * a        archive
+                 * -mhe     header encryption
+                 * -ms      solid archive
+                 * -mx0     store only/no compression
+                 * -mx1     light compression
+                 * -mmt     multithreaded
+                 * -p       passphrase
+                 */
 
-            var regex = "Everything is Ok";
+                var arguments = $@"a ""{encryptedFile.FullName}"" -p{_passphrase} -mhe {compressionLevel.Value} -ms -mmt ""{fileToEncrypt.FullName}""";
 
-            var p = new ExternalProcess(_7ZPath.Result);
+                var regex = "Everything is Ok";
 
-            p.Execute(arguments, regex, out string rawOutput);
+                var p = new ExternalProcess(_7ZPath.Result);
 
-            _logger.LogDebug(rawOutput); //TODO this is a bit much
+                p.Execute(arguments, regex, out rawOutput);
 
-            if (deletePlaintext)
-                fileToEncrypt.Delete();
+                if (deletePlaintext)
+                    fileToEncrypt.Delete();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "ERRORTODO");
+                _logger.LogDebug(rawOutput); //TODO this is a bit much
+
+                throw;
+            }
         }
 
         
