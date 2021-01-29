@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace Arius.Extensions
@@ -6,11 +9,11 @@ namespace Arius.Extensions
     internal static class DataFlowBlockExtensions
     {
         public static IDisposable LinkTo<TInput, TOutput>(
-          this ISourceBlock<TInput> source,
-          ITargetBlock<TOutput> target,
-          DataflowLinkOptions linkOptions,
-          Predicate<TInput> predicate,
-          Func<TInput, TOutput> transform)
+            this ISourceBlock<TInput> source,
+            ITargetBlock<TOutput> target,
+            DataflowLinkOptions linkOptions,
+            Predicate<TInput> predicate,
+            Func<TInput, TOutput> transform)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -30,10 +33,10 @@ namespace Arius.Extensions
         }
 
         public static IDisposable LinkTo<TInput, TOutput>(
-          this ISourceBlock<TInput> source,
-          ITargetBlock<TOutput> target,
-          DataflowLinkOptions linkOptions,
-          Func<TInput, TOutput> transform)
+            this ISourceBlock<TInput> source,
+            ITargetBlock<TOutput> target,
+            DataflowLinkOptions linkOptions,
+            Func<TInput, TOutput> transform)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -48,6 +51,29 @@ namespace Arius.Extensions
 
             source.LinkTo(transformBlock, linkOptions);
             return transformBlock.LinkTo(target, linkOptions);
+        }
+
+        public static void JoinCompletion(this IDataflowBlock target, Action beforeCompletion, Action beforeFault, params IDataflowBlock[] sources)
+        {
+            JoinCompletion(target, beforeCompletion, beforeFault, sources.Select(s => s.Completion).ToArray());
+        }
+        public static void JoinCompletion(this IDataflowBlock target, Action beforeCompletion, Action beforeFault, params Task[] sources)
+        {
+            Task.WhenAll(sources)
+                .ContinueWith(_ =>
+                {
+                    beforeCompletion();
+                    target.Complete();
+                });
+
+            foreach (var s in sources)
+            {
+                s.ContinueWith(t =>
+                {
+                    beforeFault();
+                    target.Fault(t.Exception);
+                }, TaskContinuationOptions.OnlyOnFaulted);
+            }
         }
     }
 }
