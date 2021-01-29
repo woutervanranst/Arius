@@ -42,23 +42,34 @@ namespace Arius
 
             var serviceProvider = GetServiceProvider(config, parsedCommandProvider);
 
+            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+            //TODO error handling met AppDomain.CurrentDomain.FirstChanceException  ?
+
             try
             {
                 var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
 
-                return commandExecutor.Execute();
+                r = commandExecutor.Execute();
+
+                logger.LogInformation("Done");
+
+                return r;
             }
             catch (Exception e)
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
                 logger.LogCritical(e.ToString());
 
                 return int.MinValue;
             }
             finally
             {
+                logger.LogInformation("Deleting tempdir...");
+
                 //Delete the tempdir
                 config.UploadTempDir.Delete(true);
+
+                logger.LogInformation("Deleting tempdir... done");
             }
         }
 
