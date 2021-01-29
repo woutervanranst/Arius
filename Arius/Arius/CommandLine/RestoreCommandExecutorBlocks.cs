@@ -314,7 +314,7 @@ namespace Arius.CommandLine
 
             return _enqueueBlock;
         }
-        private ActionBlock<RemoteEncryptedChunkBlobItem> _enqueueBlock = null;
+        private ActionBlock<RemoteEncryptedChunkBlobItem> _enqueueBlock = null; //TODO to lazy?
 
 
         public Task GetBatchingTask()
