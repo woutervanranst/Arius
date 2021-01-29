@@ -149,7 +149,7 @@ namespace Arius.CommandLine
                             else if (!_creating.ContainsKey(item.Hash))
                             {
                                 // 2 Does not yet exist remote and not yet being created --> upload
-                                _logger.LogInformation($"GetCreateIfNotExistsBlock - {typeof(T).Name} {item.Name} does not exist. To process.");
+                                _logger.LogInformation($"GetCreateIfNotExistsBlock - {typeof(T).Name} {item.Name} does not exist remotly. To process.");
 
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);

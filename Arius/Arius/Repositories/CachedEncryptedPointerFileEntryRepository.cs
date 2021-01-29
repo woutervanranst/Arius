@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Arius.CommandLine;
@@ -11,6 +12,7 @@ using Arius.Models;
 using Arius.Services;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
+using Murmur;
 
 namespace Arius.Repositories
 {
@@ -100,9 +102,22 @@ namespace Arius.Repositories
                         .ToLower(CultureInfo.InvariantCulture)
                         .Replace(Path.DirectorySeparatorChar, '/');
 
-                    return $"{Crc32Provider.Get(neutralRelativeName):x8}";
+                    var bytes = _murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName));
+                    var hex = Convert.ToHexString(bytes).ToLower();
+
+                    return hex;
+
+                    //byte[] data = Guid.NewGuid().ToByteArray();
+                    //HashAlgorithm murmur128 = MurmurHash.Create128(managed: false); // returns a 128-bit algorithm using "unsafe" code with default seed
+                    //byte[] hash = murmur128.ComputeHash(data);
+
+                    //// you can also use a seed to affect the hash
+                    //HashAlgorithm seeded128 = MurmurHash.Create128(seed: 3475832); // returns a managed 128-bit algorithm with seed
+                    //byte[] seedResult = murmur128.ComputeHash(data);
+
+                    //return $"{_murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName)):x8}";
                 }
-                private static readonly Crc32 Crc32Provider = new();
+                private static readonly HashAlgorithm _murmurHash = MurmurHash.Create32();
 
 
                 private List<PointerFileEntry> GetStateOn(DateTime pointInTime)
@@ -114,6 +129,28 @@ namespace Arius.Repositories
 
                     //TODO karl multithreading debugging
 
+                    //var zz = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
+                    //    .Select(dto => CreatePointerFileEntry(dto)).ToArray();
+
+                    //var zzzz = zz.Where(pfe => pfe.IsDeleted).ToArray();
+
+                    //var zzz = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
+                    //    .Select(dto => CreatePointerFileEntry(dto))
+                    //    .GroupBy(pfe => pfe.RelativeName)
+                    //    .Where(z => z.Count() > 1)
+                    //    .ToArray();
+
+                    //var zzzz = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
+                    //    .Select(dto => CreatePointerFileEntry(dto))
+                    //    .GroupBy(pfe => pfe.ManifestHash)
+                    //    .Where(z => z.Count() > 1)
+                    //    .ToArray();
+
+
+
                     var r = _pointerEntryTable
                         .CreateQuery<PointerFileEntryDto>()
                         .AsEnumerable()
@@ -123,7 +160,11 @@ namespace Arius.Repositories
                             .OrderBy(dto => dto.Version).Last())
                         .Select(dto => CreatePointerFileEntry(dto));
 
+                    //var xxx = zz.Except(r).ToList();
+
                     return r.ToList();
+
+                    
 
 
                     //var r = _pointerEntryTable
