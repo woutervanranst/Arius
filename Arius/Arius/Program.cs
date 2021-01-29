@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
 using Arius.Models;
@@ -78,25 +79,27 @@ namespace Arius
             var serviceCollection = new ServiceCollection()
                 .AddLogging(builder =>
                 {
-                    //Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
-                    var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
-                    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
-                        fileLoggingConfigurationSection["PathFormat"] = Path.Combine(@"/logs", "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log");
-                    else
-                        fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
-
+                    ////Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
+                    //var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
+                    //if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                    //    fileLoggingConfigurationSection["PathFormat"] = Path.Combine(@"/logs", "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log");
+                    //else
+                    //    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
 
                     builder.AddConfiguration(config.ConfigurationRoot.GetSection("Logging"))
                         .AddSimpleConsole(options =>
                         {
-                            //TODO https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#set-formatter-with-configuration
-                            // https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                            // Alternative: https://stackoverflow.com/questions/44230373/is-there-a-way-to-format-the-output-format-in-net-core-logging/64967936#64967936
-                            options.SingleLine = true;
-                            options.IncludeScopes = false;
-                            options.TimestampFormat = "HH:mm:ss ";
+                            // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
                         })
-                        .AddFile(fileLoggingConfigurationSection);
+                        .AddFile(options =>
+                        {
+                            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                                options.RootPath = "/logs";
+                            else
+                                options.RootPath = AppContext.BaseDirectory;
+                            
+                            //options.TextBuilder = Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
+                        });
                 })
                 .AddSingleton<IConfiguration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
