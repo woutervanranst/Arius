@@ -68,9 +68,17 @@ namespace Arius.Services
 
             var pf = new PointerFile(root, pointerFileInfo);
 
-            //Check whether the PointerFile is in sync / not malformed
+            //Check whether the contents of the PointerFile are correct / is it a valid POinterFile / does the hash it refer to match the manifestHash (eg. not in the case of 0 bytes or ...)
             if (!pf.Hash.Equals(manifestHash))
-                throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
+            {
+                //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
+
+                _logger.LogWarning($"The PointerFile {pf.RelativeName} is out of sync. Overwriting");
+                
+                //Recreate the pointer
+                pointerFileInfo.Delete();
+                pf = CreatePointerFileIfNotExists(root, pointerFileInfo, manifestHash, creationTimeUtc, lastWriteTimeUtc);
+            }
 
             return pf;
         }
