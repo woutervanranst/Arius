@@ -140,11 +140,17 @@ namespace Arius.CommandLine
                         lock (_creating)
                         {
                             if (_created.Contains(item.Hash))
+                            {
                                 // 1 - Exists remote
+                                _logger.LogInformation($"{typeof(T).Name} {item.Name} already exists. No need to process.");
+
                                 return new[] { (item, false) };
+                            }
                             else if (!_creating.ContainsKey(item.Hash))
                             {
                                 // 2 Does not yet exist remote and not yet being created --> upload
+                                _logger.LogInformation($"{typeof(T).Name} {item.Name} does not exist. To process.");
+
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);
 
@@ -153,6 +159,8 @@ namespace Arius.CommandLine
                             else
                             {
                                 // 3 Does not exist remote but is being created
+                                _logger.LogInformation($"{typeof(T).Name} {item.Name} does not exist yet is being processed.");
+
                                 _creating[item.Hash].Add(item);
 
                                 return new[] { (item, false) };
@@ -181,19 +189,32 @@ namespace Arius.CommandLine
                             if (item is T bf)
                             {
                                 if (_created.Contains(bf.Hash))
+                                {
+                                    _logger.LogInformation($"{typeof(T).Name} {bf.Name} already created. Passing item to next block.");
+
                                     return new[] { bf }; // Manifest already uploaded
+                                }
                                 else if (_creating.ContainsKey(bf.Hash))
+                                {
+                                    _logger.LogInformation($"{typeof(T).Name} {bf.Name} in the pending list. Waiting for reconciliation.");
+
                                     // it is alreayd in de _pending list // do nothing
                                     return Enumerable.Empty<T>();
+                                }
+                                    
                                 else
                                     throw new InvalidOperationException("huh??");
                             }
                             else if (item is HashValue completedManifestHash)
                             {
+                                _logger.LogInformation($"Reconciling completed manifesthash {completedManifestHash}.");
+
                                 _created.Add(completedManifestHash); // add to the list of uploaded hashes
 
                                 var r = _creating[completedManifestHash].ToArray();
                                 _creating.Remove(completedManifestHash);
+
+                                _logger.LogInformation($"Passing {r.Length} items to next block");
 
                                 return r;
                             }
