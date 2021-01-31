@@ -1,40 +1,42 @@
-﻿using Azure.Storage.Blobs;
-using Microsoft.Azure.Cosmos.Table;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿//using Azure.Storage.Blobs;
+//using Microsoft.Azure.Cosmos.Table;
+//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Text;
+//using System.Threading.Tasks;
 
-namespace Arius.Repositories
-{
-    public class AzureStorageAccount
-    {
-        public AzureStorageAccount(string accountName, string accountKey)
-        {
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+//namespace Arius.Repositories
+//{
+//    public class AzureStorageAccount
+//    {
+//        //public static GetAzureRepositoryContainerNames()
 
-            blobServiceClient = new BlobServiceClient(connectionString);
+//        public AzureStorageAccount(string accountName, string accountKey)
+//        {
+//            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 
-            var csa = CloudStorageAccount.Parse(connectionString);
-            tableClient = csa.CreateCloudTableClient();
-        }
+//            blobServiceClient = new BlobServiceClient(connectionString);
 
-        private readonly BlobServiceClient blobServiceClient;
-        private readonly CloudTableClient tableClient;
+//            var csa = CloudStorageAccount.Parse(connectionString);
+//            tableClient = csa.CreateCloudTableClient();
+//        }
+
+//        private readonly BlobServiceClient blobServiceClient;
+//        private readonly CloudTableClient tableClient;
 
 
-        public IEnumerable<string> GetAzureRepositoryNames()
-        {
-            var tables = tableClient.ListTables().Select(ct => ct.Name).ToArray();
+//        public IEnumerable<string> GetAzureRepositoryNames()
+//        {
+//            var tables = tableClient.ListTables().Select(ct => ct.Name).ToArray();
 
-            var r = blobServiceClient.GetBlobContainers()
-                .Where(bci => tables.Contains($"{bci.Name}{AzureRepository.TableNameSuffix}"))
-                .Select(bci => bci.Name)
-                .ToArray();
+//            var r = blobServiceClient.GetBlobContainers()
+//                .Where(bci => tables.Contains($"{bci.Name}{AzureRepository.TableNameSuffix}"))
+//                .Select(bci => bci.Name)
+//                .ToArray();
 
-            return r;
-        }
+//            return r;
+//        }
 
-    }
-}
+//    }
+//}

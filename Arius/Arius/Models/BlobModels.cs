@@ -5,7 +5,7 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob
+    internal abstract class Blob // : IAriusArchiveItem
     {
         protected Blob(
             //IRepository root, 

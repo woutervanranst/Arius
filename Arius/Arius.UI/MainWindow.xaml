@@ -1,21 +1,23 @@
 ﻿<Window x:Class="Arius.UI.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Arius.UI"
-        mc:Ignorable="d"
         DataContext="{Binding Source={StaticResource Locator}, Path=MainViewModel}"
         Title="MainWindow" Height="450" Width="800">
 
     <Grid Margin="20">
-        <StackPanel Grid.Row="1">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <StackPanel Grid.Row="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"></ColumnDefinition>
                     <ColumnDefinition Width="*"></ColumnDefinition>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
                     <RowDefinition Height="Auto"></RowDefinition>
@@ -30,24 +32,26 @@
                 <Label Grid.Row="2"  Grid.Column="0" HorizontalAlignment="Left" Content="Container:"/>
                 <ComboBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding Containers}" SelectedItem="{Binding SelectedContainer}" DisplayMemberPath="Name" />
 
-                
+                <Label Grid.Row="3"  Grid.Column="0" HorizontalAlignment="Left" Content="Local Path:"/>
+                <TextBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalPath}" />
             </Grid>
-            <RadioButton x:Name="dfsdfsd" Content="Latest" IsChecked="True"></RadioButton>
+
+            <RadioButton Content="Latest" IsChecked="True"></RadioButton>
+            
             <DockPanel>
-                <RadioButton HorizontalAlignment="Left" x:Name="dfsdfsd3" Content="On date: "></RadioButton>
+                <RadioButton HorizontalAlignment="Left" Content="On date: "></RadioButton>
                 <Slider HorizontalAlignment="Stretch" Margin="15,0,15,0" />
             </DockPanel>
-            <CheckBox x:Name="dfsdfsd2" Content="Include deleted items" />
-
+            
+            <CheckBox Content="Include deleted items" />
         </StackPanel>
-        
-        <!--<StackPanel>-->
+
+        <TreeView Grid.Row="1" VerticalAlignment="Stretch" ItemsSource="{Binding RootItem}" DisplayMemberPath="Name">
             
-            
+        </TreeView>
 
         
-            <!--<ComboBox />-->
-
+        
         <!--<TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,7,0,0" Name="txtUserId" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.UserId}" />
         <TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,35,0,0" Name="txtFirstName" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.FirstName}" />
         <TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,62,0,0" Name="txtLastName" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.LastName}" />

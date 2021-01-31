@@ -5,7 +5,15 @@ using Arius.Extensions;
 
 namespace Arius.Models
 {
-    internal abstract class AriusArchiveItem : IFileWithHash
+    public interface IAriusArchiveItem
+    {
+        public string RelativePath { get; }
+        public string Name { get; }
+
+        public string RelativeName { get; }
+    }
+
+    internal abstract class AriusArchiveItem : IFileWithHash, IAriusArchiveItem
     {
         private readonly DirectoryInfo _root;
         protected readonly FileInfo _fi;
@@ -18,6 +26,7 @@ namespace Arius.Models
 
         public string FullName => _fi.FullName;
         public string RelativeName => Path.GetRelativePath(_root.FullName, _fi.FullName);
+        public string RelativePath => Path.GetRelativePath(_root.FullName, _fi.DirectoryName);
         public string Name => _fi.Name;
         public DirectoryInfo Directory => _fi.Directory;
         public DirectoryInfo Root => _root;

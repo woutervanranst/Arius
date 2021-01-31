@@ -37,6 +37,9 @@ namespace Arius.UI
                {
                    ConfigureServices(context.Configuration, services);
                })
+
+               //.ConfigureLogging()
+
                // https://stackoverflow.com/questions/39573571/net-core-console-application-how-to-configure-appsettings-per-environment
                // https://www.twilio.com/blog/2018/05/user-secrets-in-a-net-core-console-app.html
                // https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?view=aspnetcore-5.0&tabs=windows
@@ -68,7 +71,9 @@ namespace Arius.UI
             services.AddTransient<MainWindow>();
 
 
+            services.AddSingleton<Facade.Facade>();
 
+            services.AddLogging();
         }
 
         protected override async void OnStartup(StartupEventArgs e)

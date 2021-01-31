@@ -46,5 +46,17 @@ namespace Arius.UI.Properties {
                 this["AccountKey"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LocalPath {
+            get {
+                return ((string)(this["LocalPath"]));
+            }
+            set {
+                this["LocalPath"] = value;
+            }
+        }
     }
 }

@@ -17,12 +17,10 @@ namespace Arius.CommandLine
     internal class IndexDirectoryBlockProvider
     {
         private readonly ILogger<IndexDirectoryBlockProvider> _logger;
-        private readonly DirectoryInfo _root;
 
-        public IndexDirectoryBlockProvider(ILogger<IndexDirectoryBlockProvider> logger, ArchiveOptions options)
+        public IndexDirectoryBlockProvider(ILogger<IndexDirectoryBlockProvider> logger)
         {
             _logger = logger;
-            _root = new DirectoryInfo(options.Path);
         }
 
         public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
@@ -31,7 +29,7 @@ namespace Arius.CommandLine
             {
                 try
                 {
-                    return IndexDirectory(_root);
+                    return IndexDirectory(di);
                 }
                 catch (Exception e)
                 {
