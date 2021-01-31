@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius", "Arius\Arius.csproj
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Tests", "Arius.Tests\Arius.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.UI", "Arius.UI\Arius.UI.csproj", "{584DEE06-AE1A-44A1-A806-F6C652C98873}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{9E7B808A-155C-4474-B658-F814A24592F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E7B808A-155C-4474-B658-F814A24592F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E7B808A-155C-4474-B658-F814A24592F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{584DEE06-AE1A-44A1-A806-F6C652C98873}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{584DEE06-AE1A-44A1-A806-F6C652C98873}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{584DEE06-AE1A-44A1-A806-F6C652C98873}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{584DEE06-AE1A-44A1-A806-F6C652C98873}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
