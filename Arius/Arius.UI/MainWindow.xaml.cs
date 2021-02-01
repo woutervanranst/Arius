@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -61,7 +62,17 @@ namespace Arius.UI
         }
     }
 
-    public class MainViewModel : INotifyPropertyChanged
+    public abstract class ViewModelBase : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        //[NotifyPropertyChangedInvocator]
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+    public class MainViewModel : ViewModelBase
     {
         public MainViewModel(Facade.Facade facade)
         {
@@ -158,25 +169,9 @@ namespace Arius.UI
 
                 var di = new DirectoryInfo(path);
 
-
-
                 await foreach (var item in facade.GetLocalPathItems(di))
                 {
-                    Items.Add(item);
-
                     RootItem[0].AddFolderItem(item);
-
-                    //AddFolderItem(item.RelativePath, item);
-
-                    //var tvi = new TreeViewItem { Name = item.RelativePath };
-
-
-
-                    //if (!Folders.Contains(tvi))
-                    //{
-                    //    Folders.Add(tvi);
-                    //}
-
                 }
 
                 //App.Current.Dispatcher.Invoke(() =>
@@ -188,15 +183,23 @@ namespace Arius.UI
 
                 OnPropertyChanged(nameof(RootItem));
             });
+
+            //var z = new TreeViewItem(null) { Name = "he" };
+            //z.Children.Add(new TreeViewItem(z) { Name = "ha" });
+            //RootItem.Add(z);
+
+
+            OnPropertyChanged(nameof(RootItem));
+
         }
 
         public List<TreeViewItem> RootItem { get; init; } = new List<TreeViewItem> { new TreeViewItem(null) { Name = "." } };
-        private List<IAriusArchiveItem> Items { get; init; } = new();
+        //private List<IAriusArchiveItem> Items { get; init; } = new();
 
         //public ICollection<TreeViewItem> Folders => folders.Values;
         //private readonly Dictionary<string, TreeViewItem> folders = new();
 
-        public class TreeViewItem : IEquatable<TreeViewItem>
+        public class TreeViewItem : ViewModelBase, IEquatable<TreeViewItem>
         {
             public TreeViewItem(TreeViewItem parent)
             {
@@ -211,7 +214,12 @@ namespace Arius.UI
                     if (parent is null)
                         return ".";
                     else
-                        return parent.Name + System.IO.Path.DirectorySeparatorChar + Name;
+                    {
+                        if (parent.Name == ".")
+                            return Name;
+                        else
+                            return parent.Path + System.IO.Path.DirectorySeparatorChar + Name;
+                    }
                 }
             }
 
@@ -220,32 +228,33 @@ namespace Arius.UI
             public ICollection<TreeViewItem> Children => children.Values;
             private readonly Dictionary<string, TreeViewItem> children = new();
 
+            public ICollection<IAriusArchiveItem> Items { get; init; } = new ObservableCollection<IAriusArchiveItem>();
+
             public void AddFolderItem(IAriusArchiveItem item)
             {
                 if (item.RelativePath.Equals(this.Path))
                 {
                     // Add to self
-                    children.Add(item.RelativeName, item);
+                    Items.Add(item);
+
                 }
                 else
                 {
                     // Add to child
+                    //var dir = item.RelativePath.Split(System.IO.Path.DirectorySeparatorChar)[0];
+                    var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
+                    dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
                     // ensure the child exists
+                    if (!children.ContainsKey(dir))
+                        children.Add(dir, new TreeViewItem(this) { Name = dir });
 
-                    
+                    children[dir].AddFolderItem(item);
+
+                    OnPropertyChanged(nameof(Children));
+
+                    //children.Add(item.RelativeName, item);
                 }
-
-
-                var dir = item.RelativePath.Split(System.IO.Path.DirectorySeparatorChar)[0];
-
-                if (!children.ContainsKey(dir))
-                {
-
-                }
-
-
-
             }
 
             public bool Equals(TreeViewItem other)
@@ -260,12 +269,12 @@ namespace Arius.UI
 
 
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        //public event PropertyChangedEventHandler PropertyChanged;
 
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        //protected virtual void OnPropertyChanged(string propertyName)
+        //{
+        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        //}
     }
 
     public class ContainerViewModel

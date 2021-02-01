@@ -46,12 +46,27 @@
             <CheckBox Content="Include deleted items" />
         </StackPanel>
 
-        <TreeView Grid.Row="1" VerticalAlignment="Stretch" ItemsSource="{Binding RootItem}" DisplayMemberPath="Name">
-            
+        <!--<TreeView Grid.Row="1" VerticalAlignment="Stretch" ItemsSource="{Binding RootItem}" DisplayMemberPath="Name">
+            <TreeView.Resources>
+                <HierarchicalDataTemplate x:Key="ha" ItemsSource="{Binding Path=Children}">
+                    <TextBlock Text="{Binding Path=Name}"/>
+                </HierarchicalDataTemplate>
+                --><!--<HierarchicalDataTemplate  ItemsSource = "{Binding Path=Items}">
+                    <TextBlock Text="{Binding Path=Name}"/>
+                </HierarchicalDataTemplate>--><!--
+            </TreeView.Resources>
+        </TreeView>-->
+
+        <TreeView Grid.Row="1" VerticalAlignment="Stretch" ItemsSource="{Binding RootItem}">
+            <TreeView.Resources>
+                <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Path=Children}">
+                    <TextBlock Text="{Binding Path=Name}" />
+                </HierarchicalDataTemplate>
+            </TreeView.Resources>
         </TreeView>
 
-        
-        
+
+
         <!--<TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,7,0,0" Name="txtUserId" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.UserId}" />
         <TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,35,0,0" Name="txtFirstName" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.FirstName}" />
         <TextBox Grid.Row="1" Height="23" HorizontalAlignment="Left" Margin="80,62,0,0" Name="txtLastName" VerticalAlignment="Top" Width="178" Text="{Binding ElementName=UserGrid,Path=SelectedItem.LastName}" />
