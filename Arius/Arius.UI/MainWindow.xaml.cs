@@ -160,41 +160,21 @@ namespace Arius.UI
         }
         private string localPath;
 
-        private async void LoadFolders(string path)
+        private void LoadFolders(string path)
         {
-            await Task.Yield();
+            if (TreeViewItems.SingleOrDefault(tvi => tvi.Name == ".") is var root && root is null)
+                TreeViewItems.Add(root = new TreeViewItem(null) { Name = ".", IsSelected = true, IsExpanded = true });
 
-            //Task.Factory.StartNew(async () => 
-
-            await Task.Run(async () =>
+            Task.Run(async () =>
             {
-                //await Task.Yield();
-
-                await Task.Delay(5000);
-
                 var di = new DirectoryInfo(path);
 
                 await foreach (var item in facade.GetLocalPathItems(di))
-                {
-                    RootItem[0].AddFolderItem(item);
-                }
-
-                //App.Current.Dispatcher.Invoke(() =>
-                //{
-                //    Folders.AddRange(xx);
-                //});
-
-                //Folders = new ObservableCollection<TreeViewItem>(Directory.GetDirectories(path).Select(d => new TreeViewItem { Name = d }));
-
-                OnPropertyChanged(nameof(RootItem));
-            }).ConfigureAwait(false);
+                    root.AddFolderItem(item);
+            });
         }
 
-        public List<TreeViewItem> RootItem { get; init; } = new List<TreeViewItem> { new TreeViewItem(null) { Name = "." } };
-        //private List<IAriusArchiveItem> Items { get; init; } = new();
-
-        //public ICollection<TreeViewItem> Folders => folders.Values;
-        //private readonly Dictionary<string, TreeViewItem> folders = new();
+        public ObservableCollection<TreeViewItem> TreeViewItems { get; init; } = new();
 
         public class TreeViewItem : ViewModelBase, IEquatable<TreeViewItem>
         {
@@ -220,10 +200,17 @@ namespace Arius.UI
                 }
             }
 
+            public void bla()
+            {
+                OnPropertyChanged(nameof(Children));
+            }
+
             public string Name { get; init; }
 
-            public ICollection<TreeViewItem> Children => children.Values;
-            private readonly Dictionary<string, TreeViewItem> children = new();
+            public bool IsSelected { get; set; }
+            public bool IsExpanded { get; set; }
+
+            public ObservableCollection<TreeViewItem> Children { get; init; } = new();
 
             public ICollection<IAriusArchiveItem> Items { get; init; } = new ObservableCollection<IAriusArchiveItem>();
 
@@ -236,20 +223,18 @@ namespace Arius.UI
                 }
                 else
                 {
+                    App.Current.Dispatcher.Invoke(() =>
+                    {
                     // Add to child
-                    //var dir = item.RelativePath.Split(System.IO.Path.DirectorySeparatorChar)[0];
-                    var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
-                    dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
+                        var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
+                        dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
-                    // ensure the child exists
-                    if (!children.ContainsKey(dir))
-                        children.Add(dir, new TreeViewItem(this) { Name = dir });
+                        // ensure the child exists
+                        if (Children.SingleOrDefault(c => c.Name == dir) is var r && r is null)
+                            Children.Add(r = new TreeViewItem(this) { Name = dir });
 
-                    children[dir].AddFolderItem(item);
-
-                    OnPropertyChanged(nameof(Children));
-
-                    //children.Add(item.RelativeName, item);
+                        r.AddFolderItem(item);
+                    });
                 }
             }
 
@@ -258,19 +243,17 @@ namespace Arius.UI
                 return other.Name == Name;
             }
 
+            public override bool Equals(object obj)
+            {
+                return Equals(obj as TreeViewItem);
+            }
+
+            public override int GetHashCode()
+            {
+                return base.GetHashCode();
+                //return HashCode.Combine(this, Name);
+            }
         }
-        
-
-
-
-
-
-        //public event PropertyChangedEventHandler PropertyChanged;
-
-        //protected virtual void OnPropertyChanged(string propertyName)
-        //{
-        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        //}
     }
 
     public class ContainerViewModel

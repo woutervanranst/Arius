@@ -84,12 +84,18 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView Grid.Column="0" ItemsSource="{Binding RootItem}" >
+            <TreeView Grid.Column="0" ItemsSource="{Binding TreeViewItems}">
                 <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Children}">
+                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Children}"  >
                         <TextBlock Text="{Binding Path=Name}" />
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsSelected" Value="{Binding IsSelected}" />
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
             </TreeView>
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
