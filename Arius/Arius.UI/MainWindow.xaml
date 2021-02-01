@@ -58,11 +58,11 @@
         </TreeView>-->
 
         <TreeView Grid.Row="1" VerticalAlignment="Stretch" ItemsSource="{Binding RootItem}">
-            <TreeView.Resources>
-                <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Path=Children}">
-                    <TextBlock Text="{Binding Path=Name}" />
-                </HierarchicalDataTemplate>
-            </TreeView.Resources>
+            <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Path=Name}" />
+                    </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
         </TreeView>
 
 
