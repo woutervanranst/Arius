@@ -109,16 +109,16 @@ namespace Arius.UI
                 Settings.Default.AccountKey = value.Protect();
                 Settings.Default.Save();
 
-                LoadContainers();
+                //LoadContainers();
             }
         }
         private string storageAccountKey;
 
         public IEnumerable<ContainerViewModel> Containers { get; private set; }
 
-        private void LoadContainers()
+        private async void LoadContainers()
         {
-            Task.Run(() =>
+            await Task.Run(() =>
             {
                 if (string.IsNullOrEmpty(AccountName) || string.IsNullOrEmpty(AccountKey))
                     return;
@@ -133,9 +133,10 @@ namespace Arius.UI
                     return;
                 }
 
+                OnPropertyChanged(nameof(Containers));
+
                 SelectedContainer = Containers.First();
                 OnPropertyChanged(nameof(SelectedContainer));
-                OnPropertyChanged(nameof(Containers));
             });
         }
 
@@ -159,13 +160,17 @@ namespace Arius.UI
         }
         private string localPath;
 
-        private void LoadFolders(string path)
+        private async void LoadFolders(string path)
         {
-            Task.Run(async () =>
-            {
-                await Task.Yield();
+            await Task.Yield();
 
-                //await Task.Delay(500);
+            //Task.Factory.StartNew(async () => 
+
+            await Task.Run(async () =>
+            {
+                //await Task.Yield();
+
+                await Task.Delay(5000);
 
                 var di = new DirectoryInfo(path);
 
@@ -182,15 +187,7 @@ namespace Arius.UI
                 //Folders = new ObservableCollection<TreeViewItem>(Directory.GetDirectories(path).Select(d => new TreeViewItem { Name = d }));
 
                 OnPropertyChanged(nameof(RootItem));
-            });
-
-            //var z = new TreeViewItem(null) { Name = "he" };
-            //z.Children.Add(new TreeViewItem(z) { Name = "ha" });
-            //RootItem.Add(z);
-
-
-            OnPropertyChanged(nameof(RootItem));
-
+            }).ConfigureAwait(false);
         }
 
         public List<TreeViewItem> RootItem { get; init; } = new List<TreeViewItem> { new TreeViewItem(null) { Name = "." } };
@@ -236,7 +233,6 @@ namespace Arius.UI
                 {
                     // Add to self
                     Items.Add(item);
-
                 }
                 else
                 {
