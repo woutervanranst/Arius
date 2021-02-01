@@ -109,12 +109,12 @@ namespace Arius.UI
                 Settings.Default.AccountKey = value.Protect();
                 Settings.Default.Save();
 
-                //LoadContainers();
+                LoadContainers();
             }
         }
         private string storageAccountKey;
 
-        public IEnumerable<ContainerViewModel> Containers { get; private set; }
+        public ObservableCollection<ContainerViewModel> Containers { get; private set; }
 
         private async void LoadContainers()
         {
@@ -125,7 +125,7 @@ namespace Arius.UI
 
                 try
                 {
-                    Containers = facade.GetAzureRepositoryContainerNames(AccountName, AccountKey).Select(containerName => new ContainerViewModel(AccountName, AccountKey, containerName));
+                    Containers = new(facade.GetAzureRepositoryContainerNames(AccountName, AccountKey).Select(containerName => new ContainerViewModel(AccountName, AccountKey, containerName)));
                 }
                 catch (Exception e)
                 {
