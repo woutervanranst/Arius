@@ -11,7 +11,7 @@ namespace Arius.Services
 {
     internal interface IHashValueProvider
     {
-        HashValue GetHashValue(BinaryFile hashable);
+        HashValue GetHashValue(BinaryFile bf);
         HashValue GetHashValue(string fullName);
     }
 
@@ -37,25 +37,25 @@ namespace Arius.Services
         private readonly bool _fastHash;
         private readonly ILogger<SHA256Hasher> _logger;
 
-        public HashValue GetHashValue(BinaryFile f)
+        public HashValue GetHashValue(BinaryFile bf)
         {
             var h = default(HashValue?);
 
             if (_fastHash)
             {
-                var pointerFileInfo = f.PointerFileInfo;
+                var pointerFileInfo = bf.PointerFileInfo;
                 if (pointerFileInfo.Exists &&
-                    pointerFileInfo.LastWriteTimeUtc == File.GetLastWriteTimeUtc(f.FullName))
+                    pointerFileInfo.LastWriteTimeUtc == File.GetLastWriteTimeUtc(bf.FullName))
                 {
-                    _logger.LogDebug($"Using fasthash for {f.RelativeName}");
+                    _logger.LogDebug($"Using fasthash for {bf.RelativeName}");
 
-                    var pf = new PointerFile(f.Root, pointerFileInfo);
+                    var pf = new PointerFile(bf.Root, pointerFileInfo);
                     h = pf.Hash;
                 }
             }
 
             if (!h.HasValue)
-                h = GetHashValue(f.FullName);
+                h = GetHashValue(bf.FullName);
 
             return h.Value;
         }

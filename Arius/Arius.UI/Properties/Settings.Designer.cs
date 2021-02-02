@@ -58,5 +58,29 @@ namespace Arius.UI.Properties {
                 this["LocalPath"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SelectedContainer {
+            get {
+                return ((string)(this["SelectedContainer"]));
+            }
+            set {
+                this["SelectedContainer"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string Passphrase {
+            get {
+                return ((string)(this["Passphrase"]));
+            }
+            set {
+                this["Passphrase"] = value;
+            }
+        }
     }
 }

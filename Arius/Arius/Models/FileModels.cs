@@ -8,7 +8,7 @@ namespace Arius.Models
     public interface IAriusEntry
     {
         public string RelativePath { get; }
-        public string Name { get; }
+        //public string Name { get; }
         public string ContentName { get; }
     }
     internal interface IWithHashValue

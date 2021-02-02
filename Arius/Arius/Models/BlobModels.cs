@@ -5,22 +5,24 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob : IWithHashValue // : IAriusArchiveItem
+    internal abstract class BlobBase : IWithHashValue // : IAriusArchiveItem
     {
-        protected Blob(BlobItem blobItem)
+
+        protected BlobBase(BlobItem blobItem)
         {
             _bi = blobItem;
         }
-        
         protected readonly BlobItem _bi;
 
+        private const char BlobFolderSeparatorChar = '/';
+
         public string FullName => _bi.Name;
-        public string Name => _bi.Name.Split('/').Last(); //TODO werkt dit met alle soorten repos?
-        public string Folder => _bi.Name.Split('/').First();
+        public string Name => _bi.Name.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
+        public string Folder => _bi.Name.Split(BlobFolderSeparatorChar).First();
         public abstract HashValue Hash { get; }
     }
 
-    internal class RemoteEncryptedChunkBlobItem : Blob
+    internal class RemoteEncryptedChunkBlobItem : BlobBase
     {
         public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
@@ -34,7 +36,7 @@ namespace Arius.Models
         public BlobItem BlobItem => _bi;
     }
 
-    internal class RemoteManifestBlobItem : Blob
+    internal class RemoteManifestBlobItem : BlobBase
     {
         public RemoteManifestBlobItem(BlobItem bi) : base(bi)
         {

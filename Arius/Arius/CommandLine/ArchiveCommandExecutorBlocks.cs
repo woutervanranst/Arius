@@ -110,7 +110,7 @@ namespace Arius.CommandLine
 
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFile, IWithHashValue
     {
-        public ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
+        protected ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
         {
             _logger = logger;
             _created = new(createdInital);

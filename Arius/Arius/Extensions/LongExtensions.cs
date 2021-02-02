@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Extensions
 {
-    internal static class LongExtensions
+    public static class LongExtensions
     {
         // https://stackoverflow.com/a/11124118/1582323
 
@@ -55,6 +55,19 @@ namespace Arius.Extensions
             readable = (readable / 1024);
             // Return formatted number with suffix
             return readable.ToString("0.### ") + suffix;
+        }
+
+
+        public enum Size
+        {
+            KB
+        }
+        public static string GetBytesReadable(this long i, Size size)
+        {
+            if (size == Size.KB)
+                return $"{(i / 1024):N0} {size:g}";
+
+            throw new NotImplementedException();
         }
     }
 }

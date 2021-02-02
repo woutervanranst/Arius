@@ -95,10 +95,7 @@ namespace Arius.CommandLine
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(
-            ILogger<ProcessPointerChunksBlockProvider> logger, 
-            IConfiguration config,
-            RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IConfiguration config, RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -106,14 +103,14 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _repo = repo;
 
-            _root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(_root);
+            //_root = new DirectoryInfo(options.Path);
+            _downloadTempDir = config.DownloadTempDir(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly AzureRepository _repo;
-        private readonly DirectoryInfo _root;
+        //private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
@@ -268,9 +265,7 @@ namespace Arius.CommandLine
     
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options,
-            IConfiguration config, 
-            AzureRepository repo)
+        public DownloadBlockProvider(RestoreOptions options, IConfiguration config, AzureRepository repo)
         {
             _config = config;
             _repo = repo;
@@ -284,7 +279,7 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-        private BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
+        private readonly BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
 
         public ActionBlock<RemoteEncryptedChunkBlobItem> GetEnqueueBlock()
         {
@@ -483,7 +478,7 @@ namespace Arius.CommandLine
                     foreach (var pointer in _inFlightPointers.Values.Where(kvp => kvp.ChunkHashes.Contains(cf.Hash)))
                     {
                         pointer.ChunkHashes.Remove(cf.Hash);
-                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Chunk {cf.Hash} reconciled with {pointer.PointerFiles.Count()} PointerFile(s). {pointer.ChunkHashes.Count()} Chunks remaining.");
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Chunk {cf.Hash} reconciled with {pointer.PointerFiles.Count} PointerFile(s). {pointer.ChunkHashes.Count} Chunks remaining.");
                     }
 
                     // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)

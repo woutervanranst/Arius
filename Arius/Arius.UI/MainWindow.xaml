@@ -48,6 +48,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Azure" FontWeight="Bold" FontSize="20"/>
@@ -61,14 +62,17 @@
                 <Label Grid.Row="3" Grid.Column="0" HorizontalAlignment="Left" Content="Container:"/>
                 <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding Containers}" SelectedItem="{Binding SelectedContainer}" DisplayMemberPath="Name" />
 
-                <RadioButton Grid.Row="4" Content="Latest" IsChecked="True"></RadioButton>
+                <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
+                <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
+                
+                <RadioButton Grid.Row="5" Content="Latest" IsChecked="True"></RadioButton>
 
-                <DockPanel Grid.Row="5" Grid.ColumnSpan="2">
+                <DockPanel Grid.Row="6" Grid.ColumnSpan="2">
                     <RadioButton HorizontalAlignment="Left" Content="On date: "></RadioButton>
                     <Slider HorizontalAlignment="Stretch" Margin="15,0,15,0" />
                 </DockPanel>
 
-                <CheckBox Grid.Row="6" Content="Include deleted items" />
+                <CheckBox Grid.Row="7" Content="Include deleted items" />
 
             </Grid>
 
@@ -100,15 +104,27 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-            <ListView Grid.Column="2" ItemsSource="{Binding Items}"  >
+            <ListView Grid.Column="2" ItemsSource="{Binding Items}">
+                <ListView.Resources>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                    
+                    <DataTemplate x:Key="ISBNTemplate">
+                        <TextBlock HorizontalAlignment="Right" Text="{Binding Path=Size}"/>
+                    </DataTemplate>
+                </ListView.Resources>
+                
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=RelativeName}"  Width="50"/>
-                        <GridViewColumn Header="First Name" DisplayMemberBinding="{Binding FirstName}"  Width="80" />
-                        <GridViewColumn Header="Last Name" DisplayMemberBinding="{Binding LastName}" Width="100" />
-                        <GridViewColumn Header="City" DisplayMemberBinding="{Binding City}" Width="80" />
-                        <GridViewColumn Header="State" DisplayMemberBinding="{Binding State}" Width="80" />
-                        <GridViewColumn Header="Country" DisplayMemberBinding="{Binding Country}" Width="100" />
+                        <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=ContentName}"  Width="250"/>
+
+                        <GridViewColumn Header="Local" DisplayMemberBinding="{Binding Path=Local}"  Width="50"/>
+                        <GridViewColumn Header="Pointer" DisplayMemberBinding="{Binding Path=Pointer}"  Width="50"/>
+                        <GridViewColumn Header="Remote" DisplayMemberBinding="{Binding Path=Remote}"  Width="50"/>
+
+                        <GridViewColumn Header="Size" CellTemplate="{StaticResource ISBNTemplate}" Width="100"/>
+
                     </GridView>
                 </ListView.View>
             </ListView>
