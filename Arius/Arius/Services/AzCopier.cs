@@ -15,14 +15,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
+    internal interface IBlobCopier
+    {
+        void Upload(IEnumerable<IFile> fileToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite);
+        IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobsToDownload, DirectoryInfo target, bool flatten);
+    }
+
+
     internal interface IAzCopyUploaderOptions : ICommandExecutorOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Container { get; init; }
-        //public AccessTier Tier { get; init; }
     }
 
+    
     internal class AzCopier : IBlobCopier
     {
         public AzCopier(ICommandExecutorOptions options,

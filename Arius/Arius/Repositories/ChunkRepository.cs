@@ -5,6 +5,7 @@ using System.Linq;
 using Arius.CommandLine;
 using Arius.Extensions;
 using Arius.Models;
+using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -15,9 +16,7 @@ namespace Arius.Repositories
     {
         private class ChunkRepository
         {
-            public ChunkRepository(ICommandExecutorOptions options,
-                ILogger<ChunkRepository> logger,
-                    IBlobCopier b)
+            public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
             {
                 _logger = logger;
                 _blobCopier = b;
@@ -179,7 +178,7 @@ namespace Arius.Repositories
                 {
                     var hash = new HashValue { Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension) };
 
-                    return new EncryptedChunkFile(null, fi, hash);
+                    return new EncryptedChunkFile(fi, hash);
                 });
 
                 //return downloadedFiles.Select(fi2=>

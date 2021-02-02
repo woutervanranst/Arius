@@ -10,10 +10,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
+    internal interface IChunker
+    {
+        IChunkFile[] Chunk(BinaryFile fileToChunk);
+        BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target);
+    }
+
+    
     internal interface IChunkerOptions : ICommandExecutorOptions
     {
         bool Dedup { get; }
     }
+
+    
     internal class Chunker : IChunker
     {
         public IChunkFile[] Chunk(BinaryFile item)
@@ -77,7 +86,7 @@ namespace Arius.Services
                 fileStream.Close();
 
                 var hashValue = _hvp.GetHashValue(chunkFullName);
-                chunks.Add(new ChunkFile(null, new FileInfo(chunkFullName), hashValue));
+                chunks.Add(new ChunkFile(new FileInfo(chunkFullName), hashValue));
 
                 //var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.Name}.arius"));
                 //if (di.Exists)

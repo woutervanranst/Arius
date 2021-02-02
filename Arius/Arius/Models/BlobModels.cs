@@ -5,31 +5,19 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob // : IAriusArchiveItem
+    internal abstract class Blob : IWithHashValue // : IAriusArchiveItem
     {
-        protected Blob(
-            //IRepository root, 
-            BlobItem blobItem //, 
-            //Func<IBlob, HashValue> hashValueProvider
-        )
+        protected Blob(BlobItem blobItem)
         {
-            //_root = root;
             _bi = blobItem;
-
-            //_hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
         }
-
-        //protected readonly IRepository _root;
+        
         protected readonly BlobItem _bi;
-        //private readonly Lazy<HashValue> _hash;
-
 
         public string FullName => _bi.Name;
-        public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
+        public string Name => _bi.Name.Split('/').Last(); //TODO werkt dit met alle soorten repos?
         public string Folder => _bi.Name.Split('/').First();
-        //protected string NameWithoutExtension => Name.TrimEnd(Extension);
         public abstract HashValue Hash { get; }
-        //protected abstract string Extension { get; }
     }
 
     internal class RemoteEncryptedChunkBlobItem : Blob

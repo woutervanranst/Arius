@@ -190,7 +190,7 @@ namespace Arius.CommandLine
                         // R601
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
-                        _reconcileChunkBlock.Post(new ChunkFile(_root, cffi, chunkHash));
+                        _reconcileChunkBlock.Post(new ChunkFile(cffi, chunkHash));
                         continue;
                     }
 
@@ -200,7 +200,7 @@ namespace Arius.CommandLine
                         // R70
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded but not yet decrypted. Decrypting.");
                         atLeastOneToDecrypt = true;
-                        _decryptBlock.Post(new EncryptedChunkFile(_root, ecffi, chunkHash));
+                        _decryptBlock.Post(new EncryptedChunkFile(ecffi, chunkHash));
                         continue;
                     }
 
@@ -411,7 +411,7 @@ namespace Arius.CommandLine
 
                 _encrypter.Decrypt(ecf, targetFile, true);
 
-                var cf = new ChunkFile(null, targetFile, ecf.Hash);
+                var cf = new ChunkFile(targetFile, ecf.Hash);
 
                 _logger.LogInformation($"Decrypting chunk {ecf.Hash}... done");
 

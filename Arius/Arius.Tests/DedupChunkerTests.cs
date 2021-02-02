@@ -194,7 +194,7 @@ namespace Arius.Tests
                 fileStream.Close();
 
 
-                chunks.Add(new ChunkFile(null, new FileInfo($@"{di.FullName}\{i}"), default(HashValue)));
+                chunks.Add(new ChunkFile(new FileInfo($@"{di.FullName}\{i}"), default(HashValue)));
             }
 
 

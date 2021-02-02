@@ -51,7 +51,7 @@ namespace Arius.Facade
             }
         }
 
-        public async IAsyncEnumerable<IAriusArchiveItem> GetLocalPathItems(DirectoryInfo di)
+        public async IAsyncEnumerable<IAriusEntry> GetLocalPathItems(DirectoryInfo di)
         {
             var block = new IndexDirectoryBlockProvider(loggerFactory.CreateLogger<IndexDirectoryBlockProvider>()).GetBlock();
 

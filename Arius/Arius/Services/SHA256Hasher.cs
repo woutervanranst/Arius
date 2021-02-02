@@ -9,12 +9,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
+    internal interface IHashValueProvider
+    {
+        HashValue GetHashValue(BinaryFile hashable);
+        HashValue GetHashValue(string fullName);
+    }
+
+
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
     {
         public string Passphrase { get; }
         public bool FastHash { get; }
     }
 
+    
     internal class SHA256Hasher : IHashValueProvider
     {
         public SHA256Hasher(ILogger<SHA256Hasher> logger, ICommandExecutorOptions options)

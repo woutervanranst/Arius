@@ -2,7 +2,7 @@
 
 namespace Arius.Models
 {
-    internal struct HashValue
+    public struct HashValue
     {
         public string Value { get; init; }
         public override string ToString() => Value;

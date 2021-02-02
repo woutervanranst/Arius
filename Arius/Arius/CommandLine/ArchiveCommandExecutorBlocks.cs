@@ -23,7 +23,7 @@ namespace Arius.CommandLine
             _logger = logger;
         }
 
-        public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
+        public TransformManyBlock<DirectoryInfo, IAriusEntry> GetBlock()
         {
             return new(di =>
             {
@@ -41,7 +41,7 @@ namespace Arius.CommandLine
             );
         }
 
-        private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo root)
+        private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
         {
             _logger.LogInformation($"Indexing {root.FullName}");
 
@@ -75,7 +75,7 @@ namespace Arius.CommandLine
             _hvp = hvp;
         }
 
-        public TransformBlock<AriusArchiveItem, AriusArchiveItem> GetBlock()
+        public TransformBlock<IAriusEntry, IAriusEntryWithHash> GetBlock()
         {
             return new(item =>
             {
@@ -108,7 +108,7 @@ namespace Arius.CommandLine
 
 
 
-    internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
+    internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFile, IWithHashValue
     {
         public ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
         {
@@ -472,7 +472,7 @@ namespace Arius.CommandLine
 
                         _encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
 
-                        var ecf = new EncryptedChunkFile(chunkFile.Root, targetFile, chunkFile.Hash);
+                        var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
                         _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
 
