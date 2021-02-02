@@ -84,9 +84,9 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView Grid.Column="0" ItemsSource="{Binding TreeViewItems}">
+            <TreeView Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged">
                 <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Children}"  >
+                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}"  >
                         <TextBlock Text="{Binding Path=Name}" />
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
@@ -100,10 +100,10 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-            <ListView Grid.Column="2" ItemsSource="{Binding Users}"  >
+            <ListView Grid.Column="2" ItemsSource="{Binding Items}"  >
                 <ListView.View>
-                    <GridView x:Name="grdTest">
-                        <GridViewColumn Header="UserId" DisplayMemberBinding="{Binding UserId}"  Width="50"/>
+                    <GridView>
+                        <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=RelativeName}"  Width="50"/>
                         <GridViewColumn Header="First Name" DisplayMemberBinding="{Binding FirstName}"  Width="80" />
                         <GridViewColumn Header="Last Name" DisplayMemberBinding="{Binding LastName}" Width="100" />
                         <GridViewColumn Header="City" DisplayMemberBinding="{Binding City}" Width="80" />

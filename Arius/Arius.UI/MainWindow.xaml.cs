@@ -4,15 +4,11 @@ using Arius.UI.Properties;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 
 namespace Arius.UI
 {
@@ -24,52 +20,12 @@ namespace Arius.UI
         public MainWindow()
         {
             InitializeComponent();
-
-            //this.DataContext = new MainViewModel();
         }
 
-        //public IEnumerable<string> ha
-        //{
-        //    get
-        //    {
-        //        return new List<string>() { "haha", "hehe" };
-        //    }
-        //}
-    }
-
-    internal static class StringExtensions
-    {
-        public static string Protect(this string value)
+        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
-            byte[] entropy = Encoding.UTF8.GetBytes(Assembly.GetExecutingAssembly().FullName);
-            byte[] data = Encoding.UTF8.GetBytes(value);
-            string protectedData = Convert.ToBase64String(ProtectedData.Protect(data, entropy, DataProtectionScope.CurrentUser));
-            return protectedData;
-        }
-
-        public static string Unprotect(this string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
-            byte[] protectedData = Convert.FromBase64String(value);
-            byte[] entropy = Encoding.UTF8.GetBytes(Assembly.GetExecutingAssembly().FullName);
-            string data = Encoding.UTF8.GetString(ProtectedData.Unprotect(protectedData, entropy, DataProtectionScope.CurrentUser));
-            return data;
-        }
-    }
-
-    public abstract class ViewModelBase : INotifyPropertyChanged
-    {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        //[NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            // sorry...
+            ((MainViewModel)this.DataContext).TreeView_SelectedItemChanged(sender, e);
         }
     }
     public class MainViewModel : ViewModelBase
@@ -83,6 +39,7 @@ namespace Arius.UI
             LocalPath = Settings.Default.LocalPath;
         }
         private readonly Facade.Facade facade;
+
 
         public string AccountName
         {
@@ -142,6 +99,7 @@ namespace Arius.UI
 
         public ContainerViewModel SelectedContainer { get; set; }
 
+
         public string LocalPath
         {
             get => localPath;
@@ -162,27 +120,35 @@ namespace Arius.UI
 
         private void LoadFolders(string path)
         {
-            if (TreeViewItems.SingleOrDefault(tvi => tvi.Name == ".") is var root && root is null)
-                TreeViewItems.Add(root = new TreeViewItem(null) { Name = ".", IsSelected = true, IsExpanded = true });
+            if (Folders.SingleOrDefault(tvi => tvi.Name == ".") is var root && root is null)
+                Folders.Add(root = new FolderTreeViewItem(null) { Name = ".", IsSelected = true, IsExpanded = true });
 
             Task.Run(async () =>
             {
                 var di = new DirectoryInfo(path);
 
                 await foreach (var item in facade.GetLocalPathItems(di))
-                    root.AddFolderItem(item);
+                    root.Add(item);
             });
         }
 
-        public ObservableCollection<TreeViewItem> TreeViewItems { get; init; } = new();
+        public ObservableCollection<FolderTreeViewItem> Folders { get; init; } = new();
 
-        public class TreeViewItem : ViewModelBase, IEquatable<TreeViewItem>
+        public void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            public TreeViewItem(TreeViewItem parent)
+            Items = new ObservableCollection<Clip>((e.NewValue as FolderTreeViewItem).Items);
+            OnPropertyChanged(nameof(Items));
+        }
+
+        public ObservableCollection<Clip> Items { get; set; }
+
+        public class FolderTreeViewItem : ViewModelBase, IEquatable<FolderTreeViewItem>
+        {
+            public FolderTreeViewItem(FolderTreeViewItem parent)
             {
                 this.parent = parent;
             }
-            private readonly TreeViewItem parent;
+            private readonly FolderTreeViewItem parent;
 
             public string Path
             {
@@ -200,52 +166,63 @@ namespace Arius.UI
                 }
             }
 
-            public void bla()
-            {
-                OnPropertyChanged(nameof(Children));
-            }
-
             public string Name { get; init; }
 
             public bool IsSelected { get; set; }
             public bool IsExpanded { get; set; }
 
-            public ObservableCollection<TreeViewItem> Children { get; init; } = new();
+            public ObservableCollection<FolderTreeViewItem> Folders { get; init; } = new();
 
-            public ICollection<IAriusArchiveItem> Items { get; init; } = new ObservableCollection<IAriusArchiveItem>();
+            //public ICollection<IAriusArchiveItem> Items { get; init; } = new ObservableCollection<IAriusArchiveItem>();
+            public ICollection<Clip> Items => items.Values;
+            private readonly Dictionary<string, Clip> items = new();
 
-            public void AddFolderItem(IAriusArchiveItem item)
+            public void Add(IAriusEntry item)
             {
                 if (item.RelativePath.Equals(this.Path))
                 {
                     // Add to self
-                    Items.Add(item);
+                    //Items.Add(item);
+
+                    lock (items)
+                    { 
+                        if (!items.ContainsKey(item.Name))
+                            items.Add(item.Name, new() { Name = item.Name });
+                    }
+
+                    if (item is BinaryFile bf)
+                        items[item.Name].BinaryFile = bf;
+                    else if (item is PointerFile pf)
+                        items[item.Name].PointerFile = pf;
+                    else
+                        throw new NotImplementedException();
+
                 }
                 else
                 {
                     App.Current.Dispatcher.Invoke(() =>
                     {
-                    // Add to child
+                        // Add to child
                         var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
                         dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
                         // ensure the child exists
-                        if (Children.SingleOrDefault(c => c.Name == dir) is var r && r is null)
-                            Children.Add(r = new TreeViewItem(this) { Name = dir });
+                        if (Folders.SingleOrDefault(c => c.Name == dir) is var folder && folder is null)
+                            Folders.Add(folder = new FolderTreeViewItem(this) { Name = dir });
 
-                        r.AddFolderItem(item);
+                        folder.Add(item);
                     });
                 }
             }
 
-            public bool Equals(TreeViewItem other)
+            public bool Equals(FolderTreeViewItem other)
             {
                 return other.Name == Name;
             }
 
             public override bool Equals(object obj)
             {
-                return Equals(obj as TreeViewItem);
+                return Equals(obj as FolderTreeViewItem);
             }
 
             public override int GetHashCode()
@@ -253,6 +230,14 @@ namespace Arius.UI
                 return base.GetHashCode();
                 //return HashCode.Combine(this, Name);
             }
+        }
+
+        public class Clip
+        {
+            public string Name { get; init; }
+            public IAriusEntry PointerFile { get; set; }
+            public IAriusEntry BinaryFile { get; set; }
+
         }
     }
 
