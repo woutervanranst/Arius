@@ -202,7 +202,7 @@ docker pull ghcr.io/woutervanranst/arius
 
 #### Archive
 
-![Archive flow](docs/Arius%20-%20Archive%205.1.png)
+![Archive flow](https://lucid.app/publicSegments/view/52737a1c-52f2-4f03-8c70-6ee6cdaab8c0/image.png)
 
 #### Restore
 

@@ -177,7 +177,7 @@ namespace Arius.Facade
         {
             foreach (var item in await repository.GetCurrentEntriesAsync(false))
             {
-                yield return new kaka(item);
+                yield return new PointerFileEntryAriusEntry(item);
             }
             //var x = await repository.GetCurrentEntriesAsync(false);
 
@@ -207,9 +207,9 @@ namespace Arius.Facade
         
     }
 
-    public class kaka : IAriusEntry
+    public class PointerFileEntryAriusEntry : IAriusEntry
     {
-        internal kaka(AzureRepository.PointerFileEntry pfe)
+        internal PointerFileEntryAriusEntry(AzureRepository.PointerFileEntry pfe)
         {
             if (pfe is null)
                 throw new ArgumentNullException(nameof(pfe));

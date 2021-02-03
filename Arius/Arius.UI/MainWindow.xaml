@@ -1,4 +1,5 @@
 ﻿<Window x:Class="Arius.UI.MainWindow"
+        xmlns:d="clr-namespace:Arius.UI"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         DataContext="{Binding Source={StaticResource Locator}, Path=MainViewModel}"
@@ -109,8 +110,14 @@
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     </Style>
-                    
-                    <DataTemplate x:Key="ISBNTemplate">
+
+                    <d:ImageConverter x:Key="ImageConverter2" />
+
+
+                    <DataTemplate x:Key="ItemTypeTemplate">
+                        <Image Source="{Binding ItemState, Converter={StaticResource ImageConverter2}}" Height="15" />
+                    </DataTemplate>
+                    <DataTemplate x:Key="SizeTemplate">
                         <TextBlock HorizontalAlignment="Right" Text="{Binding Path=Size}"/>
                     </DataTemplate>
                 </ListView.Resources>
@@ -119,11 +126,13 @@
                     <GridView>
                         <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=ContentName}"  Width="250"/>
 
-                        <GridViewColumn Header="Local" DisplayMemberBinding="{Binding Path=Local}"  Width="50"/>
+                        <GridViewColumn Header="Type" CellTemplate="{StaticResource ItemTypeTemplate}"  Width="50"/>
+                        
+                        <!--<GridViewColumn Header="Local" DisplayMemberBinding="{Binding Path=Local}"  Width="50"/>
                         <GridViewColumn Header="Pointer" DisplayMemberBinding="{Binding Path=Pointer}"  Width="50"/>
-                        <GridViewColumn Header="Remote" DisplayMemberBinding="{Binding Path=Remote}"  Width="50"/>
+                        <GridViewColumn Header="Remote" DisplayMemberBinding="{Binding Path=Pointer}"  Width="50"/>-->
 
-                        <GridViewColumn Header="Size" CellTemplate="{StaticResource ISBNTemplate}" Width="100"/>
+                        <GridViewColumn Header="Size" CellTemplate="{StaticResource SizeTemplate}" Width="100"/>
 
                     </GridView>
                 </ListView.View>

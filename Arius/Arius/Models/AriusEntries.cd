@@ -1,0 +1,131 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="Arius.Models.RemoteEncryptedChunkBlobItem">
+    <Position X="9.75" Y="14.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AgAAAAAgAAIAAAAAAAAEAABAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\BlobModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.Models.RemoteManifestBlobItem">
+    <Position X="12.25" Y="15.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\BlobModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.Models.FileBase">
+    <Position X="5" Y="1" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AACAABAAAAJAAIAAAAAAAARAAAEAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.RelativeFileBase">
+    <Position X="2.75" Y="5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAQACAAACAAAAAAAABAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.Models.RelativeAriusBase">
+    <Position X="2.75" Y="8.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.PointerFile">
+    <Position X="1.75" Y="10.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAABQABAAAAAAIAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.BinaryFile">
+    <Position X="4" Y="10.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAEAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.ChunkFile">
+    <Position X="6.25" Y="10.5" Width="1.5" />
+    <InheritanceLine Type="Arius.Models.FileBase" ManuallyRouted="true">
+      <Path>
+        <Point X="5.75" Y="4.161" />
+        <Point X="5.75" Y="4.625" />
+        <Point X="7" Y="4.625" />
+        <Point X="7" Y="10.5" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.EncryptedChunkFile">
+    <Position X="8.25" Y="10.5" Width="1.5" />
+    <InheritanceLine Type="Arius.Models.FileBase" ManuallyRouted="true">
+      <Path>
+        <Point X="5.75" Y="4.161" />
+        <Point X="5.75" Y="4.623" />
+        <Point X="9" Y="4.623" />
+        <Point X="9" Y="10.5" />
+      </Path>
+    </InheritanceLine>
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Interface Name="Arius.Models.IAriusEntry">
+    <Position X="12.25" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAIAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Arius.Models.IWithHashValue">
+    <Position X="10.25" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Arius.Models.IAriusEntryWithHash">
+    <Position X="12" Y="7" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Arius.Models.IFile">
+    <Position X="15.25" Y="8.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAABAAAAAAAIAAAAAAAARAAAEAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Arius.Models.IChunkFile">
+    <Position X="13.75" Y="13" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="Arius.Models.IEncryptedFile">
+    <Position X="13.75" Y="11" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\FileModels.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>

@@ -440,7 +440,9 @@ namespace Arius.CommandLine
                         if (!_inFlightPointers.ContainsKey(pf.Hash))
                             _inFlightPointers.Add(pf.Hash, new(new(), new()));
 
+#pragma warning disable IDE0042 // Deconstruct variable declaration -- does not improve readability of code
                         var entry = _inFlightPointers[pf.Hash];
+#pragma warning restore IDE0042 // Deconstruct variable declaration
 
                         if (entry.ChunkHashes.Count == 0 && pf.ChunkHashes is not null)
                         {
@@ -451,7 +453,7 @@ namespace Arius.CommandLine
                             throw new InvalidOperationException("Too many chunk hash definitions"); //the list of thunks for this manfiest should be mastered once
 
 
-                        _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
+                        entry.PointerFiles.Add(pf);
                         _logger.LogInformation($"Reconciliation Pointers/Chunks - ManifestHash {pf.Hash}... added PointerFile {pf.RelativeName}");
                     }
                 });
@@ -467,7 +469,6 @@ namespace Arius.CommandLine
             return new(cf =>
             {
                 _processedChunks.Add(cf.Hash, cf);
-
                 
                 // Wait until all pointers have been reconciled and we have a full view of what chunks are needed for which files
                 Task.WaitAll(_reconcilePointerBlock.Completion); // R603

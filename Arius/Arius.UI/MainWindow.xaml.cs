@@ -7,11 +7,17 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace Arius.UI
 {
@@ -33,6 +39,7 @@ namespace Arius.UI
     }
     public class MainViewModel : ViewModelBase
     {
+       
         public MainViewModel(Facade.Facade facade)
         {
             this.facade = facade;
@@ -266,7 +273,7 @@ namespace Arius.UI
                     items[item.ContentName].BinaryFile = bf;
                 else if (item is PointerFile pf)
                     items[item.ContentName].PointerFile = pf;
-                else if (item is kaka k)
+                else if (item is PointerFileEntryAriusEntry k)
                     items[item.ContentName].PointerFileEntry = k;
                 else
                     throw new NotImplementedException();
@@ -298,65 +305,179 @@ namespace Arius.UI
         {
             return HashCode.Combine(obj.Path);
         }
-
-        //public bool Equals(FolderTreeViewItemViewModel other)
-        //{
-        //    return other.Name == Name;
-        //}
-
-        //public override bool Equals(object obj)
-        //{
-        //    return Equals(obj as FolderTreeViewItemViewModel);
-        //}
-
-        //public override int GetHashCode()
-        //{
-        //    return base.GetHashCode();
-        //    //return HashCode.Combine(this, Name);
-        //}
     }
 
-    public class ItemViewModel
+    public class ItemViewModel : ViewModelBase
     {
-        public string ContentName { get; init; }
-        public PointerFile PointerFile { get; set; }
-        public BinaryFile BinaryFile { get; set; }
-        public kaka PointerFileEntry { get; set; }
 
-        public string Local
+        public string ContentName { get; init; }
+        public PointerFile PointerFile
         {
-            get
+            get => pointerFile;
+            set
             {
-                return BinaryFile is not null ? "Yes": "No";
+                pointerFile = value;
+
+                OnPropertyChanged(nameof(PointerFile));
+                OnPropertyChanged(nameof(ItemState));
             }
         }
-        public string Pointer
+        private PointerFile pointerFile;
+
+        public BinaryFile BinaryFile
         {
-            get
+            get => binaryFile;
+            set
             {
-                return PointerFile is not null ? "Yes" : "No";
+                binaryFile = value;
+
+                OnPropertyChanged(nameof(BinaryFile));
+                OnPropertyChanged(nameof(ItemState));
             }
         }
-        public string Remote
+        private BinaryFile binaryFile;
+
+        public PointerFileEntryAriusEntry PointerFileEntry
         {
-            get
+            get => pointerFileEntry;
+            set
             {
-                return PointerFileEntry is not null ? "Yes" : "No";
+                pointerFileEntry = value;
+
+                OnPropertyChanged(nameof(PointerFileEntry));
+                OnPropertyChanged(nameof(ItemState));
             }
         }
+        private PointerFileEntryAriusEntry pointerFileEntry;
+
+        public object Manifest => "";
+
+
+        //public string Local
+        //{
+        //    get
+        //    {
+        //        return BinaryFile is not null ? "Yes" : "No";
+        //    }
+        //}
+        //public string Pointer
+        //{
+        //    get
+        //    {
+        //        return PointerFile is not null ? "Yes" : "No";
+        //    }
+        //}
+        //public string Remote
+        //{
+        //    get
+        //    {
+        //        return PointerFileEntry is not null ? "Yes" : "No";
+        //    }
+        //}
         public string Size
         {
             get
             {
                 if (BinaryFile is not null)
                     return BinaryFile.Length.GetBytesReadable(LongExtensions.Size.KB);
-                else if (Remote is not null)
+                else if (PointerFileEntry is not null)
                     return "TODO";
                 else if (PointerFile is not null)
                     return "Unknown";
                 else
                     throw new NotImplementedException();
             }
+        }
+
+        public string ItemState
+        {
+            get
+            {
+                var itemState = new StringBuilder();
+
+                itemState.Append(BinaryFile is not null ? 'Y' : 'N');
+                itemState.Append(PointerFile is not null ? 'Y' : 'N');
+                itemState.Append(PointerFileEntry is not null ? 'Y' : 'N');
+                itemState.Append(Manifest is not null ? 'A' : throw new NotImplementedException());
+
+                return itemState.ToString();
+            }
+        }
+    }
+
+    public class ImageConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null)
+                return null;
+
+
+            //if (value.Equals(3))
+            //{
+            //    //var byteArray = System.Convert.FromBase64String(Resources.ResourceManager.GetObject($"_{value}").ToString());
+            //    var byteArray = (byte[])Resources.ResourceManager.GetObject($"_{value}");
+            //    using (var stream = new MemoryStream(byteArray))
+            //    {
+            //        var svgDocument = Svg.SvgDocument.Open<Svg.SvgDocument>(stream);
+            //        //svgDocument.Opacity = 0;
+            //        svgDocument.Fill = new Svg.SvgColourServer(System.Drawing.Color.White);
+            //        var bitmap = svgDocument.Draw(15, 15);
+
+            //        MemoryStream ms = new MemoryStream();
+            //        ((System.Drawing.Bitmap)bitmap).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+            //        BitmapImage image = new BitmapImage();
+            //        image.BeginInit();
+            //        ms.Seek(0, SeekOrigin.Begin);
+            //        image.StreamSource = ms;
+            //        image.EndInit();
+            //        return image;
+            //    }
+
+            //}
+            //else
+            //{
+            //var ms = new MemoryStream((byte[])Resources.ResourceManager.GetObject(value as string));
+            //    var biImg = new BitmapImage();
+            //biImg.BeginInit();
+            //biImg.StreamSource = ms;
+            //biImg.EndInit();
+
+            //return biImg as ImageSource;
+            //}
+
+
+            var x = Resources.ResourceManager.GetObject(value as string);
+
+
+            MemoryStream ms = new MemoryStream();
+            ((System.Drawing.Bitmap)x).Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+            BitmapImage image = new BitmapImage();
+            image.BeginInit();
+            ms.Seek(0, SeekOrigin.Begin);
+            image.StreamSource = ms;
+            image.EndInit();
+            return image;
+
+
+            var y = x as ImageSource;
+
+            return y;
+
+            //var ms = new MemoryStream(Resources.ResourceManager.GetObject(value as string));
+
+
+            //var biImg = new BitmapImage();
+            //biImg.BeginInit();
+            //biImg.StreamSource = ms;
+            //biImg.EndInit();
+
+            //return biImg as ImageSource;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
         }
     }
 }
