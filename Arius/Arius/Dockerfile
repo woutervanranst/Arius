@@ -16,7 +16,7 @@ RUN rm -rf /var/lib/apt/lists/*
 VOLUME ["/archive"]
 VOLUME ["/logs"]
 
-FROM mcr.microsoft.com/dotnet/sdk:5.0.102-ca-patch-buster-slim AS build
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
 COPY ["Arius/Arius.csproj", "Arius/"]
 RUN dotnet restore "Arius/Arius.csproj"
