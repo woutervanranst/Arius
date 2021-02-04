@@ -4,10 +4,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         DataContext="{Binding Source={StaticResource Locator}, Path=MainViewModel}"
-        Title="MainWindow" Height="600" Width="800">
+        Title="Arius Browser" Height="600" Width="800">
 
     <Window.Resources>
-        <CollectionViewSource Source="{Binding SelectedItem.Items, ElementName=folders}" x:Key="cvs">
+        <CollectionViewSource Source="{Binding SelectedItem.Items, ElementName=folders}" x:Key="items">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="ContentName" />
             </CollectionViewSource.SortDescriptions>
@@ -94,10 +94,11 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView x:Name="folders" Grid.Column="0" ItemsSource="{Binding Folders}">
+            <TreeView x:Name="folders" Grid.Column="0" ItemsSource="{Binding Folders}"> <!--the binding here is the root elemenent (".")-->
                 
                 <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}"  >
+                    <!--<HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders, Converter={d:SortConverter}}"> --><!--the binding here are the child folders-->
+                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}"> <!--the binding here are the child folders-->
                         <TextBlock Text="{Binding Path=Name}" />
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
@@ -113,7 +114,7 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-            <ListView Grid.Column="2" ItemsSource="{Binding Source={StaticResource cvs}}">
+            <ListView Grid.Column="2" ItemsSource="{Binding Source={StaticResource items}}">
             <!--<ListView Grid.Column="2" ItemsSource="{Binding SelectedItem.Items, ElementName=folders}">-->
                 <ListView.Resources>
                     <Style TargetType="ListViewItem">
