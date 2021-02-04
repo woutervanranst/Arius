@@ -250,8 +250,9 @@ namespace Arius.UI
         {
             //App.Current.Dispatcher.Invoke(() =>
             //{
-                if (item.RelativePath.Equals(this.Path))
+            if (item.RelativePath.Equals(this.Path))
             {
+                
                 // Add to self
                 lock (items)
                 {
@@ -268,23 +269,23 @@ namespace Arius.UI
                 else
                     throw new NotImplementedException();
 
-                    OnPropertyChanged(nameof(Items));
+                OnPropertyChanged(nameof(Items));
 
             }
             else
             {
-                
-                    // Add to child
-                    var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
-                    dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
-                    // ensure the child exists
-                    if (Folders.SingleOrDefault(c => c.Name == dir) is var folder && folder is null)
-                        Folders.Add(folder = new FolderViewModel(this) { Name = dir });
+                // Add to child
+                var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
+                dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
-                    folder.Add(item);
+                // ensure the child exists
+                if (Folders.SingleOrDefault(c => c.Name == dir) is var folder && folder is null)
+                    Folders.Add(folder = new FolderViewModel(this) { Name = dir });
+
+                folder.Add(item);
             }
-                //});
+            //});
 
         }
 
