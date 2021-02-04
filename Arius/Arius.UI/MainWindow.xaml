@@ -89,9 +89,7 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView x:Name="folders" Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged">
-                <!--SelectedItemChanged="TreeView_SelectedItemChanged"-->
-                
+            <TreeView x:Name="folders" Grid.Column="0" ItemsSource="{Binding Folders}">
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}"  >
                         <TextBlock Text="{Binding Path=Name}" />
@@ -107,8 +105,7 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-            <!--<ListView Grid.Column="2" ItemsSource="{Binding SelectedItem.Items, ElementName=folders}">-->
-            <ListView Grid.Column="2" ItemsSource="{Binding Items}"  >
+            <ListView Grid.Column="2" ItemsSource="{Binding SelectedItem.Items, ElementName=folders}">
                 <ListView.Resources>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>

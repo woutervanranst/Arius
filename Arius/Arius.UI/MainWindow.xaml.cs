@@ -29,12 +29,6 @@ namespace Arius.UI
         {
             InitializeComponent();
         }
-
-        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            // sorry...
-            ((MainViewModel)this.DataContext).TreeView_SelectedItemChanged(sender, e);
-        }
     }
     public class MainViewModel : ViewModelBase
     {
@@ -62,7 +56,7 @@ namespace Arius.UI
                 Settings.Default.AccountName = value;
                 Settings.Default.Save();
 
-                LoadContainers().ConfigureAwait(false);
+                LoadContainers();
             }
         }
         private string storageAccountName;
@@ -77,35 +71,32 @@ namespace Arius.UI
                 Settings.Default.AccountKey = value.Protect();
                 Settings.Default.Save();
 
-                LoadContainers().ConfigureAwait(false);
+                LoadContainers();
             }
         }
         private string storageAccountKey;
 
-        private async Task LoadContainers()
+        private void LoadContainers()
         {
-            await Task.Run(() =>
+            if (string.IsNullOrEmpty(AccountName) || string.IsNullOrEmpty(AccountKey))
+                return;
+
+            try
             {
-                if (string.IsNullOrEmpty(AccountName) || string.IsNullOrEmpty(AccountKey))
-                    return;
+                saf = facade.GetStorageAccountFacade(AccountName, AccountKey);
 
-                try
-                {
-                    saf = facade.GetStorageAccountFacade(AccountName, AccountKey);
+                Containers = new(saf.Containers);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
+                return;
+            }
 
-                    Containers = new(saf.Containers);
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
-                    return;
-                }
+            OnPropertyChanged(nameof(Containers));
 
-                OnPropertyChanged(nameof(Containers));
-
-                SelectedContainer = Containers.SingleOrDefault(cf => cf.Name == Settings.Default.SelectedContainer) ?? Containers.First();
-                OnPropertyChanged(nameof(SelectedContainer));
-            });
+            SelectedContainer = Containers.SingleOrDefault(cf => cf.Name == Settings.Default.SelectedContainer) ?? Containers.First();
+            OnPropertyChanged(nameof(SelectedContainer));
         }
         private StorageAccountFacade saf;
 
@@ -145,17 +136,13 @@ namespace Arius.UI
         {
             var root = GetRoot();
 
-            await Task.Run(async () =>
-            {
-                if (SelectedContainer is null || string.IsNullOrEmpty(Passphrase))
-                    return;
+            if (SelectedContainer is null || string.IsNullOrEmpty(Passphrase))
+                return;
 
-                arf = SelectedContainer.GetAzureRepositoryFacade(Passphrase);
+            arf = SelectedContainer.GetAzureRepositoryFacade(Passphrase);
 
-                await foreach (var item in arf.GetRemoteEntries())
-                    root.Add(item);
-
-            });
+            await foreach (var item in arf.GetRemoteEntries())
+                root.Add(item);
         }
         private AzureRepositoryFacade arf;
 
@@ -178,17 +165,14 @@ namespace Arius.UI
         }
         private string localPath;
 
-        private void LoadFolders(string path)
+        private async void LoadFolders(string path)
         {
             var root = GetRoot();
 
-            Task.Run(async () =>
-            {
-                var di = new DirectoryInfo(path);
+            var di = new DirectoryInfo(path);
 
-                await foreach (var item in facade.GetLocalEntries(di))
-                    root.Add(item);
-            });
+            await foreach (var item in facade.GetLocalEntries(di))
+                root.Add(item);
         }
 
         public ObservableCollection<FolderViewModel> Folders { get; init; } = new();
@@ -220,14 +204,11 @@ namespace Arius.UI
     }
 
 
-    public class FolderViewModel : ViewModelBase, IEqualityComparer<FolderViewModel> //, IEquatable<FolderTreeViewItemViewModel>
+    public class FolderViewModel : ViewModelBase, IEqualityComparer<FolderViewModel>
     {
         public FolderViewModel(FolderViewModel parent)
         {
             this.parent = parent;
-
-            ////Enable the cross acces to this collection elsewhere
-            //BindingOperations.EnableCollectionSynchronization(Items, _syncLock);
         }
         private readonly FolderViewModel parent;
 
@@ -259,7 +240,9 @@ namespace Arius.UI
 
         public void Add(IAriusEntry item)
         {
-            if (item.RelativePath.Equals(this.Path))
+            //App.Current.Dispatcher.Invoke(() =>
+            //{
+                if (item.RelativePath.Equals(this.Path))
             {
                 // Add to self
                 lock (items)
@@ -277,11 +260,12 @@ namespace Arius.UI
                 else
                     throw new NotImplementedException();
 
+                    OnPropertyChanged(nameof(Items));
+
             }
             else
             {
-                App.Current.Dispatcher.Invoke(() =>
-                {
+                
                     // Add to child
                     var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
                     dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
@@ -291,8 +275,9 @@ namespace Arius.UI
                         Folders.Add(folder = new FolderViewModel(this) { Name = dir });
 
                     folder.Add(item);
-                });
             }
+                //});
+
         }
 
         public bool Equals(FolderViewModel x, FolderViewModel y)
