@@ -1,21 +1,20 @@
 ﻿using Arius.Extensions;
 using Arius.Facade;
 using Arius.Models;
-using Arius.Repositories;
 using Arius.UI.Properties;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -94,7 +93,7 @@ namespace Arius.UI
                 {
                     saf = facade.GetStorageAccountFacade(AccountName, AccountKey);
 
-                    Containers = new(saf.Containers); //.Select(containerName => new ContainerViewModel(AccountName, AccountKey, containerName)));
+                    Containers = new(saf.Containers);
                 }
                 catch (Exception e)
                 {
@@ -108,11 +107,11 @@ namespace Arius.UI
                 OnPropertyChanged(nameof(SelectedContainer));
             });
         }
-        private Facade.StorageAccountFacade saf;
+        private StorageAccountFacade saf;
 
-        public ObservableCollection<Facade.ContainerFacade> Containers { get; private set; }
+        public ObservableCollection<ContainerFacade> Containers { get; private set; }
 
-        public Facade.ContainerFacade SelectedContainer 
+        public ContainerFacade SelectedContainer 
         {
             get => selectedContainer;
             set
@@ -125,7 +124,7 @@ namespace Arius.UI
                 LoadRemoteEntries().ConfigureAwait(false);
             }
         }
-        private Facade.ContainerFacade selectedContainer;
+        private ContainerFacade selectedContainer;
 
         public string Passphrase
         {
@@ -158,7 +157,7 @@ namespace Arius.UI
 
             });
         }
-        private Facade.AzureRepositoryFacade arf;
+        private AzureRepositoryFacade arf;
 
 
         public string LocalPath
@@ -209,10 +208,6 @@ namespace Arius.UI
         }
 
         public ObservableCollection<ItemViewModel> Items { get; set; }
-
-        
-
-        
     }
 
     public class ContainerViewModel
@@ -224,11 +219,15 @@ namespace Arius.UI
         public string Name { get; init; }
     }
 
+
     public class FolderViewModel : ViewModelBase, IEqualityComparer<FolderViewModel> //, IEquatable<FolderTreeViewItemViewModel>
     {
         public FolderViewModel(FolderViewModel parent)
         {
             this.parent = parent;
+
+            ////Enable the cross acces to this collection elsewhere
+            //BindingOperations.EnableCollectionSynchronization(Items, _syncLock);
         }
         private readonly FolderViewModel parent;
 
@@ -354,26 +353,6 @@ namespace Arius.UI
 
 
         //public string Local
-        //{
-        //    get
-        //    {
-        //        return BinaryFile is not null ? "Yes" : "No";
-        //    }
-        //}
-        //public string Pointer
-        //{
-        //    get
-        //    {
-        //        return PointerFile is not null ? "Yes" : "No";
-        //    }
-        //}
-        //public string Remote
-        //{
-        //    get
-        //    {
-        //        return PointerFileEntry is not null ? "Yes" : "No";
-        //    }
-        //}
         public string Size
         {
             get
@@ -405,74 +384,22 @@ namespace Arius.UI
         }
     }
 
-    public class ImageConverter : IValueConverter
+    public class ItemStateToImageConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value == null)
                 return null;
 
-
-            //if (value.Equals(3))
-            //{
-            //    //var byteArray = System.Convert.FromBase64String(Resources.ResourceManager.GetObject($"_{value}").ToString());
-            //    var byteArray = (byte[])Resources.ResourceManager.GetObject($"_{value}");
-            //    using (var stream = new MemoryStream(byteArray))
-            //    {
-            //        var svgDocument = Svg.SvgDocument.Open<Svg.SvgDocument>(stream);
-            //        //svgDocument.Opacity = 0;
-            //        svgDocument.Fill = new Svg.SvgColourServer(System.Drawing.Color.White);
-            //        var bitmap = svgDocument.Draw(15, 15);
-
-            //        MemoryStream ms = new MemoryStream();
-            //        ((System.Drawing.Bitmap)bitmap).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-            //        BitmapImage image = new BitmapImage();
-            //        image.BeginInit();
-            //        ms.Seek(0, SeekOrigin.Begin);
-            //        image.StreamSource = ms;
-            //        image.EndInit();
-            //        return image;
-            //    }
-
-            //}
-            //else
-            //{
-            //var ms = new MemoryStream((byte[])Resources.ResourceManager.GetObject(value as string));
-            //    var biImg = new BitmapImage();
-            //biImg.BeginInit();
-            //biImg.StreamSource = ms;
-            //biImg.EndInit();
-
-            //return biImg as ImageSource;
-            //}
-
-
-            var x = Resources.ResourceManager.GetObject(value as string);
-
-
-            MemoryStream ms = new MemoryStream();
-            ((System.Drawing.Bitmap)x).Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-            BitmapImage image = new BitmapImage();
+            var bitmap = (Bitmap)Resources.ResourceManager.GetObject(value as string);
+            var ms = new MemoryStream();
+            bitmap.Save(ms, ImageFormat.Png);
+            var image = new BitmapImage();
             image.BeginInit();
             ms.Seek(0, SeekOrigin.Begin);
             image.StreamSource = ms;
             image.EndInit();
-            return image;
-
-
-            var y = x as ImageSource;
-
-            return y;
-
-            //var ms = new MemoryStream(Resources.ResourceManager.GetObject(value as string));
-
-
-            //var biImg = new BitmapImage();
-            //biImg.BeginInit();
-            //biImg.StreamSource = ms;
-            //biImg.EndInit();
-
-            //return biImg as ImageSource;
+            return image as ImageSource;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

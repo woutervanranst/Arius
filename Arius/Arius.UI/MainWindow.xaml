@@ -89,7 +89,9 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TreeView Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged">
+            <TreeView x:Name="folders" Grid.Column="0" ItemsSource="{Binding Folders}" SelectedItemChanged="TreeView_SelectedItemChanged">
+                <!--SelectedItemChanged="TreeView_SelectedItemChanged"-->
+                
                 <TreeView.ItemTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}"  >
                         <TextBlock Text="{Binding Path=Name}" />
@@ -105,17 +107,17 @@
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-            <ListView Grid.Column="2" ItemsSource="{Binding Items}">
+            <!--<ListView Grid.Column="2" ItemsSource="{Binding SelectedItem.Items, ElementName=folders}">-->
+            <ListView Grid.Column="2" ItemsSource="{Binding Items}"  >
                 <ListView.Resources>
                     <Style TargetType="ListViewItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     </Style>
 
-                    <d:ImageConverter x:Key="ImageConverter2" />
+                    <d:ItemStateToImageConverter x:Key="converter" />
 
-
-                    <DataTemplate x:Key="ItemTypeTemplate">
-                        <Image Source="{Binding ItemState, Converter={StaticResource ImageConverter2}}" Height="15" />
+                    <DataTemplate x:Key="ItemStateTemplate">
+                        <Image Source="{Binding ItemState, Converter={StaticResource converter}}" Height="15" />
                     </DataTemplate>
                     <DataTemplate x:Key="SizeTemplate">
                         <TextBlock HorizontalAlignment="Right" Text="{Binding Path=Size}"/>
@@ -126,12 +128,8 @@
                     <GridView>
                         <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=ContentName}"  Width="250"/>
 
-                        <GridViewColumn Header="Type" CellTemplate="{StaticResource ItemTypeTemplate}"  Width="50"/>
+                        <GridViewColumn Header="State" CellTemplate="{StaticResource ItemStateTemplate}"  Width="50"/>
                         
-                        <!--<GridViewColumn Header="Local" DisplayMemberBinding="{Binding Path=Local}"  Width="50"/>
-                        <GridViewColumn Header="Pointer" DisplayMemberBinding="{Binding Path=Pointer}"  Width="50"/>
-                        <GridViewColumn Header="Remote" DisplayMemberBinding="{Binding Path=Pointer}"  Width="50"/>-->
-
                         <GridViewColumn Header="Size" CellTemplate="{StaticResource SizeTemplate}" Width="100"/>
 
                     </GridView>
