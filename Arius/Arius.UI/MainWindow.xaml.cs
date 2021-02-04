@@ -20,9 +20,6 @@ using System.Windows.Media.Imaging;
 
 namespace Arius.UI
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
         public MainWindow()
@@ -30,7 +27,8 @@ namespace Arius.UI
             InitializeComponent();
         }
     }
-    public class MainViewModel : ViewModelBase
+
+    internal class MainViewModel : ViewModelBase
     {
        
         public MainViewModel(Facade.Facade facade)
@@ -45,6 +43,7 @@ namespace Arius.UI
         }
         private readonly Facade.Facade facade;
 
+        // --- ACCOUNTNAME & ACCOUNTKEY
 
         public string AccountName
         {
@@ -76,6 +75,8 @@ namespace Arius.UI
         }
         private string storageAccountKey;
 
+        // --- CONTAINERS
+
         private void LoadContainers()
         {
             if (string.IsNullOrEmpty(AccountName) || string.IsNullOrEmpty(AccountKey))
@@ -85,7 +86,7 @@ namespace Arius.UI
             {
                 saf = facade.GetStorageAccountFacade(AccountName, AccountKey);
 
-                Containers = new(saf.Containers);
+                Containers = new(saf.Containers.Select(cf => new ContainerViewModel(cf)));
             }
             catch (Exception e)
             {
@@ -100,9 +101,9 @@ namespace Arius.UI
         }
         private StorageAccountFacade saf;
 
-        public ObservableCollection<ContainerFacade> Containers { get; private set; }
+        public ObservableCollection<ContainerViewModel> Containers { get; private set; }
 
-        public ContainerFacade SelectedContainer 
+        public ContainerViewModel SelectedContainer 
         {
             get => selectedContainer;
             set
@@ -112,10 +113,12 @@ namespace Arius.UI
                 Settings.Default.SelectedContainer = value?.Name;
                 Settings.Default.Save();
 
-                LoadRemoteEntries().ConfigureAwait(false);
+                LoadRepositoryEntries().ConfigureAwait(false);
             }
         }
-        private ContainerFacade selectedContainer;
+        private ContainerViewModel selectedContainer;
+
+        // -- PASSPHRASE
 
         public string Passphrase
         {
@@ -127,12 +130,14 @@ namespace Arius.UI
                 Settings.Default.Passphrase = value.Protect();
                 Settings.Default.Save();
 
-                LoadRemoteEntries().ConfigureAwait(false);
+                LoadRepositoryEntries().ConfigureAwait(false);
             }
         }
         private string passphrase;
 
-        private async Task LoadRemoteEntries()
+        // -- REPOSITORY ENTRIES
+
+        private async Task LoadRepositoryEntries()
         {
             var root = GetRoot();
 
@@ -147,6 +152,8 @@ namespace Arius.UI
         private AzureRepositoryFacade arf;
 
 
+        // -- LOCAL PATH + LOCAL ENTRIES
+
         public string LocalPath
         {
             get => localPath;
@@ -160,12 +167,12 @@ namespace Arius.UI
                 Settings.Default.LocalPath = value;
                 Settings.Default.Save();
 
-                LoadFolders(value);
+                LoadLocalEntries(value).ConfigureAwait(false);
             }
         }
         private string localPath;
 
-        private async void LoadFolders(string path)
+        private async Task LoadLocalEntries(string path)
         {
             var root = GetRoot();
 
@@ -174,6 +181,8 @@ namespace Arius.UI
             await foreach (var item in facade.GetLocalEntries(di))
                 root.Add(item);
         }
+
+        // -- TREEVIEW
 
         public ObservableCollection<FolderViewModel> Folders { get; init; } = new();
 
@@ -184,27 +193,26 @@ namespace Arius.UI
 
             return root;
         }
-
-        public void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
-        {
-            Items = new ObservableCollection<ItemViewModel>((e.NewValue as FolderViewModel).Items);
-            OnPropertyChanged(nameof(Items));
-        }
-
-        public ObservableCollection<ItemViewModel> Items { get; set; }
     }
 
-    public class ContainerViewModel
+    internal class ContainerViewModel : ViewModelBase
     {
-        public ContainerViewModel(string accountName, string accountKey, string containerName)
+        public ContainerViewModel(ContainerFacade cf)
         {
-            Name = containerName;
+            this.cf = cf ?? throw new ArgumentNullException(nameof(ContainerViewModel.cf));
         }
-        public string Name { get; init; }
+        private readonly ContainerFacade cf;
+
+
+        public string Name => cf.Name;
+
+        public AzureRepositoryFacade GetAzureRepositoryFacade(string passphrase)
+        {
+            return cf.GetAzureRepositoryFacade(passphrase);
+        }
     }
 
-
-    public class FolderViewModel : ViewModelBase, IEqualityComparer<FolderViewModel>
+    internal class FolderViewModel : ViewModelBase, IEqualityComparer<FolderViewModel>
     {
         public FolderViewModel(FolderViewModel parent)
         {
@@ -291,7 +299,7 @@ namespace Arius.UI
         }
     }
 
-    public class ItemViewModel : ViewModelBase
+    internal class ItemViewModel : ViewModelBase
     {
 
         public string ContentName { get; init; }
@@ -368,7 +376,7 @@ namespace Arius.UI
         }
     }
 
-    public class ItemStateToImageConverter : IValueConverter
+    internal class ItemStateToImageConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

@@ -171,40 +171,13 @@ namespace Arius.Facade
             public string Passphrase { get; init; }
         }
 
-        //public async Task<IEnumerable<Iar>
-
         public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries()
         {
             foreach (var item in await repository.GetCurrentEntriesAsync(false))
             {
                 yield return new PointerFileEntryAriusEntry(item);
             }
-            //var x = await repository.GetCurrentEntriesAsync(false);
-
-            //var y = x.Select(z => new kaka(z)).ToArray().GetEnumerator();
-
-            //return y;
-
-
-
-
-            //var block = new IndexDirectoryBlockProvider(loggerFactory.CreateLogger<IndexDirectoryBlockProvider>()).GetBlock();
-
-            //block.Post(di);
-            //block.Complete();
-
-            //while (await block.OutputAvailableAsync())
-            //{
-            //    while (block.TryReceive(out var item))
-            //    {
-            //        yield return item;
-            //    }
-            //}
-
-            //await block.Completion.ConfigureAwait(false);
         }
-
-        
     }
 
     public class PointerFileEntryAriusEntry : IAriusEntry

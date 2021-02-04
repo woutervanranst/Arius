@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Arius.UI
 {
-    public abstract class ViewModelBase : INotifyPropertyChanged
+    internal abstract class ViewModelBase : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 

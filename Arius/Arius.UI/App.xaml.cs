@@ -98,7 +98,7 @@ namespace Arius.UI
         }
     }
 
-    public class ViewModelLocator
+    internal class ViewModelLocator
     {
         public MainViewModel MainViewModel => App.ServiceProvider.GetRequiredService<MainViewModel>();
     }
