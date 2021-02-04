@@ -352,7 +352,6 @@ namespace Arius.UI
         public object Manifest => "";
 
 
-        //public string Local
         public string Size
         {
             get
