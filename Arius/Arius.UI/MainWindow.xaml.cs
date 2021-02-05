@@ -15,6 +15,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -148,6 +149,8 @@ namespace Arius.UI
 
             await foreach (var item in arf.GetRemoteEntries())
                 root.Add(item);
+
+            //OnPropertyChanged(nameof(Folders));
         }
         private AzureRepositoryFacade arf;
 
@@ -180,6 +183,8 @@ namespace Arius.UI
 
             await foreach (var item in facade.GetLocalEntries(di))
                 root.Add(item);
+
+            //OnPropertyChanged(nameof(Folders));
         }
 
         // -- TREEVIEW
@@ -248,8 +253,6 @@ namespace Arius.UI
 
         public void Add(IAriusEntry item)
         {
-            //App.Current.Dispatcher.Invoke(() =>
-            //{
             if (item.RelativePath.Equals(this.Path))
             {
                 
@@ -270,22 +273,23 @@ namespace Arius.UI
                     throw new NotImplementedException();
 
                 OnPropertyChanged(nameof(Items));
-
             }
             else
             {
-
                 // Add to child
                 var dir = System.IO.Path.GetRelativePath(this.Path, item.RelativePath);
                 dir = dir.Split(System.IO.Path.DirectorySeparatorChar)[0];
 
                 // ensure the child exists
                 if (Folders.SingleOrDefault(c => c.Name == dir) is var folder && folder is null)
-                    Folders.Add(folder = new FolderViewModel(this) { Name = dir });
+                {
+                    folder = new FolderViewModel(this) { Name = dir };
+                    Folders.AddSorted(folder, new FolderViewModelNameComparer());
+                }
+                    
 
                 folder.Add(item);
             }
-            //});
 
         }
 
@@ -297,6 +301,14 @@ namespace Arius.UI
         public int GetHashCode([DisallowNull] FolderViewModel obj)
         {
             return HashCode.Combine(obj.Path);
+        }
+    }
+
+    internal class FolderViewModelNameComparer : IComparer<FolderViewModel>
+    {
+        public int Compare(FolderViewModel x, FolderViewModel y)
+        {
+            return x.Name.CompareTo(y.Name);
         }
     }
 
