@@ -108,7 +108,7 @@ namespace Arius.CommandLine
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
         public string Passphrase { get; init; }
-        public bool FastHash { get; init; }
+        public bool FastHash => false; //Do not fasthash on restore to ensure integrity
         public string Container { get; init; }
         public bool Synchronize { get; init; }
         public bool Download { get; init; }

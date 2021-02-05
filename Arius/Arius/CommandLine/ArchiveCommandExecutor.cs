@@ -80,7 +80,7 @@ namespace Arius.CommandLine
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
                 .AddSingleton<UploadEncryptedChunksBlockProvider>()
-                .AddSingleton<EnqueueUploadTaskProvider>()
+                .AddSingleton<CreateUploadBatchesTaskProvider>()
                 .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
                 .AddSingleton<CreateManifestBlockProvider>()
                 .AddSingleton<CreatePointerBlockProvider>()
@@ -121,7 +121,7 @@ namespace Arius.CommandLine
             var uploadEncryptedChunksBlock =  blocks.GetRequiredService<UploadEncryptedChunksBlockProvider>().GetBlock();
 
 
-            var uploadTask = blocks.GetRequiredService<EnqueueUploadTaskProvider>()
+            var createUploadBatchesTask = blocks.GetRequiredService<CreateUploadBatchesTaskProvider>()
                 .AddUploadQueue(uploadQueue)
                 .AddUploadEncryptedChunkBlock(uploadEncryptedChunksBlock)
                 .AddEnqueueEncryptedChunksForUploadBlock(enqueueEncryptedChunksForUploadBlock)
@@ -222,14 +222,24 @@ namespace Arius.CommandLine
 
             // A90
             Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
-                .ContinueWith(_ => uploadQueue.CompleteAdding());
+                .ContinueWith(_ =>
+                {
+                    _logger.LogDebug("Passing A90");
+                    uploadQueue.CompleteAdding(); //Mark the Queue as completed adding, also if enqueueEncryptedChunksForUploadBlock is faulted
 
+                    //TODO KARL error handling if an error occurs here
+                });     
 
             // A100
-            Task.WhenAll(uploadTask)
-                .ContinueWith(_ => uploadEncryptedChunksBlock.Complete());
+            Task.WhenAll(createUploadBatchesTask)
+                .ContinueWith(_ =>
+                {
+                    _logger.LogDebug("Passing A100");
+                    uploadEncryptedChunksBlock.Complete();
 
-            
+                    //TODO KARL error handling
+                });
+
             // A110
             uploadEncryptedChunksBlock.LinkTo(
                 reconcileChunksWithManifestsBlock,
@@ -237,8 +247,17 @@ namespace Arius.CommandLine
 
 
             // A115
-            Task.WhenAll(uploadEncryptedChunksBlock.Completion, chunkBlock.Completion)
-                .ContinueWith(_ => reconcileChunksWithManifestsBlock.Complete());
+            reconcileChunksWithManifestsBlock.JoinCompletion(
+                () => _logger.LogDebug("Passing A115 - Completion"),
+                () => _logger.LogDebug("Passing A115 - Faulted"),
+                uploadEncryptedChunksBlock, chunkBlock);
+            
+            //Task.WhenAll(uploadEncryptedChunksBlock.Completion, chunkBlock.Completion)
+            //    .ContinueWith(_ =>
+            //    {
+            //        _logger.LogDebug("Passing A115");
+            //        reconcileChunksWithManifestsBlock.Complete();
+            //    });
 
 
             // A120
@@ -254,8 +273,16 @@ namespace Arius.CommandLine
 
 
             // A140
-            Task.WhenAll(createManifestBlock.Completion, createIfNotExistManifestBlock.Completion)
-                .ContinueWith(_ => reconcileManifestBlock.Complete());
+            reconcileManifestBlock.JoinCompletion(
+                () => _logger.LogDebug("Passing A140 - Completion"),
+                () => _logger.LogDebug("Passing A140 - Faulted"),
+                createManifestBlock, createIfNotExistManifestBlock);
+            //Task.WhenAll(createManifestBlock.Completion, createIfNotExistManifestBlock.Completion)
+            //    .ContinueWith(_ =>
+            //    {
+            //        _logger.LogDebug("Passing A140");
+            //        reconcileManifestBlock.Complete();
+            //    });
 
 
             // A150
@@ -265,29 +292,59 @@ namespace Arius.CommandLine
 
 
             // A160
-            createPointersBlock.LinkTo(createPointerFileEntryIfNotExistsBlock, 
+            createPointersBlock.LinkTo(
+                createPointerFileEntryIfNotExistsBlock, 
                 doNotPropagateCompletionOptions);
 
 
             // A170
-            Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
-                .ContinueWith(_ => createPointerFileEntryIfNotExistsBlock.Complete());
-
+            createPointerFileEntryIfNotExistsBlock.JoinCompletion(
+                () => _logger.LogDebug("Passing A170 - Completion"),
+                () => _logger.LogDebug("Passing A170 - Faulted"),
+                createPointersBlock, addHashBlock);
+            //Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
+            //    .ContinueWith(_ =>
+            //    {
+            //        _logger.LogDebug("Passing A170");
+            //        createPointerFileEntryIfNotExistsBlock.Complete();
+            //    });
 
             // A180
             createPointerFileEntryIfNotExistsBlock.Completion
                 .ContinueWith(_ =>
                 {
+                    _logger.LogDebug("Passing A180");
                     removeDeletedPointersTask.Start();
+
+                    //TODO error handling
                 });
 
             // A190
             removeDeletedPointersTask
-                .ContinueWith(_ => exportToJsonTask.Start());
+                .ContinueWith(_ =>
+                {
+                    _logger.LogDebug("Passing A190");
+                    exportToJsonTask.Start();
+
+                    //TODO errorr handling
+                });
 
             // A200
             exportToJsonTask
-                .ContinueWith(_ => deleteBinaryFilesTask.Start());
+                .ContinueWith(_ =>
+                {
+                    _logger.LogDebug("Passing A200");
+                    deleteBinaryFilesTask.Start();
+
+                    //TODO error handling
+                });
+
+            //TODO
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                _logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
+                throw e.Exception;
+            };
 
 
             //Fill the flow
@@ -298,8 +355,14 @@ namespace Arius.CommandLine
             // Wait for the end
             deleteBinaryFilesTask.Wait();
 
+            _logger.LogInformation("Done");
 
             return 0;
+        }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }

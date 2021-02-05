@@ -1,11 +1,13 @@
 ﻿using System;
 using System.CommandLine;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using Arius.CommandLine;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,7 +19,7 @@ namespace Arius
     {
         private static int Main(string[] args)
         {
-            var pcp = new ParsedCommandProvider();
+            var parsedCommandProvider = new ParsedCommandProvider();
 
             IAriusCommand archiveCommand = new ArchiveCommand();
             IAriusCommand restoreCommand = new RestoreCommand();
@@ -25,8 +27,8 @@ namespace Arius
             var rootCommand = new RootCommand();
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 
-            rootCommand.AddCommand(archiveCommand.GetCommand(pcp));
-            rootCommand.AddCommand(restoreCommand.GetCommand(pcp));
+            rootCommand.AddCommand(archiveCommand.GetCommand(parsedCommandProvider));
+            rootCommand.AddCommand(restoreCommand.GetCommand(parsedCommandProvider));
 
             var r = rootCommand.InvokeAsync(args).Result;
 
@@ -38,27 +40,38 @@ namespace Arius
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
-            var config = new Configuration(pcp.CommandExecutorOptions, configurationRoot);
+            var config = new Configuration(parsedCommandProvider.CommandExecutorOptions, configurationRoot);
 
-            var serviceProvider = GetServiceProvider(config, pcp);
+            var serviceProvider = GetServiceProvider(config, parsedCommandProvider);
+
+            var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+            //TODO error handling met AppDomain.CurrentDomain.FirstChanceException  ?
 
             try
             {
-                var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(pcp.CommandExecutorType);
+                var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
 
-                return commandExecutor.Execute();
+                r = commandExecutor.Execute();
+
+                logger.LogInformation("Done");
+
+                return r;
             }
             catch (Exception e)
             {
-                var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
                 logger.LogCritical(e.ToString());
 
                 return int.MinValue;
             }
             finally
             {
+                logger.LogInformation("Deleting tempdir...");
+
                 //Delete the tempdir
                 config.UploadTempDir.Delete(true);
+
+                logger.LogInformation("Deleting tempdir... done");
             }
         }
 
@@ -67,25 +80,29 @@ namespace Arius
             var serviceCollection = new ServiceCollection()
                 .AddLogging(builder =>
                 {
-                    //Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
-                    var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
-                    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
-                        fileLoggingConfigurationSection["PathFormat"] = Path.Combine(@"/logs", "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log");
-                    else
-                        fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
-
+                    ////Hack to override the 'fileLoggingConfigurationSection["PathFormat"]'
+                    //var fileLoggingConfigurationSection = config.ConfigurationRoot.GetSection("Logging:File");
+                    //if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                    //    fileLoggingConfigurationSection["PathFormat"] = Path.Combine(@"/logs", "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log");
+                    //else
+                    //    fileLoggingConfigurationSection["PathFormat"] = "arius-{Date}-" + $"{DateTime.Now:HHmmss}.log";
 
                     builder.AddConfiguration(config.ConfigurationRoot.GetSection("Logging"))
                         .AddSimpleConsole(options =>
                         {
-                            //TODO https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#set-formatter-with-configuration
-                            // https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                            // Alternative: https://stackoverflow.com/questions/44230373/is-there-a-way-to-format-the-output-format-in-net-core-logging/64967936#64967936
-                            options.SingleLine = true;
-                            options.IncludeScopes = false;
-                            options.TimestampFormat = "HH:mm:ss ";
+                            // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
                         })
-                        .AddFile(fileLoggingConfigurationSection);
+                        .AddFile(options =>
+                        {
+                            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                                options.RootPath = "/logs";
+                            else
+                                options.RootPath = AppContext.BaseDirectory;
+
+                            options.Files = new [] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+                            
+                            //options.TextBuilder = Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
+                        });
                 })
                 .AddSingleton<IConfiguration>(config)
                 .AddSingleton<ICommandExecutorOptions>(pcp.CommandExecutorOptions)
