@@ -86,10 +86,8 @@ namespace Arius.Tests
             using (var hasher = SHA256.Create())
             {
                 var streamBreaker = new StreamBreaker();
-                using (var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read))
-                {
-                    chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
-                }
+                using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
+                chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
             }
 
 
@@ -99,8 +97,10 @@ namespace Arius.Tests
             di.Create();
 
 
-            using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
-            fs.Position = 0;
+            using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
+            {
+                Position = 0
+            };
 
             for (int i = 0; i < chunkDefs.Length; i++)
             {
@@ -164,10 +164,8 @@ namespace Arius.Tests
             using (var hasher = SHA256.Create())
             {
                 var streamBreaker = new StreamBreaker();
-                using (var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read))
-                {
-                    chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
-                }
+                using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
+                chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
             }
 
 
@@ -177,8 +175,10 @@ namespace Arius.Tests
             di.Create();
 
 
-            using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
-            fs.Position = 0;
+            using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
+            {
+                Position = 0
+            };
 
             var chunks = new List<ChunkFile>();
 
@@ -194,7 +194,7 @@ namespace Arius.Tests
                 fileStream.Close();
 
 
-                chunks.Add(new ChunkFile(new FileInfo($@"{di.FullName}\{i}"), default(HashValue)));
+                chunks.Add(new ChunkFile(new FileInfo($@"{di.FullName}\{i}"), default));
             }
 
 

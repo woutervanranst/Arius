@@ -519,7 +519,7 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, Chunker chunker, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
@@ -540,7 +540,7 @@ namespace Arius.CommandLine
             {
                 (PointerFile[] pointersToRestore, ChunkFile[] withChunks, ChunkFile[] chunksThatCanBeDeleted) = item;
 
-                _logger.LogInformation($"Merging {withChunksLength} Chunk(s) into {pointersToRestore.Count()} Pointer(s)");
+                _logger.LogInformation($"Merging {withChunks.Length} Chunk(s) into {pointersToRestore.Length} Pointer(s)");
 
                 var target = GetBinaryFileInfo(pointersToRestore.First());
                 var bf = Merge(withChunks, target);
@@ -589,7 +589,7 @@ namespace Arius.CommandLine
                 return _dedupChunker.Merge(chunks, target);
         }
 
-        private FileInfo GetBinaryFileInfo(PointerFile pf)
+        private static FileInfo GetBinaryFileInfo(PointerFile pf)
         {
             return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
         }
