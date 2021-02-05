@@ -202,11 +202,11 @@ docker pull ghcr.io/woutervanranst/arius
 
 #### Archive
 
-![alt](docs/Arius%20-%20Archive%205.1.png)
+![Archive flow](https://lucid.app/publicSegments/view/52737a1c-52f2-4f03-8c70-6ee6cdaab8c0/image.png)
 
 #### Restore
 
-![](docs/Arius%20-%20Restore.png)
+![Restore flow](https://lucid.app/publicSegments/view/86952f67-e660-44d3-b467-9c84f811f3d1/image.png)
 
 ### Restore with common tools
 

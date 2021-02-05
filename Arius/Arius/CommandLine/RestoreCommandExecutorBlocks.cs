@@ -95,10 +95,7 @@ namespace Arius.CommandLine
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(
-            ILogger<ProcessPointerChunksBlockProvider> logger, 
-            IConfiguration config,
-            RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IConfiguration config, RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -106,14 +103,14 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _repo = repo;
 
-            _root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(_root);
+            //_root = new DirectoryInfo(options.Path);
+            _downloadTempDir = config.DownloadTempDir(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly AzureRepository _repo;
-        private readonly DirectoryInfo _root;
+        //private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
@@ -190,7 +187,7 @@ namespace Arius.CommandLine
                         // R601
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded & decrypting. Ready for merge.");
                         atLeastOneToMerge = true;
-                        _reconcileChunkBlock.Post(new ChunkFile(_root, cffi, chunkHash));
+                        _reconcileChunkBlock.Post(new ChunkFile(cffi, chunkHash));
                         continue;
                     }
 
@@ -200,7 +197,7 @@ namespace Arius.CommandLine
                         // R70
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} already downloaded but not yet decrypted. Decrypting.");
                         atLeastOneToDecrypt = true;
-                        _decryptBlock.Post(new EncryptedChunkFile(_root, ecffi, chunkHash));
+                        _decryptBlock.Post(new EncryptedChunkFile(ecffi, chunkHash));
                         continue;
                     }
 
@@ -268,9 +265,7 @@ namespace Arius.CommandLine
     
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options,
-            IConfiguration config, 
-            AzureRepository repo)
+        public DownloadBlockProvider(RestoreOptions options, IConfiguration config, AzureRepository repo)
         {
             _config = config;
             _repo = repo;
@@ -284,7 +279,7 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-        private BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
+        private readonly BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
 
         public ActionBlock<RemoteEncryptedChunkBlobItem> GetEnqueueBlock()
         {
@@ -411,7 +406,7 @@ namespace Arius.CommandLine
 
                 _encrypter.Decrypt(ecf, targetFile, true);
 
-                var cf = new ChunkFile(null, targetFile, ecf.Hash);
+                var cf = new ChunkFile(targetFile, ecf.Hash);
 
                 _logger.LogInformation($"Decrypting chunk {ecf.Hash}... done");
 
@@ -445,7 +440,9 @@ namespace Arius.CommandLine
                         if (!_inFlightPointers.ContainsKey(pf.Hash))
                             _inFlightPointers.Add(pf.Hash, new(new(), new()));
 
+#pragma warning disable IDE0042 // Deconstruct variable declaration -- does not improve readability of code
                         var entry = _inFlightPointers[pf.Hash];
+#pragma warning restore IDE0042 // Deconstruct variable declaration
 
                         if (entry.ChunkHashes.Count == 0 && pf.ChunkHashes is not null)
                         {
@@ -456,7 +453,7 @@ namespace Arius.CommandLine
                             throw new InvalidOperationException("Too many chunk hash definitions"); //the list of thunks for this manfiest should be mastered once
 
 
-                        _inFlightPointers[pf.Hash].PointerFiles.Add(pf);
+                        entry.PointerFiles.Add(pf);
                         _logger.LogInformation($"Reconciliation Pointers/Chunks - ManifestHash {pf.Hash}... added PointerFile {pf.RelativeName}");
                     }
                 });
@@ -472,7 +469,6 @@ namespace Arius.CommandLine
             return new(cf =>
             {
                 _processedChunks.Add(cf.Hash, cf);
-
                 
                 // Wait until all pointers have been reconciled and we have a full view of what chunks are needed for which files
                 Task.WaitAll(_reconcilePointerBlock.Completion); // R603
@@ -483,7 +479,7 @@ namespace Arius.CommandLine
                     foreach (var pointer in _inFlightPointers.Values.Where(kvp => kvp.ChunkHashes.Contains(cf.Hash)))
                     {
                         pointer.ChunkHashes.Remove(cf.Hash);
-                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Chunk {cf.Hash} reconciled with {pointer.PointerFiles.Count()} PointerFile(s). {pointer.ChunkHashes.Count()} Chunks remaining.");
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - Chunk {cf.Hash} reconciled with {pointer.PointerFiles.Count} PointerFile(s). {pointer.ChunkHashes.Count} Chunks remaining.");
                     }
 
                     // Determine if there are pointers that are ready to restore (not list of chunkvalues is empty)
@@ -491,7 +487,7 @@ namespace Arius.CommandLine
 
                     if (hashesOfReadyPointers.Any())
                     {
-                        _logger.LogInformation($"Reconciliation Pointers/Chunks - {hashesOfReadyPointers.Count()} Pointer(s) ready for merge");
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - {hashesOfReadyPointers.Length} Pointer(s) ready for merge");
 
                         var r = hashesOfReadyPointers.Select(manifestHash =>
                         {
@@ -523,7 +519,7 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, Chunker chunker, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
@@ -544,7 +540,7 @@ namespace Arius.CommandLine
             {
                 (PointerFile[] pointersToRestore, ChunkFile[] withChunks, ChunkFile[] chunksThatCanBeDeleted) = item;
 
-                _logger.LogInformation($"Merging {withChunks.Count()} Chunk(s) into {pointersToRestore.Count()} Pointer(s)");
+                _logger.LogInformation($"Merging {withChunks.Length} Chunk(s) into {pointersToRestore.Length} Pointer(s)");
 
                 var target = GetBinaryFileInfo(pointersToRestore.First());
                 var bf = Merge(withChunks, target);
@@ -587,13 +583,13 @@ namespace Arius.CommandLine
 
         private BinaryFile Merge(IChunkFile[] chunks, FileInfo target)
         {
-            if (chunks.Count() == 1)
+            if (chunks.Length == 1)
                 return _chunker.Merge(chunks, target);
             else
                 return _dedupChunker.Merge(chunks, target);
         }
 
-        private FileInfo GetBinaryFileInfo(PointerFile pf)
+        private static FileInfo GetBinaryFileInfo(PointerFile pf)
         {
             return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
         }

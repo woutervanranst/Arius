@@ -18,7 +18,7 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        public static readonly string TableNameSuffix = "pointers";
+        internal const string TableNameSuffix = "pointers";
 
         // TODO KARL quid pattern of nested pratial classes
         private partial class PointerFileEntryRepository
@@ -191,8 +191,9 @@ namespace Arius.Repositories
                     };
                 }
 
-                private string ToPlatformNeutralPath(string platformSpecificPath) => platformSpecificPath.Replace(Path.DirectorySeparatorChar, '/');
-                private string ToPlatformSpecificPath(string platformNeutralPath) => platformNeutralPath.Replace('/', Path.DirectorySeparatorChar);
+                private const char PlatformNeutralDirectorySeparatorChar = '/';
+                private static string ToPlatformNeutralPath(string platformSpecificPath) => platformSpecificPath.Replace(Path.DirectorySeparatorChar, PlatformNeutralDirectorySeparatorChar);
+                private static string ToPlatformSpecificPath(string platformNeutralPath) => platformNeutralPath.Replace(PlatformNeutralDirectorySeparatorChar, Path.DirectorySeparatorChar);
                 
                 private class PointerFileEntryDto : TableEntity
                 {

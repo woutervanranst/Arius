@@ -5,34 +5,24 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class Blob
+    internal abstract class BlobBase : IWithHashValue // : IAriusArchiveItem
     {
-        protected Blob(
-            //IRepository root, 
-            BlobItem blobItem //, 
-            //Func<IBlob, HashValue> hashValueProvider
-        )
+
+        protected BlobBase(BlobItem blobItem)
         {
-            //_root = root;
             _bi = blobItem;
-
-            //_hash = new Lazy<HashValue>(() => hashValueProvider(this)); //NO method groep > moet lazily evaluated zijn
         }
-
-        //protected readonly IRepository _root;
         protected readonly BlobItem _bi;
-        //private readonly Lazy<HashValue> _hash;
 
+        private const char BlobFolderSeparatorChar = '/';
 
         public string FullName => _bi.Name;
-        public string Name => _bi.Name.Split('/').Last(); //TODO werkt titi met alle soorten repos?
-        public string Folder => _bi.Name.Split('/').First();
-        //protected string NameWithoutExtension => Name.TrimEnd(Extension);
+        public string Name => _bi.Name.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
+        public string Folder => _bi.Name.Split(BlobFolderSeparatorChar).First();
         public abstract HashValue Hash { get; }
-        //protected abstract string Extension { get; }
     }
 
-    internal class RemoteEncryptedChunkBlobItem : Blob
+    internal class RemoteEncryptedChunkBlobItem : BlobBase
     {
         public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
         {
@@ -46,7 +36,7 @@ namespace Arius.Models
         public BlobItem BlobItem => _bi;
     }
 
-    internal class RemoteManifestBlobItem : Blob
+    internal class RemoteManifestBlobItem : BlobBase
     {
         public RemoteManifestBlobItem(BlobItem bi) : base(bi)
         {

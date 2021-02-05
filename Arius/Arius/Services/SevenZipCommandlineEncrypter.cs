@@ -8,11 +8,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Services
 {
+    internal interface IEncrypter
+    {
+        void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, SevenZipCommandlineEncrypter.Compression compressionLevel, bool deletePlaintext = false);
+        void Decrypt(IEncryptedFile fileToDecrypt, FileInfo decryptedFile, bool deleteEncrypted = false);
+    }
+
+
     internal interface IEncrypterOptions : ICommandExecutorOptions
     {
         string Passphrase { get; }
     }
 
+    
     internal class SevenZipCommandlineEncrypter : IEncrypter
     {
         public SevenZipCommandlineEncrypter(ICommandExecutorOptions options,

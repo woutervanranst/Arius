@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -17,21 +18,24 @@ namespace Arius.CommandLine
     internal class IndexDirectoryBlockProvider
     {
         private readonly ILogger<IndexDirectoryBlockProvider> _logger;
-        private readonly DirectoryInfo _root;
 
-        public IndexDirectoryBlockProvider(ILogger<IndexDirectoryBlockProvider> logger, ArchiveOptions options)
+        public IndexDirectoryBlockProvider(ILogger<IndexDirectoryBlockProvider> logger)
         {
             _logger = logger;
-            _root = new DirectoryInfo(options.Path);
         }
 
-        public TransformManyBlock<DirectoryInfo, AriusArchiveItem> GetBlock()
+        public TransformManyBlock<DirectoryInfo, IAriusEntry> GetBlock()
         {
             return new(di =>
             {
                 try
                 {
-                    return IndexDirectory(_root);
+                    _logger.LogInformation($"Indexing {di.FullName}");
+
+                    return IndexDirectory2(di);
+                    //var x = GetAllFiles(di).ToList();
+
+                    //return IndexDirectory(di);
                 }
                 catch (Exception e)
                 {
@@ -43,7 +47,7 @@ namespace Arius.CommandLine
             );
         }
 
-        private IEnumerable<AriusArchiveItem> IndexDirectory(DirectoryInfo root)
+        private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
         {
             _logger.LogInformation($"Indexing {root.FullName}");
 
@@ -63,6 +67,61 @@ namespace Arius.CommandLine
                 }
             }
         }
+
+        /// <summary>
+        /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <returns></returns>
+        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo directory)
+        {
+            foreach (var file in directory.GetFiles())
+            { 
+                if (IsHiddenOrSystem(file.Attributes))
+                {
+                    _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
+                    continue;
+                }
+                else
+                { 
+                    yield return GetAriusEntry(directory, file);
+                }
+            }
+
+            foreach (var dir in directory.GetDirectories())
+            {
+                if (IsHiddenOrSystem(dir.Attributes))
+                {
+                    _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
+                    continue;
+                }
+
+                foreach (var f in IndexDirectory2(dir))
+                    yield return f;
+            }
+        }
+
+        private bool IsHiddenOrSystem(FileAttributes attr)
+        {
+            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0);
+        }
+
+        private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
+        {
+            if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+            {
+                _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+
+                return new PointerFile(root, fi);
+            }
+            else
+            {
+                _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+
+                return new BinaryFile(root, fi);
+            }
+        }
+
     }
 
 
@@ -77,7 +136,7 @@ namespace Arius.CommandLine
             _hvp = hvp;
         }
 
-        public TransformBlock<AriusArchiveItem, AriusArchiveItem> GetBlock()
+        public TransformBlock<IAriusEntry, IAriusEntryWithHash> GetBlock()
         {
             return new(item =>
             {
@@ -110,9 +169,9 @@ namespace Arius.CommandLine
 
 
 
-    internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFileWithHash
+    internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFile, IWithHashValue
     {
-        public ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
+        protected ProcessIfNotExistBlocksProvider(ILogger logger, IEnumerable<HashValue> createdInital)
         {
             _logger = logger;
             _created = new(createdInital);
@@ -153,7 +212,6 @@ namespace Arius.CommandLine
 
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);
-
                                 return new[] { (item, true), (item, false) };
                             }
                             else
@@ -474,7 +532,7 @@ namespace Arius.CommandLine
 
                         _encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
 
-                        var ecf = new EncryptedChunkFile(chunkFile.Root, targetFile, chunkFile.Hash);
+                        var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
                         _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
 
@@ -536,7 +594,6 @@ namespace Arius.CommandLine
 
         private readonly ILogger<CreateUploadBatchesTaskProvider> _logger;
         private readonly IConfiguration _config;
-
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {

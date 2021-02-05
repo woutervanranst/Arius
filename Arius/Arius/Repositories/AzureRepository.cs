@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Models;
+using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
@@ -20,9 +21,7 @@ namespace Arius.Repositories
             public string Passphrase { get; }
         }
 
-        public AzureRepository(ICommandExecutorOptions options, 
-            ILoggerFactory loggerFactory,
-            IBlobCopier blobCopier)
+        public AzureRepository(ICommandExecutorOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
         {
             _chunkRepository = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
             _manifestRepository = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
