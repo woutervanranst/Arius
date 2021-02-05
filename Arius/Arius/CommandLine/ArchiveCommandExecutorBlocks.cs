@@ -77,9 +77,9 @@ namespace Arius.CommandLine
         {
             foreach (var file in directory.GetFiles())
             {
-                _logger.LogDebug("ATTRIBUTES " + file.FullName + ": " + file.Attributes.ToString());
+                //_logger.LogDebug("ATTRIBUTES " + file.FullName + ": " + file.Attributes.ToString());
 
-                if (IsHiddenOrSystem(file.Attributes))
+                if (IsHiddenOrSystem(file))
                 {
                     _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
                     continue;
@@ -92,10 +92,10 @@ namespace Arius.CommandLine
 
             foreach (var dir in directory.GetDirectories())
             {
-                _logger.LogDebug("ATTRIBUTES " + directory.FullName + ": " + dir.Attributes.ToString());
+                //_logger.LogDebug("ATTRIBUTES " + directory.FullName + ": " + dir.Attributes.ToString());
 
 
-                if (IsHiddenOrSystem(dir.Attributes))
+                if (IsHiddenOrSystem(dir))
                 {
                     _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
                     continue;
@@ -104,6 +104,22 @@ namespace Arius.CommandLine
                 foreach (var f in IndexDirectory2(dir))
                     yield return f;
             }
+        }
+
+        private bool IsHiddenOrSystem(DirectoryInfo d)
+        {
+            if (d.Name == "@eaDir") //synology internals -- ignore
+                return true;
+
+            return IsHiddenOrSystem(d.Attributes);
+
+        }
+        private bool IsHiddenOrSystem(FileInfo fi)
+        {
+            if (fi.FullName.Contains("eaDir") || fi.FullName.Contains("SynoResource") || fi.FullName.Contains("@"))
+                _logger.LogWarning("WEIRD FILE: " + fi.FullName);
+
+            return IsHiddenOrSystem(fi.Attributes);
         }
 
         private bool IsHiddenOrSystem(FileAttributes attr)
