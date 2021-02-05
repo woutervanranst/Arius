@@ -4,6 +4,8 @@ namespace Arius.UI
 {
     internal static class IListExtensions
     {
+
+        // https://codereview.stackexchange.com/a/37211/237198
         public static void AddSorted<T>(this IList<T> list, T item, IComparer<T> comparer = null)
         {
             if (comparer == null)

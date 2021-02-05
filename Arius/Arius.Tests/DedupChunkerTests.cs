@@ -102,7 +102,7 @@ namespace Arius.Tests
             using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
             fs.Position = 0;
 
-            for (int i = 0; i < chunkDefs.Count(); i++)
+            for (int i = 0; i < chunkDefs.Length; i++)
             {
                 var chunk = chunkDefs[i];
 
@@ -118,7 +118,7 @@ namespace Arius.Tests
 
 
             var zzz = new List<Stream>();
-            for (int i = 0; i < chunkDefs.Count(); i++)
+            for (int i = 0; i < chunkDefs.Length; i++)
             {
                 var s = new FileStream($@"{di.FullName}\{i}", FileMode.Open, FileAccess.Read);
                 zzz.Add(s);
@@ -182,7 +182,7 @@ namespace Arius.Tests
 
             var chunks = new List<ChunkFile>();
 
-            for (int i = 0; i < chunkDefs.Count(); i++)
+            for (int i = 0; i < chunkDefs.Length; i++)
             {
                 var chunk = chunkDefs[i];
 
@@ -270,7 +270,7 @@ namespace Arius.Tests
 
 
             var zzz = new List<Stream>();
-            for (int i = 0; i < chunks.Count(); i++)
+            for (int i = 0; i < chunks.Length; i++)
             {
                 var s = new FileStream(chunks[i].FullName, FileMode.Open, FileAccess.Read);
                 zzz.Add(s);

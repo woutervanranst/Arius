@@ -487,7 +487,7 @@ namespace Arius.CommandLine
 
                     if (hashesOfReadyPointers.Any())
                     {
-                        _logger.LogInformation($"Reconciliation Pointers/Chunks - {hashesOfReadyPointers.Count()} Pointer(s) ready for merge");
+                        _logger.LogInformation($"Reconciliation Pointers/Chunks - {hashesOfReadyPointers.Length} Pointer(s) ready for merge");
 
                         var r = hashesOfReadyPointers.Select(manifestHash =>
                         {
@@ -540,7 +540,7 @@ namespace Arius.CommandLine
             {
                 (PointerFile[] pointersToRestore, ChunkFile[] withChunks, ChunkFile[] chunksThatCanBeDeleted) = item;
 
-                _logger.LogInformation($"Merging {withChunks.Count()} Chunk(s) into {pointersToRestore.Count()} Pointer(s)");
+                _logger.LogInformation($"Merging {withChunksLength} Chunk(s) into {pointersToRestore.Count()} Pointer(s)");
 
                 var target = GetBinaryFileInfo(pointersToRestore.First());
                 var bf = Merge(withChunks, target);
@@ -583,7 +583,7 @@ namespace Arius.CommandLine
 
         private BinaryFile Merge(IChunkFile[] chunks, FileInfo target)
         {
-            if (chunks.Count() == 1)
+            if (chunks.Length == 1)
                 return _chunker.Merge(chunks, target);
             else
                 return _dedupChunker.Merge(chunks, target);
