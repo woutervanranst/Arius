@@ -32,7 +32,7 @@ namespace Arius.CommandLine
                 {
                     _logger.LogInformation($"Indexing {di.FullName}");
 
-                    return IndexDirectory2(di);
+                    return IndexDirectory2(di, di);
                     //var x = GetAllFiles(di).ToList();
 
                     //return IndexDirectory(di);
@@ -73,7 +73,7 @@ namespace Arius.CommandLine
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo directory)
+        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo root, [NotNull] DirectoryInfo directory)
         {
             foreach (var file in directory.GetFiles())
             {
@@ -86,7 +86,7 @@ namespace Arius.CommandLine
                 }
                 else
                 { 
-                    yield return GetAriusEntry(directory, file);
+                    yield return GetAriusEntry(root, file);
                 }
             }
 
@@ -101,7 +101,7 @@ namespace Arius.CommandLine
                     continue;
                 }
 
-                foreach (var f in IndexDirectory2(dir))
+                foreach (var f in IndexDirectory2(root, dir))
                     yield return f;
             }
         }

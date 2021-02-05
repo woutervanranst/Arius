@@ -77,29 +77,78 @@ namespace Arius.Repositories
 
 
 
-                    
+
                 }
 
-                public async Task InsertPointerFileEntry(PointerFileEntry pfe)
+                private static readonly PointerFileEntryEqualityComparer _pfeec = new();
+
+                /// <summary>
+                /// 
+                /// </summary>
+                /// <param name="pfe"></param>
+                /// <returns>Returns true if an entry was actually added / the collection was modified</returns>
+                public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
                 {
                     try
                     {
                         //Upsert into Cache
                         var pfes = await _haha2;
 
+                        bool toAdd = false;
+
                         lock (pfes)
-                        { 
-                            //Remove the old value, if present
-                            var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
-                            pfes.Remove(pfeToRemove);
-                            
-                            //Add the new value
-                            pfes.Add(pfe);
+                        {
+                            if (!pfes.Contains(pfe, _pfeec))
+                            {
+                                //Remove the old value, if present
+                                var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName.Equals(pfe2.RelativeName));
+                                pfes.Remove(pfeToRemove);
+
+                                //Add the new value
+                                pfes.Add(pfe);
+                                toAdd = true;
+                            }
                         }
-                        //Insert into Table Storage
-                        var dto = CreatePointerFileEntryDto(pfe);
-                        var op = TableOperation.Insert(dto);
-                        await _pointerEntryTable.ExecuteAsync(op);
+
+                        if (toAdd)
+                        {
+                            //Insert into Table Storage
+                            var dto = CreatePointerFileEntryDto(pfe);
+                            var op = TableOperation.Insert(dto);
+                            await _pointerEntryTable.ExecuteAsync(op);
+                        }
+
+                        return toAdd;
+
+                        //var pfes = await _repo.CurrentEntries();
+
+                        //if (!pfes.Contains(pfe, _pfeec))
+                        //{
+                        //    await _repo.InsertPointerFileEntry(pfe);
+
+                        //    if (pfe.IsDeleted)
+                        //        _logger.LogInformation($"Deleted {pfe.RelativeName}");
+                        //    else
+                        //        _logger.LogInformation($"Added {pfe.RelativeName}");
+                        //}
+
+
+                        ////Upsert into Cache
+                        //var pfes = await _haha2;
+
+                        //lock (pfes)
+                        //{ 
+                        //    //Remove the old value, if present
+                        //    var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
+                        //    pfes.Remove(pfeToRemove);
+
+                        //    //Add the new value
+                        //    pfes.Add(pfe);
+                        //}
+                        ////Insert into Table Storage
+                        //var dto = CreatePointerFileEntryDto(pfe);
+                        //var op = TableOperation.Insert(dto);
+                        //await _pointerEntryTable.ExecuteAsync(op);
                     }
                     catch (StorageException)
                     {
@@ -131,7 +180,7 @@ namespace Arius.Repositories
                 {
                     var neutralRelativeName = relativeName
                         .ToLower(CultureInfo.InvariantCulture)
-                        .Replace(Path.DirectorySeparatorChar, '/');
+                        .Replace(Path.DirectorySeparatorChar, PlatformNeutralDirectorySeparatorChar);
 
                     var bytes = _murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName));
                     var hex = Convert.ToHexString(bytes).ToLower();
@@ -172,18 +221,49 @@ namespace Arius.Repositories
 
 
 
+                    //var r = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>()
+                    //    .AsEnumerable()
+                    //    .GroupBy(pfe => pfe.RelativeNameHash)   //more or less equiv as GroupBy(RelativeName) but the hash is tolower and platform neutral
+                    //    .Select(g => g
+                    //        .Where(dto => dto.Version <= pointInTime)
+                    //        .OrderBy(dto => dto.Version).Last())
+                    //    .Select(dto => CreatePointerFileEntry(dto));
+
+
+
+
+
+
+
+                    //var a0 = _pointerEntryTable
+                    //    .CreateQuery<PointerFileEntryDto>()
+                    //    .AsEnumerable().ToList();
+
+                    //var a = a0
+                    //    .GroupBy(pfe => pfe.RelativeNameHash).ToList();
+
+                    //var b = a.Select(g => g
+                    //        .Where(dto => dto.Version <= pointInTime)
+                    //        .OrderBy(dto => dto.Version).Last());
+
+                    //var c = b.Select(dto => CreatePointerFileEntry(dto));
+
+
+
                     var r = _pointerEntryTable
                         .CreateQuery<PointerFileEntryDto>()
                         .AsEnumerable()
-                        .GroupBy(pfe => pfe.RelativeNameHash)   //more or less equiv as GroupBy(RelativeName) but the hash is tolower and platform neutral
+                        .Select(dto => CreatePointerFileEntry(dto))
+                        .GroupBy(pfe => pfe.RelativeName)
                         .Select(g => g
-                            .Where(dto => dto.Version <= pointInTime)
-                            .OrderBy(dto => dto.Version).Last())
-                        .Select(dto => CreatePointerFileEntry(dto));
+                            .Where(pfe => pfe.Version <= pointInTime)
+                            .OrderBy(pfe => pfe.Version).Last())
+                        .ToList();
 
                     //var xxx = zz.Except(r).ToList();
 
-                    return r.ToList();
+                    return r;
 
                     
 

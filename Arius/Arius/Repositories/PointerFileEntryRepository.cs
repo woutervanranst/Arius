@@ -29,7 +29,7 @@ namespace Arius.Repositories
 
             private readonly CachedEncryptedPointerFileEntryRepository _repo;
 
-            private static readonly PointerFileEntryEqualityComparer _pfeec = new();
+            //private static readonly PointerFileEntryEqualityComparer _pfeec = new();
 
 
             public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime version)
@@ -48,17 +48,26 @@ namespace Arius.Repositories
 
             private async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
-                var pfes = await _repo.CurrentEntries();
-
-                if (!pfes.Contains(pfe, _pfeec))
-                {
-                    await _repo.InsertPointerFileEntry(pfe);
-
+                if (await _repo.CreatePointerFileEntryIfNotExistsAsync(pfe))
+                { 
                     if (pfe.IsDeleted)
                         _logger.LogInformation($"Deleted {pfe.RelativeName}");
                     else
                         _logger.LogInformation($"Added {pfe.RelativeName}");
                 }
+
+
+                //var pfes = await _repo.CurrentEntries();
+
+                //if (!pfes.Contains(pfe, _pfeec))
+                //{
+                //    await _repo.InsertPointerFileEntry(pfe);
+
+                //    if (pfe.IsDeleted)
+                //        _logger.LogInformation($"Deleted {pfe.RelativeName}");
+                //    else
+                //        _logger.LogInformation($"Added {pfe.RelativeName}");
+                //}
             }
 
 
