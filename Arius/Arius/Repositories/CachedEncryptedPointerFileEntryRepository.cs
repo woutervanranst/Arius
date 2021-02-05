@@ -16,6 +16,20 @@ using Murmur;
 
 namespace Arius.Repositories
 {
+    public class AsyncLazy<T> : Lazy<Task<T>>
+    {
+        public AsyncLazy(Func<T> valueFactory) : base(() => Task.Factory.StartNew(valueFactory))
+        {
+        }
+
+        public AsyncLazy(Func<Task<T>> taskFactory) : base(() => Task.Factory.StartNew(() => taskFactory()).Unwrap())
+        { 
+        }
+
+        public System.Runtime.CompilerServices.TaskAwaiter<T> GetAwaiter() { return Value.GetAwaiter(); }
+    }
+
+
     internal partial class AzureRepository
     {
         internal const string TableNameSuffix = "pointers";
@@ -44,29 +58,44 @@ namespace Arius.Repositories
                         _logger.LogInformation($"Created tables for {o.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
-                    _pointerFileEntries = Task.Run(() => GetStateOn(DateTime.Now.ToUniversalTime()));
+                    //_pointerFileEntries = Task.Run(() => GetStateOn(DateTime.Now.ToUniversalTime())); //TODO Karl is this a good approach?
+
+                    _haha2 = new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
                 }
 
                 private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;
                 private readonly CloudTable _pointerEntryTable;
-                private readonly Task<List<PointerFileEntry>> _pointerFileEntries;
+                //private readonly Task<List<PointerFileEntry>> _pointerFileEntries;
+                private readonly AsyncLazy<List<PointerFileEntry>> _haha2;
                 private readonly string _passphrase;
 
 
-                public Task<List<PointerFileEntry>> CurrentEntries => _pointerFileEntries;
+                public async Task<IReadOnlyList<PointerFileEntry>> CurrentEntries()
+                {
+                    return await _haha2;
+                    //return await _pointerFileEntries;
+
+
+
+                    
+                }
 
                 public async Task InsertPointerFileEntry(PointerFileEntry pfe)
                 {
                     try
                     {
                         //Upsert into Cache
-                        var pfes = await _pointerFileEntries;
-                            //Remove the old value, if present
-                        var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
-                        pfes.Remove(pfeToRemove);
-                            //Add the new value
-                        pfes.Add(pfe);
+                        var pfes = await _haha2;
 
+                        lock (pfes)
+                        { 
+                            //Remove the old value, if present
+                            var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
+                            pfes.Remove(pfeToRemove);
+                            
+                            //Add the new value
+                            pfes.Add(pfe);
+                        }
                         //Insert into Table Storage
                         var dto = CreatePointerFileEntryDto(pfe);
                         var op = TableOperation.Insert(dto);

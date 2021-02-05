@@ -48,7 +48,7 @@ namespace Arius.Repositories
 
             private async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
-                var pfes = await _repo.CurrentEntries;
+                var pfes = await _repo.CurrentEntries();
 
                 if (!pfes.Contains(pfe, _pfeec))
                 {
@@ -95,7 +95,7 @@ namespace Arius.Repositories
 
             public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeDeleted)
             {
-                var pfes = await _repo.CurrentEntries;
+                var pfes = await _repo.CurrentEntries();
 
                 if (includeDeleted)
                     return pfes;
