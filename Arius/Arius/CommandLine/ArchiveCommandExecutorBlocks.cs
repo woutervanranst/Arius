@@ -103,7 +103,7 @@ namespace Arius.CommandLine
 
         private bool IsHiddenOrSystem(FileAttributes attr)
         {
-            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0);
+            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
         }
 
         private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
