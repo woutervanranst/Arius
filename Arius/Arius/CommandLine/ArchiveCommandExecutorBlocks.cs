@@ -925,17 +925,32 @@ namespace Arius.CommandLine
                 try
                 {
                     var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+
+                    _logger.LogInformation("BLA " + pfes.Count());
+
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+
+                    _logger.LogInformation("BLA " + pfes.Count());
 
                     foreach (var pfe in pfes)
                     {
 
-                    //}
-                    //Parallel.ForEach(pfes, async pfe =>
-                    //{
+                        //}
+                        //Parallel.ForEach(pfes, async pfe =>
+                        //{
+
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+
+
+                        _logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
+                        
+
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                        {
+                            _logger.LogInformation("DELETING");
                             await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                            _logger.LogInformation("DElETED");
+                        }
                     } //);
                 }
                 catch (Exception e)
