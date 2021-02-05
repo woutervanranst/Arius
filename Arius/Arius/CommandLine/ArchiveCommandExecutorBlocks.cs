@@ -212,7 +212,6 @@ namespace Arius.CommandLine
 
                                 _creating.Add(item.Hash, new());
                                 _creating[item.Hash].Add(item);
-
                                 return new[] { (item, true), (item, false) };
                             }
                             else
@@ -595,7 +594,6 @@ namespace Arius.CommandLine
 
         private readonly ILogger<CreateUploadBatchesTaskProvider> _logger;
         private readonly IConfiguration _config;
-
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {

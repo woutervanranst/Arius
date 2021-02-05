@@ -18,7 +18,6 @@ namespace Arius.Extensions
                         *      Works on ubuntu (github runner)
                         *      Doesn't work in docker / on synology
                         */
-
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
