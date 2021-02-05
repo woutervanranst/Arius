@@ -359,10 +359,5 @@ namespace Arius.CommandLine
 
             return 0;
         }
-
-        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

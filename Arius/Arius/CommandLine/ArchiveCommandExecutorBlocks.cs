@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -29,7 +30,12 @@ namespace Arius.CommandLine
             {
                 try
                 {
-                    return IndexDirectory(di);
+                    _logger.LogInformation($"Indexing {di.FullName}");
+
+                    return IndexDirectory2(di);
+                    //var x = GetAllFiles(di).ToList();
+
+                    //return IndexDirectory(di);
                 }
                 catch (Exception e)
                 {
@@ -61,6 +67,61 @@ namespace Arius.CommandLine
                 }
             }
         }
+
+        /// <summary>
+        /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <returns></returns>
+        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo directory)
+        {
+            foreach (var file in directory.GetFiles())
+            { 
+                if (IsHiddenOrSystem(file.Attributes))
+                {
+                    _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
+                    continue;
+                }
+                else
+                { 
+                    yield return GetAriusEntry(directory, file);
+                }
+            }
+
+            foreach (var dir in directory.GetDirectories())
+            {
+                if (IsHiddenOrSystem(dir.Attributes))
+                {
+                    _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
+                    continue;
+                }
+
+                foreach (var f in IndexDirectory2(dir))
+                    yield return f;
+            }
+        }
+
+        private bool IsHiddenOrSystem(FileAttributes attr)
+        {
+            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0);
+        }
+
+        private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
+        {
+            if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+            {
+                _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+
+                return new PointerFile(root, fi);
+            }
+            else
+            {
+                _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+
+                return new BinaryFile(root, fi);
+            }
+        }
+
     }
 
 
