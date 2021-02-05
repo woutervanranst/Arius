@@ -19,9 +19,6 @@ namespace Arius
     {
         private static int Main(string[] args)
         {
-            //
-
-
             var parsedCommandProvider = new ParsedCommandProvider();
 
             IAriusCommand archiveCommand = new ArchiveCommand();
