@@ -98,9 +98,6 @@ namespace Arius.Repositories
                     throw new NotImplementedException();
             }
 
-            //TODO KARL return values of method see before it returns?
-
-
 
             public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeDeleted)
             {

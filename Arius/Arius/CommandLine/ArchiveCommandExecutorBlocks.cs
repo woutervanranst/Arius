@@ -33,9 +33,6 @@ namespace Arius.CommandLine
                     _logger.LogInformation($"Indexing {di.FullName}");
 
                     return IndexDirectory2(di, di);
-                    //var x = GetAllFiles(di).ToList();
-
-                    //return IndexDirectory(di);
                 }
                 catch (Exception e)
                 {
@@ -47,26 +44,26 @@ namespace Arius.CommandLine
             );
         }
 
-        private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
-        {
-            _logger.LogInformation($"Indexing {root.FullName}");
+        //private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
+        //{
+        //    _logger.LogInformation($"Indexing {root.FullName}");
 
-            foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
-            {
-                if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
-                {
-                    _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+        //    foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
+        //    {
+        //        if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+        //        {
+        //            _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
-                    yield return new PointerFile(root, fi);
-                }
-                else
-                {
-                    _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+        //            yield return new PointerFile(root, fi);
+        //        }
+        //        else
+        //        {
+        //            _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
-                    yield return new BinaryFile(root, fi);
-                }
-            }
-        }
+        //            yield return new BinaryFile(root, fi);
+        //        }
+        //    }
+        //}
 
         /// <summary>
         /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
@@ -930,12 +927,16 @@ namespace Arius.CommandLine
                     var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                    Parallel.ForEach(pfes, async pfe =>
+                    foreach (var pfe in pfes)
                     {
+
+                    //}
+                    //Parallel.ForEach(pfes, async pfe =>
+                    //{
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                             await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                    });
+                    } //);
                 }
                 catch (Exception e)
                 {
