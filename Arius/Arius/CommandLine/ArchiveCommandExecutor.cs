@@ -353,6 +353,8 @@ namespace Arius.CommandLine
 
 
             // Wait for the end
+            removeDeletedPointersTask.Wait();
+
             deleteBinaryFilesTask.Wait();
 
             _logger.LogInformation("Done");
