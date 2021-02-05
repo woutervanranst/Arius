@@ -18,6 +18,8 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
+        public static readonly string TableNameSuffix = "pointers";
+
         // TODO KARL quid pattern of nested pratial classes
         private partial class PointerFileEntryRepository
         {
@@ -35,7 +37,7 @@ namespace Arius.Repositories
 
                     var csa = CloudStorageAccount.Parse(connectionString);
                     var tc = csa.CreateCloudTableClient();
-                    _pointerEntryTable = tc.GetTableReference(o.Container + "pointers");
+                    _pointerEntryTable = tc.GetTableReference($"{o.Container}{TableNameSuffix}");
 
                     var r = _pointerEntryTable.CreateIfNotExists();
                     if (r)
@@ -106,16 +108,6 @@ namespace Arius.Repositories
                     var hex = Convert.ToHexString(bytes).ToLower();
 
                     return hex;
-
-                    //byte[] data = Guid.NewGuid().ToByteArray();
-                    //HashAlgorithm murmur128 = MurmurHash.Create128(managed: false); // returns a 128-bit algorithm using "unsafe" code with default seed
-                    //byte[] hash = murmur128.ComputeHash(data);
-
-                    //// you can also use a seed to affect the hash
-                    //HashAlgorithm seeded128 = MurmurHash.Create128(seed: 3475832); // returns a managed 128-bit algorithm with seed
-                    //byte[] seedResult = murmur128.ComputeHash(data);
-
-                    //return $"{_murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName)):x8}";
                 }
                 private static readonly HashAlgorithm _murmurHash = MurmurHash.Create32();
 
