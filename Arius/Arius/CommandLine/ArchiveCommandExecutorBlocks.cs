@@ -928,19 +928,25 @@ namespace Arius.CommandLine
 
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                    Parallel.ForEach(pfes, async pfe =>
-                    {
-                        var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-                        if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                    });
-
-                    //foreach (var pfe in pfes)
+                    //Parallel.ForEach(pfes, async pfe =>
                     //{
                     //    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
                     //    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                     //        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                    //}
+                    //});
+
+                    foreach (var pfe in pfes)
+                    {
+                        _logger.LogInformation("he");
+
+                        var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+                        if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                        {
+                            _logger.LogInformation("ha");
+                            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                            _logger.LogInformation("ha - done");
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
