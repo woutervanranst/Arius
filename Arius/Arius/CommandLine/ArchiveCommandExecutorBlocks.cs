@@ -920,82 +920,27 @@ namespace Arius.CommandLine
 
         public Func<Task> GetTask()
         {
-            //try
-            //{
-            //    var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
-
-            //    //_logger.LogInformation("BLA " + pfes.Count());
-
-            //    pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
-
-            //    //_logger.LogInformation("BLA " + pfes.Count());
-
-            //    foreach (var pfe in pfes)
-            //    {
-            //        var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-
-            //        //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
-
-
-            //        //throw new ArgumentException();
-
-            //        await Task.Delay(5000);
-
-            //        if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-            //        {
-            //            //_logger.LogInformation("DELETING");
-
-
-            //            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-            //            //_logger.LogInformation("DElETED");
-            //        }
-            //    } //);
-
-            //    return Task.CompletedTask;
-            //}
-            //catch (Exception e)
-            //{
-            //    _logger.LogError(e, "ERRORTODO");
-            //    throw;
-            //}
-
-            //return Ha();
-
-            return new Func<Task>(async () =>
+            return new(async () =>
             {
                 try
                 {
                     var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
 
-                    //_logger.LogInformation("BLA " + pfes.Count());
-
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                    //_logger.LogInformation("BLA " + pfes.Count());
-
-                    foreach (var pfe in pfes)
+                    Parallel.ForEach(pfes, async pfe =>
                     {
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-
-                        //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
-
-
-                        //throw new ArgumentException();
-
-                        await Task.Delay(1000);
-
-
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                        {
-                            //_logger.LogInformation("DELETING");
-
-
                             await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                            //_logger.LogInformation("DElETED");
-                        }
-                    } //);
+                    });
 
-                    //return Task.CompletedTask;
+                    //foreach (var pfe in pfes)
+                    //{
+                    //    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+                    //    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                    //        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                    //}
                 }
                 catch (Exception e)
                 {
@@ -1003,53 +948,6 @@ namespace Arius.CommandLine
                     throw;
                 }
             });
-
-
-        }
-
-
-
-        private async Task Ha()
-        {
-            try
-            {
-                var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
-
-                //_logger.LogInformation("BLA " + pfes.Count());
-
-                pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
-
-                //_logger.LogInformation("BLA " + pfes.Count());
-
-                foreach (var pfe in pfes)
-                {
-                    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-
-                    //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
-
-
-                    //throw new ArgumentException();
-
-                    await Task.Delay(5000);
-
-
-                    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                    {
-                        //_logger.LogInformation("DELETING");
-
-
-                        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                        //_logger.LogInformation("DElETED");
-                    }
-                } //);
-
-                return;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "ERRORTODO");
-                throw;
-            }
         }
     }
 
@@ -1072,10 +970,11 @@ namespace Arius.CommandLine
             _azureRepository = azureRepository;
         }
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
             return new(() =>
             {
+                return Task.CompletedTask;
                 //using Stream file = File.Create(@"c:\ha.json");
 
                 //var json = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
@@ -1179,16 +1078,18 @@ namespace Arius.CommandLine
         private List<BinaryFile> _binaryFilesToDelete;
 
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
             return new(() =>
             {
                 try
                 {
                     if (!_options.RemoveLocal)
-                        return;
+                        return Task.CompletedTask;
 
                     Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
+
+                    return Task.CompletedTask;
                 }
                 catch (Exception e)
                 {

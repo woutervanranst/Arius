@@ -61,7 +61,7 @@ namespace Arius.CommandLine
         private readonly IEncrypter _encrypter;
 
 
-        public int Execute()
+        public Task<int> Execute()
         {
             if (_root.Exists && _root.EnumerateFiles().Any())
             {
@@ -245,7 +245,7 @@ namespace Arius.CommandLine
                 _azureRepository.DeleteHydrateFolder();
             }
 
-            return 0;
+            return Task.FromResult(0);
 
 
 

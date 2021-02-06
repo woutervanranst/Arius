@@ -54,7 +54,7 @@ namespace Arius.CommandLine
         private readonly IEncrypter _encrypter;
 
 
-        public int Execute()
+        public async Task<int> Execute()
         {
             var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
 
@@ -221,6 +221,7 @@ namespace Arius.CommandLine
 
 
             // A90
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed // Used in chaining the TPL flows, expect execution when the .Completion fires
             Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
                 .ContinueWith(_ =>
                 {
@@ -228,7 +229,8 @@ namespace Arius.CommandLine
                     uploadQueue.CompleteAdding(); //Mark the Queue as completed adding, also if enqueueEncryptedChunksForUploadBlock is faulted
 
                     //TODO KARL error handling if an error occurs here
-                });     
+                });
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
             // A100
             Task.WhenAll(createUploadBatchesTask)
@@ -309,72 +311,24 @@ namespace Arius.CommandLine
             //        createPointerFileEntryIfNotExistsBlock.Complete();
             //    });
 
-            // A180
-            var t = createPointerFileEntryIfNotExistsBlock.Completion
-                .ContinueWith(async z =>
-                {
-                    _logger.LogDebug("Passing A180");
-
-
-
-                    //var zz = removeDeletedPointersTask();
-                    //zz.Start();
-                    //zz.Wait();
-                    var x = Task.Run(removeDeletedPointersTask);
-                    x.Wait();
-                    //await x;
-
-                    //removeDeletedPointersTask.Start();
-                    //await removeDeletedPointersTask;
-                    //removeDeletedPointersTask.Result.Wait();
-
-                    //await removeDeletedPointersTask;
-
-                    //TODO error handling
-
-                    var xx = 5;
-                })
-
-            // A190
-                .ContinueWith(t =>
-                {
-                    if (t.IsFaulted) throw t.Exception;
-                    else
-                    {
-                        _logger.LogDebug("Passing A190");
-                        exportToJsonTask.Start();
-
-                        //TODO errorr handling
-                    }
-                });
-
-            // A200
-            exportToJsonTask
-                .ContinueWith(_ =>
-                {
-                    _logger.LogDebug("Passing A200");
-                    deleteBinaryFilesTask.Start();
-
-                    //TODO error handling
-                });
-
-            //TODO
-            TaskScheduler.UnobservedTaskException += (sender, e) =>
-            {
-                _logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
-                throw e.Exception;
-            };
-
-
             //Fill the flow
             indexDirectoryBlock.Post(_root);
             indexDirectoryBlock.Complete();
 
+            //Await for its completion
+            await createPointerFileEntryIfNotExistsBlock.Completion;
 
-            // Wait for the end
-            t.Wait();
+            // A180
+            _logger.LogDebug("Passing A180");
+            await Task.Run(removeDeletedPointersTask);
 
-            deleteBinaryFilesTask.Wait();
+            // A190
+            _logger.LogDebug("Passing A190");
+            await Task.Run(exportToJsonTask);
+
+            // A200
+            _logger.LogDebug("Passing A200");
+            await Task.Run(deleteBinaryFilesTask);
 
             _logger.LogInformation("Done");
 

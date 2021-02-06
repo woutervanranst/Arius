@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CommandLine;
+using System.Threading.Tasks;
 
 namespace Arius.CommandLine
 {
@@ -10,7 +11,7 @@ namespace Arius.CommandLine
 
     internal interface ICommandExecutor
     {
-        public int Execute();
+        public Task<int> Execute();
     }
 
     internal interface ICommandExecutorOptions

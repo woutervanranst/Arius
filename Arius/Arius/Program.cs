@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Models;
 using Arius.Repositories;
@@ -17,7 +18,7 @@ namespace Arius
 {
     internal class Program
     {
-        private static int Main(string[] args)
+        private static async Task<int> Main(string[] args)
         {
             var parsedCommandProvider = new ParsedCommandProvider();
 
@@ -46,13 +47,20 @@ namespace Arius
 
             var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
+            //TODO ergens zetten in de Main() ofzo
+            TaskScheduler.UnobservedTaskException += (sender, e) =>
+            {
+                logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
+                throw e.Exception;
+            };
+
             //TODO error handling met AppDomain.CurrentDomain.FirstChanceException  ?
 
             try
             {
                 var commandExecutor = (ICommandExecutor) serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
 
-                r = commandExecutor.Execute();
+                r = await commandExecutor.Execute();
 
                 logger.LogInformation("Done");
 
