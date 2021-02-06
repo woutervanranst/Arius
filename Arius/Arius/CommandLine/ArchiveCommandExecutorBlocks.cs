@@ -918,40 +918,84 @@ namespace Arius.CommandLine
         private DateTime _version;
 
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
-            return new(async () =>
+            //try
+            //{
+            //    var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+
+            //    //_logger.LogInformation("BLA " + pfes.Count());
+
+            //    pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+
+            //    //_logger.LogInformation("BLA " + pfes.Count());
+
+            //    foreach (var pfe in pfes)
+            //    {
+            //        var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+
+            //        //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
+
+
+            //        //throw new ArgumentException();
+
+            //        await Task.Delay(5000);
+
+            //        if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+            //        {
+            //            //_logger.LogInformation("DELETING");
+
+
+            //            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+            //            //_logger.LogInformation("DElETED");
+            //        }
+            //    } //);
+
+            //    return Task.CompletedTask;
+            //}
+            //catch (Exception e)
+            //{
+            //    _logger.LogError(e, "ERRORTODO");
+            //    throw;
+            //}
+
+            //return Ha();
+
+            return new Func<Task>(async () =>
             {
                 try
                 {
                     var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
 
-                    _logger.LogInformation("BLA " + pfes.Count());
+                    //_logger.LogInformation("BLA " + pfes.Count());
 
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                    _logger.LogInformation("BLA " + pfes.Count());
+                    //_logger.LogInformation("BLA " + pfes.Count());
 
                     foreach (var pfe in pfes)
                     {
-
-                        //}
-                        //Parallel.ForEach(pfes, async pfe =>
-                        //{
-
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
 
+                        //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
 
-                        _logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
-                        
+
+                        //throw new ArgumentException();
+
+                        await Task.Delay(1000);
+
 
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                         {
-                            _logger.LogInformation("DELETING");
+                            //_logger.LogInformation("DELETING");
+
+
                             await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                            _logger.LogInformation("DElETED");
+                            //_logger.LogInformation("DElETED");
                         }
                     } //);
+
+                    //return Task.CompletedTask;
                 }
                 catch (Exception e)
                 {
@@ -959,6 +1003,53 @@ namespace Arius.CommandLine
                     throw;
                 }
             });
+
+
+        }
+
+
+
+        private async Task Ha()
+        {
+            try
+            {
+                var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+
+                //_logger.LogInformation("BLA " + pfes.Count());
+
+                pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+
+                //_logger.LogInformation("BLA " + pfes.Count());
+
+                foreach (var pfe in pfes)
+                {
+                    var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+
+                    //_logger.LogInformation("BLA - Checking " + pfe.RelativeName + " - exists? " + !File.Exists(pointerFullName) + " isdeleted? " + pfe.IsDeleted);
+
+
+                    //throw new ArgumentException();
+
+                    await Task.Delay(5000);
+
+
+                    if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+                    {
+                        //_logger.LogInformation("DELETING");
+
+
+                        await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                        //_logger.LogInformation("DElETED");
+                    }
+                } //);
+
+                return;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "ERRORTODO");
+                throw;
+            }
         }
     }
 

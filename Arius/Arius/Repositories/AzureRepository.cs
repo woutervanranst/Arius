@@ -114,31 +114,5 @@ namespace Arius.Repositories
         {
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, version, isDeleted);
         }
-
-        //public List<ManifestEntry> GetAllManifestEntriesWithChunksAndPointerFileEntries()
-        //{
-        //    //var x = new ExpandoObject();
-
-        //    //foreach (var yy in _pointerFileEntryRepository.GetAllEntries())
-        //    //{
-
-        //    //}
-
-        //    return null; // TODO
-
-
-        //    //public List<ManifestEntry2> GetAllManifestEntriesWithChunksAndPointerFileEntries()
-        //    //{
-        //    //    throw new NotImplementedException();
-
-        //    //    //using var db = new ManifestStore();
-        //    //    //return db.Manifests
-        //    //    //    .Include(a => a.Chunks)
-        //    //    //    .Include(a => a.Entries)
-        //    //    //    .ToList();
-        //    //}
-
-        //    //return _manifestRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries();
-        //}
     }
 }

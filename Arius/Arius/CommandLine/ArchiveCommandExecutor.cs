@@ -310,23 +310,42 @@ namespace Arius.CommandLine
             //    });
 
             // A180
-            createPointerFileEntryIfNotExistsBlock.Completion
-                .ContinueWith(_ =>
+            var t = createPointerFileEntryIfNotExistsBlock.Completion
+                .ContinueWith(async z =>
                 {
                     _logger.LogDebug("Passing A180");
-                    removeDeletedPointersTask.Start();
+
+
+
+                    //var zz = removeDeletedPointersTask();
+                    //zz.Start();
+                    //zz.Wait();
+                    var x = Task.Run(removeDeletedPointersTask);
+                    x.Wait();
+                    //await x;
+
+                    //removeDeletedPointersTask.Start();
+                    //await removeDeletedPointersTask;
+                    //removeDeletedPointersTask.Result.Wait();
+
+                    //await removeDeletedPointersTask;
 
                     //TODO error handling
-                });
+
+                    var xx = 5;
+                })
 
             // A190
-            removeDeletedPointersTask
-                .ContinueWith(_ =>
+                .ContinueWith(t =>
                 {
-                    _logger.LogDebug("Passing A190");
-                    exportToJsonTask.Start();
+                    if (t.IsFaulted) throw t.Exception;
+                    else
+                    {
+                        _logger.LogDebug("Passing A190");
+                        exportToJsonTask.Start();
 
-                    //TODO errorr handling
+                        //TODO errorr handling
+                    }
                 });
 
             // A200
@@ -353,7 +372,7 @@ namespace Arius.CommandLine
 
 
             // Wait for the end
-            removeDeletedPointersTask.Wait();
+            t.Wait();
 
             deleteBinaryFilesTask.Wait();
 

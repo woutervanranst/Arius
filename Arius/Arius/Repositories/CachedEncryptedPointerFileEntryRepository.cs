@@ -58,26 +58,18 @@ namespace Arius.Repositories
                         _logger.LogInformation($"Created tables for {o.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
-                    //_pointerFileEntries = Task.Run(() => GetStateOn(DateTime.Now.ToUniversalTime())); //TODO Karl is this a good approach?
-
-                    _haha2 = new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
+                    _pointerFileEntries = new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
                 }
 
                 private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;
                 private readonly CloudTable _pointerEntryTable;
-                //private readonly Task<List<PointerFileEntry>> _pointerFileEntries;
-                private readonly AsyncLazy<List<PointerFileEntry>> _haha2;
+                private readonly AsyncLazy<List<PointerFileEntry>> _pointerFileEntries;
                 private readonly string _passphrase;
 
 
                 public async Task<IReadOnlyList<PointerFileEntry>> CurrentEntries()
                 {
-                    return await _haha2;
-                    //return await _pointerFileEntries;
-
-
-
-
+                    return await _pointerFileEntries;
                 }
 
                 private static readonly PointerFileEntryEqualityComparer _pfeec = new();
@@ -92,7 +84,7 @@ namespace Arius.Repositories
                     try
                     {
                         //Upsert into Cache
-                        var pfes = await _haha2;
+                        var pfes = await _pointerFileEntries;
 
                         bool toAdd = false;
 
