@@ -59,6 +59,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Azure" FontWeight="Bold" FontSize="20"/>
@@ -75,14 +76,16 @@
                 <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
                 <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
 
-                <RadioButton Grid.Row="5" Content="Latest" IsChecked="True"></RadioButton>
+                <RadioButton Grid.Row="5" Margin="1"  Content="Latest" IsChecked="True"></RadioButton>
 
-                <DockPanel Grid.Row="6" Grid.ColumnSpan="2">
+                <DockPanel Grid.Row="6" Grid.ColumnSpan="2" Margin="1" >
                     <RadioButton HorizontalAlignment="Left" Content="On date: "></RadioButton>
                     <Slider HorizontalAlignment="Stretch" Margin="15,0,15,0" />
                 </DockPanel>
 
-                <CheckBox Grid.Row="7" Content="Include deleted items" />
+                <CheckBox Grid.Row="7" Margin="1" Content="Include deleted items" />
+
+                <ProgressBar Grid.Row="8" Grid.ColumnSpan="2" Margin="1" Height="10" IsIndeterminate="{Binding LoadingRemote}" IsEnabled="{Binding LoadingRemote}" />
 
             </Grid>
         </Grid>

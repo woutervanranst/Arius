@@ -140,6 +140,8 @@ namespace Arius.UI
 
         private async Task LoadRepositoryEntries()
         {
+            LoadingRemote = true;
+
             var root = GetRoot();
 
             if (SelectedContainer is null || string.IsNullOrEmpty(Passphrase))
@@ -151,8 +153,21 @@ namespace Arius.UI
                 root.Add(item);
 
             //OnPropertyChanged(nameof(Folders));
+
+            LoadingRemote = false;
         }
         private AzureRepositoryFacade arf;
+
+        public bool LoadingRemote
+        {
+            get => loadingRemote;
+            set
+            {
+                loadingRemote = value;
+                OnPropertyChanged();
+            }
+        }
+        private bool loadingRemote;
 
 
         // -- LOCAL PATH + LOCAL ENTRIES
