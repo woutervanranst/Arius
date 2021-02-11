@@ -192,6 +192,8 @@ namespace Arius.UI
 
         private async Task LoadLocalEntries(string path)
         {
+            LoadingLocal = true;
+
             var root = GetRoot();
 
             var di = new DirectoryInfo(path);
@@ -200,7 +202,20 @@ namespace Arius.UI
                 root.Add(item);
 
             //OnPropertyChanged(nameof(Folders));
+
+            LoadingLocal = false;
         }
+
+        public bool LoadingLocal
+        {
+            get => loadingLocal;
+            set
+            {
+                loadingLocal = value;
+                OnPropertyChanged();
+            }
+        }
+        private bool loadingLocal;
 
         // -- TREEVIEW
 

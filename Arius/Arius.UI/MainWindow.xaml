@@ -37,12 +37,16 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="15" />
                 </Grid.RowDefinitions>
 
                 <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Local" FontWeight="Bold" FontSize="20"/>
                 
                 <Label Grid.Row="1"  Grid.Column="0" HorizontalAlignment="Left" Content="Local Path:"/>
                 <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalPath}" />
+
+                <ProgressBar Grid.Row="4" Grid.ColumnSpan="2" Margin="1" IsIndeterminate="{Binding LoadingLocal}" IsEnabled="{Binding LoadingLocal}" />
             </Grid>
 
             <Grid Grid.Column="1">
