@@ -81,9 +81,9 @@ namespace Arius.Models
         public DirectoryInfo Root => _root;
     }
 
-    public abstract class RelativeAriusBase : RelativeFileBase, IAriusEntryWithHash
+    public abstract class RelativeAriusFileBase : RelativeFileBase, IAriusEntryWithHash
     {
-        protected RelativeAriusBase(DirectoryInfo root, FileInfo fi) : base(root, fi)
+        protected RelativeAriusFileBase(DirectoryInfo root, FileInfo fi) : base(root, fi)
         {
         }
 
@@ -104,7 +104,7 @@ namespace Arius.Models
 
 
 
-    public class PointerFile : RelativeAriusBase, IAriusEntryWithHash
+    public class PointerFile : RelativeAriusFileBase, IAriusEntryWithHash
     {
         public const string Extension = ".pointer.arius";
 
@@ -125,7 +125,7 @@ namespace Arius.Models
         public override string ContentName => Name.TrimEnd(Extension);
     }
 
-    public class BinaryFile : RelativeAriusBase, IAriusEntryWithHash, IChunkFile
+    public class BinaryFile : RelativeAriusFileBase, IAriusEntryWithHash, IChunkFile
     {
         public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
