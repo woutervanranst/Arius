@@ -157,7 +157,8 @@ namespace Arius.UI.ViewModels
                 selectedVersion = value;
                 OnPropertyChanged();
 
-                LoadRepositoryEntries().ConfigureAwait(false);
+                //LoadRepositoryEntries().ConfigureAwait(false);
+                ReloadItems();
             }
         }
         private DateTime selectedVersion;
@@ -176,6 +177,20 @@ namespace Arius.UI.ViewModels
             }
         }
         private bool includeDeletedItems = false;
+
+
+        private async Task ReloadItems()
+        {
+            // Clear TreeView
+            var root = GetRoot();
+            root.Clear();
+
+            // Load Local
+            LoadLocalEntries();
+
+            // Load Remote
+            LoadRepositoryEntries();
+        }
 
 
         // -- REPOSITORY ENTRIES
@@ -227,28 +242,38 @@ namespace Arius.UI.ViewModels
                 Settings.Default.LocalPath = value;
                 Settings.Default.Save();
 
-                if (string.IsNullOrEmpty(value))
-                    return;
-
-                LoadLocalEntries(value).ConfigureAwait(false);
+                //LoadLocalEntries().ConfigureAwait(false);
+                ReloadItems();
             }
         }
         private string localPath;
 
-        private async Task LoadLocalEntries(string path)
+        private async Task LoadLocalEntries()
         {
-            LoadingLocal = true;
+            try
+            {
+                if (string.IsNullOrEmpty(LocalPath))
+                    return;
 
-            var root = GetRoot();
+                LoadingLocal = true;
 
-            var di = new DirectoryInfo(path);
+                var root = GetRoot();
 
-            await foreach (var item in facade.GetLocalEntries(di))
-                root.Add(item);
+                var di = new DirectoryInfo(LocalPath);
 
-            //OnPropertyChanged(nameof(Folders));
+                await foreach (var item in facade.GetLocalEntries(di))
+                    root.Add(item);
 
-            LoadingLocal = false;
+                //OnPropertyChanged(nameof(Folders));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.ToString());
+            }
+            finally
+            {
+                LoadingLocal = false;
+            }
         }
 
         public bool LoadingLocal
@@ -261,6 +286,7 @@ namespace Arius.UI.ViewModels
             }
         }
         private bool loadingLocal;
+
 
         // -- TREEVIEW
 

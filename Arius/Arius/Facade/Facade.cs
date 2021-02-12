@@ -171,17 +171,17 @@ namespace Arius.Facade
             public string Passphrase { get; init; }
         }
 
+        public async Task<IEnumerable<DateTime>> GetVersions()
+        {
+            return await repository.GetVersions();
+        }
+
         public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries(DateTime version, bool pointInTime)
         {
             foreach (var item in await repository.GetEntries(version, pointInTime))
             {
                 yield return new PointerFileEntryAriusEntry(item);
             }
-        }
-
-        public async Task<IEnumerable<DateTime>> GetVersions()
-        {
-            return await repository.GetVersions();
         }
     }
 

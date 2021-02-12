@@ -82,6 +82,12 @@ namespace Arius.UI.ViewModels
             }
         }
 
+        public void Clear()
+        {
+            items.Clear();
+            OnPropertyChanged(nameof(Items));
+        }
+
         public bool Equals(FolderViewModel x, FolderViewModel y)
         {
             return x.Path.Equals(y.Path);
