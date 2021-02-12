@@ -22,11 +22,19 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+using static Arius.Repositories.AzureRepository;
 
 // https://www.automatetheplanet.com/nunit-cheat-sheet/
 
 namespace Arius.Tests
 {
+    internal static class RepoExtensions
+    {
+        public static async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(this AzureRepository repo, bool includeDeleted, HashValue manifestHash)
+        {
+            return (await repo.GetEntries(DateTime.Now, includeDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
+        }
+    }
     public class ArchiveTests
     {
         //private AriusRepository archive;
@@ -100,7 +108,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
             //30
-            var pfes = await repo.GetCurrentEntriesAsync(true);
+            var pfes = await repo.GetCurrentEntries(true);
             Assert.AreEqual(1, pfes.Count());
 
             //31
@@ -159,7 +167,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
             //30
-            var pfes = await repo.GetCurrentEntriesAsync(true);
+            var pfes = await repo.GetCurrentEntries(true);
             Assert.AreEqual(1 + 1, pfes.Count());
 
             //31
@@ -192,7 +200,7 @@ namespace Arius.Tests
         /// 42/ The Creation- and LastWriteTimeUtc match
         /// </summary>
         [Test, Order(30)]
-        public void ArchiveJustAPointer()
+        public async Task ArchiveJustAPointer()
         {
             //SET UP
             //Add a duplicate of the pointer
@@ -218,7 +226,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
             //30
-            var pfes = repo.GetCurrentEntries(true);
+            var pfes = await repo.GetCurrentEntries(true);
             Assert.AreEqual(2 + 1, pfes.Count());
 
             //31
@@ -248,7 +256,7 @@ namespace Arius.Tests
         /// 42*/ A new PointerFileEntry exists that is not marked as deleted
         /// </summary>
         [Test, Order(40)]
-        public void RenameBinaryFileWithPointer()
+        public async Task RenameBinaryFileWithPointer()
         {
             //SET UP
             var bfi1 = TestSetup.rootDirectoryInfo.GetBinaryFiles().First();
@@ -275,11 +283,11 @@ namespace Arius.Tests
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
             //30
-            var lastExistingPfes = repo.GetCurrentEntries(false).ToList();
+            var lastExistingPfes = (await repo.GetCurrentEntries(false)).ToList();
             Assert.AreEqual(3 + 0, lastExistingPfes.Count());
 
             //31
-            var lastWithDeletedPfes = repo.GetCurrentEntries(true).ToList();
+            var lastWithDeletedPfes = (await repo.GetCurrentEntries(true)).ToList();
             Assert.AreEqual(3 + 1, lastWithDeletedPfes.Count);
 
             //var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
@@ -300,7 +308,7 @@ namespace Arius.Tests
         }
 
         [Test, Order(50)]
-        public void RenameLocalContentFileWithoutPointer()
+        public async Task RenameLocalContentFileWithoutPointer()
         {
             //Modify temp folder
             //Rename a file
@@ -325,8 +333,8 @@ namespace Arius.Tests
             //Get the manifest entries
             //    var pf = GetPointerFile(services, pointerFileInfo);
             //    var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
-            var lastExisting = repo.GetCurrentEntries(false).ToList();
-            var lastWithDeleted = repo.GetCurrentEntries(true).ToList();
+            var lastExisting = (await repo.GetCurrentEntries(false)).ToList();
+            var lastWithDeleted = (await repo.GetCurrentEntries(true)).ToList();
 
             Assert.AreEqual(3 + 1, lastExisting.Count());
             Assert.AreEqual(4 + 1, lastWithDeleted.Count());
