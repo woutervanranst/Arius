@@ -80,14 +80,17 @@
                 <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
                 <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
 
-                <RadioButton Grid.Row="5" Margin="1"  Content="Latest" IsChecked="True"></RadioButton>
+                <!--<RadioButton Grid.Row="5" Margin="1"  Content="Latest" IsChecked="True"></RadioButton>-->
 
-                <DockPanel Grid.Row="6" Grid.ColumnSpan="2" Margin="1" >
-                    <RadioButton HorizontalAlignment="Left" Content="On date: "></RadioButton>
+                <Label Grid.Row="5" Grid.Column="0" HorizontalAlignment="Left" Content="Version: " />
+                <ComboBox Grid.Row="5" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding Versions}" ItemStringFormat="{}{0:dd/MM/yyyy HH:mm:ss}" SelectedItem="{Binding SelectedVersion}" />
+
+                <!--<DockPanel  Grid.ColumnSpan="2" Margin="1" >
+                    <ComboBox
                     <Slider HorizontalAlignment="Stretch" Margin="15,0,15,0" />
-                </DockPanel>
+                </DockPanel>-->
 
-                <CheckBox Grid.Row="7" Margin="1" Content="Include deleted items" />
+                <CheckBox Grid.Row="7" Margin="1" Content="Include deleted items" IsChecked="{Binding IncludeDeletedItems}" />
 
                 <ProgressBar Grid.Row="8" Grid.ColumnSpan="2" Margin="1" IsIndeterminate="{Binding LoadingRemote}" IsEnabled="{Binding LoadingRemote}" />
 

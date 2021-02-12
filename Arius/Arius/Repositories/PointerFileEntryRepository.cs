@@ -98,15 +98,26 @@ namespace Arius.Repositories
                     throw new NotImplementedException();
             }
 
-
-            public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeDeleted)
+            /// <summary>
+            /// Get the PointerFileEntries at the given version.
+            /// If no version is specified, the current (most recent) will be returned
+            /// </summary>
+            /// <param name="includeDeleted"></param>
+            /// <param name="pointInTime"></param>
+            /// <returns></returns>
+            public async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime pointInTime, bool includeDeleted)
             {
-                var pfes = await _repo.CurrentEntries();
+                var pfes = await _repo.GetEntries(pointInTime);
 
                 if (includeDeleted)
                     return pfes;
                 else
                     return pfes.Where(pfe => !pfe.IsDeleted);
+            }
+
+            public async Task<IEnumerable<DateTime>> GetVersions()
+            {
+                return await _repo.GetVersions();
             }
         }
 
@@ -114,6 +125,10 @@ namespace Arius.Repositories
         {
             internal HashValue ManifestHash { get; init; }
             public string RelativeName { get; init; }
+
+            /// <summary>
+            /// Version (in Universal Time)
+            /// </summary>
             public DateTime Version { get; init; }
             public bool IsDeleted { get; init; }
             public DateTime? CreationTimeUtc { get; init; }

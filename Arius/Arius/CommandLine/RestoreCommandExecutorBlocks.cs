@@ -39,7 +39,7 @@ namespace Arius.CommandLine
         {
             return new TransformManyBlock<DirectoryInfo, PointerFile>(async item =>
             {
-                var currentPfes = await _repo.GetCurrentEntriesAsync(false);
+                var currentPfes = await _repo.GetCurrentEntries(false);
                 currentPfes = currentPfes.ToArray();
 
                 _logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");

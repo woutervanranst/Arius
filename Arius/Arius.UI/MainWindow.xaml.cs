@@ -11,6 +11,7 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -44,6 +45,7 @@ namespace Arius.UI
         }
         private readonly Facade.Facade facade;
 
+
         // --- ACCOUNTNAME & ACCOUNTKEY
 
         public string AccountName
@@ -76,6 +78,7 @@ namespace Arius.UI
         }
         private string storageAccountKey;
 
+
         // --- CONTAINERS
 
         private void LoadContainers()
@@ -88,14 +91,13 @@ namespace Arius.UI
                 saf = facade.GetStorageAccountFacade(AccountName, AccountKey);
 
                 Containers = new(saf.Containers.Select(cf => new ContainerViewModel(cf)));
+                OnPropertyChanged(nameof(Containers));
             }
             catch (Exception e)
             {
                 MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
                 return;
             }
-
-            OnPropertyChanged(nameof(Containers));
 
             SelectedContainer = Containers.SingleOrDefault(cf => cf.Name == Settings.Default.SelectedContainer) ?? Containers.First();
             OnPropertyChanged(nameof(SelectedContainer));
@@ -114,10 +116,12 @@ namespace Arius.UI
                 Settings.Default.SelectedContainer = value?.Name;
                 Settings.Default.Save();
 
-                LoadRepositoryEntries().ConfigureAwait(false);
+                //LoadVersions().ConfigureAwait(false);
+                LoadAzureRepositoryFacade().ConfigureAwait(false);
             }
         }
         private ContainerViewModel selectedContainer;
+
 
         // -- PASSPHRASE
 
@@ -131,32 +135,93 @@ namespace Arius.UI
                 Settings.Default.Passphrase = value.Protect();
                 Settings.Default.Save();
 
-                LoadRepositoryEntries().ConfigureAwait(false);
+                //LoadVersions().ConfigureAwait(false);
+                LoadAzureRepositoryFacade().ConfigureAwait(false);
             }
         }
         private string passphrase;
 
+        private async Task LoadAzureRepositoryFacade()
+        {
+            if (SelectedContainer is null || string.IsNullOrEmpty(Passphrase))
+                azureRepositoryFacade = null;
+            else
+                azureRepositoryFacade = SelectedContainer.GetAzureRepositoryFacade(Passphrase);
+
+            if (azureRepositoryFacade is not null)
+                await LoadVersions();
+        }
+        private AzureRepositoryFacade azureRepositoryFacade;
+
+
+        // -- VERSION
+
+        private async Task LoadVersions()
+        {
+            LoadingRemote = true;
+
+            Versions = new((await azureRepositoryFacade.GetVersions()).Reverse());
+            OnPropertyChanged(nameof(Versions));
+
+            SelectedVersion = Versions.First();
+
+            LoadingRemote = false;
+        }
+        public ObservableCollection<DateTime> Versions { get; private set; }
+
+        public DateTime SelectedVersion
+        {
+            get => selectedVersion;
+            set
+            {
+                selectedVersion = value;
+                OnPropertyChanged();
+
+                LoadRepositoryEntries().ConfigureAwait(false);
+            }
+        }
+        private DateTime selectedVersion;
+
+
+        // -- INCLUDEDELETEDITEMS
+
+        public bool IncludeDeletedItems
+        {
+            get => includeDeletedItems;
+            set
+            {
+                includeDeletedItems = value;
+
+                //TODO REFRESH
+            }
+        }
+        private bool includeDeletedItems = false;
+
+        
         // -- REPOSITORY ENTRIES
 
         private async Task LoadRepositoryEntries()
         {
-            LoadingRemote = true;
+            try
+            {
+                LoadingRemote = true;
 
-            var root = GetRoot();
+                var root = GetRoot();
 
-            if (SelectedContainer is null || string.IsNullOrEmpty(Passphrase))
-                return;
+                await foreach (var item in azureRepositoryFacade.GetRemoteEntries(SelectedVersion, IncludeDeletedItems))
+                    root.Add(item);
 
-            arf = SelectedContainer.GetAzureRepositoryFacade(Passphrase);
-
-            await foreach (var item in arf.GetRemoteEntries())
-                root.Add(item);
-
-            //OnPropertyChanged(nameof(Folders));
-
-            LoadingRemote = false;
+                //OnPropertyChanged(nameof(Folders));
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.ToString());
+            }
+            finally
+            {
+                LoadingRemote = false;
+            }
         }
-        private AzureRepositoryFacade arf;
 
         public bool LoadingRemote
         {
@@ -177,13 +242,13 @@ namespace Arius.UI
             get => localPath;
             set
             {
-                if (string.IsNullOrEmpty(value))
-                    return;
-
                 localPath = value;
 
                 Settings.Default.LocalPath = value;
                 Settings.Default.Save();
+
+                if (string.IsNullOrEmpty(value))
+                    return;
 
                 LoadLocalEntries(value).ConfigureAwait(false);
             }
@@ -285,7 +350,6 @@ namespace Arius.UI
         {
             if (item.RelativePath.Equals(this.Path))
             {
-                
                 // Add to self
                 lock (items)
                 {
@@ -336,9 +400,15 @@ namespace Arius.UI
 
     internal class FolderViewModelNameComparer : IComparer<FolderViewModel>
     {
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+        static extern int StrCmpLogicalW(string x, string y);
+
         public int Compare(FolderViewModel x, FolderViewModel y)
         {
-            return x.Name.CompareTo(y.Name);
+            //return x.Name.CompareTo(y.Name);
+
+            // Compare like how Windows Explorer compares - ie Season 1, Season 2, ... Season 10 (not Season 1, Season 10, ...)
+            return StrCmpLogicalW(x.Name, y.Name);
         }
     }
 

@@ -16,18 +16,6 @@ using Murmur;
 
 namespace Arius.Repositories
 {
-    public class AsyncLazy<T> : Lazy<Task<T>>
-    {
-        public AsyncLazy(Func<T> valueFactory) : base(() => Task.Factory.StartNew(valueFactory))
-        {
-        }
-
-        public AsyncLazy(Func<Task<T>> taskFactory) : base(() => Task.Factory.StartNew(() => taskFactory()).Unwrap())
-        { 
-        }
-
-        public System.Runtime.CompilerServices.TaskAwaiter<T> GetAwaiter() { return Value.GetAwaiter(); }
-    }
 
 
     internal partial class AzureRepository
@@ -58,7 +46,17 @@ namespace Arius.Repositories
                         _logger.LogInformation($"Created tables for {o.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
-                    _pointerFileEntries = new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
+                    _pointerFileEntries = new(() =>
+                    {
+                        // get all rows - we're getting them anyway as GroupBy is not natively supported
+                        var r = _pointerEntryTable
+                            .CreateQuery<PointerFileEntryDto>()
+                            .AsEnumerable()
+                            .Select(dto => CreatePointerFileEntry(dto))
+                            .ToList();
+
+                        return r;
+                    }); //new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
                 }
 
                 private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;
@@ -67,10 +65,78 @@ namespace Arius.Repositories
                 private readonly string _passphrase;
 
 
-                public async Task<IReadOnlyList<PointerFileEntry>> CurrentEntries()
+                /// <summary>
+                /// Get the entries at the specified version. 
+                /// If no version is specified, the current/latest version is used.
+                /// </summary>
+                /// <param name="version"></param>
+                /// <returns></returns>
+                public async Task<IReadOnlyList<PointerFileEntry>> GetEntries(DateTime pointInTime)
                 {
-                    return await _pointerFileEntries;
+                    var versions = (await GetVersions()).Reverse();
+                    DateTime? version = null;
+                    foreach (var v in versions)
+                    {
+                        if (pointInTime >= v)
+                        {
+                            version = v;
+                            break;
+                        }
+                    }
+
+                    if (version is null)
+                        throw new ArgumentException($"No backup version found for pointInTime {pointInTime}");
+
+                    var pfes = await _pointerFileEntries;
+
+                    //TODO quid when new repository and versino is null here
+
+                    //TODO KArl an exception here is swallowed
+
+                    lock (entriesPerVersionLock)
+                    {
+                        if (!entriesPerVersion.ContainsKey(version.Value))
+                        {
+                            entriesPerVersion.Add(
+                                version.Value,
+                                pfes
+                                    .GroupBy(pfe => pfe.RelativeName)
+                                    .Select(g => g
+                                        .Where(pfe => pfe.Version <= version.Value)
+                                        .OrderBy(pfe => pfe.Version).Last()).ToList());
+                        }
+                    }
+
+                    return entriesPerVersion[version.Value];
                 }
+                private readonly Dictionary<DateTime, List<PointerFileEntry>> entriesPerVersion = new();
+                private readonly object entriesPerVersionLock = new object();
+
+                /// <summary>
+                /// Returns an chronologically ordered list of versions (in Local times) for this repository
+                /// </summary>
+                /// <returns></returns>
+                public async Task<IEnumerable<DateTime>> GetVersions()
+                {
+                    var pfes = await _pointerFileEntries;
+
+                    lock (versionsLock)
+                    {
+                        if (versions is null) //TODO cannot lock on (versions = null) so find another mechanism?
+                        {
+                            versions = pfes
+                                .Select(a => a.Version.ToLocalTime())
+                                .Distinct()
+                                .OrderBy(a => a)
+                                .ToList();
+                        }
+                    }
+
+                    return versions;
+                }
+                private IEnumerable<DateTime> versions = null;
+                private readonly object versionsLock = new object();
+
 
                 private static readonly PointerFileEntryEqualityComparer _pfeec = new();
 
@@ -111,36 +177,6 @@ namespace Arius.Repositories
                         }
 
                         return toAdd;
-
-                        //var pfes = await _repo.CurrentEntries();
-
-                        //if (!pfes.Contains(pfe, _pfeec))
-                        //{
-                        //    await _repo.InsertPointerFileEntry(pfe);
-
-                        //    if (pfe.IsDeleted)
-                        //        _logger.LogInformation($"Deleted {pfe.RelativeName}");
-                        //    else
-                        //        _logger.LogInformation($"Added {pfe.RelativeName}");
-                        //}
-
-
-                        ////Upsert into Cache
-                        //var pfes = await _haha2;
-
-                        //lock (pfes)
-                        //{ 
-                        //    //Remove the old value, if present
-                        //    var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName == pfe2.RelativeName);
-                        //    pfes.Remove(pfeToRemove);
-
-                        //    //Add the new value
-                        //    pfes.Add(pfe);
-                        //}
-                        ////Insert into Table Storage
-                        //var dto = CreatePointerFileEntryDto(pfe);
-                        //var op = TableOperation.Insert(dto);
-                        //await _pointerEntryTable.ExecuteAsync(op);
                     }
                     catch (StorageException)
                     {
@@ -182,8 +218,13 @@ namespace Arius.Repositories
                 private static readonly HashAlgorithm _murmurHash = MurmurHash.Create32();
 
 
+                
+
                 private List<PointerFileEntry> GetStateOn(DateTime pointInTime)
                 {
+                    return null;
+
+
                     /* //TODO KARL is this optimal?
                      * https://docs.microsoft.com/en-us/azure/cosmos-db/table-storage-design-guide#solution-6
                      *  Table storage is lexicographically ordered ?
@@ -243,19 +284,23 @@ namespace Arius.Repositories
 
 
 
-                    var r = _pointerEntryTable
-                        .CreateQuery<PointerFileEntryDto>()
-                        .AsEnumerable()
-                        .Select(dto => CreatePointerFileEntry(dto))
-                        .GroupBy(pfe => pfe.RelativeName)
-                        .Select(g => g
-                            .Where(pfe => pfe.Version <= pointInTime)
-                            .OrderBy(pfe => pfe.Version).Last())
-                        .ToList();
+
+
+
+                    ////////// get all rows - we're getting them anyway as GroupBy is not natively supported
+                    ////////var r0 = _pointerEntryTable
+                    ////////    .CreateQuery<PointerFileEntryDto>()
+                    ////////    .AsEnumerable().ToArray();
+
+                    ////////var r = r0
+                    ////////    .Select(dto => CreatePointerFileEntry(dto))
+                    ////////    .GroupBy(pfe => pfe.RelativeName)
+                    ////////    .Select(g => g
+                    ////////        .Where(pfe => pfe.Version <= pointInTime)
+                    ////////        .OrderBy(pfe => pfe.Version).Last())
+                    ////////    .ToList();
 
                     //var xxx = zz.Except(r).ToList();
-
-                    return r;
 
                     
 
@@ -275,6 +320,8 @@ namespace Arius.Repositories
 
                     //return r;
                 }
+
+
 
                 private PointerFileEntry CreatePointerFileEntry(PointerFileEntryDto dto)
                 {

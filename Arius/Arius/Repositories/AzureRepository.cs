@@ -89,21 +89,24 @@ namespace Arius.Repositories
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 
-        internal IEnumerable<PointerFileEntry> GetCurrentEntries(bool includeLastDeleted)
+        internal async Task<IEnumerable<DateTime>> GetVersions()
         {
-            return _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted).Result;
+            return await _pointerFileEntryRepository.GetVersions();
         }
 
-        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeLastDeleted)
-        {
-            return await _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted);
-        }
+        //internal IEnumerable<PointerFileEntry> GetCurrentEntries(bool includeLastDeleted)
+        //{
+        //    return _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted).Result;
+        //}
 
-        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeLastDeleted, HashValue manifestHash)
+        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool pointInTime)
         {
-            return (await GetCurrentEntriesAsync(includeLastDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
+            return await _pointerFileEntryRepository.GetEntries(DateTime.Now, pointInTime);
         }
-
+        internal async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime version, bool pointInTime)
+        {
+            return await _pointerFileEntryRepository.GetEntries(version, pointInTime);
+        }
 
         public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
         {
