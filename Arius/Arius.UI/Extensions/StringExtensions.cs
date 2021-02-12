@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Arius.UI
+namespace Arius.UI.Extensions
 {
     internal static class StringExtensions
     {

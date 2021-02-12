@@ -1,4 +1,5 @@
 ﻿using Arius.UI.Properties;
+using Arius.UI.ViewModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

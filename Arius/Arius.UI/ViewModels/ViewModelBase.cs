@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace Arius.UI
+namespace Arius.UI.ViewModels
 {
     internal abstract class ViewModelBase : INotifyPropertyChanged
     {

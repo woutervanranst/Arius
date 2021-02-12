@@ -94,15 +94,11 @@ namespace Arius.Repositories
             return await _pointerFileEntryRepository.GetVersions();
         }
 
-        //internal IEnumerable<PointerFileEntry> GetCurrentEntries(bool includeLastDeleted)
-        //{
-        //    return _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted).Result;
-        //}
-
         internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool pointInTime)
         {
             return await _pointerFileEntryRepository.GetEntries(DateTime.Now, pointInTime);
         }
+
         internal async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime version, bool pointInTime)
         {
             return await _pointerFileEntryRepository.GetEntries(version, pointInTime);

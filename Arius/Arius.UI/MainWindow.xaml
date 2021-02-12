@@ -1,5 +1,5 @@
 ﻿<Window x:Class="Arius.UI.MainWindow"
-        xmlns:d="clr-namespace:Arius.UI"
+        xmlns:e="clr-namespace:Arius.UI.Extensions"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scm="clr-namespace:System.ComponentModel;assembly=WindowsBase"
@@ -131,7 +131,7 @@
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     </Style>
 
-                    <d:ItemStateToImageConverter x:Key="converter" />
+                    <e:ItemStateToImageConverter x:Key="converter" />
 
                     <DataTemplate x:Key="ItemStateTemplate">
                         <Image Source="{Binding ItemState, Converter={StaticResource converter}}" Height="15" />

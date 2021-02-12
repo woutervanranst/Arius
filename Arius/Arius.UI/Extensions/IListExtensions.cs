@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Arius.UI
+namespace Arius.UI.Extensions
 {
     internal static class IListExtensions
     {
