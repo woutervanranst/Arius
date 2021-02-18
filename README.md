@@ -2,6 +2,10 @@
 
 ![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
 
+<center>
+<img src="docs/iceberg.svg" width="200" />
+</center>
+
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
 The name derives from the Greek for 'immortal'.
@@ -29,6 +33,7 @@ The name derives from the Greek for 'immortal'.
     - [Flow Walkthrough](#flow-walkthrough)
       - [Archive](#archive-1)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
+  - [Attributions](#attributions)
 
 ## Key design objectives
 
@@ -274,3 +279,8 @@ NOTE: since this file consists of only one chunk, the hash of the chunk and the 
 | ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"`
+
+
+## Attributions
+
+Arius Icon by [Freepik](https://www.flaticon.com/free-icon/iceberg_2055379?related_id=2055379).

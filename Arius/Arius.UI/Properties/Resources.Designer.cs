@@ -61,6 +61,16 @@ namespace Arius.UI.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
+        internal static System.Drawing.Icon AnyConv_com__iceberg {
+            get {
+                object obj = ResourceManager.GetObject("AnyConv_com__iceberg", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         internal static System.Drawing.Bitmap NNNA {
