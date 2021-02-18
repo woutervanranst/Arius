@@ -97,18 +97,14 @@ namespace Arius.Repositories
                     {
                         if (!entriesPerVersion.ContainsKey(version.Value))
                         {
-                            var a = pfes.GroupBy(pfe => pfe.RelativeName);
-                            var b = a.Select(g => g.Where(pfe => pfe.Version <= version.Value)).Where(c => c.Any());
-                            var c = b.Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
-
-                            //var x = pfes
-                            //        .GroupBy(pfe => pfe.RelativeName)
-                            //        .Select(g => g.Where(pfe => pfe.Version <= version.Value)
-                            //            .OrderBy(pfe => pfe.Version).Last()).ToList();
+                            var entriesForThisVersion = pfes
+                                .GroupBy(pfe => pfe.RelativeName)
+                                .Select(g => g.Where(pfe => pfe.Version <= version.Value)).Where(c => c.Any())
+                                .Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
 
                             entriesPerVersion.Add(
                                 version.Value,
-                                c);
+                                entriesForThisVersion);
                         }
                     }
 
