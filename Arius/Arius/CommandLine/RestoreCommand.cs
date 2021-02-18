@@ -55,7 +55,7 @@ namespace Arius.CommandLine
             restoreCommand.AddOption(downloadOption);
 
             var keepPointersOption = new Option<bool>("--keep-pointers",
-                getDefaultValue: () => true,
+                getDefaultValue: () => false,
                 "Keep pointer files after downloading content files");
             restoreCommand.AddOption(keepPointersOption);
 
