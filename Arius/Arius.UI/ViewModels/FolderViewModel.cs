@@ -85,6 +85,7 @@ namespace Arius.UI.ViewModels
         public void Clear()
         {
             items.Clear();
+            Folders.Clear();
             OnPropertyChanged(nameof(Items));
         }
 
