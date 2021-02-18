@@ -20,18 +20,16 @@ The name derives from the Greek for 'immortal'.
       - [Docker Run](#docker-run)
       - [Arguments](#arguments)
     - [Restore from blob storage](#restore-from-blob-storage)
-  - [Install](#install)
+      - [CLI](#cli-1)
+      - [Arguments](#arguments-1)
+  - [Installing](#installing)
     - [Linux](#linux)
     - [Docker](#docker)
   - [Advanced](#advanced)
-    - [Functional Flows](#functional-flows)
-      - [Archive](#archive-1)
-      - [Restore](#restore-1)
+    - [Archive](#archive-1)
+    - [Restore](#restore-1)
     - [Restore with common tools](#restore-with-common-tools)
     - [Deduplication](#deduplication)
-  - [Developer reference](#developer-reference)
-    - [Flow Walkthrough](#flow-walkthrough)
-      - [Archive](#archive-2)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
 - [Attributions](#attributions)
 
@@ -96,11 +94,13 @@ For a more detailed explanation, see [Developer Reference](#developer-reference)
 
 ### Restore
 
-A restore consists out of two phases.
+A restore consists out of two stages.
 
-1. The first phase (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
+1. The first stage (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
 
-1. The second phase (also optionally) downloads the chunks and reassembles the original files.
+1. The second stage (also optionally) downloads the chunks and reassembles the original files.
+
+By deleting the pointers that do not need to be restored before running the second stage, a selective restore can be done.
 
 For a more detailed explanation, see [Developer Reference](#developer-reference).
 
@@ -144,12 +144,6 @@ docker run
 
 #### Arguments
 
-  --dedup                                       Deduplicate the chunks in the binary files [default: False]
-  --fasthash                                    Use the cached hash of a file (faster, do not use in an archive where
-                                                file contents change) [default: False]
-
-
-
 | Argument | Description | Notes |
 | - | - | - |
 | &#x2011;&#x2011;accountname, &#x2011;n | Storage Account Name
@@ -158,13 +152,14 @@ docker run
 | &#x2011;&#x2011;container, &#x2011;c | Blob container to use | OPTIONAL. Default: 'arius'.
 | &#x2011;&#x2011;remove-local | Remove local file after a successful upload | OPTIONAL. Default: Local files are deleted after archiving.
 | &#x2011;&#x2011;tier | Blob storage tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
-| &#x2011;&#x2011;dedup | Deduplicate within the file | OPTIONAL. Default: false.<br>NOTE: setting this option takes results in a longer run time for but a smaller archive size
-| path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
-| &#x2011;&#x2011;fasthash | When a pointer file is present, use that hash instead of re-hashing the full file again | OPTIONAL. Default: false.<br>NOTE: 
+| &#x2011;&#x2011;dedup | Deduplicate within the file (see [here](#deduplication)) | OPTIONAL. Default: false.<br>NOTE: setting this option takes results in a longer run time for but a smaller archive size
+| &#x2011;&#x2011;fasthash | When a pointer file is present, use that hash instead of re-hashing the full file again | OPTIONAL. Default: false.<br>NOTE: Do **NOT** use this if the contents of the files are modified. Arius will not pick up the changes.
 | path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
 | logpath | Path to the folder to store the logs | NOTE: Only for Docker.
 
 ### Restore from blob storage
+
+#### CLI
 
 ```
 arius restore
@@ -178,26 +173,31 @@ arius restore
   path
 ```
 
-If `<path>` is a Directory:
+#### Arguments
 
-Synchronize the remote archive structure to the `<path>`:
+| Argument | Description | Notes |
+| - | - | - |
+| &#x2011;&#x2011;accountname, &#x2011;n | (same as above)
+| &#x2011;&#x2011;accountkey, &#x2011;k | (same as above)
+| &#x2011;&#x2011;passphrase, &#x2011;p | (same as above)
+| &#x2011;&#x2011;container, &#x2011;c | (same as above)
+| &#x2011;&#x2011;synchronize | Bring the structure of the local file system (pointer files) in line with the latest state of the remote repository | <ul><li>This command only touches the pointers (ie. `.pointer;arius` files). Other files are left untouched.<li>Pointers that exist in the archive but not remote are created.<li>Pointers that exist locally but not in the archive are deleted</ul>
+| &#x2011;&#x2011;download | Download and restore the actual file (contents)
+| &#x2011;&#x2011;keep-pointers | Keep pointer files after downloading content files
+| path | Path to restore to | <ul><li>If  `<path>` is a directory: restore all pointer files in the (sub)directories.<li>If `<path>` is a file: restore this file.</ul>
 
-- This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
-- Pointers that exist in the archive but not remote are created
-- Pointers that exist locally but not in the archive are deleted
-
-When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
-
-If ``<path>`` is an `.arius` file `--download` flag is specified: the file is restored.
-
-## Install
+## Installing
 
 ### Linux
 
 Prerequisites:
 
-- 7zip: `sudo apt-get install p7zip-full`
-<!-- https://www.thomasmaurer.ch/2019/05/how-to-install-azcopy-for-azure-storage/ -->
+- 7zip:
+
+```
+sudo apt-get install p7zip-full
+```
+
 - azcopy
 
 ```
@@ -211,7 +211,7 @@ sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 ```bash
 wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -->
 
-Run the following commands:
+Arius:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
 
 ```
@@ -224,6 +224,8 @@ dotnet arius.dll ...
 ```
 
 ### Windows
+
+Prerequisites:
 
 * AzCopy: https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy
 * 7zip: https://www.7-zip.org/download.html
@@ -247,31 +249,9 @@ docker pull ghcr.io/woutervanranst/arius
 
 ## Advanced
 
-### Functional Flows
-
-#### Archive
+### Archive
 
 ![Archive flow](https://lucid.app/publicSegments/view/52737a1c-52f2-4f03-8c70-6ee6cdaab8c0/image.png)
-
-#### Restore
-
-![Restore flow](https://lucid.app/publicSegments/view/86952f67-e660-44d3-b467-9c84f811f3d1/image.png)
-
-### Restore with common tools
-
-Arius relies on the 7zip command line and Azure blob storage cli.
-
-### Deduplication
-
-A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
-
-((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
-
-## Developer reference
-
-### Flow Walkthrough
-
-#### Archive
 
 Consider the following example directory: three files of which two are a duplicate.
 Running `arius archive` on a local folder will yield the following:
@@ -308,6 +288,22 @@ The structure of the manifest is as follows:
 - Hash: the SHA256 hash of the original file.
 
 NOTE: since this file consists of only one chunk, the hash of the chunk and the hash of the original file are the same.
+
+### Restore
+
+![Restore flow](https://lucid.app/publicSegments/view/86952f67-e660-44d3-b467-9c84f811f3d1/image.png)
+
+### Restore with common tools
+
+Arius relies on the 7zip command line and Azure blob storage cli.
+
+### Deduplication
+
+A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
+
+((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
+
+
 
 
 #### Debugging Docker in Visual Studio
