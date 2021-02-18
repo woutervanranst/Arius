@@ -96,7 +96,6 @@ namespace Arius.UI.ViewModels
                 Settings.Default.SelectedContainer = value?.Name;
                 Settings.Default.Save();
 
-                //LoadVersions().ConfigureAwait(false);
                 LoadAzureRepositoryFacade().ConfigureAwait(false);
             }
         }
@@ -115,7 +114,6 @@ namespace Arius.UI.ViewModels
                 Settings.Default.Passphrase = value.Protect();
                 Settings.Default.Save();
 
-                //LoadVersions().ConfigureAwait(false);
                 LoadAzureRepositoryFacade().ConfigureAwait(false);
             }
         }
@@ -157,8 +155,7 @@ namespace Arius.UI.ViewModels
                 selectedVersion = value;
                 OnPropertyChanged();
 
-                //LoadRepositoryEntries().ConfigureAwait(false);
-                ReloadItems();
+                ReloadItems().ConfigureAwait(false);
             }
         }
         private DateTime selectedVersion;
@@ -174,7 +171,7 @@ namespace Arius.UI.ViewModels
                 includeDeletedItems = value;
                 OnPropertyChanged();
 
-                ReloadItems();
+                ReloadItems().ConfigureAwait(false);
             }
         }
         private bool includeDeletedItems = false;

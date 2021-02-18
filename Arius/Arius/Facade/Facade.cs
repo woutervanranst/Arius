@@ -210,5 +210,13 @@ namespace Arius.Facade
         }
 
         public string ContentName => pfe.RelativeName.Split(System.IO.Path.DirectorySeparatorChar).Last().TrimEnd(PointerFile.Extension);
+
+        public bool IsDeleted
+        {
+            get
+            {
+                return pfe.IsDeleted;
+            }
+        }
     }
 }

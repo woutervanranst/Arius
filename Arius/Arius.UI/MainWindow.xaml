@@ -131,8 +131,20 @@
                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                     </Style>
 
+                    <e:ContentNameDataTemplateSelector x:Key="TemplateSelector"/>
                     <e:ItemStateToImageConverter x:Key="converter" />
 
+                    <DataTemplate x:Key="ContentNameTemplate">
+                        <TextBlock Text="{Binding Path=ContentName}"/>
+                    </DataTemplate>
+                    <DataTemplate x:Key="DeletedContentNameTemplate">
+                        <TextBlock Text="{Binding Path=ContentName}">
+                            <TextBlock.TextDecorations>
+                                <TextDecoration Location="Strikethrough"/>
+                            </TextBlock.TextDecorations>
+                        </TextBlock>
+                    </DataTemplate>
+                        
                     <DataTemplate x:Key="ItemStateTemplate">
                         <Image Source="{Binding ItemState, Converter={StaticResource converter}}" Height="15" />
                     </DataTemplate>
@@ -143,12 +155,9 @@
                 
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="Name" DisplayMemberBinding="{Binding Path=ContentName}"  Width="250"/>
-
+                        <GridViewColumn Header="Name" CellTemplateSelector="{StaticResource TemplateSelector}" Width="250"/>
                         <GridViewColumn Header="State" CellTemplate="{StaticResource ItemStateTemplate}"  Width="50"/>
-                        
                         <GridViewColumn Header="Size" CellTemplate="{StaticResource SizeTemplate}" Width="100"/>
-
                     </GridView>
                 </ListView.View>
             </ListView>

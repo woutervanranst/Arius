@@ -56,7 +56,7 @@ namespace Arius.Repositories
                             .ToList();
 
                         return r;
-                    }); //new(() => GetStateOn(DateTime.Now.ToUniversalTime()));
+                    });
                 }
 
                 private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;

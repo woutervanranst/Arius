@@ -23,6 +23,7 @@ namespace Arius.UI.ViewModels
         }
         private PointerFile pointerFile;
 
+
         public BinaryFile BinaryFile
         {
             get => binaryFile;
@@ -35,6 +36,7 @@ namespace Arius.UI.ViewModels
             }
         }
         private BinaryFile binaryFile;
+
 
         public PointerFileEntryAriusEntry PointerFileEntry
         {
@@ -49,17 +51,24 @@ namespace Arius.UI.ViewModels
         }
         private PointerFileEntryAriusEntry pointerFileEntry;
 
+
         public object Manifest => "";
 
 
+        /// <summary>
+        /// Get the size (in KB) of this item
+        /// </summary>
         public string Size
         {
             get
             {
+                    //Remote
                 if (BinaryFile is not null)
                     return BinaryFile.Length.GetBytesReadable(LongExtensions.Size.KB);
                 else if (PointerFileEntry is not null)
-                    return "TODO";
+                    return "Unknown";
+
+                    // Local
                 else if (PointerFile is not null)
                     return "Unknown";
                 else
@@ -67,6 +76,10 @@ namespace Arius.UI.ViewModels
             }
         }
 
+
+        /// <summary>
+        /// Get the string representing the state of the item for the bollekes (eg. pointer present, blob present, ...)
+        /// </summary>
         public string ItemState
         {
             get
@@ -79,6 +92,15 @@ namespace Arius.UI.ViewModels
                 itemState.Append(Manifest is not null ? 'A' : throw new NotImplementedException());
 
                 return itemState.ToString();
+            }
+        }
+
+
+        public bool IsDeleted
+        {
+            get
+            {
+                return PointerFileEntry.IsDeleted;
             }
         }
     }
