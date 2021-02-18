@@ -1,10 +1,8 @@
 # Arius
 
-![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
-
-<center>
 <img src="docs/iceberg.svg" width="200" />
-</center>
+
+![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
 
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
@@ -12,8 +10,7 @@ The name derives from the Greek for 'immortal'.
 
 - [Arius](#arius)
   - [Key design objectives](#key-design-objectives)
-  - [What does it do & how does it work?](#what-does-it-do--how-does-it-work)
-    - [Overview](#overview)
+  - [Overview](#overview)
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
       - [CLI](#cli)
@@ -33,7 +30,7 @@ The name derives from the Greek for 'immortal'.
     - [Flow Walkthrough](#flow-walkthrough)
       - [Archive](#archive-1)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
-  - [Attributions](#attributions)
+- [Attributions](#attributions)
 
 ## Key design objectives
 
@@ -48,24 +45,26 @@ The name derives from the Greek for 'immortal'.
 - [x] Variable block size (rolling hash Rabin-Karp) deduplication
 - [x] Leverage common tools, to allow restores even when this project would become deprecated
 
-## What does it do & how does it work?
+## Overview
 
-### Overview
+Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier.
 
 ![](docs/overview.png)
 
-Arius runs through the content of the local file system.
+Arius runs through the files of the (local) folder and subfolders.
 
-For each file it encounters, it calculates the (SHA256) hash and checks whether a **manifest** for that hash already exists on blob storage. Manifests are small and frequently accessed and are therefore stored in the cool tier.
+For each file, it calculates the hash and checks whether (a **manifest** for) this hash already exists on blob storage.
 
-If it does not exist, the local file is **chunk**ed (deduplicated), encrypted & uploaded. A new manifest is created pointing to the chunks that make up the original file. Chunks are large (they make up the binaries of the original file), they are only accessed when doing a `restore` and are therefore stored in the archive tier.
+If it does not exist, the local file is **chunk**ed (deduplicated). Each chunk is encrypted and uploaded to Archive storage. A **manifest** is then created, the list of chunks that make up the original file.
 
-On the local file system, a **pointer** is then created, pointing to the manifest.
+On the local file system, a **pointer file** is then created, pointing to the manifest.
 
-The result looks like this:
+For each pointer file, an entry is made in the Pointers table storage (containing relative name and manifest hash). This enables restoring the archive into an empty directory (by first reconstructing all the pointer files and then downloading and reconstituting all the chunks).
+
+The result on the local file system looks like this:
 ![](docs/archive.png)
 
-For a more detailed explanation, 
+For a more detailed explanation, see [Developer Reference](#developer-reference).
 
 ## Usage
 
@@ -281,6 +280,6 @@ NOTE: since this file consists of only one chunk, the hash of the chunk and the 
 | ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"`
 
 
-## Attributions
+# Attributions
 
 Arius Icon by [Freepik](https://www.flaticon.com/free-icon/iceberg_2055379?related_id=2055379).
