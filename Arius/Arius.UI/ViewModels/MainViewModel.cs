@@ -172,8 +172,9 @@ namespace Arius.UI.ViewModels
             set
             {
                 includeDeletedItems = value;
+                OnPropertyChanged();
 
-                //TODO REFRESH
+                ReloadItems();
             }
         }
         private bool includeDeletedItems = false;
@@ -199,6 +200,9 @@ namespace Arius.UI.ViewModels
         {
             try
             {
+                if (SelectedVersion == DateTime.MinValue)
+                    return;
+
                 LoadingRemote = true;
 
                 var root = GetRoot();
