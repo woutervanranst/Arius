@@ -9,8 +9,11 @@ Arius is a lightweight tiered archival solution, specifically built to leverage 
 The name derives from the Greek for 'immortal'.
 
 - [Arius](#arius)
+  - [Key design scenarios](#key-design-scenarios)
   - [Key design objectives](#key-design-objectives)
   - [Overview](#overview)
+    - [Archive](#archive)
+    - [Restore](#restore)
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
       - [CLI](#cli)
@@ -22,15 +25,22 @@ The name derives from the Greek for 'immortal'.
     - [Docker](#docker)
   - [Advanced](#advanced)
     - [Functional Flows](#functional-flows)
-      - [Archive](#archive)
-      - [Restore](#restore)
+      - [Archive](#archive-1)
+      - [Restore](#restore-1)
     - [Restore with common tools](#restore-with-common-tools)
     - [Deduplication](#deduplication)
   - [Developer reference](#developer-reference)
     - [Flow Walkthrough](#flow-walkthrough)
-      - [Archive](#archive-1)
+      - [Archive](#archive-2)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
 - [Attributions](#attributions)
+
+## Key design scenarios
+
+- I have a lot of static files that I rarely access but don't want to lose (think: backups, family pictures & videos).
+- For some of these, I keep a live copy in my Synology
+- For all of these, I keep an offline copy on a disconnected harddisk
+- To account for the mechanical failure of the harddisk (and to implement the [3-2-1 backup strategy](https://en.wikipedia.org/wiki/Backup#Storage)) I back up the entire hard disk to Azure using Arius. The price for this is approx. 1 EUR per TB per month.
 
 ## Key design objectives
 
@@ -39,17 +49,19 @@ The name derives from the Greek for 'immortal'.
 - [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
 - [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
 - [x] Never delete files on remote
-- [ ] Point in time restore (FUTURE)
 - [x] No central store to avoid a single point of failure
 - [x] File level deduplication
 - [x] Variable block size (rolling hash Rabin-Karp) deduplication
 - [x] Leverage common tools, to allow restores even when this project would become deprecated
+- [ ] Point in time restore (FUTURE)
 
 ## Overview
 
-Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier.
+Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier. The following diagram shows the concept of how Arius works.
 
 ![](docs/overview.png)
+
+### Archive
 
 Arius runs through the files of the (local) folder and subfolders.
 
@@ -63,6 +75,16 @@ For each pointer file, an entry is made in the Pointers table storage (containin
 
 The result on the local file system looks like this:
 ![](docs/archive.png)
+
+For a more detailed explanation, see [Developer Reference](#developer-reference).
+
+### Restore
+
+A restore consists out of two phases.
+
+The first phase (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
+
+The second phase (also optionally) downloads the chunks and reassembles the original files.
 
 For a more detailed explanation, see [Developer Reference](#developer-reference).
 
