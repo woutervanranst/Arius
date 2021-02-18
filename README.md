@@ -37,23 +37,39 @@ The name derives from the Greek for 'immortal'.
 
 ## Key design scenarios
 
-- I have a lot of static files that I rarely access but don't want to lose (think: backups, family pictures & videos).
-- For some of these, I keep a live copy in my Synology
+Why did I create Arius?
+
+**Scenario 1**
+
+- I have a lot of static files that I rarely access but don't want to lose (think: backups, family pictures & videos, ...).
+- For some of these, I keep a live copy on my Synology
 - For all of these, I keep an offline copy on a disconnected harddisk
-- To account for the mechanical failure of the harddisk (and to implement the [3-2-1 backup strategy](https://en.wikipedia.org/wiki/Backup#Storage)) I back up the entire hard disk to Azure using Arius. The price for this is approx. 1 EUR per TB per month.
+- To account for the mechanical failure of the harddisk (and to implement the [3-2-1 backup strategy](https://en.wikipedia.org/wiki/Backup#Storage)) I back up the entire hard disk to Azure using Arius. The price for this is approx. 1 EUR per TB per month when using the archive tier.
+
+**Scenario 2**
+
+- (same as Scenario 1) and I also want to have one 'single pane of glass' for all files, eg. if I search for the file in Windows Explorer, I want to see that the file is 'there' (maybe not the contents, but the pointer to the Arius archive).
+
+**Scenario 3**
+
+- I want client side encryption (because of \<reasons>).
+
+**Scenario 4**
+
+- Before my Synology, I had a Windows Server that had deduplication on its file system. My OCD has a hard time storing duplicates ever since.
 
 ## Key design objectives
 
-- [x] Local file structure (files/folders) by creating 'sparse' placeholders
-- [x] Files, folders & filenames are encrypted clientside
-- [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
-- [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
-- [x] Never delete files on remote
-- [x] No central store to avoid a single point of failure
-- [x] File level deduplication
-- [x] Variable block size (rolling hash Rabin-Karp) deduplication
-- [x] Leverage common tools, to allow restores even when this project would become deprecated
-- [ ] Point in time restore (FUTURE)
+- [x] Maintain the local file structure (files/folders) by creating 'sparse' placeholders (Scenario 2).
+- [x] Files, folders & filenames are encrypted clientside (Scenario 3).
+- [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated) (Scenario 3).
+- [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage).
+- [x] Never delete files on remote.
+- [x] No central store to avoid a single point of failure.
+- [x] File level deduplication (Scenario 4).
+- [x] Variable block size (rolling hash Rabin-Karp) deduplication (Scenario 4).
+- [x] Leverage common tools, to allow restores even when this project would become deprecated.
+- [ ] Point in time restore (FUTURE).
 
 ## Overview
 
@@ -63,15 +79,15 @@ Arius is a tool that archives a local folder structure to/from Azure Blob Storag
 
 ### Archive
 
-Arius runs through the files of the (local) folder and subfolders.
+1. Arius runs through the files of the (local) folder and subfolders.
 
-For each file, it calculates the hash and checks whether (a **manifest** for) this hash already exists on blob storage.
+1. For each file, it calculates the hash and checks whether (a **manifest** for) this hash already exists on blob storage.
 
-If it does not exist, the local file is **chunk**ed (deduplicated). Each chunk is encrypted and uploaded to Archive storage. A **manifest** is then created, the list of chunks that make up the original file.
+   - If it does not exist, the local file is **chunk**ed (deduplicated). Each chunk is encrypted and uploaded to Archive storage. A **manifest** is then created, the list of chunks that make up the original file.
 
-On the local file system, a **pointer file** is then created, pointing to the manifest.
+1. On the local file system, a **pointer file** is then created, pointing to the manifest.
 
-For each pointer file, an entry is made in the Pointers table storage (containing relative name and manifest hash). This enables restoring the archive into an empty directory (by first reconstructing all the pointer files and then downloading and reconstituting all the chunks).
+1. For each pointer file, an entry is made in the Pointers table storage (containing relative name and manifest hash). This enables restoring the archive into an empty directory (by first reconstructing all the pointer files and then downloading and reconstituting all the chunks).
 
 The result on the local file system looks like this:
 ![](docs/archive.png)
@@ -82,9 +98,9 @@ For a more detailed explanation, see [Developer Reference](#developer-reference)
 
 A restore consists out of two phases.
 
-The first phase (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
+1. The first phase (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
 
-The second phase (also optionally) downloads the chunks and reassembles the original files.
+1. The second phase (also optionally) downloads the chunks and reassembles the original files.
 
 For a more detailed explanation, see [Developer Reference](#developer-reference).
 
@@ -100,10 +116,10 @@ arius archive
   [--accountkey <accountkey>]
    --passphrase <passphrase>
   [--container <containername>]
-  [--keep-local]
+  [--remove-local]
   [--tier=<hot/cool/archive>]
-  [--min-size=<minsizeinMB>]
-  [--simulate]
+  [--dedup]
+  [--fasthash]
   <path>
 ```
 
@@ -118,26 +134,33 @@ docker run
 
   archive
    --accountname <accountname>
-  [--accountkey <accountkey>]
    --passphrase <passphrase>
   [--container <containername>]
-  [--keep-local]
+  [--remove-local]
   [--tier=<hot/cool/archive>]
-  [--min-size=<minsizeinMB>]
-  [--simulate]
+  [--dedup]
+  [--fasthash]
 ```
 
 #### Arguments
+
+  --dedup                                       Deduplicate the chunks in the binary files [default: False]
+  --fasthash                                    Use the cached hash of a file (faster, do not use in an archive where
+                                                file contents change) [default: False]
+
+
 
 | Argument | Description | Notes |
 | - | - | - |
 | &#x2011;&#x2011;accountname, &#x2011;n | Storage Account Name
 | &#x2011;&#x2011;accountkey, &#x2011;k | [Storage Account Key](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal) | Can be set through:<ul><li>Argument<li>Environment variable `ARIUS_ACCOUNT_KEY`<li>Docker environment variable `ARIUS_ACCOUNT_KEY`</ul>
-| &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted
+| &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted (clientside)
 | &#x2011;&#x2011;container, &#x2011;c | Blob container to use | OPTIONAL. Default: 'arius'.
-| &#x2011;&#x2011;keep-local | Do not delete the local files after archiving | OPTIONAL. Default: Local files are deleted after archiving.<br>NOTE: Setting this flag may result in long N+1 archive runs as all files need to be re-hashed.
-| &#x2011;&#x2011;tier | Blob tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
-| &#x2011;&#x2011;min&#x2011;size | Minimum size of files to archive (in MB) | OPTIONAL. Default: 0.<br>NOTE: when set to >0, a full restore will miss the smaller files
+| &#x2011;&#x2011;remove-local | Remove local file after a successful upload | OPTIONAL. Default: Local files are deleted after archiving.
+| &#x2011;&#x2011;tier | Blob storage tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
+| &#x2011;&#x2011;dedup | Deduplicate within the file | OPTIONAL. Default: false.<br>NOTE: setting this option takes results in a longer run time for but a smaller archive size
+| path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
+| &#x2011;&#x2011;fasthash | When a pointer file is present, use that hash instead of re-hashing the full file again | OPTIONAL. Default: false.<br>NOTE: 
 | path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
 | logpath | Path to the folder to store the logs | NOTE: Only for Docker.
 
