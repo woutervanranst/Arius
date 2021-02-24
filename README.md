@@ -170,7 +170,7 @@ arius restore
   [--synchronize]
   [--download]
   [--keep-pointers]
-  path
+  <path>
 ```
 
 #### Arguments
