@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
@@ -108,8 +109,8 @@ namespace Arius
                                 options.RootPath = AppContext.BaseDirectory;
 
                             options.Files = new [] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
-                            
-                            //options.TextBuilder = Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
+
+                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default; //  Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
                         });
                 })
                 .AddSingleton<IConfiguration>(config)
