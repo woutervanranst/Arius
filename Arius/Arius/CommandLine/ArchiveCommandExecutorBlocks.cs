@@ -32,7 +32,7 @@ namespace Arius.CommandLine
                 {
                     _logger.LogInformation($"Indexing {di.FullName}");
 
-                    return IndexDirectory2(di, di);
+                    return IndexDirectory(di, di);
                 }
                 catch (Exception e)
                 {
@@ -44,41 +44,23 @@ namespace Arius.CommandLine
             );
         }
 
-        //private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
-        //{
-        //    _logger.LogInformation($"Indexing {root.FullName}");
-
-        //    foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
-        //    {
-        //        if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
-        //        {
-        //            _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
-
-        //            yield return new PointerFile(root, fi);
-        //        }
-        //        else
-        //        {
-        //            _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
-
-        //            yield return new BinaryFile(root, fi);
-        //        }
-        //    }
-        //}
-
         /// <summary>
         /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo root, [NotNull] DirectoryInfo directory)
+        private IEnumerable<IAriusEntry> IndexDirectory([NotNull] DirectoryInfo root, [NotNull] DirectoryInfo directory)
         {
             foreach (var file in directory.GetFiles())
             {
-                //_logger.LogDebug("ATTRIBUTES " + file.FullName + ": " + file.Attributes.ToString());
-
                 if (IsHiddenOrSystem(file))
                 {
                     _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
+                    continue;
+                }
+                if (IsIgnoreFile(file))
+                {
+                    _logger.LogDebug($"Ignoring file {file.FullName}");
                     continue;
                 }
                 else
@@ -89,16 +71,13 @@ namespace Arius.CommandLine
 
             foreach (var dir in directory.GetDirectories())
             {
-                //_logger.LogDebug("ATTRIBUTES " + directory.FullName + ": " + dir.Attributes.ToString());
-
-
                 if (IsHiddenOrSystem(dir))
                 {
                     _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
 
-                foreach (var f in IndexDirectory2(root, dir))
+                foreach (var f in IndexDirectory(root, dir))
                     yield return f;
             }
         }
@@ -118,10 +97,18 @@ namespace Arius.CommandLine
 
             return IsHiddenOrSystem(fi.Attributes);
         }
-
         private bool IsHiddenOrSystem(FileAttributes attr)
         {
             return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
+        }
+
+        private bool IsIgnoreFile(FileInfo fi)
+        {
+            var lowercaseFilename = fi.Name.ToLower();
+
+            return (lowercaseFilename.Equals("autorun.ini") ||
+                lowercaseFilename.Equals("thumbs.db") ||
+                lowercaseFilename.Equals(".ds_store"));
         }
 
         private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
