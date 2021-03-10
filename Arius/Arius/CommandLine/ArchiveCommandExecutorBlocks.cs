@@ -58,7 +58,7 @@ namespace Arius.CommandLine
                     _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
-                if (IsIgnoreFile(file))
+                else if (IsIgnoreFile(file))
                 {
                     _logger.LogDebug($"Ignoring file {file.FullName}");
                     continue;
