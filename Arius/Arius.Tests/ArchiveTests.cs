@@ -28,42 +28,14 @@ using static Arius.Repositories.AzureRepository;
 
 namespace Arius.Tests
 {
-    internal static class RepoExtensions
-    {
-        //public static async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(this AzureRepository repo, bool includeDeleted, HashValue manifestHash)
-        //{
-        //    return (await repo.GetEntries(DateTime.Now, includeDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
-        //}
-    }
     public class ArchiveTests
     {
-        //private AriusRepository archive;
-        //private LocalRootRepository root;
-
         [OneTimeSetUp]
         public void ClassInit()
         {
             // Executes once for the test class. (Optional)
 
-            //var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup.container.Name, true, "fdsfsd", 0, false, TestSetup.rootDirectoryInfo.FullName);
-
-
-
-            
-
-            //var lff = new LocalFileFactory(new SHA256Hasher(options));
-
-            //root = new LocalRootRepository(options, config, lff);
-
             //var logger = Mock.Of<ILogger<AriusRepository>>();
-            //var logger2 = Mock.Of<ILogger<AzCopier>>();
-            //var remoteblobfactory = new RemoteBlobFactory();
-
-            //var uploader = new AzCopier(options, logger2, remoteblobfactory);
-
-            //var manifestrepo = new LocalManifestFileRepository(options, config, )
-
-            //archive = new AriusRepository(options, logger, uploader,  )
         }
 
         [SetUp]
