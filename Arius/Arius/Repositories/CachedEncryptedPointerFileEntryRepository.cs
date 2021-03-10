@@ -16,13 +16,10 @@ using Murmur;
 
 namespace Arius.Repositories
 {
-
-
     internal partial class AzureRepository
     {
         internal const string TableNameSuffix = "pointers";
 
-        // TODO KARL quid pattern of nested pratial classes
         private partial class PointerFileEntryRepository
         {
             private class CachedEncryptedPointerFileEntryRepository
