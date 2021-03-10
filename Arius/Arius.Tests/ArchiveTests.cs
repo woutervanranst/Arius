@@ -30,10 +30,10 @@ namespace Arius.Tests
 {
     internal static class RepoExtensions
     {
-        public static async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(this AzureRepository repo, bool includeDeleted, HashValue manifestHash)
-        {
-            return (await repo.GetEntries(DateTime.Now, includeDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
-        }
+        //public static async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(this AzureRepository repo, bool includeDeleted, HashValue manifestHash)
+        //{
+        //    return (await repo.GetEntries(DateTime.Now, includeDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
+        //}
     }
     public class ArchiveTests
     {
@@ -96,7 +96,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = ArchiveCommand(false, AccessTier.Cool, dedup: false);
+            var services = await ArchiveCommand(false, AccessTier.Cool, dedup: false);
 
 
             //ASSERT OUTCOME
@@ -154,7 +154,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(false, AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -213,7 +213,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(false, AccessTier.Cool);
 
 
             //ASSERT OUTCODE
@@ -270,7 +270,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(false, AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -284,7 +284,7 @@ namespace Arius.Tests
 
             //30
             var lastExistingPfes = (await repo.GetCurrentEntries(false)).ToList();
-            Assert.AreEqual(3 + 0, lastExistingPfes.Count());
+            Assert.AreEqual(3 + 0, lastExistingPfes.Count);
 
             //31
             var lastWithDeletedPfes = (await repo.GetCurrentEntries(true)).ToList();
@@ -321,7 +321,7 @@ namespace Arius.Tests
 
 
             //Execute Archive
-            var services = ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(false, AccessTier.Cool);
 
 
             //Check outcome
@@ -410,7 +410,7 @@ namespace Arius.Tests
         }
 
 
-        private ServiceProvider ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        private async Task<ServiceProvider> ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             if (executeAsCli)
             {
@@ -442,7 +442,7 @@ namespace Arius.Tests
 
                 var exec = services.GetRequiredService<ArchiveCommandExecutor>();
 
-                exec.Execute();
+                await exec.Execute();
 
                 return services;
             }
