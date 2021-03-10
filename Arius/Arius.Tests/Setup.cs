@@ -34,11 +34,10 @@ namespace Arius.Tests
         {
             // Executes once before the test run. (Optional)
 
-            //sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
             sourceFolder = PopulateSourceDirectory();
 
             // Create temp folder
-            var containerName = TestContainerNamePrefix  + RandomString(8).ToLower();
+            var containerName = TestContainerNamePrefix + $"{DateTime.Now.Ticks}";
             rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
             rootDirectoryInfo.Create();
 
@@ -115,12 +114,12 @@ namespace Arius.Tests
 
 
         private static Random random = new Random();
-        private static string RandomString(int length)
-        {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            return new string(Enumerable.Repeat(chars, length)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
+        //private static string RandomString(int length)
+        //{
+        //    const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        //    return new string(Enumerable.Repeat(chars, length)
+        //        .Select(s => s[random.Next(s.Length)]).ToArray());
+        //}
 
         public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir)
         {
