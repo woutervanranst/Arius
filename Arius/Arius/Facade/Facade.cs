@@ -176,9 +176,9 @@ namespace Arius.Facade
             return await repository.GetVersions();
         }
 
-        public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries(DateTime version, bool pointInTime)
+        public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries(DateTime version, bool includeDeleted)
         {
-            foreach (var item in await repository.GetEntries(version, pointInTime))
+            foreach (var item in await repository.GetEntries(version, includeDeleted))
             {
                 yield return new PointerFileEntryAriusEntry(item);
             }
