@@ -89,9 +89,7 @@ namespace Arius.Repositories
 
                     var pfes = await _pointerFileEntries;
 
-                    //TODO quid when new repository and versino is null here ---> doesn't happen. this method is polled after the initial archive is created
-
-                    //TODO KArl an exception here is swallowed
+                    //TODO an exception here is swallowed
 
                     lock (entriesPerVersionLock)
                     {
