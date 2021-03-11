@@ -89,9 +89,9 @@ namespace Arius.Repositories
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 
-        internal async Task<IEnumerable<DateTime>> GetVersions()
+        internal async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            return await _pointerFileEntryRepository.GetVersions();
+            return await _pointerFileEntryRepository.GetVersionsAsync();
         }
 
         internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
@@ -109,9 +109,9 @@ namespace Arius.Repositories
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
         }
 
-        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe, DateTime version, bool isDeleted = false)
+        public async Task CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)
         {
-            await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, version, isDeleted);
+            await _pointerFileEntryRepository.CreateDeletedPointerFileEntryAsync(pfe, version);
         }
     }
 }

@@ -138,7 +138,7 @@ namespace Arius.UI.ViewModels
         {
             LoadingRemote = true;
 
-            Versions = new((await azureRepositoryFacade.GetVersions()).Reverse());
+            Versions = new((await azureRepositoryFacade.GetVersionsAsync()).Select(v => v.ToLocalTime()).Reverse());
             OnPropertyChanged(nameof(Versions));
 
             SelectedVersion = Versions.First();
@@ -204,7 +204,7 @@ namespace Arius.UI.ViewModels
 
                 var root = GetRoot();
 
-                await foreach (var item in azureRepositoryFacade.GetRemoteEntries(SelectedVersion, IncludeDeletedItems))
+                await foreach (var item in azureRepositoryFacade.GetRemoteEntries(SelectedVersion.ToUniversalTime(), IncludeDeletedItems))
                     root.Add(item);
 
                 //OnPropertyChanged(nameof(Folders));

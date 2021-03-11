@@ -920,7 +920,7 @@ namespace Arius.CommandLine
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
                         {
-                            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
+                            await _azureRepository.CreateDeletedPointerFileEntryAsync(pfe, _version);
                         }
                     }
                 }

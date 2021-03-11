@@ -26,118 +26,74 @@ namespace Arius.Repositories
             {
                 public CachedEncryptedPointerFileEntryRepository(ICommandExecutorOptions options, ILogger<CachedEncryptedPointerFileEntryRepository> logger)
                 {
-                    _logger = logger;
+                    this.logger = logger;
 
                     var o = (IAzureRepositoryOptions) options;
 
-                    _passphrase = o.Passphrase;
+                    passphrase = o.Passphrase;
 
                     var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
 
                     var csa = CloudStorageAccount.Parse(connectionString);
                     var tc = csa.CreateCloudTableClient();
-                    _pointerEntryTable = tc.GetTableReference($"{o.Container}{TableNameSuffix}");
+                    pointerFileEntryTable = tc.GetTableReference($"{o.Container}{TableNameSuffix}");
 
-                    var r = _pointerEntryTable.CreateIfNotExists();
+                    var r = pointerFileEntryTable.CreateIfNotExists();
                     if (r)
-                        _logger.LogInformation($"Created tables for {o.Container}... ");
+                        this.logger.LogInformation($"Created tables for {o.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
-                    _pointerFileEntries = new(() =>
+                    pointerFileEntries = new(() =>
                     {
                         // get all rows - we're getting them anyway as GroupBy is not natively supported
-                        var r = _pointerEntryTable
+                        var r = pointerFileEntryTable
                             .CreateQuery<PointerFileEntryDto>()
                             .AsEnumerable()
-                            .Select(dto => CreatePointerFileEntry(dto))
+                            .Select(dto => ConvertFromDto(dto))
+                            .ToList();
+
+                        return r;
+                    });
+
+                    versions = new(async () =>
+                    {
+                        var pfes = await pointerFileEntries;
+                        
+                        var r = pfes
+                            .Select(a => a.Version)
+                            .Distinct()
+                            .OrderBy(a => a)
                             .ToList();
 
                         return r;
                     });
                 }
 
-                private readonly ILogger<CachedEncryptedPointerFileEntryRepository> _logger;
-                private readonly CloudTable _pointerEntryTable;
-                private readonly AsyncLazy<List<PointerFileEntry>> _pointerFileEntries;
-                private readonly string _passphrase;
+                private readonly ILogger<CachedEncryptedPointerFileEntryRepository> logger;
+                private readonly CloudTable pointerFileEntryTable;
+                private readonly AsyncLazy<List<PointerFileEntry>> pointerFileEntries;
+                private readonly AsyncLazy<List<DateTime>> versions;
+                private readonly string passphrase;
+                private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
 
 
-                /// <summary>
-                /// Get the entries at the specified version. 
-                /// If no version is specified, the current/latest version is used.
-                /// </summary>
-                /// <param name="version"></param>
-                /// <returns></returns>
-                public async Task<IReadOnlyList<PointerFileEntry>> GetEntries(DateTime pointInTime)
+                public async Task<IReadOnlyList<PointerFileEntry>> GetEntriesAsync()
                 {
-                    var versions = (await GetVersions()).Reverse();
-                    DateTime? version = null;
-                    foreach (var v in versions)
-                    {
-                        if (pointInTime >= v)
-                        {
-                            version = v;
-                            break;
-                        }
-                    }
-
-                    if (version is null)
-                        throw new ArgumentException($"No backup version found for pointInTime {pointInTime}");
-
-                    var pfes = await _pointerFileEntries;
-
-                    //TODO an exception here is swallowed
-
-                    lock (entriesPerVersionLock)
-                    {
-                        if (!entriesPerVersion.ContainsKey(version.Value))
-                        {
-                            var entriesForThisVersion = pfes
-                                .GroupBy(pfe => pfe.RelativeName)
-                                .Select(g => g.Where(pfe => pfe.Version <= version.Value)).Where(c => c.Any())
-                                .Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
-
-                            entriesPerVersion.Add(
-                                version.Value,
-                                entriesForThisVersion);
-                        }
-                    }
-
-                    return entriesPerVersion[version.Value];
+                    return await pointerFileEntries;
                 }
-                private readonly Dictionary<DateTime, List<PointerFileEntry>> entriesPerVersion = new();
-                private readonly object entriesPerVersionLock = new object();
 
                 /// <summary>
-                /// Returns an chronologically ordered list of versions (in Local times) for this repository
+                /// Get the versions in universal time
                 /// </summary>
                 /// <returns></returns>
-                public async Task<IEnumerable<DateTime>> GetVersions()
+                public async Task<IReadOnlyList<DateTime>> GetVersionsAsync()
                 {
-                    var pfes = await _pointerFileEntries;
-
-                    lock (versionsLock)
-                    {
-                        if (versions is null) //TODO cannot lock on (versions = null) so find another mechanism?
-                        {
-                            versions = pfes
-                                .Select(a => a.Version.ToLocalTime())
-                                .Distinct()
-                                .OrderBy(a => a)
-                                .ToList();
-                        }
-                    }
-
-                    return versions;
+                    return await versions;
                 }
-                private IEnumerable<DateTime> versions = null;
-                private readonly object versionsLock = new object();
 
-
-                private static readonly PointerFileEntryEqualityComparer _pfeec = new();
 
                 /// <summary>
-                /// 
+                /// Insert the PointerFileEntry into the table storage, if a similar entry (according to the PointerFileEntryEqualityComparer) does not yet exist
                 /// </summary>
                 /// <param name="pfe"></param>
                 /// <returns>Returns true if an entry was actually added / the collection was modified</returns>
@@ -146,19 +102,19 @@ namespace Arius.Repositories
                     try
                     {
                         //Upsert into Cache
-                        var pfes = await _pointerFileEntries;
+                        var pfes = await pointerFileEntries;
 
                         bool toAdd = false;
 
                         lock (pfes)
                         {
-                            if (!pfes.Contains(pfe, _pfeec))
+                            if (!pfes.Contains(pfe, equalityComparer))
                             {
                                 //Remove the old value, if present
-                                var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName.Equals(pfe2.RelativeName));
-                                pfes.Remove(pfeToRemove);
+                                //var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName.Equals(pfe2.RelativeName));
+                                //pfes.Remove(pfeToRemove);
 
-                                //Add the new value
+                                //Add the new value to the cache
                                 pfes.Add(pfe);
                                 toAdd = true;
                             }
@@ -167,25 +123,46 @@ namespace Arius.Repositories
                         if (toAdd)
                         {
                             //Insert into Table Storage
-                            var dto = CreatePointerFileEntryDto(pfe);
+                            var dto = ConvertToDto(pfe);
                             var op = TableOperation.Insert(dto);
-                            await _pointerEntryTable.ExecuteAsync(op);
+                            await pointerFileEntryTable.ExecuteAsync(op);
+
+                            //Insert into the versions
+                            var vs = await versions;
+                            if (!vs.Contains(pfe.Version))
+                                vs.Add(pfe.Version); //TODO: aan het einde?
                         }
 
                         return toAdd;
                     }
-                    catch (StorageException)
+                    catch (StorageException e)
                     {
-                        //Console.WriteLine(e.Message);
-                        //Console.ReadLine();
+                        logger.LogError(e, "Error", pfe); //TODO
                         throw;
                     }
                 }
 
-                private PointerFileEntryDto CreatePointerFileEntryDto(PointerFileEntry pfe)
+
+                private PointerFileEntry ConvertFromDto(PointerFileEntryDto dto)
+                {
+                    var rn = StringCipher.Decrypt(dto.EncryptedRelativeName, passphrase);
+                    rn = ToPlatformSpecificPath(rn);
+
+                    return new()
+                    {
+                        ManifestHash = new HashValue() { Value = dto.PartitionKey },
+                        RelativeName = rn,
+                        Version = dto.Version,
+                        IsDeleted = dto.IsDeleted,
+                        CreationTimeUtc = dto.CreationTimeUtc,
+                        LastWriteTimeUtc = dto.LastWriteTimeUtc
+                    };
+                }
+
+                private PointerFileEntryDto ConvertToDto(PointerFileEntry pfe)
                 {
                     var rn = ToPlatformNeutralPath(pfe.RelativeName);
-                    rn = StringCipher.Encrypt(rn, _passphrase);
+                    rn = StringCipher.Encrypt(rn, passphrase);
 
                     return new PointerFileEntryDto()
                     {
@@ -206,138 +183,19 @@ namespace Arius.Repositories
                         .ToLower(CultureInfo.InvariantCulture)
                         .Replace(Path.DirectorySeparatorChar, PlatformNeutralDirectorySeparatorChar);
 
-                    var bytes = _murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName));
+                    var bytes = murmurHash.ComputeHash(Encoding.UTF8.GetBytes(neutralRelativeName));
                     var hex = Convert.ToHexString(bytes).ToLower();
 
                     return hex;
                 }
-                private static readonly HashAlgorithm _murmurHash = MurmurHash.Create32();
-
+                private static readonly HashAlgorithm murmurHash = MurmurHash.Create32();
 
                 
-
-                private List<PointerFileEntry> GetStateOn(DateTime pointInTime)
-                {
-                    return null;
-
-
-                    /* //TODO KARL is this optimal?
-                     * https://docs.microsoft.com/en-us/azure/cosmos-db/table-storage-design-guide#solution-6
-                     *  Table storage is lexicographically ordered ?
-                     */
-
-                    //TODO karl multithreading debugging
-
-                    //var zz = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
-                    //    .Select(dto => CreatePointerFileEntry(dto)).ToArray();
-
-                    //var zzzz = zz.Where(pfe => pfe.IsDeleted).ToArray();
-
-                    //var zzz = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
-                    //    .Select(dto => CreatePointerFileEntry(dto))
-                    //    .GroupBy(pfe => pfe.RelativeName)
-                    //    .Where(z => z.Count() > 1)
-                    //    .ToArray();
-
-                    //var zzzz = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>().AsEnumerable()
-                    //    .Select(dto => CreatePointerFileEntry(dto))
-                    //    .GroupBy(pfe => pfe.ManifestHash)
-                    //    .Where(z => z.Count() > 1)
-                    //    .ToArray();
-
-
-
-                    //var r = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>()
-                    //    .AsEnumerable()
-                    //    .GroupBy(pfe => pfe.RelativeNameHash)   //more or less equiv as GroupBy(RelativeName) but the hash is tolower and platform neutral
-                    //    .Select(g => g
-                    //        .Where(dto => dto.Version <= pointInTime)
-                    //        .OrderBy(dto => dto.Version).Last())
-                    //    .Select(dto => CreatePointerFileEntry(dto));
-
-
-
-
-
-
-
-                    //var a0 = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>()
-                    //    .AsEnumerable().ToList();
-
-                    //var a = a0
-                    //    .GroupBy(pfe => pfe.RelativeNameHash).ToList();
-
-                    //var b = a.Select(g => g
-                    //        .Where(dto => dto.Version <= pointInTime)
-                    //        .OrderBy(dto => dto.Version).Last());
-
-                    //var c = b.Select(dto => CreatePointerFileEntry(dto));
-
-
-
-
-
-
-                    ////////// get all rows - we're getting them anyway as GroupBy is not natively supported
-                    ////////var r0 = _pointerEntryTable
-                    ////////    .CreateQuery<PointerFileEntryDto>()
-                    ////////    .AsEnumerable().ToArray();
-
-                    ////////var r = r0
-                    ////////    .Select(dto => CreatePointerFileEntry(dto))
-                    ////////    .GroupBy(pfe => pfe.RelativeName)
-                    ////////    .Select(g => g
-                    ////////        .Where(pfe => pfe.Version <= pointInTime)
-                    ////////        .OrderBy(pfe => pfe.Version).Last())
-                    ////////    .ToList();
-
-                    //var xxx = zz.Except(r).ToList();
-
-                    
-
-
-                    //var r = _pointerEntryTable
-                    //    .CreateQuery<PointerFileEntryDto>()
-                    //    .AsEnumerable()
-                    //    .GroupBy(pfe => pfe.RelativeNameHash)   //more or less equiv as GroupBy(RelativeName) but the hash is tolower and platform neutral
-                    //    .Select(g => g
-                    //        .Where(dto => dto.Version <= pointInTime)
-                    //        .OrderBy(dto => dto.Version).Last())
-                    //    .Select(dto => CreatePointerFileEntry(dto))
-                    //    .ToDictionary(pfe => pfe.ManifestHash, pfe => new Dictionary<string, PointerFileEntry>()
-                    //    {
-                    //        {  pfe.RelativeName, pfe }
-                    //    });
-
-                    //return r;
-                }
-
-
-
-                private PointerFileEntry CreatePointerFileEntry(PointerFileEntryDto dto)
-                {
-                    var rn = StringCipher.Decrypt(dto.EncryptedRelativeName, _passphrase);
-                    rn = ToPlatformSpecificPath(rn);
-
-                    return new()
-                    {
-                        ManifestHash = new HashValue() {Value = dto.PartitionKey},
-                        RelativeName = rn,
-                        Version = dto.Version,
-                        IsDeleted = dto.IsDeleted,
-                        CreationTimeUtc = dto.CreationTimeUtc,
-                        LastWriteTimeUtc = dto.LastWriteTimeUtc
-                    };
-                }
-
                 private const char PlatformNeutralDirectorySeparatorChar = '/';
                 private static string ToPlatformNeutralPath(string platformSpecificPath) => platformSpecificPath.Replace(Path.DirectorySeparatorChar, PlatformNeutralDirectorySeparatorChar);
                 private static string ToPlatformSpecificPath(string platformNeutralPath) => platformNeutralPath.Replace(PlatformNeutralDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                
+                
                 
                 private class PointerFileEntryDto : TableEntity
                 {
@@ -348,8 +206,8 @@ namespace Arius.Repositories
                     public DateTime? LastWriteTimeUtc { get; init; }
 
 
-                    [IgnoreProperty]
-                    internal string RelativeNameHash => RowKey.Substring(0, 8);
+                    //[IgnoreProperty]
+                    //internal string RelativeNameHash => RowKey.Substring(0, 8);
                 }
             }
         }

@@ -171,11 +171,19 @@ namespace Arius.Facade
             public string Passphrase { get; init; }
         }
 
-        public async Task<IEnumerable<DateTime>> GetVersions()
+
+        /// <summary>
+        /// Get the versions (in universal time)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            return await repository.GetVersions();
+            return await repository.GetVersionsAsync();
         }
 
+        /// <summary>
+        /// Get the entries at the specified time (version IN UNIVERSAL TIME)
+        /// </summary>
         public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries(DateTime version, bool includeDeleted)
         {
             foreach (var item in await repository.GetEntries(version, includeDeleted))
