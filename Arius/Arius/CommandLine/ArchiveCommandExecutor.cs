@@ -279,12 +279,6 @@ namespace Arius.CommandLine
                 () => _logger.LogDebug("Passing A140 - Completion"),
                 () => _logger.LogDebug("Passing A140 - Faulted"),
                 createManifestBlock, createIfNotExistManifestBlock);
-            //Task.WhenAll(createManifestBlock.Completion, createIfNotExistManifestBlock.Completion)
-            //    .ContinueWith(_ =>
-            //    {
-            //        _logger.LogDebug("Passing A140");
-            //        reconcileManifestBlock.Complete();
-            //    });
 
 
             // A150
@@ -304,12 +298,7 @@ namespace Arius.CommandLine
                 () => _logger.LogDebug("Passing A170 - Completion"),
                 () => _logger.LogDebug("Passing A170 - Faulted"),
                 createPointersBlock, addHashBlock);
-            //Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
-            //    .ContinueWith(_ =>
-            //    {
-            //        _logger.LogDebug("Passing A170");
-            //        createPointerFileEntryIfNotExistsBlock.Complete();
-            //    });
+
 
             //Fill the flow
             indexDirectoryBlock.Post(_root);
