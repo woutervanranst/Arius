@@ -36,14 +36,19 @@ namespace Arius.Repositories
             return _chunkRepository.GetAllChunkBlobItems();
         }
 
-        public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
-        {
-            return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
-        }
+        //public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
+        //{
+        //    return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
+        //}
 
-        public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+        //public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+        //{
+        //    return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
+        //}
+
+        public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash, bool requireHydrated)
         {
-            return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
+            return _chunkRepository.GetChunkBlobItemByHash(chunkHash, requireHydrated);
         }
 
         public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)

@@ -202,7 +202,7 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
-                    if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && 
+                    if (_repo.GetChunkBlobItemByHash(chunkHash, true) is var hrecbi && 
                         hrecbi is not null && 
                         hrecbi.Downloadable)
                     {
@@ -214,7 +214,7 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk not yet hydrated
-                    if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
+                    if (_repo.GetChunkBlobItemByHash(chunkHash, false) is var arecbi)
                     {
                         // R90
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in Archive tier. Starting hydration or getting hydration status...");

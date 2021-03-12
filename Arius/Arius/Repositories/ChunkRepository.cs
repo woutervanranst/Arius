@@ -47,41 +47,74 @@ namespace Arius.Repositories
                     .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
             }
 
+
             /// <summary>
-            /// Get a hydrated RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
-            /// Returns null if not found.
+            /// Get the RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
+            /// if requireHydrated is true and the chunk does not exist in cold storage, returns null
             /// </summary>
-            public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
+            public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash, bool requireHydrated)
             {
-                // Return, in order of preference,
-                // 1. in cold storage
-                if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi1 
-                    && recbi1 is not null 
-                    && recbi1.Downloadable)
+                var recbi1 = GetByName(EncryptedChunkDirectoryName, chunkHash.Value);
+
+                if (recbi1 is null)
+                    throw new InvalidOperationException($"No Chunk for hash {chunkHash.Value}");
+
+                // if we don't need a hydrated chunk, return this one
+                if (!requireHydrated)
                     return recbi1;
 
-                // 2. rehydrated item
-                if (GetByName(RehydrationDirectoryName, chunkHash.Value) is var recbi2 
-                    && recbi2 is not null
-                    && recbi2.Downloadable)
+                // if we require a hydrated chunk, and this one is hydrated, return this one
+                if (requireHydrated && recbi1.Downloadable)
+                    return recbi1;
+
+
+                var recbi2 = GetByName(RehydrationDirectoryName, chunkHash.Value);
+
+                if (recbi2 is null || !recbi2.Downloadable)
+                {
+                    // no hydrated chunk exists
+                    _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
+                    return null;
+                }
+                else
                     return recbi2;
-
-                _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
-
-                return null;
-
-                //throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
             }
 
-            public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
-            {
-                if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi
-                    && recbi is not null
-                    && recbi.AccessTier == AccessTier.Archive)
-                    return recbi;
+            ///// <summary>
+            ///// Get a hydrated RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
+            ///// Returns null if not found.
+            ///// </summary>
+            //public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
+            //{
+            //    // Return, in order of preference,
+            //    // 1. in cold storage
+            //    if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi1 
+            //        && recbi1 is not null 
+            //        && recbi1.Downloadable)
+            //        return recbi1;
 
-                throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} in Archive tier not found for hash {chunkHash.Value}");
-            }
+            //    // 2. rehydrated item
+            //    if (GetByName(RehydrationDirectoryName, chunkHash.Value) is var recbi2 
+            //        && recbi2 is not null
+            //        && recbi2.Downloadable)
+            //        return recbi2;
+
+            //    _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
+
+            //    return null;
+
+            //    //throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
+            //}
+
+            //public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+            //{
+            //    if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi
+            //        && recbi is not null
+            //        && recbi.AccessTier == AccessTier.Archive)
+            //        return recbi;
+
+            //    throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} in Archive tier not found for hash {chunkHash.Value}");
+            //}
 
             /// <summary>
             /// Get a RemoteEncryptedChunkBlobItem by Name. Return null if it doesn't exist.
