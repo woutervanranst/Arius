@@ -29,11 +29,11 @@ namespace Arius.Extensions
 
         protected override void AppendMessage(StringBuilder sb, string message)
         {
-            sb.Append(" => ");
-
             sb.Append(" [ThreadId ");
             sb.Append(System.Threading.Thread.CurrentThread.ManagedThreadId);
             sb.Append("] ");
+
+            sb.Append(" => ");
 
             var length = sb.Length;
             sb.AppendLine(message);
