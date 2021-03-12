@@ -484,7 +484,7 @@ namespace Arius.CommandLine
                                     _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[bf].Add(chunk.Hash); //Add this chunk to the list of chunks that need to be uploaded before the manifest can be created
 
                                 return (ChunkFile: chunk, Uploaded: uploaded);
-                            });
+                            }).ToArray();
 
                             return r;
                         }
