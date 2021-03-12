@@ -67,7 +67,7 @@ namespace Arius.Repositories
                 if (await _repo.CreatePointerFileEntryIfNotExistsAsync(pfe))
                 {
                     //We inserted the entry
-                    UpdateEntriesAtVersion(pfe);
+                    //UpdateEntriesAtVersion(pfe);
 
                     if (pfe.IsDeleted)
                         _logger.LogInformation($"Deleted {pfe.RelativeName}");
@@ -128,36 +128,43 @@ namespace Arius.Repositories
 
                 //TODO an exception here is swallowed
 
-                lock (entriesPerVersionLock)
-                {
-                    if (!entriesPerVersion.ContainsKey(version))
-                    {
-                        var entriesForThisVersion = pfes
-                            .GroupBy(pfe => pfe.RelativeName)
-                            .Select(g => g.Where(pfe => pfe.Version <= version)).Where(c => c.Any())
-                            .Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
+                var r = pfes
+                    .GroupBy(pfe => pfe.RelativeName)
+                    .Select(g => g.Where(pfe => pfe.Version <= version)).Where(c => c.Any())
+                    .Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
 
-                        entriesPerVersion.Add(
-                            version,
-                            entriesForThisVersion);
-                    }
-                }
+                return r;
 
-                return entriesPerVersion[version];
+                //lock (entriesPerVersionLock)
+                //{
+                //    if (!entriesPerVersion.ContainsKey(version))
+                //    {
+                //        var entriesForThisVersion = pfes
+                //            .GroupBy(pfe => pfe.RelativeName)
+                //            .Select(g => g.Where(pfe => pfe.Version <= version)).Where(c => c.Any())
+                //            .Select(z => z.OrderBy(pfe => pfe.Version).Last()).ToList();
+
+                //        entriesPerVersion.Add(
+                //            version,
+                //            entriesForThisVersion);
+                //    }
+                //}
+
+                //return entriesPerVersion[version];
             }
-            private readonly Dictionary<DateTime, List<PointerFileEntry>> entriesPerVersion = new();
-            private readonly object entriesPerVersionLock = new object();
+            //private readonly Dictionary<DateTime, List<PointerFileEntry>> entriesPerVersion = new();
+            //private readonly object entriesPerVersionLock = new object();
 
-            private void UpdateEntriesAtVersion(PointerFileEntry pfe)
-            {
-                lock (entriesPerVersionLock)
-                {
-                    if (entriesPerVersion.ContainsKey(pfe.Version))
-                        entriesPerVersion[pfe.Version].Add(pfe);
-                    else
-                        entriesPerVersion.Add(pfe.Version, new() { pfe });
-                }
-            }
+            //private void UpdateEntriesAtVersion(PointerFileEntry pfe)
+            //{
+            //    lock (entriesPerVersionLock)
+            //    {
+            //        if (entriesPerVersion.ContainsKey(pfe.Version))
+            //            entriesPerVersion[pfe.Version].Add(pfe);
+            //        else
+            //            entriesPerVersion.Add(pfe.Version, new() { pfe });
+            //    }
+            //}
 
             
 
