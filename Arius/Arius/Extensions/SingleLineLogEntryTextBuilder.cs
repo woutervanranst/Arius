@@ -31,6 +31,10 @@ namespace Arius.Extensions
         {
             sb.Append(" => ");
 
+            sb.Append(" [ThreadId ");
+            sb.Append(System.Threading.Thread.CurrentThread.ManagedThreadId);
+            sb.Append("] ");
+
             var length = sb.Length;
             sb.AppendLine(message);
             sb.Replace(Environment.NewLine, " ", length, message.Length);
