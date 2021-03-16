@@ -279,47 +279,57 @@ namespace Arius.Tests
             Assert.AreEqual(false, movedPfe.IsDeleted);
         }
 
+        /// <summary>
+        /// Rename a BinaryFile without renaming the pointer.
+        /// Expectation: this will become essentially a "duplicate"
+        /// 
+        /// 10/ One manifest and one binary should still be there
+        /// 20/ No additional ManifestHash is created (ie just 1)
+        /// 30*/ One additional PointerFileEntry (ie for the moved file)
+        /// 40*/ Both the Original file and the Moved file are not marked as Deleted
+        /// </summary>
+        /// <returns></returns>
         [Test, Order(50)]
-        public async Task RenameLocalContentFileWithoutPointer()
+        public async Task RenameBinaryFileFileWithoutPointer()
         {
-            //Modify temp folder
-            //Rename a file
-            var localContentFileFileInfo = TestSetup.rootDirectoryInfo.GetBinaryFiles().First();
-            var pointerFileInfo = localContentFileFileInfo.GetPointerFileInfo(); // new FileInfo(originalFileFullName + ".pointer.arius");
-            var originalPointerFileInfoFullName = pointerFileInfo.FullName;
-
-            TestSetup.MoveFile(localContentFileFileInfo, $"Moving of {localContentFileFileInfo.Name}");
+            //SET UP
+            var bfi = TestSetup.rootDirectoryInfo.GetBinaryFiles().First();
+            var pfi = bfi.GetPointerFileInfo();
+            var pfi_FullName_Original = pfi.FullName;
+            TestSetup.MoveFile(bfi, $"Moving of {bfi.Name}");
             //TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); <-- Dit doen we hier NIET vs de vorige
 
 
-            //Execute Archive
+            //EXECUTE
             var services = await ArchiveCommand(false, AccessTier.Cool);
 
 
-            //Check outcome
+            //ASSERT OUTCOME
             var repo = services.GetRequiredService<AzureRepository>();
 
-            //One manifest and one binary should still be there
+            //10
             Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
 
-            //Get the manifest entries
-            //    var pf = GetPointerFile(services, pointerFileInfo);
-            //    var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
-            var lastExisting = (await repo.GetCurrentEntries(false)).ToList();
-            var lastWithDeleted = (await repo.GetCurrentEntries(true)).ToList();
+            //20
+            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
-            Assert.AreEqual(3 + 1, lastExisting.Count);
-            Assert.AreEqual(4 + 1, lastWithDeleted.Count);
-            //    Assert.AreEqual(5 + 1, all.Count());
+            var pfes_OnlyExisting = (await repo.GetCurrentEntries(includeDeleted: false)).ToList();
+            var pfes_WithDeleted = (await repo.GetCurrentEntries(includeDeleted: true)).ToList();
 
-            var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
-            var relativeNameOfMovedPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pointerFileInfo.FullName);
+            //30
+            Assert.AreEqual(3 + 1, pfes_OnlyExisting.Count);
+            Assert.AreEqual(4 + 1, pfes_WithDeleted.Count);
 
-            var originalEntry = lastWithDeleted.Single(lcf => lcf.RelativeName == relativeNameOfOriginalPointerFile);
-            var movedEntry = lastExisting.Single(lcf => lcf.RelativeName == relativeNameOfMovedPointerFile);
+            //Get the PointerFileNetries of the original and moved file
+            var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pfi_FullName_Original);
+            var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, pfi.FullName);
 
-            Assert.AreEqual(false, originalEntry.IsDeleted);
-            Assert.AreEqual(false, movedEntry.IsDeleted);
+            var pfe_Original = pfes_WithDeleted.Single(lcf => lcf.RelativeName == pfi_RelativeName_Original);
+            var pfe_Moved = pfes_OnlyExisting.Single(lcf => lcf.RelativeName == pfi_RelativeName_Moved);
+
+            //40
+            Assert.AreEqual(false, pfe_Original.IsDeleted);
+            Assert.AreEqual(false, pfe_Moved.IsDeleted);
         }
 
         [Test, Order(55)]
