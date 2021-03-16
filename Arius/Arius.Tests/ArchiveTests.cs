@@ -372,7 +372,7 @@ namespace Arius.Tests
             //SET UP
             var pfi = TestSetup.rootDirectoryInfo.GetPointerFiles().First();
             var pfi_FullName_Original = pfi.FullName;
-            TestSetup.MoveFile(pfi, $"Moving of {pfi.Name}");
+            TestSetup.MoveFile(pfi, $"Moving2 of {pfi.Name}");
 
 
             //EXECUTE
