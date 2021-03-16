@@ -81,15 +81,6 @@ namespace Arius.CommandLine
             });
             archiveCommand.AddOption(tierOption);
 
-            //var minSizeOption = new Option<int>("--min-size",
-            //    getDefaultValue: () => 0,
-            //    description: "Minimum size of files to archive in MB");
-            //archiveCommand.AddOption(minSizeOption);
-
-            //var simulateOption = new Option<bool>("--simulate",
-            //    "List the differences between the local and the remote, without making any changes to remote");
-            //archiveCommand.AddOption(simulateOption);
-
             var dedupOption = new Option<bool>("--dedup",
                 getDefaultValue: () => false,
                 "Deduplicate the chunks in the binary files"); //TODO better explanation
