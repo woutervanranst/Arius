@@ -308,8 +308,8 @@ namespace Arius.Tests
             var lastExisting = (await repo.GetCurrentEntries(false)).ToList();
             var lastWithDeleted = (await repo.GetCurrentEntries(true)).ToList();
 
-            Assert.AreEqual(3 + 1, lastExisting.Count());
-            Assert.AreEqual(4 + 1, lastWithDeleted.Count());
+            Assert.AreEqual(3 + 1, lastExisting.Count);
+            Assert.AreEqual(4 + 1, lastWithDeleted.Count);
             //    Assert.AreEqual(5 + 1, all.Count());
 
             var relativeNameOfOriginalPointerFile = Path.GetRelativePath(TestSetup.rootDirectoryInfo.FullName, originalPointerFileInfoFullName);
@@ -323,15 +323,15 @@ namespace Arius.Tests
         }
 
         [Test, Order(55)]
-        public void TestRemoveLocal()
+        public async Task TestRemoveLocal()
         {
             //TODO DOesn't work on linux somehow
 
-            //Assert.IsTrue(TestSetup.rootDirectoryInfo.GetBinaryFiles().Any());
+            Assert.IsTrue(TestSetup.rootDirectoryInfo.GetBinaryFiles().Any());
 
-            //ArchiveCommand(false, AccessTier.Cool, removeLocal: true);
+            await ArchiveCommand(false, AccessTier.Cool, removeLocal: true);
 
-            //Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetBinaryFiles().Any());
+            Assert.IsTrue(!TestSetup.rootDirectoryInfo.GetBinaryFiles().Any());
         }
 
         [Test, Order(60)]
