@@ -28,14 +28,14 @@ namespace Arius
 
             var rootCommand = new RootCommand();
             rootCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
-
             rootCommand.AddCommand(archiveCommand.GetCommand(parsedCommandProvider));
             rootCommand.AddCommand(restoreCommand.GetCommand(parsedCommandProvider));
 
-            var r = rootCommand.InvokeAsync(args).Result;
+            //var r = rootCommand.InvokeAsync(args).Result;
+            var r = rootCommand.Invoke(args);
 
             if (r != 0)
-                return r; //eg when calling "arius" or "arius archive" without actual parameters
+                return r; //eg when calling "arius" or "arius archive" without actual parameters -- see the ACTUAL output in the console or in Output.Tests
 
             var configurationRoot = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -48,7 +48,6 @@ namespace Arius
 
             var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
-            //TODO ergens zetten in de Main() ofzo
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
                 logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
