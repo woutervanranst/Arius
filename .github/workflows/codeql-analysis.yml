@@ -24,6 +24,10 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./Arius
 
     strategy:
       fail-fast: false
