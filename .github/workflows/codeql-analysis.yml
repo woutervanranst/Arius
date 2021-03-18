@@ -62,7 +62,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
-      dotnet build Arius
+        dotnet build Arius
     #   make bootstrap
     #   make release
 
