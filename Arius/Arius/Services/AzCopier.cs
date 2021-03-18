@@ -35,7 +35,7 @@ namespace Arius.Services
         public AzCopier(ICommandExecutorOptions options,
             ILogger<AzCopier> logger)
         {
-            _options = (IAzCopyUploaderOptions)options;
+            var _options = (IAzCopyUploaderOptions)options;
             _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
@@ -74,7 +74,7 @@ namespace Arius.Services
         private readonly Task<string> _AzCopyPath;
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
-        private readonly IAzCopyUploaderOptions _options;
+        //private readonly IAzCopyUploaderOptions _options;
         private readonly ILogger<AzCopier> _logger;
 
 
