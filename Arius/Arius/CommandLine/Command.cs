@@ -6,7 +6,7 @@ namespace Arius.CommandLine
 {
     internal interface IAriusCommand
     {
-        Command GetCommand(ParsedCommandProvider e);
+        Command GetCommand(ParsedCommandProvider pcp);
     }
 
     internal interface ICommandExecutor

@@ -12,6 +12,7 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Enumerable = System.Linq.Enumerable;
 
 namespace Arius.CommandLine
@@ -95,7 +96,7 @@ namespace Arius.CommandLine
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IConfiguration config, RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<TempDirAppSettings> tempDirAppSettings, RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -103,14 +104,12 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _repo = repo;
 
-            //_root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.Value.DownloadTempDir(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly AzureRepository _repo;
-        //private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
@@ -265,18 +264,18 @@ namespace Arius.CommandLine
     
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options, IConfiguration config, AzureRepository repo)
+        public DownloadBlockProvider(RestoreOptions options, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirAppSettings> tempDirAppSettings, AzureRepository repo)
         {
-            _config = config;
-            _repo = repo;
+            this.azCopyAppSettings = azCopyAppSettings.Value;
+            this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(root);
+            downloadTempDir = tempDirAppSettings.Value.DownloadTempDir(root);
         }
 
-        private readonly IConfiguration _config;
-        private readonly AzureRepository _repo;
-        private readonly DirectoryInfo _downloadTempDir;
+        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly AzureRepository repo;
+        private readonly DirectoryInfo downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
         private readonly BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
@@ -339,8 +338,8 @@ namespace Arius.CommandLine
                             batch.Add(kvp.Value);
                             size += kvp.Value.Length;
 
-                            if (size >= _config.BatchSize ||
-                                batch.Count >= _config.BatchCount ||
+                            if (size >= azCopyAppSettings.BatchSize ||
+                                batch.Count >= azCopyAppSettings.BatchCount ||
                                 _downloadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                                 break;
                         }
@@ -372,7 +371,7 @@ namespace Arius.CommandLine
                 _downloadBlock = new(batch =>
                 {
                     //Download this batch
-                    var ecfs = _repo.Download(batch, _downloadTempDir, true);
+                    var ecfs = repo.Download(batch, downloadTempDir, true);
                     return ecfs;
 
                 }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
@@ -519,7 +518,7 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;

@@ -11,59 +11,41 @@ using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.CommandLine
 {
     internal class RestoreCommandExecutor : ICommandExecutor
     {
-        public RestoreCommandExecutor(ICommandExecutorOptions options,
-                ILogger<RestoreCommandExecutor> logger,
-                ILoggerFactory loggerFactory,
-
-                IConfiguration config,
-                AzureRepository azureRepository,
-
-                PointerService ps,
-                IHashValueProvider h,
-                /*IChunker c, */Chunker chunker, DedupChunker dedupChunker,
-                IEncrypter e)
+        public RestoreCommandExecutor(RestoreOptions options,
+            ILogger<RestoreCommandExecutor> logger,
+            IServiceProvider serviceProvider)
         {
-            _options = (RestoreOptions)options;
-            _root = new DirectoryInfo(_options.Path);
+            _options = options;
             _logger = logger;
-            _loggerFactory = loggerFactory;
+            this.blocks = serviceProvider;
+        }
 
-            _config = config;
-            _azureRepository = azureRepository;
-
-            _ps = ps;
-            _hvp = h;
-            //_chunker = c;
-            _chunker = chunker;
-            _dedupChunker = dedupChunker;
-            _encrypter = e;
+        public static void AddProviders(IServiceCollection coll)
+        {
+            coll
+                .AddSingleton<SynchronizeBlockProvider>()
+                .AddSingleton<ProcessPointerChunksBlockProvider>()
+                .AddSingleton<HydrateBlockProvider>()
+                .AddSingleton<DownloadBlockProvider>()
+                .AddSingleton<DecryptBlockProvider>()
+                .AddSingleton<ReconcilePointersWithChunksBlockProvider>()
+                .AddSingleton<MergeBlockProvider>();
         }
 
         private readonly RestoreOptions _options;
         private readonly ILogger<RestoreCommandExecutor> _logger;
-        private readonly ILoggerFactory _loggerFactory;
+        private readonly IServiceProvider blocks;
 
-        private readonly IConfiguration _config;
-        private readonly AzureRepository _azureRepository;
-
-        private readonly DirectoryInfo _root;
-        
-        private readonly PointerService _ps;
-        private readonly IHashValueProvider _hvp;
-        //private readonly IChunker _chunker;
-        private readonly Chunker _chunker;
-        private readonly DedupChunker _dedupChunker;
-        private readonly IEncrypter _encrypter;
-
-
-        public Task<int> Execute()
+        public async Task<int> Execute()
         {
-            if (_root.Exists && _root.EnumerateFiles().Any())
+            var root = new DirectoryInfo(_options.Path);
+            if (root.Exists && root.EnumerateFiles().Any())
             {
                 // use !pf.LocalContentFileInfo.Exists 
                 _logger.LogWarning("The folder is not empty. There may be lingering files after the restore.");
@@ -72,31 +54,8 @@ namespace Arius.CommandLine
 
 
             // Define blocks & intermediate variables
-            var blocks = new ServiceCollection()
-                .AddSingleton<ILoggerFactory>(_loggerFactory)
-                .AddLogging()
-
-                .AddSingleton<RestoreOptions>(_options)
-
-                .AddSingleton<IConfiguration>(_config)
-                .AddSingleton<AzureRepository>(_azureRepository)
-                .AddSingleton<PointerService>(_ps)
-                .AddSingleton<IHashValueProvider>(_hvp)
-                .AddSingleton<Chunker>(_chunker)
-                .AddSingleton<DedupChunker>(_dedupChunker)
-                .AddSingleton<IEncrypter>(_encrypter)
-
-
-                .AddSingleton<SynchronizeBlockProvider>()
-                .AddSingleton<ProcessPointerChunksBlockProvider>()
-                .AddSingleton<HydrateBlockProvider>()
-                .AddSingleton<DownloadBlockProvider>()
-                .AddSingleton<DecryptBlockProvider>()
-                .AddSingleton<ReconcilePointersWithChunksBlockProvider>()
-                .AddSingleton<MergeBlockProvider>()
-
-                .BuildServiceProvider();
-
+            
+            
             //var dedupedItems = _azureRepository.GetAllManifestHashes()
             //    .SelectMany(manifestHash => _azureRepository
             //        .GetChunkHashesAsync(manifestHash).Result
@@ -211,7 +170,7 @@ namespace Arius.CommandLine
             if (_options.Synchronize)
             {
                 // R10
-                synchronizeBlock.Post(_root);
+                synchronizeBlock.Post(root);
                 synchronizeBlock.Complete();
             }
             else if (_options.Download)
@@ -229,7 +188,7 @@ namespace Arius.CommandLine
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
-            _config.DownloadTempDir(_root).DeleteEmptySubdirectories(true);
+            blocks.GetRequiredService<IOptions<TempDirAppSettings>>().Value.DownloadTempDir(root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {
@@ -242,10 +201,11 @@ namespace Arius.CommandLine
                 //TODO
 
                 //Delete hydration directory
-                _azureRepository.DeleteHydrateFolder();
+                blocks.GetRequiredService<AzureRepository>().DeleteHydrateFolder();
             }
 
-            return Task.FromResult(0);
+            return 0;
+            //return Task.FromResult(0);
 
 
 

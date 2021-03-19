@@ -12,18 +12,6 @@ namespace Arius.CommandLine
 {
     internal class ArchiveCommand : IAriusCommand
     {
-        /*
-        *  arius archive 
-            --accountname <accountname> 
-            --accountkey <accountkey> 
-            --passphrase <passphrase>
-            (--container <containername>) 
-            (--remove-local)
-            (--tier=(hot/cool/archive))
-            (--min-size=<minsizeinMB>)
-            (--simulate)
-        * */
-
         public Command GetCommand(ParsedCommandProvider pcp)
         {
             var archiveCommand = new Command("archive", "Archive to blob");
@@ -138,7 +126,6 @@ namespace Arius.CommandLine
         IChunkerOptions, 
         IEncrypterOptions, 
         IAzCopyUploaderOptions,
-        IConfigurationOptions,
         AzureRepository.IAzureRepositoryOptions
     {
         public string AccountName { get; init; }
@@ -148,8 +135,6 @@ namespace Arius.CommandLine
         public string Container { get; init; }
         public bool RemoveLocal { get; init; }
         public AccessTier Tier { get; init; } 
-        //public int MinSize { get; init; }
-        //public bool Simulate { get; init; }
         public bool Dedup { get; init; }
         public string Path { get; init; }
     }

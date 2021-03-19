@@ -15,13 +15,11 @@ namespace Arius.Services
         HashValue GetHashValue(string fullName);
     }
 
-
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
     {
         public string Passphrase { get; }
         public bool FastHash { get; }
     }
-
     
     internal class SHA256Hasher : IHashValueProvider
     {

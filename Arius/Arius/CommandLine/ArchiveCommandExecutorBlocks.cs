@@ -12,6 +12,7 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.CommandLine
 {
@@ -135,7 +136,7 @@ namespace Arius.CommandLine
         private readonly ILogger<AddHashBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
 
-        public AddHashBlockProvider(ILogger<AddHashBlockProvider> logger, IHashValueProvider hvp, ArchiveOptions options)
+        public AddHashBlockProvider(ILogger<AddHashBlockProvider> logger, IHashValueProvider hvp)
         {
             _logger = logger;
             _hvp = hvp;
@@ -171,7 +172,6 @@ namespace Arius.CommandLine
             new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = 15 });
         }
     }
-
 
 
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFile, IWithHashValue
@@ -303,6 +303,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     //internal abstract class ProcessManyIfNotExistBlocksProvider<TKey, TElement> where TKey : IFileWithHash 
     //                                                                            where TElement : IFileWithHash
     //{
@@ -412,6 +413,7 @@ namespace Arius.CommandLine
     //    }
     //}
 
+
     internal class ChunkBlockProvider
     {
         public ChunkBlockProvider(ILogger<ChunkBlockProvider> logger, IChunker chunker, AzureRepository azureRepository)
@@ -512,18 +514,19 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IConfiguration config, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<TempDirAppSettings> tempDirAppSettings, IEncrypter encrypter)
         {
-            _logger = logger;
-            _config = config;
-            _encrypter = encrypter;
+            this.logger = logger;
+            this.tempDirAppSettings = tempDirAppSettings.Value;
+            this.encrypter = encrypter;
         }
 
-        private readonly ILogger<EncryptChunksBlockProvider> _logger;
-        private readonly IConfiguration _config;
-        private readonly IEncrypter _encrypter;
+        private readonly ILogger<EncryptChunksBlockProvider> logger;
+        private readonly TempDirAppSettings tempDirAppSettings;
+        private readonly IEncrypter encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
         {
@@ -531,27 +534,28 @@ namespace Arius.CommandLine
                 {
                     try
                     {
-                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
+                        logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
 
-                        var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
+                        var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.UploadTempDirFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
 
-                        _encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
+                        encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
 
                         var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
-                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
+                        logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
 
                         return ecf;
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, "ERRORTODO", chunkFile);
+                        logger.LogError(e, "ERRORTODO", chunkFile);
                         throw;
                     }
                 },
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 8 });
         }
     }
+
 
     internal class EnqueueEncryptedChunksForUploadBlockProvider
     {
@@ -589,16 +593,17 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreateUploadBatchesTaskProvider
     {
-        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IConfiguration config)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IOptions<AzCopyAppSettings> azCopyAppSettings)
         {
-            _logger = logger;
-            _config = config;
+            this.logger = logger;
+            this.azCopyAppSettings = azCopyAppSettings.Value;
         }
 
-        private readonly ILogger<CreateUploadBatchesTaskProvider> _logger;
-        private readonly IConfiguration _config;
+        private readonly ILogger<CreateUploadBatchesTaskProvider> logger;
+        private readonly AzCopyAppSettings azCopyAppSettings;
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
@@ -638,17 +643,17 @@ namespace Arius.CommandLine
                         var batch = new List<EncryptedChunkFile>();
                         long size = 0;
 
-                        _logger.LogInformation("Starting new upload batch");
+                        logger.LogInformation("Starting new upload batch");
 
                         foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
                         {
                             batch.Add(ecf);
                             size += ecf.Length;
 
-                            _logger.LogInformation($"Added {ecf.Hash} to the batch. Batch Count: {batch.Count}, Batch Size: {size.GetBytesReadable()}, Remaining Queue Count: {_uploadQueue.Count}");
+                            logger.LogInformation($"Added {ecf.Hash} to the batch. Batch Count: {batch.Count}, Batch Size: {size.GetBytesReadable()}, Remaining Queue Count: {_uploadQueue.Count}");
 
-                            if (size >= _config.BatchSize ||
-                                batch.Count >= _config.BatchCount ||
+                            if (size >= azCopyAppSettings.BatchSize ||
+                                batch.Count >= azCopyAppSettings.BatchCount ||
                                 _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                             {
                                 break;
@@ -658,21 +663,22 @@ namespace Arius.CommandLine
                         //Emit a batch
                         if (batch.Any())
                         {
-                            _logger.LogInformation($"Emitting batch for upload. Batch Size: {size.GetBytesReadable()}, Batch Count: {batch.Count}, Batches Queue depth: {((dynamic)_uploadEncryptedChunksBlock).InputCount}");
+                            logger.LogInformation($"Emitting batch for upload. Batch Size: {size.GetBytesReadable()}, Batch Count: {batch.Count}, Batches Queue depth: {((dynamic)_uploadEncryptedChunksBlock).InputCount}");
                             _uploadEncryptedChunksBlock.Post(batch.ToArray());
                         }
                     }
 
-                    _logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count} (should be 0), IsCompleted:{_uploadQueue.IsCompleted}");
+                    logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count} (should be 0), IsCompleted:{_uploadQueue.IsCompleted}");
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "ERRORTODO", _enqueueEncryptedChunksForUploadBlock, _uploadQueue);
+                    logger.LogError(e, "ERRORTODO", _enqueueEncryptedChunksForUploadBlock, _uploadQueue);
                     throw;
                 }
             });
         }
     }
+
 
     internal class UploadEncryptedChunksBlockProvider
     {
@@ -777,6 +783,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreateManifestBlockProvider
     {
         public CreateManifestBlockProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository azureRepository)
@@ -806,6 +813,7 @@ namespace Arius.CommandLine
             });
         }
     }
+
 
     internal class CreatePointerBlockProvider
     {
@@ -846,42 +854,105 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
-        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository repo)
         {
-            _logger = logger;
-            _azureRepository = azureRepository;
+            this.logger = logger;
+            this.repo = repo;
         }
 
-        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> _logger;
-        private readonly AzureRepository _azureRepository;
+        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger;
+        private readonly AzureRepository repo;
 
 
         public CreatePointerFileEntryIfNotExistsBlockProvider AddVersion(DateTime version)
         {
-            _version = version;
+            this.version = version;
             return this;
         }
-        private DateTime _version;
+        private DateTime version;
 
 
-        public ActionBlock<PointerFile> GetBlock()
+        public TransformBlock<PointerFile, PointerFile> GetBlock()
         {
             return new(async pointerFile =>
             {
                 try
                 {
-                    await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, _version);
+                    await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+
+                    return pointerFile;
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "ERRORTODO");
+                    logger.LogError(e, "ERRORTODO");
                     throw;
                 }
             });
         }
     }
+
+
+    internal class ValidateBlockProvider
+    {
+        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, AzureRepository repo, PointerService pointerService)
+        {
+            this.logger = logger;
+            this.repo = repo;
+            this.pointerService = pointerService;
+        }
+
+        private readonly ILogger<ValidateBlockProvider> logger;
+        private readonly AzureRepository repo;
+        private readonly PointerService pointerService;
+
+        public ActionBlock<PointerFile> GetBlock()
+        {
+            return new ActionBlock<PointerFile>(async pointerFile =>
+            {
+                try
+                {
+                    logger.LogInformation($"Validating {pointerFile.FullName}...");
+
+                    // Validate the manifest
+                    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
+
+                    if (!chunkHashes.Any())
+                        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
+
+                    double length = 0;
+                    foreach (var chunkHash in chunkHashes)
+                    {
+                        var recbi = repo.GetChunkBlobItemByHash(chunkHash, false);
+                        length += recbi.Length;
+                    }
+
+                    var bfi = pointerFile.BinaryFileInfo;
+                    if (bfi.Exists)
+                    {
+                        if (bfi.Length / length < 0.9)
+                            throw new InvalidOperationException("something is wrong");
+                    }
+                    else
+                    {
+                        if (length == 0)
+                            throw new InvalidOperationException("something is wrong");
+                    }
+
+                    logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
+            }, new() { MaxDegreeOfParallelism = Environment.ProcessorCount /*DataflowBlockOptions.Unbounded*/ } );
+        }
+
+    }
+
 
     internal class RemoveDeletedPointersTaskProvider
     {
@@ -932,6 +1003,7 @@ namespace Arius.CommandLine
             });
         }
     }
+
 
     internal class ExportToJsonTaskProvider
     {
@@ -1040,6 +1112,7 @@ namespace Arius.CommandLine
             });
         }
     }
+
 
     internal class DeleteBinaryFilesTaskProvider
     {
