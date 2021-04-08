@@ -155,7 +155,7 @@ namespace Arius.Services
             }
             catch (Win32Exception e) // Win32Exception: 'The system cannot find the file specified.'
             {
-                Console.WriteLine(e);
+                System.Console.WriteLine(e);
                 throw;
             }
         }
