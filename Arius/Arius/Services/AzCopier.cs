@@ -132,7 +132,7 @@ namespace Arius.Services
 
             //_logger.LogInformation($"{completed} files uploaded, job status '{finalJobStatus}'");
 
-            if (completed != fileNames.Count() || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+            if (completed != fileNames.Length || failed > 0 || skipped > 0 || finalJobStatus != "Completed")
             {
                 _logger.LogError("Full Log: " + File.ReadAllText(logFullName));
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}");
