@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using Arius.CommandLine;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Microsoft.Extensions.Logging;
@@ -42,12 +43,12 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
-        public DedupChunker(ILogger<DedupChunker> logger, IOptions<TempDirAppSettings> config, IHashValueProvider hvp)
+        public DedupChunker(ILogger<DedupChunker> logger, IOptions<TempDirectoryAppSettings> config, IHashValueProvider hvp)
         {
             _logger = logger;
             _hvp = hvp;
 
-            _uploadTempDirFullName = config.Value.UploadTempDirFullName;
+            _uploadTempDirFullName = config.Value.TempDirectoryFullName;
 
         }
 

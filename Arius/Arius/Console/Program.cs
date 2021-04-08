@@ -16,16 +16,31 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.Threading;
 using Microsoft.Extensions.Options;
+using Arius.Console;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
 {
     internal static class Program
     {
-        public static async Task<int> Main(string[] args)
+        public static async Task Main(string[] args) => await CreateHostBuilder(args).RunConsoleAsync();
+
+        internal static IHostBuilder CreateHostBuilder(string[] args, Action<IConfigurationBuilder> configBuilder = default)
         {
-            await Host.CreateDefaultBuilder(args)
+            //Console App with .NET Generic Host based on template from https://dfederm.com/building-a-console-app-with-.net-generic-host/
+
+            var host = Host.CreateDefaultBuilder(args)
                 .UseContentRoot(Directory.GetCurrentDirectory())
+                .ConfigureAppConfiguration(builder =>
+                {
+                    // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host?view=aspnetcore-5.0#host-configuration
+
+                    builder.AddJsonFile("appsettings.json");
+                    builder.AddCommandLine(args); //as per https://github.com/aspnet/MetaPackages/issues/221#issuecomment-335207431
+
+                    if (configBuilder is not null)
+                        configBuilder(builder);
+                })
                 .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
                 {
                     loggingBuilder
@@ -33,8 +48,12 @@ namespace Arius
                         .AddSimpleConsole(options =>
                         {
                             // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                        })
-                        .AddFile(options =>
+                        });
+
+                    if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                    {
+                        //We're NOT in a unit test
+                        loggingBuilder.AddFile(options =>
                         {
                             if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
                                 options.RootPath = "/logs";
@@ -43,13 +62,13 @@ namespace Arius
 
                             options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
 
-                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default; //  Karambolo.Extensions.Logging.File.FileLogEntryTextBuilder.Instance;
+                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
                         });
+                    }
                 })
                 .ConfigureServices((hostBuilderContext, serviceCollection) =>
                 {
                     serviceCollection
-
                         // Add Commandline Service
                         // h4x0r as per https://stackoverflow.com/a/65552373/1582323 ?
                         //.AddHostedService<AriusHostedService>()
@@ -88,15 +107,22 @@ namespace Arius
 
                     // Add Options
                     serviceCollection.AddOptions<AzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                    serviceCollection.AddOptions<TempDirAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
+                    serviceCollection.AddOptions<TempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
 
                     // Add ArchiveCommandExecutorBlocks
                     ArchiveCommandExecutor.AddProviders(serviceCollection);
                     RestoreCommandExecutor.AddProviders(serviceCollection);
                 })
-                .RunConsoleAsync();
+                ;
+            //    // .RunConsoleAsync() -- see here to split into steps: https://stackoverflow.com/questions/53484777/access-iserviceprovider-when-using-generic-ihostbuilder
+            //    .UseConsoleLifetime()
+            //    .Build();
 
-            return Environment.ExitCode;
+            //await host.RunAsync();
+
+            //return (Environment.ExitCode, host.Services);
+
+            return host;
         }
     }
 
@@ -126,8 +152,12 @@ namespace Arius
 
         public ICommandExecutorOptions CommandExecutorOptions { get; set; }
 
+        internal static readonly string CommandLineEnvironmentVariableName = "ariusCommandLineEnvVarName";
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            logger.LogDebug($"Starting");
+
             appLifetime.ApplicationStarted.Register(() =>
             {
                 Task.Run(async () =>
@@ -144,7 +174,18 @@ namespace Arius
                         ariusCommand.AddCommand(archiveCommand.GetCommand(parsedCommandProvider));
                         ariusCommand.AddCommand(restoreCommand.GetCommand(parsedCommandProvider));
 
-                        exitCode = await ariusCommand.InvokeAsync(Environment.GetCommandLineArgs());
+                        string[] args;
+                        if (Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                        {
+                            //We're in a unit test
+                            args = Environment.GetEnvironmentVariable(CommandLineEnvironmentVariableName)!.Split(' ');
+                        }
+                        else
+                        {
+                            //Normal run
+                            args = Environment.GetCommandLineArgs();
+                        }
+                        exitCode = await ariusCommand.InvokeAsync(args);
 
                         if (exitCode != 0)
                             return; //eg when calling "arius" or "arius archive" without actual parameters -- see the ACTUAL output in the console or in Output.Tests
@@ -165,7 +206,7 @@ namespace Arius
                     {
                         //Delete the tempdir
                         logger.LogInformation("Deleting tempdir...");
-                        var tempDir = serviceProvider.GetRequiredService<IOptions<TempDirAppSettings>>().Value.UploadTempDir;
+                        var tempDir = serviceProvider.GetRequiredService<IOptions<TempDirectoryAppSettings>>().Value.TempDirectory;
                         if (tempDir.Exists)
                             tempDir.Delete(true);
                         logger.LogInformation("Deleting tempdir... done");

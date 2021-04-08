@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -96,7 +97,7 @@ namespace Arius.CommandLine
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<TempDirAppSettings> tempDirAppSettings, RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -104,7 +105,7 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _repo = repo;
 
-            _downloadTempDir = tempDirAppSettings.Value.DownloadTempDir(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
@@ -264,13 +265,13 @@ namespace Arius.CommandLine
     
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirAppSettings> tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(RestoreOptions options, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirAppSettings, AzureRepository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings.Value;
             this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
-            downloadTempDir = tempDirAppSettings.Value.DownloadTempDir(root);
+            downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(root);
         }
 
         private readonly AzCopyAppSettings azCopyAppSettings;

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -188,7 +189,7 @@ namespace Arius.CommandLine
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
-            blocks.GetRequiredService<IOptions<TempDirAppSettings>>().Value.DownloadTempDir(root).DeleteEmptySubdirectories(true);
+            blocks.GetRequiredService<IOptions<TempDirectoryAppSettings>>().Value.RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {

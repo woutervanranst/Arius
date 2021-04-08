@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -420,13 +421,11 @@ namespace Arius.CommandLine
         {
             _logger = logger;
             _chunker = chunker;
-            this.azureRepository = azureRepository;
             _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
         }
 
         private readonly ILogger<ChunkBlockProvider> _logger;
         private readonly IChunker _chunker;
-        private readonly AzureRepository azureRepository;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
         private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
@@ -503,12 +502,8 @@ namespace Arius.CommandLine
 
         private IEnumerable<IChunkFile> AddChunks(BinaryFile bf)
         {
-            //Console.WriteLine("Chunking BinaryFile " + f.Name);
-
             var cs = _chunker.Chunk(bf).ToArray();
             bf.Chunks = cs;
-
-            //Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
             return cs;
         }
@@ -517,7 +512,7 @@ namespace Arius.CommandLine
 
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<TempDirAppSettings> tempDirAppSettings, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, IEncrypter encrypter)
         {
             this.logger = logger;
             this.tempDirAppSettings = tempDirAppSettings.Value;
@@ -525,7 +520,7 @@ namespace Arius.CommandLine
         }
 
         private readonly ILogger<EncryptChunksBlockProvider> logger;
-        private readonly TempDirAppSettings tempDirAppSettings;
+        private readonly TempDirectoryAppSettings tempDirAppSettings;
         private readonly IEncrypter encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
@@ -536,7 +531,7 @@ namespace Arius.CommandLine
                     {
                         logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
 
-                        var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.UploadTempDirFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
+                        var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
 
                         encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
 

@@ -1,28 +1,16 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Configuration;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Security;
-using System.Reflection;
 using System.Threading.Tasks;
 using Arius.CommandLine;
-using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
-using Arius.Services;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moq;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
-using static Arius.Repositories.AzureRepository;
 
 // https://www.automatetheplanet.com/nunit-cheat-sheet/
 
@@ -66,9 +54,8 @@ namespace Arius.Tests
             var bfi1 = TestSetup.sourceFolder.GetFiles().First();
             bfi1 = TestSetup.CopyFile(bfi1, TestSetup.rootDirectoryInfo);
 
-
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool, dedup: false);
+            var services = await ArchiveCommand(AccessTier.Cool, dedup: false);
 
 
             //ASSERT OUTCOME
@@ -126,7 +113,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -185,7 +172,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool);
 
 
             //ASSERT OUTCODE
@@ -242,7 +229,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -301,7 +288,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -347,7 +334,7 @@ namespace Arius.Tests
 
             
             //EXECUTE
-            await ArchiveCommand(false, AccessTier.Cool, removeLocal: true);
+            await ArchiveCommand(AccessTier.Cool, removeLocal: true);
 
 
             //20
@@ -376,7 +363,7 @@ namespace Arius.Tests
 
 
             //EXECUTE
-            var services = await ArchiveCommand(false, AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool);
 
 
             //ASSERT OUTCOME
@@ -410,43 +397,61 @@ namespace Arius.Tests
         }
 
 
-        private async Task<ServiceProvider> ArchiveCommand(bool executeAsCli, AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            if (executeAsCli)
+            var cmd = "archive " +
+                $"-n {TestSetup.accountName} " +
+                $"-k {TestSetup.accountKey} " +
+                $"-p {TestSetup.passphrase} " +
+                $"-c {TestSetup.container.Name} " +
+                $"{(removeLocal ? "--remove-local " : "")}" +
+                $"--tier {tier.ToString().ToLower()} " +
+                $"{(dedup ? "--dedup " : "")}" +
+                $"{(fastHash ? "--fasthash" : "")}" +
+                $"{TestSetup.rootDirectoryInfo.FullName}";
+
+            Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
+
+            //Action<IConfigurationBuilder> bla = (b) =>
+            //{
+            //    b.AddInMemoryCollection(new Dictionary<string, string> {
+            //            { "TempDir:TempDirectoryName", ".ariustemp2" }
+            //        });
+            //};
+
+            await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
+
+            //if (consoleHostedService. != 0)
+            //    throw new ApplicationException("Result not 0");
+
+
+            var aro = new AzureRepositoryOptions()
             {
-                TestSetup.ExecuteCommandline($"archive " +
-                                             $"-n {TestSetup.accountName} " +
-                                             $"-k {TestSetup.accountKey} " +
-                                             $"-p {TestSetup.passphrase} " +
-                                             $"-c {TestSetup._container.Name} " +
-                                             $"{(removeLocal ? "--remove-local" : "")} --tier hot {TestSetup.rootDirectoryInfo.FullName}");
-                throw new NotImplementedException();
-            }
-            else
-            {
-                var options = GetArchiveOptions(TestSetup.accountName, TestSetup.accountKey, TestSetup.passphrase, TestSetup._container.Name,
-                    removeLocal, tier.ToString(), fastHash, TestSetup.rootDirectoryInfo.FullName);
+                AccountName = TestSetup.accountName,
+                AccountKey = TestSetup.accountKey,
+                Container = TestSetup.container.Name,
+                Passphrase = TestSetup.passphrase
+            };
 
-                var configurationRoot = new ConfigurationBuilder()
-                    .AddInMemoryCollection(new Dictionary<string, string> { 
-                        { "TempDirName", ".ariustemp" },
-                        { "UploadTempDirName", ".ariustempupload" }
-                    })
-                    .Build();
+            var sc = new ServiceCollection()
+                .AddSingleton<ICommandExecutorOptions>(aro)
+                .AddSingleton<AzureRepository>()
+                .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
 
-                var config = new Configuration(options, configurationRoot);
+                .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
+                .AddLogging()
 
-                var pcp = new ParsedCommandProvider { CommandExecutorOptions = options, CommandExecutorType = typeof(ArchiveCommandExecutor) };
+                .BuildServiceProvider();
 
-                var services = Program.GetServiceProvider(config, pcp);
+            return sc;
+        }
 
-                var exec = services.GetRequiredService<ArchiveCommandExecutor>();
-
-                await exec.Execute();
-
-                return services;
-            }
-
+        private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
+        {
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+            public string Passphrase { get; init; }
         }
 
         private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, bool fastHash, string path)
