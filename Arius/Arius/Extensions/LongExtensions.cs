@@ -52,7 +52,7 @@ namespace Arius.Extensions
                 return i.ToString("0 B"); // Byte
             }
             // Divide by 1024 to get fractional value
-            readable = (readable / 1024);
+            readable /= 1024;
             // Return formatted number with suffix
             return readable.ToString("0.### ") + suffix;
         }
