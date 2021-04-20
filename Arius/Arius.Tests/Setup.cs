@@ -63,7 +63,7 @@ namespace Arius.Tests
             ctc = csa.CreateCloudTableClient();
         }
 
-        private DirectoryInfo PopulateSourceDirectory()
+        private static DirectoryInfo PopulateSourceDirectory()
         {
             var sourceDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), ".ariustestsourcedir"));
             if (sourceDirectory.Exists) sourceDirectory.Delete(true);
@@ -77,7 +77,7 @@ namespace Arius.Tests
             return sourceDirectory;
         }
 
-        private void CreateRandomFile(string fileFullName, double sizeInMB)
+        public static void CreateRandomFile(string fileFullName, double sizeInMB)
         {
             var f = new FileInfo(fileFullName);
             if (!f.Directory.Exists)
