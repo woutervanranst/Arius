@@ -9,10 +9,8 @@ using Arius.Models;
 
 namespace Arius.Tests
 {
-    static class Extensions
+    static class FileInfoExtensions
     {
-        
-
         public static FileInfo GetPointerFileInfo(this FileInfo localContentFileFileInfo)
         {
             return new FileInfo(localContentFileFileInfo.FullName + PointerFile.Extension);
