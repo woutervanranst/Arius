@@ -226,8 +226,8 @@ namespace Arius.Tests
 
 
             //Rename BinaryFile + Pointer
-            FileInfoExtensions.MoveTo(bfi1, $"Moving of {bfi1.Name}");
-            FileInfoExtensions.MoveTo(pfi1, $"Moving of {pfi1.Name}");
+            bfi1.Rename($"Moving of {bfi1.Name}");
+            pfi1.Rename($"Moving of {pfi1.Name}");
 
 
             //EXECUTE
@@ -285,7 +285,7 @@ namespace Arius.Tests
             var bfi = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
             var pfi = bfi.GetPointerFileInfo();
             var pfi_FullName_Original = pfi.FullName;
-            bfi.MoveTo($"Moving of {bfi.Name}");
+            bfi.Rename($"Moving of {bfi.Name}");
             //TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); <-- Dit doen we hier NIET vs de vorige
 
 
@@ -361,7 +361,7 @@ namespace Arius.Tests
             //SET UP
             var pfi = TestSetup.archiveTestDirectory.GetPointerFiles().First();
             var pfi_FullName_Original = pfi.FullName;
-            pfi.MoveTo($"Moving2 of {pfi.Name}");
+            pfi.Rename($"Moving2 of {pfi.Name}");
 
 
             //EXECUTE

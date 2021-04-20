@@ -26,7 +26,7 @@ namespace Arius.Extensions
             return source.CopyTo(Path.Combine(source.DirectoryName, targetName));
         }
 
-        public static void MoveTo(this FileInfo source, string targetName)
+        public static void Rename(this FileInfo source, string targetName)
         {
             source.MoveTo(Path.Combine(source.DirectoryName, targetName));
         }
