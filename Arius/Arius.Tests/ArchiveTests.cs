@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.CommandLine;
+using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Azure.Storage.Blobs.Models;
@@ -16,16 +17,15 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Tests
 {
-    //[Order(20)]
-    public class ArchiveTests
+    public partial class ArchiveRestoreTests
     {
         [OneTimeSetUp]
-        public void ClassInit()
+        public void ClassInit_Archive()
         {
             // Executes once for the test class. (Optional)
 
-            if (TestSetup.testDirectoryInfo.Exists) TestSetup.testDirectoryInfo.Delete(true);
-            TestSetup.testDirectoryInfo.Create();
+            if (TestSetup.archiveTestDirectory.Exists) TestSetup.archiveTestDirectory.Delete(true);
+            TestSetup.archiveTestDirectory.Create();
         }
 
         [SetUp]
@@ -49,12 +49,12 @@ namespace Arius.Tests
         /// 
         /// </summary>
         /// <returns></returns>
-        [Test, Order(10)]
-        public async Task ArchiveFirstFile()
+        [Test, Order(100)]
+        public async Task Archive_FirstFile()
         {
             //SET UP -- Copy First file to the temp folder
             var bfi1 = TestSetup.sourceFolder.GetFiles().First();
-            bfi1 = TestSetup.CopyFile(bfi1, TestSetup.testDirectoryInfo);
+            bfi1 = TestSetup.CopyFile(bfi1, TestSetup.archiveTestDirectory);
 
             //EXECUTE
             var services = await ArchiveCommand(AccessTier.Cool, dedup: false);
@@ -78,7 +78,7 @@ namespace Arius.Tests
 
             //40
             var pfe1 = pfes.First();
-            Assert.AreEqual(Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pf1.FullName), pfe1.RelativeName);
+            Assert.AreEqual(Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pf1.FullName), pfe1.RelativeName);
 
             //41
             Assert.AreEqual(false, pfe1.IsDeleted);
@@ -101,13 +101,13 @@ namespace Arius.Tests
         /// 42/ The Creation- and LastWriteTimeUtc match
         /// </summary>
         /// <returns></returns>
-        [Test, Order(20)]
-        public async Task ArchiveSecondFileDuplicate()
+        [Test, Order(200)]
+        public async Task Archive_SecondFileDuplicate()
         {
             //SET UP
             //Add a duplicate of the first file
-            var bfi1 = TestSetup.testDirectoryInfo.GetBinaryFiles().First();
-            var bfi2 = TestSetup.CopyFile(bfi1, TestSetup.testDirectoryInfo, $"Copy of {bfi1.Name}");
+            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
+            var bfi2 = TestSetup.CopyFile(bfi1, TestSetup.archiveTestDirectory, $"Copy of {bfi1.Name}");
 
             // Modify datetime slightly
             bfi2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -138,7 +138,7 @@ namespace Arius.Tests
             Assert.IsTrue(File.Exists(pf2.FullName));
 
             //40
-            var pfe2 = pfes.Single(pfe => pfe.RelativeName == Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pf2.FullName));
+            var pfe2 = pfes.Single(pfe => pfe.RelativeName == Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pf2.FullName));
 
             //41
             Assert.AreEqual(false, pfe2.IsDeleted);
@@ -160,12 +160,12 @@ namespace Arius.Tests
         /// 41/ The PointerFileEntry is not marked as deleted
         /// 42/ The Creation- and LastWriteTimeUtc match
         /// </summary>
-        [Test, Order(30)]
-        public async Task ArchiveJustAPointer()
+        [Test, Order(300)]
+        public async Task Archive_JustAPointer()
         {
             //SET UP
             //Add a duplicate of the pointer
-            var pfi1 = TestSetup.testDirectoryInfo.GetPointerFiles().First();
+            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
             var pfi3 = TestSetup.CopyFile(pfi1, $"Copy2 of {pfi1.Name}");
 
             // Modify datetime slightly
@@ -195,7 +195,7 @@ namespace Arius.Tests
             Assert.IsTrue(pfi3.Exists);
 
             //40
-            var pfe3 = pfes.Single(pfe => pfe.RelativeName == Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi3.FullName));
+            var pfe3 = pfes.Single(pfe => pfe.RelativeName == Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi3.FullName));
 
             //41
             Assert.AreEqual(false, pfe3.IsDeleted);
@@ -216,11 +216,11 @@ namespace Arius.Tests
         /// 41*/ No current entry exists for the original pointerfile
         /// 42*/ A new PointerFileEntry exists that is not marked as deleted
         /// </summary>
-        [Test, Order(40)]
-        public async Task RenameBinaryFileWithPointer()
+        [Test, Order(400)]
+        public async Task Archive_RenameBinaryFileWithPointer()
         {
             //SET UP
-            var bfi1 = TestSetup.testDirectoryInfo.GetBinaryFiles().First();
+            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
             var pfi1 = bfi1.GetPointerFileInfo();
             var pfi1_FullName_Original = pfi1.FullName;
 
@@ -255,7 +255,7 @@ namespace Arius.Tests
             //Assert.AreEqual(3 + 2, all.Count());
 
             //40
-            var pfi1_Relativename_Original = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi1_FullName_Original);
+            var pfi1_Relativename_Original = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi1_FullName_Original);
             var originalPfe = lastWithDeletedPfes.Single(pfe => pfe.RelativeName == pfi1_Relativename_Original);
             Assert.AreEqual(true, originalPfe.IsDeleted);
 
@@ -263,7 +263,7 @@ namespace Arius.Tests
             Assert.IsNull(lastExistingPfes.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original));
 
             //42
-            var pfi1_Relativename_AfterMove = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi1.FullName);
+            var pfi1_Relativename_AfterMove = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi1.FullName);
             var movedPfe = lastExistingPfes.Single(lcf => lcf.RelativeName == pfi1_Relativename_AfterMove);
             Assert.AreEqual(false, movedPfe.IsDeleted);
         }
@@ -278,11 +278,11 @@ namespace Arius.Tests
         /// 40*/ Both the Original file and the Moved file are not marked as Deleted
         /// </summary>
         /// <returns></returns>
-        [Test, Order(50)]
-        public async Task RenameBinaryFileFileWithoutPointer()
+        [Test, Order(500)]
+        public async Task Archive_RenameBinaryFileFileWithoutPointer()
         {
             //SET UP
-            var bfi = TestSetup.testDirectoryInfo.GetBinaryFiles().First();
+            var bfi = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
             var pfi = bfi.GetPointerFileInfo();
             var pfi_FullName_Original = pfi.FullName;
             TestSetup.MoveFile(bfi, $"Moving of {bfi.Name}");
@@ -310,8 +310,8 @@ namespace Arius.Tests
             Assert.AreEqual(4 + 1, pfes_WithDeleted.Count);
 
             //Get the PointerFileNetries of the original and moved file
-            var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi_FullName_Original);
-            var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi.FullName);
+            var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi_FullName_Original);
+            var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi.FullName);
 
             var pfe_Original = pfes_WithDeleted.Single(lcf => lcf.RelativeName == pfi_RelativeName_Original);
             var pfe_Moved = pfes_OnlyExisting.Single(lcf => lcf.RelativeName == pfi_RelativeName_Moved);
@@ -328,11 +328,11 @@ namespace Arius.Tests
         /// 20/ After running archive, the BinaryFiles no longer exist
         /// </summary>
         /// <returns></returns>
-        [Test, Order(55)]
-        public async Task RemoveBinaryFiles()
+        [Test, Order(600)]
+        public async Task Archive_RemoveBinaryFiles()
         {
             //10
-            Assert.IsTrue(TestSetup.testDirectoryInfo.GetBinaryFiles().Any());
+            Assert.IsTrue(TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
 
             
             //EXECUTE
@@ -340,7 +340,7 @@ namespace Arius.Tests
 
 
             //20
-            Assert.IsTrue(!TestSetup.testDirectoryInfo.GetBinaryFiles().Any());
+            Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
         }
 
         /// <summary>
@@ -355,11 +355,11 @@ namespace Arius.Tests
         /// 41/ The moved file is not marked as deleted
         /// </summary>
         /// <returns></returns>
-        [Test, Order(60)]
-        public async Task RenameJustPointer()
+        [Test, Order(700)]
+        public async Task Archive_RenameJustPointer()
         {
             //SET UP
-            var pfi = TestSetup.testDirectoryInfo.GetPointerFiles().First();
+            var pfi = TestSetup.archiveTestDirectory.GetPointerFiles().First();
             var pfi_FullName_Original = pfi.FullName;
             TestSetup.MoveFile(pfi, $"Moving2 of {pfi.Name}");
 
@@ -386,8 +386,8 @@ namespace Arius.Tests
             Assert.AreEqual(5 + 1, pfes_WithDeleted.Count);
 
             //Get the PointerFileNetries of the original and moved file
-            var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi_FullName_Original);
-            var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.testDirectoryInfo.FullName, pfi.FullName);
+            var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi_FullName_Original);
+            var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi.FullName);
 
             var pfe_Original = pfes_WithDeleted.Single(lcf => lcf.RelativeName == pfi_RelativeName_Original);
             var pfe_Moved = pfes_OnlyExisting.Single(lcf => lcf.RelativeName == pfi_RelativeName_Moved);
@@ -397,6 +397,20 @@ namespace Arius.Tests
             //41
             Assert.AreEqual(false, pfe_Moved.IsDeleted);
         }
+
+        [Test, Order(1000)]
+        public async Task Archive_FullSourceDirectory()
+        {
+            // Empty the test directory
+            TestSetup.archiveTestDirectory.Delete(true);
+            TestSetup.archiveTestDirectory.Create();
+            TestSetup.sourceFolder.DirectoryCopy(TestSetup.archiveTestDirectory.FullName, true);
+
+            //EXECUTE
+            var services = await ArchiveCommand(AccessTier.Cool);
+        }
+
+
 
 
         private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
@@ -410,8 +424,13 @@ namespace Arius.Tests
                 $"--tier {tier.ToString().ToLower()} " +
                 $"{(dedup ? "--dedup " : "")}" +
                 $"{(fastHash ? "--fasthash" : "")}" +
-                $"{TestSetup.testDirectoryInfo.FullName}";
+                $"{TestSetup.archiveTestDirectory.FullName}";
 
+            return await ExecuteCommand(cmd);   
+        }
+
+        private async Task<IServiceProvider> ExecuteCommand(string cmd)
+        {
             Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
 
             //Action<IConfigurationBuilder> bla = (b) =>

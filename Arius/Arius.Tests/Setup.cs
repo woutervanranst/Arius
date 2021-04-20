@@ -14,7 +14,8 @@ namespace Arius.Tests
     public class TestSetup
     {
         public static DirectoryInfo sourceFolder;
-        public static DirectoryInfo testDirectoryInfo;
+        public static DirectoryInfo archiveTestDirectory;
+        public static DirectoryInfo restoreTestDirectory;
         
         private static BlobServiceClient _bsc;
         public static BlobContainerClient container;
@@ -38,9 +39,10 @@ namespace Arius.Tests
 
             // Create temp folder
             var containerName = TestContainerNamePrefix + $"{DateTime.Now.Ticks}";
-            testDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
-            //testDirectoryInfo.Create();
+            archiveTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "archive" + containerName));
+            restoreTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "restore" + containerName));
 
+            //testDirectoryInfo.Create();
 
             // Create temp container
             accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
@@ -103,7 +105,7 @@ namespace Arius.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            testDirectoryInfo.Delete(true);
+            archiveTestDirectory.Delete(true);
 
             foreach (var c in _bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
                 _bsc.GetBlobContainerClient(c.Name).Delete();
@@ -112,14 +114,6 @@ namespace Arius.Tests
                 t.Delete();
         }
 
-
-        private static readonly Random random = new Random();
-        //private static string RandomString(int length)
-        //{
-        //    const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        //    return new string(Enumerable.Repeat(chars, length)
-        //        .Select(s => s[random.Next(s.Length)]).ToArray());
-        //}
 
         public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir)
         {
