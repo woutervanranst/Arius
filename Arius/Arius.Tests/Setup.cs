@@ -115,24 +115,7 @@ namespace Arius.Tests
         }
 
 
-        public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir)
-        {
-            return source.CopyTo(Path.Combine(targetDir.FullName, source.Name));
-        }
-        public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir, string targetName)
-        {
-            return source.CopyTo(Path.Combine(targetDir.FullName, targetName));
-        }
-
-        public static FileInfo CopyFile(FileInfo source, string targetName)
-        {
-            return source.CopyTo(Path.Combine(source.DirectoryName, targetName));
-        }
-
-        public static void MoveFile(FileInfo source, string targetName)
-        {
-            source.MoveTo(Path.Combine(source.DirectoryName, targetName));
-        }
+        
 
         private static void CopyFolder(string sourceDir, string targetDir)
         {

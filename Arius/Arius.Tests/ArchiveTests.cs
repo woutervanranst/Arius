@@ -54,7 +54,7 @@ namespace Arius.Tests
         {
             //SET UP -- Copy First file to the temp folder
             var bfi1 = TestSetup.sourceFolder.GetFiles().First();
-            bfi1 = TestSetup.CopyFile(bfi1, TestSetup.archiveTestDirectory);
+            bfi1 = bfi1.CopyTo(TestSetup.archiveTestDirectory);
 
             //EXECUTE
             var services = await ArchiveCommand(AccessTier.Cool, dedup: false);
@@ -107,7 +107,7 @@ namespace Arius.Tests
             //SET UP
             //Add a duplicate of the first file
             var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
-            var bfi2 = TestSetup.CopyFile(bfi1, TestSetup.archiveTestDirectory, $"Copy of {bfi1.Name}");
+            var bfi2 = bfi1.CopyTo(TestSetup.archiveTestDirectory, $"Copy of {bfi1.Name}");
 
             // Modify datetime slightly
             bfi2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -166,7 +166,7 @@ namespace Arius.Tests
             //SET UP
             //Add a duplicate of the pointer
             var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
-            var pfi3 = TestSetup.CopyFile(pfi1, $"Copy2 of {pfi1.Name}");
+            var pfi3 = FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
 
             // Modify datetime slightly
             pfi3.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -226,8 +226,8 @@ namespace Arius.Tests
 
 
             //Rename BinaryFile + Pointer
-            TestSetup.MoveFile(bfi1, $"Moving of {bfi1.Name}");
-            TestSetup.MoveFile(pfi1, $"Moving of {pfi1.Name}");
+            FileInfoExtensions.MoveTo(bfi1, $"Moving of {bfi1.Name}");
+            FileInfoExtensions.MoveTo(pfi1, $"Moving of {pfi1.Name}");
 
 
             //EXECUTE
@@ -285,7 +285,7 @@ namespace Arius.Tests
             var bfi = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
             var pfi = bfi.GetPointerFileInfo();
             var pfi_FullName_Original = pfi.FullName;
-            TestSetup.MoveFile(bfi, $"Moving of {bfi.Name}");
+            bfi.MoveTo($"Moving of {bfi.Name}");
             //TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); <-- Dit doen we hier NIET vs de vorige
 
 
@@ -361,7 +361,7 @@ namespace Arius.Tests
             //SET UP
             var pfi = TestSetup.archiveTestDirectory.GetPointerFiles().First();
             var pfi_FullName_Original = pfi.FullName;
-            TestSetup.MoveFile(pfi, $"Moving2 of {pfi.Name}");
+            pfi.MoveTo($"Moving2 of {pfi.Name}");
 
 
             //EXECUTE
