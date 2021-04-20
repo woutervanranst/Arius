@@ -549,7 +549,7 @@ namespace Arius.CommandLine
                 var h = _hvp.GetHashValue(bf);
 
                 if (h != pointersToRestore.First().Hash)
-                    throw new Exception("HASH DOES NOT MATCH"); //TODO
+                    throw new InvalidDataException("Hash of restored BinaryFile does not match hash of PointerFile");
 
                 // Delete chunks
                 chunksThatCanBeDeleted.AsParallel().ForAll(c => c.Delete());
