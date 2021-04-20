@@ -17,12 +17,10 @@ namespace Arius.Tests
         public static DirectoryInfo archiveTestDirectory;
         public static DirectoryInfo restoreTestDirectory;
         
-        private static BlobServiceClient _bsc;
+        private static BlobServiceClient bsc;
         public static BlobContainerClient container;
 
-        private static CloudTableClient _ctc;
-        //private static CloudTable _manifestTable;
-        //private static CloudTable _pointerEntryTable;
+        private static CloudTableClient ctc;
         
         public static string accountName;
         public static string accountKey;
@@ -56,17 +54,13 @@ namespace Arius.Tests
 
             // Create new blob container
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-            _bsc = new BlobServiceClient(connectionString);
-            container = _bsc.CreateBlobContainer(containerName);
+            bsc = new BlobServiceClient(connectionString);
+            container = bsc.CreateBlobContainer(containerName);
 
 
             // Create reference to the storage tables
             var csa = CloudStorageAccount.Parse(connectionString);
-            _ctc = csa.CreateCloudTableClient();
-
-            //_manifestTable = _ctc.GetTableReference(containerName + "manifests");
-            //_pointerEntryTable = _ctc.GetTableReference(containerName + "pointers");
-
+            ctc = csa.CreateCloudTableClient();
         }
 
         private DirectoryInfo PopulateSourceDirectory()
@@ -107,17 +101,11 @@ namespace Arius.Tests
         {
             archiveTestDirectory.Delete(true);
 
-            foreach (var c in _bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
-                _bsc.GetBlobContainerClient(c.Name).Delete();
+            foreach (var c in bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
+                bsc.GetBlobContainerClient(c.Name).Delete();
 
-            foreach (var t in _ctc.ListTables(prefix: TestContainerNamePrefix))
+            foreach (var t in ctc.ListTables(prefix: TestContainerNamePrefix))
                 t.Delete();
         }
-
-
-        
-
-        
-
     }
 }
