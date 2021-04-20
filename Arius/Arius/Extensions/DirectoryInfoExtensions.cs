@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Extensions
 {
-    static class DirectoryExtensions
+    static class DirectoryInfoExtensions
     {
         public static FileInfo[] TryGetFiles(this DirectoryInfo d, string searchPattern)
         {
