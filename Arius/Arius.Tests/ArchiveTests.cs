@@ -39,6 +39,7 @@ namespace Arius.Tests
         /// Archive a file
         /// Expectation: 
         /// 10/ 1 Chunk was uploaded
+        /// 11/ The chunk is in the appropriate tier
         /// 20/ 1 ManifestHash exists
         /// 30/ 1 PointerFileEntry exists
         /// 31/ 1 PointerFile is created
@@ -52,12 +53,14 @@ namespace Arius.Tests
         [Test, Order(100)]
         public async Task Archive_FirstFile()
         {
+            AccessTier tier = AccessTier.Cool;
+
             //SET UP -- Copy First file to the temp folder
             var bfi1 = TestSetup.sourceFolder.GetFiles().First();
             bfi1 = bfi1.CopyTo(TestSetup.archiveTestDirectory);
 
             //EXECUTE
-            var services = await ArchiveCommand(AccessTier.Cool, dedup: false);
+            var services = await ArchiveCommand(tier, dedup: false);
 
 
             //ASSERT OUTCOME
@@ -65,6 +68,8 @@ namespace Arius.Tests
 
             //10
             Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            //11
+            Assert.AreEqual(tier, repo.GetAllChunkBlobItems().First().AccessTier);
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
 
@@ -166,7 +171,7 @@ namespace Arius.Tests
             //SET UP
             //Add a duplicate of the pointer
             var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
-            var pfi3 = FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
+            var pfi3 = Arius.Extensions.FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
 
             // Modify datetime slightly
             pfi3.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
