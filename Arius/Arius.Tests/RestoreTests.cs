@@ -45,12 +45,12 @@ namespace Arius.Tests
         [Test, Order(110)]
         public async Task Restore_OneFileFromCold()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.GetFileSystemInfos().Length == 0);
+            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
-            IEnumerable<FileInfo> archiveFiles = TestSetup.archiveTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
-            IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
 
 
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
@@ -62,12 +62,12 @@ namespace Arius.Tests
         [Test, Order(1001)]
         public async Task Restore_FullSourceDirectory_NoPointers()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.GetFileSystemInfos().Length == 0);
+            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: false);
 
-            IEnumerable<FileInfo> archiveFiles = TestSetup.archiveTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
-            IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
 
 
             bool allNonPointerFilesAreRestored = !restoredFiles.Except(archiveFiles, comparer).Any();
@@ -84,12 +84,12 @@ namespace Arius.Tests
         [Test, Order(1002)]
         public async Task Restore_FullSourceDirectory_OnlyPointers()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.GetFileSystemInfos().Length == 0);
+            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: false, keepPointers: true);
 
-            IEnumerable<FileInfo> archiveFiles = TestSetup.archiveTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
-            IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
 
 
             archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
@@ -102,22 +102,33 @@ namespace Arius.Tests
         [Test, Order(1003)]
         public async Task Restore_FullSourceDirectory_Selectively()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.GetFileSystemInfos().Length == 0);
+            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+
+            // Copy one pointer (to restore) to the restoredirectory
+            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
+            pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
+
+            var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
+            var bf1 = new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+
+            Assert.IsTrue(File.Exists(pf1.FullName));
+            Assert.IsFalse(File.Exists(bf1.FullName));
 
 
-            var services = await RestoreCommand(synchronize: true, download: false, keepPointers: true);
+            //This is not yet implemented
+            Assert.CatchAsync<ApplicationException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
+
+            //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
 
 
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsTrue(File.Exists(bf1.FullName));
 
-            IEnumerable<FileInfo> archiveFiles = TestSetup.archiveTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
-            IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetFiles("*.*", SearchOption.AllDirectories);
+            //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
 
-
-            archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
-
-            bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
-
-            Assert.IsTrue(areIdentical);
+            ////Assert.IsTrue(pfi1.Exists);
+            //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
+            //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
         }
 
 
