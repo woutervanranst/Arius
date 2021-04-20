@@ -206,27 +206,6 @@ namespace Arius.CommandLine
             }
 
             return 0;
-            //return Task.FromResult(0);
-
-
-
-            //if (_options.Synchronize)
-            //    Synchronize();
-
-            //    if (_options.Download)
-            //        Download();
-            //}
-            ////else if (File.Exists(path) && path.EndsWith(".arius"))
-            ////{
-            ////    // Restore one file
-
-            ////}
-            //else
-            //{
-            //    throw new NotImplementedException();
-            //}
-
-            //return 0;
         }
     }
 }
