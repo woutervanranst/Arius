@@ -7,14 +7,23 @@ namespace Arius.Models
 {
     public interface IAriusEntry
     {
+        /// <summary>
+        /// Path relative to the root
+        /// </summary>
         public string RelativePath { get; }
-        //public string Name { get; }
+
+        /// <summary>
+        /// Name (without path but with Extension) of the (equivalent) BinaryFile (eg. 'myFile.bmp')
+        /// </summary>
         public string ContentName { get; }
     }
+
     internal interface IWithHashValue
     {
         public HashValue Hash { get; }
     }
+
+    /// <inheritdoc/>
     internal interface IAriusEntryWithHash : IAriusEntry, IWithHashValue
     {
     }
@@ -22,36 +31,50 @@ namespace Arius.Models
 
     internal interface IFile
     {
+        /// <summary>
+        /// Full Name (with path and extension)
+        /// </summary>
         public string FullName { get; }
+
+        /// <summary>
+        /// Name (with extension)
+        /// </summary>
         public string Name { get; }
+        
+        /// <summary>
+        /// Directory where this File resides
+        /// </summary>
         DirectoryInfo Directory { get; }
+        
+        /// <summary>
+        /// Length (in bytes) of the File
+        /// </summary>
         public long Length { get; }
+        
+        /// <summary>
+        /// Delete the File
+        /// </summary>
         public void Delete();
     }
-
-
 
 
     public abstract class FileBase : IFile, IWithHashValue
     {
         protected FileBase(FileInfo fi)
         {
-            _fi = fi;
+            this.fi = fi;
         }
-        protected readonly FileInfo _fi;
+        protected readonly FileInfo fi;
 
-        public string FullName => _fi.FullName;
-        public string Name => _fi.Name;
-        public DirectoryInfo Directory => _fi.Directory;
+        public string FullName => fi.FullName;
+        public string Name => fi.Name;
+        public DirectoryInfo Directory => fi.Directory;
 
-        /// <summary>
-        /// Size in bytes
-        /// </summary>
-        public long Length => _fi.Length;
+        public long Length => fi.Length;
 
         public void Delete()
         {
-            _fi.Delete();
+            fi.Delete();
         }
 
         public HashValue Hash
@@ -69,16 +92,14 @@ namespace Arius.Models
 
     public abstract class RelativeFileBase : FileBase
     {
-        private readonly DirectoryInfo _root;
-
         protected RelativeFileBase(DirectoryInfo root, FileInfo fi) : base(fi)
         {
-            _root = root;
+            this.Root = root;
         }
 
-        public string RelativeName => Path.GetRelativePath(_root.FullName, _fi.FullName);
-        public string RelativePath => Path.GetRelativePath(_root.FullName, _fi.DirectoryName);
-        public DirectoryInfo Root => _root;
+        public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
+        public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
+        public DirectoryInfo Root { get; }
     }
 
     public abstract class RelativeAriusFileBase : RelativeFileBase, IAriusEntryWithHash
@@ -92,16 +113,13 @@ namespace Arius.Models
 
 
 
-
-
     internal interface IChunkFile : IFile, IWithHashValue
     {
     }
+
     internal interface IEncryptedFile : IFile
     {
     }
-
-
 
 
     public class PointerFile : RelativeAriusFileBase, IAriusEntryWithHash
@@ -121,7 +139,7 @@ namespace Arius.Models
             this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
-        internal FileInfo BinaryFileInfo => new FileInfo(_fi.FullName.TrimEnd(Extension));
+        internal FileInfo BinaryFileInfo => new(fi.FullName.TrimEnd(Extension));
 
         internal IEnumerable<HashValue> ChunkHashes { get; set; }
 
@@ -133,10 +151,9 @@ namespace Arius.Models
         public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
         internal IEnumerable<IChunkFile> Chunks { get; set; }
-        //public HashValue? ManifestHash { get; set; }
-        //public bool Uploaded { get; set; }
 
-        public FileInfo PointerFileInfo => new FileInfo(_fi.FullName + PointerFile.Extension);
+        public FileInfo PointerFileInfo => new FileInfo(fi.FullName + PointerFile.Extension);
+
         public override string ContentName => Name;
     }
 
