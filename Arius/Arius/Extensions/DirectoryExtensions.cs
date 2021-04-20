@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,6 +23,8 @@ namespace Arius.Extensions
                 return Array.Empty<FileInfo>();
             }
         }
+
+
         public static void DeleteEmptySubdirectories(this DirectoryInfo parentDirectory, bool includeSelf = false)
         {
             DeleteEmptySubdirectories(parentDirectory.FullName);
@@ -39,34 +42,6 @@ namespace Arius.Extensions
             });
         }
 
-        //public static void DirectoryCopy(this DirectoryInfo sourceDirectory, string destDirName, bool copySubDirs)
-        //{
-        //    if (!sourceDirectory.Exists)
-        //        throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
-
-        //    var dirs = sourceDirectory.GetDirectories();
-
-        //    // If the destination directory doesn't exist, create it.       
-        //    Directory.CreateDirectory(destDirName);
-
-        //    // Get the files in the directory and copy them to the new location.
-        //    FileInfo[] files = sourceDirectory.GetFiles();
-        //    foreach (FileInfo file in files)
-        //    {
-        //        string tempPath = Path.Combine(destDirName, file.Name);
-        //        file.CopyTo(tempPath, false);
-        //    }
-
-        //    // If copying subdirectories, copy them and their contents to new location.
-        //    if (copySubDirs)
-        //    {
-        //        foreach (DirectoryInfo subdir in dirs)
-        //        {
-        //            string tempPath = Path.Combine(destDirName, subdir.Name);
-        //            DirectoryCopy(subdir, tempPath, copySubDirs);
-        //        }
-        //    }
-        //}
 
         public static void CopyTo(this DirectoryInfo sourceDir, string targetDir)
         {
@@ -76,7 +51,6 @@ namespace Arius.Extensions
         {
             CopyTo(sourceDir.FullName, targetDir.FullName);
         }
-
         private static void CopyTo(this string sourceDir, string targetDir)
         {
             Directory.CreateDirectory(targetDir);
@@ -87,6 +61,26 @@ namespace Arius.Extensions
             foreach (var directory in Directory.GetDirectories(sourceDir))
                 CopyTo(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
         }
-    }
 
+        
+        public static bool IsEmpty(this DirectoryInfo dir)
+        {
+            return !dir.GetFileSystemInfos().Any();
+        }
+
+
+        public static IEnumerable<FileInfo> GetAllFiles(this DirectoryInfo directoryInfo)
+        {
+            return directoryInfo.GetFiles("*", SearchOption.AllDirectories);
+        }
+        public static IEnumerable<FileInfo> GetBinaryFiles(this DirectoryInfo directoryInfo)
+        {
+            return directoryInfo.GetAllFiles().Where(fi => !fi.IsPointerFile());
+        }
+
+        public static IEnumerable<FileInfo> GetPointerFiles(this DirectoryInfo directoryInfo)
+        {
+            return directoryInfo.GetAllFiles().Where(fi => fi.IsPointerFile());
+        }
+    }
 }
