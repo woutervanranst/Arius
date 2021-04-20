@@ -35,8 +35,11 @@ namespace Arius.Tests
         }
 
 
+        private int allChunkBlobItemsCount = 0;
+
         /// <summary>
         /// Archive a file
+        /// 
         /// Expectation: 
         /// 10/ 1 Chunk was uploaded
         /// 11/ The chunk is in the appropriate tier
@@ -51,7 +54,7 @@ namespace Arius.Tests
         /// </summary>
         /// <returns></returns>
         [Test, Order(100)]
-        public async Task Archive_FirstFile()
+        public async Task Archive_OneFile_CoolTier()
         {
             AccessTier tier = AccessTier.Cool;
 
@@ -67,7 +70,8 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            allChunkBlobItemsCount++;
             //11
             Assert.AreEqual(tier, repo.GetAllChunkBlobItems().First().AccessTier);
             //20
@@ -78,7 +82,7 @@ namespace Arius.Tests
             Assert.AreEqual(1, pfes.Count());
 
             //31
-            var pf1 = GetPointerFileOfLocalContentFile(bfi1);
+            var pf1 = bfi1.GetPointerFileInfo();
             Assert.IsTrue(File.Exists(pf1.FullName));
 
             //40
@@ -93,6 +97,7 @@ namespace Arius.Tests
             Assert.AreEqual(bfi1.LastWriteTimeUtc, pfe1.LastWriteTimeUtc);
         }
 
+        
         /// <summary>
         /// Duplicate the first file and archive again (one addtl pointer, yet no addtl upload)
         /// 
@@ -107,7 +112,7 @@ namespace Arius.Tests
         /// </summary>
         /// <returns></returns>
         [Test, Order(200)]
-        public async Task Archive_SecondFileDuplicate()
+        public async Task Archive_OneFile_Duplicate()
         {
             //SET UP
             //Add a duplicate of the first file
@@ -127,7 +132,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
             
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
@@ -137,8 +142,8 @@ namespace Arius.Tests
             Assert.AreEqual(1 + 1, pfes.Count());
 
             //31
-            var pf1 = GetPointerFileOfLocalContentFile(bfi1);
-            var pf2 = GetPointerFileOfLocalContentFile(bfi2);
+            var pf1 = bfi1.GetPointerFile();
+            var pf2 = bfi2.GetPointerFile();
             Assert.IsTrue(File.Exists(pf1.FullName));
             Assert.IsTrue(File.Exists(pf2.FullName));
 
@@ -166,7 +171,7 @@ namespace Arius.Tests
         /// 42/ The Creation- and LastWriteTimeUtc match
         /// </summary>
         [Test, Order(300)]
-        public async Task Archive_JustAPointer()
+        public async Task Archive_OneFile_DuplicatePointer()
         {
             //SET UP
             //Add a duplicate of the pointer
@@ -186,7 +191,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
@@ -222,7 +227,7 @@ namespace Arius.Tests
         /// 42*/ A new PointerFileEntry exists that is not marked as deleted
         /// </summary>
         [Test, Order(400)]
-        public async Task Archive_RenameBinaryFileWithPointer()
+        public async Task Archive_OneFile_RenameBinaryFileWithPointer()
         {
             //SET UP
             var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
@@ -243,7 +248,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
@@ -276,15 +281,14 @@ namespace Arius.Tests
         /// <summary>
         /// Rename a BinaryFile without renaming the pointer.
         /// Expectation: this will become essentially a "duplicate"
-        /// 
-        /// 10/ One manifest and one binary should still be there
+        /// 10/ No additional chunks were uploaded(ie just 1)
         /// 20/ No additional ManifestHash is created (ie just 1)
         /// 30*/ One additional PointerFileEntry (ie for the moved file)
         /// 40*/ Both the Original file and the Moved file are not marked as Deleted
         /// </summary>
         /// <returns></returns>
         [Test, Order(500)]
-        public async Task Archive_RenameBinaryFileFileWithoutPointer()
+        public async Task Archive_OneFile_RenameBinaryFileFileWithoutPointer()
         {
             //SET UP
             var bfi = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
@@ -302,7 +306,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
@@ -331,28 +335,35 @@ namespace Arius.Tests
         /// 
         /// 10/ Local BinaryFiles exist
         /// 20/ After running archive, the BinaryFiles no longer exist
+        /// 30/ No additional chunks were uploaded (ie just 1)
         /// </summary>
         /// <returns></returns>
         [Test, Order(600)]
-        public async Task Archive_RemoveBinaryFiles()
+        public async Task Archive_OneFile_RemoveBinaryFiles()
         {
             //10
             Assert.IsTrue(TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
 
-            
-            //EXECUTE
-            await ArchiveCommand(AccessTier.Cool, removeLocal: true);
 
+            //EXECUTE
+            var services = await ArchiveCommand(AccessTier.Cool, removeLocal: true);
+
+
+            //ASSERT OUTCOME
+            var repo = services.GetRequiredService<AzureRepository>();
 
             //20
             Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
+
+            //30
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
         }
 
         /// <summary>
         /// Rename a PointerFile without the BinaryFile (since it is no longer present)
         /// Expectation: essentially a "move"
         /// 
-        /// 10/ One manifest and one binary should still be there
+        /// 10/ No additional chunks were uploaded (ie just 1)
         /// 20/ No additional ManifestHash is created (ie just 1)
         /// 30*/ No additional EXISTING PointerFileEntry is created (1 new + 1 deleted = 0 net increase)
         /// 31*/ One additional with deleted PointerFileEntry is created (1 deleted)
@@ -361,7 +372,7 @@ namespace Arius.Tests
         /// </summary>
         /// <returns></returns>
         [Test, Order(700)]
-        public async Task Archive_RenameJustPointer()
+        public async Task Archive_OneFile_RenameJustPointer()
         {
             //SET UP
             var pfi = TestSetup.archiveTestDirectory.GetPointerFiles().First();
@@ -377,7 +388,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
             Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
@@ -403,12 +414,59 @@ namespace Arius.Tests
             Assert.AreEqual(false, pfe_Moved.IsDeleted);
         }
 
+
+        /// <summary>
+        /// Archive a file to the archive tier
+        /// 
+        /// Expectation:
+        /// 10*/ One additional chunk was uploaded
+        /// 11*/ The chunk is in the archive tier
+        /// 20*/ One additional ManifestHash is created
+        /// 30*/ 1 addtl PointerFileEntry is created
+        /// </summary>
+        /// <returns></returns>
+        [Test, Order(800)]
+        public async Task Archive_SecondFile_ArchiveTier()
+        {
+            //SET UP -- Create a new file (with new hash) to archive
+            TestSetup.archiveTestDirectory.Clear();
+            var bfi1 = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "archivefile.txt"));
+            Assert.IsFalse(bfi1.Exists);
+            TestSetup.CreateRandomFile(bfi1.FullName, 0.1);
+
+            //EXECUTE
+            AccessTier tier = AccessTier.Archive;
+            var services = await ArchiveCommand(tier, dedup: false);
+
+
+            //ASSERT OUTCOME
+            var repo = services.GetRequiredService<AzureRepository>();
+
+
+            //10
+            Assert.AreEqual(allChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            allChunkBlobItemsCount++;
+
+            //11
+            var pfi1 = bfi1.GetPointerFile();
+            var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
+            var chunk = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            Assert.AreEqual(tier, chunk.AccessTier);
+
+            //20
+            Assert.AreEqual(1 + 1, repo.GetAllManifestHashes().Count());
+
+            //30
+            var pfes = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(6 + 1, pfes.Count());
+        }
+
+
         [Test, Order(1000)]
-        public async Task Archive_FullSourceDirectory()
+        public async Task Archive_FullDirectory()
         {
             // Empty the test directory
-            TestSetup.archiveTestDirectory.Delete(true);
-            TestSetup.archiveTestDirectory.Create();
+            TestSetup.archiveTestDirectory.Clear();
             TestSetup.sourceFolder.CopyTo(TestSetup.archiveTestDirectory);
 
             //EXECUTE
@@ -496,10 +554,7 @@ namespace Arius.Tests
         //    };
         //}
 
-        private PointerFile GetPointerFileOfLocalContentFile(FileInfo binaryFile)
-        {
-            return new PointerFile(binaryFile.Directory, binaryFile.GetPointerFileInfo());
-        }
+        
         public void TestCleanup()
         {
             // Runs after each test. (Optional)
