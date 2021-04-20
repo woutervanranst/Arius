@@ -53,6 +53,7 @@ namespace Arius
                     if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
                     {
                         //We're NOT in a unit test
+                        //Do not log to file as the Karambola extension disposes itself i a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
                         loggingBuilder.AddFile(options =>
                         {
                             if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
