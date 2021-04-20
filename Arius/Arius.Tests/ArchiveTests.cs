@@ -443,7 +443,7 @@ namespace Arius.Tests
             await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
 
             if (Environment.ExitCode != 0)
-                throw new ApplicationException("Result not 0");
+                throw new ApplicationException("Exitcode is not 0");
 
             var aro = new AzureRepositoryOptions()
             {
