@@ -177,7 +177,7 @@ namespace Arius.CommandLine
             else if (_options.Download)
             {
                 // R20
-                throw new NotFiniteNumberException();
+                throw new NotImplementedException();
             }
 
 
