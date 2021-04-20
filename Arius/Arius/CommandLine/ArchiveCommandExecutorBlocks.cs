@@ -115,7 +115,7 @@ namespace Arius.CommandLine
 
         private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
         {
-            if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+            if (fi.IsPointerFile())
             {
                 _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
