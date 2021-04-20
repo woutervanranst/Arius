@@ -108,11 +108,14 @@ namespace Arius.Models
     {
         public const string Extension = ".pointer.arius";
 
+        //public PointerFile(FileInfo fi) : this(fi.Directory, fi)
+        //{
+        //  DO NOT IMPLEMENT THIS, IT WILL CAUSE CONFUSION & BUGS & INVALID ARCHIVES
+        //}
+
         /// <summary>
-        /// Create a new PointerFile and read the Hash from the file
+        /// Create a new PointerFile with the given root and read the Hash from the file
         /// </summary>
-        /// <param name="root"></param>
-        /// <param name="fi"></param>
         public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
         {
             this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
