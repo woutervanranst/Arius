@@ -14,6 +14,9 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
+        private const string EncryptedChunkDirectoryName = "chunks";
+        internal const string RehydrationDirectoryName = "chunks-rehydrated";
+
         private class ChunkRepository
         {
             public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
@@ -35,8 +38,6 @@ namespace Arius.Repositories
             private readonly ILogger<ChunkRepository> _logger;
             private readonly IBlobCopier _blobCopier;
             private readonly BlobContainerClient _bcc;
-            private const string EncryptedChunkDirectoryName = "chunks";
-            private const string RehydrationDirectoryName = "chunks-rehydrated";
 
 
             // GET
@@ -139,7 +140,7 @@ namespace Arius.Repositories
 
                 if (itemToHydrate.AccessTier == AccessTier.Hot ||
                     itemToHydrate.AccessTier == AccessTier.Cool)
-                    throw new InvalidOperationException("Already hydrated");
+                    throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({itemToHydrate.Name})");
 
                 var hydratedItem = _bcc.GetBlobClient($"{RehydrationDirectoryName}/{itemToHydrate.Name}");
 
