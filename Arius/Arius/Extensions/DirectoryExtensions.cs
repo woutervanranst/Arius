@@ -39,33 +39,53 @@ namespace Arius.Extensions
             });
         }
 
-        public static void DirectoryCopy(this DirectoryInfo sourceDirectory, string destDirName, bool copySubDirs)
+        //public static void DirectoryCopy(this DirectoryInfo sourceDirectory, string destDirName, bool copySubDirs)
+        //{
+        //    if (!sourceDirectory.Exists)
+        //        throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
+
+        //    var dirs = sourceDirectory.GetDirectories();
+
+        //    // If the destination directory doesn't exist, create it.       
+        //    Directory.CreateDirectory(destDirName);
+
+        //    // Get the files in the directory and copy them to the new location.
+        //    FileInfo[] files = sourceDirectory.GetFiles();
+        //    foreach (FileInfo file in files)
+        //    {
+        //        string tempPath = Path.Combine(destDirName, file.Name);
+        //        file.CopyTo(tempPath, false);
+        //    }
+
+        //    // If copying subdirectories, copy them and their contents to new location.
+        //    if (copySubDirs)
+        //    {
+        //        foreach (DirectoryInfo subdir in dirs)
+        //        {
+        //            string tempPath = Path.Combine(destDirName, subdir.Name);
+        //            DirectoryCopy(subdir, tempPath, copySubDirs);
+        //        }
+        //    }
+        //}
+
+        public static void CopyTo(this DirectoryInfo sourceDir, string targetDir)
         {
-            if (!sourceDirectory.Exists)
-                throw new DirectoryNotFoundException($"Source directory does not exist or could not be found: {sourceDirectory.FullName}");
+            CopyTo(sourceDir.FullName, targetDir);
+        }
+        public static void CopyTo(this DirectoryInfo sourceDir, DirectoryInfo targetDir)
+        {
+            CopyTo(sourceDir.FullName, targetDir.FullName);
+        }
 
-            var dirs = sourceDirectory.GetDirectories();
+        private static void CopyTo(this string sourceDir, string targetDir)
+        {
+            Directory.CreateDirectory(targetDir);
 
-            // If the destination directory doesn't exist, create it.       
-            Directory.CreateDirectory(destDirName);
+            foreach (var file in Directory.GetFiles(sourceDir))
+                File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
 
-            // Get the files in the directory and copy them to the new location.
-            FileInfo[] files = sourceDirectory.GetFiles();
-            foreach (FileInfo file in files)
-            {
-                string tempPath = Path.Combine(destDirName, file.Name);
-                file.CopyTo(tempPath, false);
-            }
-
-            // If copying subdirectories, copy them and their contents to new location.
-            if (copySubDirs)
-            {
-                foreach (DirectoryInfo subdir in dirs)
-                {
-                    string tempPath = Path.Combine(destDirName, subdir.Name);
-                    DirectoryCopy(subdir, tempPath, copySubDirs);
-                }
-            }
+            foreach (var directory in Directory.GetDirectories(sourceDir))
+                CopyTo(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
         }
     }
 

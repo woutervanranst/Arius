@@ -404,7 +404,7 @@ namespace Arius.Tests
             // Empty the test directory
             TestSetup.archiveTestDirectory.Delete(true);
             TestSetup.archiveTestDirectory.Create();
-            TestSetup.sourceFolder.DirectoryCopy(TestSetup.archiveTestDirectory.FullName, true);
+            TestSetup.sourceFolder.CopyTo(TestSetup.archiveTestDirectory);
 
             //EXECUTE
             var services = await ArchiveCommand(AccessTier.Cool);

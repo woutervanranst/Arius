@@ -40,7 +40,7 @@ namespace Arius.Tests
             TestSetup.restoreTestDirectory.Create();
         }
 
-        private static readonly FileCompare comparer = new();
+        private static readonly FileComparer comparer = new();
 
         [Test, Order(110)]
         public async Task Restore_OneFileFromCold()
@@ -141,64 +141,9 @@ namespace Arius.Tests
             return await ExecuteCommand(cmd);
         }
 
-        //private static bool Equal(DirectoryInfo dir1, DirectoryInfo dir2)
-        //{
-        //    // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/how-to-compare-the-contents-of-two-folders-linq
-
-        //    // Take a snapshot of the file system.  
-        //    IEnumerable<FileInfo> list1 = dir1.GetFiles("*.*", SearchOption.AllDirectories);
-        //    IEnumerable<FileInfo> list2 = dir2.GetFiles("*.*", SearchOption.AllDirectories);
-
-        //    //A custom file comparer defined below  
-        //    FileCompare comparer = new();
-
-        //    // This query determines whether the two folders contain  
-        //    // identical file lists, based on the custom file comparer  
-        //    // that is defined in the FileCompare class.  
-        //    // The query executes immediately because it returns a bool.  
-        //    bool areIdentical = list1.SequenceEqual(list2, comparer);
-
-        //    if (!areIdentical)
-        //        return false;
-
-        //    return true;
-
-        //    //// Find the common files. It produces a sequence and doesn't
-        //    //// execute until the foreach statement.  
-        //    //var queryCommonFiles = list1.Intersect(list2, myFileCompare);
-
-        //    //if (queryCommonFiles.Any())
-        //    //{
-        //    //    Console.WriteLine("The following files are in both folders:");
-        //    //    foreach (var v in queryCommonFiles)
-        //    //    {
-        //    //        Console.WriteLine(v.FullName); //shows which items end up in result list  
-        //    //    }
-        //    //}
-        //    //else
-        //    //{
-        //    //    Console.WriteLine("There are no common files in the two folders.");
-        //    //}
-
-        //    //// Find the set difference between the two folders.  
-        //    //// For this example we only check one way.  
-        //    //var queryList1Only = (from file in list1
-        //    //                      select file).Except(list2, myFileCompare);
-
-        //    //Console.WriteLine("The following files are in list1 but not list2:");
-        //    //foreach (var v in queryList1Only)
-        //    //{
-        //    //    Console.WriteLine(v.FullName);
-        //    //}
-
-        //    //// Keep the console window open in debug mode.  
-        //    //Console.WriteLine("Press any key to exit.");
-        //    //Console.ReadKey();
-        //}
-
-        private class FileCompare : IEqualityComparer<FileInfo>
+        private class FileComparer : IEqualityComparer<FileInfo>
         {
-            public FileCompare() { }
+            public FileComparer() { }
 
             public bool Equals(FileInfo x, FileInfo y)
             {
@@ -208,19 +153,26 @@ namespace Arius.Tests
                     SHA256Hasher.GetHashValue(x.FullName, "").Equals(SHA256Hasher.GetHashValue(y.FullName, ""));
             }
 
-            // Return a hash that reflects the comparison criteria. According to the
-            // rules for IEqualityComparer<T>, if Equals is true, then the hash codes must  
-            // also be equal. Because equality as defined here is a simple value equality, not  
-            // reference identity, it is possible that two or more objects will produce the same  
-            // hash code.  
-            public int GetHashCode(FileInfo fi)
+            public int GetHashCode(FileInfo obj)
             {
-                return HashCode.Combine(fi.Name, fi.Length, fi.LastWriteTimeUtc, SHA256Hasher.GetHashValue(fi.FullName, ""));
+                return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
             }
         }
+
+        //[TearDown]
+        //public void TestCleanup()
+        //{
+        //    // Runs after each test. (Optional)
+        //}
+        //[OneTimeTearDown]
+        //public void ClassCleanup()
+        //{
+        //    // Runs once after all tests in this class are executed. (Optional)
+        //    // Not guaranteed that it executes instantly after all tests from the class.
+        //}
     }
 
-    
+
 
 
     //    /*
@@ -242,16 +194,4 @@ namespace Arius.Tests
 
     // restore a seoncd time without any changes
     //     * */
-
-    //[TearDown]
-    //public void TestCleanup()
-    //{
-    //    // Runs after each test. (Optional)
-    //}
-    //[OneTimeTearDown]
-    //public void ClassCleanup()
-    //{
-    //    // Runs once after all tests in this class are executed. (Optional)
-    //    // Not guaranteed that it executes instantly after all tests from the class.
-    //}
 }

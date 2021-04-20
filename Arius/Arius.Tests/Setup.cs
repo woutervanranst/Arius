@@ -117,57 +117,7 @@ namespace Arius.Tests
 
         
 
-        private static void CopyFolder(string sourceDir, string targetDir)
-        {
-            Directory.CreateDirectory(targetDir);
+        
 
-            foreach (var file in Directory.GetFiles(sourceDir))
-                System.IO.File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
-
-            foreach (var directory in Directory.GetDirectories(sourceDir))
-                CopyFolder(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
-        }
-
-        //public static void ExecuteCommandline(string args)
-        //{
-        //    using var process = new Process();
-
-        //    var exeFolder = @"C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius\bin\Debug\net5.0"; //AppDomain.CurrentDomain.BaseDirectory
-
-        //    var psi = new ProcessStartInfo
-        //    {
-        //        FileName = Path.Combine(exeFolder, "arius.exe"),
-
-        //        UseShellExecute = false,
-        //        Arguments = args,
-
-        //        RedirectStandardError = true,
-        //        RedirectStandardOutput = true
-        //    };
-
-        //    process.StartInfo = psi;
-
-        //    string output = "";
-        //    process.OutputDataReceived += (_, data) => output += data.Data + Environment.NewLine;
-        //    process.ErrorDataReceived += (_, data) => output += data.Data + Environment.NewLine;
-
-        //    process.Start();
-
-        //    process.BeginOutputReadLine();
-        //    process.BeginErrorReadLine();
-
-        //    process.WaitForExit();
-
-        //    /*
-        //     * NOTE If error -2147450749 is encountered:
-        //     *Cannot use file stream for [C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.deps.json]: No such file or directory
-        //        A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet'.
-        //        Failed to run as a self-contained app.
-        //          - The application was run as a self-contained app because 'C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.runtimeconfig.json' was not found.
-        //          - If this should be a framework-dependent app, add the 'C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.runtimeconfig.json' file and specify the appropriate framework.
-        //     */
-
-        //    Assert.AreEqual(0, process.ExitCode, message: output);
-        //}
     }
 }
