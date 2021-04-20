@@ -141,7 +141,7 @@ namespace Arius.Models
 
         internal FileInfo BinaryFileInfo => new(fi.FullName.TrimEnd(Extension));
 
-        internal IEnumerable<HashValue> ChunkHashes { get; set; }
+        internal IEnumerable<HashValue> ChunkHashes { get; set; } //TODO Delete this
 
         public override string ContentName => Name.TrimEnd(Extension);
     }
