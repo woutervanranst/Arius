@@ -14,18 +14,18 @@ namespace Arius.Tests
     public class TestSetup
     {
         public static DirectoryInfo sourceFolder;
-        public static DirectoryInfo rootDirectoryInfo;
+        public static DirectoryInfo testDirectoryInfo;
         
         private static BlobServiceClient _bsc;
         public static BlobContainerClient container;
 
-        public static CloudTableClient _ctc;
-        public static CloudTable _manifestTable;
-        public static CloudTable _pointerEntryTable;
+        private static CloudTableClient _ctc;
+        //private static CloudTable _manifestTable;
+        //private static CloudTable _pointerEntryTable;
         
         public static string accountName;
         public static string accountKey;
-        public static string passphrase = "myPassphrase";
+        public static readonly string passphrase = "myPassphrase";
 
         private const string TestContainerNamePrefix = "unittest";
 
@@ -38,8 +38,8 @@ namespace Arius.Tests
 
             // Create temp folder
             var containerName = TestContainerNamePrefix + $"{DateTime.Now.Ticks}";
-            rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
-            rootDirectoryInfo.Create();
+            testDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
+            //testDirectoryInfo.Create();
 
 
             // Create temp container
@@ -62,8 +62,8 @@ namespace Arius.Tests
             var csa = CloudStorageAccount.Parse(connectionString);
             _ctc = csa.CreateCloudTableClient();
 
-            _manifestTable = _ctc.GetTableReference(containerName + "manifests");
-            _pointerEntryTable = _ctc.GetTableReference(containerName + "pointers");
+            //_manifestTable = _ctc.GetTableReference(containerName + "manifests");
+            //_pointerEntryTable = _ctc.GetTableReference(containerName + "pointers");
 
         }
 
@@ -103,7 +103,7 @@ namespace Arius.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            rootDirectoryInfo.Delete(true);
+            testDirectoryInfo.Delete(true);
 
             foreach (var c in _bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
                 _bsc.GetBlobContainerClient(c.Name).Delete();

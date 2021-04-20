@@ -19,6 +19,7 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Tests
 {
+    //[Order(10)]
     public class RestoreTests
     {
         [OneTimeSetUp]
@@ -30,12 +31,15 @@ namespace Arius.Tests
         public void TestInit()
         {
             // Runs before each test. (Optional)
+
+            if (TestSetup.testDirectoryInfo.Exists) TestSetup.testDirectoryInfo.Delete(true);
+            TestSetup.testDirectoryInfo.Create();
         }
 
-        [Test]
-        public void Test()
+        [Test, Order(1011)]
+        public void RestoreOneFileFromCold()
         {
-
+            //Archive one file 
          
         }
 
