@@ -88,43 +88,29 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
 
-            //10 - The chunk is in the cool tier
-            var pfi1 = bfi.GetPointerFile();
-            var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
+            //10 The chunk is in the Archive tier
+            var pf = bfi.GetPointerFile();
+            var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
             var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
 
-            ////11 - Hydrating it results in an invalidOperationException
-            //Assert.Catch<InvalidOperationException>(() => repo.Hydrate(recbi));
-
-            //// Make a copy
-            //var bc_Original = TestSetup.container.GetBlobClient(recbi.FullName);
-            //Assert.IsTrue(bc_Original.Exists());
-
-            //var bc_Temp = TestSetup.container.GetBlobClient($"temp/{recbi.Name}");
-            //Assert.IsFalse(bc_Temp.Exists());
-
-            //var copyTask = bc_Temp.StartCopyFromUri(bc_Original.Uri);
-            //await copyTask.WaitForCompletionAsync();
-
-            //Assert.IsTrue(bc_Temp.Exists());
-
-            //Move to archive tier
-            //bc_Original.SetAccessTier(AccessTier.Archive);
-            //recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
-            //Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
-
-            // HYdrated copy does not yet exist
+            //11 A hydrated blob does not yet exist
             var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{recbi.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
-            //cannot obtain properties 
+            
+            //12 Obtaining properties results in an exception
             Assert.Catch<Azure.RequestFailedException>(() => bc_Hydrating.GetProperties());
 
-            // call the arius restore
+            
+            //EXECUTE -- Restore
             await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
-            // Assert status
+
+            //ASSERT OUTCOME
+            //20 A hydrating blob exists
             Assert.IsTrue(bc_Hydrating.Exists());
+
+            //21 The status is rehydrate-pending
             var status = bc_Hydrating.GetProperties().Value.ArchiveStatus;
             Assert.IsTrue(status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot");
         }
@@ -148,50 +134,44 @@ namespace Arius.Tests
             //ASSERT OUTCOME
             var repo = services.GetRequiredService<AzureRepository>();
 
-
             //10 - The chunk is in the cool tier
-            var pfi1 = bfi.GetPointerFile();
-            var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
+            var pf = bfi.GetPointerFile();
+            var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
             var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Cool, recbi.AccessTier);
+
 
             //20 "Simulate" a hydrated blob
             //21 The original blob exists
             var bc_Original = TestSetup.container.GetBlobClient(recbi.FullName);
             Assert.IsTrue(bc_Original.Exists());
+            
             //22 The hydrated blob does not yet exist
             var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{recbi.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
+            
             //23 Copy the original to the hydrated folder
             var copyTask = bc_Hydrated.StartCopyFromUri(bc_Original.Uri);
             await copyTask.WaitForCompletionAsync();
             Assert.IsTrue(bc_Hydrated.Exists());
+            
             //24 Move the original blob to the archive tier
             bc_Original.SetAccessTier(AccessTier.Archive);
             recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
 
-            // call the arius restore
-            services = await RestoreCommand(synchronize: true, download: true, keepPointers: true);
+
+            //EXECUTE -- Restore
+            await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
 
+            //ASSERT OUTCOME
             var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
             var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
 
-
-            //archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
-
+            //30 The folders are identical
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
-
             Assert.IsTrue(areIdentical);
-
-
-            ////20
-            //Assert.AreEqual(1 + 1, repo.GetAllManifestHashes().Count());
-
-            ////30
-            //var pfes = await repo.GetCurrentEntries(true);
-            //Assert.AreEqual(6 + 1, pfes.Count());
         }
 
 
