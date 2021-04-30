@@ -101,12 +101,12 @@ namespace Arius.CommandLine
 
             return IsHiddenOrSystem(fi.Attributes);
         }
-        private bool IsHiddenOrSystem(FileAttributes attr)
+        private static bool IsHiddenOrSystem(FileAttributes attr)
         {
             return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
         }
 
-        private bool IsIgnoreFile(FileInfo fi)
+        private static bool IsIgnoreFile(FileInfo fi)
         {
             var lowercaseFilename = fi.Name.ToLower();
 
