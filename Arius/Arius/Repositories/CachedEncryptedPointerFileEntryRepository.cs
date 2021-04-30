@@ -204,10 +204,6 @@ namespace Arius.Repositories
                     public bool IsDeleted { get; init; }
                     public DateTime? CreationTimeUtc { get; init; }
                     public DateTime? LastWriteTimeUtc { get; init; }
-
-
-                    //[IgnoreProperty]
-                    //internal string RelativeNameHash => RowKey.Substring(0, 8);
                 }
             }
         }
