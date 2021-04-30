@@ -94,7 +94,9 @@ namespace Arius.CommandLine
         }
         private bool IsHiddenOrSystem(FileInfo fi)
         {
-            if (fi.FullName.Contains("eaDir") || fi.FullName.Contains("SynoResource") || fi.FullName.Contains("@"))
+            if (fi.FullName.Contains("eaDir") || 
+                fi.FullName.Contains("SynoResource") || 
+                fi.FullName.Contains("@"))
                 _logger.LogWarning("WEIRD FILE: " + fi.FullName);
 
             return IsHiddenOrSystem(fi.Attributes);
@@ -1137,6 +1139,7 @@ namespace Arius.CommandLine
                     if (!_options.RemoveLocal)
                         return Task.CompletedTask;
 
+                    _logger.LogInformation($"Deleting {_binaryFilesToDelete.Count} binary files");
                     Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
 
                     return Task.CompletedTask;
