@@ -30,5 +30,4 @@ namespace Arius.Extensions
                 obj.LastWriteTimeUtc);
         }
     }
-
 }
