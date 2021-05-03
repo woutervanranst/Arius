@@ -205,11 +205,13 @@ namespace Arius.Repositories
 
                 var downloadedFiles = _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target, flatten);
 
+                _logger.LogInformation("BLA");
+
                 foreach (var a in recbis)
-                    _logger.LogInformation(a.Name);
+                    _logger.LogInformation("BLI" + a.Name);
 
                 foreach (var a in downloadedFiles)
-                    _logger.LogInformation(a.FullName);
+                    _logger.LogInformation("BLO" + a.FullName);
 
 
                 if (recbis.Count() != downloadedFiles.Count())
