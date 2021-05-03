@@ -34,8 +34,10 @@ namespace Arius.Tests
             // Runs before each test. (Optional)
         }
 
-
-        private int allChunkBlobItemsCount = 0;
+        private int expectedCurrentPfeCountWithDeleted = 0;
+        private int expectedCurrentPfeCountWithoutDeleted = 0;
+        private int expectedChunkBlobItemsCount = 0;
+        private int expectedManifestHashes = 0;
 
         /// <summary>
         /// Archive a file
@@ -70,16 +72,23 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
-            allChunkBlobItemsCount++;
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            expectedChunkBlobItemsCount++;
+
             //11
             Assert.AreEqual(tier, repo.GetAllChunkBlobItems().First().AccessTier);
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
+            expectedManifestHashes++;
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
-            Assert.AreEqual(1, pfes.Count());
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
 
             //31
             var pf1 = bfi1.GetPointerFileInfo();
@@ -97,7 +106,61 @@ namespace Arius.Tests
             Assert.AreEqual(bfi1.LastWriteTimeUtc, pfe1.LastWriteTimeUtc);
         }
 
-        
+        [Test, Order(101)]
+        public async Task Archive_OneFile_Undelete()
+        {
+            AccessTier tier = AccessTier.Cool;
+
+            // Copy a new file to the test directory
+            var bfi2 = TestSetup.sourceFolder.GetFiles().Skip(1).First();
+            bfi2.CopyTo(TestSetup.archiveTestDirectory);
+
+            // Archive it
+            var services = await ArchiveCommand(tier, dedup: false);
+            var repo = services.GetRequiredService<AzureRepository>();
+
+            // Expected one additional PointerFileEntry
+            var pfes = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
+            expectedChunkBlobItemsCount++;
+            expectedManifestHashes++;
+
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
+
+
+            // Clear the directory, no more expected PFEs
+            TestSetup.archiveTestDirectory.Clear();
+            expectedCurrentPfeCountWithoutDeleted = 0;
+
+            services = await ArchiveCommand(tier, dedup: false);
+            repo = services.GetRequiredService<AzureRepository>();
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted, pfes.Count());
+
+            pfes = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted, pfes.Count());
+
+
+            // "Undelete" the file (ie copy it again from source)
+            bfi2.CopyTo(TestSetup.archiveTestDirectory);
+
+            services = await ArchiveCommand(tier, dedup: false);
+            repo = services.GetRequiredService<AzureRepository>();
+
+            // Expected: it is there again
+            pfes = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted, pfes.Count());
+
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
+        }
+
+
         /// <summary>
         /// Duplicate the first file and archive again (one addtl pointer, yet no addtl upload)
         /// 
@@ -132,14 +195,19 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
             
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
-            Assert.AreEqual(1 + 1, pfes.Count());
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
 
             //31
             var pf1 = bfi1.GetPointerFile();
@@ -191,14 +259,19 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
-            Assert.AreEqual(2 + 1, pfes.Count());
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
+            pfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
 
             //31
             Assert.IsTrue(pfi1.Exists);
@@ -248,18 +321,20 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
 
             //30
-            var lastExistingPfes = (await repo.GetCurrentEntries(false)).ToList();
-            Assert.AreEqual(3 + 0, lastExistingPfes.Count);
+            var lastExistingPfes = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 0, lastExistingPfes.Count());
 
             //31
-            var lastWithDeletedPfes = (await repo.GetCurrentEntries(true)).ToList();
-            Assert.AreEqual(3 + 1, lastWithDeletedPfes.Count);
+            var lastWithDeletedPfes = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, lastWithDeletedPfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
 
             //var all = GetManifestEntries(services, pf, PointerFileEntryFilter.All);
             //Assert.AreEqual(3 + 2, all.Count());
@@ -306,17 +381,20 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
-
-            var pfes_OnlyExisting = (await repo.GetCurrentEntries(includeDeleted: false)).ToList();
-            var pfes_WithDeleted = (await repo.GetCurrentEntries(includeDeleted: true)).ToList();
+            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
 
             //30
-            Assert.AreEqual(3 + 1, pfes_OnlyExisting.Count);
-            Assert.AreEqual(4 + 1, pfes_WithDeleted.Count);
+            var pfes_OnlyExisting = await repo.GetCurrentEntries(false);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 1, pfes_OnlyExisting.Count());
+            expectedCurrentPfeCountWithoutDeleted++;
+
+            var pfes_WithDeleted = await repo.GetCurrentEntries(true);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes_WithDeleted.Count());
+            expectedCurrentPfeCountWithDeleted++;
+
 
             //Get the PointerFileNetries of the original and moved file
             var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi_FullName_Original);
@@ -356,7 +434,7 @@ namespace Arius.Tests
             Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
 
             //30
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
         }
 
         /// <summary>
@@ -388,25 +466,26 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
 
             //20
-            Assert.AreEqual(1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
 
-            var pfes_OnlyExisting = (await repo.GetCurrentEntries(false)).ToList();
+            var pfes_WithoutDeleted = (await repo.GetCurrentEntries(false)).ToList();
             var pfes_WithDeleted = (await repo.GetCurrentEntries(true)).ToList();
 
             //30
-            Assert.AreEqual(4 + 0, pfes_OnlyExisting.Count);
+            Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted + 0, pfes_WithoutDeleted.Count);
             //31
-            Assert.AreEqual(5 + 1, pfes_WithDeleted.Count);
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes_WithDeleted.Count);
+            expectedCurrentPfeCountWithDeleted++;
 
             //Get the PointerFileNetries of the original and moved file
             var pfi_RelativeName_Original = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi_FullName_Original);
             var pfi_RelativeName_Moved = Path.GetRelativePath(TestSetup.archiveTestDirectory.FullName, pfi.FullName);
 
             var pfe_Original = pfes_WithDeleted.Single(lcf => lcf.RelativeName == pfi_RelativeName_Original);
-            var pfe_Moved = pfes_OnlyExisting.Single(lcf => lcf.RelativeName == pfi_RelativeName_Moved);
+            var pfe_Moved = pfes_WithoutDeleted.Single(lcf => lcf.RelativeName == pfi_RelativeName_Moved);
 
             //40
             Assert.AreEqual(true, pfe_Original.IsDeleted);
@@ -444,8 +523,8 @@ namespace Arius.Tests
 
 
             //10
-            Assert.AreEqual(allChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
-            allChunkBlobItemsCount++;
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            expectedChunkBlobItemsCount++;
 
             //11
             var pfi1 = bfi1.GetPointerFile();
@@ -454,11 +533,13 @@ namespace Arius.Tests
             Assert.AreEqual(tier, chunk.AccessTier);
 
             //20
-            Assert.AreEqual(1 + 1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
+            expectedManifestHashes++;
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
-            Assert.AreEqual(6 + 1, pfes.Count());
+            Assert.AreEqual(expectedCurrentPfeCountWithDeleted + 1, pfes.Count());
+            expectedCurrentPfeCountWithDeleted++;
         }
 
 
