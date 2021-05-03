@@ -214,6 +214,9 @@ namespace Arius.Services
 
             var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
 
+            if (downloadedFilesMatches.Count == 0)
+                _logger.LogWarning("No matches in the AzCopy logfile. Did the version change?");
+
             var downloadedFiles = downloadedFilesMatches.Select(match => new FileInfo(match.Groups["downloadedFileFullName"].Value));
 
             return downloadedFiles;
