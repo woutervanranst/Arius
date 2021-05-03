@@ -8,6 +8,11 @@ namespace Arius.Extensions
     {
         public bool Equals(AzureRepository.PointerFileEntry x, AzureRepository.PointerFileEntry y)
         {
+            if (x is null && y is null)
+                throw new ArgumentException("Both PointerFileEntries are null");
+            if (x is null || y is null)
+                return false;
+
             return x.RelativeName == y.RelativeName &&
                    // x.Version.Equals(y.Version) && //DO NOT Compare on DateTime Version, we'd by inserting new PointerFileEntries just for the version
                    x.IsDeleted == y.IsDeleted &&

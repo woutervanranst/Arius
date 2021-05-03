@@ -108,7 +108,13 @@ namespace Arius.Repositories
 
                         lock (pfes)
                         {
-                            if (!pfes.Contains(pfe, equalityComparer))
+                            var lastVersion = pfes.AsParallel()
+                                .Where(p => pfe.RelativeName.Equals(p.RelativeName))
+                                .OrderBy(p => p.Version)
+                                .LastOrDefault();
+
+                            if (!equalityComparer.Equals(pfe, lastVersion))
+                            //if (!pfes.Contains(pfe, equalityComparer))
                             {
                                 //Remove the old value, if present
                                 //var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName.Equals(pfe2.RelativeName));
