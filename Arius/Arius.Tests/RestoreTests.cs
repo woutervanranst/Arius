@@ -72,7 +72,7 @@ namespace Arius.Tests
         [Test, Order(801)]
         public async Task Restore_FileArchiveTier_HydratingBlob()
         {
-            //SET UP -- Clear directories & ceate a new file (with new hash) to archive
+            //SET UP -- Clear directories & create a new file (with new hash) to archive
             Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
             TestSetup.archiveTestDirectory.Clear();
             var bfi = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "archivefile2.txt"));
