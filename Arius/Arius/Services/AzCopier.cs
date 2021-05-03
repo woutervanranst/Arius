@@ -208,6 +208,8 @@ namespace Arius.Services
         {
             var log = File.ReadAllText(logFullName);
 
+            _logger.LogInformation(log);
+
             var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
 
             var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
