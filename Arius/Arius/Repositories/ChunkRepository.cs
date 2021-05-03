@@ -205,6 +205,13 @@ namespace Arius.Repositories
 
                 var downloadedFiles = _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target, flatten);
 
+                foreach (var a in recbis)
+                    _logger.LogInformation(a.Name);
+
+                foreach (var a in downloadedFiles)
+                    _logger.LogInformation(a.FullName);
+
+
                 if (recbis.Count() != downloadedFiles.Count())
                     throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
 
