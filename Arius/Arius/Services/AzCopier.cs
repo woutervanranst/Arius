@@ -193,7 +193,7 @@ namespace Arius.Services
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");
             }
 
-            var downloadedFiles = ParseLogDownloadedFiles(logFullName).ToArray();
+            ParseLogDownloadedFiles(logFullName, out var downloadedFiles);
 
             if (flatten)
                 foreach (var downloadedFile in downloadedFiles)
@@ -204,23 +204,24 @@ namespace Arius.Services
             //$"AzCopy Log:{String.Join(Environment.NewLine, File.ReadAllLines((new DirectoryInfo("/home/runner/.azcopy/")).GetFiles().First().FullName))}");
         }
 
-        private IEnumerable<FileInfo> ParseLogDownloadedFiles(string logFullName)
+        private void ParseLogDownloadedFiles(string logFullName, out FileInfo[] downloadedFiles)
         {
             var log = File.ReadAllText(logFullName);
 
             _logger.LogInformation(log);
 
-            var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
-                                      //"DOWNLOADSUCCESSFUL: \\\\\?\\([A-z:0-9.\\]*.arius)";
+            /*  Regular expression that matches the log lines on both Linux and Windows:
+                2021/05/04 07:43:57 INFO: [P#0-T#0] DOWNLOADSUCCESSFUL: /tmp/ariusunittests/restoreunittest637557110158966662/.ariusrestore/chunks/527d3590f906e3524df0202be3221fca138bd9e92b12f00acd6717e41ae35549.7z.arius
+                2021/05/04 06:23:43 INFO: [P#0-T#1] DOWNLOADSUCCESSFUL: \\?\C:\Users\Wouter\AppData\Local\Temp\ariusunittests\restoreunittest637557132601207149\.ariusrestore\chunks\3b645c1e1e985ea2562de76df5f65a762ac9919de543f18d531414dc9141a04c.7z.arius
+             */
+            var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: (\\\\\?\\)?(?<downloadedFileFullName>.[^\n]*)";
 
             var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
 
             if (downloadedFilesMatches.Count == 0)
                 _logger.LogWarning("No matches in the AzCopy logfile. Did the version change?");
 
-            var downloadedFiles = downloadedFilesMatches.Select(match => new FileInfo(match.Groups["downloadedFileFullName"].Value));
-
-            return downloadedFiles;
+            downloadedFiles = downloadedFilesMatches.Select(match => new FileInfo(match.Groups["downloadedFileFullName"].Value)).ToArray();
         }
 
         private static string GetContainerSasUri(BlobContainerClient container, StorageSharedKeyCredential sharedKeyCredential, string storedPolicyName = null)
