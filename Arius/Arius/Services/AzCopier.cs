@@ -211,6 +211,7 @@ namespace Arius.Services
             _logger.LogInformation(log);
 
             var downloadedFilesRegex = @"DOWNLOADSUCCESSFUL: \\\\\?\\(?<downloadedFileFullName>.[^\n]*)";
+                                      //"DOWNLOADSUCCESSFUL: \\\\\?\\([A-z:0-9.\\]*.arius)";
 
             var downloadedFilesMatches = Regex.Matches(log, downloadedFilesRegex);
 
