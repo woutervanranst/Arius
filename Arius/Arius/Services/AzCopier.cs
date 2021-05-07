@@ -114,7 +114,7 @@ namespace Arius.Services
             //Note the \* after the {dir}\*
             //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
 
-            var listOfFilesFullName = Path.GetTempFileName();
+            var listOfFilesFullName = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             File.WriteAllLines(listOfFilesFullName, fileNames);
 
             var sas = GetContainerSasUri(_bcc, _skc);
@@ -170,13 +170,12 @@ namespace Arius.Services
             //azcopy copy '<local-directory-path>' 'https://<storage-account-name>.<blob or dfs>.core.windows.net/<container-name>' --include-path <semicolon-separated-file-list>
             //Syntax 2: https://github.com/Azure/azure-storage-azcopy/wiki/Listing-specific-files-to-transfer
 
-            var listOfFilesFullName = Path.GetTempFileName();
+            var listOfFilesFullName = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             File.WriteAllLines(listOfFilesFullName, blobsToDownload);
 
             var sas = GetContainerSasUri(_bcc, _skc);
             string arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
 
-            //var regex = @$"Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
             var regex = @$"Log file is located at: (?<logFullName>.[^{Environment.NewLine}]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
             var p = new ExternalProcess(_AzCopyPath.Result);
