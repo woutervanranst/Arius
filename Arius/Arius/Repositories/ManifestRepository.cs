@@ -73,7 +73,7 @@ namespace Arius.Repositories
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting all manifests... done"); // TODO KARL logging pattern
+                    _logger.LogInformation($"Getting all manifests... done"); // TODO logging in the final?
                 }
             }
 
