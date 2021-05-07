@@ -457,10 +457,9 @@ namespace Arius.Tests
             var pfi_FullName_Original = pfi.FullName;
             pfi.Rename($"Moving2 of {pfi.Name}");
 
-
+          
             //EXECUTE
             var services = await ArchiveCommand(AccessTier.Cool);
-
 
             //ASSERT OUTCOME
             var repo = services.GetRequiredService<AzureRepository>();
