@@ -15,13 +15,11 @@ namespace Arius.Services
         HashValue GetHashValue(string fullName);
     }
 
-
     internal interface ISHA256HasherOptions : ICommandExecutorOptions
     {
         public string Passphrase { get; }
         public bool FastHash { get; }
     }
-
     
     internal class SHA256Hasher : IHashValueProvider
     {
@@ -62,7 +60,12 @@ namespace Arius.Services
 
         public HashValue GetHashValue(string fullName)
         {
-            byte[] byteArray = Encoding.ASCII.GetBytes(_salt);
+            return new HashValue { Value = GetHashValue(fullName, _salt) };
+        }
+
+        public static string GetHashValue(string fullName, string salt)
+        {
+            var byteArray = Encoding.ASCII.GetBytes(salt);
             using Stream ss = new MemoryStream(byteArray);
 
             using Stream fs = File.OpenRead(fullName);
@@ -74,10 +77,10 @@ namespace Arius.Services
 
             fs.Close();
 
-            return new HashValue { Value = ByteArrayToString(hash) }; // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
+            return ByteArrayToString(hash);
         }
 
-        public static string ByteArrayToString(byte[] ba)
+        private static string ByteArrayToString(byte[] ba)
         {
             // https://stackoverflow.com/questions/311165/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-and-vice-versa?page=1&tab=votes#tab-top
 
@@ -86,9 +89,11 @@ namespace Arius.Services
             //    hex.AppendFormat("{0:x2}", b);
             //return hex.ToString();
 
-            return Convert.ToHexString(ba).ToLower();
+            // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
 
             //return BitConverter.ToString(ba).Replace("-", "").ToLower();
+
+            return Convert.ToHexString(ba).ToLower();
         }
     }
 }

@@ -1,5 +1,7 @@
 # Arius
 
+<img src="docs/iceberg.svg" width="200" />
+
 ![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
 
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
@@ -7,60 +9,100 @@ Arius is a lightweight tiered archival solution, specifically built to leverage 
 The name derives from the Greek for 'immortal'.
 
 - [Arius](#arius)
+  - [Key design scenarios](#key-design-scenarios)
   - [Key design objectives](#key-design-objectives)
-  - [What does it do & how does it work?](#what-does-it-do--how-does-it-work)
-    - [Overview](#overview)
+  - [Overview](#overview)
+    - [Archive](#archive)
+    - [Restore](#restore)
   - [Usage](#usage)
     - [Archive to blob storage](#archive-to-blob-storage)
       - [CLI](#cli)
       - [Docker Run](#docker-run)
       - [Arguments](#arguments)
     - [Restore from blob storage](#restore-from-blob-storage)
-  - [Install](#install)
+      - [CLI](#cli-1)
+      - [Arguments](#arguments-1)
+  - [Installing](#installing)
     - [Linux](#linux)
     - [Docker](#docker)
   - [Advanced](#advanced)
-    - [Functional Flows](#functional-flows)
-      - [Archive](#archive)
-      - [Restore](#restore)
+    - [Archive](#archive-1)
+    - [Restore](#restore-1)
     - [Restore with common tools](#restore-with-common-tools)
     - [Deduplication](#deduplication)
-  - [Developer reference](#developer-reference)
-    - [Flow Walkthrough](#flow-walkthrough)
-      - [Archive](#archive-1)
       - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
+- [Attributions](#attributions)
+
+## Key design scenarios
+
+Why did I create Arius?
+
+**Scenario 1**
+
+- I have a lot of static files that I rarely access but don't want to lose (think: backups, family pictures & videos, ...).
+- For some of these, I keep a live copy on my Synology
+- For all of these, I keep an offline copy on a disconnected harddisk
+- To account for the mechanical failure of the harddisk (and to implement the [3-2-1 backup strategy](https://en.wikipedia.org/wiki/Backup#Storage)) I back up the entire hard disk to Azure using Arius. The price for this is approx. 1 EUR per TB per month when using the archive tier.
+
+**Scenario 2**
+
+- (same as Scenario 1) and I also want to have one 'single pane of glass' for all files, eg. if I search for the file in Windows Explorer, I want to see that the file is 'there' (maybe not the contents, but the pointer to the Arius archive).
+
+**Scenario 3**
+
+- I want client side encryption (because of \<reasons>).
+
+**Scenario 4**
+
+- Before my Synology, I had a Windows Server that had deduplication on its file system. My OCD has a hard time storing duplicates ever since.
 
 ## Key design objectives
 
-- [x] Local file structure (files/folders) by creating 'sparse' placeholders
-- [x] Files, folders & filenames are encrypted clientside
-- [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated)
-- [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage)
-- [x] Never delete files on remote
-- [ ] Point in time restore (FUTURE)
-- [x] No central store to avoid a single point of failure
-- [x] File level deduplication
-- [x] Variable block size (rolling hash Rabin-Karp) deduplication
-- [x] Leverage common tools, to allow restores even when this project would become deprecated
+- [x] Maintain the local file structure (files/folders) by creating 'sparse' placeholders (Scenario 2).
+- [x] Files, folders & filenames are encrypted clientside (Scenario 3).
+- [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated) (Scenario 3).
+- [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage).
+- [x] Never delete files on remote.
+- [x] No central store to avoid a single point of failure.
+- [x] File level deduplication (Scenario 4).
+- [x] Variable block size (rolling hash Rabin-Karp) deduplication (Scenario 4).
+- [x] Leverage common tools, to allow restores even when this project would become deprecated.
+- [ ] Point in time restore (FUTURE).
 
-## What does it do & how does it work?
+## Overview
 
-### Overview
+Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier. The following diagram shows the concept of how Arius works.
 
 ![](docs/overview.png)
 
-Arius runs through the content of the local file system.
+### Archive
 
-For each file it encounters, it calculates the (SHA256) hash and checks whether a **manifest** for that hash already exists on blob storage. Manifests are small and frequently accessed and are therefore stored in the cool tier.
+1. Arius runs through the files of the (local) folder and subfolders.
 
-If it does not exist, the local file is **chunk**ed (deduplicated), encrypted & uploaded. A new manifest is created pointing to the chunks that make up the original file. Chunks are large (they make up the binaries of the original file), they are only accessed when doing a `restore` and are therefore stored in the archive tier.
+1. For each file, it calculates the hash and checks whether (a **manifest** for) this hash already exists on blob storage.
 
-On the local file system, a **pointer** is then created, pointing to the manifest.
+   - If it does not exist, the local file is **chunk**ed (deduplicated). Each chunk is encrypted and uploaded to Archive storage. A **manifest** is then created, the list of chunks that make up the original file.
 
-The result looks like this:
+1. On the local file system, a **pointer file** is then created, pointing to the manifest.
+
+1. For each pointer file, an entry is made in the Pointers table storage (containing relative name and manifest hash). This enables restoring the archive into an empty directory (by first reconstructing all the pointer files and then downloading and reconstituting all the chunks).
+
+The result on the local file system looks like this:
 ![](docs/archive.png)
 
-For a more detailed explanation, 
+For a more detailed explanation, see [Developer Reference](#developer-reference).
+
+### Restore
+
+A restore consists out of two stages.
+
+1. The first stage (optionally) synchonizes the pointer files in the local file system with the desired state, eg. restore into an empty folder, restore a previous version (point-in-time restore).
+
+1. The second stage (also optionally) downloads the chunks and reassembles the original files.
+
+By deleting the pointers that do not need to be restored before running the second stage, a selective restore can be done.
+
+For a more detailed explanation, see [Developer Reference](#developer-reference).
 
 ## Usage
 
@@ -74,10 +116,10 @@ arius archive
   [--accountkey <accountkey>]
    --passphrase <passphrase>
   [--container <containername>]
-  [--keep-local]
+  [--remove-local]
   [--tier=<hot/cool/archive>]
-  [--min-size=<minsizeinMB>]
-  [--simulate]
+  [--dedup]
+  [--fasthash]
   <path>
 ```
 
@@ -92,13 +134,12 @@ docker run
 
   archive
    --accountname <accountname>
-  [--accountkey <accountkey>]
    --passphrase <passphrase>
   [--container <containername>]
-  [--keep-local]
+  [--remove-local]
   [--tier=<hot/cool/archive>]
-  [--min-size=<minsizeinMB>]
-  [--simulate]
+  [--dedup]
+  [--fasthash]
 ```
 
 #### Arguments
@@ -107,15 +148,18 @@ docker run
 | - | - | - |
 | &#x2011;&#x2011;accountname, &#x2011;n | Storage Account Name
 | &#x2011;&#x2011;accountkey, &#x2011;k | [Storage Account Key](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage?tabs=azure-portal) | Can be set through:<ul><li>Argument<li>Environment variable `ARIUS_ACCOUNT_KEY`<li>Docker environment variable `ARIUS_ACCOUNT_KEY`</ul>
-| &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted
+| &#x2011;&#x2011;passphrase, &#x2011;p | Passphrase with which the blobs are encrypted (clientside)
 | &#x2011;&#x2011;container, &#x2011;c | Blob container to use | OPTIONAL. Default: 'arius'.
-| &#x2011;&#x2011;keep-local | Do not delete the local files after archiving | OPTIONAL. Default: Local files are deleted after archiving.<br>NOTE: Setting this flag may result in long N+1 archive runs as all files need to be re-hashed.
-| &#x2011;&#x2011;tier | Blob tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
-| &#x2011;&#x2011;min&#x2011;size | Minimum size of files to archive (in MB) | OPTIONAL. Default: 0.<br>NOTE: when set to >0, a full restore will miss the smaller files
+| &#x2011;&#x2011;remove-local | Remove local file after a successful upload | OPTIONAL. Default: Local files are deleted after archiving.
+| &#x2011;&#x2011;tier | Blob storage tier (hot/cool/archive) | OPTIONAL. Default: 'archive'.
+| &#x2011;&#x2011;dedup | Deduplicate within the file (see [here](#deduplication)) | OPTIONAL. Default: false.<br>NOTE: setting this option takes results in a longer run time for but a smaller archive size
+| &#x2011;&#x2011;fasthash | When a pointer file is present, use that hash instead of re-hashing the full file again | OPTIONAL. Default: false.<br>NOTE: Do **NOT** use this if the contents of the files are modified. Arius will not pick up the changes.
 | path | Path to the folder to archive | <ul><li>CLI: argument `<path>`<li>Docker: as `-v <path>:/archive` volume argument</ul>
 | logpath | Path to the folder to store the logs | NOTE: Only for Docker.
 
 ### Restore from blob storage
+
+#### CLI
 
 ```
 arius restore
@@ -126,29 +170,34 @@ arius restore
   [--synchronize]
   [--download]
   [--keep-pointers]
-  path
+  <path>
 ```
 
-If `<path>` is a Directory:
+#### Arguments
 
-Synchronize the remote archive structure to the `<path>`:
+| Argument | Description | Notes |
+| - | - | - |
+| &#x2011;&#x2011;accountname, &#x2011;n | (same as above)
+| &#x2011;&#x2011;accountkey, &#x2011;k | (same as above)
+| &#x2011;&#x2011;passphrase, &#x2011;p | (same as above)
+| &#x2011;&#x2011;container, &#x2011;c | (same as above)
+| &#x2011;&#x2011;synchronize | Bring the structure of the local file system (pointer files) in line with the latest state of the remote repository | <ul><li>This command only touches the pointers (ie. `.pointer;arius` files). Other files are left untouched.<li>Pointers that exist in the archive but not remote are created.<li>Pointers that exist locally but not in the archive are deleted</ul>
+| &#x2011;&#x2011;download | Download and restore the actual file (contents)
+| &#x2011;&#x2011;keep-pointers | Keep pointer files after downloading content files
+| path | Path to restore to | <ul><li>If  `<path>` is a directory: restore all pointer files in the (sub)directories.<li>If `<path>` is a file: restore this file.</ul>
 
-- This command only touches the pointers (ie. `.arius` files). Other files are left untouched.
-- Pointers that exist in the archive but not remote are created
-- Pointers that exist locally but not in the archive are deleted
-
-When the `--download` option is specified, the files are also downloaded WARNING this may consume a lot of bandwidth and may take a long time
-
-If ``<path>`` is an `.arius` file `--download` flag is specified: the file is restored.
-
-## Install
+## Installing
 
 ### Linux
 
 Prerequisites:
 
-- 7zip: `sudo apt-get install p7zip-full`
-<!-- https://www.thomasmaurer.ch/2019/05/how-to-install-azcopy-for-azure-storage/ -->
+- 7zip:
+
+```
+sudo apt-get install p7zip-full
+```
+
 - azcopy
 
 ```
@@ -162,7 +211,7 @@ sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
 ```bash
 wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -->
 
-Run the following commands:
+Arius:
 <!-- from https://blog.markvincze.com/download-artifacts-from-a-latest-github-release-in-sh-and-powershell/ -->
 
 ```
@@ -175,6 +224,8 @@ dotnet arius.dll ...
 ```
 
 ### Windows
+
+Prerequisites:
 
 * AzCopy: https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy
 * 7zip: https://www.7-zip.org/download.html
@@ -198,31 +249,9 @@ docker pull ghcr.io/woutervanranst/arius
 
 ## Advanced
 
-### Functional Flows
-
-#### Archive
+### Archive
 
 ![Archive flow](https://lucid.app/publicSegments/view/52737a1c-52f2-4f03-8c70-6ee6cdaab8c0/image.png)
-
-#### Restore
-
-![Restore flow](https://lucid.app/publicSegments/view/86952f67-e660-44d3-b467-9c84f811f3d1/image.png)
-
-### Restore with common tools
-
-Arius relies on the 7zip command line and Azure blob storage cli.
-
-### Deduplication
-
-A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
-
-((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
-
-## Developer reference
-
-### Flow Walkthrough
-
-#### Archive
 
 Consider the following example directory: three files of which two are a duplicate.
 Running `arius archive` on a local folder will yield the following:
@@ -260,6 +289,22 @@ The structure of the manifest is as follows:
 
 NOTE: since this file consists of only one chunk, the hash of the chunk and the hash of the original file are the same.
 
+### Restore
+
+![Restore flow](https://lucid.app/publicSegments/view/86952f67-e660-44d3-b467-9c84f811f3d1/image.png)
+
+### Restore with common tools
+
+Arius relies on the 7zip command line and Azure blob storage cli.
+
+### Deduplication
+
+A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
+
+((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
+
+
+
 
 #### Debugging Docker in Visual Studio
 
@@ -274,3 +319,8 @@ NOTE: since this file consists of only one chunk, the hash of the chunk and the 
 | ``(--min-size)`` | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``(--simulate)``  | argument in ``commandLineArgs`` in ``launchSettings.json`` |
 | ``<path>``  | ``<DockerfileRunArguments>`` in ``Arius.csproj``, eg.<br> ``-v "c:\Users\Wouter\Documents\Test:/archive"`
+
+
+# Attributions
+
+Arius Icon by [Freepik](https://www.flaticon.com/free-icon/iceberg_2055379?related_id=2055379).

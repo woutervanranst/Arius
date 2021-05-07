@@ -7,11 +7,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.CommandLine
 {
@@ -32,10 +34,7 @@ namespace Arius.CommandLine
                 {
                     _logger.LogInformation($"Indexing {di.FullName}");
 
-                    return IndexDirectory2(di);
-                    //var x = GetAllFiles(di).ToList();
-
-                    //return IndexDirectory(di);
+                    return IndexDirectory(di, di);
                 }
                 catch (Exception e)
                 {
@@ -47,68 +46,78 @@ namespace Arius.CommandLine
             );
         }
 
-        private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root)
-        {
-            _logger.LogInformation($"Indexing {root.FullName}");
-
-            foreach (var fi in root.GetFiles("*", SearchOption.AllDirectories).AsParallel())
-            {
-                if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
-                {
-                    _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
-
-                    yield return new PointerFile(root, fi);
-                }
-                else
-                {
-                    _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
-
-                    yield return new BinaryFile(root, fi);
-                }
-            }
-        }
-
         /// <summary>
         /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        private IEnumerable<IAriusEntry> IndexDirectory2([NotNull] DirectoryInfo directory)
+        private IEnumerable<IAriusEntry> IndexDirectory([NotNull] DirectoryInfo root, [NotNull] DirectoryInfo directory)
         {
             foreach (var file in directory.GetFiles())
-            { 
-                if (IsHiddenOrSystem(file.Attributes))
+            {
+                if (IsHiddenOrSystem(file))
                 {
                     _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
+                else if (IsIgnoreFile(file))
+                {
+                    _logger.LogDebug($"Ignoring file {file.FullName}");
+                    continue;
+                }
                 else
                 { 
-                    yield return GetAriusEntry(directory, file);
+                    yield return GetAriusEntry(root, file);
                 }
             }
 
             foreach (var dir in directory.GetDirectories())
             {
-                if (IsHiddenOrSystem(dir.Attributes))
+                if (IsHiddenOrSystem(dir))
                 {
                     _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
 
-                foreach (var f in IndexDirectory2(dir))
+                foreach (var f in IndexDirectory(root, dir))
                     yield return f;
             }
         }
 
-        private bool IsHiddenOrSystem(FileAttributes attr)
+        private bool IsHiddenOrSystem(DirectoryInfo d)
         {
-            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0);
+            if (d.Name == "@eaDir") //synology internals -- ignore
+                return true;
+
+            return IsHiddenOrSystem(d.Attributes);
+
+        }
+        private bool IsHiddenOrSystem(FileInfo fi)
+        {
+            if (fi.FullName.Contains("eaDir") || 
+                fi.FullName.Contains("SynoResource") || 
+                fi.FullName.Contains("@"))
+                _logger.LogWarning("WEIRD FILE: " + fi.FullName);
+
+            return IsHiddenOrSystem(fi.Attributes);
+        }
+        private static bool IsHiddenOrSystem(FileAttributes attr)
+        {
+            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
+        }
+
+        private static bool IsIgnoreFile(FileInfo fi)
+        {
+            var lowercaseFilename = fi.Name.ToLower();
+
+            return (lowercaseFilename.Equals("autorun.ini") ||
+                lowercaseFilename.Equals("thumbs.db") ||
+                lowercaseFilename.Equals(".ds_store"));
         }
 
         private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
         {
-            if (fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase))
+            if (fi.IsPointerFile())
             {
                 _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
@@ -130,7 +139,7 @@ namespace Arius.CommandLine
         private readonly ILogger<AddHashBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
 
-        public AddHashBlockProvider(ILogger<AddHashBlockProvider> logger, IHashValueProvider hvp, ArchiveOptions options)
+        public AddHashBlockProvider(ILogger<AddHashBlockProvider> logger, IHashValueProvider hvp)
         {
             _logger = logger;
             _hvp = hvp;
@@ -166,7 +175,6 @@ namespace Arius.CommandLine
             new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, BoundedCapacity = 15 });
         }
     }
-
 
 
     internal abstract class ProcessIfNotExistBlocksProvider<T> where T : IFile, IWithHashValue
@@ -298,6 +306,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     //internal abstract class ProcessManyIfNotExistBlocksProvider<TKey, TElement> where TKey : IFileWithHash 
     //                                                                            where TElement : IFileWithHash
     //{
@@ -407,19 +416,18 @@ namespace Arius.CommandLine
     //    }
     //}
 
+
     internal class ChunkBlockProvider
     {
         public ChunkBlockProvider(ILogger<ChunkBlockProvider> logger, IChunker chunker, AzureRepository azureRepository)
         {
             _logger = logger;
             _chunker = chunker;
-            this.azureRepository = azureRepository;
             _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
         }
 
         private readonly ILogger<ChunkBlockProvider> _logger;
         private readonly IChunker _chunker;
-        private readonly AzureRepository azureRepository;
         private readonly List<HashValue> _uploadedOrUploadingChunks;
 
         private Dictionary<BinaryFile, List<HashValue>> _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
@@ -479,7 +487,7 @@ namespace Arius.CommandLine
                                     _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated[bf].Add(chunk.Hash); //Add this chunk to the list of chunks that need to be uploaded before the manifest can be created
 
                                 return (ChunkFile: chunk, Uploaded: uploaded);
-                            });
+                            }).ToArray();
 
                             return r;
                         }
@@ -496,29 +504,26 @@ namespace Arius.CommandLine
 
         private IEnumerable<IChunkFile> AddChunks(BinaryFile bf)
         {
-            //Console.WriteLine("Chunking BinaryFile " + f.Name);
-
             var cs = _chunker.Chunk(bf).ToArray();
             bf.Chunks = cs;
-
-            //Console.WriteLine("Chunking BinaryFile " + f.Name + " done");
 
             return cs;
         }
     }
 
+
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IConfiguration config, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, IEncrypter encrypter)
         {
-            _logger = logger;
-            _config = config;
-            _encrypter = encrypter;
+            this.logger = logger;
+            this.tempDirAppSettings = tempDirAppSettings.Value;
+            this.encrypter = encrypter;
         }
 
-        private readonly ILogger<EncryptChunksBlockProvider> _logger;
-        private readonly IConfiguration _config;
-        private readonly IEncrypter _encrypter;
+        private readonly ILogger<EncryptChunksBlockProvider> logger;
+        private readonly TempDirectoryAppSettings tempDirAppSettings;
+        private readonly IEncrypter encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
         {
@@ -526,27 +531,28 @@ namespace Arius.CommandLine
                 {
                     try
                     {
-                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
+                        logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
 
-                        var targetFile = new FileInfo(Path.Combine(_config.UploadTempDir.FullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
+                        var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
 
-                        _encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
+                        encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
 
                         var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
-                        _logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
+                        logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
 
                         return ecf;
                     }
                     catch (Exception e)
                     {
-                        _logger.LogError(e, "ERRORTODO", chunkFile);
+                        logger.LogError(e, "ERRORTODO", chunkFile);
                         throw;
                     }
                 },
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 8 });
         }
     }
+
 
     internal class EnqueueEncryptedChunksForUploadBlockProvider
     {
@@ -584,16 +590,17 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreateUploadBatchesTaskProvider
     {
-        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IConfiguration config)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IOptions<AzCopyAppSettings> azCopyAppSettings)
         {
-            _logger = logger;
-            _config = config;
+            this.logger = logger;
+            this.azCopyAppSettings = azCopyAppSettings.Value;
         }
 
-        private readonly ILogger<CreateUploadBatchesTaskProvider> _logger;
-        private readonly IConfiguration _config;
+        private readonly ILogger<CreateUploadBatchesTaskProvider> logger;
+        private readonly AzCopyAppSettings azCopyAppSettings;
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
@@ -633,17 +640,17 @@ namespace Arius.CommandLine
                         var batch = new List<EncryptedChunkFile>();
                         long size = 0;
 
-                        _logger.LogInformation("Starting new upload batch");
+                        logger.LogInformation("Starting new upload batch");
 
                         foreach (var ecf in _uploadQueue.GetConsumingEnumerable())
                         {
                             batch.Add(ecf);
                             size += ecf.Length;
 
-                            _logger.LogInformation($"Added {ecf.Hash} to the batch. Batch Count: {batch.Count}, Batch Size: {size.GetBytesReadable()}, Remaining Queue Count: {_uploadQueue.Count}");
+                            logger.LogInformation($"Added {ecf.Hash} to the batch. Batch Count: {batch.Count}, Batch Size: {size.GetBytesReadable()}, Remaining Queue Count: {_uploadQueue.Count}");
 
-                            if (size >= _config.BatchSize ||
-                                batch.Count >= _config.BatchCount ||
+                            if (size >= azCopyAppSettings.BatchSize ||
+                                batch.Count >= azCopyAppSettings.BatchCount ||
                                 _uploadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                             {
                                 break;
@@ -653,21 +660,22 @@ namespace Arius.CommandLine
                         //Emit a batch
                         if (batch.Any())
                         {
-                            _logger.LogInformation($"Emitting batch for upload. Batch Size: {size.GetBytesReadable()}, Batch Count: {batch.Count}, Batches Queue depth: {((dynamic)_uploadEncryptedChunksBlock).InputCount}");
+                            logger.LogInformation($"Emitting batch for upload. Batch Size: {size.GetBytesReadable()}, Batch Count: {batch.Count}, Batches Queue depth: {((dynamic)_uploadEncryptedChunksBlock).InputCount}");
                             _uploadEncryptedChunksBlock.Post(batch.ToArray());
                         }
                     }
 
-                    _logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count} (should be 0), IsCompleted:{_uploadQueue.IsCompleted}");
+                    logger.LogInformation($"Done creating batches for upload. UploadQueue Count: {_uploadQueue.Count} (should be 0), IsCompleted:{_uploadQueue.IsCompleted}");
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "ERRORTODO", _enqueueEncryptedChunksForUploadBlock, _uploadQueue);
+                    logger.LogError(e, "ERRORTODO", _enqueueEncryptedChunksForUploadBlock, _uploadQueue);
                     throw;
                 }
             });
         }
     }
+
 
     internal class UploadEncryptedChunksBlockProvider
     {
@@ -772,6 +780,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreateManifestBlockProvider
     {
         public CreateManifestBlockProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository azureRepository)
@@ -801,6 +810,7 @@ namespace Arius.CommandLine
             });
         }
     }
+
 
     internal class CreatePointerBlockProvider
     {
@@ -841,42 +851,105 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
-        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository azureRepository)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository repo)
         {
-            _logger = logger;
-            _azureRepository = azureRepository;
+            this.logger = logger;
+            this.repo = repo;
         }
 
-        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> _logger;
-        private readonly AzureRepository _azureRepository;
+        private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger;
+        private readonly AzureRepository repo;
 
 
         public CreatePointerFileEntryIfNotExistsBlockProvider AddVersion(DateTime version)
         {
-            _version = version;
+            this.version = version;
             return this;
         }
-        private DateTime _version;
+        private DateTime version;
 
 
-        public ActionBlock<PointerFile> GetBlock()
+        public TransformBlock<PointerFile, PointerFile> GetBlock()
         {
             return new(async pointerFile =>
             {
                 try
                 {
-                    await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, _version);
+                    await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+
+                    return pointerFile;
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError(e, "ERRORTODO");
+                    logger.LogError(e, "ERRORTODO");
                     throw;
                 }
             });
         }
     }
+
+
+    internal class ValidateBlockProvider
+    {
+        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, AzureRepository repo, PointerService pointerService)
+        {
+            this.logger = logger;
+            this.repo = repo;
+            this.pointerService = pointerService;
+        }
+
+        private readonly ILogger<ValidateBlockProvider> logger;
+        private readonly AzureRepository repo;
+        private readonly PointerService pointerService;
+
+        public ActionBlock<PointerFile> GetBlock()
+        {
+            return new ActionBlock<PointerFile>(async pointerFile =>
+            {
+                try
+                {
+                    logger.LogInformation($"Validating {pointerFile.FullName}...");
+
+                    // Validate the manifest
+                    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
+
+                    if (!chunkHashes.Any())
+                        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
+
+                    double length = 0;
+                    foreach (var chunkHash in chunkHashes)
+                    {
+                        var recbi = repo.GetChunkBlobItemByHash(chunkHash, false);
+                        length += recbi.Length;
+                    }
+
+                    var bfi = pointerFile.BinaryFileInfo;
+                    if (bfi.Exists)
+                    {
+                        if (bfi.Length / length < 0.9)
+                            throw new InvalidOperationException("something is wrong");
+                    }
+                    else
+                    {
+                        if (length == 0)
+                            throw new InvalidOperationException("something is wrong");
+                    }
+
+                    logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
+            }, new() { MaxDegreeOfParallelism = Environment.ProcessorCount /*DataflowBlockOptions.Unbounded*/ } );
+        }
+
+    }
+
 
     internal class RemoveDeletedPointersTaskProvider
     {
@@ -900,21 +973,24 @@ namespace Arius.CommandLine
         private DateTime _version;
 
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
             return new(async () =>
             {
                 try
                 {
-                    var pfes = await _azureRepository.GetCurrentEntriesAsync(true);
+                    var pfes = await _azureRepository.GetCurrentEntries(true);
                     pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
-                    Parallel.ForEach(pfes, async pfe =>
+                    // NOTE - Parallel.ForEach does not work here - it does not await the result of the threads
+                    foreach (var pfe in pfes)
                     {
                         var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
                         if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
-                            await _azureRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, _version, true);
-                    });
+                        {
+                            await _azureRepository.CreateDeletedPointerFileEntryAsync(pfe, _version);
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -924,6 +1000,7 @@ namespace Arius.CommandLine
             });
         }
     }
+
 
     internal class ExportToJsonTaskProvider
     {
@@ -944,10 +1021,11 @@ namespace Arius.CommandLine
             _azureRepository = azureRepository;
         }
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
             return new(() =>
             {
+                return Task.CompletedTask;
                 //using Stream file = File.Create(@"c:\ha.json");
 
                 //var json = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
@@ -1032,6 +1110,7 @@ namespace Arius.CommandLine
         }
     }
 
+
     internal class DeleteBinaryFilesTaskProvider
     {
         public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, ArchiveOptions options)
@@ -1051,16 +1130,19 @@ namespace Arius.CommandLine
         private List<BinaryFile> _binaryFilesToDelete;
 
 
-        public Task GetTask()
+        public Func<Task> GetTask()
         {
             return new(() =>
             {
                 try
                 {
                     if (!_options.RemoveLocal)
-                        return;
+                        return Task.CompletedTask;
 
+                    _logger.LogInformation($"Deleting {_binaryFilesToDelete.Count} binary files");
                     Parallel.ForEach(_binaryFilesToDelete, bf => bf.Delete());
+
+                    return Task.CompletedTask;
                 }
                 catch (Exception e)
                 {

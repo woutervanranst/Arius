@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using Arius.CommandLine;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Services
 {
@@ -41,25 +43,25 @@ namespace Arius.Services
 
     internal class DedupChunker : IChunker
     {
-        public DedupChunker(ILogger<DedupChunker> logger, IConfiguration config, IHashValueProvider hvp)
+        public DedupChunker(ILogger<DedupChunker> logger, IOptions<TempDirectoryAppSettings> config, IHashValueProvider hvp)
         {
             _logger = logger;
             _hvp = hvp;
 
-            _uploadTempDir = config.UploadTempDir;
+            _uploadTempDirFullName = config.Value.TempDirectoryFullName;
 
         }
 
         private static readonly StreamBreaker _sb = new();
         private readonly ILogger<DedupChunker> _logger;
         private readonly IHashValueProvider _hvp;
-        private readonly DirectoryInfo _uploadTempDir;
+        private readonly string _uploadTempDirFullName;
 
         public IChunkFile[] Chunk(BinaryFile bf)
         {
             _logger.LogInformation($"Chunking {bf.RelativeName}...");
 
-            var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.RelativeName}"));
+            var di = new DirectoryInfo(Path.Combine(_uploadTempDirFullName, "chunks", $"{bf.RelativeName}"));
             if (di.Exists)
                 di.Delete();
             di.Create();
@@ -72,7 +74,7 @@ namespace Arius.Services
 
             for (int i = 0; i < chunkDefs.Count(); i++)
             {
-                _logger.LogInformation($"Writing chunk {i}/{chunkDefs.Count()} of {bf.RelativeName}");
+                _logger.LogInformation($"Writing chunk {i}/{chunkDefs.Length} of {bf.RelativeName}");
                 var chunk = chunkDefs[i];
 
                 byte[] buff = new byte[chunk.Length];

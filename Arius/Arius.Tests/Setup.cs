@@ -14,18 +14,17 @@ namespace Arius.Tests
     public class TestSetup
     {
         public static DirectoryInfo sourceFolder;
-        public static DirectoryInfo rootDirectoryInfo;
+        public static DirectoryInfo archiveTestDirectory;
+        public static DirectoryInfo restoreTestDirectory;
         
-        private static BlobServiceClient _bsc;
-        public static BlobContainerClient _container;
+        private static BlobServiceClient bsc;
+        public static BlobContainerClient container;
 
-        public static CloudTableClient _ctc;
-        public static CloudTable _manifestTable;
-        public static CloudTable _pointerEntryTable;
+        private static CloudTableClient ctc;
         
         public static string accountName;
         public static string accountKey;
-        public static string passphrase = "myPassphrase";
+        public static readonly string passphrase = "myPassphrase";
 
         private const string TestContainerNamePrefix = "unittest";
 
@@ -34,14 +33,14 @@ namespace Arius.Tests
         {
             // Executes once before the test run. (Optional)
 
-            //sourceFolder = new DirectoryInfo(@"C:\Users\Wouter\Documents\NUnitTestSourceFolder");
             sourceFolder = PopulateSourceDirectory();
 
             // Create temp folder
-            var containerName = TestContainerNamePrefix  + RandomString(8).ToLower();
-            rootDirectoryInfo = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
-            rootDirectoryInfo.Create();
+            var containerName = TestContainerNamePrefix + $"{DateTime.Now.Ticks}";
+            archiveTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "archive" + containerName));
+            restoreTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "restore" + containerName));
 
+            //testDirectoryInfo.Create();
 
             // Create temp container
             accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
@@ -55,20 +54,16 @@ namespace Arius.Tests
 
             // Create new blob container
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-            _bsc = new BlobServiceClient(connectionString);
-            _container = _bsc.CreateBlobContainer(containerName);
+            bsc = new BlobServiceClient(connectionString);
+            container = bsc.CreateBlobContainer(containerName);
 
 
             // Create reference to the storage tables
             var csa = CloudStorageAccount.Parse(connectionString);
-            _ctc = csa.CreateCloudTableClient();
-
-            _manifestTable = _ctc.GetTableReference(containerName + "manifests");
-            _pointerEntryTable = _ctc.GetTableReference(containerName + "pointers");
-
+            ctc = csa.CreateCloudTableClient();
         }
 
-        private DirectoryInfo PopulateSourceDirectory()
+        private static DirectoryInfo PopulateSourceDirectory()
         {
             var sourceDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), ".ariustestsourcedir"));
             if (sourceDirectory.Exists) sourceDirectory.Delete(true);
@@ -82,7 +77,7 @@ namespace Arius.Tests
             return sourceDirectory;
         }
 
-        private void CreateRandomFile(string fileFullName, double sizeInMB)
+        public static void CreateRandomFile(string fileFullName, double sizeInMB)
         {
             var f = new FileInfo(fileFullName);
             if (!f.Directory.Exists)
@@ -104,94 +99,13 @@ namespace Arius.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            rootDirectoryInfo.Delete(true);
+            archiveTestDirectory.Delete(true);
 
-            foreach (var c in _bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
-                _bsc.GetBlobContainerClient(c.Name).Delete();
+            foreach (var c in bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
+                bsc.GetBlobContainerClient(c.Name).Delete();
 
-            foreach (var t in _ctc.ListTables(prefix: TestContainerNamePrefix))
+            foreach (var t in ctc.ListTables(prefix: TestContainerNamePrefix))
                 t.Delete();
-        }
-
-
-        private static Random random = new Random();
-        private static string RandomString(int length)
-        {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            return new string(Enumerable.Repeat(chars, length)
-                .Select(s => s[random.Next(s.Length)]).ToArray());
-        }
-
-        public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir)
-        {
-            return source.CopyTo(Path.Combine(targetDir.FullName, source.Name));
-        }
-        public static FileInfo CopyFile(FileInfo source, DirectoryInfo targetDir, string targetName)
-        {
-            return source.CopyTo(Path.Combine(targetDir.FullName, targetName));
-        }
-
-        public static FileInfo CopyFile(FileInfo source, string targetName)
-        {
-            return source.CopyTo(Path.Combine(source.DirectoryName, targetName));
-        }
-
-        public static void MoveFile(FileInfo source, string targetName)
-        {
-            source.MoveTo(Path.Combine(source.DirectoryName, targetName));
-        }
-
-        private static void CopyFolder(string sourceDir, string targetDir)
-        {
-            Directory.CreateDirectory(targetDir);
-
-            foreach (var file in Directory.GetFiles(sourceDir))
-                System.IO.File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
-
-            foreach (var directory in Directory.GetDirectories(sourceDir))
-                CopyFolder(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
-        }
-
-        public static void ExecuteCommandline(string args)
-        {
-            using var process = new Process();
-
-            var exeFolder = @"C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius\bin\Debug\net5.0"; //AppDomain.CurrentDomain.BaseDirectory
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = Path.Combine(exeFolder, "arius.exe"),
-
-                UseShellExecute = false,
-                Arguments = args,
-
-                RedirectStandardError = true,
-                RedirectStandardOutput = true
-            };
-
-            process.StartInfo = psi;
-
-            string output = "";
-            process.OutputDataReceived += (_, data) => output += data.Data + Environment.NewLine;
-            process.ErrorDataReceived += (_, data) => output += data.Data + Environment.NewLine;
-
-            process.Start();
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-
-            process.WaitForExit();
-
-            /*
-             * NOTE If error -2147450749 is encountered:
-             *Cannot use file stream for [C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.deps.json]: No such file or directory
-                A fatal error was encountered. The library 'hostpolicy.dll' required to execute the application was not found in 'C:\Program Files\dotnet'.
-                Failed to run as a self-contained app.
-                  - The application was run as a self-contained app because 'C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.runtimeconfig.json' was not found.
-                  - If this should be a framework-dependent app, add the 'C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius.Tests\bin\Debug\net5.0\arius.runtimeconfig.json' file and specify the appropriate framework.
-             */
-
-            Assert.AreEqual(0, process.ExitCode, message: output);
         }
     }
 }

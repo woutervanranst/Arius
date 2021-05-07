@@ -52,7 +52,8 @@ jobs:
           dotnet-version: 5.0.x
 
       - name: Test
-        run: dotnet test -l "console;verbosity=detailed" # -v normal
+        run: dotnet test Arius.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
+        #run: dotnet test -l "console;verbosity=detailed" # -v normal
         # continue-on-error: true
         env:
           ARIUS_ACCOUNT_NAME: ariusci

@@ -7,11 +7,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Enumerable = System.Linq.Enumerable;
 
 namespace Arius.CommandLine
@@ -39,7 +41,7 @@ namespace Arius.CommandLine
         {
             return new TransformManyBlock<DirectoryInfo, PointerFile>(async item =>
             {
-                var currentPfes = await _repo.GetCurrentEntriesAsync(false);
+                var currentPfes = await _repo.GetCurrentEntries(false);
                 currentPfes = currentPfes.ToArray();
 
                 _logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");
@@ -95,7 +97,7 @@ namespace Arius.CommandLine
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IConfiguration config, RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, RestoreOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -103,14 +105,12 @@ namespace Arius.CommandLine
             _hvp = hvp;
             _repo = repo;
 
-            //_root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly AzureRepository _repo;
-        //private readonly DirectoryInfo _root;
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
@@ -202,7 +202,7 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
-                    if (_repo.GetHydratedChunkBlobItemByHash(chunkHash) is var hrecbi && 
+                    if (_repo.GetChunkBlobItemByHash(chunkHash, true) is var hrecbi && 
                         hrecbi is not null && 
                         hrecbi.Downloadable)
                     {
@@ -214,7 +214,7 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk not yet hydrated
-                    if (_repo.GetArchiveTierChunkBlobItemByHash(chunkHash) is var arecbi)
+                    if (_repo.GetChunkBlobItemByHash(chunkHash, false) is var arecbi)
                     {
                         // R90
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in Archive tier. Starting hydration or getting hydration status...");
@@ -265,18 +265,18 @@ namespace Arius.CommandLine
     
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options, IConfiguration config, AzureRepository repo)
+        public DownloadBlockProvider(RestoreOptions options, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirAppSettings, AzureRepository repo)
         {
-            _config = config;
-            _repo = repo;
+            this.azCopyAppSettings = azCopyAppSettings.Value;
+            this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
-            _downloadTempDir = config.DownloadTempDir(root);
+            downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(root);
         }
 
-        private readonly IConfiguration _config;
-        private readonly AzureRepository _repo;
-        private readonly DirectoryInfo _downloadTempDir;
+        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly AzureRepository repo;
+        private readonly DirectoryInfo downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
         private readonly BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
@@ -339,8 +339,8 @@ namespace Arius.CommandLine
                             batch.Add(kvp.Value);
                             size += kvp.Value.Length;
 
-                            if (size >= _config.BatchSize ||
-                                batch.Count >= _config.BatchCount ||
+                            if (size >= azCopyAppSettings.BatchSize ||
+                                batch.Count >= azCopyAppSettings.BatchCount ||
                                 _downloadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
                                 break;
                         }
@@ -372,7 +372,7 @@ namespace Arius.CommandLine
                 _downloadBlock = new(batch =>
                 {
                     //Download this batch
-                    var ecfs = _repo.Download(batch, _downloadTempDir, true);
+                    var ecfs = repo.Download(batch, downloadTempDir, true);
                     return ecfs;
 
                 }, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 2 });
@@ -519,7 +519,7 @@ namespace Arius.CommandLine
     
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IConfiguration config, IHashValueProvider hvp, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
@@ -549,7 +549,7 @@ namespace Arius.CommandLine
                 var h = _hvp.GetHashValue(bf);
 
                 if (h != pointersToRestore.First().Hash)
-                    throw new Exception("HASH DOES NOT MATCH"); //TODO
+                    throw new InvalidDataException("Hash of restored BinaryFile does not match hash of PointerFile");
 
                 // Delete chunks
                 chunksThatCanBeDeleted.AsParallel().ForAll(c => c.Delete());

@@ -36,14 +36,19 @@ namespace Arius.Repositories
             return _chunkRepository.GetAllChunkBlobItems();
         }
 
-        public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
-        {
-            return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
-        }
+        //public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
+        //{
+        //    return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
+        //}
 
-        public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+        //public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
+        //{
+        //    return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
+        //}
+
+        public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash, bool requireHydrated)
         {
-            return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
+            return _chunkRepository.GetChunkBlobItemByHash(chunkHash, requireHydrated);
         }
 
         public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
@@ -89,56 +94,29 @@ namespace Arius.Repositories
         // -- POINTERFILEENTRY REPOSITORY
         private readonly PointerFileEntryRepository _pointerFileEntryRepository;
 
-        internal IEnumerable<PointerFileEntry> GetCurrentEntries(bool includeLastDeleted)
+        internal async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            return _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted).Result;
+            return await _pointerFileEntryRepository.GetVersionsAsync();
         }
 
-        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeLastDeleted)
+        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
         {
-            return await _pointerFileEntryRepository.GetCurrentEntriesAsync(includeLastDeleted);
+            return await _pointerFileEntryRepository.GetEntries(DateTime.Now, includeDeleted);
         }
 
-        internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeLastDeleted, HashValue manifestHash)
+        internal async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime version, bool includeDeleted)
         {
-            return (await GetCurrentEntriesAsync(includeLastDeleted)).Where(pfe => pfe.ManifestHash.Equals(manifestHash));
+            return await _pointerFileEntryRepository.GetEntries(version, includeDeleted);
         }
-
 
         public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
         {
             await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
         }
 
-        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe, DateTime version, bool isDeleted = false)
+        public async Task CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)
         {
-            await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pfe, version, isDeleted);
+            await _pointerFileEntryRepository.CreateDeletedPointerFileEntryAsync(pfe, version);
         }
-
-        //public List<ManifestEntry> GetAllManifestEntriesWithChunksAndPointerFileEntries()
-        //{
-        //    //var x = new ExpandoObject();
-
-        //    //foreach (var yy in _pointerFileEntryRepository.GetAllEntries())
-        //    //{
-
-        //    //}
-
-        //    return null; // TODO
-
-
-        //    //public List<ManifestEntry2> GetAllManifestEntriesWithChunksAndPointerFileEntries()
-        //    //{
-        //    //    throw new NotImplementedException();
-
-        //    //    //using var db = new ManifestStore();
-        //    //    //return db.Manifests
-        //    //    //    .Include(a => a.Chunks)
-        //    //    //    .Include(a => a.Entries)
-        //    //    //    .ToList();
-        //    //}
-
-        //    //return _manifestRepository.GetAllManifestEntriesWithChunksAndPointerFileEntries();
-        //}
     }
 }

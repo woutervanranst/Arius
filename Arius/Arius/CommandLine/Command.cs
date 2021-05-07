@@ -1,16 +1,17 @@
 ﻿using System;
 using System.CommandLine;
+using System.Threading.Tasks;
 
 namespace Arius.CommandLine
 {
     internal interface IAriusCommand
     {
-        Command GetCommand(ParsedCommandProvider e);
+        Command GetCommand(ParsedCommandProvider pcp);
     }
 
     internal interface ICommandExecutor
     {
-        public int Execute();
+        public Task<int> Execute();
     }
 
     internal interface ICommandExecutorOptions

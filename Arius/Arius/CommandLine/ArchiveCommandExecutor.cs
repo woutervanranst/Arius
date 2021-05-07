@@ -16,82 +16,46 @@ namespace Arius.CommandLine
 {
     internal class ArchiveCommandExecutor : ICommandExecutor
     {
-        public ArchiveCommandExecutor(ICommandExecutorOptions options,
+        public ArchiveCommandExecutor(ArchiveOptions options,
             ILogger<ArchiveCommandExecutor> logger,
-            ILoggerFactory loggerFactory,
-
-            IConfiguration config,
-            AzureRepository azureRepository,
-
-            PointerService ps,
-            IHashValueProvider h,
-            IChunker c,
-            IEncrypter e)
+            IServiceProvider serviceProvider)
         {
-            _options = (ArchiveOptions)options;
-            _root = new DirectoryInfo(_options.Path);
-            _logger = logger;
-            _loggerFactory = loggerFactory;
+            this.logger = logger;
+            this.blocks = serviceProvider;
 
-            _config = config;
-            _azureRepository = azureRepository;
-            _ps = ps;
-            _hvp = h;
-            _chunker = c;
-            _encrypter = e;
+            root = new DirectoryInfo(options.Path);
         }
 
-        private readonly ArchiveOptions _options;
-        private readonly DirectoryInfo _root;
-        private readonly ILogger<ArchiveCommandExecutor> _logger;
-        private readonly ILoggerFactory _loggerFactory;
-
-        private readonly IConfiguration _config;
-        private readonly AzureRepository _azureRepository;
-        private readonly PointerService _ps;
-        private readonly IHashValueProvider _hvp;
-        private readonly IChunker _chunker;
-        private readonly IEncrypter _encrypter;
-
-
-        public int Execute()
+        public static void AddProviders(IServiceCollection coll)
         {
-            var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
-
-            // Define blocks & intermediate variables
-            var blocks = new ServiceCollection()
-                .AddSingleton<ILoggerFactory>(_loggerFactory)
-                .AddLogging()
-                    
-                .AddSingleton<ArchiveOptions>(_options)
-                
-                .AddSingleton<IConfiguration>(_config)
-                .AddSingleton<AzureRepository>(_azureRepository)
-                .AddSingleton<PointerService>(_ps)
-                .AddSingleton<IHashValueProvider>(_hvp)
-                .AddSingleton<IChunker>(_chunker)
-                .AddSingleton<IEncrypter>(_encrypter)
-
-
+            coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
                 .AddSingleton<AddHashBlockProvider>()
                 .AddSingleton<ManifestBlocksProvider>()
                 .AddSingleton<ChunkBlockProvider>()
                 .AddSingleton<EncryptChunksBlockProvider>()
                 .AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
-                .AddSingleton<UploadEncryptedChunksBlockProvider>()
                 .AddSingleton<CreateUploadBatchesTaskProvider>()
+                .AddSingleton<UploadEncryptedChunksBlockProvider>()
                 .AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
                 .AddSingleton<CreateManifestBlockProvider>()
                 .AddSingleton<CreatePointerBlockProvider>()
                 .AddSingleton<CreatePointerFileEntryIfNotExistsBlockProvider>()
+                .AddSingleton<ValidateBlockProvider>()
                 .AddSingleton<RemoveDeletedPointersTaskProvider>()
                 .AddSingleton<ExportToJsonTaskProvider>()
-                .AddSingleton<DeleteBinaryFilesTaskProvider>()
+                .AddSingleton<DeleteBinaryFilesTaskProvider>();
+        }
 
-                .BuildServiceProvider();
+        private readonly ILogger<ArchiveCommandExecutor> logger;
+        private readonly IServiceProvider blocks;
+        private readonly DirectoryInfo root;
 
-            
+        public async Task<int> Execute()
+        {
+            var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
+
+            // Define blocks & intermediate variables
             var indexDirectoryBlock = blocks.GetRequiredService<IndexDirectoryBlockProvider>().GetBlock();
 
 
@@ -146,6 +110,9 @@ namespace Arius.CommandLine
                 .AddVersion(version)
                 .GetBlock();
 
+
+            var validateBlock = blocks.GetRequiredService<ValidateBlockProvider>()
+                .GetBlock();
 
             var removeDeletedPointersTask = blocks.GetRequiredService<RemoveDeletedPointersTaskProvider>()
                 .AddVersion(version)
@@ -221,20 +188,22 @@ namespace Arius.CommandLine
 
 
             // A90
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed // Used in chaining the TPL flows, expect execution when the .Completion fires
             Task.WhenAll(enqueueEncryptedChunksForUploadBlock.Completion)
                 .ContinueWith(_ =>
                 {
-                    _logger.LogDebug("Passing A90");
+                    logger.LogDebug("Passing A90");
                     uploadQueue.CompleteAdding(); //Mark the Queue as completed adding, also if enqueueEncryptedChunksForUploadBlock is faulted
 
                     //TODO KARL error handling if an error occurs here
-                });     
+                });
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
             // A100
             Task.WhenAll(createUploadBatchesTask)
                 .ContinueWith(_ =>
                 {
-                    _logger.LogDebug("Passing A100");
+                    logger.LogDebug("Passing A100");
                     uploadEncryptedChunksBlock.Complete();
 
                     //TODO KARL error handling
@@ -248,8 +217,8 @@ namespace Arius.CommandLine
 
             // A115
             reconcileChunksWithManifestsBlock.JoinCompletion(
-                () => _logger.LogDebug("Passing A115 - Completion"),
-                () => _logger.LogDebug("Passing A115 - Faulted"),
+                () => logger.LogDebug("Passing A115 - Completion"),
+                () => logger.LogDebug("Passing A115 - Faulted"),
                 uploadEncryptedChunksBlock, chunkBlock);
             
             //Task.WhenAll(uploadEncryptedChunksBlock.Completion, chunkBlock.Completion)
@@ -274,15 +243,9 @@ namespace Arius.CommandLine
 
             // A140
             reconcileManifestBlock.JoinCompletion(
-                () => _logger.LogDebug("Passing A140 - Completion"),
-                () => _logger.LogDebug("Passing A140 - Faulted"),
+                () => logger.LogDebug("Passing A140 - Completion"),
+                () => logger.LogDebug("Passing A140 - Faulted"),
                 createManifestBlock, createIfNotExistManifestBlock);
-            //Task.WhenAll(createManifestBlock.Completion, createIfNotExistManifestBlock.Completion)
-            //    .ContinueWith(_ =>
-            //    {
-            //        _logger.LogDebug("Passing A140");
-            //        reconcileManifestBlock.Complete();
-            //    });
 
 
             // A150
@@ -299,63 +262,35 @@ namespace Arius.CommandLine
 
             // A170
             createPointerFileEntryIfNotExistsBlock.JoinCompletion(
-                () => _logger.LogDebug("Passing A170 - Completion"),
-                () => _logger.LogDebug("Passing A170 - Faulted"),
+                () => logger.LogDebug("Passing A170 - Completion"),
+                () => logger.LogDebug("Passing A170 - Faulted"),
                 createPointersBlock, addHashBlock);
-            //Task.WhenAll(createPointersBlock.Completion, addHashBlock.Completion)
-            //    .ContinueWith(_ =>
-            //    {
-            //        _logger.LogDebug("Passing A170");
-            //        createPointerFileEntryIfNotExistsBlock.Complete();
-            //    });
 
-            // A180
-            createPointerFileEntryIfNotExistsBlock.Completion
-                .ContinueWith(_ =>
-                {
-                    _logger.LogDebug("Passing A180");
-                    removeDeletedPointersTask.Start();
-
-                    //TODO error handling
-                });
-
-            // A190
-            removeDeletedPointersTask
-                .ContinueWith(_ =>
-                {
-                    _logger.LogDebug("Passing A190");
-                    exportToJsonTask.Start();
-
-                    //TODO errorr handling
-                });
-
-            // A200
-            exportToJsonTask
-                .ContinueWith(_ =>
-                {
-                    _logger.LogDebug("Passing A200");
-                    deleteBinaryFilesTask.Start();
-
-                    //TODO error handling
-                });
-
-            //TODO
-            TaskScheduler.UnobservedTaskException += (sender, e) =>
-            {
-                _logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
-                throw e.Exception;
-            };
+            // A175
+            createPointerFileEntryIfNotExistsBlock.LinkTo(
+                validateBlock, propagateCompletionOptions);
 
 
             //Fill the flow
-            indexDirectoryBlock.Post(_root);
+            indexDirectoryBlock.Post(root);
             indexDirectoryBlock.Complete();
 
+            //Await for its completion
+            await validateBlock.Completion;
 
-            // Wait for the end
-            deleteBinaryFilesTask.Wait();
+            // A180
+            logger.LogDebug("Passing A180");
+            await Task.Run(removeDeletedPointersTask);
 
-            _logger.LogInformation("Done");
+            // A190
+            logger.LogDebug("Passing A190");
+            await Task.Run(exportToJsonTask);
+
+            // A200
+            logger.LogDebug("Passing A200");
+            await Task.Run(deleteBinaryFilesTask);
+
+            logger.LogInformation("Done");
 
             return 0;
         }

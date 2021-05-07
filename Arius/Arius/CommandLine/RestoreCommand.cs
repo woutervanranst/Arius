@@ -10,15 +10,7 @@ namespace Arius.CommandLine
 {
     internal class RestoreCommand : IAriusCommand
     {
-        /*
-         * arius restore
-               --accountname <accountname> 
-               --accountkey <accountkey> 
-               --passphrase <passphrase>
-              (--download)
-         */
-
-        Command IAriusCommand.GetCommand(ParsedCommandProvider pcp)
+        public Command GetCommand(ParsedCommandProvider pcp)
         {
             var restoreCommand = new Command("restore", "Restore from blob");
 
@@ -55,7 +47,7 @@ namespace Arius.CommandLine
             restoreCommand.AddOption(downloadOption);
 
             var keepPointersOption = new Option<bool>("--keep-pointers",
-                getDefaultValue: () => true,
+                getDefaultValue: () => false,
                 "Keep pointer files after downloading content files");
             restoreCommand.AddOption(keepPointersOption);
 

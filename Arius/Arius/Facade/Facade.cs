@@ -171,9 +171,22 @@ namespace Arius.Facade
             public string Passphrase { get; init; }
         }
 
-        public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries()
+
+        /// <summary>
+        /// Get the versions (in universal time)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            foreach (var item in await repository.GetCurrentEntriesAsync(false))
+            return await repository.GetVersionsAsync();
+        }
+
+        /// <summary>
+        /// Get the entries at the specified time (version IN UNIVERSAL TIME)
+        /// </summary>
+        public async IAsyncEnumerable<IAriusEntry> GetRemoteEntries(DateTime version, bool includeDeleted)
+        {
+            foreach (var item in await repository.GetEntries(version, includeDeleted))
             {
                 yield return new PointerFileEntryAriusEntry(item);
             }
@@ -205,5 +218,13 @@ namespace Arius.Facade
         }
 
         public string ContentName => pfe.RelativeName.Split(System.IO.Path.DirectorySeparatorChar).Last().TrimEnd(PointerFile.Extension);
+
+        public bool IsDeleted
+        {
+            get
+            {
+                return pfe.IsDeleted;
+            }
+        }
     }
 }
