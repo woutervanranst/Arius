@@ -25,12 +25,12 @@ namespace Arius.Tests
         public static BlobContainerClient container;
 
         private static CloudTableClient ctc;
-        
-        public static string accountName;
-        public static string accountKey;
         public static readonly string passphrase = "myPassphrase";
 
         private const string TestContainerNamePrefix = "unittest";
+
+        public static string AccountName { get; set; }
+        public static string AccountKey { get; set; }
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -47,17 +47,17 @@ namespace Arius.Tests
             //testDirectoryInfo.Create();
 
             // Create temp container
-            accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
-            if (string.IsNullOrEmpty(accountName))
+            AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
+            if (string.IsNullOrEmpty(AccountName))
                 throw new ArgumentException("Environment variable ARIUS_ACCOUNT_NAME not specified");
 
-            accountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
-            if (string.IsNullOrEmpty(accountKey))
+            AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
+            if (string.IsNullOrEmpty(AccountKey))
                 throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
 
 
             // Create new blob container
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={AccountName};AccountKey={AccountKey};EndpointSuffix=core.windows.net";
             bsc = new BlobServiceClient(connectionString);
             container = bsc.CreateBlobContainer(containerName);
 
@@ -113,8 +113,8 @@ namespace Arius.Tests
         {
             var aro = new AzureRepositoryOptions()
             {
-                AccountName = TestSetup.accountName,
-                AccountKey = TestSetup.accountKey,
+                AccountName = TestSetup.AccountName,
+                AccountKey = TestSetup.AccountKey,
                 Container = TestSetup.container.Name,
                 Passphrase = TestSetup.passphrase
             };

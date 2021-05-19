@@ -256,8 +256,8 @@ namespace Arius.Tests
         private async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
             var cmd = "restore " +
-                $"-n {TestSetup.accountName} " +
-                $"-k {TestSetup.accountKey} " +
+                $"-n {TestSetup.AccountName} " +
+                $"-k {TestSetup.AccountKey} " +
                 $"-p {TestSetup.passphrase} " +
                 $"-c {TestSetup.container.Name} " +
                 $"{(synchronize ? "--synchronize " : "")}" +

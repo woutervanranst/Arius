@@ -559,8 +559,8 @@ namespace Arius.Tests
         private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var cmd = "archive " +
-                $"-n {TestSetup.accountName} " +
-                $"-k {TestSetup.accountKey} " +
+                $"-n {TestSetup.AccountName} " +
+                $"-k {TestSetup.AccountKey} " +
                 $"-p {TestSetup.passphrase} " +
                 $"-c {TestSetup.container.Name} " +
                 $"{(removeLocal ? "--remove-local " : "")}" +
@@ -590,37 +590,6 @@ namespace Arius.Tests
 
             var sp = GetServiceProvider();
             return sp;
-        }
-
-        public static IServiceProvider GetServiceProvider()
-        {
-            var aro = new AzureRepositoryOptions()
-            {
-                AccountName = TestSetup.accountName,
-                AccountKey = TestSetup.accountKey,
-                Container = TestSetup.container.Name,
-                Passphrase = TestSetup.passphrase
-            };
-
-            var sp = new ServiceCollection()
-                .AddSingleton<ICommandExecutorOptions>(aro)
-                .AddSingleton<AzureRepository>()
-                .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
-
-                .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
-                .AddLogging()
-
-                .BuildServiceProvider();
-
-            return sp;
-        }
-
-        private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
-        {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Container { get; init; }
-            public string Passphrase { get; init; }
         }
 
         
