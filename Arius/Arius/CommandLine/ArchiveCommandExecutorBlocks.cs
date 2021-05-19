@@ -707,7 +707,7 @@ namespace Arius.CommandLine
                     foreach (var ecf in ecfs)
                         ecf.Delete();
 
-                    return uploadedBlobs.Select(recbi => recbi.Hash);
+                    return uploadedBlobs.Select(chunkBlob => chunkBlob.Hash);
                 }
                 catch (Exception e)
                 {
@@ -922,8 +922,8 @@ namespace Arius.CommandLine
                     double length = 0;
                     foreach (var chunkHash in chunkHashes)
                     {
-                        var recbi = repo.GetChunkBlobByHash(chunkHash, false);
-                        length += recbi.Length;
+                        var cb = repo.GetChunkBlobByHash(chunkHash, false);
+                        length += cb.Length;
                     }
 
                     var bfi = pointerFile.BinaryFileInfo;

@@ -252,9 +252,9 @@ namespace Arius.CommandLine
         }
         public ActionBlock<ChunkBlobBase> GetBlock()
         {
-            return new(recbi =>
+            return new(chunkBlob =>
             {
-                _repo.Hydrate(recbi);
+                _repo.Hydrate(chunkBlob);
 
                 AtLeastOneHydrating = true;
             });
