@@ -64,16 +64,17 @@ namespace Arius.Repositories
             public IEnumerable<HashValue> GetAllManifestHashes()
             {
                 _logger.LogInformation($"Getting all manifests...");
+                var r = Array.Empty<HashValue>();
 
                 try
                 {
-                    return _bcc.GetBlobs(prefix: ($"{ManifestDirectoryName}/"))
+                    return r = _bcc.GetBlobs(prefix: $"{ManifestDirectoryName}/")
                         .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
-                        .Select(bi => new RemoteManifestBlobItem(bi).Hash).ToArray();
+                        .Select(bi => new RemoteManifestBlob(bi).Hash).ToArray();
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting all manifests... done"); // TODO logging in the final?
+                    _logger.LogInformation($"Getting all manifests... {r.Length} done");
                 }
             }
 
@@ -88,9 +89,9 @@ namespace Arius.Repositories
                     if (!bc.Exists())
                         throw new InvalidOperationException("Manifest does not exist");
 
-                    var ss = new MemoryStream();
-                    var r = await bc.DownloadToAsync(ss);
-                    var bytes = ss.ToArray();
+                    var ms = new MemoryStream();
+                    await bc.DownloadToAsync(ms);
+                    var bytes = ms.ToArray();
                     var json = Encoding.UTF8.GetString(bytes);
                     var chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
 
