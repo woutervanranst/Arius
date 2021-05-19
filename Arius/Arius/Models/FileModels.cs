@@ -37,12 +37,12 @@ namespace Arius.Models
         public string FullName { get; }
 
         /// <summary>
-        /// Name (with extension)
+        /// Name (with extension, without path)
         /// </summary>
         public string Name { get; }
         
         /// <summary>
-        /// Directory where this File resides
+        /// The Directory where this File resides
         /// </summary>
         DirectoryInfo Directory { get; }
         

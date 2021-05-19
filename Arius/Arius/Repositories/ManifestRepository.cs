@@ -16,7 +16,7 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        private class ManifestRepository
+        internal class ManifestRepository
         {
             public ManifestRepository(ICommandExecutorOptions options, ILogger<ManifestRepository> logger)
             {
@@ -34,7 +34,7 @@ namespace Arius.Repositories
 
             private readonly ILogger<ManifestRepository> _logger;
             private readonly BlobContainerClient _bcc;
-            private const string ManifestDirectoryName = "manifests";
+            internal const string ManifestDirectoryName = "manifests";
 
             public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
             {
@@ -61,21 +61,27 @@ namespace Arius.Repositories
                 }
             }
 
-            public IEnumerable<HashValue> GetAllManifestHashes()
+            public IEnumerable<ManifestBlob> GetAllManifestBlobs()
             {
                 _logger.LogInformation($"Getting all manifests...");
-                var r = Array.Empty<HashValue>();
+                var r = Array.Empty<ManifestBlob>();
 
                 try
                 {
                     return r = _bcc.GetBlobs(prefix: $"{ManifestDirectoryName}/")
                         .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
-                        .Select(bi => new RemoteManifestBlob(bi).Hash).ToArray();
+                        .Select(bi => new ManifestBlob(bi))
+                        .ToArray();
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting all manifests... {r.Length} done");
+                    _logger.LogInformation($"Getting all manifests... got {r.Length}");
                 }
+            }
+
+            public IEnumerable<HashValue> GetAllManifestHashes()
+            {
+                return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
             }
 
             public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)

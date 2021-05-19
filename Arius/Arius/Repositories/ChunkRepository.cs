@@ -14,10 +14,10 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        private const string EncryptedChunkDirectoryName = "chunks";
+        internal const string EncryptedChunkDirectoryName = "chunks";
         internal const string RehydrationDirectoryName = "chunks-rehydrated";
 
-        private class ChunkRepository
+        internal class ChunkRepository
         {
             public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
             {
@@ -42,10 +42,21 @@ namespace Arius.Repositories
 
             // GET
 
-            public IEnumerable<ChunkBlobItem> GetAllChunkBlobs()
+            public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
             {
-                return _bcc.GetBlobs(prefix: $"{EncryptedChunkDirectoryName}/")
-                    .Select(bi => new ChunkBlobItem(bi));
+                _logger.LogInformation($"Getting all ChunkBlobs...");
+                var r = Array.Empty<ChunkBlobBase>();
+
+                try
+                {
+                    return r = _bcc.GetBlobs(prefix: $"{EncryptedChunkDirectoryName}/")
+                        .Select(bi => new ChunkBlobItem(bi))
+                        .ToArray();
+                }
+                finally
+                {
+                    _logger.LogInformation($"Getting all ChunkBlobs... got {r.Length}");
+                }
             }
 
 

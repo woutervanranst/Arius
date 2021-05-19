@@ -8,10 +8,26 @@ namespace Arius.Models
 {
     internal abstract class BlobBase : IWithHashValue
     {
+        /// <summary>
+        /// Full Name (with path and extension)
+        /// </summary>
         public abstract string FullName { get; }
+
+        /// <summary>
+        /// Name (with extension, without path)
+        /// </summary>
         public string Name => FullName.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
-        public string Folder => FullName.Split(BlobFolderSeparatorChar).First();
+
+        /// <summary>
+        /// The Folder where this Blob resides
+        /// </summary>
+        public string Folder => FullName.Split(BlobFolderSeparatorChar).First(); //TODO quid if in the root?
+
+        /// <summary>
+        /// Length (in bytes) of the Blob
+        /// </summary>
         public abstract long Length { get; }
+
         public abstract HashValue Hash { get; }
 
         private const char BlobFolderSeparatorChar = '/';
@@ -19,29 +35,17 @@ namespace Arius.Models
 
 
 
-    internal abstract class BlobItemBase : BlobBase
+    internal class ManifestBlob : BlobBase
     {
-        protected BlobItemBase(BlobItem blobItem)
+        public ManifestBlob(BlobItem bi)
         {
-            bi = blobItem;
+            this.bi = bi;
         }
         protected readonly BlobItem bi;
 
-        public override string FullName => bi.Name;
-        //public override string Name => _bi.Name.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
-        //public override string Folder => _bi.Name.Split(BlobFolderSeparatorChar).First();
-        //public abstract HashValue Hash { get; }
-        public override long Length => bi.Properties.ContentLength!.Value;
-    }
-
-    internal class RemoteManifestBlob : BlobItemBase //TODO rename naar ManifestBlob
-    {
-        public RemoteManifestBlob(BlobItem bi) : base(bi)
-        {
-        }
-
         public override HashValue Hash => new() { Value = Name };
-        
+        public override string FullName => bi.Name;
+        public override long Length => bi.Properties.ContentLength!.Value;
     }
 
 
@@ -56,17 +60,6 @@ namespace Arius.Models
         {
             return new ChunkBlobClient(bc);
         }
-
-        //protected RemoteEncryptedChunkBase(BlobItem bi) : base(bi)
-        //{
-        //}
-
-        //public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
-        //protected string Extension => ".7z.arius";
-        //public long Length => _bi.Properties.ContentLength!.Value;
-        //public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
-        //public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-        //public BlobItem BlobItem => _bi;
 
         public abstract AccessTier AccessTier { get; }
 

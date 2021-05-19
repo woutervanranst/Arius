@@ -122,6 +122,7 @@ namespace Arius.Tests
             var sp = new ServiceCollection()
                 .AddSingleton<ICommandExecutorOptions>(aro)
                 .AddSingleton<AzureRepository>()
+                .AddSingleton<AzureRepository.ManifestRepository>()
                 .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
 
                 .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
