@@ -98,14 +98,6 @@ namespace Arius.Repositories
                 {
                     return null;
                 }
-                
-                //BlobItem bi = _bcc
-                //    .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
-                //    .SingleOrDefault();
-
-                //return bi is null 
-                //    ? null 
-                //    : new ChunkBlobItem(bi);
             }
 
 
