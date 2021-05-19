@@ -26,7 +26,7 @@ namespace Arius.Tests
         }
 
         [Test]
-        public void Properties_ChunkBlobBase_Equal()
+        public void Properties_ChunkBlobBase_Valid()
         {
             var repo = TestSetup.GetAzureRepository();
 
@@ -62,7 +62,7 @@ namespace Arius.Tests
         }
 
         [Test]
-        public async Task Properties_ManifestBlob_HG()
+        public async Task Properties_ManifestBlob_Valid()
         {
             var manifestRepo = TestSetup.GetServiceProvider().GetRequiredService<Repositories.AzureRepository.ManifestRepository>();
 
@@ -73,7 +73,7 @@ namespace Arius.Tests
             Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
             Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension
 
-            //Assert.IsFalse(manifestBlob.Hash.Value.EndsWith(Models.ChunkBlobBase.Extension)); //the Hash does NOT contain the extension
+            Assert.NotNull(manifestBlob.Hash.Value);
 
             Assert.IsTrue(manifestBlob.Length > 0);
 
