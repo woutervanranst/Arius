@@ -4,8 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Security.Authentication.ExtendedProtection;
 using System.Threading.Tasks;
+using Arius.CommandLine;
+using Arius.Repositories;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 
 namespace Arius.Tests
@@ -95,6 +99,44 @@ namespace Arius.Tests
                 }
             }
         }
+
+
+        private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
+        {
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+            public string Passphrase { get; init; }
+        }
+
+        internal static IServiceProvider GetServiceProvider()
+        {
+            var aro = new AzureRepositoryOptions()
+            {
+                AccountName = TestSetup.accountName,
+                AccountKey = TestSetup.accountKey,
+                Container = TestSetup.container.Name,
+                Passphrase = TestSetup.passphrase
+            };
+
+            var sp = new ServiceCollection()
+                .AddSingleton<ICommandExecutorOptions>(aro)
+                .AddSingleton<AzureRepository>()
+                .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
+
+                .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
+                .AddLogging()
+
+                .BuildServiceProvider();
+
+            return sp;
+        }
+
+        internal static AzureRepository GetAzureRepository()
+        {
+            return GetServiceProvider().GetRequiredService<AzureRepository>();
+        }
+
 
         [OneTimeTearDown]
         public void OneTimeTearDown()

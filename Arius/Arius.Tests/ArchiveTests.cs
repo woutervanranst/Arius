@@ -588,6 +588,12 @@ namespace Arius.Tests
             if (Environment.ExitCode != 0)
                 throw new ApplicationException("Exitcode is not 0");
 
+            var sp = GetServiceProvider();
+            return sp;
+        }
+
+        public static IServiceProvider GetServiceProvider()
+        {
             var aro = new AzureRepositoryOptions()
             {
                 AccountName = TestSetup.accountName,
@@ -596,7 +602,7 @@ namespace Arius.Tests
                 Passphrase = TestSetup.passphrase
             };
 
-            var sc = new ServiceCollection()
+            var sp = new ServiceCollection()
                 .AddSingleton<ICommandExecutorOptions>(aro)
                 .AddSingleton<AzureRepository>()
                 .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
@@ -606,7 +612,7 @@ namespace Arius.Tests
 
                 .BuildServiceProvider();
 
-            return sc;
+            return sp;
         }
 
         private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
@@ -616,23 +622,6 @@ namespace Arius.Tests
             public string Container { get; init; }
             public string Passphrase { get; init; }
         }
-
-        //private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, bool fastHash, string path)
-        //{
-        //    return new()
-        //    {
-        //        AccountName = accountName,
-        //        AccountKey = accountKey,
-        //        Passphrase = passphrase,
-        //        FastHash = fastHash,
-        //        Container = container,
-        //        RemoveLocal = removeLocal,
-        //        Tier = tier,
-        //        //MinSize = minSize,
-        //        //Simulate = simulate,
-        //        Path = path
-        //    };
-        //}
 
         
         public void TestCleanup()
@@ -651,6 +640,8 @@ namespace Arius.Tests
 
         //        /*
         //         * Delete file
+        //* delete pointer, archive
+
         //         * Add file again that was previously deleted
         //         * Modify the binary
         //            * azcopy fails
@@ -680,7 +671,6 @@ namespace Arius.Tests
         //         * change a manifest without the binary present
 
 
-              //* delete pointer, archive
 
 
         // * archive a file for which ONLY the chunk (not deduped) exists (ie no pointer, no entries no manifest)
