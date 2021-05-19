@@ -23,90 +23,90 @@ namespace Arius.Repositories
 
         public AzureRepository(ICommandExecutorOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
         {
-            _chunkRepository = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
-            _manifestRepository = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
-            _pointerFileEntryRepository = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>(), loggerFactory);
+            chunkRepo = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
+            manifestRepo = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
+            pointerFileEntryRepo = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>(), loggerFactory);
         }
 
         // -- CHUNK REPOSITORY
-        private readonly ChunkRepository _chunkRepository;
+        private readonly ChunkRepository chunkRepo;
         
         public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
         {
-            return _chunkRepository.GetAllChunkBlobs();
+            return chunkRepo.GetAllChunkBlobs();
         }
 
         public ChunkBlobBase GetChunkBlobByHash(HashValue chunkHash, bool requireHydrated)
         {
-            return _chunkRepository.GetChunkBlobByHash(chunkHash, requireHydrated);
+            return chunkRepo.GetChunkBlobByHash(chunkHash, requireHydrated);
         }
 
         public void Hydrate(ChunkBlobBase itemToHydrate)
         {
-            _chunkRepository.Hydrate(itemToHydrate);
+            chunkRepo.Hydrate(itemToHydrate);
         }
 
         public void DeleteHydrateFolder()
         {
-            _chunkRepository.DeleteHydrateFolder();
+            chunkRepo.DeleteHydrateFolder();
         }
 
         public IEnumerable<ChunkBlobBase> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
-            return _chunkRepository.Upload(ecfs, tier);
+            return chunkRepo.Upload(ecfs, tier);
         }
 
         public IEnumerable<EncryptedChunkFile> Download(IEnumerable<ChunkBlobBase> cbs, DirectoryInfo target, bool flatten)
         {
-            return _chunkRepository.Download(cbs, target, flatten);
+            return chunkRepo.Download(cbs, target, flatten);
         }
 
 
         // -- MANIFEST REPOSITORY
-        private readonly ManifestRepository _manifestRepository;
+        private readonly ManifestRepository manifestRepo;
 
         public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
         {
-            await _manifestRepository.AddManifestAsync(bf, cfs);
+            await manifestRepo.AddManifestAsync(bf, cfs);
         }
 
         public IEnumerable<HashValue> GetAllManifestHashes()
         {
-            return _manifestRepository.GetAllManifestHashes();
+            return manifestRepo.GetAllManifestHashes();
         }
 
         public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
         {
-            return await _manifestRepository.GetChunkHashesAsync(manifestHash);
+            return await manifestRepo.GetChunkHashesAsync(manifestHash);
         }
 
 
         // -- POINTERFILEENTRY REPOSITORY
-        private readonly PointerFileEntryRepository _pointerFileEntryRepository;
+        private readonly PointerFileEntryRepository pointerFileEntryRepo;
 
         internal async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            return await _pointerFileEntryRepository.GetVersionsAsync();
+            return await pointerFileEntryRepo.GetVersionsAsync();
         }
 
         internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
         {
-            return await _pointerFileEntryRepository.GetEntries(DateTime.Now, includeDeleted);
+            return await pointerFileEntryRepo.GetEntries(DateTime.Now, includeDeleted);
         }
 
         internal async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime version, bool includeDeleted)
         {
-            return await _pointerFileEntryRepository.GetEntries(version, includeDeleted);
+            return await pointerFileEntryRepo.GetEntries(version, includeDeleted);
         }
 
         public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
         {
-            await _pointerFileEntryRepository.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+            await pointerFileEntryRepo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
         }
 
         public async Task CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)
         {
-            await _pointerFileEntryRepository.CreateDeletedPointerFileEntryAsync(pfe, version);
+            await pointerFileEntryRepo.CreateDeletedPointerFileEntryAsync(pfe, version);
         }
     }
 }
