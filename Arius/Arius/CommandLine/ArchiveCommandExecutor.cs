@@ -151,9 +151,6 @@ namespace Arius.CommandLine
                 item => item is PointerFile,
                 item => (PointerFile)item);
 
-            //addHashBlock.LinkTo(
-            //    DataflowBlock.NullTarget<AriusArchiveItem>());
-
             // A40
             createIfNotExistManifestBlock.LinkTo(
                 chunkBlock,
