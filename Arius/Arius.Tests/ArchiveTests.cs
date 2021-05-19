@@ -588,7 +588,7 @@ namespace Arius.Tests
             if (Environment.ExitCode != 0)
                 throw new ApplicationException("Exitcode is not 0");
 
-            var sp = GetServiceProvider();
+            var sp = TestSetup.GetServiceProvider();
             return sp;
         }
 
