@@ -314,8 +314,6 @@ namespace Arius.CommandLine
 
         public Task GetBatchingTask()
         {
-            //lock (_createBatchTask)
-            //{
             if (_createBatchTask is null)
             {
                 _createBatchTask = Task.Run(() =>
@@ -354,7 +352,6 @@ namespace Arius.CommandLine
 
                     GetDownloadBlock().Complete(); //R813
                 });
-                //}
             }
 
             return _createBatchTask;
