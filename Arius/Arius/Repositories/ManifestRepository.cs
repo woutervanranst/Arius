@@ -86,27 +86,28 @@ namespace Arius.Repositories
 
             public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
             {
+                _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
+                var chunks = Array.Empty<HashValue>();
+
                 try
                 {
-                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
-
                     var bc = _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}");
-
-                    if (!bc.Exists())
-                        throw new InvalidOperationException("Manifest does not exist");
 
                     var ms = new MemoryStream();
                     await bc.DownloadToAsync(ms);
                     var bytes = ms.ToArray();
                     var json = Encoding.UTF8.GetString(bytes);
-                    var chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
-
-                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunks.Length} chunk(s)");
+                    chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
 
                     return chunks;
                 }
+                catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+                {
+                    throw new InvalidOperationException("Manifest does not exist");
+                }
                 finally
                 {
+                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunks.Length} chunk(s)");
                 }
             }
         }
