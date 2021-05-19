@@ -31,27 +31,17 @@ namespace Arius.Repositories
         // -- CHUNK REPOSITORY
         private readonly ChunkRepository _chunkRepository;
         
-        public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
+        public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
         {
-            return _chunkRepository.GetAllChunkBlobItems();
+            return _chunkRepository.GetAllChunkBlobs();
         }
 
-        //public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
-        //{
-        //    return _chunkRepository.GetHydratedChunkBlobItemByHash(chunkHash);
-        //}
-
-        //public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
-        //{
-        //    return _chunkRepository.GetArchiveTierChunkBlobItemByHash(chunkHash);
-        //}
-
-        public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash, bool requireHydrated)
+        public ChunkBlobBase GetChunkBlobByHash(HashValue chunkHash, bool requireHydrated)
         {
-            return _chunkRepository.GetChunkBlobItemByHash(chunkHash, requireHydrated);
+            return _chunkRepository.GetChunkBlobByHash(chunkHash, requireHydrated);
         }
 
-        public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
+        public void Hydrate(ChunkBlobBase itemToHydrate)
         {
             _chunkRepository.Hydrate(itemToHydrate);
         }
@@ -61,14 +51,14 @@ namespace Arius.Repositories
             _chunkRepository.DeleteHydrateFolder();
         }
 
-        public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
+        public IEnumerable<ChunkBlobBase> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
         {
             return _chunkRepository.Upload(ecfs, tier);
         }
 
-        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target, bool flatten)
+        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<ChunkBlobBase> cbs, DirectoryInfo target, bool flatten)
         {
-            return _chunkRepository.Download(recbis, target, flatten);
+            return _chunkRepository.Download(cbs, target, flatten);
         }
 
 

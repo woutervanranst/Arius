@@ -18,7 +18,7 @@ namespace Arius.Services
     internal interface IBlobCopier
     {
         void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
-        IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobsToDownload, DirectoryInfo target, bool flatten);
+        IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten);
     }
 
 
@@ -140,19 +140,20 @@ namespace Arius.Services
         }
 
 
-        public IEnumerable<FileInfo> Download(IEnumerable<BlobItem> blobItems, DirectoryInfo target, bool flatten)
+        public IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten)
         {
-            blobItems = blobItems.ToArray();
+            blobsToDownload = blobsToDownload.ToArray();
 
-            var size = blobItems.Sum(bi => bi.Properties.ContentLength!.Value);
+            var size = blobsToDownload.Sum(b => b.Length);
 
-            _logger.LogInformation($"Downloading {size.GetBytesReadable()} in {blobItems.Count()} files to '{target.FullName}'");
+            _logger.LogInformation($"Downloading {size.GetBytesReadable()} in {blobsToDownload.Count()} files to '{target.FullName}'");
 
             var start = DateTime.Now;
 
-            var r = Download(blobItems.Select(bi => bi.Name), target, flatten);
+            var r = Download(blobsToDownload.Select(b => b.FullName), target, flatten);
 
             // TODO test 1 download die vanuit verschillende folders komt
+            //TODO use System.Diagnostics.Stopwatch.
 
             var elapsed = DateTime.Now - start;
 
@@ -174,7 +175,7 @@ namespace Arius.Services
             File.WriteAllLines(listOfFilesFullName, blobsToDownload);
 
             var sas = GetContainerSasUri(_bcc, _skc);
-            string arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}""  --list-of-files ""{listOfFilesFullName}""";
+            string arguments = $@"copy ""{_bcc.Uri}/*?{sas}"" ""{target.FullName}"" --list-of-files ""{listOfFilesFullName}""";
 
             var regex = @$"Log file is located at: (?<logFullName>.[^{Environment.NewLine}]*).*Number of Transfers Completed: (?<completed>\d*){Environment.NewLine}Number of Transfers Failed: (?<failed>\d*){Environment.NewLine}Number of Transfers Skipped: (?<skipped>\d*){Environment.NewLine}TotalBytesTransferred: (?<totalBytes>\d*){Environment.NewLine}Final Job Status: (?<finalJobStatus>\w*)";
 
@@ -186,7 +187,7 @@ namespace Arius.Services
 
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");
 
-            if (failed > 0 || skipped > 0 || finalJobStatus != "Completed")
+            if (failed > 0 || skipped > 0 || completed < blobsToDownload.Count() || finalJobStatus != "Completed")
             {
                 _logger.LogError("Full Log: " + File.ReadAllText(logFullName));
                 throw new ApplicationException($"Not all files were transferred. Raw AzCopy output{Environment.NewLine}{rawOutput}{Environment.NewLine}");

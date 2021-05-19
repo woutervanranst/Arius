@@ -423,7 +423,7 @@ namespace Arius.CommandLine
         {
             _logger = logger;
             _chunker = chunker;
-            _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobItems().Select(recbi => recbi.Hash).ToList();
+            _uploadedOrUploadingChunks = azureRepository.GetAllChunkBlobs().Select(cb => cb.Hash).ToList();
         }
 
         private readonly ILogger<ChunkBlockProvider> _logger;
@@ -922,7 +922,7 @@ namespace Arius.CommandLine
                     double length = 0;
                     foreach (var chunkHash in chunkHashes)
                     {
-                        var recbi = repo.GetChunkBlobItemByHash(chunkHash, false);
+                        var recbi = repo.GetChunkBlobByHash(chunkHash, false);
                         length += recbi.Length;
                     }
 

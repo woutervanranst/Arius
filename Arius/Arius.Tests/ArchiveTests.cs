@@ -72,11 +72,11 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobs().Count());
             expectedChunkBlobItemsCount++;
 
             //11
-            Assert.AreEqual(tier, repo.GetAllChunkBlobItems().First().AccessTier);
+            Assert.AreEqual(tier, repo.GetAllChunkBlobs().First().AccessTier);
             //20
             Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
             expectedManifestHashes++;
@@ -195,7 +195,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
             
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -259,7 +259,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -321,7 +321,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -381,7 +381,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -434,7 +434,7 @@ namespace Arius.Tests
             Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
 
             //30
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
         }
 
         /// <summary>
@@ -465,7 +465,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -522,13 +522,13 @@ namespace Arius.Tests
 
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobs().Count());
             expectedChunkBlobItemsCount++;
 
             //11
             var pfi1 = bfi1.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
-            var chunk = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            var chunk = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(tier, chunk.AccessTier);
 
             //20

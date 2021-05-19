@@ -91,7 +91,7 @@ namespace Arius.Tests
             //10 The chunk is in the Archive tier
             var pf = bfi.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
-            var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            var recbi = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
 
             //11 A hydrated blob does not yet exist
@@ -137,7 +137,7 @@ namespace Arius.Tests
             //10 - The chunk is in the cool tier
             var pf = bfi.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
-            var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            var recbi = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Cool, recbi.AccessTier);
 
 
@@ -157,7 +157,7 @@ namespace Arius.Tests
             
             //24 Move the original blob to the archive tier
             bc_Original.SetAccessTier(AccessTier.Archive);
-            recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            recbi = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
 
 
