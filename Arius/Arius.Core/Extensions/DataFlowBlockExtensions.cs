@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     internal static class DataFlowBlockExtensions
     {
@@ -55,7 +56,7 @@ namespace Arius.Extensions
 
         public static void JoinCompletion(this IDataflowBlock target, Action beforeCompletion, Action beforeFault, params IDataflowBlock[] sources)
         {
-            JoinCompletion(target, beforeCompletion, beforeFault, sources.Select(s => s.Completion).ToArray());
+            target.JoinCompletion(beforeCompletion, beforeFault, sources.Select(s => s.Completion).ToArray());
         }
         public static void JoinCompletion(this IDataflowBlock target, Action beforeCompletion, Action beforeFault, params Task[] sources)
         {

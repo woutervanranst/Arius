@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     internal static class StringExtensions
     {
@@ -13,7 +13,7 @@ namespace Arius.Extensions
             {
                 while (!string.IsNullOrEmpty(inputText) && inputText.EndsWith(value, comparisonType))
                 {
-                    inputText = inputText.Substring(0, (inputText.Length - value.Length));
+                    inputText = inputText.Substring(0, inputText.Length - value.Length);
                 }
             }
 

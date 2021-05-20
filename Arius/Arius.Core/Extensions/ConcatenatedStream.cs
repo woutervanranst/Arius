@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     internal class ConcatenatedStream : Stream
     {

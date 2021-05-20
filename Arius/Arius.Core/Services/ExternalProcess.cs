@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
-using Arius.Extensions;
+using Arius.Core.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Services

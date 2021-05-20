@@ -2,7 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.CommandLine;
+using Arius.Core.Commands;
 using Arius.Models;
 using Microsoft.Extensions.Logging;
 

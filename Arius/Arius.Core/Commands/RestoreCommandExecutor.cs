@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Arius.Extensions;
+using Arius.Core.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;

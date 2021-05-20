@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Linq;
-using Arius.Extensions;
+using Arius.Core.Extensions;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 

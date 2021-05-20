@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using Arius.CommandLine;
 using Arius.Core.Commands;
 using Arius.Extensions;
 using Arius.Models;

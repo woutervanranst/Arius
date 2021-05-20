@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using Arius.Core.Extensions;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
 
     [DebuggerStepThrough]

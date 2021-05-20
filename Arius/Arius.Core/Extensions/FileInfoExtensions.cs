@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     static class FileInfoExtensions
     {

@@ -1,4 +1,4 @@
-﻿namespace Arius.CommandLine
+﻿namespace Arius.Core.Commands
 {
     internal interface ICommandExecutorOptions
     {

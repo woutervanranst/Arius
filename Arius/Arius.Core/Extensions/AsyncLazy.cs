@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     public class AsyncLazy<T> : Lazy<Task<T>>
     {

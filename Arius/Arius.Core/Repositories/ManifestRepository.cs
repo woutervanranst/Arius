@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Arius.CommandLine;
+using Arius.Core.Commands;
 using Arius.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;

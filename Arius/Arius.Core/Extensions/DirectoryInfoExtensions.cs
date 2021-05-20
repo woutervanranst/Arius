@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius.Extensions
+namespace Arius.Core.Extensions
 {
     static class DirectoryInfoExtensions
     {
@@ -45,11 +45,11 @@ namespace Arius.Extensions
 
         public static void CopyTo(this DirectoryInfo sourceDir, string targetDir)
         {
-            CopyTo(sourceDir.FullName, targetDir);
+            sourceDir.FullName.CopyTo(targetDir);
         }
         public static void CopyTo(this DirectoryInfo sourceDir, DirectoryInfo targetDir)
         {
-            CopyTo(sourceDir.FullName, targetDir.FullName);
+            sourceDir.FullName.CopyTo(targetDir.FullName);
         }
         private static void CopyTo(this string sourceDir, string targetDir)
         {
@@ -59,10 +59,10 @@ namespace Arius.Extensions
                 File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
 
             foreach (var directory in Directory.GetDirectories(sourceDir))
-                CopyTo(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
+                directory.CopyTo(Path.Combine(targetDir, Path.GetFileName(directory)));
         }
 
-        
+
         public static bool IsEmpty(this DirectoryInfo dir)
         {
             return !dir.GetFileSystemInfos().Any();

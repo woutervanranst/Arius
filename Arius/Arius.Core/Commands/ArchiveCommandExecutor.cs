@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Arius.Extensions;
+using Arius.Core.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
