@@ -23,23 +23,21 @@ namespace Arius.Repositories
         {
             private class CachedEncryptedPointerFileEntryRepository
             {
-                public CachedEncryptedPointerFileEntryRepository(ICommandExecutorOptions options, ILogger<CachedEncryptedPointerFileEntryRepository> logger)
+                public CachedEncryptedPointerFileEntryRepository(IOptions options, ILogger<CachedEncryptedPointerFileEntryRepository> logger)
                 {
                     this.logger = logger;
 
-                    var o = (IAzureRepositoryOptions) options;
+                    passphrase = options.Passphrase;
 
-                    passphrase = o.Passphrase;
-
-                    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
+                    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
 
                     var csa = CloudStorageAccount.Parse(connectionString);
                     var tc = csa.CreateCloudTableClient();
-                    pointerFileEntryTable = tc.GetTableReference($"{o.Container}{TableNameSuffix}");
+                    pointerFileEntryTable = tc.GetTableReference($"{options.Container}{TableNameSuffix}");
 
                     var r = pointerFileEntryTable.CreateIfNotExists();
                     if (r)
-                        this.logger.LogInformation($"Created tables for {o.Container}... ");
+                        this.logger.LogInformation($"Created tables for {options.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
                     pointerFileEntries = new(() =>

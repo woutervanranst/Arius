@@ -15,20 +15,19 @@ namespace Arius.Repositories
     {
         internal class ChunkRepository
         {
-            public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
+            public ChunkRepository(IOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
             {
                 _logger = logger;
                 _blobCopier = b;
 
-                var o = (IAzureRepositoryOptions)options;
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
                 
                 var bsc = new BlobServiceClient(connectionString);
-                _bcc = bsc.GetBlobContainerClient(o.Container);
+                _bcc = bsc.GetBlobContainerClient(options.Container);
                 var r = _bcc.CreateIfNotExists(PublicAccessType.None);
                 
                 if (r is not null && r.GetRawResponse().Status == 201) // Created
-                    _logger.LogInformation($"Created container {o.Container}... ");
+                    _logger.LogInformation($"Created container {options.Container}... ");
             }
 
             private readonly ILogger<ChunkRepository> _logger;

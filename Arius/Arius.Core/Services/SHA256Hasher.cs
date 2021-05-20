@@ -11,23 +11,22 @@ namespace Arius.Services
 {
     internal interface IHashValueProvider
     {
+        internal interface IOptions
+        {
+            public string Passphrase { get; }
+            public bool FastHash { get; }
+        }
+
         HashValue GetHashValue(BinaryFile bf);
         HashValue GetHashValue(string fullName);
-    }
-
-    internal interface ISHA256HasherOptions : ICommandExecutorOptions
-    {
-        public string Passphrase { get; }
-        public bool FastHash { get; }
     }
     
     internal class SHA256Hasher : IHashValueProvider
     {
-        public SHA256Hasher(ILogger<SHA256Hasher> logger, ICommandExecutorOptions options)
+        public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
         {
-            var o = (ISHA256HasherOptions) options;
-            _salt = o.Passphrase;
-            _fastHash = o.FastHash;
+            _salt = options.Passphrase;
+            _fastHash = options.FastHash;
             _logger = logger;
         }
 

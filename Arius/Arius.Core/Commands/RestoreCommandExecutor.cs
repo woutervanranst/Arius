@@ -13,7 +13,14 @@ namespace Arius.Core.Commands
 {
     internal class RestoreCommandExecutor : ICommandExecutor
     {
-        public RestoreCommandExecutor(RestoreCommandOptions options,
+        internal interface IOptions
+        {
+            string Path { get; }
+            bool Download { get; }
+            bool Synchronize { get; }
+        }
+
+        public RestoreCommandExecutor(IOptions options,
             ILogger<RestoreCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
@@ -34,7 +41,7 @@ namespace Arius.Core.Commands
                 .AddSingleton<MergeBlockProvider>();
         }
 
-        private readonly RestoreCommandOptions _options;
+        private readonly IOptions _options;
         private readonly ILogger<RestoreCommandExecutor> _logger;
         private readonly IServiceProvider blocks;
 

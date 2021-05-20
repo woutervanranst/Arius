@@ -12,7 +12,7 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        internal interface IAzureRepositoryOptions : ICommandExecutorOptions
+        internal interface IOptions
         {
             public string AccountName { get; }
             public string AccountKey { get; }
@@ -20,7 +20,7 @@ namespace Arius.Repositories
             public string Passphrase { get; }
         }
 
-        public AzureRepository(ICommandExecutorOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
+        public AzureRepository(IOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
         {
             chunkRepo = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
             manifestRepo = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());

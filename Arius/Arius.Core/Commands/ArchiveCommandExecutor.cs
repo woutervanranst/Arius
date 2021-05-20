@@ -13,7 +13,12 @@ namespace Arius.Core.Commands
 {
     internal class ArchiveCommandExecutor : ICommandExecutor
     {
-        public ArchiveCommandExecutor(ArchiveCommandOptions options,
+        internal interface IOptions
+        {
+            string Path { get; }
+        }
+
+        public ArchiveCommandExecutor(IOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {

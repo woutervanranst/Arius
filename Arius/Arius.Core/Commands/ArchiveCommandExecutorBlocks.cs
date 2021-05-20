@@ -11,6 +11,7 @@ using Arius.Core.Extensions;
 using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
@@ -677,7 +678,12 @@ namespace Arius.Core.Commands
 
     internal class UploadEncryptedChunksBlockProvider
     {
-        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, ArchiveCommandOptions options, AzureRepository azureRepository)
+        internal interface IOptions
+        {
+            AccessTier Tier { get; }
+        }
+
+        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, IOptions options, AzureRepository azureRepository)
         {
             _logger = logger;
             _options = options;
@@ -687,7 +693,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
-        private readonly ArchiveCommandOptions _options;
+        private readonly IOptions _options;
         private readonly AzureRepository _azureRepository;
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> InitBlock()
@@ -953,7 +959,12 @@ namespace Arius.Core.Commands
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveCommandOptions options, AzureRepository azureRepository)
+        internal interface IOptions
+        {
+            string Path { get; }
+        }
+
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, IOptions options, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
@@ -1113,14 +1124,19 @@ namespace Arius.Core.Commands
 
     internal class DeleteBinaryFilesTaskProvider
     {
-        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, ArchiveCommandOptions options)
+        internal interface IOptions
+        {
+            bool RemoveLocal { get; init; }
+        }
+
+        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, IOptions options)
         {
             _logger = logger;
             _options = options;
         }
 
         private readonly ILogger<DeleteBinaryFilesTaskProvider> _logger;
-        private readonly ArchiveCommandOptions _options;
+        private readonly IOptions _options;
 
         public DeleteBinaryFilesTaskProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
         {

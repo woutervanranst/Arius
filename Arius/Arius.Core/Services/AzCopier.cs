@@ -22,20 +22,20 @@ namespace Arius.Services
     }
 
 
-    internal interface IAzCopyUploaderOptions : ICommandExecutorOptions
-    {
-        public string AccountName { get; init; }
-        public string AccountKey { get; init; }
-        public string Container { get; init; }
-    }
+    
 
     
     internal class AzCopier : IBlobCopier
     {
-        public AzCopier(ICommandExecutorOptions options,
-            ILogger<AzCopier> logger)
+        internal interface IOptions
         {
-            var _options = (IAzCopyUploaderOptions)options;
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+        }
+
+        public AzCopier(IOptions options, ILogger<AzCopier> logger)
+        {
             _logger = logger;
 
             //Search async for the AZCopy Library (on another thread)
@@ -59,15 +59,15 @@ namespace Arius.Services
             //TODO Error handling back to main thread
 
 
-            _skc = new StorageSharedKeyCredential(_options.AccountName, _options.AccountKey);
+            _skc = new StorageSharedKeyCredential(options.AccountName, options.AccountKey);
 
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={_options.AccountName};AccountKey={_options.AccountKey};EndpointSuffix=core.windows.net";
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
 
             // Create a BlobServiceClient object which will be used to create a container client
             var bsc = new BlobServiceClient(connectionString);
             //var bsc = new BlobServiceClient(new Uri($"{accountName}", _skc));
 
-            _bcc = bsc.GetBlobContainerClient(_options.Container);
+            _bcc = bsc.GetBlobContainerClient(options.Container);
 
         }
 

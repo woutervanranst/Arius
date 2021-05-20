@@ -17,7 +17,12 @@ namespace Arius.Core.Commands
 {
     internal class SynchronizeBlockProvider
     {
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, RestoreCommandOptions options, AzureRepository repo, PointerService ps)
+        internal interface IOptions
+        {
+            string Path { get; }
+        }
+
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
             _root = new DirectoryInfo(options.Path);
@@ -94,7 +99,12 @@ namespace Arius.Core.Commands
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, RestoreCommandOptions options,
+        internal interface IOptions
+        {
+            string Path { get; }
+        }
+
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, IOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -262,7 +272,12 @@ namespace Arius.Core.Commands
 
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreCommandOptions options, IAzCopyAppSettings azCopyAppSettings, ITempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
+        internal interface IOptions
+        {
+            string Path { get; }
+        }
+
+        public DownloadBlockProvider(IOptions options, IAzCopyAppSettings azCopyAppSettings, ITempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
@@ -513,7 +528,12 @@ namespace Arius.Core.Commands
 
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreCommandOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
+        internal interface IOptions
+        {
+            bool KeepPointers { get; }
+        }
+
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;

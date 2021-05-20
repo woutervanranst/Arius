@@ -1,6 +1,6 @@
-﻿namespace Arius.Core.Commands
-{
-    internal interface ICommandExecutorOptions
-    {
-    }
-}
+﻿//namespace Arius.Core.Commands
+//{
+//    internal interface ICommandExecutorOptions
+//    {
+//    }
+//}

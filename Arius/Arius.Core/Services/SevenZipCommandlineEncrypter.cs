@@ -10,23 +10,22 @@ namespace Arius.Services
 {
     internal interface IEncrypter
     {
+        internal interface IOptions
+        {
+            string Passphrase { get; }
+        }
+
         void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, SevenZipCommandlineEncrypter.Compression compressionLevel, bool deletePlaintext = false);
         void Decrypt(IEncryptedFile fileToDecrypt, FileInfo decryptedFile, bool deleteEncrypted = false);
     }
 
 
-    internal interface IEncrypterOptions : ICommandExecutorOptions
-    {
-        string Passphrase { get; }
-    }
-
-    
     internal class SevenZipCommandlineEncrypter : IEncrypter
     {
-        public SevenZipCommandlineEncrypter(ICommandExecutorOptions options,
+        public SevenZipCommandlineEncrypter(IEncrypter.IOptions options,
             ILogger<SevenZipCommandlineEncrypter> logger)
         {
-            _passphrase = ((IEncrypterOptions)options).Passphrase;
+            _passphrase = options.Passphrase;
 
             //Search async for the 7z Library (on another thread)
             _7ZPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.exe", "7z"));

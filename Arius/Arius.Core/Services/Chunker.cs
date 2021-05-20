@@ -11,14 +11,13 @@ namespace Arius.Services
 {
     internal interface IChunker
     {
+        //internal interface IOptions
+        //{
+        //    bool Dedup { get; }
+        //}
+
         IChunkFile[] Chunk(BinaryFile fileToChunk);
         BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target);
-    }
-
-    
-    internal interface IChunkerOptions : ICommandExecutorOptions
-    {
-        bool Dedup { get; }
     }
 
     
@@ -26,7 +25,7 @@ namespace Arius.Services
     {
         public IChunkFile[] Chunk(BinaryFile item)
         {
-            return new[] {item};
+            return new[] { item };
         }
 
         public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)

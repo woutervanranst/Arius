@@ -17,16 +17,14 @@ namespace Arius.Repositories
     {
         internal class ManifestRepository
         {
-            public ManifestRepository(ICommandExecutorOptions options, ILogger<ManifestRepository> logger)
+            public ManifestRepository(IOptions options, ILogger<ManifestRepository> logger)
             {
                 _logger = logger;
 
-                var o = (IAzureRepositoryOptions)options;
-
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={o.AccountName};AccountKey={o.AccountKey};EndpointSuffix=core.windows.net";
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
 
                 var bsc = new BlobServiceClient(connectionString);
-                _bcc = bsc.GetBlobContainerClient(o.Container);
+                _bcc = bsc.GetBlobContainerClient(options.Container);
 
                 // Is created in ChunkRepository
             }

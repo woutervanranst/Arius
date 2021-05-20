@@ -13,7 +13,7 @@ namespace Arius.Repositories
     {
         private partial class PointerFileEntryRepository
         {
-            public PointerFileEntryRepository(ICommandExecutorOptions options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
+            public PointerFileEntryRepository(IOptions options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
             {
                 _logger = logger;
                 _repo = new CachedEncryptedPointerFileEntryRepository(options, loggerFactory.CreateLogger<CachedEncryptedPointerFileEntryRepository>());
