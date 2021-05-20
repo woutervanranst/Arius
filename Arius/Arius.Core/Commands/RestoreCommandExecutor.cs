@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -14,17 +13,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Arius.CommandLine
+namespace Arius.Core.Commands
 {
     internal class RestoreCommandExecutor : ICommandExecutor
     {
-        public RestoreCommandExecutor(RestoreOptions options,
+        public RestoreCommandExecutor(RestoreCommandOptions options,
             ILogger<RestoreCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
             _options = options;
             _logger = logger;
-            this.blocks = serviceProvider;
+            blocks = serviceProvider;
         }
 
         public static void AddProviders(IServiceCollection coll)
@@ -39,7 +38,7 @@ namespace Arius.CommandLine
                 .AddSingleton<MergeBlockProvider>();
         }
 
-        private readonly RestoreOptions _options;
+        private readonly RestoreCommandOptions _options;
         private readonly ILogger<RestoreCommandExecutor> _logger;
         private readonly IServiceProvider blocks;
 
@@ -55,8 +54,8 @@ namespace Arius.CommandLine
 
 
             // Define blocks & intermediate variables
-            
-            
+
+
             //var dedupedItems = _azureRepository.GetAllManifestHashes()
             //    .SelectMany(manifestHash => _azureRepository
             //        .GetChunkHashesAsync(manifestHash).Result
@@ -110,7 +109,7 @@ namespace Arius.CommandLine
             var propagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = true };
             var doNotPropagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = false };
 
-            
+
             // R30
             synchronizeBlock.LinkTo(
                 DataflowBlock.NullTarget<PointerFile>(),
@@ -136,7 +135,7 @@ namespace Arius.CommandLine
                 //r => true, // r.State == PointerState.NotYetMerged, //don't care what the state is we propagate to reconciliatoin
                 r => r.PointerFile);
 
-            processPointerChunksBlock.Completion.ContinueWith(_ => 
+            processPointerChunksBlock.Completion.ContinueWith(_ =>
             {
                 enqueueDownloadBlock.Complete(); //R81
                 hydrateBlock.Complete(); //R91
@@ -146,7 +145,7 @@ namespace Arius.CommandLine
             Task.WhenAll(reconcilePointerBlock.Completion, /*processPointerChunksBlock.Completion, */downloadBlock.Completion)
                 .ContinueWith(_ => decryptBlock.Complete());
 
-                                             
+
             // R82
             downloadBlock.LinkTo(
                 decryptBlock,
@@ -189,7 +188,7 @@ namespace Arius.CommandLine
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
-            blocks.GetRequiredService<IOptions<TempDirectoryAppSettings>>().Value.RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
+            blocks.GetRequiredService<IOptions<ITempDirectoryAppSettings>>().Value.RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {

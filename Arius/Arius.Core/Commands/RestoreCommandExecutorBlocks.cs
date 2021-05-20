@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -16,11 +15,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Enumerable = System.Linq.Enumerable;
 
-namespace Arius.CommandLine
+namespace Arius.Core.Commands
 {
     internal class SynchronizeBlockProvider
     {
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, RestoreOptions options, AzureRepository repo, PointerService ps)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, RestoreCommandOptions options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
             _root = new DirectoryInfo(options.Path);
@@ -93,11 +92,11 @@ namespace Arius.CommandLine
         }
     }
 
-    
+
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, RestoreOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, RestoreCommandOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -202,8 +201,8 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
-                    if (_repo.GetChunkBlobByHash(chunkHash, true) is var hydratedChunk && 
-                        hydratedChunk is not null && 
+                    if (_repo.GetChunkBlobByHash(chunkHash, true) is var hydratedChunk &&
+                        hydratedChunk is not null &&
                         hydratedChunk.Downloadable)
                     {
                         // R80
@@ -262,10 +261,10 @@ namespace Arius.CommandLine
 
         public bool AtLeastOneHydrating { get; private set; }
     }
-    
+
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreOptions options, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(RestoreCommandOptions options, IOptions<IAzCopyAppSettings> azCopyAppSettings, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, AzureRepository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings.Value;
             this.repo = repo;
@@ -274,7 +273,7 @@ namespace Arius.CommandLine
             downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(root);
         }
 
-        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly IAzCopyAppSettings azCopyAppSettings;
         private readonly AzureRepository repo;
         private readonly DirectoryInfo downloadTempDir;
 
@@ -296,8 +295,8 @@ namespace Arius.CommandLine
                             if (!(_downloadQueue.Select(kvp => kvp.Key).Contains(chunkBlob.Hash) ||
                                 _downloadedOrDownloading.Contains(chunkBlob.Hash)))
                             {
-                                    // Chunk is not yet downloaded or being downlaoded -- add to queue
-                                    _downloadQueue.Add(new(chunkBlob.Hash, chunkBlob));
+                                // Chunk is not yet downloaded or being downlaoded -- add to queue
+                                _downloadQueue.Add(new(chunkBlob.Hash, chunkBlob));
                             }
                         }
                     }
@@ -398,7 +397,7 @@ namespace Arius.CommandLine
             return new(ecf =>
             {
                 _logger.LogInformation($"Decrypting chunk {ecf.Hash}...");
-                
+
                 var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
 
                 _encrypter.Decrypt(ecf, targetFile, true);
@@ -420,7 +419,7 @@ namespace Arius.CommandLine
         }
 
         private readonly ILogger<ReconcilePointersWithChunksBlockProvider> _logger;
-        
+
         private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
         private readonly Dictionary<HashValue, (List<PointerFile> PointerFiles, List<HashValue> ChunkHashes)> _inFlightPointers = new(); // Key = ManifestHash
 
@@ -428,7 +427,7 @@ namespace Arius.CommandLine
         {
             if (_reconcilePointerBlock is null)
             {
-                _reconcilePointerBlock = new(pf => 
+                _reconcilePointerBlock = new(pf =>
                 {
                     lock (_inFlightPointers)
                     {
@@ -466,7 +465,7 @@ namespace Arius.CommandLine
             return new(cf =>
             {
                 _processedChunks.Add(cf.Hash, cf);
-                
+
                 // Wait until all pointers have been reconciled and we have a full view of what chunks are needed for which files
                 Task.WaitAll(_reconcilePointerBlock.Completion); // R603
 
@@ -513,10 +512,10 @@ namespace Arius.CommandLine
         }
     }
 
-    
+
     internal class MergeBlockProvider
     {
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, RestoreCommandOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;

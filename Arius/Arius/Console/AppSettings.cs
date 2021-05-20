@@ -4,13 +4,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace Arius.Console
 {
-    internal class AzCopyAppSettings
+    internal class AzCopyAppSettings : IAzCopyAppSettings
     {
         public long BatchSize { get; init; }
         public int BatchCount { get; init; }
     }
 
-    internal class TempDirectoryAppSettings
+    internal class TempDirectoryAppSettings : ITempDirectoryAppSettings
     {
         public string TempDirectoryName { get; init; }
         public string TempDirectoryFullName => Path.Combine(Path.GetTempPath(), TempDirectoryName);

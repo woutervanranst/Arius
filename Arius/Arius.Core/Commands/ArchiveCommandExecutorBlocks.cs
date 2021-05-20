@@ -7,7 +7,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using Arius.Console;
 using Arius.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -15,7 +14,7 @@ using Arius.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Arius.CommandLine
+namespace Arius.Core.Commands
 {
     internal class IndexDirectoryBlockProvider
     {
@@ -66,7 +65,7 @@ namespace Arius.CommandLine
                     continue;
                 }
                 else
-                { 
+                {
                     yield return GetAriusEntry(root, file);
                 }
             }
@@ -94,8 +93,8 @@ namespace Arius.CommandLine
         }
         private bool IsHiddenOrSystem(FileInfo fi)
         {
-            if (fi.FullName.Contains("eaDir") || 
-                fi.FullName.Contains("SynoResource") || 
+            if (fi.FullName.Contains("eaDir") ||
+                fi.FullName.Contains("SynoResource") ||
                 fi.FullName.Contains("@"))
                 _logger.LogWarning("WEIRD FILE: " + fi.FullName);
 
@@ -110,9 +109,9 @@ namespace Arius.CommandLine
         {
             var lowercaseFilename = fi.Name.ToLower();
 
-            return (lowercaseFilename.Equals("autorun.ini") ||
+            return lowercaseFilename.Equals("autorun.ini") ||
                 lowercaseFilename.Equals("thumbs.db") ||
-                lowercaseFilename.Equals(".ds_store"));
+                lowercaseFilename.Equals(".ds_store");
         }
 
         private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
@@ -239,7 +238,7 @@ namespace Arius.CommandLine
                     _logger.LogError(e, "ERRORTODO", item);
                     throw;
                 }
-        });
+            });
         }
 
         public TransformManyBlock<object, T> GetReconcileBlock()
@@ -267,7 +266,7 @@ namespace Arius.CommandLine
                                     // it is alreayd in de _pending list // do nothing
                                     return Enumerable.Empty<T>();
                                 }
-                                    
+
                                 else
                                     throw new InvalidOperationException("huh??");
                             }
@@ -514,7 +513,7 @@ namespace Arius.CommandLine
 
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<TempDirectoryAppSettings> tempDirAppSettings, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, IEncrypter encrypter)
         {
             this.logger = logger;
             this.tempDirAppSettings = tempDirAppSettings.Value;
@@ -522,7 +521,7 @@ namespace Arius.CommandLine
         }
 
         private readonly ILogger<EncryptChunksBlockProvider> logger;
-        private readonly TempDirectoryAppSettings tempDirAppSettings;
+        private readonly ITempDirectoryAppSettings tempDirAppSettings;
         private readonly IEncrypter encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
@@ -593,14 +592,14 @@ namespace Arius.CommandLine
 
     internal class CreateUploadBatchesTaskProvider
     {
-        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IOptions<AzCopyAppSettings> azCopyAppSettings)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IOptions<IAzCopyAppSettings> azCopyAppSettings)
         {
             this.logger = logger;
             this.azCopyAppSettings = azCopyAppSettings.Value;
         }
 
         private readonly ILogger<CreateUploadBatchesTaskProvider> logger;
-        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly IAzCopyAppSettings azCopyAppSettings;
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {
@@ -679,7 +678,7 @@ namespace Arius.CommandLine
 
     internal class UploadEncryptedChunksBlockProvider
     {
-        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, ArchiveOptions options, AzureRepository azureRepository)
+        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, ArchiveCommandOptions options, AzureRepository azureRepository)
         {
             _logger = logger;
             _options = options;
@@ -689,7 +688,7 @@ namespace Arius.CommandLine
         }
 
         private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
-        private readonly ArchiveOptions _options;
+        private readonly ArchiveCommandOptions _options;
         private readonly AzureRepository _azureRepository;
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> InitBlock()
@@ -731,7 +730,7 @@ namespace Arius.CommandLine
 
         private readonly ILogger<ReconcileChunksWithManifestsBlockProvider> _logger;
 
-        
+
         public ReconcileChunksWithManifestsBlockProvider AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(Dictionary<BinaryFile, List<HashValue>> chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
         {
             _chunksThatNeedToBeUploadedBeforeManifestCanBeCreated = chunksThatNeedToBeUploadedBeforeManifestCanBeCreated;
@@ -947,7 +946,7 @@ namespace Arius.CommandLine
                 //    logger.LogError(e, "ERRORTODO");
                 //    throw;
                 //}
-            }, new() { MaxDegreeOfParallelism = Environment.ProcessorCount /*DataflowBlockOptions.Unbounded*/ } );
+            }, new() { MaxDegreeOfParallelism = Environment.ProcessorCount /*DataflowBlockOptions.Unbounded*/ });
         }
 
     }
@@ -955,7 +954,7 @@ namespace Arius.CommandLine
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveOptions options, AzureRepository azureRepository)
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, ArchiveCommandOptions options, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
@@ -1115,14 +1114,14 @@ namespace Arius.CommandLine
 
     internal class DeleteBinaryFilesTaskProvider
     {
-        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, ArchiveOptions options)
+        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, ArchiveCommandOptions options)
         {
             _logger = logger;
             _options = options;
         }
 
         private readonly ILogger<DeleteBinaryFilesTaskProvider> _logger;
-        private readonly ArchiveOptions _options;
+        private readonly ArchiveCommandOptions _options;
 
         public DeleteBinaryFilesTaskProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
         {

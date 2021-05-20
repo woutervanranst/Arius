@@ -9,15 +9,6 @@ namespace Arius.CommandLine
         Command GetCommand(ParsedCommandProvider pcp);
     }
 
-    internal interface ICommandExecutor
-    {
-        public Task<int> Execute();
-    }
-
-    internal interface ICommandExecutorOptions
-    {
-    }
-
     internal class ParsedCommandProvider
     {
         public Type CommandExecutorType { get; set; }

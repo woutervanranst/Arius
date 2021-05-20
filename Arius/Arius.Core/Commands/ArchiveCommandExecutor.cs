@@ -12,16 +12,16 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.CommandLine
+namespace Arius.Core.Commands
 {
     internal class ArchiveCommandExecutor : ICommandExecutor
     {
-        public ArchiveCommandExecutor(ArchiveOptions options,
+        public ArchiveCommandExecutor(ArchiveCommandOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
             this.logger = logger;
-            this.blocks = serviceProvider;
+            blocks = serviceProvider;
 
             root = new DirectoryInfo(options.Path);
         }
@@ -82,7 +82,7 @@ namespace Arius.CommandLine
                 .GetBlock();
 
 
-            var uploadEncryptedChunksBlock =  blocks.GetRequiredService<UploadEncryptedChunksBlockProvider>().GetBlock();
+            var uploadEncryptedChunksBlock = blocks.GetRequiredService<UploadEncryptedChunksBlockProvider>().GetBlock();
 
 
             var createUploadBatchesTask = blocks.GetRequiredService<CreateUploadBatchesTaskProvider>()
@@ -96,7 +96,7 @@ namespace Arius.CommandLine
                 .AddChunksThatNeedToBeUploadedBeforeManifestCanBeCreated(chunksThatNeedToBeUploadedBeforeManifestCanBeCreated)
                 .GetBlock();
 
-            
+
             var createManifestBlock = blocks.GetRequiredService<CreateManifestBlockProvider>().GetBlock();
 
 
@@ -128,8 +128,8 @@ namespace Arius.CommandLine
 
 
             // Set up linking
-            var propagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = true};
-            var doNotPropagateCompletionOptions = new DataflowLinkOptions() {PropagateCompletion = false};
+            var propagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = true };
+            var doNotPropagateCompletionOptions = new DataflowLinkOptions() { PropagateCompletion = false };
 
             // A10
             indexDirectoryBlock.LinkTo(
@@ -166,8 +166,8 @@ namespace Arius.CommandLine
 
             // A60
             chunkBlock.LinkTo(
-                encryptChunksBlock, 
-                propagateCompletionOptions, 
+                encryptChunksBlock,
+                propagateCompletionOptions,
                 f => !f.Uploaded,
                 f => f.ChunkFile);
 
@@ -217,7 +217,7 @@ namespace Arius.CommandLine
                 () => logger.LogDebug("Passing A115 - Completion"),
                 () => logger.LogDebug("Passing A115 - Faulted"),
                 uploadEncryptedChunksBlock, chunkBlock);
-            
+
             //Task.WhenAll(uploadEncryptedChunksBlock.Completion, chunkBlock.Completion)
             //    .ContinueWith(_ =>
             //    {
@@ -253,7 +253,7 @@ namespace Arius.CommandLine
 
             // A160
             createPointersBlock.LinkTo(
-                createPointerFileEntryIfNotExistsBlock, 
+                createPointerFileEntryIfNotExistsBlock,
                 doNotPropagateCompletionOptions);
 
 
@@ -290,11 +290,6 @@ namespace Arius.CommandLine
             logger.LogInformation("Done");
 
             return 0;
-        }
-
-        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
-        {
-            throw new NotImplementedException();
         }
     }
 }
