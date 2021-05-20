@@ -96,7 +96,7 @@ namespace Arius.Core.Commands
 
     internal class ProcessPointerChunksBlockProvider
     {
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, RestoreCommandOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, RestoreCommandOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -104,7 +104,7 @@ namespace Arius.Core.Commands
             _hvp = hvp;
             _repo = repo;
 
-            _downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.RestoreTempDirectory(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;

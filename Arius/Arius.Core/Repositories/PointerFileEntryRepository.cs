@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Security;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
-using Arius.Extensions;
 using Arius.Models;
 using Microsoft.Extensions.Logging;
 

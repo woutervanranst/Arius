@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Arius.Core.Commands;
-using Arius.Extensions;
 using Arius.Models;
 using Arius.Services;
 using Azure.Storage.Blobs;

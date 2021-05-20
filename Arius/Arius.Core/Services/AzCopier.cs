@@ -6,7 +6,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
-using Arius.Extensions;
 using Arius.Models;
 using Azure.Storage;
 using Azure.Storage.Blobs;

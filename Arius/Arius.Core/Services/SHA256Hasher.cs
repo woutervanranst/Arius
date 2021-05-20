@@ -3,7 +3,7 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Arius.Core.Commands;
-using Arius.Extensions;
+using Arius.Core.Extensions;
 using Arius.Models;
 using Microsoft.Extensions.Logging;
 
