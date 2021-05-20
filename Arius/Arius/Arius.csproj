@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Arius.Core" Version="2021.5.20.205019" />
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.0" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
