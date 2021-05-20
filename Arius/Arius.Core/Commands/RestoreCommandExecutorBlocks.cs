@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -12,7 +11,6 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Enumerable = System.Linq.Enumerable;
 
 namespace Arius.Core.Commands
@@ -264,13 +262,13 @@ namespace Arius.Core.Commands
 
     internal class DownloadBlockProvider
     {
-        public DownloadBlockProvider(RestoreCommandOptions options, IOptions<IAzCopyAppSettings> azCopyAppSettings, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(RestoreCommandOptions options, IAzCopyAppSettings azCopyAppSettings, ITempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
         {
-            this.azCopyAppSettings = azCopyAppSettings.Value;
+            this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
-            downloadTempDir = tempDirAppSettings.Value.RestoreTempDirectory(root);
+            downloadTempDir = tempDirAppSettings.RestoreTempDirectory(root);
         }
 
         private readonly IAzCopyAppSettings azCopyAppSettings;

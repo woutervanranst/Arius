@@ -1,12 +1,9 @@
-using Azure.Storage.Blobs.Models;
 using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Extensions;
-using Arius.Repositories;
-using Arius.Services;
 
 namespace Arius.CommandLine
 {

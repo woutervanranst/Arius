@@ -1,17 +1,8 @@
-﻿using Arius.UI.Properties;
-using Arius.UI.ViewModels;
+﻿using Arius.UI.ViewModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Configuration;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace Arius.UI

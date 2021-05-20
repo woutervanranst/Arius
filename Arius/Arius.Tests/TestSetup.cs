@@ -1,11 +1,5 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Security.Authentication.ExtendedProtection;
-using System.Threading.Tasks;
-using Arius.CommandLine;
-using Arius.Repositories;
 using Azure.Storage.Blobs;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.DependencyInjection;

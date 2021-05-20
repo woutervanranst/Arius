@@ -1,14 +1,10 @@
 ﻿using System;
 using System.CommandLine;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Arius.CommandLine;
 using Arius.Extensions;
-using Arius.Models;
-using Arius.Repositories;
-using Arius.Services;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

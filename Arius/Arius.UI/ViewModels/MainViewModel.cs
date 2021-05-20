@@ -1,5 +1,4 @@
-﻿using Arius.Facade;
-using Arius.UI.Extensions;
+﻿using Arius.UI.Extensions;
 using Arius.UI.Properties;
 using System;
 using System.Collections.ObjectModel;

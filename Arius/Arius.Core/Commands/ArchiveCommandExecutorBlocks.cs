@@ -12,7 +12,6 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Commands
 {
@@ -513,10 +512,10 @@ namespace Arius.Core.Commands
 
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, IOptions<ITempDirectoryAppSettings> tempDirAppSettings, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, IEncrypter encrypter)
         {
             this.logger = logger;
-            this.tempDirAppSettings = tempDirAppSettings.Value;
+            this.tempDirAppSettings = tempDirAppSettings;
             this.encrypter = encrypter;
         }
 
@@ -592,10 +591,10 @@ namespace Arius.Core.Commands
 
     internal class CreateUploadBatchesTaskProvider
     {
-        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IOptions<IAzCopyAppSettings> azCopyAppSettings)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IAzCopyAppSettings azCopyAppSettings)
         {
             this.logger = logger;
-            this.azCopyAppSettings = azCopyAppSettings.Value;
+            this.azCopyAppSettings = azCopyAppSettings;
         }
 
         private readonly ILogger<CreateUploadBatchesTaskProvider> logger;

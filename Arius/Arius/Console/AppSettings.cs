@@ -1,6 +1,4 @@
 ﻿using System.IO;
-using Arius.CommandLine;
-using Microsoft.Extensions.Configuration;
 
 namespace Arius.Console
 {

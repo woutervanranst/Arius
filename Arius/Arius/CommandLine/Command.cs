@@ -1,6 +1,5 @@
 ﻿using System;
 using System.CommandLine;
-using System.Threading.Tasks;
 
 namespace Arius.CommandLine
 {

@@ -1,16 +1,9 @@
-﻿using Arius.CommandLine;
-using Arius.Extensions;
-using Arius.Models;
-using Arius.Services;
-using Microsoft.Extensions.Configuration;
-using NUnit.Framework;
+﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Arius.Tests
 {

@@ -9,7 +9,6 @@ using Arius.Core.Commands;
 using Arius.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Repositories

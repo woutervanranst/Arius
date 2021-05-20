@@ -2,14 +2,9 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.CommandLine;
-using Arius.Extensions;
-using Arius.Models;
-using Arius.Repositories;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
