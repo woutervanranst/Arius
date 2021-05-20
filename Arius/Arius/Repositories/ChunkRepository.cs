@@ -14,9 +14,6 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        internal const string EncryptedChunkDirectoryName = "chunks";
-        internal const string RehydrationDirectoryName = "chunks-rehydrated";
-
         internal class ChunkRepository
         {
             public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
@@ -39,6 +36,8 @@ namespace Arius.Repositories
             private readonly IBlobCopier _blobCopier;
             private readonly BlobContainerClient _bcc;
 
+            internal const string EncryptedChunkDirectoryName = "chunks";
+            internal const string RehydrationDirectoryName = "chunks-rehydrated";
 
             // GET
 
@@ -97,7 +96,7 @@ namespace Arius.Repositories
             /// Get a RemoteEncryptedChunkBlobItem by Name. Return null if it doesn't exist.
             /// </summary>
             /// <returns></returns>
-            private ChunkBlobBase GetChunkBlobByName(string folder, string name)
+            internal ChunkBlobBase GetChunkBlobByName(string folder, string name)
             {
                 try
                 {

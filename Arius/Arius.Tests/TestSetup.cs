@@ -123,6 +123,7 @@ namespace Arius.Tests
                 .AddSingleton<ICommandExecutorOptions>(aro)
                 .AddSingleton<AzureRepository>()
                 .AddSingleton<AzureRepository.ManifestRepository>()
+                .AddSingleton<AzureRepository.ChunkRepository>()
                 .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
 
                 .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()

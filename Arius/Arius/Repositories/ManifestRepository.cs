@@ -34,6 +34,7 @@ namespace Arius.Repositories
 
             private readonly ILogger<ManifestRepository> _logger;
             private readonly BlobContainerClient _bcc;
+
             internal const string ManifestDirectoryName = "manifests";
 
             public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)

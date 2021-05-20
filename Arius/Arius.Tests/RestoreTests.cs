@@ -95,7 +95,7 @@ namespace Arius.Tests
             Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
             //11 A hydrated blob does not yet exist
-            var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{cb.Name}");
+            var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
             
             //12 Obtaining properties results in an exception
@@ -147,7 +147,7 @@ namespace Arius.Tests
             Assert.IsTrue(bc_Original.Exists());
             
             //22 The hydrated blob does not yet exist
-            var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{cb.Name}");
+            var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
             
             //23 Copy the original to the hydrated folder
