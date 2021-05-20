@@ -37,12 +37,12 @@ namespace Arius.Models
         public string FullName { get; }
 
         /// <summary>
-        /// Name (with extension)
+        /// Name (with extension, without path)
         /// </summary>
         public string Name { get; }
         
         /// <summary>
-        /// Directory where this File resides
+        /// The Directory where this File resides
         /// </summary>
         DirectoryInfo Directory { get; }
         
@@ -124,7 +124,7 @@ namespace Arius.Models
 
     public class PointerFile : RelativeAriusFileBase, IAriusEntryWithHash
     {
-        public const string Extension = ".pointer.arius";
+        public static readonly string Extension = ".pointer.arius";
 
         //public PointerFile(FileInfo fi) : this(fi.Directory, fi)
         //{
@@ -159,7 +159,7 @@ namespace Arius.Models
 
     internal class ChunkFile : FileBase, IChunkFile
     {
-        public const string Extension = ".chunk.arius";
+        public static readonly string Extension = ".chunk.arius";
 
         public ChunkFile(FileInfo fi, HashValue hash) : base(fi)
         {
@@ -169,8 +169,12 @@ namespace Arius.Models
 
     internal class EncryptedChunkFile : FileBase, IEncryptedFile, IChunkFile
     {
-        public const string Extension = ".7z.arius";
+        public static readonly string Extension = ".7z.arius";
 
+        public EncryptedChunkFile(FileInfo fi) : base(fi)
+        {
+            base.Hash = new HashValue { Value = fi.Name.TrimEnd(Extension) };
+        }
         public EncryptedChunkFile(FileInfo fi, HashValue hash) : base(fi)
         {
             base.Hash = hash;

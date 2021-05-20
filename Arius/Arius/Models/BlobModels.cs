@@ -1,47 +1,114 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using Arius.Extensions;
-using Arius.Repositories;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Models
 {
-    internal abstract class BlobBase : IWithHashValue // : IAriusArchiveItem
+    internal abstract class BlobBase : IWithHashValue
     {
+        /// <summary>
+        /// Full Name (with path and extension)
+        /// </summary>
+        public abstract string FullName { get; }
 
-        protected BlobBase(BlobItem blobItem)
-        {
-            _bi = blobItem;
-        }
-        protected readonly BlobItem _bi;
+        /// <summary>
+        /// Name (with extension, without path)
+        /// </summary>
+        public string Name => FullName.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
+
+        /// <summary>
+        /// The Folder where this Blob resides
+        /// </summary>
+        public string Folder => FullName.Split(BlobFolderSeparatorChar).First(); //TODO quid if in the root?
+
+        /// <summary>
+        /// Length (in bytes) of the Blob
+        /// </summary>
+        public abstract long Length { get; }
+
+        public abstract HashValue Hash { get; }
 
         private const char BlobFolderSeparatorChar = '/';
-
-        public string FullName => _bi.Name;
-        public string Name => _bi.Name.Split(BlobFolderSeparatorChar).Last(); //TODO werkt dit met alle soorten repos?
-        public string Folder => _bi.Name.Split(BlobFolderSeparatorChar).First();
-        public abstract HashValue Hash { get; }
     }
 
-    internal class RemoteEncryptedChunkBlobItem : BlobBase
+
+
+    internal class ManifestBlob : BlobBase
     {
-        public RemoteEncryptedChunkBlobItem(BlobItem bi) : base(bi)
+        public ManifestBlob(BlobItem bi)
         {
+            this.bi = bi;
+        }
+        protected readonly BlobItem bi;
+
+        public override HashValue Hash => new() { Value = Name };
+        public override string FullName => bi.Name;
+        public override long Length => bi.Properties.ContentLength!.Value;
+    }
+
+
+
+    internal abstract class ChunkBlobBase : BlobBase
+    {
+        public static ChunkBlobItem GetChunkBlob(BlobItem bi)
+        {
+            return new ChunkBlobItem(bi);
+        }
+        public static ChunkBlobClient GetChunkBlob(BlobClient bc)
+        {
+            return new ChunkBlobClient(bc);
         }
 
-        public override HashValue Hash => new HashValue {Value = Name.TrimEnd(Extension)};
-        protected string Extension => ".7z.arius";
-        public long Length => _bi.Properties.ContentLength!.Value;
-        public AccessTier AccessTier => _bi.Properties.AccessTier!.Value;
+        public abstract AccessTier AccessTier { get; }
+
+        public static readonly string Extension = ".7z.arius";
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-        public BlobItem BlobItem => _bi;
+        public override HashValue Hash => new() { Value = Name.TrimEnd(Extension) };
     }
 
-    internal class RemoteManifestBlobItem : BlobBase
+    internal class ChunkBlobItem : ChunkBlobBase
     {
-        public RemoteManifestBlobItem(BlobItem bi) : base(bi)
+        internal ChunkBlobItem(BlobItem bi)
         {
+            this.bi = bi;
         }
+        private readonly BlobItem bi;
 
-        public override HashValue Hash => new HashValue { Value = Name };
+
+        public override long Length => bi.Properties.ContentLength!.Value;
+        public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
+        public override string FullName => bi.Name;
+    }
+
+    internal class ChunkBlobClient : ChunkBlobBase
+    {
+        internal ChunkBlobClient(BlobClient bc)
+        {
+            try
+            {
+                props = bc.GetProperties().Value;
+                FullName = bc.Name;
+            }
+            catch (Azure.RequestFailedException)
+            {
+                throw new ArgumentException($"Blob {bc.Uri} not found. Either this is expected (no hydrated blob found) or the archive integrity is compromised?");
+            }
+        }
+        private readonly BlobProperties props;
+
+
+        public override long Length => props.ContentLength;
+
+        public override AccessTier AccessTier => props.AccessTier switch
+        {
+            "Hot" => AccessTier.Hot,
+            "Cool" => AccessTier.Cool,
+            "Archive" => AccessTier.Archive,
+            _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
+        };
+
+        public override string FullName { get; }
     }
 }

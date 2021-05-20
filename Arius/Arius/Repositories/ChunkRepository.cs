@@ -14,10 +14,7 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        private const string EncryptedChunkDirectoryName = "chunks";
-        internal const string RehydrationDirectoryName = "chunks-rehydrated";
-
-        private class ChunkRepository
+        internal class ChunkRepository
         {
             public ChunkRepository(ICommandExecutorOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
             {
@@ -39,13 +36,26 @@ namespace Arius.Repositories
             private readonly IBlobCopier _blobCopier;
             private readonly BlobContainerClient _bcc;
 
+            internal const string EncryptedChunkDirectoryName = "chunks";
+            internal const string RehydrationDirectoryName = "chunks-rehydrated";
 
             // GET
 
-            public IEnumerable<RemoteEncryptedChunkBlobItem> GetAllChunkBlobItems()
+            public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
             {
-                return _bcc.GetBlobs(prefix: $"{EncryptedChunkDirectoryName}/")
-                    .Select(bi => new RemoteEncryptedChunkBlobItem(bi));
+                _logger.LogInformation($"Getting all ChunkBlobs...");
+                var r = Array.Empty<ChunkBlobBase>();
+
+                try
+                {
+                    return r = _bcc.GetBlobs(prefix: $"{EncryptedChunkDirectoryName}/")
+                        .Select(bi => new ChunkBlobItem(bi))
+                        .ToArray();
+                }
+                finally
+                {
+                    _logger.LogInformation($"Getting all ChunkBlobs... got {r.Length}");
+                }
             }
 
 
@@ -53,107 +63,72 @@ namespace Arius.Repositories
             /// Get the RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
             /// if requireHydrated is true and the chunk does not exist in cold storage, returns null
             /// </summary>
-            public RemoteEncryptedChunkBlobItem GetChunkBlobItemByHash(HashValue chunkHash, bool requireHydrated)
+            public ChunkBlobBase GetChunkBlobByHash(HashValue chunkHash, bool requireHydrated)
             {
-                var recbi1 = GetByName(EncryptedChunkDirectoryName, chunkHash.Value);
+                var name = $"{chunkHash.Value}{ChunkBlobBase.Extension}";
+                var cb1 = GetChunkBlobByName(EncryptedChunkDirectoryName, name);
 
-                if (recbi1 is null)
+                if (cb1 is null)
                     throw new InvalidOperationException($"No Chunk for hash {chunkHash.Value}");
 
                 // if we don't need a hydrated chunk, return this one
                 if (!requireHydrated)
-                    return recbi1;
+                    return cb1;
 
                 // if we require a hydrated chunk, and this one is hydrated, return this one
-                if (requireHydrated && recbi1.Downloadable)
-                    return recbi1;
+                if (requireHydrated && cb1.Downloadable)
+                    return cb1;
 
 
-                var recbi2 = GetByName(RehydrationDirectoryName, chunkHash.Value);
+                var cb2 = GetChunkBlobByName(RehydrationDirectoryName, name);
 
-                if (recbi2 is null || !recbi2.Downloadable)
+                if (cb2 is null || !cb2.Downloadable)
                 {
                     // no hydrated chunk exists
                     _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
                     return null;
                 }
                 else
-                    return recbi2;
+                    return cb2;
             }
-
-            ///// <summary>
-            ///// Get a hydrated RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
-            ///// Returns null if not found.
-            ///// </summary>
-            //public RemoteEncryptedChunkBlobItem GetHydratedChunkBlobItemByHash(HashValue chunkHash)
-            //{
-            //    // Return, in order of preference,
-            //    // 1. in cold storage
-            //    if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi1 
-            //        && recbi1 is not null 
-            //        && recbi1.Downloadable)
-            //        return recbi1;
-
-            //    // 2. rehydrated item
-            //    if (GetByName(RehydrationDirectoryName, chunkHash.Value) is var recbi2 
-            //        && recbi2 is not null
-            //        && recbi2.Downloadable)
-            //        return recbi2;
-
-            //    _logger.LogDebug($"No hydrated chunk found for {chunkHash}");
-
-            //    return null;
-
-            //    //throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} not found for hash {chunkHash.Value}");
-            //}
-
-            //public RemoteEncryptedChunkBlobItem GetArchiveTierChunkBlobItemByHash(HashValue chunkHash)
-            //{
-            //    if (GetByName(EncryptedChunkDirectoryName, chunkHash.Value) is var recbi
-            //        && recbi is not null
-            //        && recbi.AccessTier == AccessTier.Archive)
-            //        return recbi;
-
-            //    throw new InvalidOperationException($"{nameof(RemoteEncryptedChunkBlobItem)} in Archive tier not found for hash {chunkHash.Value}");
-            //}
 
             /// <summary>
             /// Get a RemoteEncryptedChunkBlobItem by Name. Return null if it doesn't exist.
             /// </summary>
             /// <returns></returns>
-            private RemoteEncryptedChunkBlobItem GetByName(string folder, string name)
+            internal ChunkBlobBase GetChunkBlobByName(string folder, string name)
             {
-                var bi = _bcc
-                    .GetBlobs(prefix: $"{folder}/{name}", traits: BlobTraits.Metadata & BlobTraits.CopyStatus)
-                    .SingleOrDefault();
-
-                return bi is null 
-                    ? null 
-                    : new RemoteEncryptedChunkBlobItem(bi);
+                try
+                {
+                    var bc = _bcc.GetBlobClient($"{folder}/{name}");
+                    var cb = ChunkBlobBase.GetChunkBlob(bc);
+                    return cb;
+                }
+                catch (ArgumentException)
+                {
+                    return null;
+                }
             }
 
 
             // PUT
-            public void Hydrate(RemoteEncryptedChunkBlobItem itemToHydrate)
+            public void Hydrate(ChunkBlobBase blobToHydrate)
             {
-                _logger.LogInformation($"Hydrating chunk {itemToHydrate.Name}");
+                _logger.LogInformation($"Hydrating chunk {blobToHydrate.Name}");
 
-                if (itemToHydrate.AccessTier == AccessTier.Hot ||
-                    itemToHydrate.AccessTier == AccessTier.Cool)
-                    throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({itemToHydrate.Name})");
+                if (blobToHydrate.AccessTier == AccessTier.Hot ||
+                    blobToHydrate.AccessTier == AccessTier.Cool)
+                    throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-                var hydratedItem = _bcc.GetBlobClient($"{RehydrationDirectoryName}/{itemToHydrate.Name}");
+                var hydratedItem = _bcc.GetBlobClient($"{RehydrationDirectoryName}/{blobToHydrate.Name}");
 
                 if (!hydratedItem.Exists())
                 {
                     //Start hydration
-                    var archiveItem = _bcc.GetBlobClient(itemToHydrate.FullName);
+                    var archiveItem = _bcc.GetBlobClient(blobToHydrate.FullName);
                     hydratedItem.StartCopyFromUri(archiveItem.Uri, new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
-                    //var xx = archiveTierBlobClient.GetProperties().Value;
-                    //var xxx = xx.ArchiveStatus == ; //Azure.Storage.Shared. RehydratePendingToCool
-
-                    _logger.LogInformation($"Hydration started for {itemToHydrate.Name}");
+                    _logger.LogInformation($"Hydration started for {blobToHydrate.Name}");
                 }
                 else
                 {
@@ -162,10 +137,9 @@ namespace Arius.Repositories
 
                     var status = hydratedItem.GetProperties().Value.ArchiveStatus;
                     if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
-                        _logger.LogInformation($"Hydration pending for {itemToHydrate.Name}");
+                        _logger.LogInformation($"Hydration pending for {blobToHydrate.Name}");
                     else if (status == null)
-                        _logger.LogInformation($"Hydration done for {itemToHydrate.Name}");
-                    //return GetByName(itemToHydrate.Name, RehydrationSubdirectoryName);
+                        _logger.LogInformation($"Hydration done for {blobToHydrate.Name}");
                     else
                         throw new ArgumentException("TODO");
                 }
@@ -184,7 +158,7 @@ namespace Arius.Repositories
 
             // UPLOAD & DOWNLOAD
 
-            public IEnumerable<RemoteEncryptedChunkBlobItem> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
+            public IEnumerable<ChunkBlobBase> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
             {
                 ecfs = ecfs.ToArray();
 
@@ -192,28 +166,23 @@ namespace Arius.Repositories
 
                 return ecfs.Select(ecf =>
                 {
-                    if (GetByName(EncryptedChunkDirectoryName, ecf.Name) is var r)
-                        return r;
+                    if (GetChunkBlobByName(EncryptedChunkDirectoryName, ecf.Name) is var cb)
+                        return cb;
 
-                    throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(RemoteEncryptedChunkBlobItem)} of uploaded chunk {ecf.Hash}");
+                    throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(ChunkBlobItem)} of uploaded chunk {ecf.Hash}");
                 });
             }
 
-            public IEnumerable<EncryptedChunkFile> Download(IEnumerable<RemoteEncryptedChunkBlobItem> recbis, DirectoryInfo target, bool flatten)
+            public IEnumerable<EncryptedChunkFile> Download(IEnumerable<ChunkBlobBase> chunkBlobs, DirectoryInfo target, bool flatten)
             {
-                recbis = recbis.ToArray();
+                chunkBlobs = chunkBlobs.ToArray();
 
-                var downloadedFiles = _blobCopier.Download(recbis.Select(recbi => recbi.BlobItem), target, flatten);
+                var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
 
-                if (recbis.Count() != downloadedFiles.Count())
+                if (chunkBlobs.Count() != downloadedFiles.Count())
                     throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
 
-                return downloadedFiles.Select(fi =>
-                {
-                    var hash = new HashValue { Value = fi.Name.TrimEnd(EncryptedChunkFile.Extension) };
-
-                    return new EncryptedChunkFile(fi, hash);
-                });
+                return downloadedFiles.Select(fi => new EncryptedChunkFile(fi)).ToArray();
 
                 //return downloadedFiles.Select(fi2=>
                 //{

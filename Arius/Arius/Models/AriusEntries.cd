@@ -1,23 +1,31 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ClassDiagram MajorVersion="1" MinorVersion="1">
-  <Class Name="Arius.Models.RemoteEncryptedChunkBlobItem">
-    <Position X="9.75" Y="14.75" Width="1.5" />
+  <Class Name="Arius.Models.ChunkBlobBase">
+    <Position X="9.75" Y="17.75" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AgAAAAAgAAIAAAAAAAAEAABAAAAAAQAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAAAAgAAIAAAAAAgAEAAAAAAAAAQAAAAAAAAAAAAA=</HashCode>
       <FileName>Models\BlobModels.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Arius.Models.RemoteManifestBlobItem">
-    <Position X="12.25" Y="15.25" Width="1.5" />
+  <Class Name="Arius.Models.ManifestBlob">
+    <Position X="13.25" Y="21" Width="1.5" />
+    <InheritanceLine Type="Arius.Models.BlobBase" ManuallyRouted="true">
+      <Path>
+        <Point X="12.25" Y="16.824" />
+        <Point X="12.25" Y="17.361" />
+        <Point X="14" Y="17.361" />
+        <Point X="14" Y="21" />
+      </Path>
+    </InheritanceLine>
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAAAAAAAIIAIAAAAAAAABAAAAAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>Models\BlobModels.cs</FileName>
     </TypeIdentifier>
   </Class>
   <Class Name="Arius.Models.FileBase">
     <Position X="5" Y="1" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AACAABAAAAJAAIAAAAAAAARAAAEAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAABAAAIJAAIAAAAAAAARAAAEAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>Models\FileModels.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" />
@@ -25,11 +33,11 @@
   <Class Name="Arius.Models.RelativeFileBase">
     <Position X="2.75" Y="5" Width="1.5" />
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAQACAAACAAAAAAAABAAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAAAAAAAAAACAAACAAAAAAAABAAAAAAAAAAAAAAAA=</HashCode>
       <FileName>Models\FileModels.cs</FileName>
     </TypeIdentifier>
   </Class>
-  <Class Name="Arius.Models.RelativeAriusBase">
+  <Class Name="Arius.Models.RelativeAriusFileBase">
     <Position X="2.75" Y="8.25" Width="1.5" />
     <TypeIdentifier>
       <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAA=</HashCode>
@@ -84,6 +92,28 @@
       <FileName>Models\FileModels.cs</FileName>
     </TypeIdentifier>
     <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.BlobBase">
+    <Position X="11.5" Y="14.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAIAAIAAAAAAAARAAAAAAAAAAAAAACAABAA=</HashCode>
+      <FileName>Models\BlobModels.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="Arius.Models.ChunkBlobItem">
+    <Position X="8.5" Y="21" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAgAAAIAIAAAAAAAABAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\BlobModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Arius.Models.ChunkBlobClient">
+    <Position X="10.75" Y="21" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAgAAAAAIAAAAAAAABAAACAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Models\BlobModels.cs</FileName>
+    </TypeIdentifier>
   </Class>
   <Interface Name="Arius.Models.IAriusEntry">
     <Position X="12.25" Y="4.5" Width="1.5" />

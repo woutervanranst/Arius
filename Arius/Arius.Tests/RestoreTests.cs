@@ -91,11 +91,11 @@ namespace Arius.Tests
             //10 The chunk is in the Archive tier
             var pf = bfi.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
-            var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
+            var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+            Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
             //11 A hydrated blob does not yet exist
-            var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{recbi.Name}");
+            var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
             
             //12 Obtaining properties results in an exception
@@ -137,17 +137,17 @@ namespace Arius.Tests
             //10 - The chunk is in the cool tier
             var pf = bfi.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
-            var recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Cool, recbi.AccessTier);
+            var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+            Assert.AreEqual(AccessTier.Cool, cb.AccessTier);
 
 
             //20 "Simulate" a hydrated blob
             //21 The original blob exists
-            var bc_Original = TestSetup.container.GetBlobClient(recbi.FullName);
+            var bc_Original = TestSetup.container.GetBlobClient(cb.FullName);
             Assert.IsTrue(bc_Original.Exists());
             
             //22 The hydrated blob does not yet exist
-            var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.RehydrationDirectoryName}/{recbi.Name}");
+            var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
             
             //23 Copy the original to the hydrated folder
@@ -157,8 +157,8 @@ namespace Arius.Tests
             
             //24 Move the original blob to the archive tier
             bc_Original.SetAccessTier(AccessTier.Archive);
-            recbi = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Archive, recbi.AccessTier);
+            cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+            Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
 
             //EXECUTE -- Restore
@@ -256,8 +256,8 @@ namespace Arius.Tests
         private async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
             var cmd = "restore " +
-                $"-n {TestSetup.accountName} " +
-                $"-k {TestSetup.accountKey} " +
+                $"-n {TestSetup.AccountName} " +
+                $"-k {TestSetup.AccountKey} " +
                 $"-p {TestSetup.passphrase} " +
                 $"-c {TestSetup.container.Name} " +
                 $"{(synchronize ? "--synchronize " : "")}" +

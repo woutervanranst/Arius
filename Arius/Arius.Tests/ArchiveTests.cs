@@ -72,11 +72,11 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobs().Count());
             expectedChunkBlobItemsCount++;
 
             //11
-            Assert.AreEqual(tier, repo.GetAllChunkBlobItems().First().AccessTier);
+            Assert.AreEqual(tier, repo.GetAllChunkBlobs().First().AccessTier);
             //20
             Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
             expectedManifestHashes++;
@@ -195,7 +195,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
             
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -259,7 +259,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -321,7 +321,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -381,7 +381,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -434,7 +434,7 @@ namespace Arius.Tests
             Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
 
             //30
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
         }
 
         /// <summary>
@@ -465,7 +465,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
             Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
@@ -522,13 +522,13 @@ namespace Arius.Tests
 
 
             //10
-            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobItems().Count());
+            Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobs().Count());
             expectedChunkBlobItemsCount++;
 
             //11
             var pfi1 = bfi1.GetPointerFile();
             var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
-            var chunk = repo.GetChunkBlobItemByHash(chunkHashes.Single(), false);
+            var chunk = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(tier, chunk.AccessTier);
 
             //20
@@ -559,8 +559,8 @@ namespace Arius.Tests
         private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var cmd = "archive " +
-                $"-n {TestSetup.accountName} " +
-                $"-k {TestSetup.accountKey} " +
+                $"-n {TestSetup.AccountName} " +
+                $"-k {TestSetup.AccountKey} " +
                 $"-p {TestSetup.passphrase} " +
                 $"-c {TestSetup.container.Name} " +
                 $"{(removeLocal ? "--remove-local " : "")}" +
@@ -588,51 +588,9 @@ namespace Arius.Tests
             if (Environment.ExitCode != 0)
                 throw new ApplicationException("Exitcode is not 0");
 
-            var aro = new AzureRepositoryOptions()
-            {
-                AccountName = TestSetup.accountName,
-                AccountKey = TestSetup.accountKey,
-                Container = TestSetup.container.Name,
-                Passphrase = TestSetup.passphrase
-            };
-
-            var sc = new ServiceCollection()
-                .AddSingleton<ICommandExecutorOptions>(aro)
-                .AddSingleton<AzureRepository>()
-                .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
-
-                .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
-                .AddLogging()
-
-                .BuildServiceProvider();
-
-            return sc;
+            var sp = TestSetup.GetServiceProvider();
+            return sp;
         }
-
-        private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
-        {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Container { get; init; }
-            public string Passphrase { get; init; }
-        }
-
-        //private ArchiveOptions GetArchiveOptions(string accountName, string accountKey, string passphrase, string container, bool removeLocal, string tier, bool fastHash, string path)
-        //{
-        //    return new()
-        //    {
-        //        AccountName = accountName,
-        //        AccountKey = accountKey,
-        //        Passphrase = passphrase,
-        //        FastHash = fastHash,
-        //        Container = container,
-        //        RemoveLocal = removeLocal,
-        //        Tier = tier,
-        //        //MinSize = minSize,
-        //        //Simulate = simulate,
-        //        Path = path
-        //    };
-        //}
 
         
         public void TestCleanup()
@@ -651,6 +609,8 @@ namespace Arius.Tests
 
         //        /*
         //         * Delete file
+        //* delete pointer, archive
+
         //         * Add file again that was previously deleted
         //         * Modify the binary
         //            * azcopy fails
@@ -680,7 +640,6 @@ namespace Arius.Tests
         //         * change a manifest without the binary present
 
 
-              //* delete pointer, archive
 
 
         // * archive a file for which ONLY the chunk (not deduped) exists (ie no pointer, no entries no manifest)

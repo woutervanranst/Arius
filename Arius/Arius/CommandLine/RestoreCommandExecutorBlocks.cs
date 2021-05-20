@@ -114,8 +114,8 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
-        private ITargetBlock<RemoteEncryptedChunkBlobItem> _hydrateBlock;
-        private ITargetBlock<RemoteEncryptedChunkBlobItem> _downloadBlock;
+        private ITargetBlock<ChunkBlobBase> _hydrateBlock;
+        private ITargetBlock<ChunkBlobBase> _downloadBlock;
         private ITargetBlock<EncryptedChunkFile> _decryptBlock;
 
         public enum PointerState
@@ -133,12 +133,12 @@ namespace Arius.CommandLine
             _reconcileChunkBlock = reconcileChunkBlock;
             return this;
         }
-        public ProcessPointerChunksBlockProvider SetHydrateBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> hydrateBlock)
+        public ProcessPointerChunksBlockProvider SetHydrateBlock(ITargetBlock<ChunkBlobBase> hydrateBlock)
         {
             _hydrateBlock = hydrateBlock;
             return this;
         }
-        public ProcessPointerChunksBlockProvider SetEnqueueDownloadBlock(ITargetBlock<RemoteEncryptedChunkBlobItem> downloadBlock)
+        public ProcessPointerChunksBlockProvider SetEnqueueDownloadBlock(ITargetBlock<ChunkBlobBase> downloadBlock)
         {
             _downloadBlock = downloadBlock;
             return this;
@@ -202,24 +202,24 @@ namespace Arius.CommandLine
                     }
 
                     // Chunk hydrated (in Hot/Cold stroage) but not yet downloaded?
-                    if (_repo.GetChunkBlobItemByHash(chunkHash, true) is var hrecbi && 
-                        hrecbi is not null && 
-                        hrecbi.Downloadable)
+                    if (_repo.GetChunkBlobByHash(chunkHash, true) is var hydratedChunk && 
+                        hydratedChunk is not null && 
+                        hydratedChunk.Downloadable)
                     {
                         // R80
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} not yet downloaded. Queueing for download.");
                         atLeastOneToDownload = true;
-                        _downloadBlock.Post(hrecbi);
+                        _downloadBlock.Post(hydratedChunk);
                         continue;
                     }
 
                     // Chunk not yet hydrated
-                    if (_repo.GetChunkBlobItemByHash(chunkHash, false) is var arecbi)
+                    if (_repo.GetChunkBlobByHash(chunkHash, false) is var archiveTierChunk)
                     {
                         // R90
                         _logger.LogInformation($"Chunk {chunkHash.Value} of {pf.RelativeName} in Archive tier. Starting hydration or getting hydration status...");
                         atLeastOneToHydrate = true;
-                        _hydrateBlock.Post(arecbi);
+                        _hydrateBlock.Post(archiveTierChunk);
                         continue;
                     }
                 }
@@ -250,11 +250,11 @@ namespace Arius.CommandLine
         {
             _repo = repo;
         }
-        public ActionBlock<RemoteEncryptedChunkBlobItem> GetBlock()
+        public ActionBlock<ChunkBlobBase> GetBlock()
         {
-            return new(recbi =>
+            return new(chunkBlob =>
             {
-                _repo.Hydrate(recbi);
+                _repo.Hydrate(chunkBlob);
 
                 AtLeastOneHydrating = true;
             });
@@ -279,25 +279,25 @@ namespace Arius.CommandLine
         private readonly DirectoryInfo downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-        private readonly BlockingCollection<KeyValuePair<HashValue, RemoteEncryptedChunkBlobItem>> _downloadQueue = new(); //Key = ChunkHashValue
+        private readonly BlockingCollection<KeyValuePair<HashValue, ChunkBlobBase>> _downloadQueue = new(); //Key = ChunkHashValue
 
-        public ActionBlock<RemoteEncryptedChunkBlobItem> GetEnqueueBlock()
+        public ActionBlock<ChunkBlobBase> GetEnqueueBlock()
         {
             //lock (_enqueueBlock)
             //{
             if (_enqueueBlock is null)
             {
-                _enqueueBlock = new(recbi =>
+                _enqueueBlock = new(chunkBlob =>
                 {
                     lock (_downloadQueue)
                     {
                         lock (_downloadedOrDownloading)
                         {
-                            if (!(_downloadQueue.Select(kvp => kvp.Key).Contains(recbi.Hash) ||
-                                _downloadedOrDownloading.Contains(recbi.Hash)))
+                            if (!(_downloadQueue.Select(kvp => kvp.Key).Contains(chunkBlob.Hash) ||
+                                _downloadedOrDownloading.Contains(chunkBlob.Hash)))
                             {
                                     // Chunk is not yet downloaded or being downlaoded -- add to queue
-                                    _downloadQueue.Add(new(recbi.Hash, recbi));
+                                    _downloadQueue.Add(new(chunkBlob.Hash, chunkBlob));
                             }
                         }
                     }
@@ -309,13 +309,11 @@ namespace Arius.CommandLine
 
             return _enqueueBlock;
         }
-        private ActionBlock<RemoteEncryptedChunkBlobItem> _enqueueBlock = null; //TODO to lazy?
+        private ActionBlock<ChunkBlobBase> _enqueueBlock = null; //TODO to lazy?
 
 
         public Task GetBatchingTask()
         {
-            //lock (_createBatchTask)
-            //{
             if (_createBatchTask is null)
             {
                 _createBatchTask = Task.Run(() =>
@@ -325,7 +323,7 @@ namespace Arius.CommandLine
                     while (!GetEnqueueBlock().Completion.IsCompleted ||
                            !_downloadQueue.IsCompleted) //_downloadQueue.Count > 0)
                     {
-                        var batch = new List<RemoteEncryptedChunkBlobItem>();
+                        var batch = new List<ChunkBlobBase>();
                         long size = 0;
 
                         foreach (var kvp in _downloadQueue.GetConsumingEnumerable())
@@ -354,7 +352,6 @@ namespace Arius.CommandLine
 
                     GetDownloadBlock().Complete(); //R813
                 });
-                //}
             }
 
             return _createBatchTask;
@@ -363,7 +360,7 @@ namespace Arius.CommandLine
 
 
 
-        public TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> GetDownloadBlock()
+        public TransformManyBlock<ChunkBlobBase[], EncryptedChunkFile> GetDownloadBlock()
         {
             //lock (_downloadBlock)
             //{
@@ -381,7 +378,7 @@ namespace Arius.CommandLine
 
             return _downloadBlock;
         }
-        private TransformManyBlock<RemoteEncryptedChunkBlobItem[], EncryptedChunkFile> _downloadBlock;
+        private TransformManyBlock<ChunkBlobBase[], EncryptedChunkFile> _downloadBlock;
     }
 
 

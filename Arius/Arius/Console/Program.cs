@@ -141,7 +141,36 @@ namespace Arius
 
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
+                /*
+                 * 
+                 * TODO:
+                    System.AggregateException
+                      HResult=0x80131500
+                      Message=An error occurred while writing to logger(s). (Cannot access a disposed object.
+                    Object name: 'EventLogInternal'.)
+                      Source=Microsoft.Extensions.Logging
+                      StackTrace:
+                       at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+                       at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+                       at Microsoft.Extensions.Logging.LoggerExtensions.Log(ILogger logger, LogLevel logLevel, EventId eventId, Exception exception, String message, Object[] args)
+                       at Microsoft.Extensions.Logging.LoggerExtensions.Log(ILogger logger, LogLevel logLevel, Exception exception, String message, Object[] args)
+                       at Microsoft.Extensions.Logging.LoggerExtensions.LogError(ILogger logger, Exception exception, String message, Object[] args)
+                       at Arius.AriusCommandService.<>c__DisplayClass0_0.<.ctor>b__0(Object sender, UnobservedTaskExceptionEventArgs e) in C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius\Console\Program.cs:line 144
+                       at System.Threading.Tasks.TaskScheduler.PublishUnobservedTaskException(Object sender, UnobservedTaskExceptionEventArgs ueea)
+                       at System.Threading.Tasks.TaskExceptionHolder.Finalize()
+
+                      This exception was originally thrown at this call stack:
+                        [External Code]
+
+                    Inner Exception 1:
+                    ObjectDisposedException: Cannot access a disposed object.
+                    Object name: 'EventLogInternal'.
+
+                 * 
+                 */
                 logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
+
+                appLifetime.StopApplication();
                 throw e.Exception;
             };
         }

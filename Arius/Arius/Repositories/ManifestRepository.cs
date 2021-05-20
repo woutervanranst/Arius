@@ -16,7 +16,7 @@ namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {
-        private class ManifestRepository
+        internal class ManifestRepository
         {
             public ManifestRepository(ICommandExecutorOptions options, ILogger<ManifestRepository> logger)
             {
@@ -34,7 +34,8 @@ namespace Arius.Repositories
 
             private readonly ILogger<ManifestRepository> _logger;
             private readonly BlobContainerClient _bcc;
-            private const string ManifestDirectoryName = "manifests";
+
+            internal const string ManifestDirectoryName = "manifests";
 
             public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
             {
@@ -61,45 +62,53 @@ namespace Arius.Repositories
                 }
             }
 
-            public IEnumerable<HashValue> GetAllManifestHashes()
+            public IEnumerable<ManifestBlob> GetAllManifestBlobs()
             {
                 _logger.LogInformation($"Getting all manifests...");
+                var r = Array.Empty<ManifestBlob>();
 
                 try
                 {
-                    return _bcc.GetBlobs(prefix: ($"{ManifestDirectoryName}/"))
+                    return r = _bcc.GetBlobs(prefix: $"{ManifestDirectoryName}/")
                         .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
-                        .Select(bi => new RemoteManifestBlobItem(bi).Hash).ToArray();
+                        .Select(bi => new ManifestBlob(bi))
+                        .ToArray();
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting all manifests... done"); // TODO KARL logging pattern
+                    _logger.LogInformation($"Getting all manifests... got {r.Length}");
                 }
+            }
+
+            public IEnumerable<HashValue> GetAllManifestHashes()
+            {
+                return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
             }
 
             public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
             {
+                _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
+                var chunks = Array.Empty<HashValue>();
+
                 try
                 {
-                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
-
                     var bc = _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}");
 
-                    if (!bc.Exists())
-                        throw new InvalidOperationException("Manifest does not exist");
-
-                    var ss = new MemoryStream();
-                    var r = await bc.DownloadToAsync(ss);
-                    var bytes = ss.ToArray();
+                    var ms = new MemoryStream();
+                    await bc.DownloadToAsync(ms);
+                    var bytes = ms.ToArray();
                     var json = Encoding.UTF8.GetString(bytes);
-                    var chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
-
-                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunks.Length} chunk(s)");
+                    chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
 
                     return chunks;
                 }
+                catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+                {
+                    throw new InvalidOperationException("Manifest does not exist");
+                }
                 finally
                 {
+                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunks.Length} chunk(s)");
                 }
             }
         }
