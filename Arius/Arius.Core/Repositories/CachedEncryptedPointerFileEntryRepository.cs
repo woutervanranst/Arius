@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
-using Arius.Models;
+using Arius.Core.Models;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 using Murmur;
