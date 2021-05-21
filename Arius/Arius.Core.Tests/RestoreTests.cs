@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Repositories;
+using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -246,17 +249,20 @@ namespace Arius.Tests
 
         private async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
-            var cmd = "restore " +
-                $"-n {TestSetup.AccountName} " +
-                $"-k {TestSetup.AccountKey} " +
-                $"-p {TestSetup.passphrase} " +
-                $"-c {TestSetup.container.Name} " +
-                $"{(synchronize ? "--synchronize " : "")}" +
-                $"{(download ? "--download " : "")}" +
-                $"{(keepPointers ? "--keep-pointers " : "")}" +
-                $"{TestSetup.restoreTestDirectory.FullName}";
+            throw new NotImplementedException();
 
-            return await ExecuteCommand(cmd);
+            //var f = TestSetup.CreateFacade()
+            //var cmd = "restore " +
+            //    $"-n {TestSetup.AccountName} " +
+            //    $"-k {TestSetup.AccountKey} " +
+            //    $"-p {TestSetup.passphrase} " +
+            //    $"-c {TestSetup.container.Name} " +
+            //    $"{(synchronize ? "--synchronize " : "")}" +
+            //    $"{(download ? "--download " : "")}" +
+            //    $"{(keepPointers ? "--keep-pointers " : "")}" +
+            //    $"{TestSetup.restoreTestDirectory.FullName}";
+
+            //return await ExecuteCommand(cmd);
         }
 
         private class FileComparer : IEqualityComparer<FileInfo>

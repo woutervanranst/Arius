@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Extensions;
-using Arius.Models;
+using Arius.Core.Models;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,24 +20,24 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        private class Options : IOptions, 
-            UploadEncryptedChunksBlockProvider.IOptions,
-            RemoveDeletedPointersTaskProvider.IOptions,
-            DeleteBinaryFilesTaskProvider.IOptions,
-            IBlobCopier.IOptions,
-            IEncrypter.IOptions,
-            IHashValueProvider.IOptions
-        {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Passphrase { get; init; }
-            public bool FastHash { get; init; }
-            public string Container { get; init; }
-            public bool RemoveLocal { get; init; }
-            public AccessTier Tier { get; init; }
-            //public bool Dedup { get; init; }
-            public string Path { get; init; }
-        }
+        //private class Options : IOptions, 
+        //    UploadEncryptedChunksBlockProvider.IOptions,
+        //    RemoveDeletedPointersTaskProvider.IOptions,
+        //    DeleteBinaryFilesTaskProvider.IOptions,
+        //    IBlobCopier.IOptions,
+        //    IEncrypter.IOptions,
+        //    IHashValueProvider.IOptions
+        //{
+        //    public string AccountName { get; init; }
+        //    public string AccountKey { get; init; }
+        //    public string Passphrase { get; init; }
+        //    public bool FastHash { get; init; }
+        //    public string Container { get; init; }
+        //    public bool RemoveLocal { get; init; }
+        //    public AccessTier Tier { get; init; }
+        //    //public bool Dedup { get; init; }
+        //    public string Path { get; init; }
+        //}
 
         public ArchiveCommandExecutor(IOptions options,
             ILogger<ArchiveCommandExecutor> logger,
@@ -49,7 +49,7 @@ namespace Arius.Core.Commands
             root = new DirectoryInfo(options.Path);
         }
 
-        public static void AddProviders(IServiceCollection coll)
+        public static void ConfigureServices(IServiceCollection coll, Facade.Facade.Options options)
         {
             coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
@@ -68,25 +68,24 @@ namespace Arius.Core.Commands
                 .AddSingleton<RemoveDeletedPointersTaskProvider>()
                 .AddSingleton<ExportToJsonTaskProvider>()
                 .AddSingleton<DeleteBinaryFilesTaskProvider>();
-        }
-        public static void AddOptions(IServiceCollection coll, string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, /*bool dedup, */string path)
-        {
-            // Create the options object
-            var options = new Options
-            {
-                AccountName = accountName,
-                AccountKey = accountKey,
-                Passphrase = passphrase,
-                FastHash = fastHash,
-                Container = container,
-                RemoveLocal = removeLocal,
-                Tier = tier,
-                //Dedup = dedup,
-                Path = path
-            };
+
+            //// Create the options object
+            //var options = new Options
+            //{
+            //    AccountName = accountName,
+            //    AccountKey = accountKey,
+            //    Passphrase = passphrase,
+            //    FastHash = fastHash,
+            //    Container = container,
+            //    RemoveLocal = removeLocal,
+            //    Tier = tier,
+            //    //Dedup = dedup,
+            //    Path = path
+            //};
 
             // Add the options for the Blocks
             coll
+                .AddSingleton<ArchiveCommandExecutor.IOptions>(options)
                 //.AddSingleton<IndexDirectoryBlockProvider>()
                 //.AddSingleton<AddHashBlockProvider>()
                 //.AddSingleton<ManifestBlocksProvider>()
@@ -104,11 +103,7 @@ namespace Arius.Core.Commands
                 //.AddSingleton<ExportToJsonTaskProvider>()
                 .AddSingleton<DeleteBinaryFilesTaskProvider.IOptions>(options);
 
-            // Add the options for the services
-            coll
-                .AddSingleton<IBlobCopier.IOptions>(options)
-                .AddSingleton<IEncrypter.IOptions>(options)
-                .AddSingleton<IHashValueProvider.IOptions>(options);
+            
         }
 
         private readonly ILogger<ArchiveCommandExecutor> logger;

@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
-using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
@@ -14,9 +13,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
+[assembly: InternalsVisibleTo("Arius.Core.Tests")]
 namespace Arius.Core.Facade
 {
     public class Facade
@@ -41,40 +42,6 @@ namespace Arius.Core.Facade
             public string Path { get; init; }
         }
 
-        //public static Options Opt
-        //{
-        //    private get 
-        //    {
-        //        if (opt is null)
-        //            throw new InvalidOperationException("Options for Facade not configured");
-
-        //        return opt;
-        //    }
-        //    set
-        //    {
-        //        if (opt is not null)
-        //            throw new InvalidOperationException("Options is already set");
-        //    }
-        //}
-        //public static readonly Options opt;
-
-
-        //private static readonly Lazy<Facade> lazy = new(() => new Facade());
-        //public static Facade Instance
-        //{
-        //    get
-        //    {
-        //        return lazy.Value;
-        //    }
-        //}
-
-        //private Facade()
-        //{
-        //}
-
-        
-
-       
         public Facade(ILoggerFactory loggerFactory, 
             IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings,
             Options options)
@@ -88,49 +55,16 @@ namespace Arius.Core.Facade
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
 
-            //this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            //this.azCopyAppSettings = azCopyAppSettings.Value;
-            //this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
-            //this.options = options ?? throw new ArgumentNullException(nameof(options));
-
-            services = new(() => GetServices(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value, options));
+            services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value, options));
         }
 
-        //private readonly ILoggerFactory loggerFactory;
-        //private readonly Options options;
-        //private readonly AzCopyAppSettings azCopyAppSettings;
-        //private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
-
-        private static ServiceProvider GetServices(ILoggerFactory loggerFactory,
+        private static ServiceProvider InitializeServiceProvider(ILoggerFactory loggerFactory,
             AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
             Options options)
         {
             var sc = new ServiceCollection();
-            AddServices(sc, dedup);
-            ArchiveCommandExecutor.AddProviders(sc);
-            ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
 
-            //    .AddSingleton<ILoggerFactory>(loggerFactory)
-            //    .AddLogging()
-
-            var sp = sc.BuildServiceProvider();
-
-            var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
-        }
-
-        private readonly Lazy<ServiceProvider> services;
-
-        public async Task<int> Archive(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
-        {
-           
-            var r = await ace.Execute();
-
-            return r;
-        }
-
-        private void AddServices(IServiceCollection services, bool dedup)
-        {
-            services
+            sc
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
                 .AddSingleton<RestoreCommandExecutor>()
@@ -147,19 +81,52 @@ namespace Arius.Core.Facade
                 .AddSingleton<DedupChunker>()
                 .AddSingleton<IChunker>((sp) =>
                 {
-                    if (dedup)
+                    if (options.Dedup)
                         return sp.GetRequiredService<DedupChunker>();
                     else
                         return sp.GetRequiredService<Chunker>();
                 });
 
             // Add Options
-            services
+            sc
+                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
+                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
+                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
+                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
-            //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-            //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
+            // Add the options for the services
+            sc
+                .AddSingleton<IBlobCopier.IOptions>(options)
+                .AddSingleton<IEncrypter.IOptions>(options)
+                .AddSingleton<IHashValueProvider.IOptions>(options);
+
+            ArchiveCommandExecutor.ConfigureServices(sc, options);
+            //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
+
+            sc
+                .AddSingleton<ILoggerFactory>(loggerFactory)
+                .AddLogging();
+
+            var sp = sc.BuildServiceProvider();
+
+            return sp;
+        }
+
+        internal ServiceProvider ServiceProvider => services.Value;
+        private readonly Lazy<ServiceProvider> services;
+
+
+
+
+
+        public async Task<int> Archive() //string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        {
+            var ace = services.Value.GetRequiredService<ArchiveCommandExecutor>();
+            var r = await ace.Execute();
+
+            return r;
         }
     }
     //public class Facade

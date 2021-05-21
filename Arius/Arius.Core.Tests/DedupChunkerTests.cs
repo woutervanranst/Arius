@@ -1,4 +1,6 @@
-﻿using NUnit.Framework;
+﻿using Arius.Core.Extensions;
+using Arius.Services;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -61,75 +63,75 @@ namespace Arius.Tests
         {
             return;
 
-            var options = new RestoreOptions
-            {
-                Passphrase = "woutervr"
-            };
+            //var options = new RestoreOptions
+            //{
+            //    Passphrase = "woutervr"
+            //};
 
-            var hvp = new SHA256Hasher(null, options);
-
-
-
-
-            var originalFileName = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
-
-            var h1 = hvp.GetHashValue(originalFileName);
-
-            StreamBreaker.Chunk[] chunkDefs;
-            using (var hasher = SHA256.Create())
-            {
-                var streamBreaker = new StreamBreaker();
-                using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
-                chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
-            }
-
-
-            DirectoryInfo di = new DirectoryInfo(@"C:\Users\Wouter\Documents\Test\");
-            di = di.CreateSubdirectory("chunked");
-            di.Delete(true);
-            di.Create();
-
-
-            using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
-            {
-                Position = 0
-            };
-
-            for (int i = 0; i < chunkDefs.Length; i++)
-            {
-                var chunk = chunkDefs[i];
-
-                byte[] buff = new byte[chunk.Length];
-                fs.Read(buff, 0, (int)chunk.Length);
-
-                using var fileStream = File.Create($@"{di.FullName}\{i}");
-                fileStream.Write(buff, 0, (int)chunk.Length);
-                fileStream.Close();
-            }
+            //var hvp = new SHA256Hasher(null, options);
 
 
 
 
-            var zzz = new List<Stream>();
-            for (int i = 0; i < chunkDefs.Length; i++)
-            {
-                var s = new FileStream($@"{di.FullName}\{i}", FileMode.Open, FileAccess.Read);
-                zzz.Add(s);
-            }
+            //var originalFileName = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
 
-            var css = new ConcatenatedStream(zzz);
+            //var h1 = hvp.GetHashValue(originalFileName);
+
+            //StreamBreaker.Chunk[] chunkDefs;
+            //using (var hasher = SHA256.Create())
+            //{
+            //    var streamBreaker = new StreamBreaker();
+            //    using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
+            //    chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
+            //}
 
 
-            var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
-            File.Delete(fi2);
+            //DirectoryInfo di = new DirectoryInfo(@"C:\Users\Wouter\Documents\Test\");
+            //di = di.CreateSubdirectory("chunked");
+            //di.Delete(true);
+            //di.Create();
 
-            var fff = File.Create(fi2);
-            css.CopyTo(fff);
-            fff.Close();
 
-            var h2 = hvp.GetHashValue(fi2);
+            //using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
+            //{
+            //    Position = 0
+            //};
 
-            Assert.AreEqual(h1, h2);
+            //for (int i = 0; i < chunkDefs.Length; i++)
+            //{
+            //    var chunk = chunkDefs[i];
+
+            //    byte[] buff = new byte[chunk.Length];
+            //    fs.Read(buff, 0, (int)chunk.Length);
+
+            //    using var fileStream = File.Create($@"{di.FullName}\{i}");
+            //    fileStream.Write(buff, 0, (int)chunk.Length);
+            //    fileStream.Close();
+            //}
+
+
+
+
+            //var zzz = new List<Stream>();
+            //for (int i = 0; i < chunkDefs.Length; i++)
+            //{
+            //    var s = new FileStream($@"{di.FullName}\{i}", FileMode.Open, FileAccess.Read);
+            //    zzz.Add(s);
+            //}
+
+            //var css = new ConcatenatedStream(zzz);
+
+
+            //var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
+            //File.Delete(fi2);
+
+            //var fff = File.Create(fi2);
+            //css.CopyTo(fff);
+            //fff.Close();
+
+            //var h2 = hvp.GetHashValue(fi2);
+
+            //Assert.AreEqual(h1, h2);
         }
 
 

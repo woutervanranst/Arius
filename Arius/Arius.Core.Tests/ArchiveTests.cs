@@ -2,9 +2,10 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
+using Arius.Repositories;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
@@ -239,7 +240,7 @@ namespace Arius.Tests
             //SET UP
             //Add a duplicate of the pointer
             var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
-            var pfi3 = Arius.Extensions.FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
+            var pfi3 = Arius.Core.Extensions.FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
 
             // Modify datetime slightly
             pfi3.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -553,39 +554,47 @@ namespace Arius.Tests
 
         private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var cmd = "archive " +
-                $"-n {TestSetup.AccountName} " +
-                $"-k {TestSetup.AccountKey} " +
-                $"-p {TestSetup.passphrase} " +
-                $"-c {TestSetup.container.Name} " +
-                $"{(removeLocal ? "--remove-local " : "")}" +
-                $"--tier {tier.ToString().ToLower()} " +
-                $"{(dedup ? "--dedup " : "")}" +
-                $"{(fastHash ? "--fasthash" : "")}" +
-                $"{TestSetup.archiveTestDirectory.FullName}";
+            var f = TestSetup.CreateFacade(tier, removeLocal, fastHash, dedup);
 
-            return await ExecuteCommand(cmd);   
+            await f.Archive();
+
+            return f.ServiceProvider;
+
+            
+
+            //var cmd = "archive " +
+            //    $"-n {TestSetup.AccountName} " +
+            //    $"-k {TestSetup.AccountKey} " +
+            //    $"-p {TestSetup.passphrase} " +
+            //    $"-c {TestSetup.container.Name} " +
+            //    $"{(removeLocal ? "--remove-local " : "")}" +
+            //    $"--tier {tier.ToString().ToLower()} " +
+            //    $"{(dedup ? "--dedup " : "")}" +
+            //    $"{(fastHash ? "--fasthash" : "")}" +
+            //    $"{TestSetup.archiveTestDirectory.FullName}";
+
+            //return await ExecuteCommand(cmd);   
         }
 
-        private async Task<IServiceProvider> ExecuteCommand(string cmd)
-        {
-            Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
+        //private async Task<IServiceProvider> ExecuteCommand(string cmd)
+        //{
+        //    Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
 
-            //Action<IConfigurationBuilder> bla = (b) =>
-            //{
-            //    b.AddInMemoryCollection(new Dictionary<string, string> {
-            //            { "TempDir:TempDirectoryName", ".ariustemp2" }
-            //        });
-            //};
+        //    //Action<IConfigurationBuilder> bla = (b) =>
+        //    //{
+        //    //    b.AddInMemoryCollection(new Dictionary<string, string> {
+        //    //            { "TempDir:TempDirectoryName", ".ariustemp2" }
+        //    //        });
+        //    //};
 
-            await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
+        //    await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
 
-            if (Environment.ExitCode != 0)
-                throw new ApplicationException("Exitcode is not 0");
+        //    if (Environment.ExitCode != 0)
+        //        throw new ApplicationException("Exitcode is not 0");
 
-            var sp = TestSetup.GetServiceProvider();
-            return sp;
-        }
+        //    var sp = TestSetup.GetServiceProvider();
+        //    return sp;
+        //}
 
         
         public void TestCleanup()

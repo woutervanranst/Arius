@@ -1,9 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using Arius.Core.Configuration;
+using Arius.Repositories;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
 namespace Arius.Tests
@@ -25,6 +31,10 @@ namespace Arius.Tests
 
         public static string AccountName { get; set; }
         public static string AccountKey { get; set; }
+        //public static Core.Facade.Facade Facade { get; set; }
+        //internal static IServiceProvider GetServiceProvider() => Facade.TEST;
+        //internal static Repositories.AzureRepository GetAzureRepository() => GetServiceProvider().GetRequiredService<Repositories.AzureRepository>();
+
 
         [OneTimeSetUp]
         public void OneTimeSetup()
@@ -94,45 +104,55 @@ namespace Arius.Tests
             }
         }
 
-
-        private class AzureRepositoryOptions : AzureRepository.IAzureRepositoryOptions, Services.IAzCopyUploaderOptions
-        {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Container { get; init; }
-            public string Passphrase { get; init; }
-        }
-
-        internal static IServiceProvider GetServiceProvider()
-        {
-            var aro = new AzureRepositoryOptions()
-            {
-                AccountName = TestSetup.AccountName,
-                AccountKey = TestSetup.AccountKey,
-                Container = TestSetup.container.Name,
-                Passphrase = TestSetup.passphrase
-            };
-
-            var sp = new ServiceCollection()
-                .AddSingleton<ICommandExecutorOptions>(aro)
-                .AddSingleton<AzureRepository>()
-                .AddSingleton<AzureRepository.ManifestRepository>()
-                .AddSingleton<AzureRepository.ChunkRepository>()
-                .AddSingleton<Services.IBlobCopier, Services.AzCopier>()
-
-                .AddSingleton<ILoggerFactory, Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory>()
-                .AddLogging()
-
-                .BuildServiceProvider();
-
-            return sp;
-        }
-
         internal static AzureRepository GetAzureRepository()
         {
             return GetServiceProvider().GetRequiredService<AzureRepository>();
         }
 
+        internal static IServiceProvider GetServiceProvider(AccessTier? tier = null, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        {
+            var f = CreateFacade(tier, removeLocal, fastHash, dedup);
+
+            return f.ServiceProvider;
+        }
+
+        internal static Core.Facade.Facade CreateFacade(AccessTier? tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        {
+            var loggerFactory = new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
+
+            var azCopyAppSettings = Options.Create(new AzCopyAppSettings()
+            {
+                BatchSize = 256 * 1024 * 1024, //256 MB
+                BatchCount = 128
+            });
+            var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+            {
+                TempDirectoryName = ".ariustemp",
+                RestoreTempDirectoryName = ".ariusrestore"
+            });
+
+            var o = new Core.Facade.Facade.Options
+            {
+                AccountName = TestSetup.AccountName,
+                AccountKey = TestSetup.AccountKey,
+                Passphrase = TestSetup.passphrase,
+                FastHash = fastHash,
+                Container = TestSetup.container.Name,
+                RemoveLocal = removeLocal,
+                Tier = tier ?? AccessTier.Cool, //TODO
+                Dedup = dedup,
+                Path = TestSetup.archiveTestDirectory.FullName
+            };
+
+            var f = new Core.Facade.Facade(loggerFactory,
+                azCopyAppSettings,
+                tempDirectoryAppSettings,
+                o);
+
+            return f;
+        }
+
+        
 
         [OneTimeTearDown]
         public void OneTimeTearDown()

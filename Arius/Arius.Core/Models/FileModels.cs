@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Arius.Core.Extensions;
 
-namespace Arius.Models
+namespace Arius.Core.Models
 {
     public interface IAriusEntry
     {
@@ -40,17 +40,17 @@ namespace Arius.Models
         /// Name (with extension, without path)
         /// </summary>
         public string Name { get; }
-        
+
         /// <summary>
         /// The Directory where this File resides
         /// </summary>
         DirectoryInfo Directory { get; }
-        
+
         /// <summary>
         /// Length (in bytes) of the File
         /// </summary>
         public long Length { get; }
-        
+
         /// <summary>
         /// Delete the File
         /// </summary>
@@ -94,7 +94,7 @@ namespace Arius.Models
     {
         protected RelativeFileBase(DirectoryInfo root, FileInfo fi) : base(fi)
         {
-            this.Root = root;
+            Root = root;
         }
 
         public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
@@ -136,7 +136,7 @@ namespace Arius.Models
         /// </summary>
         public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
         {
-            this.Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
+            Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
         internal FileInfo BinaryFileInfo => new(fi.FullName.TrimEnd(Extension));
@@ -163,7 +163,7 @@ namespace Arius.Models
 
         public ChunkFile(FileInfo fi, HashValue hash) : base(fi)
         {
-            base.Hash = hash;
+            Hash = hash;
         }
     }
 
@@ -173,11 +173,11 @@ namespace Arius.Models
 
         public EncryptedChunkFile(FileInfo fi) : base(fi)
         {
-            base.Hash = new HashValue { Value = fi.Name.TrimEnd(Extension) };
+            Hash = new HashValue { Value = fi.Name.TrimEnd(Extension) };
         }
         public EncryptedChunkFile(FileInfo fi, HashValue hash) : base(fi)
         {
-            base.Hash = hash;
+            Hash = hash;
         }
     }
 }
