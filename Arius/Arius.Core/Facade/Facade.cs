@@ -5,6 +5,7 @@ using Arius.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,18 +21,89 @@ namespace Arius.Core.Facade
 {
     public class Facade
     {
-        public Facade(ILoggerFactory loggerFactory, IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+        public class Options : ArchiveCommandExecutor.IOptions,
+            UploadEncryptedChunksBlockProvider.IOptions,
+            RemoveDeletedPointersTaskProvider.IOptions,
+            DeleteBinaryFilesTaskProvider.IOptions,
+            IBlobCopier.IOptions,
+            IChunker.IOptions,
+            IEncrypter.IOptions,
+            IHashValueProvider.IOptions
         {
-            this.loggerFactory = loggerFactory;
-            this.azCopyAppSettings = azCopyAppSettings.Value;
-            this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Passphrase { get; init; }
+            public bool FastHash { get; init; }
+            public string Container { get; init; }
+            public bool RemoveLocal { get; init; }
+            public AccessTier Tier { get; init; }
+            public bool Dedup { get; init; }
+            public string Path { get; init; }
         }
 
-        private readonly ILoggerFactory loggerFactory;
-        private readonly AzCopyAppSettings azCopyAppSettings;
-        private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
+        //public static Options Opt
+        //{
+        //    private get 
+        //    {
+        //        if (opt is null)
+        //            throw new InvalidOperationException("Options for Facade not configured");
 
-        public async Task<int> Archive(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        //        return opt;
+        //    }
+        //    set
+        //    {
+        //        if (opt is not null)
+        //            throw new InvalidOperationException("Options is already set");
+        //    }
+        //}
+        //public static readonly Options opt;
+
+
+        //private static readonly Lazy<Facade> lazy = new(() => new Facade());
+        //public static Facade Instance
+        //{
+        //    get
+        //    {
+        //        return lazy.Value;
+        //    }
+        //}
+
+        //private Facade()
+        //{
+        //}
+
+        
+
+       
+        public Facade(ILoggerFactory loggerFactory, 
+            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings,
+            Options options)
+        {
+            if (loggerFactory is null)
+                throw new ArgumentNullException(nameof(loggerFactory));
+            if (azCopyAppSettings is null)
+                throw new ArgumentNullException(nameof(azCopyAppSettings));
+            if (tempDirectoryAppSettings is null)
+                throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
+            //this.loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+            //this.azCopyAppSettings = azCopyAppSettings.Value;
+            //this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
+            //this.options = options ?? throw new ArgumentNullException(nameof(options));
+
+            services = new(() => GetServices(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value, options));
+        }
+
+        //private readonly ILoggerFactory loggerFactory;
+        //private readonly Options options;
+        //private readonly AzCopyAppSettings azCopyAppSettings;
+        //private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
+
+        private static ServiceProvider GetServices(ILoggerFactory loggerFactory,
+            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
+            Options options)
         {
             var sc = new ServiceCollection();
             AddServices(sc, dedup);
@@ -44,6 +116,13 @@ namespace Arius.Core.Facade
             var sp = sc.BuildServiceProvider();
 
             var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+        }
+
+        private readonly Lazy<ServiceProvider> services;
+
+        public async Task<int> Archive(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        {
+           
             var r = await ace.Execute();
 
             return r;
