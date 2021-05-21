@@ -13,7 +13,6 @@ using Microsoft.Extensions.Hosting;
 using System.Threading;
 using Microsoft.Extensions.Options;
 
-[assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
 {
     internal static class Program
