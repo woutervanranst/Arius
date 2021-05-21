@@ -12,6 +12,7 @@ namespace Arius.CommandLine
         public ArchiveCommand(Arius.Core.Facade.Facade facade)
         {
             this.facade = facade;
+            
         }
 
         private readonly Arius.Core.Facade.Facade facade;
