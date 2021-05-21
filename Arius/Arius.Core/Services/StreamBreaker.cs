@@ -19,7 +19,7 @@ namespace Arius.Services
     /// Hash of each chunk is also computed progressively using a 
     /// stronger hash algorithm of the caller's choice.
     /// </remarks>
-    public class StreamBreaker
+    internal class StreamBreaker
     {
         private static int width = 64;  //--> the # of bytes in the window
         private const long seed = 2273;  //--> a our hash seed

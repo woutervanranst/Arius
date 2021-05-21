@@ -8,7 +8,7 @@ namespace Arius.Core.Extensions
 {
     // https://stackoverflow.com/questions/10168240/encrypting-decrypting-a-string-in-c-sharp
 
-    public static class StringCipher
+    internal static class StringCipher
     {
         // This constant is used to determine the keysize of the encryption algorithm in bits.
         // We divide this by 8 within the code below to get the equivalent number of bytes.

@@ -17,16 +17,6 @@ namespace Arius.Services
 {
     internal interface IBlobCopier
     {
-        void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
-        IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten);
-    }
-
-
-    
-
-    
-    internal class AzCopier : IBlobCopier
-    {
         internal interface IOptions
         {
             public string AccountName { get; init; }
@@ -34,7 +24,13 @@ namespace Arius.Services
             public string Container { get; init; }
         }
 
-        public AzCopier(IOptions options, ILogger<AzCopier> logger)
+        void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
+        IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten);
+    }
+
+    internal class AzCopier : IBlobCopier
+    {
+        public AzCopier(IBlobCopier.IOptions options, ILogger<AzCopier> logger)
         {
             _logger = logger;
 

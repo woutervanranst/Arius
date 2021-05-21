@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -104,7 +105,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, IOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, TempDirectoryAppSettings tempDirAppSettings, IOptions options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -277,7 +278,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public DownloadBlockProvider(IOptions options, IAzCopyAppSettings azCopyAppSettings, ITempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(IOptions options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
@@ -286,7 +287,7 @@ namespace Arius.Core.Commands
             downloadTempDir = tempDirAppSettings.RestoreTempDirectory(root);
         }
 
-        private readonly IAzCopyAppSettings azCopyAppSettings;
+        private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly AzureRepository repo;
         private readonly DirectoryInfo downloadTempDir;
 

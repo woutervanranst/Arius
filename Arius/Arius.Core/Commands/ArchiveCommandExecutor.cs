@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Extensions;
 using Arius.Models;
+using Arius.Services;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -16,6 +18,25 @@ namespace Arius.Core.Commands
         internal interface IOptions
         {
             string Path { get; }
+        }
+
+        private class Options : IOptions, 
+            UploadEncryptedChunksBlockProvider.IOptions,
+            RemoveDeletedPointersTaskProvider.IOptions,
+            DeleteBinaryFilesTaskProvider.IOptions,
+            IBlobCopier.IOptions,
+            IEncrypter.IOptions,
+            IHashValueProvider.IOptions
+        {
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Passphrase { get; init; }
+            public bool FastHash { get; init; }
+            public string Container { get; init; }
+            public bool RemoveLocal { get; init; }
+            public AccessTier Tier { get; init; }
+            //public bool Dedup { get; init; }
+            public string Path { get; init; }
         }
 
         public ArchiveCommandExecutor(IOptions options,
@@ -47,6 +68,47 @@ namespace Arius.Core.Commands
                 .AddSingleton<RemoveDeletedPointersTaskProvider>()
                 .AddSingleton<ExportToJsonTaskProvider>()
                 .AddSingleton<DeleteBinaryFilesTaskProvider>();
+        }
+        public static void AddOptions(IServiceCollection coll, string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, /*bool dedup, */string path)
+        {
+            // Create the options object
+            var options = new Options
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                FastHash = fastHash,
+                Container = container,
+                RemoveLocal = removeLocal,
+                Tier = tier,
+                //Dedup = dedup,
+                Path = path
+            };
+
+            // Add the options for the Blocks
+            coll
+                //.AddSingleton<IndexDirectoryBlockProvider>()
+                //.AddSingleton<AddHashBlockProvider>()
+                //.AddSingleton<ManifestBlocksProvider>()
+                //.AddSingleton<ChunkBlockProvider>()
+                //.AddSingleton<EncryptChunksBlockProvider>()
+                //.AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
+                //.AddSingleton<CreateUploadBatchesTaskProvider>()
+                .AddSingleton<UploadEncryptedChunksBlockProvider.IOptions>(options)
+                //.AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
+                //.AddSingleton<CreateManifestBlockProvider>()
+                //.AddSingleton<CreatePointerBlockProvider>()
+                //.AddSingleton<CreatePointerFileEntryIfNotExistsBlockProvider>()
+                //.AddSingleton<ValidateBlockProvider>()
+                .AddSingleton<RemoveDeletedPointersTaskProvider.IOptions>(options)
+                //.AddSingleton<ExportToJsonTaskProvider>()
+                .AddSingleton<DeleteBinaryFilesTaskProvider.IOptions>(options);
+
+            // Add the options for the services
+            coll
+                .AddSingleton<IBlobCopier.IOptions>(options)
+                .AddSingleton<IEncrypter.IOptions>(options)
+                .AddSingleton<IHashValueProvider.IOptions>(options);
         }
 
         private readonly ILogger<ArchiveCommandExecutor> logger;

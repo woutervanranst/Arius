@@ -7,9 +7,16 @@ using Arius.Extensions;
 
 namespace Arius.CommandLine
 {
-    internal class ArchiveCommand : IAriusCommand
+    internal class ArchiveCommand //: IAriusCommand
     {
-        public Command GetCommand(ParsedCommandProvider pcp)
+        public ArchiveCommand(Arius.Core.Facade.Facade facade)
+        {
+            this.facade = facade;
+        }
+
+        private readonly Arius.Core.Facade.Facade facade;
+
+        public Command GetCommand()
         {
             var archiveCommand = new Command("archive", "Archive to blob");
 
@@ -94,24 +101,27 @@ namespace Arius.CommandLine
 
             archiveCommand.Handler = CommandHandlerExtensions
                 .Create<string, string, string, string, bool, string, bool, bool, string>(
-                    (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
+                    async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
                     {
-                        pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
+                        return await facade.Archive(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+                        
 
-                        pcp.CommandExecutorOptions = new ArchiveOptions()
-                        {
-                            AccountName = accountName,
-                            AccountKey = accountKey,
-                            Passphrase = passphrase,
-                            FastHash = fastHash,
-                            Container = container,
-                            RemoveLocal = removeLocal,
-                            Tier = tier,
-                            Dedup = dedup,
-                            Path = path
-                        };
+                        //pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
 
-                        return Task.FromResult<int>(0);
+                        //pcp.CommandExecutorOptions = new ArchiveOptions()
+                        //{
+                        //    AccountName = accountName,
+                        //    AccountKey = accountKey,
+                        //    Passphrase = passphrase,
+                        //    FastHash = fastHash,
+                        //    Container = container,
+                        //    RemoveLocal = removeLocal,
+                        //    Tier = tier,
+                        //    Dedup = dedup,
+                        //    Path = path
+                        //};
+
+                        //return Task.FromResult<int>(0);
                     });
 
             return archiveCommand;

@@ -12,7 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.Threading;
 using Microsoft.Extensions.Options;
-using Arius.Console;
 
 [assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius
@@ -72,43 +71,48 @@ namespace Arius
                         .AddSingleton<AriusCommandService>()
                         .AddHostedService<AriusCommandService>(p => p.GetRequiredService<AriusCommandService>())
 
-                        //Add Commmands
-                        .AddSingleton<ArchiveCommandExecutor>()
-                        .AddSingleton<RestoreCommandExecutor>()
+                        .AddSingleton<ArchiveCommand>()
+                        .AddSingleton<RestoreCommand>()
+
+                        .AddSingleton<Arius.Core.Facade.Facade>();
+
+                        ////Add Commmands
+                        //.AddSingleton<ArchiveCommandExecutor>()
+                        //.AddSingleton<RestoreCommandExecutor>()
 
 
-                        // Parsed Command Options
-                        .AddSingleton<ICommandExecutorOptions>(p => p.GetRequiredService<AriusCommandService>().CommandExecutorOptions)
-                        .AddSingleton<ArchiveOptions>(sp => (ArchiveOptions)sp.GetRequiredService<ICommandExecutorOptions>())
-                        .AddSingleton<RestoreOptions>(sp => (RestoreOptions)sp.GetRequiredService<ICommandExecutorOptions>())
+                        //// Parsed Command Options
+                        //.AddSingleton<ICommandExecutorOptions>(p => p.GetRequiredService<AriusCommandService>().CommandExecutorOptions)
+                        //.AddSingleton<ArchiveOptions>(sp => (ArchiveOptions)sp.GetRequiredService<ICommandExecutorOptions>())
+                        //.AddSingleton<RestoreOptions>(sp => (RestoreOptions)sp.GetRequiredService<ICommandExecutorOptions>())
 
 
-                        //Add Services
-                        .AddSingleton<PointerService>()
-                        .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                        .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
-                        .AddSingleton<IBlobCopier, AzCopier>()
-                        .AddSingleton<AzureRepository>()
+                        ////Add Services
+                        //.AddSingleton<PointerService>()
+                        //.AddSingleton<IHashValueProvider, SHA256Hasher>()
+                        //.AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
+                        //.AddSingleton<IBlobCopier, AzCopier>()
+                        //.AddSingleton<AzureRepository>()
 
-                        // Add Chunkers
-                        .AddSingleton<Chunker>()
-                        .AddSingleton<DedupChunker>()
-                        .AddSingleton<IChunker>((sp) =>
-                            {
-                                var chunkerOptions = (IChunkerOptions)sp.GetRequiredService<ArchiveOptions>();
-                                if (chunkerOptions.Dedup)
-                                    return sp.GetRequiredService<DedupChunker>();
-                                else
-                                    return sp.GetRequiredService<Chunker>();
-                            });
+                        //// Add Chunkers
+                        //.AddSingleton<Chunker>()
+                        //.AddSingleton<DedupChunker>()
+                        //.AddSingleton<IChunker>((sp) =>
+                        //    {
+                        //        var chunkerOptions = (IChunkerOptions)sp.GetRequiredService<ArchiveOptions>();
+                        //        if (chunkerOptions.Dedup)
+                        //            return sp.GetRequiredService<DedupChunker>();
+                        //        else
+                        //            return sp.GetRequiredService<Chunker>();
+                        //    });
 
                     // Add Options
-                    serviceCollection.AddOptions<AzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                    serviceCollection.AddOptions<TempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
+                    serviceCollection.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
+                    serviceCollection.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
 
                     // Add ArchiveCommandExecutorBlocks
-                    ArchiveCommandExecutor.AddProviders(serviceCollection);
-                    RestoreCommandExecutor.AddProviders(serviceCollection);
+                    //ArchiveCommandExecutor.AddProviders(serviceCollection);
+                    //RestoreCommandExecutor.AddProviders(serviceCollection);
                 })
                 ;
             //    // .RunConsoleAsync() -- see here to split into steps: https://stackoverflow.com/questions/53484777/access-iserviceprovider-when-using-generic-ihostbuilder
@@ -176,7 +180,7 @@ namespace Arius
         private readonly IServiceProvider serviceProvider;
         private int? exitCode;
 
-        public ICommandExecutorOptions CommandExecutorOptions { get; set; }
+        //public ICommandExecutorOptions CommandExecutorOptions { get; set; }
 
         internal static readonly string CommandLineEnvironmentVariableName = "ariusCommandLineEnvVarName";
 
@@ -190,15 +194,13 @@ namespace Arius
                 {
                     try
                     {
-                        var parsedCommandProvider = new ParsedCommandProvider();
-
-                        IAriusCommand archiveCommand = new ArchiveCommand();
-                        IAriusCommand restoreCommand = new RestoreCommand();
+                        Command archiveCommand = serviceProvider.GetRequiredService<ArchiveCommand>().GetCommand();
+                        Command restoreCommand = serviceProvider.GetRequiredService<RestoreCommand>().GetCommand();
 
                         var ariusCommand = new RootCommand();
                         ariusCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
-                        ariusCommand.AddCommand(archiveCommand.GetCommand(parsedCommandProvider));
-                        ariusCommand.AddCommand(restoreCommand.GetCommand(parsedCommandProvider));
+                        ariusCommand.AddCommand(archiveCommand);
+                        ariusCommand.AddCommand(restoreCommand);
 
                         string[] args;
                         if (Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
@@ -216,10 +218,10 @@ namespace Arius
                         if (exitCode != 0)
                             return; //eg when calling "arius" or "arius archive" without actual parameters -- see the ACTUAL output in the console or in Output.Tests
 
-                        CommandExecutorOptions = parsedCommandProvider.CommandExecutorOptions;
+                        //CommandExecutorOptions = parsedCommandProvider.CommandExecutorOptions;
 
-                        var commandExecutor = (ICommandExecutor)serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
-                        exitCode = await commandExecutor.Execute();
+                        //var commandExecutor = (ICommandExecutor)serviceProvider.GetRequiredService(parsedCommandProvider.CommandExecutorType);
+                        //exitCode = await commandExecutor.Execute();
                         
                         logger.LogInformation("Done");
                     }
@@ -232,7 +234,7 @@ namespace Arius
                     {
                         //Delete the tempdir
                         logger.LogInformation("Deleting tempdir...");
-                        var tempDir = serviceProvider.GetRequiredService<IOptions<TempDirectoryAppSettings>>().Value.TempDirectory;
+                        var tempDir = serviceProvider.GetRequiredService<IOptions<Core.Configuration.TempDirectoryAppSettings>>().Value.TempDirectory;
                         if (tempDir.Exists)
                             tempDir.Delete(true);
                         logger.LogInformation("Deleting tempdir... done");

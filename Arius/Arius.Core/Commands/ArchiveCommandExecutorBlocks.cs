@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Models;
 using Arius.Repositories;
@@ -513,7 +514,7 @@ namespace Arius.Core.Commands
 
     internal class EncryptChunksBlockProvider
     {
-        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, ITempDirectoryAppSettings tempDirAppSettings, IEncrypter encrypter)
+        public EncryptChunksBlockProvider(ILogger<EncryptChunksBlockProvider> logger, TempDirectoryAppSettings tempDirAppSettings, IEncrypter encrypter)
         {
             this.logger = logger;
             this.tempDirAppSettings = tempDirAppSettings;
@@ -521,7 +522,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<EncryptChunksBlockProvider> logger;
-        private readonly ITempDirectoryAppSettings tempDirAppSettings;
+        private readonly TempDirectoryAppSettings tempDirAppSettings;
         private readonly IEncrypter encrypter;
 
         public TransformBlock<IChunkFile, EncryptedChunkFile> GetBlock()
@@ -592,14 +593,14 @@ namespace Arius.Core.Commands
 
     internal class CreateUploadBatchesTaskProvider
     {
-        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, IAzCopyAppSettings azCopyAppSettings)
+        public CreateUploadBatchesTaskProvider(ILogger<CreateUploadBatchesTaskProvider> logger, AzCopyAppSettings azCopyAppSettings)
         {
             this.logger = logger;
             this.azCopyAppSettings = azCopyAppSettings;
         }
 
         private readonly ILogger<CreateUploadBatchesTaskProvider> logger;
-        private readonly IAzCopyAppSettings azCopyAppSettings;
+        private readonly AzCopyAppSettings azCopyAppSettings;
 
         public CreateUploadBatchesTaskProvider AddUploadQueue(BlockingCollection<EncryptedChunkFile> uploadQueue)
         {

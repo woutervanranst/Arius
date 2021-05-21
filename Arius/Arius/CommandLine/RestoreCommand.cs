@@ -5,9 +5,9 @@ using Arius.Extensions;
 
 namespace Arius.CommandLine
 {
-    internal class RestoreCommand : IAriusCommand
+    internal class RestoreCommand // : IAriusCommand
     {
-        public Command GetCommand(ParsedCommandProvider pcp)
+        public Command GetCommand()
         {
             var restoreCommand = new Command("restore", "Restore from blob");
 
@@ -66,21 +66,23 @@ namespace Arius.CommandLine
 
             restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>((accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
             {
-                pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
+                throw new NotImplementedException();
 
-                pcp.CommandExecutorOptions = new RestoreOptions
-                {
-                    AccountName = accountName,
-                    AccountKey = accountKey,
-                    Passphrase = passphrase,
-                    Container = container,
-                    Synchronize = synchronize,
-                    Download = download,
-                    KeepPointers = keepPointers,
-                    Path = path
-                };
+                //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
 
-                return Task.FromResult<int>(0);
+                //pcp.CommandExecutorOptions = new RestoreOptions
+                //{
+                //    AccountName = accountName,
+                //    AccountKey = accountKey,
+                //    Passphrase = passphrase,
+                //    Container = container,
+                //    Synchronize = synchronize,
+                //    Download = download,
+                //    KeepPointers = keepPointers,
+                //    Path = path
+                //};
+
+                //return Task.FromResult<int>(0);
             });
 
             return restoreCommand;
