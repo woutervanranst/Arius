@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
-using Arius.Models;
+using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Repositories

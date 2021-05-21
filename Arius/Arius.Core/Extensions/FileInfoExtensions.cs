@@ -1,4 +1,4 @@
-﻿using Arius.Models;
+﻿using Arius.Core.Models;
 using System;
 using System.IO;
 

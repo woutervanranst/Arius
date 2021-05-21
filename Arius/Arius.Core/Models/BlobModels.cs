@@ -4,7 +4,7 @@ using Arius.Core.Extensions;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.Models
+namespace Arius.Core.Models
 {
     internal abstract class BlobBase : IWithHashValue
     {

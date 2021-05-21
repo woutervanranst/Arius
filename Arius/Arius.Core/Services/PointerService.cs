@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using Arius.Models;
+using Arius.Core.Models;
 using Arius.Repositories;
 using Microsoft.Extensions.Logging;
 

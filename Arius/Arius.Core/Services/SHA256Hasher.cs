@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
-using Arius.Models;
+using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Services

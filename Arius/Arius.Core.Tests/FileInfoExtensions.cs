@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
+using System;
 using System.IO;
 
 namespace Arius.Tests

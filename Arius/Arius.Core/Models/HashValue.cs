@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Arius.Models
+namespace Arius.Core.Models
 {
     public struct HashValue
     {

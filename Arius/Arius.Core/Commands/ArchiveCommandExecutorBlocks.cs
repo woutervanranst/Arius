@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
-using Arius.Models;
+using Arius.Core.Models;
 using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;

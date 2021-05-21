@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
-using Arius.Models;
+using Arius.Core.Models;
 using Arius.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
