@@ -22,7 +22,7 @@ namespace Arius.Core.Facade
 {
     public class Facade
     {
-        public class Options : ArchiveCommandExecutor.IOptions,
+        public class ArchiveOptions : ArchiveCommandExecutor.IOptions,
             UploadEncryptedChunksBlockProvider.IOptions,
             RemoveDeletedPointersTaskProvider.IOptions,
             DeleteBinaryFilesTaskProvider.IOptions,
@@ -43,8 +43,7 @@ namespace Arius.Core.Facade
         }
 
         public Facade(ILoggerFactory loggerFactory, 
-            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings,
-            Options options)
+            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
         {
             if (loggerFactory is null)
                 throw new ArgumentNullException(nameof(loggerFactory));
@@ -52,22 +51,36 @@ namespace Arius.Core.Facade
                 throw new ArgumentNullException(nameof(azCopyAppSettings));
             if (tempDirectoryAppSettings is null)
                 throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
 
-            services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value, options));
+            this.loggerFactory = loggerFactory;
+            this.azCopyAppSettings = azCopyAppSettings.Value;
+            this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
+
+            //services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value));
         }
 
-        private static ServiceProvider InitializeServiceProvider(ILoggerFactory loggerFactory,
+        private readonly ILoggerFactory loggerFactory;
+        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
+
+        public ArchiveCommand CreateArchiveCommand(ArchiveOptions options)
+        {
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+            return new ArchiveCommand(sp);
+        }
+
+
+        private ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
             AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
-            Options options)
+            ArchiveOptions options)
         {
             var sc = new ServiceCollection();
 
             sc
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
-                .AddSingleton<RestoreCommandExecutor>()
+                //.AddSingleton<RestoreCommandExecutor>()
 
                 //Add Services
                 .AddSingleton<PointerService>()
@@ -109,26 +122,59 @@ namespace Arius.Core.Facade
                 .AddSingleton<ILoggerFactory>(loggerFactory)
                 .AddLogging();
 
-            var sp = sc.BuildServiceProvider();
-
-            return sp;
+            return sc.BuildServiceProvider();
         }
 
-        internal ServiceProvider ServiceProvider => services.Value;
-        private readonly Lazy<ServiceProvider> services;
-
-
-
-
-
-        public async Task<int> Archive() //string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        internal AzureRepository GetAriusRepository<T>(T options) where T : AzureRepository.IOptions, IBlobCopier.IOptions
         {
-            var ace = services.Value.GetRequiredService<ArchiveCommandExecutor>();
-            var r = await ace.Execute();
+            var sc = new ServiceCollection();
 
-            return r;
+            sc
+                //Add Services
+                .AddSingleton<IBlobCopier, AzCopier>()
+                .AddSingleton<AzureRepository>();
+
+            // Add Options
+            sc
+                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
+                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
+                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
+                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
+                .AddSingleton(azCopyAppSettings)
+                .AddSingleton(tempDirectoryAppSettings);
+
+            // Add the options for the services
+            sc
+                .AddSingleton<IBlobCopier.IOptions>(options);
+
+            sc
+                .AddSingleton<ILoggerFactory>(loggerFactory)
+                .AddLogging();
+
+            return sc.BuildServiceProvider()
+                .GetRequiredService<AzureRepository>();
         }
     }
+
+    public class ArchiveCommand
+    {
+        internal ArchiveCommand(ServiceProvider sp)
+        {
+            this.sp = sp;
+        }
+
+        private readonly ServiceProvider sp;
+
+        public ServiceProvider Services => sp;
+
+        public async Task<int> Execute()
+        {
+            var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+
+            return await ace.Execute();
+        }
+    }
+
     //public class Facade
     //{
     //    public Facade(ILoggerFactory loggerFactory)

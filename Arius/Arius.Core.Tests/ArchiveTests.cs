@@ -550,17 +550,26 @@ namespace Arius.Tests
         }
 
 
-
-
         private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var f = TestSetup.CreateFacade(tier, removeLocal, fastHash, dedup);
+            var options = new Core.Facade.Facade.ArchiveOptions
+            {
+                AccountName = TestSetup.AccountName,
+                AccountKey = TestSetup.AccountKey,
+                Passphrase = TestSetup.passphrase,
+                FastHash = fastHash,
+                Container = TestSetup.container.Name,
+                RemoveLocal = removeLocal,
+                Tier = tier,
+                Dedup = dedup,
+                Path = TestSetup.archiveTestDirectory.FullName
+            };
 
-            await f.Archive();
+            var c = TestSetup.Facade.CreateArchiveCommand(options);
 
-            return f.ServiceProvider;
+            await c.Execute();
 
-            
+            return c.Services;
 
             //var cmd = "archive " +
             //    $"-n {TestSetup.AccountName} " +
@@ -596,7 +605,7 @@ namespace Arius.Tests
         //    return sp;
         //}
 
-        
+
         public void TestCleanup()
         {
             // Runs after each test. (Optional)

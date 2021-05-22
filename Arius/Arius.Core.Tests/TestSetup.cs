@@ -31,7 +31,7 @@ namespace Arius.Tests
 
         public static string AccountName { get; set; }
         public static string AccountKey { get; set; }
-        //public static Core.Facade.Facade Facade { get; set; }
+        public static Core.Facade.Facade Facade { get; set; }
         //internal static IServiceProvider GetServiceProvider() => Facade.TEST;
         //internal static Repositories.AzureRepository GetAzureRepository() => GetServiceProvider().GetRequiredService<Repositories.AzureRepository>();
 
@@ -69,6 +69,23 @@ namespace Arius.Tests
             // Create reference to the storage tables
             var csa = CloudStorageAccount.Parse(connectionString);
             ctc = csa.CreateCloudTableClient();
+
+
+            // Initialize Facade
+            var loggerFactory = new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
+
+            var azCopyAppSettings = Options.Create(new AzCopyAppSettings()
+            {
+                BatchSize = 256 * 1024 * 1024, //256 MB
+                BatchCount = 128
+            });
+            var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+            {
+                TempDirectoryName = ".ariustemp",
+                RestoreTempDirectoryName = ".ariusrestore"
+            });
+
+            Facade = new Core.Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
         }
 
         private static DirectoryInfo PopulateSourceDirectory()
@@ -106,53 +123,19 @@ namespace Arius.Tests
 
         internal static AzureRepository GetAzureRepository()
         {
-            return GetServiceProvider().GetRequiredService<AzureRepository>();
+            throw new NotImplementedException();
+            //return Facade.GetAriusRepository( GetServiceProvider().GetRequiredService<AzureRepository>();
         }
 
-        internal static IServiceProvider GetServiceProvider(AccessTier? tier = null, bool removeLocal = false, bool fastHash = false, bool dedup = false)
-        {
-            var f = CreateFacade(tier, removeLocal, fastHash, dedup);
+        //internal static IServiceProvider GetServiceProvider(AccessTier? tier = null, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        //{
+        //    var f = CreateFacade(tier, removeLocal, fastHash, dedup);
 
-            return f.ServiceProvider;
-        }
+        //    return f.ServiceProvider;
+        //}
 
-        internal static Core.Facade.Facade CreateFacade(AccessTier? tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
-        {
-            var loggerFactory = new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
 
-            var azCopyAppSettings = Options.Create(new AzCopyAppSettings()
-            {
-                BatchSize = 256 * 1024 * 1024, //256 MB
-                BatchCount = 128
-            });
-            var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-            {
-                TempDirectoryName = ".ariustemp",
-                RestoreTempDirectoryName = ".ariusrestore"
-            });
 
-            var o = new Core.Facade.Facade.Options
-            {
-                AccountName = TestSetup.AccountName,
-                AccountKey = TestSetup.AccountKey,
-                Passphrase = TestSetup.passphrase,
-                FastHash = fastHash,
-                Container = TestSetup.container.Name,
-                RemoveLocal = removeLocal,
-                Tier = tier ?? AccessTier.Cool, //TODO
-                Dedup = dedup,
-                Path = TestSetup.archiveTestDirectory.FullName
-            };
-
-            var f = new Core.Facade.Facade(loggerFactory,
-                azCopyAppSettings,
-                tempDirectoryAppSettings,
-                o);
-
-            return f;
-        }
-
-        
 
         [OneTimeTearDown]
         public void OneTimeTearDown()

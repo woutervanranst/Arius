@@ -49,7 +49,7 @@ namespace Arius.Core.Commands
             root = new DirectoryInfo(options.Path);
         }
 
-        public static void ConfigureServices(IServiceCollection coll, Facade.Facade.Options options)
+        public static void ConfigureServices(IServiceCollection coll, Facade.Facade.ArchiveOptions options)
         {
             coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
