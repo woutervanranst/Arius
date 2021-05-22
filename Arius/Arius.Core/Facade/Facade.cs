@@ -103,18 +103,29 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        public ArchiveCommand CreateArchiveCommand(ArchiveCommandOptions options)
+        //public ArchiveCommand CreateArchiveCommand(ArchiveCommandOptions options)
+        //{
+        //    var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+        //    return new ArchiveCommand(sp);
+        //}
+
+        public ArchiveCommandExecutor CreateArchiveCommand(ArchiveCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            return new ArchiveCommand(sp);
+            var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+
+            return ace;
         }
 
-        public RestoreCommand CreateRestoreCommand(RestoreCommandOptions options)
+        public RestoreCommandExecutor CreateRestoreCommand(RestoreCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            return new RestoreCommand(sp);
+            var rce = sp.GetRequiredService<RestoreCommandExecutor>();
+
+            return rce;
         }
 
 
@@ -222,48 +233,48 @@ namespace Arius.Core.Facade
     }
 
 
-    internal interface ICommand
-    {
-        public Task<int> Execute();
-    }
+    //internal interface ICommand
+    //{
+    //    public Task<int> Execute();
+    //}
 
-    public class ArchiveCommand : ICommand
-    {
-        internal ArchiveCommand(ServiceProvider sp)
-        {
-            this.sp = sp;
-        }
+    //public class ArchiveCommand : ICommand
+    //{
+    //    internal ArchiveCommand(ServiceProvider sp)
+    //    {
+    //        this.sp = sp;
+    //    }
 
-        private readonly ServiceProvider sp;
+    //    private readonly ServiceProvider sp;
 
-        public ServiceProvider Services => sp;
+    //    internal ServiceProvider Services => sp;
 
-        public async Task<int> Execute()
-        {
-            var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+    //    public async Task<int> Execute()
+    //    {
+    //        var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
 
-            return await ace.Execute();
-        }
-    }
+    //        return await ace.Execute();
+    //    }
+    //}
 
-    public class RestoreCommand : ICommand
-    {
-        internal RestoreCommand(ServiceProvider sp)
-        {
-            this.sp = sp;
-        }
+    //public class RestoreCommand : ICommand
+    //{
+    //    internal RestoreCommand(ServiceProvider sp)
+    //    {
+    //        this.sp = sp;
+    //    }
 
-        private readonly ServiceProvider sp;
+    //    private readonly ServiceProvider sp;
 
-        public ServiceProvider Services => sp;
+    //    public ServiceProvider Services => sp;
 
-        public async Task<int> Execute()
-        {
-            var ace = sp.GetRequiredService<RestoreCommandExecutor>();
+    //    public async Task<int> Execute()
+    //    {
+    //        var ace = sp.GetRequiredService<RestoreCommandExecutor>();
 
-            return await ace.Execute();
-        }
-    }
+    //        return await ace.Execute();
+    //    }
+    //}
 
     //public class Facade
     //{

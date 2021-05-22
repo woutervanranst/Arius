@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    internal class ArchiveCommandExecutor : ICommandExecutor
+    public class ArchiveCommandExecutor : ICommandExecutor
     {
         internal interface IOptions
         {
@@ -39,7 +39,7 @@ namespace Arius.Core.Commands
         //    public string Path { get; init; }
         //}
 
-        public ArchiveCommandExecutor(IOptions options,
+        internal ArchiveCommandExecutor(IOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
@@ -49,7 +49,7 @@ namespace Arius.Core.Commands
             root = new DirectoryInfo(options.Path);
         }
 
-        public static void ConfigureServices(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
+        internal static void ConfigureServices(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
         {
             coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
@@ -107,6 +107,8 @@ namespace Arius.Core.Commands
         private readonly ILogger<ArchiveCommandExecutor> logger;
         private readonly IServiceProvider blocks;
         private readonly DirectoryInfo root;
+
+        internal IServiceProvider Services => blocks;
 
         public async Task<int> Execute()
         {

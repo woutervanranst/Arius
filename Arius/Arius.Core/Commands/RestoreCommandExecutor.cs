@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    internal class RestoreCommandExecutor : ICommandExecutor
+    public class RestoreCommandExecutor : ICommandExecutor
     {
         internal interface IOptions
         {
@@ -21,7 +21,7 @@ namespace Arius.Core.Commands
             bool Synchronize { get; }
         }
 
-        public RestoreCommandExecutor(IOptions options,
+        internal RestoreCommandExecutor(IOptions options,
             ILogger<RestoreCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
@@ -30,7 +30,7 @@ namespace Arius.Core.Commands
             blocks = serviceProvider;
         }
 
-        public static void ConfigureServices(IServiceCollection coll)
+        internal static void ConfigureServices(IServiceCollection coll)
         {
             coll
                 .AddSingleton<SynchronizeBlockProvider>()
@@ -45,6 +45,8 @@ namespace Arius.Core.Commands
         private readonly IOptions _options;
         private readonly ILogger<RestoreCommandExecutor> _logger;
         private readonly IServiceProvider blocks;
+
+        internal IServiceProvider Services => blocks;
 
         public async Task<int> Execute()
         {
