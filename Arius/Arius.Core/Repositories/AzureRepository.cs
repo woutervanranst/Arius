@@ -40,6 +40,11 @@ namespace Arius.Repositories
             return chunkRepo.GetChunkBlobByHash(chunkHash, requireHydrated);
         }
 
+        internal ChunkBlobBase GetChunkBlobByName(string folder, string name)
+        {
+            return chunkRepo.GetChunkBlobByName(folder, name);
+        }
+
         public void Hydrate(ChunkBlobBase itemToHydrate)
         {
             chunkRepo.Hydrate(itemToHydrate);
@@ -67,6 +72,11 @@ namespace Arius.Repositories
         public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
         {
             await manifestRepo.AddManifestAsync(bf, cfs);
+        }
+        
+        internal IEnumerable<ManifestBlob> GetAllManifestBlobs()
+        {
+            return manifestRepo.GetAllManifestBlobs();
         }
 
         public IEnumerable<HashValue> GetAllManifestHashes()
