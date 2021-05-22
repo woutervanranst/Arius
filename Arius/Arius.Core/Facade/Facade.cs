@@ -22,7 +22,12 @@ namespace Arius.Core.Facade
 {
     public class Facade
     {
-        public class ArchiveOptions : ArchiveCommandExecutor.IOptions,
+        public interface IOptions
+        {
+        }
+
+        public class ArchiveCommandOptions : IOptions,
+            ArchiveCommandExecutor.IOptions,
             UploadEncryptedChunksBlockProvider.IOptions,
             RemoveDeletedPointersTaskProvider.IOptions,
             DeleteBinaryFilesTaskProvider.IOptions,
@@ -41,6 +46,32 @@ namespace Arius.Core.Facade
             public AccessTier Tier { get; init; }
             public bool Dedup { get; init; }
             public string Path { get; init; }
+        }
+
+        public class RestoreCommandOptions : IOptions,
+            RestoreCommandExecutor.IOptions,
+            //IChunker.IOptions,
+            
+            IBlobCopier.IOptions,
+            IHashValueProvider.IOptions,
+            IEncrypter.IOptions,
+            AzureRepository.IOptions
+        {
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Passphrase { get; init; }
+            public bool FastHash => false; //Do not fasthash on restore to ensure integrity
+            public string Container { get; init; }
+            public bool Synchronize { get; init; }
+            public bool Download { get; init; }
+            //public bool KeepPointers { get; init; }
+            public string Path { get; init; }
+
+            //public bool Dedup => false;
+            //public AccessTier Tier { get => throw new NotImplementedException(); init => throw new NotImplementedException(); } // Should not be used
+            //public bool RemoveLocal { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+            //public int MinSize { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+            //public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
         }
 
         public Facade(ILoggerFactory loggerFactory, 
@@ -64,24 +95,31 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        public ArchiveCommand CreateArchiveCommand(ArchiveOptions options)
+        public ArchiveCommand CreateArchiveCommand(ArchiveCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
             return new ArchiveCommand(sp);
         }
 
+        public RestoreCommand CreateRestoreCommand(RestoreCommandOptions options)
+        {
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-        private ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
+            return new RestoreCommand(sp);
+        }
+
+
+        private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory,
             AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
-            ArchiveOptions options)
+            T options) where  T : IOptions
         {
             var sc = new ServiceCollection();
 
             sc
                 //Add Commmands
                 .AddSingleton<ArchiveCommandExecutor>()
-                //.AddSingleton<RestoreCommandExecutor>()
+                .AddSingleton<RestoreCommandExecutor>()
 
                 //Add Services
                 .AddSingleton<PointerService>()
@@ -92,14 +130,23 @@ namespace Arius.Core.Facade
 
                 // Add Chunkers
                 .AddSingleton<Chunker>()
-                .AddSingleton<DedupChunker>()
-                .AddSingleton<IChunker>((sp) =>
-                {
-                    if (options.Dedup)
-                        return sp.GetRequiredService<DedupChunker>();
-                    else
-                        return sp.GetRequiredService<Chunker>();
-                });
+                .AddSingleton<DedupChunker>();
+
+            if (options is IChunker.IOptions chunkerOptions)
+            { 
+                sc
+                    .AddSingleton<IChunker>((sp) =>
+                    {
+                        if (chunkerOptions.Dedup)
+                            return sp.GetRequiredService<DedupChunker>();
+                        else
+                            return sp.GetRequiredService<Chunker>();
+                    });
+            }
+            //else
+            //{
+            //    throw new NotImplementedException();
+            //}
 
             // Add Options
             sc
@@ -110,18 +157,23 @@ namespace Arius.Core.Facade
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
-            //Add the options for the Repositories
-            sc
-                .AddSingleton<AzureRepository.IOptions>(options);
 
-            // Add the options for the services
-            sc
-                .AddSingleton<IBlobCopier.IOptions>(options)
-                .AddSingleton<IEncrypter.IOptions>(options)
-                .AddSingleton<IHashValueProvider.IOptions>(options);
+            foreach (var type in options.GetType().GetInterfaces())
+                sc.AddSingleton(type, options);
 
-            ArchiveCommandExecutor.ConfigureServices(sc, options);
+            ////Add the options for the Repositories
+            //sc
+            //    .AddSingleton<AzureRepository.IOptions>(options);
+
+            //// Add the options for the services
+            //sc
+            //    .AddSingleton<IBlobCopier.IOptions>(options)
+            //    .AddSingleton<IEncrypter.IOptions>(options)
+            //    .AddSingleton<IHashValueProvider.IOptions>(options);
+
+            ArchiveCommandExecutor.ConfigureServices(sc);
             //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
+            RestoreCommandExecutor.ConfigureServices(sc);
 
             sc
                 .AddSingleton<ILoggerFactory>(loggerFactory)
@@ -161,7 +213,13 @@ namespace Arius.Core.Facade
         }
     }
 
-    public class ArchiveCommand
+
+    internal interface ICommand
+    {
+        public Task<int> Execute();
+    }
+
+    public class ArchiveCommand : ICommand
     {
         internal ArchiveCommand(ServiceProvider sp)
         {
@@ -175,6 +233,25 @@ namespace Arius.Core.Facade
         public async Task<int> Execute()
         {
             var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+
+            return await ace.Execute();
+        }
+    }
+
+    public class RestoreCommand : ICommand
+    {
+        internal RestoreCommand(ServiceProvider sp)
+        {
+            this.sp = sp;
+        }
+
+        private readonly ServiceProvider sp;
+
+        public ServiceProvider Services => sp;
+
+        public async Task<int> Execute()
+        {
+            var ace = sp.GetRequiredService<RestoreCommandExecutor>();
 
             return await ace.Execute();
         }

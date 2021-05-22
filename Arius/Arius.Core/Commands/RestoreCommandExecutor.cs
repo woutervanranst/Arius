@@ -30,7 +30,7 @@ namespace Arius.Core.Commands
             blocks = serviceProvider;
         }
 
-        public static void AddProviders(IServiceCollection coll)
+        public static void ConfigureServices(IServiceCollection coll)
         {
             coll
                 .AddSingleton<SynchronizeBlockProvider>()
