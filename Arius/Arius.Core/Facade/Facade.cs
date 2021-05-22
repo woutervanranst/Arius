@@ -28,9 +28,11 @@ namespace Arius.Core.Facade
 
         public class ArchiveCommandOptions : IOptions,
             ArchiveCommandExecutor.IOptions,
+
             UploadEncryptedChunksBlockProvider.IOptions,
             RemoveDeletedPointersTaskProvider.IOptions,
             DeleteBinaryFilesTaskProvider.IOptions,
+            
             AzureRepository.IOptions,
             IBlobCopier.IOptions,
             IChunker.IOptions,
@@ -50,6 +52,12 @@ namespace Arius.Core.Facade
 
         public class RestoreCommandOptions : IOptions,
             RestoreCommandExecutor.IOptions,
+
+            SynchronizeBlockProvider.IOptions,
+            DownloadBlockProvider.IOptions,
+            ProcessPointerChunksBlockProvider.IOptions,
+            MergeBlockProvider.IOptions,
+
             //IChunker.IOptions,
             
             IBlobCopier.IOptions,
@@ -64,7 +72,7 @@ namespace Arius.Core.Facade
             public string Container { get; init; }
             public bool Synchronize { get; init; }
             public bool Download { get; init; }
-            //public bool KeepPointers { get; init; }
+            public bool KeepPointers { get; init; }
             public string Path { get; init; }
 
             //public bool Dedup => false;

@@ -51,7 +51,7 @@ namespace Arius.Core.Commands
             var root = new DirectoryInfo(_options.Path);
             if (root.Exists && root.EnumerateFiles().Any())
             {
-                // use !pf.LocalContentFileInfo.Exists 
+                // TODO use !pf.LocalContentFileInfo.Exists 
                 _logger.LogWarning("The folder is not empty. There may be lingering files after the restore.");
                 //TODO LOG WARNING if local root directory contains other things than the pointers with their respecitve localcontentfiles --> will not be overwritten but may be backed up
             }

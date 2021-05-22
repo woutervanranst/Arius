@@ -257,7 +257,7 @@ namespace Arius.Tests
                 Container = TestSetup.container.Name,
                 Synchronize = synchronize,
                 Download = download,
-                //keeppoiters
+                KeepPointers = keepPointers,
                 Path = TestSetup.archiveTestDirectory.FullName
             };
 
