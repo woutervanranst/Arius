@@ -27,7 +27,7 @@ namespace Arius.Core.Commands
         {
             _options = options;
             _logger = logger;
-            blocks = serviceProvider;
+            services = serviceProvider;
         }
 
         internal static void ConfigureServices(IServiceCollection coll)
@@ -44,9 +44,9 @@ namespace Arius.Core.Commands
 
         private readonly IOptions _options;
         private readonly ILogger<RestoreCommandExecutor> _logger;
-        private readonly IServiceProvider blocks;
+        private readonly IServiceProvider services;
 
-        internal IServiceProvider Services => blocks;
+        internal IServiceProvider Services => services;
 
         public async Task<int> Execute()
         {
@@ -80,25 +80,25 @@ namespace Arius.Core.Commands
 
 
 
-            var synchronizeBlock = blocks.GetRequiredService<SynchronizeBlockProvider>().GetBlock();
+            var synchronizeBlock = services.GetRequiredService<SynchronizeBlockProvider>().GetBlock();
 
-            var hydrateBlockProvider = blocks.GetRequiredService<HydrateBlockProvider>();
+            var hydrateBlockProvider = services.GetRequiredService<HydrateBlockProvider>();
             var hydrateBlock = hydrateBlockProvider.GetBlock();
 
-            var downloadBlockProvider = blocks.GetRequiredService<DownloadBlockProvider>();
+            var downloadBlockProvider = services.GetRequiredService<DownloadBlockProvider>();
             var enqueueDownloadBlock = downloadBlockProvider.GetEnqueueBlock();
             var batchingTask = downloadBlockProvider.GetBatchingTask();
             var downloadBlock = downloadBlockProvider.GetDownloadBlock();
 
-            var decryptBlock = blocks.GetRequiredService<DecryptBlockProvider>().GetBlock();
+            var decryptBlock = services.GetRequiredService<DecryptBlockProvider>().GetBlock();
 
 
-            var reconcilePointersWithChunksBlockProvider = blocks.GetRequiredService<ReconcilePointersWithChunksBlockProvider>();
+            var reconcilePointersWithChunksBlockProvider = services.GetRequiredService<ReconcilePointersWithChunksBlockProvider>();
             var reconcilePointerBlock = reconcilePointersWithChunksBlockProvider.GetReconcilePointerBlock();
             var reconcileChunkBlock = reconcilePointersWithChunksBlockProvider.GetReconcileChunkBlock();
 
 
-            var processPointerChunksBlock = blocks.GetRequiredService<ProcessPointerChunksBlockProvider>()
+            var processPointerChunksBlock = services.GetRequiredService<ProcessPointerChunksBlockProvider>()
                 .SetReconcileChunkBlock(reconcileChunkBlock)
                 .SetHydrateBlock(hydrateBlock)
                 .SetEnqueueDownloadBlock(enqueueDownloadBlock)
@@ -108,7 +108,7 @@ namespace Arius.Core.Commands
 
 
 
-            var mergeBlock = blocks.GetRequiredService<MergeBlockProvider>().GetBlock();
+            var mergeBlock = services.GetRequiredService<MergeBlockProvider>().GetBlock();
 
 
             // Set up linking
@@ -194,7 +194,7 @@ namespace Arius.Core.Commands
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
-            blocks.GetRequiredService<TempDirectoryAppSettings>().RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
+            services.GetRequiredService<TempDirectoryAppSettings>().RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {
@@ -207,7 +207,7 @@ namespace Arius.Core.Commands
                 //TODO
 
                 //Delete hydration directory
-                blocks.GetRequiredService<AzureRepository>().DeleteHydrateFolder();
+                services.GetRequiredService<AzureRepository>().DeleteHydrateFolder();
             }
 
             return 0;
