@@ -58,9 +58,9 @@ namespace Arius.Tests
         [Test]
         public async Task Properties_ManifestBlob_Valid()
         {
-            var manifestRepo = TestSetup.GetServiceProvider().GetRequiredService<AzureRepository.ManifestRepository>();
+            var repo = TestSetup.GetAzureRepository(); //TODO as ManifestRepository?
 
-            var manifestBlob = manifestRepo.GetAllManifestBlobs().First();
+            var manifestBlob = repo.GetAllManifestBlobs().First();
 
             Assert.AreEqual(manifestBlob.Folder, AzureRepository.ManifestRepository.ManifestDirectoryName);
 
@@ -77,7 +77,7 @@ namespace Arius.Tests
 
 
 
-            var mm = await manifestRepo.GetChunkHashesAsync(manifestBlob.Hash);
+            var mm = await repo.GetChunkHashesAsync(manifestBlob.Hash);
 
         }
 
