@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    public class ArchiveCommandExecutor : ICommandExecutor
+    internal class ArchiveCommandExecutor : ICommandExecutor //This class is internal but the interface is public
     {
         internal interface IOptions
         {
@@ -39,7 +39,7 @@ namespace Arius.Core.Commands
         //    public string Path { get; init; }
         //}
 
-        internal ArchiveCommandExecutor(IOptions options,
+        public ArchiveCommandExecutor(IOptions options,
             ILogger<ArchiveCommandExecutor> logger,
             IServiceProvider serviceProvider)
         {
@@ -108,7 +108,7 @@ namespace Arius.Core.Commands
         private readonly IServiceProvider services;
         private readonly DirectoryInfo root;
 
-        internal IServiceProvider Services => services;
+        IServiceProvider ICommandExecutor.Services => services;
 
         public async Task<int> Execute()
         {

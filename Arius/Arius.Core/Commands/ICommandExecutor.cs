@@ -1,9 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
 {
-    internal interface ICommandExecutor
+    public interface ICommandExecutor
     {
+        internal IServiceProvider Services { get; }
         public Task<int> Execute();
     }
 }

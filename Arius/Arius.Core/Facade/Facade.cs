@@ -110,7 +110,7 @@ namespace Arius.Core.Facade
         //    return new ArchiveCommand(sp);
         //}
 
-        public ArchiveCommandExecutor CreateArchiveCommand(ArchiveCommandOptions options)
+        public ICommandExecutor CreateArchiveCommand(ArchiveCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
@@ -119,7 +119,7 @@ namespace Arius.Core.Facade
             return ace;
         }
 
-        public RestoreCommandExecutor CreateRestoreCommand(RestoreCommandOptions options)
+        public ICommandExecutor CreateRestoreCommand(RestoreCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
