@@ -249,7 +249,7 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
-            var options = new Core.Facade.Facade.RestoreCommandOptions
+            var options = new Core.Commands.RestoreCommandOptions
             {
                 AccountName = TestSetup.AccountName,
                 AccountKey = TestSetup.AccountKey,

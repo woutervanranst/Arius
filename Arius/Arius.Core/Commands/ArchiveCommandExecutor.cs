@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,31 +14,36 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
+    public class ArchiveCommandOptions : Facade.Facade.IOptions,
+            ArchiveCommandExecutor.IOptions,
+
+            UploadEncryptedChunksBlockProvider.IOptions,
+            RemoveDeletedPointersTaskProvider.IOptions,
+            DeleteBinaryFilesTaskProvider.IOptions,
+
+            AzureRepository.IOptions,
+            IBlobCopier.IOptions,
+            IChunker.IOptions,
+            IEncrypter.IOptions,
+            IHashValueProvider.IOptions
+    {
+        public string AccountName { get; init; }
+        public string AccountKey { get; init; }
+        public string Passphrase { get; init; }
+        public bool FastHash { get; init; }
+        public string Container { get; init; }
+        public bool RemoveLocal { get; init; }
+        public AccessTier Tier { get; init; }
+        public bool Dedup { get; init; }
+        public string Path { get; init; }
+    }
+
     internal class ArchiveCommandExecutor : ICommandExecutor //This class is internal but the interface is public
     {
         internal interface IOptions
         {
             string Path { get; }
         }
-
-        //private class Options : IOptions, 
-        //    UploadEncryptedChunksBlockProvider.IOptions,
-        //    RemoveDeletedPointersTaskProvider.IOptions,
-        //    DeleteBinaryFilesTaskProvider.IOptions,
-        //    IBlobCopier.IOptions,
-        //    IEncrypter.IOptions,
-        //    IHashValueProvider.IOptions
-        //{
-        //    public string AccountName { get; init; }
-        //    public string AccountKey { get; init; }
-        //    public string Passphrase { get; init; }
-        //    public bool FastHash { get; init; }
-        //    public string Container { get; init; }
-        //    public bool RemoveLocal { get; init; }
-        //    public AccessTier Tier { get; init; }
-        //    //public bool Dedup { get; init; }
-        //    public string Path { get; init; }
-        //}
 
         public ArchiveCommandExecutor(IOptions options,
             ILogger<ArchiveCommandExecutor> logger,

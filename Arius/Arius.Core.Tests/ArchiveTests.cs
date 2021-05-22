@@ -552,7 +552,7 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var options = new Core.Facade.Facade.ArchiveCommandOptions
+            var options = new Core.Commands.ArchiveCommandOptions
             {
                 AccountName = TestSetup.AccountName,
                 AccountKey = TestSetup.AccountKey,

@@ -7,11 +7,44 @@ using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Repositories;
+using Arius.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
+    public class RestoreCommandOptions : Facade.Facade.IOptions,
+            RestoreCommandExecutor.IOptions,
+
+            SynchronizeBlockProvider.IOptions,
+            DownloadBlockProvider.IOptions,
+            ProcessPointerChunksBlockProvider.IOptions,
+            MergeBlockProvider.IOptions,
+
+            //IChunker.IOptions,
+
+            IBlobCopier.IOptions,
+            IHashValueProvider.IOptions,
+            IEncrypter.IOptions,
+            AzureRepository.IOptions
+    {
+        public string AccountName { get; init; }
+        public string AccountKey { get; init; }
+        public string Passphrase { get; init; }
+        public bool FastHash => false; //Do not fasthash on restore to ensure integrity
+        public string Container { get; init; }
+        public bool Synchronize { get; init; }
+        public bool Download { get; init; }
+        public bool KeepPointers { get; init; }
+        public string Path { get; init; }
+
+        //public bool Dedup => false;
+        //public AccessTier Tier { get => throw new NotImplementedException(); init => throw new NotImplementedException(); } // Should not be used
+        //public bool RemoveLocal { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+        //public int MinSize { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+        //public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
+    }
+
     internal class RestoreCommandExecutor : ICommandExecutor //This class is internal but the interface is public
     {
         internal interface IOptions
