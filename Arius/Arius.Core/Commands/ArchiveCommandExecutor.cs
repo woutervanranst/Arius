@@ -102,8 +102,6 @@ namespace Arius.Core.Commands
                 .AddSingleton<RemoveDeletedPointersTaskProvider.IOptions>(options)
                 //.AddSingleton<ExportToJsonTaskProvider>()
                 .AddSingleton<DeleteBinaryFilesTaskProvider.IOptions>(options);
-
-            
         }
 
         private readonly ILogger<ArchiveCommandExecutor> logger;

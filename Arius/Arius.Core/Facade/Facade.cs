@@ -26,6 +26,7 @@ namespace Arius.Core.Facade
             UploadEncryptedChunksBlockProvider.IOptions,
             RemoveDeletedPointersTaskProvider.IOptions,
             DeleteBinaryFilesTaskProvider.IOptions,
+            AzureRepository.IOptions,
             IBlobCopier.IOptions,
             IChunker.IOptions,
             IEncrypter.IOptions,
@@ -108,6 +109,10 @@ namespace Arius.Core.Facade
                 //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
+
+            //Add the options for the Repositories
+            sc
+                .AddSingleton<AzureRepository.IOptions>(options);
 
             // Add the options for the services
             sc
