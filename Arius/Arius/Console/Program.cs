@@ -193,7 +193,7 @@ namespace Arius
                 {
                     try
                     {
-                        foreach (typeof(ICliCommand).GetInterfaceMap)
+                        foreach (var c in serviceProvider.GetServices<ICliCommand>())
                         {
                             throw new NotImplementedException();
                         }

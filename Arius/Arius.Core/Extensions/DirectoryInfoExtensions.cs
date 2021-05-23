@@ -69,18 +69,18 @@ namespace Arius.Core.Extensions
         }
 
 
-        public static IEnumerable<FileInfo> GetAllFiles(this DirectoryInfo directoryInfo)
+        public static IEnumerable<FileInfo> GetAllFileInfos(this DirectoryInfo directoryInfo)
         {
             return directoryInfo.GetFiles("*", SearchOption.AllDirectories);
         }
-        public static IEnumerable<FileInfo> GetBinaryFiles(this DirectoryInfo directoryInfo)
+        public static IEnumerable<FileInfo> GetBinaryFileInfos(this DirectoryInfo directoryInfo)
         {
-            return directoryInfo.GetAllFiles().Where(fi => !fi.IsPointerFile());
+            return directoryInfo.GetAllFileInfos().Where(fi => !fi.IsPointerFile());
         }
 
-        public static IEnumerable<FileInfo> GetPointerFiles(this DirectoryInfo directoryInfo)
+        public static IEnumerable<FileInfo> GetPointerFileInfos(this DirectoryInfo directoryInfo)
         {
-            return directoryInfo.GetAllFiles().Where(fi => fi.IsPointerFile());
+            return directoryInfo.GetAllFileInfos().Where(fi => fi.IsPointerFile());
         }
     }
 }

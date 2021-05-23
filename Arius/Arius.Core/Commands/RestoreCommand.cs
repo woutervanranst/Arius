@@ -216,6 +216,8 @@ namespace Arius.Core.Commands
             {
                 // R20
                 throw new NotImplementedException();
+                //var pf = root.GetPointerFileInfos();
+                //processPointerChunksBlock.Post(pf);
             }
 
 

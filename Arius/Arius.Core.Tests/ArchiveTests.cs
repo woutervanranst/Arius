@@ -175,7 +175,7 @@ namespace Arius.Tests
         {
             //SET UP
             //Add a duplicate of the first file
-            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
+            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFileInfos().First();
             var bfi2 = bfi1.CopyTo(TestSetup.archiveTestDirectory, $"Copy of {bfi1.Name}");
 
             // Modify datetime slightly
@@ -239,7 +239,7 @@ namespace Arius.Tests
         {
             //SET UP
             //Add a duplicate of the pointer
-            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
+            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
             var pfi3 = Arius.Core.Extensions.FileInfoExtensions.CopyTo(pfi1, $"Copy2 of {pfi1.Name}");
 
             // Modify datetime slightly
@@ -299,7 +299,7 @@ namespace Arius.Tests
         public async Task Archive_OneFile_RenameBinaryFileWithPointer()
         {
             //SET UP
-            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
+            var bfi1 = TestSetup.archiveTestDirectory.GetBinaryFileInfos().First();
             var pfi1 = bfi1.GetPointerFileInfo();
             var pfi1_FullName_Original = pfi1.FullName;
 
@@ -362,7 +362,7 @@ namespace Arius.Tests
         public async Task Archive_OneFile_RenameBinaryFileFileWithoutPointer()
         {
             //SET UP
-            var bfi = TestSetup.archiveTestDirectory.GetBinaryFiles().First();
+            var bfi = TestSetup.archiveTestDirectory.GetBinaryFileInfos().First();
             var pfi = bfi.GetPointerFileInfo();
             var pfi_FullName_Original = pfi.FullName;
             bfi.Rename($"Moving of {bfi.Name}");
@@ -416,7 +416,7 @@ namespace Arius.Tests
         public async Task Archive_OneFile_RemoveBinaryFiles()
         {
             //10
-            Assert.IsTrue(TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
+            Assert.IsTrue(TestSetup.archiveTestDirectory.GetBinaryFileInfos().Any());
 
 
             //EXECUTE
@@ -427,7 +427,7 @@ namespace Arius.Tests
             var repo = services.GetRequiredService<AzureRepository>();
 
             //20
-            Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFiles().Any());
+            Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFileInfos().Any());
 
             //30
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -449,7 +449,7 @@ namespace Arius.Tests
         public async Task Archive_OneFile_RenameJustPointer()
         {
             //SET UP
-            var pfi = TestSetup.archiveTestDirectory.GetPointerFiles().First();
+            var pfi = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
             var pfi_FullName_Original = pfi.FullName;
             pfi.Rename($"Moving2 of {pfi.Name}");
 

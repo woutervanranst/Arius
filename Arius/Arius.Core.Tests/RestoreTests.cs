@@ -44,8 +44,8 @@ namespace Arius.Tests
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
 
 
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
@@ -160,8 +160,8 @@ namespace Arius.Tests
 
 
             //ASSERT OUTCOME
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
 
             //30 The folders are identical
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
@@ -176,8 +176,8 @@ namespace Arius.Tests
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: false);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
 
 
             bool allNonPointerFilesAreRestored = !restoredFiles.Except(archiveFiles, comparer).Any();
@@ -198,8 +198,8 @@ namespace Arius.Tests
 
             await RestoreCommand(synchronize: true, download: false, keepPointers: true);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFiles();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
 
 
             archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
@@ -215,7 +215,7 @@ namespace Arius.Tests
             Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
             // Copy one pointer (to restore) to the restoredirectory
-            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFiles().First();
+            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
             pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
 
             var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
