@@ -5,11 +5,13 @@ VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius", "Arius\Arius.csproj", "{C6FD20ED-CD85-4B64-A1C9-59B3D17FEA42}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Tests", "Arius.Core.Tests\Arius.Core.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests", "Arius.Core.Tests\Arius.Core.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.UI", "Arius.UI\Arius.UI.csproj", "{584DEE06-AE1A-44A1-A806-F6C652C98873}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core", "Arius.Core\Arius.Core.csproj", "{3DB1FF8B-9671-412B-BE82-8530CA65FF19}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core", "Arius.Core\Arius.Core.csproj", "{3DB1FF8B-9671-412B-BE82-8530CA65FF19}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Cli.Tests", "Arius.Cli.Tests\Arius.Cli.Tests.csproj", "{156346A7-B035-40C2-84AB-9BEAB6D6301C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

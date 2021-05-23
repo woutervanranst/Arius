@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Arius.Core.Repositories;
+using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System.Linq;
 
@@ -26,7 +27,7 @@ namespace Arius.Tests
             
             var cb1 = repo.GetAllChunkBlobs().First();
 
-            var cb2 = repo.GetChunkBlobByName(Repositories.AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, cb1.Name);
+            var cb2 = repo.GetChunkBlobByName(AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, cb1.Name);
 
             Assert.AreEqual(cb1.FullName, cb2.FullName);
         }
@@ -36,7 +37,7 @@ namespace Arius.Tests
         {
             var repo = TestSetup.GetAzureRepository(); //TODO as ChunkRepository?
 
-            var cb = repo.GetChunkBlobByName(Repositories.AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, "idonotexist");
+            var cb = repo.GetChunkBlobByName(AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, "idonotexist");
             
             Assert.IsNull(cb);
         }
