@@ -226,7 +226,7 @@ namespace Arius.Tests
 
 
             //This is not yet implemented
-            Assert.CatchAsync<ApplicationException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
+            Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
 
             //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
 
