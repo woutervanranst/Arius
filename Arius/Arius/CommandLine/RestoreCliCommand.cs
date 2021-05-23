@@ -7,6 +7,13 @@ namespace Arius.CommandLine
 {
     internal class RestoreCliCommand : ICliCommand
     {
+        public RestoreCliCommand(Arius.Core.Facade.Facade facade)
+        {
+            this.facade = facade;
+        }
+
+        private readonly Arius.Core.Facade.Facade facade;
+
         public Command GetCommand()
         {
             var restoreCommand = new Command("restore", "Restore from blob");
@@ -64,26 +71,41 @@ namespace Arius.CommandLine
                 restoreCommand.AddArgument(pathArgument);
             }
 
-            restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>((accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
-            {
-                throw new NotImplementedException();
+            restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>(
+                async (accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
+                {
+                    var o = new Core.Commands.RestoreCommandOptions
+                    {
+                        AccountName = accountName,
+                        AccountKey = accountKey,
+                        Passphrase = passphrase,
+                        Container = container,
+                        Synchronize = synchronize,
+                        Download = download,
+                        KeepPointers = keepPointers,
+                        Path = path
+                    };
 
-                //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
+                    var c = facade.CreateRestoreCommand(o);
 
-                //pcp.CommandExecutorOptions = new RestoreOptions
-                //{
-                //    AccountName = accountName,
-                //    AccountKey = accountKey,
-                //    Passphrase = passphrase,
-                //    Container = container,
-                //    Synchronize = synchronize,
-                //    Download = download,
-                //    KeepPointers = keepPointers,
-                //    Path = path
-                //};
+                    return await c.Execute();
 
-                //return Task.FromResult<int>(0);
-            });
+                    //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
+
+                    //pcp.CommandExecutorOptions = new RestoreOptions
+                    //{
+                    //    AccountName = accountName,
+                    //    AccountKey = accountKey,
+                    //    Passphrase = passphrase,
+                    //    Container = container,
+                    //    Synchronize = synchronize,
+                    //    Download = download,
+                    //    KeepPointers = keepPointers,
+                    //    Path = path
+                    //};
+
+                    //return Task.FromResult<int>(0);
+                });
 
             return restoreCommand;
         }
