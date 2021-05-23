@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using Arius.Core.Models;
-using Arius.Repositories;
+using Arius.Core.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Services

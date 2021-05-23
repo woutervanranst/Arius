@@ -7,7 +7,7 @@ using Arius.Core.Commands;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Repositories
+namespace Arius.Core.Repositories
 {
     internal partial class AzureRepository
     {

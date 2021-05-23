@@ -1,7 +1,7 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
-using Arius.Repositories;
+using Arius.Core.Repositories;
 using Arius.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -17,7 +17,7 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-[assembly: InternalsVisibleTo("Arius.Core.Tests")]
+[assembly: InternalsVisibleTo("Arius.Tests")]
 namespace Arius.Core.Facade
 {
     public class Facade
