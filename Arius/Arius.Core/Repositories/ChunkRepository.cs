@@ -9,7 +9,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Repositories
+namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {

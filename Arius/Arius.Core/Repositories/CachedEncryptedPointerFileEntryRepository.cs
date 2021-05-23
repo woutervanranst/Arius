@@ -13,7 +13,7 @@ using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 using Murmur;
 
-namespace Arius.Core.Repositories
+namespace Arius.Repositories
 {
     internal partial class AzureRepository
     {

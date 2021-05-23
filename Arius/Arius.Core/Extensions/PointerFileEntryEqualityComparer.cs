@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Arius.Core.Repositories;
+using Arius.Repositories;
 
 namespace Arius.Core.Extensions
 {
