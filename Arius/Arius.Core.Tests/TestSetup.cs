@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Arius.Core.Configuration;
-using Arius.Repositories;
+using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Azure.Cosmos.Table;
