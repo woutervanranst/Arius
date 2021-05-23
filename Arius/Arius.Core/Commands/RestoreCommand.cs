@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace Arius.Core.Commands
 {
     public class RestoreCommandOptions : Facade.Facade.IOptions,
-            RestoreCommandExecutor.IOptions,
+            RestoreCommand.IOptions,
 
             SynchronizeBlockProvider.IOptions,
             DownloadBlockProvider.IOptions,
@@ -45,7 +45,7 @@ namespace Arius.Core.Commands
         //public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
     }
 
-    internal class RestoreCommandExecutor : ICommandExecutor //This class is internal but the interface is public for use in the Facade
+    internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
         internal interface IOptions
         {
@@ -54,8 +54,8 @@ namespace Arius.Core.Commands
             bool Synchronize { get; }
         }
 
-        public RestoreCommandExecutor(IOptions options,
-            ILogger<RestoreCommandExecutor> logger,
+        public RestoreCommand(IOptions options,
+            ILogger<RestoreCommand> logger,
             IServiceProvider serviceProvider)
         {
             _options = options;
@@ -76,10 +76,10 @@ namespace Arius.Core.Commands
         }
 
         private readonly IOptions _options;
-        private readonly ILogger<RestoreCommandExecutor> _logger;
+        private readonly ILogger<RestoreCommand> _logger;
         private readonly IServiceProvider services;
 
-        IServiceProvider ICommandExecutor.Services => services;
+        IServiceProvider ICommand.Services => services;
 
         public async Task<int> Execute()
         {

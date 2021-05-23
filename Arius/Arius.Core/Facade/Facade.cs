@@ -47,20 +47,20 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        public ICommandExecutor CreateArchiveCommand(ArchiveCommandOptions options)
+        public ICommand CreateArchiveCommand(ArchiveCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
+            var ace = sp.GetRequiredService<ArchiveExecutor>();
 
             return ace;
         }
 
-        public ICommandExecutor CreateRestoreCommand(RestoreCommandOptions options)
+        public ICommand CreateRestoreCommand(RestoreCommandOptions options)
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            var rce = sp.GetRequiredService<RestoreCommandExecutor>();
+            var rce = sp.GetRequiredService<RestoreCommand>();
 
             return rce;
         }
@@ -74,8 +74,8 @@ namespace Arius.Core.Facade
 
             sc
                 //Add Commmands
-                .AddSingleton<ArchiveCommandExecutor>()
-                .AddSingleton<RestoreCommandExecutor>()
+                .AddSingleton<ArchiveExecutor>()
+                .AddSingleton<RestoreCommand>()
 
                 //Add Services
                 .AddSingleton<PointerService>()
@@ -127,9 +127,9 @@ namespace Arius.Core.Facade
             //    .AddSingleton<IEncrypter.IOptions>(options)
             //    .AddSingleton<IHashValueProvider.IOptions>(options);
 
-            ArchiveCommandExecutor.ConfigureServices(sc);
+            ArchiveExecutor.ConfigureServices(sc);
             //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
-            RestoreCommandExecutor.ConfigureServices(sc);
+            RestoreCommand.ConfigureServices(sc);
 
             sc
                 .AddSingleton<ILoggerFactory>(loggerFactory)
