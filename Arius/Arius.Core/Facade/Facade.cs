@@ -51,7 +51,7 @@ namespace Arius.Core.Facade
         {
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            var ace = sp.GetRequiredService<ArchiveExecutor>();
+            var ace = sp.GetRequiredService<ArchiveCommand>();
 
             return ace;
         }
@@ -74,7 +74,7 @@ namespace Arius.Core.Facade
 
             sc
                 //Add Commmands
-                .AddSingleton<ArchiveExecutor>()
+                .AddSingleton<ArchiveCommand>()
                 .AddSingleton<RestoreCommand>()
 
                 //Add Services
@@ -127,7 +127,7 @@ namespace Arius.Core.Facade
             //    .AddSingleton<IEncrypter.IOptions>(options)
             //    .AddSingleton<IHashValueProvider.IOptions>(options);
 
-            ArchiveExecutor.ConfigureServices(sc);
+            ArchiveCommand.ConfigureServices(sc);
             //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
             RestoreCommand.ConfigureServices(sc);
 

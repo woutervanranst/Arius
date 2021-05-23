@@ -12,7 +12,6 @@ namespace Arius.CommandLine
         public ArchiveCliCommand(Arius.Core.Facade.Facade facade)
         {
             this.facade = facade;
-            
         }
 
         private readonly Arius.Core.Facade.Facade facade;
@@ -104,7 +103,22 @@ namespace Arius.CommandLine
                 .Create<string, string, string, string, bool, string, bool, bool, string>(
                     async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
                     {
-                        return await facade.Archive(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+                        var o = new Core.Commands.ArchiveCommandOptions()
+                        {
+                            AccountName = accountName,
+                            AccountKey = accountKey,
+                            Passphrase = passphrase,
+                            FastHash = fastHash,
+                            Container = container,
+                            RemoveLocal = removeLocal,
+                            Tier = tier,
+                            Dedup = dedup,
+                            Path = path
+                        };
+
+                        var c = facade.CreateArchiveCommand(o);
+
+                        return await c.Execute();
                         
 
                         //pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);

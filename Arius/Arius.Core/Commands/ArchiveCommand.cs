@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging;
 namespace Arius.Core.Commands
 {
     public class ArchiveCommandOptions : Facade.Facade.IOptions,
-            ArchiveExecutor.IOptions,
+            ArchiveCommand.IOptions,
 
             UploadEncryptedChunksBlockProvider.IOptions,
             RemoveDeletedPointersTaskProvider.IOptions,
@@ -38,15 +38,15 @@ namespace Arius.Core.Commands
         public string Path { get; init; }
     }
 
-    internal class ArchiveExecutor : ICommand //This class is internal but the interface is public for use in the Facade
+    internal class ArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
         internal interface IOptions
         {
             string Path { get; }
         }
 
-        public ArchiveExecutor(IOptions options,
-            ILogger<ArchiveExecutor> logger,
+        public ArchiveCommand(IOptions options,
+            ILogger<ArchiveCommand> logger,
             IServiceProvider serviceProvider)
         {
             this.logger = logger;
@@ -110,7 +110,7 @@ namespace Arius.Core.Commands
             //    .AddSingleton<DeleteBinaryFilesTaskProvider.IOptions>(options);
         }
 
-        private readonly ILogger<ArchiveExecutor> logger;
+        private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
         private readonly DirectoryInfo root;
 

@@ -12,6 +12,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.Threading;
 using Microsoft.Extensions.Options;
+using System.Reflection;
+using System.Linq;
 
 namespace Arius
 {
@@ -193,10 +195,12 @@ namespace Arius
                 {
                     try
                     {
-                        foreach (var c in serviceProvider.GetServices<ICliCommand>())
-                        {
-                            throw new NotImplementedException();
-                        }
+                        //foreach (Type t in Assembly.GetExecutingAssembly().GetTypes()
+                        //    .Where(type => t.GetInterfaces().Contains(typeof(ICliCommand))))
+                        //{
+
+                        //}
+                            
                         Command archiveCommand = serviceProvider.GetRequiredService<ArchiveCliCommand>().GetCommand();
                         Command restoreCommand = serviceProvider.GetRequiredService<RestoreCliCommand>().GetCommand();
 
