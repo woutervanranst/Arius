@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using Arius.Core.Extensions;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     class ExternalProcess
     {
@@ -19,12 +19,12 @@ namespace Arius.Services
 
             if (string.IsNullOrEmpty(path))
                 logger.LogWarning("Environment variable PATH not found");
-            
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 // 1. Find in the PATH folders
                 if (!string.IsNullOrEmpty(path))
-                { 
+                {
                     var executables = path.Split(';')
                         .Where(dir => !string.IsNullOrWhiteSpace(dir))
                         .Select(dir => new DirectoryInfo(dir))
@@ -79,7 +79,7 @@ namespace Arius.Services
                     throw new ArgumentException($"Could not find {linuxExecutableName} in /", nameof(linuxExecutableName), e);
                 }
             }
-            
+
             throw new NotImplementedException();
         }
 
@@ -95,24 +95,24 @@ namespace Arius.Services
 
         //public event DataReceivedEventHandler? ErrorDataReceived;
 
-//        internal void OutputReadNotifyUser(
-//#nullable disable
-//            string data)
-//        {
-//            DataReceivedEventHandler outputDataReceived = this.OutputDataReceived;
-//            if (outputDataReceived == null)
-//                return;
-//            DataReceivedEventArgs e = new DataReceivedEventArgs(data);
-//            ISynchronizeInvoke synchronizingObject = this.SynchronizingObject;
-//            if (synchronizingObject != null && synchronizingObject.InvokeRequired)
-//                synchronizingObject.Invoke((Delegate)outputDataReceived, new object[2]
-//                {
-//                    (object) this,
-//                    (object) e
-//                });
-//            else
-//                outputDataReceived((object)this, e);
-//        }
+        //        internal void OutputReadNotifyUser(
+        //#nullable disable
+        //            string data)
+        //        {
+        //            DataReceivedEventHandler outputDataReceived = this.OutputDataReceived;
+        //            if (outputDataReceived == null)
+        //                return;
+        //            DataReceivedEventArgs e = new DataReceivedEventArgs(data);
+        //            ISynchronizeInvoke synchronizingObject = this.SynchronizingObject;
+        //            if (synchronizingObject != null && synchronizingObject.InvokeRequired)
+        //                synchronizingObject.Invoke((Delegate)outputDataReceived, new object[2]
+        //                {
+        //                    (object) this,
+        //                    (object) e
+        //                });
+        //            else
+        //                outputDataReceived((object)this, e);
+        //        }
 
         public string Execute(string arguments)
         {
@@ -139,7 +139,7 @@ namespace Arius.Services
                 process.StartInfo = psi;
                 process.OutputDataReceived += (_, data) => output += data.Data + Environment.NewLine;
                 process.ErrorDataReceived += (_, data) => errorMsg += data.Data ?? string.Empty;
-                
+
                 process.Start();
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
@@ -155,7 +155,7 @@ namespace Arius.Services
             }
             catch (Win32Exception e) // Win32Exception: 'The system cannot find the file specified.'
             {
-                System.Console.WriteLine(e);
+                Console.WriteLine(e);
                 throw;
             }
         }

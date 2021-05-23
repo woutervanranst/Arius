@@ -8,7 +8,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     internal interface IChunker
     {
@@ -21,7 +21,7 @@ namespace Arius.Services
         BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target);
     }
 
-    
+
     internal class Chunker : IChunker
     {
         public IChunkFile[] Chunk(BinaryFile item)

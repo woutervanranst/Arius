@@ -4,7 +4,7 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     internal class PointerService
     {
@@ -23,9 +23,9 @@ namespace Arius.Services
             var pointerFileInfo = f.PointerFileInfo;
 
             return CreatePointerFileIfNotExists(
-                f.Root, 
-                pointerFileInfo, 
-                f.Hash, 
+                f.Root,
+                pointerFileInfo,
+                f.Hash,
                 File.GetCreationTimeUtc(f.FullName),
                 File.GetLastWriteTimeUtc(f.FullName));
         }
@@ -39,11 +39,11 @@ namespace Arius.Services
 
             //if (pointerFileInfo.Exists)
             //    throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
-            
+
             return CreatePointerFileIfNotExists(root,
-                pointerFileInfo, 
-                pfe.ManifestHash, 
-                pfe.CreationTimeUtc!.Value, 
+                pointerFileInfo,
+                pfe.ManifestHash,
+                pfe.CreationTimeUtc!.Value,
                 pfe.LastWriteTimeUtc!.Value);
         }
 
@@ -74,7 +74,7 @@ namespace Arius.Services
                 //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
 
                 _logger.LogWarning($"The PointerFile {pf.RelativeName} is out of sync. Overwriting");
-                
+
                 //Recreate the pointer
                 pointerFileInfo.Delete();
                 pf = CreatePointerFileIfNotExists(root, pointerFileInfo, manifestHash, creationTimeUtc, lastWriteTimeUtc);

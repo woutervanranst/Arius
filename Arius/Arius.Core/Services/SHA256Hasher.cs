@@ -7,7 +7,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     internal interface IHashValueProvider
     {
@@ -20,7 +20,7 @@ namespace Arius.Services
         HashValue GetHashValue(BinaryFile bf);
         HashValue GetHashValue(string fullName);
     }
-    
+
     internal class SHA256Hasher : IHashValueProvider
     {
         public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)

@@ -13,7 +13,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     internal interface IBlobCopier
     {
@@ -178,7 +178,7 @@ namespace Arius.Services
             var p = new ExternalProcess(_AzCopyPath.Result);
 
             p.Execute(arguments, regex, "logFullName", "completed", "failed", "skipped", "finalJobStatus",
-                out string rawOutput, 
+                out string rawOutput,
                 out string logFullName, out int completed, out int failed, out int skipped, out string finalJobStatus);
 
             _logger.LogInformation($"{completed} files downloaded, job status '{finalJobStatus}'");

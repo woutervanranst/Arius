@@ -6,7 +6,7 @@ using Arius.Core.Commands;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     internal interface IEncrypter
     {
@@ -86,7 +86,7 @@ namespace Arius.Services
             }
         }
 
-        
+
 
         //public EncryptedChunkFile2 Encrypt(ChunkFile2 fileToEncrypt, bool deletePlaintext = false)
         //{
@@ -139,7 +139,7 @@ namespace Arius.Services
 
             //Extract the archive to a separate folder
             var randomThreadSafeDirectory = new DirectoryInfo($"{fileToDecrypt.Directory.Name}{Path.DirectorySeparatorChar}{Guid.NewGuid()}");
-            
+
             string arguments = $@"e ""{fileToDecrypt.FullName}"" -p{_passphrase} -o""{randomThreadSafeDirectory.FullName}""";
             var regex = @"Everything is Ok";
 

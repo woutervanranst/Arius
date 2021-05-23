@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Arius.Services
+namespace Arius.Core.Services
 {
     // https://www.codeproject.com/Articles/801608/Using-a-rolling-hash-to-break-up-binary-files
 
@@ -67,10 +67,10 @@ namespace Arius.Services
                 for (int i = 0; i < bytesRead; i++)
                 {
                     pos++;
-                    hash = buffer[i] + ((hash - (maxSeed * circle[circleIndex])) * seed);
+                    hash = buffer[i] + (hash - maxSeed * circle[circleIndex]) * seed;
                     circle[circleIndex++] = buffer[i];
                     if (circleIndex == width) circleIndex = 0;
-                    if (((hash | mask) == hash) || (pos == length))  //--> match or EOF
+                    if ((hash | mask) == hash || pos == length)  //--> match or EOF
                     {
                         //--> apply the strong hash to the remainder of the bytes in the circular queue...
                         hasher.TransformFinalBlock(circle, 0, circleIndex == 0 ? width : circleIndex);
@@ -106,9 +106,9 @@ namespace Arius.Services
 
             internal Chunk(long offset, long length, byte[] hash)
             {
-                this.Offset = offset;
-                this.Length = length;
-                this.Hash = hash;
+                Offset = offset;
+                Length = length;
+                Hash = hash;
             }
         }
     }

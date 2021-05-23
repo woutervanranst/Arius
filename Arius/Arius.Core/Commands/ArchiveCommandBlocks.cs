@@ -11,7 +11,7 @@ using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Services;
+using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
