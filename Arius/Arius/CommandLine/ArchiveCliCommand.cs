@@ -7,9 +7,9 @@ using Arius.Extensions;
 
 namespace Arius.CommandLine
 {
-    internal class ArchiveCommand //: IAriusCommand
+    internal class ArchiveCliCommand : ICliCommand
     {
-        public ArchiveCommand(Arius.Core.Facade.Facade facade)
+        public ArchiveCliCommand(Arius.Core.Facade.Facade facade)
         {
             this.facade = facade;
             

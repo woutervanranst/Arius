@@ -70,8 +70,8 @@ namespace Arius
                         .AddSingleton<AriusCommandService>()
                         .AddHostedService<AriusCommandService>(p => p.GetRequiredService<AriusCommandService>())
 
-                        .AddSingleton<ArchiveCommand>()
-                        .AddSingleton<RestoreCommand>()
+                        .AddSingleton<ArchiveCliCommand>()
+                        .AddSingleton<RestoreCliCommand>()
 
                         .AddSingleton<Arius.Core.Facade.Facade>();
 
@@ -193,8 +193,12 @@ namespace Arius
                 {
                     try
                     {
-                        Command archiveCommand = serviceProvider.GetRequiredService<ArchiveCommand>().GetCommand();
-                        Command restoreCommand = serviceProvider.GetRequiredService<RestoreCommand>().GetCommand();
+                        foreach (typeof(ICliCommand).GetInterfaceMap)
+                        {
+                            throw new NotImplementedException();
+                        }
+                        Command archiveCommand = serviceProvider.GetRequiredService<ArchiveCliCommand>().GetCommand();
+                        Command restoreCommand = serviceProvider.GetRequiredService<RestoreCliCommand>().GetCommand();
 
                         var ariusCommand = new RootCommand();
                         ariusCommand.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";

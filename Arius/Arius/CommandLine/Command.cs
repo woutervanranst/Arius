@@ -3,10 +3,10 @@ using System.CommandLine;
 
 namespace Arius.CommandLine
 {
-    //internal interface IAriusCommand
-    //{
-    //    Command GetCommand();
-    //}
+    internal interface ICliCommand
+    {
+        Command GetCommand();
+    }
 
     //internal class ParsedCommandProvider
     //{

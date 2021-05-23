@@ -5,7 +5,7 @@ using Arius.Extensions;
 
 namespace Arius.CommandLine
 {
-    internal class RestoreCommand // : IAriusCommand
+    internal class RestoreCliCommand : ICliCommand
     {
         public Command GetCommand()
         {
