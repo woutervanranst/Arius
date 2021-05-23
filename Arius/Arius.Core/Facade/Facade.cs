@@ -22,7 +22,7 @@ namespace Arius.Core.Facade
 {
     public class Facade
     {
-        public interface IOptions
+        internal interface IOptions // Used for DI in the facade
         {
         }
 

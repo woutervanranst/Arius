@@ -38,7 +38,7 @@ namespace Arius.Core.Commands
         public string Path { get; init; }
     }
 
-    internal class ArchiveCommandExecutor : ICommandExecutor //This class is internal but the interface is public
+    internal class ArchiveCommandExecutor : ICommandExecutor //This class is internal but the interface is public for use in the Facade
     {
         internal interface IOptions
         {

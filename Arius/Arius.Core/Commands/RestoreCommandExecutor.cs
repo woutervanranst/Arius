@@ -45,7 +45,7 @@ namespace Arius.Core.Commands
         //public bool Simulate { get => throw new NotImplementedException(); init => throw new NotImplementedException(); }
     }
 
-    internal class RestoreCommandExecutor : ICommandExecutor //This class is internal but the interface is public
+    internal class RestoreCommandExecutor : ICommandExecutor //This class is internal but the interface is public for use in the Facade
     {
         internal interface IOptions
         {
