@@ -258,7 +258,7 @@ namespace Arius.Tests
                 Synchronize = synchronize,
                 Download = download,
                 KeepPointers = keepPointers,
-                Path = TestSetup.archiveTestDirectory.FullName
+                Path = TestSetup.restoreTestDirectory.FullName
             };
 
             var c = TestSetup.Facade.CreateRestoreCommand(options);
