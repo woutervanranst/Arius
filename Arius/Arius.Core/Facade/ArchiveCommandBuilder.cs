@@ -1,177 +1,164 @@
 ﻿using Arius.Core.Commands;
-using Arius.Core.Configuration;
-using Arius.Core.Extensions;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs;
-using Microsoft.Azure.Cosmos.Table;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Azure.Storage.Blobs.Models;
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 namespace Arius.Core.Facade
 {
     public partial class Facade
     {
-        internal interface IOptions // Used for DI in the facade
+        public class ArchiveCommandBuilder
         {
-        }
-
-        public Facade(ILoggerFactory loggerFactory,
-            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
-        {
-            if (loggerFactory is null)
-                throw new ArgumentNullException(nameof(loggerFactory));
-            if (azCopyAppSettings is null)
-                throw new ArgumentNullException(nameof(azCopyAppSettings));
-            if (tempDirectoryAppSettings is null)
-                throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
-
-            this.loggerFactory = loggerFactory;
-            this.azCopyAppSettings = azCopyAppSettings.Value;
-            this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
-
-            //services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value));
-        }
-
-        public ArchiveCommandBuilder GetArchiveCommandBuilder()
-        {
-            return new ArchiveCommandBuilder((options) =>
+            internal ArchiveCommandBuilder(Func<ArchiveCommandOptions, ICommand> buildWithOptions) 
             {
-                var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-
-                var ace = sp.GetRequiredService<ArchiveCommand>();
-
-                return ace;
-            });
-        }
-
-
-
-
-        private readonly ILoggerFactory loggerFactory;
-        private readonly AzCopyAppSettings azCopyAppSettings;
-        private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
-
-        //public ICommand CreateRestoreCommand(RestoreCommandOptions options)
-        //{
-        //    throw new NotImplementedException();
-
-        //    var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-
-        //    var rce = sp.GetRequiredService<RestoreCommand>();
-
-        //    return rce;
-        //}
-
-
-        private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory,
-            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
-            T options) where  T : IOptions
-        {
-            var sc = new ServiceCollection();
-
-            sc
-                //Add Commmands
-                .AddSingleton<ArchiveCommand>()
-                .AddSingleton<RestoreCommand>()
-
-                //Add Services
-                .AddSingleton<PointerService>()
-                .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
-                .AddSingleton<IBlobCopier, AzCopier>()
-                .AddSingleton<AzureRepository>()
-
-                // Add Chunkers
-                .AddSingleton<Chunker>()
-                .AddSingleton<DedupChunker>();
-
-            if (options is IChunker.IOptions chunkerOptions)
-            { 
-                sc
-                    .AddSingleton<IChunker>((sp) =>
-                    {
-                        if (chunkerOptions.Dedup)
-                            return sp.GetRequiredService<DedupChunker>();
-                        else
-                            return sp.GetRequiredService<Chunker>();
-                    });
+                this.buildWithOptions = buildWithOptions;
             }
-            //else
-            //{
-            //    throw new NotImplementedException();
-            //}
 
-            // Add Options
-            sc
-                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
-                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
-                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
-                .AddSingleton(azCopyAppSettings)
-                .AddSingleton(tempDirectoryAppSettings);
+            public ArchiveCommandBuilder ForStorageAccount(string accountName, string accountKey)
+            {
+                if (string.IsNullOrWhiteSpace(accountName))
+                    throw new ArgumentException($"'{nameof(accountName)}' cannot be null or empty.", nameof(accountName));
+                if (string.IsNullOrWhiteSpace(accountKey))
+                    throw new ArgumentException($"'{nameof(accountKey)}' cannot be null or empty.", nameof(accountKey));
+
+                this.accountName = accountName;
+                this.accountKey = accountKey;
+
+                return this;
+            }
+            private string accountName;
+            private string accountKey;
 
 
-            foreach (var type in options.GetType().GetInterfaces())
-                sc.AddSingleton(type, options);
+            public ArchiveCommandBuilder ForContainer(string container)
+            {
+                if (string.IsNullOrWhiteSpace(container))
+                    throw new ArgumentException($"'{nameof(container)}' cannot be null or whitespace.", nameof(container));
 
-            ////Add the options for the Repositories
-            //sc
-            //    .AddSingleton<AzureRepository.IOptions>(options);
+                this.container = container;
 
-            //// Add the options for the services
-            //sc
-            //    .AddSingleton<IBlobCopier.IOptions>(options)
-            //    .AddSingleton<IEncrypter.IOptions>(options)
-            //    .AddSingleton<IHashValueProvider.IOptions>(options);
+                return this;
+            }
+            private string container;
 
-            ArchiveCommand.ConfigureServices(sc);
-            //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
-            RestoreCommand.ConfigureServices(sc);
 
-            sc
-                .AddSingleton<ILoggerFactory>(loggerFactory)
-                .AddLogging();
+            public ArchiveCommandBuilder WithPassphrase(string passphrase)
+            {
+                if (string.IsNullOrWhiteSpace(passphrase))
+                    throw new ArgumentException($"'{nameof(passphrase)}' cannot be null or whitespace.", nameof(passphrase));
 
-            return sc.BuildServiceProvider();
-        }
+                this.passphrase = passphrase;
 
-        internal AzureRepository GetAriusRepository<T>(T options) where T : AzureRepository.IOptions, IBlobCopier.IOptions
-        {
-            var sc = new ServiceCollection();
+                return this;
+            }
+            private string passphrase;
 
-            sc
-                //Add Services
-                .AddSingleton<IBlobCopier, AzCopier>()
-                .AddSingleton<AzureRepository>();
 
-            // Add Options
-            sc
-                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
-                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
-                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
-                .AddSingleton(azCopyAppSettings)
-                .AddSingleton(tempDirectoryAppSettings);
+            public ArchiveCommandBuilder WithLocalArchiveRoot(string root)
+            {
+                if (string.IsNullOrWhiteSpace(root))
+                    throw new ArgumentException($"'{nameof(root)}' cannot be null or whitespace.", nameof(root));
 
-            // Add the options for the services
-            sc
-                .AddSingleton<IBlobCopier.IOptions>(options);
+                return WithLocalArchiveRoot(new DirectoryInfo(root));
+            }
+            public ArchiveCommandBuilder WithLocalArchiveRoot(DirectoryInfo root)
+            {
+                if (root is null)
+                    throw new ArgumentNullException(nameof(root));
+                if (!root.Exists)
+                    throw new InvalidOperationException("Root directory does not exist");
 
-            sc
-                .AddSingleton<ILoggerFactory>(loggerFactory)
-                .AddLogging();
+                this.root = root;
 
-            return sc.BuildServiceProvider()
-                .GetRequiredService<AzureRepository>();
+                return this;
+            }
+            private DirectoryInfo root;
+
+
+            public ArchiveCommandBuilder SetTier(string tier)
+            {
+                return SetTier((AccessTier)tier);
+            }
+            public ArchiveCommandBuilder SetTier(AccessTier tier)
+            {
+                if (tier != AccessTier.Hot &&
+                    tier != AccessTier.Cool &&
+                    tier != AccessTier.Archive)
+                    throw new ArgumentException("Invalid AccessTier");
+
+                this.tier = tier;
+
+                return this;
+            }
+            private AccessTier? tier;
+
+
+            public ArchiveCommandBuilder SetFastHash(bool fastHash)
+            {
+                this.fastHash = fastHash;
+
+                return this;
+            }
+            private bool fastHash = true;
+
+
+            public ArchiveCommandBuilder SetRemoveLocal(bool removeLocal)
+            {
+                this.removeLocal = removeLocal;
+
+                return this;
+            }
+            private bool removeLocal = false;
+
+
+            /// <summary>
+            /// Enable Block-level deduplication
+            /// </summary>
+            /// <param name="dedup"></param>
+            /// <returns></returns>
+            public ArchiveCommandBuilder SetDedup(bool dedup)
+            {
+                this.dedup = dedup;
+
+                return this;
+            }
+            private bool dedup = false;
+            private readonly Func<ArchiveCommandOptions, ICommand> buildWithOptions;
+
+            public ICommand Build()
+            {
+                if (string.IsNullOrEmpty(accountName))
+                    throw new ArgumentException($"'{nameof(accountName)}' cannot be null or empty.", nameof(accountName));
+                if (string.IsNullOrEmpty(accountKey))
+                    throw new ArgumentException($"'{nameof(accountKey)}' cannot be null or empty.", nameof(accountKey));
+                if (string.IsNullOrEmpty(passphrase))
+                    throw new ArgumentException($"'{nameof(passphrase)}' cannot be null or empty.", nameof(passphrase));
+                if (string.IsNullOrEmpty(container))
+                    throw new ArgumentException($"'{nameof(container)}' cannot be null or empty.", nameof(container));
+                if (!tier.HasValue)
+                    throw new ArgumentException($"'{nameof(tier)}' cannot be null or empty.", nameof(tier));
+                if (root is null)
+                    throw new ArgumentNullException(nameof(root));
+
+                var options = new ArchiveCommandOptions()
+                {
+                    AccountName = accountName,
+                    AccountKey = accountKey,
+                    Passphrase = passphrase,
+                    FastHash = fastHash,
+                    Container = container,
+                    RemoveLocal = removeLocal,
+                    Tier = tier.Value,
+                    Dedup = dedup,
+                    Path = root.FullName
+                };
+
+                return buildWithOptions(options);
+            }
+
         }
     }
 

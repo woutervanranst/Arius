@@ -552,20 +552,16 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var options = new Core.Commands.ArchiveCommandOptions
-            {
-                AccountName = TestSetup.AccountName,
-                AccountKey = TestSetup.AccountKey,
-                Passphrase = TestSetup.passphrase,
-                FastHash = fastHash,
-                Container = TestSetup.container.Name,
-                RemoveLocal = removeLocal,
-                Tier = tier,
-                Dedup = dedup,
-                Path = TestSetup.archiveTestDirectory.FullName
-            };
-
-            var c = TestSetup.Facade.CreateArchiveCommand(options);
+            var c = TestSetup.Facade.GetArchiveCommandBuilder()
+                .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)
+                .ForContainer(TestSetup.container.Name)
+                .WithPassphrase(TestSetup.passphrase)
+                .WithLocalArchiveRoot(TestSetup.archiveTestDirectory.FullName)
+                .SetTier(tier)
+                .SetFastHash(fastHash)
+                .SetRemoveLocal(removeLocal)
+                .SetDedup(dedup)
+                .Build();
 
             await c.Execute();
 
