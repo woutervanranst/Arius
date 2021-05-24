@@ -26,7 +26,7 @@ namespace Arius.Core.Facade
         {
         }
 
-        public Facade(ILoggerFactory loggerFactory, 
+        public Facade(ILoggerFactory loggerFactory,
             IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
         {
             if (loggerFactory is null)
@@ -43,12 +43,150 @@ namespace Arius.Core.Facade
             //services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value));
         }
 
+
+
+
+
+
+        //public enum AccessTier
+        //{
+        //    Hot,
+        //    Cool,
+        //    Archive
+        //}
+
+        //public static class AccessTier
+        //{
+        //    public const string Hot = "hot";
+        //    public const string Cool = "cool";
+        //}
+
+        //    //public static readonly AccessTier Hot = new AccessTier("hot");
+        //    //public const string Cool = "cool";
+        //    //public const string Archive = "archive";
+
+        //    //private readonly string _value;
+
+        //    ///// <summary> Determines if two <see cref="AccessTier"/> values are the same. </summary>
+        //    ///// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>
+        //    //public AccessTier(string value)
+        //    //{
+        //    //    _value = value ?? throw new ArgumentNullException(nameof(value));
+        //    //}
+
+        //    //internal Azure.Storage.Blobs.Models.AccessTier GetBlobAccessTier()
+        //    //{
+
+        //    //}
+
+        //    //    /// <summary> The AccessTier. </summary>
+        //    ////public readonly partial struct AccessTier : IEquatable<AccessTier>
+        //    ////{
+
+
+        //    ////    private const string HotValue = "Hot";
+        //    ////    private const string CoolValue = "Cool";
+        //    ////    private const string ArchiveValue = "Archive";
+
+        //    ////    public static AccessTier Hot { get; } = new AccessTier(HotValue);
+        //    ////    /// <summary> Cool. </summary>
+        //    ////    public static AccessTier Cool { get; } = new AccessTier(CoolValue);
+        //    ////    /// <summary> Archive. </summary>
+        //    ////    public static AccessTier Archive { get; } = new AccessTier(ArchiveValue);
+        //    ////    /// <summary> Determines if two <see cref="AccessTier"/> values are the same. </summary>
+        //    ////    public static bool operator ==(AccessTier left, AccessTier right) => left.Equals(right);
+        //    ////    /// <summary> Determines if two <see cref="AccessTier"/> values are not the same. </summary>
+        //    ////    public static bool operator !=(AccessTier left, AccessTier right) => !left.Equals(right);
+        //    ////    /// <summary> Converts a string to a <see cref="AccessTier"/>. </summary>
+        //    ////    public static implicit operator AccessTier(string value) => new AccessTier(value);
+
+        //    ////    /// <inheritdoc />
+        //    ////    [EditorBrowsable(EditorBrowsableState.Never)]
+        //    ////    public override bool Equals(object obj) => obj is AccessTier other && Equals(other);
+        //    ////    /// <inheritdoc />
+        //    ////    public bool Equals(AccessTier other) => string.Equals(_value, other._value, StringComparison.InvariantCultureIgnoreCase);
+
+        //    ////    /// <inheritdoc />
+        //    ////    [EditorBrowsable(EditorBrowsableState.Never)]
+        //    ////    public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+        //    ////    /// <inheritdoc />
+        //    ////    public override string ToString() => _value;
+        //    ////}
+        //}
+
+        /// <summary> The AccessTier. </summary>
+        public readonly partial struct AccessTier : IEquatable<AccessTier>
+        {
+            private readonly string _value;
+
+            /// <summary> Determines if two <see cref="AccessTier"/> values are the same. </summary>
+            /// <exception cref="ArgumentNullException"> <paramref name="value"/> is null. </exception>
+            public AccessTier(string value)
+            {
+                _value = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            private const string HotValue = "Hot";
+            private const string CoolValue = "Cool";
+            private const string ArchiveValue = "Archive";
+
+            /// <summary> Hot. </summary>
+            public static AccessTier Hot { get; } = new AccessTier(HotValue);
+            /// <summary> Cool. </summary>
+            public static AccessTier Cool { get; } = new AccessTier(CoolValue);
+            /// <summary> Archive. </summary>
+            public static AccessTier Archive { get; } = new AccessTier(ArchiveValue);
+            /// <summary> Determines if two <see cref="AccessTier"/> values are the same. </summary>
+            public static bool operator ==(AccessTier left, AccessTier right) => left.Equals(right);
+            /// <summary> Determines if two <see cref="AccessTier"/> values are not the same. </summary>
+            public static bool operator !=(AccessTier left, AccessTier right) => !left.Equals(right);
+            /// <summary> Converts a string to a <see cref="AccessTier"/>. </summary>
+            public static implicit operator AccessTier(string value) => new AccessTier(value);
+
+            /// <inheritdoc />
+            [EditorBrowsable(EditorBrowsableState.Never)]
+            public override bool Equals(object obj) => obj is AccessTier other && Equals(other);
+            /// <inheritdoc />
+            public bool Equals(AccessTier other) => string.Equals(_value, other._value, StringComparison.InvariantCultureIgnoreCase);
+
+            /// <inheritdoc />
+            [EditorBrowsable(EditorBrowsableState.Never)]
+            public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+            /// <inheritdoc />
+            public override string ToString() => _value;
+        }
+
         private readonly ILoggerFactory loggerFactory;
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        public ICommand CreateArchiveCommand(ArchiveCommandOptions options)
+        public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, string container, DirectoryInfo path,
+            AccessTier tier = AccessTier.Archive, bool fastHash = false, bool removeLocal = false, bool dedup = false)
         {
+            if (string.IsNullOrEmpty(accountName))
+                throw new ArgumentException($"'{nameof(accountName)}' cannot be null or empty.", nameof(accountName));
+            if (string.IsNullOrEmpty(accountKey))
+                throw new ArgumentException($"'{nameof(accountKey)}' cannot be null or empty.", nameof(accountKey));
+            if (string.IsNullOrEmpty(passphrase))
+                throw new ArgumentException($"'{nameof(passphrase)}' cannot be null or empty.", nameof(passphrase));
+            if (string.IsNullOrEmpty(container))
+                throw new ArgumentException($"'{nameof(container)}' cannot be null or empty.", nameof(container));
+            if (path is null)
+                throw new ArgumentNullException(nameof(path));
+
+            var options = new ArchiveCommandOptions()
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                FastHash = fastHash,
+                Container = container,
+                RemoveLocal = removeLocal,
+                Tier = tier,
+                Dedup = dedup,
+                Path = path
+            };
+
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
             var ace = sp.GetRequiredService<ArchiveCommand>();
