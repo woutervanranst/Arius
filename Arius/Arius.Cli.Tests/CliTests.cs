@@ -19,7 +19,7 @@ namespace Arius.Tests.Arius.Cli
             var container = "h";
 
             var mfb = new Mock<Facade>();
-            var macb = new Mock<Facade.ArchiveCommandBuilder>();
+            var macb = new Mock<Facade.IArchiveCommandBuilder>();
 
             macb.Setup(m => m.ForStorageAccount(accountName, accountKey)).Returns(macb.Object);
             macb.Setup(m => m.ForContainer(container)).Returns(macb.Object);
