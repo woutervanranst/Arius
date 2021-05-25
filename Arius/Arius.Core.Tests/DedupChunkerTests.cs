@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Extensions;
-using Arius.Services;
+using Arius.Core.Services;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

@@ -249,23 +249,25 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
-            var options = new Core.Commands.RestoreCommandOptions
-            {
-                AccountName = TestSetup.AccountName,
-                AccountKey = TestSetup.AccountKey,
-                Passphrase = TestSetup.passphrase,
-                Container = TestSetup.container.Name,
-                Synchronize = synchronize,
-                Download = download,
-                KeepPointers = keepPointers,
-                Path = TestSetup.restoreTestDirectory.FullName
-            };
+            throw new NotImplementedException();
 
-            var c = TestSetup.Facade.CreateRestoreCommand(options);
+            //var options = new Core.Commands.RestoreCommandOptions
+            //{
+            //    AccountName = TestSetup.AccountName,
+            //    AccountKey = TestSetup.AccountKey,
+            //    Passphrase = TestSetup.passphrase,
+            //    Container = TestSetup.container.Name,
+            //    Synchronize = synchronize,
+            //    Download = download,
+            //    KeepPointers = keepPointers,
+            //    Path = TestSetup.restoreTestDirectory.FullName
+            //};
 
-            await c.Execute();
+            //var c = TestSetup.Facade.CreateRestoreCommand(options);
 
-            return c.Services;
+            //await c.Execute();
+
+            //return c.Services;
 
             //var f = TestSetup.CreateFacade()
             //var cmd = "restore " +

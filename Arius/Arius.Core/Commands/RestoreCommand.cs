@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    public class RestoreCommandOptions : Facade.Facade.IOptions,
+    internal class RestoreCommandOptions : Facade.Facade.IOptions,
             RestoreCommand.IOptions,
 
             SynchronizeBlockProvider.IOptions,

@@ -74,21 +74,23 @@ namespace Arius.CommandLine
             restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>(
                 async (accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
                 {
-                    var o = new Core.Commands.RestoreCommandOptions
-                    {
-                        AccountName = accountName,
-                        AccountKey = accountKey,
-                        Passphrase = passphrase,
-                        Container = container,
-                        Synchronize = synchronize,
-                        Download = download,
-                        KeepPointers = keepPointers,
-                        Path = path
-                    };
+                    throw new NotImplementedException();
 
-                    var c = facade.CreateRestoreCommand(o);
+                    //var o = new Core.Commands.RestoreCommandOptions
+                    //{
+                    //    AccountName = accountName,
+                    //    AccountKey = accountKey,
+                    //    Passphrase = passphrase,
+                    //    Container = container,
+                    //    Synchronize = synchronize,
+                    //    Download = download,
+                    //    KeepPointers = keepPointers,
+                    //    Path = path
+                    //};
 
-                    return await c.Execute();
+                    //var c = facade.CreateRestoreCommand(o);
+
+                    //return await c.Execute();
 
                     //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
 

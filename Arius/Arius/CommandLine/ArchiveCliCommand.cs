@@ -103,22 +103,13 @@ namespace Arius.CommandLine
                 .Create<string, string, string, string, bool, string, bool, bool, string>(
                     async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
                     {
-                        var o = new Core.Commands.ArchiveCommandOptions()
-                        {
-                            AccountName = accountName,
-                            AccountKey = accountKey,
-                            Passphrase = passphrase,
-                            FastHash = fastHash,
-                            Container = container,
-                            RemoveLocal = removeLocal,
-                            Tier = tier,
-                            Dedup = dedup,
-                            Path = path
-                        };
+                        throw new NotImplementedException();
 
-                        var c = facade.CreateArchiveCommand(o);
 
-                        return await c.Execute();
+                        var c = facade.GetArchiveCommandBuilder()
+                            .ForStorageAccount(accountName, accountKey);
+
+                        //return await c.Execute();
                         
 
                         //pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
