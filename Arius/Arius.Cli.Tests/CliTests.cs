@@ -1,41 +1,87 @@
-﻿
+﻿using Arius.Core.Commands;
 using Arius.Core.Facade;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+
 namespace Arius.Tests.Arius.Cli
 {
     class CliTests
     {
         [Test]
-        public void Ha()
+        public async Task Ha()
         {
             var accountName = "ha";
             var accountKey = "ha";
             var container = "h";
+            var passphrase = "3";
+            var synchronize = false;
+            var download = false;
+            var keepPointers = false;
+            var path = "he";
 
-            var mfb = new Mock<Facade>();
-            var macb = new Mock<Facade.IArchiveCommandBuilder>();
-
-            macb.Setup(m => m.ForStorageAccount(accountName, accountKey)).Returns(macb.Object);
-            macb.Setup(m => m.ForContainer(container)).Returns(macb.Object);
 
 
-            mfb.Setup(m => m.GetArchiveCommandBuilder()).Returns(macb.Object);
+            var mcb = new Mock<ICommand>();
+            mcb
+                .Setup(m => m.Execute())
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+
+
+            Expression<Func<IFacade, ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+            var mfb = new Mock<IFacade>();
+            mfb.Setup(expr)
+                .Returns(mcb.Object)
+                .Verifiable();
 
             var mf = mfb.Object;
 
-
-            var x = mf.GetArchiveCommandBuilder()
-                .ForStorageAccount(accountName, "h");
-
-            Assert.IsTrue(true);
+            //var x = mf.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
 
+            var cmd = "restore " +
+                $"-n {accountName} " +
+                $"-k {accountKey} " +
+                $"-p {passphrase} " +
+                $"-c {container} " +
+                $"{(synchronize ? "--synchronize " : "")}" +
+                $"{(download ? "--download " : "")}" +
+                $"{(keepPointers ? "--keep-pointers " : "")}" +
+                $"{path}";
+
+            Environment.SetEnvironmentVariable(AriusCommandService.CommandLineEnvironmentVariableName, cmd);
+
+            //Action<IConfigurationBuilder> bla = (b) =>
+            //{
+            //    b.AddInMemoryCollection(new Dictionary<string, string> {
+            //            { "TempDir:TempDirectoryName", ".ariustemp2" }
+            //        });
+            //};
+
+            await Program.CreateHostBuilder(cmd.Split(' '), facade: mf).RunConsoleAsync();
+
+            Assert.AreEqual(0, Environment.ExitCode);
+
+            mfb.Verify(expr, Times.Exactly(1));
+            
+
+
+            //var macb = new Mock<Facade.ArchiveCommandBuilder>();
+            //macb.Setup(m => m.ForStorageAccount(accountName, accountKey)).Returns(macb.Object);
+            //macb.Setup(m => m.ForContainer(container)).Returns(macb.Object);
+            //mfb.Setup(m => m.GetArchiveCommandBuilder()).Returns(macb.Object);
+
+
+
+            //var x = mf.GetArchiveCommandBuilder()
+            //    .ForStorageAccount(accountName, "h");
 
 
             //var myViewModel = TheOutletViewModelForTesting();

@@ -15,13 +15,26 @@ using Microsoft.Extensions.Options;
 using System.Reflection;
 using System.Linq;
 
+/*
+ * This is required to test the internals of the Arius.Cli assembly
+ */
+[assembly: InternalsVisibleTo("Arius.Cli.Tests")]
 namespace Arius
 {
-    internal static class Program
+    public static class Program
     {
         public static async Task Main(string[] args) => await CreateHostBuilder(args).RunConsoleAsync();
 
-        internal static IHostBuilder CreateHostBuilder(string[] args, Action<IConfigurationBuilder> configBuilder = default)
+        /// <summary>
+        /// Create the HostBuilder
+        /// </summary>
+        /// <param name="args"></param>
+        /// <param name="configBuilder">custom configuration</param>
+        /// <param name="facade">injected facade, if needed (used for Mocking)</param>
+        /// <returns></returns>
+        internal static IHostBuilder CreateHostBuilder(string[] args, 
+            Action<IConfigurationBuilder> configBuilder = default,
+            Core.Facade.IFacade facade = default)
         {
             //Console App with .NET Generic Host based on template from https://dfederm.com/building-a-console-app-with-.net-generic-host/
 
@@ -73,9 +86,14 @@ namespace Arius
                         .AddHostedService<AriusCommandService>(p => p.GetRequiredService<AriusCommandService>())
 
                         .AddSingleton<ArchiveCliCommand>()
-                        .AddSingleton<RestoreCliCommand>()
+                        .AddSingleton<RestoreCliCommand>();
 
-                        .AddSingleton<Arius.Core.Facade.Facade>();
+                    if (facade is null)
+                        serviceCollection.AddSingleton<Core.Facade.IFacade, Arius.Core.Facade.Facade>();
+                    else
+                        serviceCollection.AddSingleton<Core.Facade.IFacade>(facade);
+
+                        //.AddSingleton<Arius.Core.Facade.Facade>();
 
                         ////Add Commmands
                         //.AddSingleton<ArchiveCommandExecutor>()

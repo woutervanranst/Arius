@@ -7,12 +7,12 @@ namespace Arius.CommandLine
 {
     internal class RestoreCliCommand : ICliCommand
     {
-        public RestoreCliCommand(Arius.Core.Facade.Facade facade)
+        public RestoreCliCommand(Arius.Core.Facade.IFacade facade)
         {
             this.facade = facade;
         }
 
-        private readonly Arius.Core.Facade.Facade facade;
+        private readonly Arius.Core.Facade.IFacade facade;
 
         public Command GetCommand()
         {
@@ -74,23 +74,10 @@ namespace Arius.CommandLine
             restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>(
                 async (accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
                 {
-                    throw new NotImplementedException();
-
-                    //var o = new Core.Commands.RestoreCommandOptions
-                    //{
-                    //    AccountName = accountName,
-                    //    AccountKey = accountKey,
-                    //    Passphrase = passphrase,
-                    //    Container = container,
-                    //    Synchronize = synchronize,
-                    //    Download = download,
-                    //    KeepPointers = keepPointers,
-                    //    Path = path
-                    //};
-
+                    var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
                     //var c = facade.CreateRestoreCommand(o);
 
-                    //return await c.Execute();
+                    return await c.Execute();
 
                     //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
 

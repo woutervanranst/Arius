@@ -15,10 +15,24 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
+/*
+ * This is required for the Arius.Cli.Tests module
+ * Specifically, the Moq framework cannot initialize ICommand, which has 'internal IServiceProvider Services { get; }' if it cannot see the internals
+ * See https://stackoverflow.com/a/28235222/1582323
+ */
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+
+/*
+ * This is required to test the internals of the Arius.Core assembly
+ */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 namespace Arius.Core.Facade
 {
-    public partial class Facade
+    public interface IFacade
+    {
+        ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
+    }
+    public partial class Facade : IFacade
     {
         internal interface IOptions // Used for DI in the facade
         {
@@ -60,16 +74,27 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        //public ICommand CreateRestoreCommand(RestoreCommandOptions options)
-        //{
-        //    throw new NotImplementedException();
+        public ICommand CreateRestoreCommand(string accountName, string accountKey, string container,
+            string passphrase, bool synchronize, bool download, bool keepPointers, string path)
+        {
+            var options = new RestoreCommandOptions
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                Container = container,
+                Synchronize = synchronize,
+                Download = download,
+                KeepPointers = keepPointers,
+                Path = path
+            };
 
-        //    var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-        //    var rce = sp.GetRequiredService<RestoreCommand>();
+            var rce = sp.GetRequiredService<RestoreCommand>();
 
-        //    return rce;
-        //}
+            return rce;
+        }
 
 
         private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory,
