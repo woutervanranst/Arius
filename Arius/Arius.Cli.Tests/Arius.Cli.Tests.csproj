@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Arius\Arius.csproj" />
+    <ProjectReference Include="..\Arius.Cli\Arius.Cli.csproj" />
   </ItemGroup>
 
 </Project>

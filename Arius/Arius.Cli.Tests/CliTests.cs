@@ -1,10 +1,11 @@
-﻿using Arius.Core.Commands;
+﻿using Arius.Cli;
+using Arius.Core.Commands;
 using Arius.Core.Facade;
-using Microsoft.Extensions.Hosting;
 using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.CommandLine.Invocation;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
@@ -15,23 +16,92 @@ namespace Arius.Tests.Arius.Cli
     class CliTests
     {
         [Test]
-        public async Task Main_JustArius_SuccessfulExecution()
+        public async Task Cli_NoCommand_ParseErrorResult()
         {
-            var cmd = "arius";
+            var args = "";
 
-            var mfb = await ExecuteMockedFacade(cmd);
+            var p = new Program();
+            await p.Main(args.Split(' '));
 
-            Assert.AreEqual(0, Environment.ExitCode);
+            Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
+            Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required command was not provided."));
+            Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
+        }
 
+        [Test]
+        public async Task Cli_ArchiveCommandWithoutParameters_ParseErrorResult()
+        {
+            var args = "archive";
 
+            var p = new Program();
+            await p.Main(args.Split(' '));
 
+            Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
+            Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required argument missing for command: archive"));
+            Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
+        }
+
+        [Test]
+        public async Task Cli_RestoreCommandWithoutParameters_ParseErrorResult()
+        {
+            var args = "restore";
+
+            var p = new Program();
+            await p.Main(args.Split(' '));
+
+            Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
+            Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required argument missing for command: restore"));
+            Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
+        }
+
+        [Test]
+        public async Task Cli_NonExistingCommand_ParseErrorResult()
+        {
+            var args = "unexistingcommand";
+
+            var p = new Program();
+            await p.Main(args.Split(' '));
+
+            Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
+            Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == $"Unrecognized command or argument '{args}'"));
+            Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
         }
 
 
 
+        [Test]
+        public async Task Cli_ArchiveCommandWithParameters_FacadeCalled()
+        {
+            var accountName = "ha";
+            var accountKey = "ha";
+            var container = "h";
+            var passphrase = "3";
+            var synchronize = false;
+            var download = false;
+            var keepPointers = false;
+            var path = "he";
+
+            var cmd = "archive " +
+                $"-n {accountName} " +
+                $"-k {accountKey} " +
+                $"-p {passphrase} " +
+                $"-c {container} " +
+                $"{(synchronize ? "--synchronize " : "")}" +
+                $"{(download ? "--download " : "")}" +
+                $"{(keepPointers ? "--keep-pointers " : "")}" +
+                $"{path}";
+
+            Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+
+            var mfb = await ExecuteMockedFacade(cmd, expr);
+
+            Assert.AreEqual(0, Environment.ExitCode);
+
+            mfb.Verify(expr, Times.Exactly(1));
+        }
 
         [Test]
-        public async Task Main_RestoreCliCommand_SuccessfulExecution()
+        public async Task Cli_RestoreCommandWithParameters_FacadeCalled()
         {
             var accountName = "ha";
             var accountKey = "ha";
@@ -52,7 +122,7 @@ namespace Arius.Tests.Arius.Cli
                 $"{(keepPointers ? "--keep-pointers " : "")}" +
                 $"{path}";
 
-            Expression<Func<IFacade, ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+            Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
             var mfb = await ExecuteMockedFacade(cmd, expr);
 
@@ -128,7 +198,7 @@ namespace Arius.Tests.Arius.Cli
         }
 
 
-        private static async Task<Mock<IFacade>> ExecuteMockedFacade(string cmd, Expression<Func<IFacade, ICommand>> mockedFacadeMethod = null)
+        private static async Task<Mock<IFacade>> ExecuteMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
         {
             var mcb = new Mock<ICommand>();
             mcb
@@ -147,7 +217,7 @@ namespace Arius.Tests.Arius.Cli
 
             var mf = mfb.Object;
 
-            Environment.SetEnvironmentVariable(ConsoleHostedService.CommandLineEnvironmentVariableName, cmd);
+            //Environment.SetEnvironmentVariable(ConsoleHostedService.CommandLineEnvironmentVariableName, cmd);
 
             //Action<IConfigurationBuilder> bla = (b) =>
             //{
@@ -156,7 +226,8 @@ namespace Arius.Tests.Arius.Cli
             //        });
             //};
 
-            await Program.RunConsoleAync(cmd.Split(' '), facade: mf);
+            var p = new Program();
+            await p.Main(args.Split(' '), facade: mf);
 
             return mfb;
         }

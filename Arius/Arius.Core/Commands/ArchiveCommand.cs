@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    public class ArchiveCommandOptions : Facade.Facade.IOptions,
+    internal class ArchiveCommandOptions : Facade.Facade.IOptions,
             ArchiveCommand.IOptions,
 
             UploadEncryptedChunksBlockProvider.IOptions,
