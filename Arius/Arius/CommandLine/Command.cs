@@ -7,10 +7,4 @@ namespace Arius.CommandLine
     {
         Command GetCommand();
     }
-
-    //internal class ParsedCommandProvider
-    //{
-    //    public Type CommandExecutorType { get; set; }
-    //    public ICommandExecutorOptions CommandExecutorOptions { get; set; }
-    //}
 }

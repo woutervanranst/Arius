@@ -1,5 +1,6 @@
 ﻿using System;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 using Arius.Extensions;
 
@@ -71,30 +72,31 @@ namespace Arius.CommandLine
                 restoreCommand.AddArgument(pathArgument);
             }
 
-            restoreCommand.Handler = CommandHandlerExtensions.Create<string, string, string, string, bool, bool, bool, string>(
-                async (accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
-                {
-                    var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-                    //var c = facade.CreateRestoreCommand(o);
+            restoreCommand.Handler = CommandHandler
+                .Create<string, string, string, string, bool, bool, bool, string>(
+                    async (accountName, accountKey, passphrase, container, synchronize, download, keepPointers, path) =>
+                    {
+                        var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+                        //var c = facade.CreateRestoreCommand(o);
 
-                    return await c.Execute();
+                        return await c.Execute();
 
-                    //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
+                        //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
 
-                    //pcp.CommandExecutorOptions = new RestoreOptions
-                    //{
-                    //    AccountName = accountName,
-                    //    AccountKey = accountKey,
-                    //    Passphrase = passphrase,
-                    //    Container = container,
-                    //    Synchronize = synchronize,
-                    //    Download = download,
-                    //    KeepPointers = keepPointers,
-                    //    Path = path
-                    //};
+                        //pcp.CommandExecutorOptions = new RestoreOptions
+                        //{
+                        //    AccountName = accountName,
+                        //    AccountKey = accountKey,
+                        //    Passphrase = passphrase,
+                        //    Container = container,
+                        //    Synchronize = synchronize,
+                        //    Download = download,
+                        //    KeepPointers = keepPointers,
+                        //    Path = path
+                        //};
 
-                    //return Task.FromResult<int>(0);
-                });
+                        //return Task.FromResult<int>(0);
+                    });
 
             return restoreCommand;
         }

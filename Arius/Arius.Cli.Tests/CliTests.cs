@@ -15,7 +15,23 @@ namespace Arius.Tests.Arius.Cli
     class CliTests
     {
         [Test]
-        public async Task Ha()
+        public async Task Main_JustArius_SuccessfulExecution()
+        {
+            var cmd = "arius";
+
+            var mfb = await ExecuteMockedFacade(cmd);
+
+            Assert.AreEqual(0, Environment.ExitCode);
+
+
+
+        }
+
+
+
+
+        [Test]
+        public async Task Main_RestoreCliCommand_SuccessfulExecution()
         {
             var accountName = "ha";
             var accountKey = "ha";
@@ -25,26 +41,6 @@ namespace Arius.Tests.Arius.Cli
             var download = false;
             var keepPointers = false;
             var path = "he";
-
-
-
-            var mcb = new Mock<ICommand>();
-            mcb
-                .Setup(m => m.Execute())
-                .Returns(Task.FromResult(0))
-                .Verifiable();
-
-
-            Expression<Func<IFacade, ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-            var mfb = new Mock<IFacade>();
-            mfb.Setup(expr)
-                .Returns(mcb.Object)
-                .Verifiable();
-
-            var mf = mfb.Object;
-
-            //var x = mf.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-
 
             var cmd = "restore " +
                 $"-n {accountName} " +
@@ -56,22 +52,14 @@ namespace Arius.Tests.Arius.Cli
                 $"{(keepPointers ? "--keep-pointers " : "")}" +
                 $"{path}";
 
-            Environment.SetEnvironmentVariable(AriusCommandService.CommandLineEnvironmentVariableName, cmd);
+            Expression<Func<IFacade, ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
-            //Action<IConfigurationBuilder> bla = (b) =>
-            //{
-            //    b.AddInMemoryCollection(new Dictionary<string, string> {
-            //            { "TempDir:TempDirectoryName", ".ariustemp2" }
-            //        });
-            //};
-
-            await Program.CreateHostBuilder(cmd.Split(' '), facade: mf).RunConsoleAsync();
+            var mfb = await ExecuteMockedFacade(cmd, expr);
 
             Assert.AreEqual(0, Environment.ExitCode);
 
             mfb.Verify(expr, Times.Exactly(1));
             
-
 
             //var macb = new Mock<Facade.ArchiveCommandBuilder>();
             //macb.Setup(m => m.ForStorageAccount(accountName, accountKey)).Returns(macb.Object);
@@ -137,6 +125,40 @@ namespace Arius.Tests.Arius.Cli
         }
              * 
              */
+        }
+
+
+        private static async Task<Mock<IFacade>> ExecuteMockedFacade(string cmd, Expression<Func<IFacade, ICommand>> mockedFacadeMethod = null)
+        {
+            var mcb = new Mock<ICommand>();
+            mcb
+                .Setup(m => m.Execute())
+                .Returns(Task.FromResult(0))
+                .Verifiable();
+
+            var mfb = new Mock<IFacade>();
+
+            if (mockedFacadeMethod is not null)
+            {
+                mfb.Setup(mockedFacadeMethod)
+                    .Returns(mcb.Object)
+                    .Verifiable();
+            }
+
+            var mf = mfb.Object;
+
+            Environment.SetEnvironmentVariable(ConsoleHostedService.CommandLineEnvironmentVariableName, cmd);
+
+            //Action<IConfigurationBuilder> bla = (b) =>
+            //{
+            //    b.AddInMemoryCollection(new Dictionary<string, string> {
+            //            { "TempDir:TempDirectoryName", ".ariustemp2" }
+            //        });
+            //};
+
+            await Program.RunConsoleAync(cmd.Split(' '), facade: mf);
+
+            return mfb;
         }
     }
 }

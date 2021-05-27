@@ -1,5 +1,6 @@
 using System;
 using System.CommandLine;
+using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,12 +10,12 @@ namespace Arius.CommandLine
 {
     internal class ArchiveCliCommand : ICliCommand
     {
-        public ArchiveCliCommand(Arius.Core.Facade.Facade facade)
+        public ArchiveCliCommand(Arius.Core.Facade.IFacade facade)
         {
             this.facade = facade;
         }
 
-        private readonly Arius.Core.Facade.Facade facade;
+        private readonly Arius.Core.Facade.IFacade facade;
 
         public Command GetCommand()
         {
@@ -99,15 +100,15 @@ namespace Arius.CommandLine
                 archiveCommand.AddArgument(pathArgument);
             }
 
-            archiveCommand.Handler = CommandHandlerExtensions
+            archiveCommand.Handler = CommandHandler
                 .Create<string, string, string, string, bool, string, bool, bool, string>(
                     async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path) =>
                     {
                         throw new NotImplementedException();
 
 
-                        var c = facade.GetArchiveCommandBuilder()
-                            .ForStorageAccount(accountName, accountKey);
+                        //var c = facade.GetArchiveCommandBuilder()
+                        //    .ForStorageAccount(accountName, accountKey);
 
                         //return await c.Execute();
                         
