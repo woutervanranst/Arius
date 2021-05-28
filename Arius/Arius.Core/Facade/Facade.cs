@@ -36,9 +36,9 @@ namespace Arius.Core.Facade
         ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path);
         ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
     }
+
     public partial class Facade : IFacade
     {
-
         internal interface IOptions // Used for DI in the facade
         {
         }
@@ -56,44 +56,7 @@ namespace Arius.Core.Facade
             this.loggerFactory = loggerFactory;
             this.azCopyAppSettings = azCopyAppSettings.Value;
             this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
-
-            //services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value));
         }
-
-        //public ArchiveCommandBuilder GetArchiveCommandBuilder()
-        //{
-        //    return new ArchiveCommandBuilder((options) =>
-        //    {
-        //        var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-
-        //        var ace = sp.GetRequiredService<ArchiveCommand>();
-
-        //        return ace;
-        //    });
-        //}
-
-        private class ArchiveCommandValidator : AbstractValidator<ArchiveCommandOptions>
-        { 
-            public ArchiveCommandValidator()
-            {
-                RuleFor(o => o.AccountName).NotEmpty();
-                RuleFor(o => o.AccountKey).NotEmpty();
-                RuleFor(o => o.Container).NotEmpty();
-                RuleFor(o => o.Passphrase).NotEmpty();
-                RuleFor(o => o.Path)
-                    .NotEmpty()
-                    .Custom((path, context) =>
-                    {
-                        if (!Directory.Exists(path))
-                            context.AddFailure($"Directory {path} does not exist.");
-                    });
-                RuleFor(o => o.Tier).Must(tier => 
-                    tier == AccessTier.Hot ||
-                    tier == AccessTier.Cool ||
-                    tier == AccessTier.Archive);
-            }
-        }
-
 
         private readonly ILoggerFactory loggerFactory;
         private readonly AzCopyAppSettings azCopyAppSettings;
@@ -101,22 +64,8 @@ namespace Arius.Core.Facade
 
         public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
         {
-            var options = new ArchiveCommandOptions
-            {
-                AccountName = accountName,
-                AccountKey = accountKey,
-                Passphrase = passphrase,
-                FastHash = fastHash,
-                Container = container,
-                RemoveLocal = removeLocal,
-                Tier = tier,
-                Dedup = dedup,
-                Path = path
-            };
-
-            var validator = new ArchiveCommandValidator();
-            validator.ValidateAndThrow(options);
-
+            var options = ArchiveCommandOptions.Create(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+            
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
             var ac = sp.GetRequiredService<ArchiveCommand>();
@@ -126,17 +75,7 @@ namespace Arius.Core.Facade
 
         public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
-            var options = new Commands.RestoreCommandOptions
-            {
-                AccountName = accountName,
-                AccountKey = accountKey,
-                Passphrase = passphrase,
-                Container = container,
-                Synchronize = synchronize,
-                Download = download,
-                KeepPointers = keepPointers,
-                Path = path
-            };
+            var options = RestoreCommandOptions.Create(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
@@ -249,49 +188,6 @@ namespace Arius.Core.Facade
         }
     }
 
-
-    //internal interface ICommand
-    //{
-    //    public Task<int> Execute();
-    //}
-
-    //public class ArchiveCommand : ICommand
-    //{
-    //    internal ArchiveCommand(ServiceProvider sp)
-    //    {
-    //        this.sp = sp;
-    //    }
-
-    //    private readonly ServiceProvider sp;
-
-    //    internal ServiceProvider Services => sp;
-
-    //    public async Task<int> Execute()
-    //    {
-    //        var ace = sp.GetRequiredService<ArchiveCommandExecutor>();
-
-    //        return await ace.Execute();
-    //    }
-    //}
-
-    //public class RestoreCommand : ICommand
-    //{
-    //    internal RestoreCommand(ServiceProvider sp)
-    //    {
-    //        this.sp = sp;
-    //    }
-
-    //    private readonly ServiceProvider sp;
-
-    //    public ServiceProvider Services => sp;
-
-    //    public async Task<int> Execute()
-    //    {
-    //        var ace = sp.GetRequiredService<RestoreCommandExecutor>();
-
-    //        return await ace.Execute();
-    //    }
-    //}
 
     //public class Facade
     //{
