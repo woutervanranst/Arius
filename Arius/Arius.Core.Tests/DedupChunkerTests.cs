@@ -197,13 +197,6 @@ namespace Arius.Core.Tests
 
 
 
-            //var configurationRoot = new ConfigurationBuilder()
-            //        .AddInMemoryCollection(new Dictionary<string, string> {
-            //            { "TempDirName", ".ariustemp" },
-            //            { "UploadTempDirName", ".ariustempupload" }
-            //        })
-            //        .Build();
-
             //var config = new Configuration(options, configurationRoot);
 
 

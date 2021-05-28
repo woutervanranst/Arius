@@ -127,12 +127,6 @@ namespace Arius.Core.Tests
             //return Facade.GetAriusRepository( GetServiceProvider().GetRequiredService<AzureRepository>();
         }
 
-        //internal static IServiceProvider GetServiceProvider(AccessTier? tier = null, bool removeLocal = false, bool fastHash = false, bool dedup = false)
-        //{
-        //    var f = CreateFacade(tier, removeLocal, fastHash, dedup);
-
-        //    return f.ServiceProvider;
-        //}
 
 
 
