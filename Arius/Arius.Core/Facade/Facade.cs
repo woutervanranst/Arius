@@ -88,9 +88,9 @@ namespace Arius.Core.Facade
                             context.AddFailure($"Directory {path} does not exist.");
                     });
                 RuleFor(o => o.Tier).Must(tier => 
-                    tier != AccessTier.Hot &&
-                    tier != AccessTier.Cool &&
-                    tier != AccessTier.Archive);
+                    tier == AccessTier.Hot ||
+                    tier == AccessTier.Cool ||
+                    tier == AccessTier.Archive);
             }
         }
 
