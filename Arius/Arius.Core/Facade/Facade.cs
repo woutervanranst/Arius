@@ -118,10 +118,6 @@ namespace Arius.Core.Facade
                             return sp.GetRequiredService<Chunker>();
                     });
             }
-            //else
-            //{
-            //    throw new NotImplementedException();
-            //}
 
             // Add Options
             sc
@@ -132,23 +128,12 @@ namespace Arius.Core.Facade
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
-
+            //Add the options for the Services & Repositories
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
 
-            ////Add the options for the Repositories
-            //sc
-            //    .AddSingleton<AzureRepository.IOptions>(options);
-
-            //// Add the options for the services
-            //sc
-            //    .AddSingleton<IBlobCopier.IOptions>(options)
-            //    .AddSingleton<IEncrypter.IOptions>(options)
-            //    .AddSingleton<IHashValueProvider.IOptions>(options);
-
-            ArchiveCommand.ConfigureServices(sc);
-            //ArchiveCommandExecutor.AddOptions(sc, accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, path);
-            RestoreCommand.ConfigureServices(sc);
+            ArchiveCommand.AddBlocks(sc);
+            RestoreCommand.AddBlocks(sc);
 
             sc
                 .AddSingleton<ILoggerFactory>(loggerFactory)

@@ -29,7 +29,7 @@ namespace Arius.Core.Commands
             root = new DirectoryInfo(options.Path);
         }
 
-        internal static void ConfigureServices(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
+        internal static void AddBlocks(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
         {
             coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
@@ -48,40 +48,6 @@ namespace Arius.Core.Commands
                 .AddSingleton<RemoveDeletedPointersTaskProvider>()
                 .AddSingleton<ExportToJsonTaskProvider>()
                 .AddSingleton<DeleteBinaryFilesTaskProvider>();
-
-            //// Create the options object
-            //var options = new Options
-            //{
-            //    AccountName = accountName,
-            //    AccountKey = accountKey,
-            //    Passphrase = passphrase,
-            //    FastHash = fastHash,
-            //    Container = container,
-            //    RemoveLocal = removeLocal,
-            //    Tier = tier,
-            //    //Dedup = dedup,
-            //    Path = path
-            //};
-
-            //// Add the options for the Blocks
-            //coll
-            //    .AddSingleton<ArchiveCommandExecutor.IOptions>(options)
-            //    //.AddSingleton<IndexDirectoryBlockProvider>()
-            //    //.AddSingleton<AddHashBlockProvider>()
-            //    //.AddSingleton<ManifestBlocksProvider>()
-            //    //.AddSingleton<ChunkBlockProvider>()
-            //    //.AddSingleton<EncryptChunksBlockProvider>()
-            //    //.AddSingleton<EnqueueEncryptedChunksForUploadBlockProvider>()
-            //    //.AddSingleton<CreateUploadBatchesTaskProvider>()
-            //    .AddSingleton<UploadEncryptedChunksBlockProvider.IOptions>(options)
-            //    //.AddSingleton<ReconcileChunksWithManifestsBlockProvider>()
-            //    //.AddSingleton<CreateManifestBlockProvider>()
-            //    //.AddSingleton<CreatePointerBlockProvider>()
-            //    //.AddSingleton<CreatePointerFileEntryIfNotExistsBlockProvider>()
-            //    //.AddSingleton<ValidateBlockProvider>()
-            //    .AddSingleton<RemoveDeletedPointersTaskProvider.IOptions>(options)
-            //    //.AddSingleton<ExportToJsonTaskProvider>()
-            //    .AddSingleton<DeleteBinaryFilesTaskProvider.IOptions>(options);
         }
 
         private readonly ILogger<ArchiveCommand> logger;
