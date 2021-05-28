@@ -22,9 +22,6 @@ namespace Arius.Core.Tests
         public void ClassInit_Restore()
         {
             // Executes once for the test class. (Optional)
-
-            //if (TestSetup.restoreTestDirectory.Exists) TestSetup.restoreTestDirectory.Delete(true);
-            //TestSetup.restoreTestDirectory.Create();
         }
 
         [SetUp]
@@ -242,11 +239,6 @@ namespace Arius.Core.Tests
         }
 
 
-
-
-
-
-
         private static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
             var c = TestSetup.Facade.CreateRestoreCommand(
@@ -282,18 +274,18 @@ namespace Arius.Core.Tests
             }
         }
 
-        //[TearDown]
-        //public void TestCleanup()
-        //{
-        //    // Runs after each test. (Optional)
-        //}
+        [TearDown]
+        public void Restore_TestCleanup()
+        {
+            // Runs after each test. (Optional)
+        }
 
-        //[OneTimeTearDown]
-        //public void ClassCleanup()
-        //{
-        //    // Runs once after all tests in this class are executed. (Optional)
-        //    // Not guaranteed that it executes instantly after all tests from the class.
-        //}
+        [OneTimeTearDown]
+        public void Restore_ClassCleanup()
+        {
+            // Runs once after all tests in this class are executed. (Optional)
+            // Not guaranteed that it executes instantly after all tests from the class.
+        }
     }
 
 

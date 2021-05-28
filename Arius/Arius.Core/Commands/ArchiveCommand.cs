@@ -6,37 +6,11 @@ using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    internal class ArchiveCommandOptions : Facade.Facade.IOptions,
-            ArchiveCommand.IOptions,
-
-            UploadEncryptedChunksBlockProvider.IOptions,
-            RemoveDeletedPointersTaskProvider.IOptions,
-            DeleteBinaryFilesTaskProvider.IOptions,
-
-            AzureRepository.IOptions,
-            IBlobCopier.IOptions,
-            IChunker.IOptions,
-            IEncrypter.IOptions,
-            IHashValueProvider.IOptions
-    {
-        public string AccountName { get; init; }
-        public string AccountKey { get; init; }
-        public string Passphrase { get; init; }
-        public bool FastHash { get; init; }
-        public string Container { get; init; }
-        public bool RemoveLocal { get; init; }
-        public AccessTier Tier { get; init; }
-        public bool Dedup { get; init; }
-        public string Path { get; init; }
-    }
 
     internal class ArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
