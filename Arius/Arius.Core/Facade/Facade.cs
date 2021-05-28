@@ -132,8 +132,8 @@ namespace Arius.Core.Facade
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
 
-            ArchiveCommand.AddBlocks(sc);
-            RestoreCommand.AddBlocks(sc);
+            ArchiveCommand.AddBlockProviders(sc);
+            RestoreCommand.AddBlockProviders(sc);
 
             sc
                 .AddSingleton<ILoggerFactory>(loggerFactory)

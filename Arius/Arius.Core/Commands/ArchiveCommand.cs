@@ -29,7 +29,7 @@ namespace Arius.Core.Commands
             root = new DirectoryInfo(options.Path);
         }
 
-        internal static void AddBlocks(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
+        internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
         {
             coll
                 .AddSingleton<IndexDirectoryBlockProvider>()
