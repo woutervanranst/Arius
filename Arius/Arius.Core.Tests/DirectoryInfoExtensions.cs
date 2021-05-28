@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     static class DirectoryInfoExtensions
     {

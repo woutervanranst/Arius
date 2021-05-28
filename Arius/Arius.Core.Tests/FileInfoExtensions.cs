@@ -3,7 +3,7 @@ using Arius.Core.Models;
 using System;
 using System.IO;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     static class FileInfoExtensions
     {

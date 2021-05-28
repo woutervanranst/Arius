@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     class ManifestRepositoryTests
     {

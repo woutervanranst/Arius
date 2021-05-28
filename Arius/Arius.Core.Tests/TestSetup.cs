@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     [SetUpFixture]
     public class TestSetup

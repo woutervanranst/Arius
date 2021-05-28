@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System.Linq;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     class ChunkRepositoryTests
     {

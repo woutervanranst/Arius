@@ -7,7 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     class DedupChunkerTests
     {
