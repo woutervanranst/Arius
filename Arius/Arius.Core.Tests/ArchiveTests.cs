@@ -568,33 +568,14 @@ namespace Arius.Core.Tests
             return c.Services;
         }
 
-        //private async Task<IServiceProvider> ExecuteCommand(string cmd)
-        //{
-        ////    Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
 
-        ////    //Action<IConfigurationBuilder> bla = (b) =>
-        ////    //{
-        ////    //    b.AddInMemoryCollection(new Dictionary<string, string> {
-        ////    //            { "TempDir:TempDirectoryName", ".ariustemp2" }
-        ////    //        });
-        ////    //};
-
-        ////    await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
-
-        ////    if (Environment.ExitCode != 0)
-        ////        throw new ApplicationException("Exitcode is not 0");
-
-        ////    var sp = TestSetup.GetServiceProvider();
-        ////    return sp;
-        //}
-
-
-        public void TestCleanup()
+        [TearDown]
+        public void Archive_TestCleanup()
         {
             // Runs after each test. (Optional)
         }
         [OneTimeTearDown]
-        public void ClassCleanup()
+        public void Archive_ClassCleanup()
         {
             // Runs once after all tests in this class are executed. (Optional)
             // Not guaranteed that it executes instantly after all tests from the class.
