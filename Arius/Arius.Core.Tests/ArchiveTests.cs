@@ -11,7 +11,7 @@ using NUnit.Framework.Internal;
 
 // https://www.automatetheplanet.com/nunit-cheat-sheet/
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     public partial class ArchiveRestoreTests
     {
@@ -552,53 +552,40 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var c = TestSetup.Facade.GetArchiveCommandBuilder()
-                .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)
-                .ForContainer(TestSetup.container.Name)
-                .WithPassphrase(TestSetup.passphrase)
-                .WithLocalArchiveRoot(TestSetup.archiveTestDirectory.FullName)
-                .SetTier(tier)
-                .SetFastHash(fastHash)
-                .SetRemoveLocal(removeLocal)
-                .SetDedup(dedup)
-                .Build();
+            var c = TestSetup.Facade.CreateArchiveCommand(
+                TestSetup.AccountName,
+                TestSetup.AccountKey,
+                TestSetup.passphrase,
+                fastHash,
+                TestSetup.container.Name,
+                removeLocal,
+                tier.ToString(),
+                dedup,
+                TestSetup.archiveTestDirectory.FullName);
 
             await c.Execute();
 
             return c.Services;
-
-            //var cmd = "archive " +
-            //    $"-n {TestSetup.AccountName} " +
-            //    $"-k {TestSetup.AccountKey} " +
-            //    $"-p {TestSetup.passphrase} " +
-            //    $"-c {TestSetup.container.Name} " +
-            //    $"{(removeLocal ? "--remove-local " : "")}" +
-            //    $"--tier {tier.ToString().ToLower()} " +
-            //    $"{(dedup ? "--dedup " : "")}" +
-            //    $"{(fastHash ? "--fasthash" : "")}" +
-            //    $"{TestSetup.archiveTestDirectory.FullName}";
-
-            //return await ExecuteCommand(cmd);   
         }
 
         //private async Task<IServiceProvider> ExecuteCommand(string cmd)
         //{
-        //    Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
+        ////    Environment.SetEnvironmentVariable(Arius.AriusCommandService.CommandLineEnvironmentVariableName, cmd);
 
-        //    //Action<IConfigurationBuilder> bla = (b) =>
-        //    //{
-        //    //    b.AddInMemoryCollection(new Dictionary<string, string> {
-        //    //            { "TempDir:TempDirectoryName", ".ariustemp2" }
-        //    //        });
-        //    //};
+        ////    //Action<IConfigurationBuilder> bla = (b) =>
+        ////    //{
+        ////    //    b.AddInMemoryCollection(new Dictionary<string, string> {
+        ////    //            { "TempDir:TempDirectoryName", ".ariustemp2" }
+        ////    //        });
+        ////    //};
 
-        //    await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
+        ////    await Arius.Program.CreateHostBuilder(cmd.Split(' '), null).RunConsoleAsync();
 
-        //    if (Environment.ExitCode != 0)
-        //        throw new ApplicationException("Exitcode is not 0");
+        ////    if (Environment.ExitCode != 0)
+        ////        throw new ApplicationException("Exitcode is not 0");
 
-        //    var sp = TestSetup.GetServiceProvider();
-        //    return sp;
+        ////    var sp = TestSetup.GetServiceProvider();
+        ////    return sp;
         //}
 
 

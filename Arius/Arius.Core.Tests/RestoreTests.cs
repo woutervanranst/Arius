@@ -14,7 +14,7 @@ using NUnit.Framework.Internal;
 
 // https://www.automatetheplanet.com/nunit-cheat-sheet/
 
-namespace Arius.Tests
+namespace Arius.Core.Tests
 {
     public partial class ArchiveRestoreTests
     {
@@ -249,38 +249,19 @@ namespace Arius.Tests
 
         private static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
-            throw new NotImplementedException();
+            var c = TestSetup.Facade.CreateRestoreCommand(
+                TestSetup.AccountName,
+                TestSetup.AccountKey,
+                TestSetup.container.Name,
+                TestSetup.passphrase,
+                synchronize,
+                download,
+                keepPointers,
+                TestSetup.restoreTestDirectory.FullName);
 
-            //var options = new Core.Commands.RestoreCommandOptions
-            //{
-            //    AccountName = TestSetup.AccountName,
-            //    AccountKey = TestSetup.AccountKey,
-            //    Passphrase = TestSetup.passphrase,
-            //    Container = TestSetup.container.Name,
-            //    Synchronize = synchronize,
-            //    Download = download,
-            //    KeepPointers = keepPointers,
-            //    Path = TestSetup.restoreTestDirectory.FullName
-            //};
+            await c.Execute();
 
-            //var c = TestSetup.Facade.CreateRestoreCommand(options);
-
-            //await c.Execute();
-
-            //return c.Services;
-
-            //var f = TestSetup.CreateFacade()
-            //var cmd = "restore " +
-            //    $"-n {TestSetup.AccountName} " +
-            //    $"-k {TestSetup.AccountKey} " +
-            //    $"-p {TestSetup.passphrase} " +
-            //    $"-c {TestSetup.container.Name} " +
-            //    $"{(synchronize ? "--synchronize " : "")}" +
-            //    $"{(download ? "--download " : "")}" +
-            //    $"{(keepPointers ? "--keep-pointers " : "")}" +
-            //    $"{TestSetup.restoreTestDirectory.FullName}";
-
-            //return await ExecuteCommand(cmd);
+            return c.Services;
         }
 
         private class FileComparer : IEqualityComparer<FileInfo>
