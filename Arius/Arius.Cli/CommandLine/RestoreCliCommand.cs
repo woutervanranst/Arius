@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace Arius.CommandLine
 {
-    internal  static class RestoreCliCommand
+    internal class RestoreCliCommand : ICliCommand
     {
-        public static Command GetCommand()
+        public Command GetCommand()
         {
             var restoreCommand = new Command("restore", "Restore from blob");
 
@@ -72,25 +72,8 @@ namespace Arius.CommandLine
                     {
                         var facade = host.Services.GetRequiredService<IFacade>();
                         var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-                        //var c = facade.CreateRestoreCommand(o);
-
+                        
                         return await c.Execute();
-
-                        //pcp.CommandExecutorType = typeof(RestoreCommandExecutor);
-
-                        //pcp.CommandExecutorOptions = new RestoreOptions
-                        //{
-                        //    AccountName = accountName,
-                        //    AccountKey = accountKey,
-                        //    Passphrase = passphrase,
-                        //    Container = container,
-                        //    Synchronize = synchronize,
-                        //    Download = download,
-                        //    KeepPointers = keepPointers,
-                        //    Path = path
-                        //};
-
-                        //return Task.FromResult<int>(0);
                     });
 
             return restoreCommand;

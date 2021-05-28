@@ -11,7 +11,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.Tests.Arius.Cli
+namespace Arius.Cli.Tests
 {
     class CliTests
     {
@@ -27,6 +27,7 @@ namespace Arius.Tests.Arius.Cli
             Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required command was not provided."));
             Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
         }
+
 
         [Test]
         public async Task Cli_ArchiveCommandWithoutParameters_ParseErrorResult()
@@ -54,6 +55,7 @@ namespace Arius.Tests.Arius.Cli
             Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
         }
 
+
         [Test]
         public async Task Cli_NonExistingCommand_ParseErrorResult()
         {
@@ -68,68 +70,40 @@ namespace Arius.Tests.Arius.Cli
         }
 
 
-
         [Test]
         public async Task Cli_ArchiveCommandWithParameters_FacadeCalled()
         {
-            var accountName = "ha";
-            var accountKey = "ha";
-            var container = "h";
-            var passphrase = "3";
-            var synchronize = false;
-            var download = false;
-            var keepPointers = false;
-            var path = "he";
+            CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd);
 
-            var cmd = "archive " +
-                $"-n {accountName} " +
-                $"-k {accountKey} " +
-                $"-p {passphrase} " +
-                $"-c {container} " +
-                $"{(synchronize ? "--synchronize " : "")}" +
-                $"{(download ? "--download " : "")}" +
-                $"{(keepPointers ? "--keep-pointers " : "")}" +
-                $"{path}";
+            Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-            Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-
-            var mfb = await ExecuteMockedFacade(cmd, expr);
+            var r = await ExecuteMainWithMockedFacade(cmd, expr);
 
             Assert.AreEqual(0, Environment.ExitCode);
 
-            mfb.Verify(expr, Times.Exactly(1));
+            r.MockFacade.Verify(expr, Times.Exactly(1));
+            r.MockFacade.VerifyNoOtherCalls();
         }
 
         [Test]
         public async Task Cli_RestoreCommandWithParameters_FacadeCalled()
         {
-            var accountName = "ha";
-            var accountKey = "ha";
-            var container = "h";
-            var passphrase = "3";
-            var synchronize = false;
-            var download = false;
-            var keepPointers = false;
-            var path = "he";
-
-            var cmd = "restore " +
-                $"-n {accountName} " +
-                $"-k {accountKey} " +
-                $"-p {passphrase} " +
-                $"-c {container} " +
-                $"{(synchronize ? "--synchronize " : "")}" +
-                $"{(download ? "--download " : "")}" +
-                $"{(keepPointers ? "--keep-pointers " : "")}" +
-                $"{path}";
+            CreateRestoreCommand(out string accountName, out string accountKey, out string container, out string passphrase, out bool synchronize, out bool download, out bool keepPointers, out string path, out string cmd);
 
             Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
-            var mfb = await ExecuteMockedFacade(cmd, expr);
+            var r = await ExecuteMainWithMockedFacade(cmd, expr);
 
             Assert.AreEqual(0, Environment.ExitCode);
 
-            mfb.Verify(expr, Times.Exactly(1));
-            
+            r.MockFacade.Verify(expr, Times.Exactly(1));
+            r.MockFacade.VerifyNoOtherCalls();
+
+
+            // TODO Directory.Exists
+            //var w = r.InvocationContext.InvocationResult;
+            // TODO Facade throws error  
+            // todo restore with file and DirectoryInfo
 
             //var macb = new Mock<Facade.ArchiveCommandBuilder>();
             //macb.Setup(m => m.ForStorageAccount(accountName, accountKey)).Returns(macb.Object);
@@ -197,8 +171,54 @@ namespace Arius.Tests.Arius.Cli
              */
         }
 
+        private static void CreateRestoreCommand(out string accountName, out string accountKey, out string container, out string passphrase, out bool synchronize, out bool download, out bool keepPointers, out string path, out string cmd)
+        {
+            accountName = "ha";
+            accountKey = "ha";
+            container = "h";
+            passphrase = "3";
+            synchronize = false;
+            download = false;
+            keepPointers = false;
+            path = "he";
 
-        private static async Task<Mock<IFacade>> ExecuteMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
+            cmd = "restore " +
+                $"-n {accountName} " +
+                $"-k {accountKey} " +
+                $"-p {passphrase} " +
+                $"-c {container} " +
+                $"{(synchronize ? "--synchronize " : "")}" +
+                $"{(download ? "--download " : "")}" +
+                $"{(keepPointers ? "--keep-pointers " : "")}" +
+                $"{path}";
+        }
+
+        private static void CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd)
+        {
+            accountName = "ha";
+            accountKey = "ha";
+            passphrase = "3";
+            container = "h";
+            fastHash = false;
+            removeLocal = false;
+            tier = "cool";
+            dedup = false;
+            path = "he";
+
+            cmd = "archive " +
+                $"-n {accountName} " +
+                $"-k {accountKey} " +
+                $"-p {passphrase} " +
+                $"-c {container} " +
+                $"{(removeLocal ? "--remove-local " : "")}" +
+                $"--tier {tier.ToString().ToLower()} " +
+                $"{(dedup ? "--dedup " : "")}" +
+                $"{(fastHash ? "--fasthash" : "")}" +
+                $"{path}";
+        }
+
+
+        private static async Task<(Mock<IFacade> MockFacade, InvocationContext InvocationContext)> ExecuteMainWithMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
         {
             var mcb = new Mock<ICommand>();
             mcb
@@ -229,7 +249,7 @@ namespace Arius.Tests.Arius.Cli
             var p = new Program();
             await p.Main(args.Split(' '), facade: mf);
 
-            return mfb;
+            return (mfb, p.InvocationContext);
         }
     }
 }

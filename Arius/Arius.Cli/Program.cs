@@ -39,7 +39,7 @@ namespace Arius.Cli
                 .UseHost(_ => Host.CreateDefaultBuilder(),
                     host =>
                     {
-                        InvocationContext = host.GetInvocationContext();
+                        InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow?
                         
                         host
                             .ConfigureAppConfiguration(builder =>
@@ -58,14 +58,9 @@ namespace Arius.Cli
                                     services.AddSingleton<Core.Facade.IFacade>(facade);
 
                                 //services.Configure<HostOptions>(c => c.)
-                                //services.AddSingleton<IGreeter, Greeter>();
                             })
                             ;
-
-
                     })
-
-
 
 
 
@@ -96,9 +91,6 @@ namespace Arius.Cli
 //#endif
 //                    .CancelOnProcessTermination()
 
-
-
-
                     .Build()
                     .InvokeAsync(args);
 
@@ -112,8 +104,8 @@ namespace Arius.Cli
             var root = new RootCommand();
             root.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
             
-            root.AddCommand(ArchiveCliCommand.GetCommand());
-            root.AddCommand(RestoreCliCommand.GetCommand());
+            root.AddCommand(new ArchiveCliCommand().GetCommand());
+            root.AddCommand(new RestoreCliCommand().GetCommand());
 
             return new CommandLineBuilder(root);
         }

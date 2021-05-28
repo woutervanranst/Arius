@@ -30,10 +30,12 @@ namespace Arius.Core.Facade
 {
     public interface IFacade
     {
+        ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path);
         ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
     }
     public partial class Facade : IFacade
     {
+
         internal interface IOptions // Used for DI in the facade
         {
         }
@@ -55,17 +57,17 @@ namespace Arius.Core.Facade
             //services = new(() => InitializeServiceProvider(loggerFactory, azCopyAppSettings.Value, tempDirectoryAppSettings.Value));
         }
 
-        public ArchiveCommandBuilder GetArchiveCommandBuilder()
-        {
-            return new ArchiveCommandBuilder((options) =>
-            {
-                var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+        //public ArchiveCommandBuilder GetArchiveCommandBuilder()
+        //{
+        //    return new ArchiveCommandBuilder((options) =>
+        //    {
+        //        var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-                var ace = sp.GetRequiredService<ArchiveCommand>();
+        //        var ace = sp.GetRequiredService<ArchiveCommand>();
 
-                return ace;
-            });
-        }
+        //        return ace;
+        //    });
+        //}
 
 
 
@@ -74,8 +76,7 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
-        public ICommand CreateRestoreCommand(string accountName, string accountKey, string container,
-            string passphrase, bool synchronize, bool download, bool keepPointers, string path)
+        public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
             var options = new RestoreCommandOptions
             {
@@ -91,15 +92,38 @@ namespace Arius.Core.Facade
 
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            var rce = sp.GetRequiredService<RestoreCommand>();
+            var rc = sp.GetRequiredService<RestoreCommand>();
 
-            return rce;
+            return rc;
+        }
+
+        public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        {
+            var options = new ArchiveCommandOptions
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                FastHash = fastHash,
+                Container = container,
+                RemoveLocal = removeLocal,
+                Tier = tier,
+                Dedup = dedup,
+                Path = path
+            };
+
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+            var ac = sp.GetRequiredService<ArchiveCommand>();
+
+            return ac;
         }
 
 
-        private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory,
+
+        private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
             AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
-            T options) where  T : IOptions
+            IOptions options)
         {
             var sc = new ServiceCollection();
 
@@ -119,7 +143,7 @@ namespace Arius.Core.Facade
                 .AddSingleton<Chunker>()
                 .AddSingleton<DedupChunker>();
 
-            if (options is IChunker.IOptions chunkerOptions)
+            if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
             { 
                 sc
                     .AddSingleton<IChunker>((sp) =>

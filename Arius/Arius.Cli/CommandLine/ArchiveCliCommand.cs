@@ -1,3 +1,5 @@
+using Arius.Core.Facade;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -7,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace Arius.CommandLine
 {
-    internal static class ArchiveCliCommand
+    internal class ArchiveCliCommand : ICliCommand
     {
-        internal static Command GetCommand()
+        public Command GetCommand()
         {
             var archiveCommand = new Command("archive", "Archive to blob");
 
@@ -96,31 +98,10 @@ namespace Arius.CommandLine
                 .Create<string, string, string, string, bool, string, bool, bool, string, Microsoft.Extensions.Hosting.IHost>(
                     async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path, host) =>
                     {
-                        throw new NotImplementedException();
+                        var facade = host.Services.GetRequiredService<IFacade>();
+                        var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-
-                        //var c = facade.GetArchiveCommandBuilder()
-                        //    .ForStorageAccount(accountName, accountKey);
-
-                        //return await c.Execute();
-                        
-
-                        //pcp.CommandExecutorType = typeof(ArchiveCommandExecutor);
-
-                        //pcp.CommandExecutorOptions = new ArchiveOptions()
-                        //{
-                        //    AccountName = accountName,
-                        //    AccountKey = accountKey,
-                        //    Passphrase = passphrase,
-                        //    FastHash = fastHash,
-                        //    Container = container,
-                        //    RemoveLocal = removeLocal,
-                        //    Tier = tier,
-                        //    Dedup = dedup,
-                        //    Path = path
-                        //};
-
-                        //return Task.FromResult<int>(0);
+                        return await c.Execute();
                     });
 
             return archiveCommand;
