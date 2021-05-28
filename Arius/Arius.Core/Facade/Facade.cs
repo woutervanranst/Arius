@@ -4,12 +4,15 @@ using Arius.Core.Extensions;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using FluentValidation;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -69,16 +72,61 @@ namespace Arius.Core.Facade
         //    });
         //}
 
-
+        private class ArchiveCommandValidator : AbstractValidator<ArchiveCommandOptions>
+        { 
+            public ArchiveCommandValidator()
+            {
+                RuleFor(o => o.AccountName).NotEmpty();
+                RuleFor(o => o.AccountKey).NotEmpty();
+                RuleFor(o => o.Container).NotEmpty();
+                RuleFor(o => o.Passphrase).NotEmpty();
+                RuleFor(o => o.Path)
+                    .NotEmpty()
+                    .Custom((path, context) =>
+                    {
+                        if (!Directory.Exists(path))
+                            context.AddFailure($"Directory {path} does not exist.");
+                    });
+                RuleFor(o => o.Tier).Must(tier => 
+                    tier != AccessTier.Hot &&
+                    tier != AccessTier.Cool &&
+                    tier != AccessTier.Archive);
+            }
+        }
 
 
         private readonly ILoggerFactory loggerFactory;
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
+        public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+        {
+            var options = new ArchiveCommandOptions
+            {
+                AccountName = accountName,
+                AccountKey = accountKey,
+                Passphrase = passphrase,
+                FastHash = fastHash,
+                Container = container,
+                RemoveLocal = removeLocal,
+                Tier = tier,
+                Dedup = dedup,
+                Path = path
+            };
+
+            var validator = new ArchiveCommandValidator();
+            validator.ValidateAndThrow(options);
+
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+            var ac = sp.GetRequiredService<ArchiveCommand>();
+
+            return ac;
+        }
+
         public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
-            var options = new RestoreCommandOptions
+            var options = new Commands.RestoreCommandOptions
             {
                 AccountName = accountName,
                 AccountKey = accountKey,
@@ -96,29 +144,6 @@ namespace Arius.Core.Facade
 
             return rc;
         }
-
-        public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
-        {
-            var options = new ArchiveCommandOptions
-            {
-                AccountName = accountName,
-                AccountKey = accountKey,
-                Passphrase = passphrase,
-                FastHash = fastHash,
-                Container = container,
-                RemoveLocal = removeLocal,
-                Tier = tier,
-                Dedup = dedup,
-                Path = path
-            };
-
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-
-            var ac = sp.GetRequiredService<ArchiveCommand>();
-
-            return ac;
-        }
-
 
 
         private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
