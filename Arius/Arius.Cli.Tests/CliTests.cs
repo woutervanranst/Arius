@@ -220,9 +220,10 @@ namespace Arius.Cli.Tests
 
         private static async Task<(Mock<IFacade> MockFacade, InvocationContext InvocationContext)> ExecuteMainWithMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
         {
+            Expression<Func<ICommand, Task<int>>> executeExpression = (c) => c.Execute();
             var mcb = new Mock<ICommand>();
             mcb
-                .Setup(m => m.Execute())
+                .Setup(executeExpression)
                 .Returns(Task.FromResult(0))
                 .Verifiable();
 
@@ -248,6 +249,7 @@ namespace Arius.Cli.Tests
 
             var p = new Program();
             await p.Main(args.Split(' '), facade: mf);
+            mcb.Verify(executeExpression, Times.Exactly(1));
 
             return (mfb, p.InvocationContext);
         }
