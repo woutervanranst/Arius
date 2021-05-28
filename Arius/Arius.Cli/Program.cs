@@ -28,7 +28,7 @@ namespace Arius.Cli
             ERROR = 1,
         }
 
-        internal InvocationContext InvocationContext { get; set; }
+        internal InvocationContext InvocationContext { get; private set; }
 
         public static async Task<int> Main(string[] args) => await (new Program().Main(args));
         internal async Task<int> Main(string[] args, Core.Facade.IFacade facade = default)
