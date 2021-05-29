@@ -8,7 +8,7 @@ using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using static Arius.Core.Facade.Facade;
 
 namespace Arius.Core.Repositories
 {
@@ -16,19 +16,19 @@ namespace Arius.Core.Repositories
     {
         internal class ChunkRepository
         {
-            public ChunkRepository(IOptions<Options> options, ILogger<ChunkRepository> logger, IBlobCopier b)
+            public ChunkRepository(IOptions options, ILogger<ChunkRepository> logger, IBlobCopier b)
             {
                 _logger = logger;
                 _blobCopier = b;
 
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.Value.AccountName};AccountKey={options.Value.AccountKey};EndpointSuffix=core.windows.net";
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
                 
                 var bsc = new BlobServiceClient(connectionString);
-                _bcc = bsc.GetBlobContainerClient(options.Value.Container);
+                _bcc = bsc.GetBlobContainerClient(options.Container);
                 var r = _bcc.CreateIfNotExists(PublicAccessType.None);
                 
                 if (r is not null && r.GetRawResponse().Status == 201) // Created
-                    _logger.LogInformation($"Created container {options.Value.Container}... ");
+                    _logger.LogInformation($"Created container {options.Container}... ");
             }
 
             private readonly ILogger<ChunkRepository> _logger;

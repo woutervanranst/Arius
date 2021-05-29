@@ -9,24 +9,23 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Commands
 {
     internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
-        internal class Options
+        internal interface IOptions
         {
-            public string Path { get; init; }
-            public bool Download { get; init; }
-            public bool Synchronize { get; init; }
+            string Path { get; }
+            bool Download { get; }
+            bool Synchronize { get; }
         }
 
-        public RestoreCommand(IOptions<Options> options,
+        public RestoreCommand(IOptions options,
             ILogger<RestoreCommand> logger,
             IServiceProvider serviceProvider)
         {
-            _options = options.Value;
+            _options = options;
             _logger = logger;
             services = serviceProvider;
         }
@@ -43,7 +42,7 @@ namespace Arius.Core.Commands
                 .AddSingleton<MergeBlockProvider>();
         }
 
-        private readonly Options _options;
+        private readonly IOptions _options;
         private readonly ILogger<RestoreCommand> _logger;
         private readonly IServiceProvider services;
 

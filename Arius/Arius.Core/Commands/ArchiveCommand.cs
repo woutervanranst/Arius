@@ -8,26 +8,25 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Commands
 {
 
     internal class ArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
-        internal class Options
+        internal interface IOptions
         {
-            public string Path { get; init; }
+            string Path { get; }
         }
 
-        public ArchiveCommand(IOptions<Options> options,
+        public ArchiveCommand(IOptions options,
             ILogger<ArchiveCommand> logger,
             IServiceProvider serviceProvider)
         {
             this.logger = logger;
             services = serviceProvider;
 
-            root = new DirectoryInfo(options.Value.Path);
+            root = new DirectoryInfo(options.Path);
         }
 
         internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)

@@ -81,11 +81,9 @@ namespace Arius.Core.Facade
 
         public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
         {
-            //throw new NotImplementedException();
+            var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-            //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
-
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
             var ac = sp.GetRequiredService<ArchiveCommand>();
 
@@ -94,15 +92,13 @@ namespace Arius.Core.Facade
 
         public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
-            throw new NotImplementedException();
+            var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
-            //var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            //var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var rc = sp.GetRequiredService<RestoreCommand>();
 
-            //var rc = sp.GetRequiredService<RestoreCommand>();
-
-            //return rc;
+            return rc;
         }
 
         internal AzureRepository GetAzureRepository(string accountName, string accountKey, string container, string passphrase)
@@ -139,7 +135,7 @@ namespace Arius.Core.Facade
 
 
         private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
-            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings)
+            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options)
         {
             var sc = new ServiceCollection();
 
@@ -157,24 +153,23 @@ namespace Arius.Core.Facade
 
                 // Add Chunkers
                 .AddSingleton<Chunker>()
-                //.AddSingleton<DedupChunker>();
-                ;
+                .AddSingleton<DedupChunker>();
 
-            //IOptions options;
-            //if (options is IChunker.Options chunkerOptions) // this is eg not the case for RestoreCommandOptions
-            //{
-            //    sc
-            //        .AddSingleton<IChunker>((sp) =>
-            //        {
-            //            if (chunkerOptions.Dedup)
-            //                return sp.GetRequiredService<DedupChunker>();
-            //            else
-            //                return sp.GetRequiredService<Chunker>();
-            //        });
-            //}
+            if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
+            {
+                sc
+                    .AddSingleton<IChunker>((sp) =>
+                    {
+                        if (chunkerOptions.Dedup)
+                            return sp.GetRequiredService<DedupChunker>();
+                        else
+                            return sp.GetRequiredService<Chunker>();
+                    });
+            }
 
             // Add Options
             sc
+                .AddSingleton(options)
                 //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
                 //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
                 //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
@@ -182,7 +177,19 @@ namespace Arius.Core.Facade
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
-            sc.AddSingleton(typeof(IOptions<>), typeof(IOptionsFactory<>));
+            foreach (var type in options.GetType().GetInterfaces())
+                sc.AddSingleton(type, options);
+            
+            ////Add the options for the Repositories
+            //sc
+            //    .AddSingleton<AzureRepository.IOptions>(options);
+            //// Add the options for the services
+            //sc
+            //    .AddSingleton<IBlobCopier.IOptions>(options)
+            //    .AddSingleton<IEncrypter.IOptions>(options)
+            //    .AddSingleton<IHashValueProvider.IOptions>(options);
+
+            //sc.AddSingleton(typeof(IOptions<>), typeof(IOptionsFactory<>));
 
             //sc.AddOptions().Configure<ArchiveCommand.Options>((o) =>
             //{
@@ -193,7 +200,7 @@ namespace Arius.Core.Facade
 
 
             //    }
-                
+
             //    o.
             //});
 
@@ -211,31 +218,70 @@ namespace Arius.Core.Facade
             return sc.BuildServiceProvider();
         }
 
-        private class IOptionsFactory<T> : IOptions<T> where T : class, new()
+
+
+        public interface Options<T>
+        {
+            public T Value { get; }
+        }
+        private class OptionsFactory<T> : Options<T> where T : Facade.IOptions
         {
             // https://stackoverflow.com/a/42650112/1582323
 
-            public IOptionsFactory()
+            public OptionsFactory(Facade.IOptions options)
             {
-
+                this.options = options;
             }
+
+            private readonly IOptions options;
 
             public T Value
             {
                 get
                 {
-                    var x = new T();
+                    return (T)options;
 
-                    foreach (var pi in typeof(T).GetProperties())
-                    {
-                        pi.SetValue(x, ""); // pi.PropertyType.def)
+                    //var x = new T();
 
-                    }
+                    //foreach (var pi in typeof(T).GetProperties())
+                    //{
+                    //    pi.SetValue(x, ""); // pi.PropertyType.def)
 
-                    return x;
+                    //}
+
+                    //return x;
                 }
             }
         }
+
+
+        //private class IOptionsFactory<T> : IOptions<T> where T : class, new()
+        //{
+        //    // https://stackoverflow.com/a/42650112/1582323
+
+        //    public IOptionsFactory(Facade.IOptions options)
+        //    {
+        //        this.options = options;
+        //    }
+
+        //    private readonly IOptions options;
+
+        //    public T Value
+        //    {
+        //        get
+        //        {
+        //            var x = new T();
+
+        //            foreach (var pi in typeof(T).GetProperties())
+        //            {
+        //                pi.SetValue(x, ""); // pi.PropertyType.def)
+
+        //            }
+
+        //            return x;
+        //        }
+        //    }
+        //}
     }
 
 
