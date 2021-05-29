@@ -5,8 +5,6 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using FluentValidation;
-using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -37,6 +35,25 @@ namespace Arius.Core.Facade
         ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
     }
 
+    public static class AriusCoreExtensions
+    {
+        public static IServiceCollection AddMyLibraryService(this IServiceCollection services)
+        {
+            //services.AddOptions<LibraryOptions>()
+            //    .Configure(options =>
+            //    {
+            //        // Specify default option values
+            //    });
+
+            //// Register lib services here...
+            //// services.AddScoped<ILibraryService, DefaultLibraryService>();
+
+            //return services;
+
+            throw new NotImplementedException();
+        }
+    }
+
     public partial class Facade : IFacade
     {
         internal interface IOptions // Used for DI in the facade
@@ -64,9 +81,11 @@ namespace Arius.Core.Facade
 
         public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
         {
-            var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
-            
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            //throw new NotImplementedException();
+
+            //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
 
             var ac = sp.GetRequiredService<ArchiveCommand>();
 
@@ -75,25 +94,21 @@ namespace Arius.Core.Facade
 
         public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
-            var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+            throw new NotImplementedException();
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            //var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
-            var rc = sp.GetRequiredService<RestoreCommand>();
+            //var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            return rc;
+            //var rc = sp.GetRequiredService<RestoreCommand>();
+
+            //return rc;
         }
 
         internal AzureRepository GetAzureRepository(string accountName, string accountKey, string container, string passphrase)
         {
-            var options = new AzureRepositoryOptions(accountName, accountKey, container, passphrase);
+            throw new NotImplementedException();
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-
-            var repo = sp.GetRequiredService<AzureRepository>();
-
-            return repo;
-            
             //var sc = new ServiceCollection();
 
             //sc
@@ -124,8 +139,7 @@ namespace Arius.Core.Facade
 
 
         private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
-            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings,
-            IOptions options)
+            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings)
         {
             var sc = new ServiceCollection();
 
@@ -143,19 +157,21 @@ namespace Arius.Core.Facade
 
                 // Add Chunkers
                 .AddSingleton<Chunker>()
-                .AddSingleton<DedupChunker>();
+                //.AddSingleton<DedupChunker>();
+                ;
 
-            if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
-            {
-                sc
-                    .AddSingleton<IChunker>((sp) =>
-                    {
-                        if (chunkerOptions.Dedup)
-                            return sp.GetRequiredService<DedupChunker>();
-                        else
-                            return sp.GetRequiredService<Chunker>();
-                    });
-            }
+            //IOptions options;
+            //if (options is IChunker.Options chunkerOptions) // this is eg not the case for RestoreCommandOptions
+            //{
+            //    sc
+            //        .AddSingleton<IChunker>((sp) =>
+            //        {
+            //            if (chunkerOptions.Dedup)
+            //                return sp.GetRequiredService<DedupChunker>();
+            //            else
+            //                return sp.GetRequiredService<Chunker>();
+            //        });
+            //}
 
             // Add Options
             sc
@@ -166,9 +182,24 @@ namespace Arius.Core.Facade
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
+            sc.AddSingleton(typeof(IOptions<>), typeof(IOptionsFactory<>));
+
+            //sc.AddOptions().Configure<ArchiveCommand.Options>((o) =>
+            //{
+            //    foreach (var pi in o.GetType().GetProperties())
+            //    {
+            //        pi.SetValue(o, "t");
+            //        //pi.Name
+
+
+            //    }
+                
+            //    o.
+            //});
+
             //Add the options for the Services & Repositories
-            foreach (var type in options.GetType().GetInterfaces())
-                sc.AddSingleton(type, options);
+            //foreach (var type in options.GetType().GetInterfaces())
+            //    sc.AddSingleton(type, options);
 
             ArchiveCommand.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
@@ -178,6 +209,32 @@ namespace Arius.Core.Facade
                 .AddLogging();
 
             return sc.BuildServiceProvider();
+        }
+
+        private class IOptionsFactory<T> : IOptions<T> where T : class, new()
+        {
+            // https://stackoverflow.com/a/42650112/1582323
+
+            public IOptionsFactory()
+            {
+
+            }
+
+            public T Value
+            {
+                get
+                {
+                    var x = new T();
+
+                    foreach (var pi in typeof(T).GetProperties())
+                    {
+                        pi.SetValue(x, ""); // pi.PropertyType.def)
+
+                    }
+
+                    return x;
+                }
+            }
         }
     }
 

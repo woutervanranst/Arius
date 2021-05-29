@@ -26,7 +26,7 @@ namespace Arius.Core.Commands
             ILogger<RestoreCommand> logger,
             IServiceProvider serviceProvider)
         {
-            _options = options;
+            _options = options.Value;
             _logger = logger;
             services = serviceProvider;
         }
