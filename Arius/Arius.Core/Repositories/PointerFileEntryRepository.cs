@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Repositories
 {
@@ -13,9 +14,11 @@ namespace Arius.Core.Repositories
     {
         private partial class PointerFileEntryRepository
         {
-            public PointerFileEntryRepository(IOptions options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
+            public PointerFileEntryRepository(IOptions<Options> options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
             {
                 _logger = logger;
+
+                //TODO injecteer cachedencryptedrpo ineens
                 _repo = new CachedEncryptedPointerFileEntryRepository(options, loggerFactory.CreateLogger<CachedEncryptedPointerFileEntryRepository>());
             }
 

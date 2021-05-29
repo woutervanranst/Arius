@@ -11,6 +11,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Murmur;
 
 namespace Arius.Core.Repositories
@@ -23,21 +24,21 @@ namespace Arius.Core.Repositories
         {
             private class CachedEncryptedPointerFileEntryRepository
             {
-                public CachedEncryptedPointerFileEntryRepository(IOptions options, ILogger<CachedEncryptedPointerFileEntryRepository> logger)
+                public CachedEncryptedPointerFileEntryRepository(IOptions<Options> options, ILogger<CachedEncryptedPointerFileEntryRepository> logger)
                 {
                     this.logger = logger;
 
-                    passphrase = options.Passphrase;
+                    passphrase = options.Value.Passphrase;
 
-                    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+                    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.Value.AccountName};AccountKey={options.Value.AccountKey};EndpointSuffix=core.windows.net";
 
                     var csa = CloudStorageAccount.Parse(connectionString);
                     var tc = csa.CreateCloudTableClient();
-                    pointerFileEntryTable = tc.GetTableReference($"{options.Container}{TableNameSuffix}");
+                    pointerFileEntryTable = tc.GetTableReference($"{options.Value.Container}{TableNameSuffix}");
 
                     var r = pointerFileEntryTable.CreateIfNotExists();
                     if (r)
-                        this.logger.LogInformation($"Created tables for {options.Container}... ");
+                        this.logger.LogInformation($"Created tables for {options.Value.Container}... ");
 
                     //Asynchronously download all PointerFileEntryDtos
                     pointerFileEntries = new(() =>

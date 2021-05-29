@@ -14,6 +14,7 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Commands
 {
@@ -679,22 +680,22 @@ namespace Arius.Core.Commands
 
     internal class UploadEncryptedChunksBlockProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            AccessTier Tier { get; }
+            public AccessTier Tier { get; init; }
         }
 
-        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, IOptions options, AzureRepository azureRepository)
+        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, IOptions<Options> options, AzureRepository azureRepository)
         {
             _logger = logger;
-            _options = options;
+            _options = options.Value;
             _azureRepository = azureRepository;
 
             _block = new(InitBlock());
         }
 
         private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
-        private readonly IOptions _options;
+        private readonly Options _options;
         private readonly AzureRepository _azureRepository;
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> InitBlock()
@@ -960,17 +961,17 @@ namespace Arius.Core.Commands
 
     internal class RemoveDeletedPointersTaskProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            string Path { get; }
+            public string Path { get; init; }
         }
 
-        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, IOptions options, AzureRepository azureRepository)
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, IOptions<Options> options, AzureRepository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
 
-            _root = new DirectoryInfo(options.Path);
+            _root = new DirectoryInfo(options.Value.Path);
         }
 
         private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
@@ -1125,19 +1126,19 @@ namespace Arius.Core.Commands
 
     internal class DeleteBinaryFilesTaskProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            bool RemoveLocal { get; }
+            public bool RemoveLocal { get; init; }
         }
 
-        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, IOptions options)
+        public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, IOptions<Options> options)
         {
             _logger = logger;
-            _options = options;
+            _options = options.Value;
         }
 
         private readonly ILogger<DeleteBinaryFilesTaskProvider> _logger;
-        private readonly IOptions _options;
+        private readonly Options _options;
 
         public DeleteBinaryFilesTaskProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
         {

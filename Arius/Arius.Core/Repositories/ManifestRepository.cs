@@ -10,6 +10,7 @@ using Arius.Core.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Repositories
 {
@@ -17,14 +18,14 @@ namespace Arius.Core.Repositories
     {
         internal class ManifestRepository
         {
-            public ManifestRepository(IOptions options, ILogger<ManifestRepository> logger)
+            public ManifestRepository(IOptions<Options> options, ILogger<ManifestRepository> logger)
             {
                 _logger = logger;
 
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.Value.AccountName};AccountKey={options.Value.AccountKey};EndpointSuffix=core.windows.net";
 
                 var bsc = new BlobServiceClient(connectionString);
-                _bcc = bsc.GetBlobContainerClient(options.Container);
+                _bcc = bsc.GetBlobContainerClient(options.Value.Container);
 
                 // Is created in ChunkRepository
             }

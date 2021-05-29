@@ -6,15 +6,16 @@ using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Services
 {
     internal interface IHashValueProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            public string Passphrase { get; }
-            public bool FastHash { get; }
+            public string Passphrase { get; init; }
+            public bool FastHash { get; init; }
         }
 
         HashValue GetHashValue(BinaryFile bf);
@@ -23,10 +24,10 @@ namespace Arius.Core.Services
 
     internal class SHA256Hasher : IHashValueProvider
     {
-        public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
+        public SHA256Hasher(IOptions<IHashValueProvider.Options> options, ILogger<SHA256Hasher> logger)
         {
-            _salt = options.Passphrase;
-            _fastHash = options.FastHash;
+            _salt = options.Value.Passphrase;
+            _fastHash = options.Value.FastHash;
             _logger = logger;
         }
 

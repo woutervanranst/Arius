@@ -12,21 +12,22 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Enumerable = System.Linq.Enumerable;
 
 namespace Arius.Core.Commands
 {
     internal class SynchronizeBlockProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            string Path { get; }
+            public string Path { get; init; }
         }
 
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerService ps)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions<Options> options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
-            _root = new DirectoryInfo(options.Path);
+            _root = new DirectoryInfo(options.Value.Path);
             _repo = repo;
             _ps = ps;
         }
@@ -100,12 +101,12 @@ namespace Arius.Core.Commands
 
     internal class ProcessPointerChunksBlockProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            string Path { get; }
+            public string Path { get; init; }
         }
 
-        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, TempDirectoryAppSettings tempDirAppSettings, IOptions options,
+        public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, TempDirectoryAppSettings tempDirAppSettings, IOptions<Options> options,
             IHashValueProvider hvp,
             AzureRepository repo)
         {
@@ -113,7 +114,7 @@ namespace Arius.Core.Commands
             _hvp = hvp;
             _repo = repo;
 
-            _downloadTempDir = tempDirAppSettings.RestoreTempDirectory(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.RestoreTempDirectory(new DirectoryInfo(options.Value.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
@@ -273,17 +274,17 @@ namespace Arius.Core.Commands
 
     internal class DownloadBlockProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            string Path { get; }
+            public string Path { get; init; }
         }
 
-        public DownloadBlockProvider(IOptions options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(IOptions<Options> options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
 
-            var root = new DirectoryInfo(options.Path);
+            var root = new DirectoryInfo(options.Value.Path);
             downloadTempDir = tempDirAppSettings.RestoreTempDirectory(root);
         }
 
@@ -529,18 +530,18 @@ namespace Arius.Core.Commands
 
     internal class MergeBlockProvider
     {
-        internal interface IOptions
+        internal class Options
         {
-            bool KeepPointers { get; }
+            public bool KeepPointers { get; init; }
         }
 
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions<Options> options, IHashValueProvider hvp, DedupChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
             _chunker = new();
             _dedupChunker = dedupChunker;
-            _keepPointers = options.KeepPointers;
+            _keepPointers = options.Value.KeepPointers;
         }
 
         private readonly Chunker _chunker;

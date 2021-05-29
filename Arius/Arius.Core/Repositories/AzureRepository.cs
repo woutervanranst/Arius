@@ -7,21 +7,23 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Repositories
 {
     internal partial class AzureRepository
     {
-        internal interface IOptions
+        internal class Options
         {
-            public string AccountName { get; }
-            public string AccountKey { get; }
-            public string Container { get; }
-            public string Passphrase { get; }
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+            public string Passphrase { get; init; }
         }
 
-        public AzureRepository(IOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
+        public AzureRepository(IOptions<Options> options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
         {
+            // TODO inject ChunkRepo etc instead
             chunkRepo = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
             manifestRepo = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
             pointerFileEntryRepo = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>(), loggerFactory);

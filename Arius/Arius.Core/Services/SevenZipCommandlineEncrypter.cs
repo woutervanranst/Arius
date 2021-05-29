@@ -5,14 +5,15 @@ using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Services
 {
     internal interface IEncrypter
     {
-        internal interface IOptions
+        internal class Options
         {
-            string Passphrase { get; }
+            public string Passphrase { get; init; }
         }
 
         void Encrypt(IFile fileToEncrypt, FileInfo encryptedFile, SevenZipCommandlineEncrypter.Compression compressionLevel, bool deletePlaintext = false);
@@ -22,10 +23,10 @@ namespace Arius.Core.Services
 
     internal class SevenZipCommandlineEncrypter : IEncrypter
     {
-        public SevenZipCommandlineEncrypter(IEncrypter.IOptions options,
+        public SevenZipCommandlineEncrypter(IOptions<IEncrypter.Options> options,
             ILogger<SevenZipCommandlineEncrypter> logger)
         {
-            _passphrase = options.Passphrase;
+            _passphrase = options.Value.Passphrase;
 
             //Search async for the 7z Library (on another thread)
             _7ZPath = Task.Run(() => ExternalProcess.FindFullName(logger, "7z.exe", "7z"));

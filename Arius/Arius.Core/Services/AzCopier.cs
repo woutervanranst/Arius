@@ -12,16 +12,17 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Sas;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Services
 {
     internal interface IBlobCopier
     {
-        internal interface IOptions
+        internal class Options
         {
-            public string AccountName { get; }
-            public string AccountKey { get; }
-            public string Container { get; }
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
         }
 
         void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
@@ -30,7 +31,7 @@ namespace Arius.Core.Services
 
     internal class AzCopier : IBlobCopier
     {
-        public AzCopier(IBlobCopier.IOptions options, ILogger<AzCopier> logger)
+        public AzCopier(IOptions<IBlobCopier.Options> options, ILogger<AzCopier> logger)
         {
             _logger = logger;
 
@@ -55,15 +56,15 @@ namespace Arius.Core.Services
             //TODO Error handling back to main thread
 
 
-            _skc = new StorageSharedKeyCredential(options.AccountName, options.AccountKey);
+            _skc = new StorageSharedKeyCredential(options.Value.AccountName, options.Value.AccountKey);
 
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.Value.AccountName};AccountKey={options.Value.AccountKey};EndpointSuffix=core.windows.net";
 
             // Create a BlobServiceClient object which will be used to create a container client
             var bsc = new BlobServiceClient(connectionString);
             //var bsc = new BlobServiceClient(new Uri($"{accountName}", _skc));
 
-            _bcc = bsc.GetBlobContainerClient(options.Container);
+            _bcc = bsc.GetBlobContainerClient(options.Value.Container);
 
         }
 

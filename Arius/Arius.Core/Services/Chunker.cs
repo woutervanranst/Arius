@@ -12,9 +12,9 @@ namespace Arius.Core.Services
 {
     internal interface IChunker
     {
-        internal interface IOptions
+        internal class Options
         {
-            bool Dedup { get; }
+            public bool Dedup { get; }
         }
 
         IChunkFile[] Chunk(BinaryFile fileToChunk);
