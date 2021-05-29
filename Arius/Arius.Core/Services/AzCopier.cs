@@ -19,9 +19,9 @@ namespace Arius.Core.Services
     {
         internal interface IOptions
         {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Container { get; init; }
+            public string AccountName { get; }
+            public string AccountKey { get; }
+            public string Container { get; }
         }
 
         void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);

@@ -1127,7 +1127,7 @@ namespace Arius.Core.Commands
     {
         internal interface IOptions
         {
-            bool RemoveLocal { get; init; }
+            bool RemoveLocal { get; }
         }
 
         public DeleteBinaryFilesTaskProvider(ILogger<DeleteBinaryFilesTaskProvider> logger, IOptions options)

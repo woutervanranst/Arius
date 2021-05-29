@@ -123,8 +123,7 @@ namespace Arius.Core.Tests
 
         internal static AzureRepository GetAzureRepository()
         {
-            throw new NotImplementedException();
-            //return Facade.GetAriusRepository( GetServiceProvider().GetRequiredService<AzureRepository>();
+            return Facade.GetAzureRepository(AccountName, AccountKey, container.Name, passphrase);
         }
 
 

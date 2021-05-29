@@ -64,7 +64,7 @@ namespace Arius.Core.Facade
 
         public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
         {
-            var options = ArchiveCommandOptions.Create(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+            var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
             
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
@@ -75,13 +75,51 @@ namespace Arius.Core.Facade
 
         public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         {
-            var options = RestoreCommandOptions.Create(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+            var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
             var rc = sp.GetRequiredService<RestoreCommand>();
 
             return rc;
+        }
+
+        internal AzureRepository GetAzureRepository(string accountName, string accountKey, string container, string passphrase)
+        {
+            var options = new AzureRepositoryOptions(accountName, accountKey, container, passphrase);
+
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+            var repo = sp.GetRequiredService<AzureRepository>();
+
+            return repo;
+            
+            //var sc = new ServiceCollection();
+
+            //sc
+            //    //Add Services
+            //    .AddSingleton<IBlobCopier, AzCopier>()
+            //    .AddSingleton<AzureRepository>();
+
+            //// Add Options
+            //sc
+            //    //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
+            //    //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
+            //    //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
+            //    //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
+            //    .AddSingleton(azCopyAppSettings)
+            //    .AddSingleton(tempDirectoryAppSettings);
+
+            //// Add the options for the services
+            //sc
+            //    .AddSingleton<IBlobCopier.IOptions>(options);
+
+            //sc
+            //    .AddSingleton<ILoggerFactory>(loggerFactory)
+            //    .AddLogging();
+
+            //return sc.BuildServiceProvider()
+            //    .GetRequiredService<AzureRepository>();
         }
 
 
@@ -108,7 +146,7 @@ namespace Arius.Core.Facade
                 .AddSingleton<DedupChunker>();
 
             if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
-            { 
+            {
                 sc
                     .AddSingleton<IChunker>((sp) =>
                     {
@@ -140,36 +178,6 @@ namespace Arius.Core.Facade
                 .AddLogging();
 
             return sc.BuildServiceProvider();
-        }
-
-        internal AzureRepository GetAriusRepository<T>(T options) where T : AzureRepository.IOptions, IBlobCopier.IOptions
-        {
-            var sc = new ServiceCollection();
-
-            sc
-                //Add Services
-                .AddSingleton<IBlobCopier, AzCopier>()
-                .AddSingleton<AzureRepository>();
-
-            // Add Options
-            sc
-                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
-                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
-                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
-                .AddSingleton(azCopyAppSettings)
-                .AddSingleton(tempDirectoryAppSettings);
-
-            // Add the options for the services
-            sc
-                .AddSingleton<IBlobCopier.IOptions>(options);
-
-            sc
-                .AddSingleton<ILoggerFactory>(loggerFactory)
-                .AddLogging();
-
-            return sc.BuildServiceProvider()
-                .GetRequiredService<AzureRepository>();
         }
     }
 
