@@ -6,6 +6,7 @@ using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using static Arius.Core.Facade.Facade;
 
 namespace Arius.Core.Services
 {
@@ -23,10 +24,10 @@ namespace Arius.Core.Services
 
     internal class SHA256Hasher : IHashValueProvider
     {
-        public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
+        public SHA256Hasher(ILogger<SHA256Hasher> logger, Options<IHashValueProvider.IOptions> options)
         {
-            _salt = options.Passphrase;
-            _fastHash = options.FastHash;
+            _salt = options.Value.Passphrase;
+            _fastHash = options.Value.FastHash;
             _logger = logger;
         }
 

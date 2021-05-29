@@ -169,7 +169,7 @@ namespace Arius.Core.Facade
 
             // Add Options
             sc
-                .AddSingleton(options)
+                .AddSingleton<Facade.IOptions>(options)
                 //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
                 //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
                 //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
@@ -179,17 +179,17 @@ namespace Arius.Core.Facade
 
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
-            
+
             ////Add the options for the Repositories
             //sc
-            //    .AddSingleton<AzureRepository.IOptions>(options);
+                //.AddSingleton<AzureRepository.IOptions>(options);
             //// Add the options for the services
             //sc
             //    .AddSingleton<IBlobCopier.IOptions>(options)
             //    .AddSingleton<IEncrypter.IOptions>(options)
             //    .AddSingleton<IHashValueProvider.IOptions>(options);
 
-            //sc.AddSingleton(typeof(IOptions<>), typeof(IOptionsFactory<>));
+            sc.AddSingleton(typeof(Options<>), typeof(OptionsFactory<>));
 
             //sc.AddOptions().Configure<ArchiveCommand.Options>((o) =>
             //{
@@ -224,7 +224,7 @@ namespace Arius.Core.Facade
         {
             public T Value { get; }
         }
-        private class OptionsFactory<T> : Options<T> where T : Facade.IOptions
+        private class OptionsFactory<T> : Options<T> //where T : Facade.IOptions
         {
             // https://stackoverflow.com/a/42650112/1582323
 
