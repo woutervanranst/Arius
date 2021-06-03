@@ -103,7 +103,13 @@ namespace Arius.Core.Facade
 
         internal AzureRepository GetAzureRepository(string accountName, string accountKey, string container, string passphrase)
         {
-            throw new NotImplementedException();
+            var options = new AzureRepositoryOptions(accountName, accountKey, container, passphrase);
+            
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            
+            var repo = sp.GetRequiredService<AzureRepository>();
+            
+            return repo;
 
             //var sc = new ServiceCollection();
 
@@ -169,44 +175,12 @@ namespace Arius.Core.Facade
 
             // Add Options
             sc
-                .AddSingleton<Facade.IOptions>(options)
-                //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
-                //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
-                //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-                //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
                 .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
+            //Add the options for the Services & Repositories
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
-
-            ////Add the options for the Repositories
-            //sc
-                //.AddSingleton<AzureRepository.IOptions>(options);
-            //// Add the options for the services
-            //sc
-            //    .AddSingleton<IBlobCopier.IOptions>(options)
-            //    .AddSingleton<IEncrypter.IOptions>(options)
-            //    .AddSingleton<IHashValueProvider.IOptions>(options);
-
-            sc.AddSingleton(typeof(Options<>), typeof(OptionsFactory<>));
-
-            //sc.AddOptions().Configure<ArchiveCommand.Options>((o) =>
-            //{
-            //    foreach (var pi in o.GetType().GetProperties())
-            //    {
-            //        pi.SetValue(o, "t");
-            //        //pi.Name
-
-
-            //    }
-
-            //    o.
-            //});
-
-            //Add the options for the Services & Repositories
-            //foreach (var type in options.GetType().GetInterfaces())
-            //    sc.AddSingleton(type, options);
 
             ArchiveCommand.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
@@ -217,72 +191,8 @@ namespace Arius.Core.Facade
 
             return sc.BuildServiceProvider();
         }
-
-
-
-        public interface Options<T>
-        {
-            public T Value { get; }
-        }
-        private class OptionsFactory<T> : Options<T> //where T : Facade.IOptions
-        {
-            // https://stackoverflow.com/a/42650112/1582323
-
-            public OptionsFactory(Facade.IOptions options)
-            {
-                this.options = options;
-            }
-
-            private readonly IOptions options;
-
-            public T Value
-            {
-                get
-                {
-                    return (T)options;
-
-                    //var x = new T();
-
-                    //foreach (var pi in typeof(T).GetProperties())
-                    //{
-                    //    pi.SetValue(x, ""); // pi.PropertyType.def)
-
-                    //}
-
-                    //return x;
-                }
-            }
-        }
-
-
-        //private class IOptionsFactory<T> : IOptions<T> where T : class, new()
-        //{
-        //    // https://stackoverflow.com/a/42650112/1582323
-
-        //    public IOptionsFactory(Facade.IOptions options)
-        //    {
-        //        this.options = options;
-        //    }
-
-        //    private readonly IOptions options;
-
-        //    public T Value
-        //    {
-        //        get
-        //        {
-        //            var x = new T();
-
-        //            foreach (var pi in typeof(T).GetProperties())
-        //            {
-        //                pi.SetValue(x, ""); // pi.PropertyType.def)
-
-        //            }
-
-        //            return x;
-        //        }
-        //    }
-        //}
     }
+
 
 
     //public class Facade
