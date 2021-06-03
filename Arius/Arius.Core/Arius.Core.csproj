@@ -1,9 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.8.4" />
     <PackageReference Include="FluentValidation" Version="10.2.0" />
@@ -16,7 +12,17 @@
     <PackageReference Include="System.Linq" Version="4.3.0" />
   </ItemGroup>
 
-  <Target Name="NugetPackAutoVersioning" AfterTargets="Build">
-    <Exec Command="dotnet pack -p:PackageVersion=$([System.DateTime]::Now.ToString(&quot;yyyy.MM.dd.HHmmss&quot;)) --no-build --configuration $(Configuration) --output &quot;$(SolutionDir)nuget" />
-  </Target>
+  <PropertyGroup>
+        <VersionMajor>1</VersionMajor>
+        <VersionMinor>0</VersionMinor>
+        <VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.ToString("yyMM"))</VersionPatch>
+        <VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
+    </PropertyGroup>
+    
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)-beta.$(VersionRevision)</Version>
+    <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
+  </PropertyGroup>
 </Project>
