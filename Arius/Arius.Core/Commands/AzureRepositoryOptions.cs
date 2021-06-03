@@ -1,11 +1,13 @@
 ﻿
 using Arius.Core.Repositories;
+using Arius.Core.Services;
 using FluentValidation;
 using System;
 namespace Arius.Core.Commands
 {
     internal class AzureRepositoryOptions : Facade.Facade.IOptions,
-        AzureRepository.IOptions
+        AzureRepository.IOptions,
+        IBlobCopier.IOptions //TODO remove this? see https://github.com/woutervanranst/Arius/issues/28
     {
         public string AccountName { get; private init; }
         public string AccountKey { get; private init; }
@@ -17,6 +19,7 @@ namespace Arius.Core.Commands
             AccountKey = accountKey;
             Passphrase = passphrase;
             Container = container;
+
             var validator = new Validator();
             validator.ValidateAndThrow(this);
         }
