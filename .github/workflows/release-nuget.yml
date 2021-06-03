@@ -50,10 +50,10 @@ jobs:
       #run: dotnet nuget push NuGet.Workflow.${VERSION}.nupkg --source https://nuget.pkg.github.com/acraven/index.json --api-key ${GITHUB_TOKEN}
       run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.PAT }}
 
 
-#        dotnet nuget push Arius.Core\bin\Release\*.nupkg --api-key c15d09757efb6dc3a8f7d835dad9ee4a614311c4 --source "github2"
+#        dotnet nuget push Arius.Core\bin\Release\*.nupkg --api-key c...4 --source "github2"
 
 
 
