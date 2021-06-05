@@ -1,1 +1,138 @@
+name: Arius.Core - Nuget Package
 
+on:
+  push:
+    paths:
+      - 'Arius/Arius.Core'
+  workflow_dispatch:
+    inputs:
+      #logLevel:
+      #  description: 'Log level'     
+      #  required: true
+      #  default: 'warning'
+      tags:
+        description: 'Test scenario tags'  
+        
+        # TODO ON BRANCH MERGE
+
+
+# See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
+# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+
+jobs:
+  job1:
+    name: Release
+
+    defaults:
+      run:
+        working-directory: ./Arius
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    # - name: Set VERSION variable from tag
+    #   run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+    
+    - name: Build
+      run: dotnet build Arius.Core --configuration Release
+    
+    - name: Test
+      run: dotnet test Arius.Core.Tests --configuration Release --no-build
+    
+    - name: Pack
+      #run: dotnet pack --configuration Release -p:PackageVersion=$GITHUB_RUN_ID --no-build --output .
+      run: dotnet pack --configuration Release --no-build --output .
+    
+    - name: Push
+      #run: dotnet nuget push NuGet.Workflow.${VERSION}.nupkg --source https://nuget.pkg.github.com/acraven/index.json --api-key ${GITHUB_TOKEN}
+      run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+
+
+
+#        dotnet nuget push Arius.Core\bin\Release\*.nupkg --api-key c...4 --source "github2"
+
+
+
+
+#     - name: Setup .NET Core
+#       uses: actions/setup-dotnet@v1
+#       with:
+#         dotnet-version: 5.0.x
+        
+#     - name: Publish with dotnet
+#       run: dotnet publish Arius -c Release -o ./artifacts #Deploy only Arius project, not the tests
+      
+#     - name: Zip artifacts
+#       run: |
+#         pushd /home/runner/work/Arius/Arius/Arius/artifacts/
+#         zip -r /home/runner/work/Arius/Arius/Arius/release.zip .
+#         popd
+        
+#     - name: Create Release
+#       id: create_release
+#       uses: actions/create-release@v1
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       with:
+#         tag_name: ${{ github.ref }}
+#         release_name: Release ${{ github.ref }}
+#         draft: false
+#         prerelease: false
+    
+#     - name: Upload Release Asset
+#       id: upload-release-asset 
+#       uses: actions/upload-release-asset@v1
+#       env:
+#         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       with:
+#         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+#         asset_path: /home/runner/work/Arius/Arius/Arius/release.zip #./release.zip
+#         asset_name: release.zip
+#         asset_content_type: application/zip
+
+
+
+# # # For SSH / debug        
+# #     - name: Setup tmate session
+# #       uses: mxschmitt/action-tmate@v3
+
+
+#     - name: Build image
+#       run: |
+#         pushd /home/runner/work/Arius/Arius/Arius/Arius/
+#         docker build -f Dockerfile .. --tag $IMAGE_NAME
+#         popd
+
+#     - name: Log into GitHub Container Registry
+#     # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
+#       run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+
+#     - name: Push image to GitHub Container Registry
+#       run: |
+#         # IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+#         IMAGE_ID=ghcr.io/${{ github.repository }}
+
+#         # Change all uppercase to lowercase
+#         IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+#         # Strip git ref prefix from version
+#         VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+#         # Strip "v" prefix from tag name
+#         [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+#         # Use Docker `latest` tag convention
+#         [ "$VERSION" == "master" ] && VERSION=latest
+
+#         echo IMAGE_ID=$IMAGE_ID
+#         echo VERSION=$VERSION
+
+#         docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+#         docker tag $IMAGE_NAME $IMAGE_ID:latest
+#         docker push $IMAGE_ID:$VERSION
+#         docker push $IMAGE_ID:latest
