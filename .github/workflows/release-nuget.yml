@@ -15,8 +15,6 @@ on:
         
         # TODO ON BRANCH MERGE
 
-
-
 # See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
 # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
