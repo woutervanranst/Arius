@@ -44,7 +44,7 @@ jobs:
     
     - name: Pack
       #run: dotnet pack --configuration Release -p:PackageVersion=$GITHUB_RUN_ID --no-build --output .
-      run: dotnet pack --configuration Release --no-build --output .
+      run: dotnet pack Arius.Core --configuration Release --no-build --output .
     
     - name: Push
       #run: dotnet nuget push NuGet.Workflow.${VERSION}.nupkg --source https://nuget.pkg.github.com/acraven/index.json --api-key ${GITHUB_TOKEN}
