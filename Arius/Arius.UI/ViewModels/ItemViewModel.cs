@@ -1,7 +1,4 @@
-﻿using Arius.Extensions;
-using Arius.Facade;
-using Arius.Models;
-using System;
+﻿using System;
 using System.Text;
 
 namespace Arius.UI.ViewModels

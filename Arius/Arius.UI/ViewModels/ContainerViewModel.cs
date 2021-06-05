@@ -1,5 +1,4 @@
-﻿using Arius.Facade;
-using System;
+﻿using System;
 
 namespace Arius.UI.ViewModels
 {
