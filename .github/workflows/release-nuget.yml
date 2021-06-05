@@ -3,7 +3,7 @@ name: Arius.Core - Nuget Package
 on:
   push:
     paths:
-      - 'Arius/Arius.Core'
+      - 'Arius/Arius.Core/**'
   workflow_dispatch:
     inputs:
       #logLevel:
