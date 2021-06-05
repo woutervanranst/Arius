@@ -25,4 +25,5 @@
     <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)-beta.$(VersionRevision)</Version>
     <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
   </PropertyGroup>
+  
 </Project>
