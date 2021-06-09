@@ -12,6 +12,12 @@ on:
 #env:
 #  IMAGE_NAME:arius
 
+
+# # For SSH / debug        
+#     - name: Setup tmate session
+#       uses: mxschmitt/action-tmate@v3
+
+
 jobs:
   artifact:
     name: Release Artifact
@@ -65,6 +71,8 @@ jobs:
         asset_name: release.zip
         asset_content_type: application/zip
 
+
+
   docker:
     name: Release Docker
     
@@ -74,7 +82,8 @@ jobs:
 
     env:
       IMAGE_NAME: arius
-    
+      GITHUB_TOKEN: ${{ secrets.PAT }}
+
     runs-on: ubuntu-latest
 
     steps:
@@ -93,16 +102,9 @@ jobs:
         popd
       env:
         GITHUB_USER: wouter.vanranst@gmail.com
-        GITHUB_TOKEN: ${{ secrets.PAT }}
-
-# # For SSH / debug        
-#     - name: Setup tmate session
-#       uses: mxschmitt/action-tmate@v3
-
 
     - name: Log into GitHub Container Registry
-    # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
-      run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+      run: echo "$GITHUB_TOKEN" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Push image to GitHub Container Registry
       run: |
