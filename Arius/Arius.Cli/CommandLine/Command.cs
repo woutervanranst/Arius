@@ -1,7 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 
-namespace Arius.CommandLine
+namespace Arius.Cli.CommandLine
 {
     internal interface ICliCommand
     {

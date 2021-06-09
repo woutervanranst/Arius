@@ -7,7 +7,7 @@ using System.CommandLine.Parsing;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius.CommandLine
+namespace Arius.Cli.CommandLine
 {
     internal class ArchiveCliCommand : ICliCommand
     {
@@ -60,7 +60,7 @@ namespace Arius.CommandLine
                 // As per https://github.com/dotnet/command-line-api/issues/476#issuecomment-476723660
                 var tier = o.GetValueOrDefault<string>();
 
-                string[] tiers = {"hot", "cool", "archive"};
+                string[] tiers = { "hot", "cool", "archive" };
                 if (!tiers.Contains(tier))
                     return $"{tier} is not a valid tier (hot|cool|archive)";
 
@@ -86,7 +86,7 @@ namespace Arius.CommandLine
                 archiveCommand.AddArgument(pathArgument);
             }
             else
-            { 
+            {
                 pathArgument = new Argument<string>("path",
                     //getDefaultValue: () => Environment.CurrentDirectory,
                     //"Path to archive. Default: current directory");

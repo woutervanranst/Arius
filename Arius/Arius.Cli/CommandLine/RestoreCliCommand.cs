@@ -5,7 +5,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 
-namespace Arius.CommandLine
+namespace Arius.Cli.CommandLine
 {
     internal class RestoreCliCommand : ICliCommand
     {
@@ -72,7 +72,7 @@ namespace Arius.CommandLine
                     {
                         var facade = host.Services.GetRequiredService<IFacade>();
                         var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
-                        
+
                         return await c.Execute();
                     });
 
