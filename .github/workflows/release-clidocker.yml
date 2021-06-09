@@ -78,17 +78,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
+
+    - name: Build image
+      run: |
+        pushd Arius.Cli
+        docker build . --tag $IMAGE_NAME
+        popd
 
 # # For SSH / debug        
 #     - name: Setup tmate session
 #       uses: mxschmitt/action-tmate@v3
-    - name: Build image
-      run: |
-        pwd
-        ls
-        pushd Arius.Cli
-        docker build . --tag $IMAGE_NAME
-        popd
+
 
     - name: Log into GitHub Container Registry
     # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
