@@ -84,8 +84,8 @@ jobs:
 #       uses: mxschmitt/action-tmate@v3
     - name: Build image
       run: |
-        pushd /home/runner/work/Arius/Arius/Arius/Arius/
-        docker build -f Dockerfile .. --tag $IMAGE_NAME
+        pushd Arius.Cli
+        docker build . --tag $IMAGE_NAME
         popd
 
     - name: Log into GitHub Container Registry
