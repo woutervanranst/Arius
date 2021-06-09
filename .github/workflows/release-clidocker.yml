@@ -1,19 +1,10 @@
-name: Release Artifact & Docker
+name: Arius.Cli - Release Artifact & Docker
 
 on:
   push:
     # Sequence of patterns matched against refs/tags
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-  workflow_dispatch:
-    inputs:
-      #logLevel:
-      #  description: 'Log level'     
-      #  required: true
-      #  default: 'warning'
-      tags:
-        description: 'Test scenario tags' 
-
 
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
 # # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
