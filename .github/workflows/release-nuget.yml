@@ -25,13 +25,13 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Build
-      run: dotnet build Arius.Core --configuration Release
+      run: dotnet build Arius.Core -c Release
     
     - name: Test
-      run: dotnet test Arius.Core.Tests --configuration Release --no-build
+      run: dotnet test Arius.Core.Tests -c Release --no-build
     
     - name: Pack
-      run: dotnet pack Arius.Core --configuration Release --no-build --output .
+      run: dotnet pack Arius.Core -c Release --no-build --output .
     
     - name: Push
       run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
