@@ -11,6 +11,7 @@ on:
 
 env:
   IMAGE_NAME: arius
+  GITHUB_USER: wouter.vanranst@gmail.com
   GITHUB_TOKEN: ${{ secrets.PAT }}
 
 defaults:
@@ -98,8 +99,6 @@ jobs:
         pushd Arius.Cli
         docker build . --tag $IMAGE_NAME --build-arg GITHUB_USER=$GITHUB_USER --build-arg GITHUB_TOKEN=$GITHUB_TOKEN
         popd
-      env:
-        GITHUB_USER: wouter.vanranst@gmail.com
 
     - name: Log into GitHub Container Registry
       run: echo "$GITHUB_TOKEN" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
