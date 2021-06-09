@@ -13,10 +13,10 @@ name: "CodeQL"
 
 on:
   push:
-    paths: 
-      - 'Arius/**'
-      - '.github/**'
-    # branches: [ master ]
+    # paths: 
+    #   - 'Arius/**'
+    #   - '.github/**'
+    branches: [ master ]
 
 jobs:
   analyze:
