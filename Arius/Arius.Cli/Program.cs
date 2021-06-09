@@ -1,18 +1,21 @@
-﻿using Arius.CommandLine;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Invocation;
-using System.CommandLine.Parsing;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
+using Karambolo.Extensions.Logging.File;
+using Arius.Cli.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Arius.Core.Facade;
+using System.IO;
+using System.CommandLine.Parsing;
+using Arius.Cli.CommandLine;
+
 
 /*
  * This is required to test the internals of the Arius.Cli assembly
@@ -31,7 +34,7 @@ namespace Arius.Cli
         internal InvocationContext InvocationContext { get; private set; }
 
         public static async Task<int> Main(string[] args) => await (new Program().Main(args));
-        internal async Task<int> Main(string[] args, Core.Facade.IFacade facade = default)
+        internal async Task<int> Main(string[] args, IFacade facade = default)
         {
             //Environment.ExitCode = (int)ExitCode.ERROR;
 
@@ -46,16 +49,40 @@ namespace Arius.Cli
                             {
                                 builder.AddJsonFile("appsettings.json");
                             })
-                            //.ConfigureLogging((hostBuilderContext, loggingBuilder) =>
-                            // {
+                            .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
+                             {
+                                 loggingBuilder
+                                     .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
+                                     .AddSimpleConsole(options =>
+                                     {
+                                         // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                                     });
 
-                            // })
+                                 if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                                 {
+                                     //We're NOT in a unit test
+                                     //Do not log to file as the Karambola extension disposes itself i a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
+                                     loggingBuilder.AddFile(options =>
+                                     {
+                                         if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                                             options.RootPath = "/logs";
+                                         else
+                                             options.RootPath = AppContext.BaseDirectory;
+
+                                         options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+
+                                         options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                                     });
+
+                                 }
+
+                             })
                             .ConfigureServices(services =>
                             {
                                 if (facade is null)
-                                    services.AddSingleton<Core.Facade.IFacade, Arius.Core.Facade.Facade>();
+                                    services.AddSingleton<IFacade, Facade>();
                                 else
-                                    services.AddSingleton<Core.Facade.IFacade>(facade);
+                                    services.AddSingleton(facade);
 
                                 //services.Configure<HostOptions>(c => c.)
                             })
