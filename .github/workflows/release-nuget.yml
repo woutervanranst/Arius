@@ -12,7 +12,7 @@ on:
 
 jobs:
   job1:
-    name: Release
+    name: Release Nuget Package
 
     defaults:
       run:
