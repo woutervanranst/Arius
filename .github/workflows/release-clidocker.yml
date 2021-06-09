@@ -9,8 +9,13 @@ on:
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
 # # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
-#env:
-#  IMAGE_NAME:arius
+env:
+  IMAGE_NAME: arius
+  GITHUB_TOKEN: ${{ secrets.PAT }}
+
+defaults:
+  run:
+    working-directory: ./Arius
 
 
 # # For SSH / debug        
@@ -18,17 +23,11 @@ on:
 #       uses: mxschmitt/action-tmate@v3
 
 
+
 jobs:
   artifact:
     name: Release Artifact
 
-    defaults:
-      run:
-        working-directory: ./Arius
-
-    env:
-      IMAGE_NAME: arius
-    
     runs-on: ubuntu-latest
 
     steps:
@@ -40,20 +39,23 @@ jobs:
       with:
         dotnet-version: 5.0.x
         
-    - name: Publish with dotnet
-      run: dotnet publish Arius -c Release -o ./artifacts #Deploy only Arius project, not the tests
+    - name: Run Arius.Cli.Tests
+      run: dotnet test Arius.Cli.Tests -c Release
+
+    - name: Publish
+      run: dotnet publish Arius.Cli -c Release -o ./artifacts #Deploy only Arius project, not the tests
       
-    - name: Zip artifacts
+    - name: Create Artifact ZIP
       run: |
-        pushd /home/runner/work/Arius/Arius/Arius/artifacts/
-        zip -r /home/runner/work/Arius/Arius/Arius/release.zip .
+        pushd ./artifacts/
+        zip -r ../release.zip .
         popd
         
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: $GITHUB_TOKEN
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
@@ -64,26 +66,19 @@ jobs:
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: $GITHUB_TOKEN
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: /home/runner/work/Arius/Arius/Arius/release.zip #./release.zip
+        asset_path: release.zip
         asset_name: release.zip
         asset_content_type: application/zip
 
 
 
   docker:
+    needs: artifact ## Depend on a successful artifact deployment (only for Tests)
     name: Release Docker
     
-    defaults:
-      run:
-        working-directory: Arius
-
-    env:
-      IMAGE_NAME: arius
-      GITHUB_TOKEN: ${{ secrets.PAT }}
-
     runs-on: ubuntu-latest
 
     steps:
