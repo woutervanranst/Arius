@@ -91,6 +91,9 @@ jobs:
         pushd Arius.Cli
         docker build . --tag $IMAGE_NAME
         popd
+      env:
+        GITHUB_USER: wouter.vanranst@gmail.com
+        GITHUB_TOKEN: ${{ secrets.PAT }}
 
 # # For SSH / debug        
 #     - name: Setup tmate session

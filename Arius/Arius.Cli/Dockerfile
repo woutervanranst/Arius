@@ -1,39 +1,40 @@
-
-# Local build:    docker build -f Dockerfile .. -t arius
-
+# Local build:  docker build . -t arius
 
 FROM mcr.microsoft.com/dotnet/runtime:5.0 AS base
+RUN apt-get update
 WORKDIR /app
-#Install AzCopy & 7z -- put it here as per https://docs.microsoft.com/en-us/visualstudio/containers/container-build?view=vs-2019#debugging
-RUN apt-get update && apt-get install -y \
-    wget \
-    tar \
-    p7zip-full
-RUN wget https://aka.ms/downloadazcopy-v10-linux
-RUN tar -xvf downloadazcopy-v10-linux
-RUN cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
-RUN rm -rf /var/lib/apt/lists/*
-VOLUME ["/archive"]
-VOLUME ["/logs"]
+
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["Arius/Arius.csproj", "Arius/"]
-RUN dotnet restore "Arius/Arius.csproj"
+COPY "Arius.Cli.csproj" .
+RUN dotnet nuget add source -u ${GITHUB_USER} -p ${GITHUB_TOKEN} --store-password-in-clear-text -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
+RUN dotnet restore "Arius.Cli.csproj"
 COPY . .
-WORKDIR "/src/Arius"
-RUN dotnet build "Arius.csproj" -c Release -o /app/build
+WORKDIR "/src"
+RUN dotnet build "Arius.Cli.csproj" -c Release -o /app/build
 
 
 FROM build AS publish
-RUN dotnet publish "Arius.csproj" -c Release -o /app/publish
-
-FROM build AS tooling
+RUN dotnet publish "Arius.Cli.csproj" -c Release -o /app/publish
 
 
-FROM base AS final
+FROM base as azcopy
+RUN apt-get install -y \
+    wget \
+    tar
+RUN wget https://aka.ms/downloadazcopy-v10-linux
+RUN tar -xvf downloadazcopy-v10-linux --no-anchored azcopy --strip-components 1
+    # Extract azcopy binary to /app/azcopy
+    #   xvf: extract verbose file
+    #   --no-anchored azcopy: The binary resides in a subfolder of the archive. This flag extract all files matching 'azcopy' 
+    #   --strip-components 1: flatten / do not extract to same directory structure
+
+
+FROM base as final
+VOLUME ["/archive"]
+VOLUME ["/logs"]
+RUN apt-get install p7zip-full -y
 WORKDIR /app
 COPY --from=publish /app/publish .
-COPY --from=base /usr/bin/azcopy /usr/bin/
-## NOTE: Debugging in VS overwrites this
-ENTRYPOINT ["dotnet", "arius.dll"]
+COPY --from=azcopy /app/azcopy /usr/bin/
