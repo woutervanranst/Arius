@@ -70,7 +70,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: ./Arius
+        working-directory: Arius
 
     env:
       IMAGE_NAME: arius
@@ -84,6 +84,8 @@ jobs:
 #       uses: mxschmitt/action-tmate@v3
     - name: Build image
       run: |
+        pwd
+        ls
         pushd Arius.Cli
         docker build . --tag $IMAGE_NAME
         popd
