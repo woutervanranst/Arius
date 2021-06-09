@@ -19,9 +19,7 @@ defaults:
     working-directory: ./Arius
 
 
-# # For SSH / debug        
-#     - name: Setup tmate session
-#       uses: mxschmitt/action-tmate@v3
+
 
 
 
@@ -65,6 +63,10 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
+# # For SSH / debug        
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     
     - name: Upload Release Asset
       id: upload-release-asset 
