@@ -13,8 +13,8 @@ on:
 #  IMAGE_NAME:arius
 
 jobs:
-  job1:
-    name: Release
+  artifact:
+    name: Release Artifact
 
     defaults:
       run:
@@ -66,6 +66,8 @@ jobs:
         asset_content_type: application/zip
 
 
+   docker:
+    name: Release Docker
 
 # # For SSH / debug        
 #     - name: Setup tmate session
