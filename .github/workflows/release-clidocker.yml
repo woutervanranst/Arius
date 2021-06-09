@@ -67,12 +67,21 @@ jobs:
 
   docker:
     name: Release Docker
+    
+    defaults:
+      run:
+        working-directory: ./Arius
+
+    env:
+      IMAGE_NAME: arius
+    
+    runs-on: ubuntu-latest
+
+    steps:
 
 # # For SSH / debug        
 #     - name: Setup tmate session
 #       uses: mxschmitt/action-tmate@v3
-
-
     - name: Build image
       run: |
         pushd /home/runner/work/Arius/Arius/Arius/Arius/
