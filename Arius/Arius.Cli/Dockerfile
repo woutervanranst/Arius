@@ -6,9 +6,11 @@ WORKDIR /app
 
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+ARG GITHUB_USER
+ARG GITHUB_TOKEN
 WORKDIR /src
 COPY "Arius.Cli.csproj" .
-RUN dotnet nuget add source -u ${GITHUB_USER} -p ${GITHUB_TOKEN} --store-password-in-clear-text -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
+RUN dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
 RUN dotnet restore "Arius.Cli.csproj"
 COPY . .
 WORKDIR "/src"

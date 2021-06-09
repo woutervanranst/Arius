@@ -89,7 +89,7 @@ jobs:
     - name: Build image
       run: |
         pushd Arius.Cli
-        docker build . --tag $IMAGE_NAME
+        docker build . --tag $IMAGE_NAME --build-arg GITHUB_USER=$GITHUB_USER --build-arg GITHUB_TOKEN=$GITHUB_TOKEN
         popd
       env:
         GITHUB_USER: wouter.vanranst@gmail.com
