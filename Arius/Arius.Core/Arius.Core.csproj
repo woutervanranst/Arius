@@ -22,9 +22,8 @@
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)-beta.$(VersionRevision)</Version>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>
     <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
   </PropertyGroup>
-
   
 </Project>
