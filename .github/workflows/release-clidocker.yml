@@ -1,37 +1,32 @@
-name: Release Artifact & Docker
+name: Arius.Cli - Release Artifact & Docker
 
 on:
   push:
     # Sequence of patterns matched against refs/tags
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-  workflow_dispatch:
-    inputs:
-      #logLevel:
-      #  description: 'Log level'     
-      #  required: true
-      #  default: 'warning'
-      tags:
-        description: 'Test scenario tags' 
-
 
 # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
 # # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
-#env:
-#  IMAGE_NAME:arius
+env:
+  IMAGE_NAME: arius
+  GITHUB_USER: wouter.vanranst@gmail.com
+  GITHUB_TOKEN: ${{ secrets.PAT }}
+
+defaults:
+  run:
+    working-directory: ./Arius
+
+
+
+
+
 
 jobs:
-  job1:
-    name: Release
+  artifact:
+    name: Release Artifact
 
-    defaults:
-      run:
-        working-directory: ./Arius
-
-    env:
-      IMAGE_NAME: arius
-    
     runs-on: ubuntu-latest
 
     steps:
@@ -43,53 +38,72 @@ jobs:
       with:
         dotnet-version: 5.0.x
         
-    - name: Publish with dotnet
-      run: dotnet publish Arius -c Release -o ./artifacts #Deploy only Arius project, not the tests
+    - name: Add Arius.Core Github Package Source
+      run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'
+
+    - name: Run Arius.Cli.Tests
+      run: dotnet test Arius.Cli.Tests -c Release
+
+    - name: Publish
+      run: dotnet publish Arius.Cli -c Release -o ./artifacts #Deploy only Arius project, not the tests
       
-    - name: Zip artifacts
+    - name: Create Artifact ZIP
       run: |
-        pushd /home/runner/work/Arius/Arius/Arius/artifacts/
-        zip -r /home/runner/work/Arius/Arius/Arius/release.zip .
+        pushd ./artifacts/
+        zip -r ../release.zip .
         popd
         
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #env:
+      #  GITHUB_TOKEN: $GITHUB_TOKEN
       with:
         tag_name: ${{ github.ref }}
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
+# # For SSH / debug        
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
     
     - name: Upload Release Asset
       id: upload-release-asset 
       uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #env:
+      #  GITHUB_TOKEN: $GITHUB_TOKEN
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: /home/runner/work/Arius/Arius/Arius/release.zip #./release.zip
+        asset_path: ./release.zip
         asset_name: release.zip
         asset_content_type: application/zip
 
 
 
-# # For SSH / debug        
-#     - name: Setup tmate session
-#       uses: mxschmitt/action-tmate@v3
+  docker:
+    needs: artifact ## Depend on a successful artifact deployment (only for Tests)
+    name: Release Docker
+    
+    runs-on: ubuntu-latest
 
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 5.0.x
 
     - name: Build image
       run: |
-        pushd /home/runner/work/Arius/Arius/Arius/Arius/
-        docker build -f Dockerfile .. --tag $IMAGE_NAME
+        pushd Arius.Cli
+        docker build . --tag $IMAGE_NAME --build-arg GITHUB_USER=$GITHUB_USER --build-arg GITHUB_TOKEN=$GITHUB_TOKEN
         popd
 
     - name: Log into GitHub Container Registry
-    # TODO: Create a PAT with `read:packages` and `write:packages` scopes and save it as an Actions secret `CR_PAT`
-      run: echo "${{ secrets.CR_PAT }}" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+      run: echo "$GITHUB_TOKEN" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
     - name: Push image to GitHub Container Registry
       run: |
