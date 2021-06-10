@@ -35,24 +35,27 @@ namespace Arius.Core.Facade
         ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
     }
 
-    public static class AriusCoreExtensions
-    {
-        public static IServiceCollection AddMyLibraryService(this IServiceCollection services)
-        {
-            //services.AddOptions<LibraryOptions>()
-            //    .Configure(options =>
-            //    {
-            //        // Specify default option values
-            //    });
 
-            //// Register lib services here...
-            //// services.AddScoped<ILibraryService, DefaultLibraryService>();
+    // TODO implement library as DI
+    // https://docs.microsoft.com/en-us/dotnet/core/extensions/options-library-authors#parameterless
+    //public static class AriusCoreExtensions
+    //{
+    //    public static IServiceCollection AddMyLibraryService(this IServiceCollection services)
+    //    {
+    //        //services.AddOptions<LibraryOptions>()
+    //        //    .Configure(options =>
+    //        //    {
+    //        //        // Specify default option values
+    //        //    });
 
-            //return services;
+    //        //// Register lib services here...
+    //        //// services.AddScoped<ILibraryService, DefaultLibraryService>();
 
-            throw new NotImplementedException();
-        }
-    }
+    //        //return services;
+
+    //        throw new NotImplementedException();
+    //    }
+    //}
 
     public partial class Facade : IFacade
     {
