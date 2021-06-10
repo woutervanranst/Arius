@@ -90,7 +90,6 @@ namespace Arius.Cli
                     })
 
 
-
                     /* Replace .UseDefaults() by its implementation to allow for custom ExceptionHandler
                      *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
                      *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
