@@ -1,4 +1,4 @@
-name: Arius.Core - Release Nuget Package
+name: Arius.Core - Test & Release Nuget Package
 
 on:
   push:

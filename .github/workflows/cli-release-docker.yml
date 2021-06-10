@@ -1,4 +1,4 @@
-name: Arius.Cli - Release Artifact & Docker
+name: Arius.Cli - Test & Release Artifact & Docker
 
 on:
   push:
