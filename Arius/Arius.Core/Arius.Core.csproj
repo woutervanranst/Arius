@@ -26,6 +26,7 @@
     <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
     <Authors>Wouter Van Ranst</Authors>
     <Company>Wouter Van Ranst</Company>
+    <Copyright>Wouter Van Ranst</Copyright>
   </PropertyGroup>
 
 </Project>
