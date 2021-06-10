@@ -13,17 +13,19 @@
   </ItemGroup>
 
   <PropertyGroup>
-        <VersionMajor>1</VersionMajor>
-        <VersionMinor>0</VersionMinor>
-        <VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.ToString("yyMM"))</VersionPatch>
-        <VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
-    </PropertyGroup>
-    
+    <VersionMajor>1</VersionMajor>
+    <VersionMinor>0</VersionMinor>
+    <VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.ToString("yyMM"))</VersionPatch>
+    <VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
+  </PropertyGroup>
+
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>
     <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
+    <Authors>Wouter Van Ranst</Authors>
+    <Company>Wouter Van Ranst</Company>
   </PropertyGroup>
-  
+
 </Project>
