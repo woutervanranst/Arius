@@ -58,10 +58,11 @@ namespace Arius.Cli
                                          // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
                                      });
 
+                                 // Check whether we are running in a unit test
                                  if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
                                  {
-                                     //We're NOT in a unit test
-                                     //Do not log to file as the Karambola extension disposes itself i a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
+                                     /* Do not configure Karambola file logging in a unit test
+                                        The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution */
                                      loggingBuilder.AddFile(options =>
                                      {
                                          if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
@@ -77,14 +78,16 @@ namespace Arius.Cli
                                  }
 
                              })
-                            .ConfigureServices(services =>
+                            .ConfigureServices((hostContext, services) =>
                             {
                                 if (facade is null)
                                     services.AddSingleton<IFacade, Facade>();
                                 else
                                     services.AddSingleton(facade);
 
-                                //services.Configure<HostOptions>(c => c.)
+                                
+                                services.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostContext.Configuration.GetSection("AzCopier"));
+                                services.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostContext.Configuration.GetSection("TempDir"));
                             })
                             ;
                     })
@@ -95,7 +98,7 @@ namespace Arius.Cli
                      *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
                      */
                     .UseDefaults()
-                     
+
 //                    .UseVersionOption()
 //                    .UseHelp()
 //                    .UseEnvironmentVariableDirective()
@@ -111,11 +114,55 @@ namespace Arius.Cli
 //                        throw a;
 //                        //e.ExitCode = 5;
 
-//                    })
-//#else
-//                    .UseExceptionHandler()
-//#endif
-//                    .CancelOnProcessTermination()
+            //                    })
+            //#else
+            //                    .UseExceptionHandler()
+            //#endif
+            //                    .CancelOnProcessTermination()
+
+
+
+
+            //TODO error handling met AppDomain.CurrentDomain.FirstChanceException  ?
+
+            //TaskScheduler.UnobservedTaskException += (sender, e) =>
+            //{
+            //    /*
+            //     * 
+            //     * TODO:
+            //        System.AggregateException
+            //          HResult=0x80131500
+            //          Message=An error occurred while writing to logger(s). (Cannot access a disposed object.
+            //        Object name: 'EventLogInternal'.)
+            //          Source=Microsoft.Extensions.Logging
+            //          StackTrace:
+            //           at Microsoft.Extensions.Logging.Logger.ThrowLoggingError(List`1 exceptions)
+            //           at Microsoft.Extensions.Logging.Logger.Log[TState](LogLevel logLevel, EventId eventId, TState state, Exception exception, Func`3 formatter)
+            //           at Microsoft.Extensions.Logging.LoggerExtensions.Log(ILogger logger, LogLevel logLevel, EventId eventId, Exception exception, String message, Object[] args)
+            //           at Microsoft.Extensions.Logging.LoggerExtensions.Log(ILogger logger, LogLevel logLevel, Exception exception, String message, Object[] args)
+            //           at Microsoft.Extensions.Logging.LoggerExtensions.LogError(ILogger logger, Exception exception, String message, Object[] args)
+            //           at Arius.AriusCommandService.<>c__DisplayClass0_0.<.ctor>b__0(Object sender, UnobservedTaskExceptionEventArgs e) in C:\Users\Wouter\Documents\GitHub\Arius\Arius\Arius\Console\Program.cs:line 144
+            //           at System.Threading.Tasks.TaskScheduler.PublishUnobservedTaskException(Object sender, UnobservedTaskExceptionEventArgs ueea)
+            //           at System.Threading.Tasks.TaskExceptionHolder.Finalize()
+
+            //          This exception was originally thrown at this call stack:
+            //            [External Code]
+
+            //        Inner Exception 1:
+            //        ObjectDisposedException: Cannot access a disposed object.
+            //        Object name: 'EventLogInternal'.
+
+            //     * 
+            //     */
+            //    logger.LogError(e.Exception, "UnobservedTaskException", e, sender);
+
+            //    appLifetime.StopApplication();
+            //    throw e.Exception;
+            //};
+
+
+
+
 
                     .Build()
                     .InvokeAsync(args);
