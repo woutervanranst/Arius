@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Text;
+using System.Threading;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Logging;
 
@@ -12,9 +13,34 @@ namespace Arius.Cli.Extensions
     {
         public static readonly SingleLineLogEntryTextBuilder Default = new SingleLineLogEntryTextBuilder();
 
+        public override void BuildEntryText(StringBuilder sb, string categoryName, LogLevel logLevel, EventId eventId, string message, Exception exception,
+            IExternalScopeProvider scopeProvider, DateTimeOffset timestamp)
+        {
+            AppendTimestamp(sb, timestamp);
+
+            AppendLogLevel(sb, logLevel);
+
+            AppendCategoryName(sb, categoryName);
+
+            AppendEventId(sb, eventId);
+
+            if (scopeProvider != null)
+                AppendLogScopeInfo(sb, scopeProvider);
+
+            if (!string.IsNullOrEmpty(message))
+                AppendMessage(sb, message);
+
+            if (exception != null)
+                AppendException(sb, exception);
+        }
+
         protected override void AppendTimestamp(StringBuilder sb, DateTimeOffset timestamp)
         {
-            sb.Append(" @ ").Append(timestamp.ToLocalTime().ToString("o", CultureInfo.InvariantCulture));
+            sb.Append(timestamp.ToLocalTime().ToString("o", CultureInfo.InvariantCulture));
+
+            sb.Append(" [ThreadId ");
+            sb.Append(string.Format($"{Thread.CurrentThread.ManagedThreadId:000}"));
+            sb.Append("] ");
         }
 
         protected override void AppendLogScopeInfo(StringBuilder sb, IExternalScopeProvider scopeProvider)
@@ -29,10 +55,6 @@ namespace Arius.Cli.Extensions
 
         protected override void AppendMessage(StringBuilder sb, string message)
         {
-            sb.Append(" [ThreadId ");
-            sb.Append(System.Threading.Thread.CurrentThread.ManagedThreadId);
-            sb.Append("] ");
-
             sb.Append(" => ");
 
             var length = sb.Length;
