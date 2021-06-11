@@ -40,3 +40,4 @@ RUN apt-get install p7zip-full -y
 WORKDIR /app
 COPY --from=publish /app/publish .
 COPY --from=azcopy /app/azcopy /usr/bin/
+ENTRYPOINT ["dotnet", "arius.dll"]
