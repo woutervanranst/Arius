@@ -64,9 +64,9 @@ namespace Arius.Core.Repositories
                 {
                     //We inserted the entry
                     if (pfe.IsDeleted)
-                        _logger.LogInformation($"Deleted {pfe.RelativeName}");
+                        _logger.LogInformation($"Deleted '{pfe.RelativeName}'");
                     else
-                        _logger.LogInformation($"Added {pfe.RelativeName}");
+                        _logger.LogInformation($"Added '{pfe.RelativeName}'");
                 }
             }
 
