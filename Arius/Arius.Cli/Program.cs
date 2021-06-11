@@ -43,6 +43,8 @@ namespace Arius.Cli
             //{
             //};
 
+            Console.WriteLine("Arius started.");
+
             int? r = default;
             DirectoryInfo? tempDir = default;
 
@@ -125,7 +127,7 @@ namespace Arius.Cli
 
         private static void HandleUnloggableException(Exception e)
         {
-            Spectre.Console.AnsiConsole.WriteException(e);
+            Console.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:\n{e}");
         }
 
         private CommandLineBuilder GetCommandLineBuilder()
