@@ -23,8 +23,11 @@ The name derives from the Greek for 'immortal'.
       - [CLI](#cli-1)
       - [Arguments](#arguments-1)
   - [Installing](#installing)
-    - [Linux](#linux)
-    - [Docker](#docker)
+    - [CLI](#cli-2)
+      - [CLI for Linux](#cli-for-linux)
+      - [CLI as Docker Container](#cli-as-docker-container)
+    - [Windows UI](#windows-ui)
+    - [Arius.Core Nuget Package](#ariuscore-nuget-package)
   - [Advanced](#advanced)
     - [Archive](#archive-1)
     - [Restore](#restore-1)
@@ -188,7 +191,9 @@ arius restore
 
 ## Installing
 
-### Linux
+### CLI
+
+#### CLI for Linux
 
 Prerequisites:
 
@@ -223,12 +228,12 @@ unzip release.zip
 dotnet arius.dll ...
 ```
 
-### Windows
+#### CLI for Windows
 
 Prerequisites:
 
-* AzCopy: https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy
-* 7zip: https://www.7-zip.org/download.html
+- AzCopy: https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy
+- 7zip: https://www.7-zip.org/download.html
 
 TODO
 
@@ -241,10 +246,22 @@ https://chocolatey.org/install.ps1
 ```
 -->
 
-### Docker
+#### CLI as Docker Container
 
 ```
 docker pull ghcr.io/woutervanranst/arius
+```
+
+### Windows UI
+
+TODO
+
+### Arius.Core Nuget Package
+
+See https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-nuget-registry#authenticating-to-github-packages
+
+```
+dotnet nuget add source -u <GITHUB_USERNAME> -p <GITHUB_PAT> -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
 ```
 
 ## Advanced
