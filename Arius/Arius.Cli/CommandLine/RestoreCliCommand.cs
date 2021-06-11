@@ -95,12 +95,12 @@ namespace Arius.Cli.CommandLine
                             logger.LogInformation("Creating Facade...");
                             var facade = host.Services.GetRequiredService<IFacade>();
 
-                            logger.LogInformation($@"Creating RestoreCommand: restoring {accountName}\{container} to {path}...");
+                            logger.LogInformation($@"Creating RestoreCommand: restoring '{accountName}\{container}' to '{path}'...");
                             var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
                             logger.LogInformation("Executing Command...");
                             var r = await c.Execute();
-                            logger.LogInformation("Done with execution");
+                            logger.LogInformation("Executing Command... Done");
 
                             return r;
                         }

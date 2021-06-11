@@ -129,7 +129,7 @@ namespace Arius.Cli.CommandLine
                             logger.LogInformation("Creating Facade...");
                             var facade = host.Services.GetRequiredService<IFacade>();
 
-                            logger.LogInformation($@"Creating ArchiveCommand: archiving {path} to {accountName}\{container}...");
+                            logger.LogInformation($@"Creating ArchiveCommand: archiving '{path}' to '{accountName}\{container}'...");
                             var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
                             logger.LogInformation("Executing Command...");
