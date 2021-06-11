@@ -1,0 +1,19 @@
+{
+  "profiles": {
+    "arius": {
+      "commandName": "Project"
+    },
+    "arius archive": {
+      "commandName": "Project",
+      "commandLineArgs": "archive"
+    },
+    "arius archive real": {
+      "commandName": "Project",
+      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --tier cool C:\\Users\\Wouter\\Documents\\Test"
+    },
+    "arius restore": {
+      "commandName": "Project",
+      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
+    }
+  }
+}

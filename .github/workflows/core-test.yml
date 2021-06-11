@@ -1,29 +1,13 @@
-name: Arius.Tests
+name: Arius.Core - Test Suite
 
 on:
   push:
     paths: 
-      - 'Arius/**'
-      - '.github/**'
-    # branches: [ master ]
-  pull_request:
-    paths:       
-      - 'Arius/**'
-    branches: [ master ]
-  workflow_dispatch:
-    inputs:
-      #logLevel:
-      #  description: 'Log level'     
-      #  required: true
-      #  default: 'warning'
-      tags:
-        description: 'Test scenario tags'  
-        
-        # TODO ON BRANCH MERGE
+      - 'Arius/Arius.Core/**'
 
 jobs:
   job1:
-    name: Execute Unit Tests
+    name: Run Test Suite
 
     defaults:
       run:
@@ -52,7 +36,7 @@ jobs:
           dotnet-version: 5.0.x
 
       - name: Test
-        run: dotnet test Arius.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
+        run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
         #run: dotnet test -l "console;verbosity=detailed" # -v normal
         # continue-on-error: true
         env:

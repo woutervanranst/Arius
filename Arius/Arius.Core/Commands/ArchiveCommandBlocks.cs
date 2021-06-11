@@ -95,8 +95,8 @@ namespace Arius.Core.Commands
         private bool IsHiddenOrSystem(FileInfo fi)
         {
             if (fi.FullName.Contains("eaDir") ||
-                fi.FullName.Contains("SynoResource") ||
-                fi.FullName.Contains("@"))
+                fi.FullName.Contains("SynoResource"))
+                //fi.FullName.Contains("@")) // commenting out -- email adresses are not weird
                 _logger.LogWarning("WEIRD FILE: " + fi.FullName);
 
             return IsHiddenOrSystem(fi.Attributes);
@@ -256,13 +256,13 @@ namespace Arius.Core.Commands
                             {
                                 if (_created.Contains(bf.Hash))
                                 {
-                                    _logger.LogInformation($"GetReconcileBlock - {typeof(T).Name} {bf.Name} already created. Passing item to next block.");
+                                    _logger.LogInformation($"GetReconcileBlock - {typeof(T).Name} '{bf.Name}' already created. Passing item to next block.");
 
                                     return new[] { bf }; // Manifest already uploaded
                                 }
                                 else if (_creating.ContainsKey(bf.Hash))
                                 {
-                                    _logger.LogInformation($"GetReconcileBlock - {typeof(T).Name} {bf.Name} in the pending list. Waiting for reconciliation.");
+                                    _logger.LogInformation($"GetReconcileBlock - {typeof(T).Name} '{bf.Name}' in the pending list. Waiting for reconciliation.");
 
                                     // it is alreayd in de _pending list // do nothing
                                     return Enumerable.Empty<T>();
@@ -914,47 +914,48 @@ namespace Arius.Core.Commands
         {
             return new ActionBlock<PointerFile>(async pointerFile =>
             {
-                //try
-                //{
-                //    logger.LogInformation($"Validating {pointerFile.FullName}...");
+                try
+                {
+                    logger.LogInformation($"Validating {pointerFile.FullName}...");
 
-                //    // Validate the manifest
-                //    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
+                    logger.LogWarning($"Validating {pointerFile.FullName}... - Not yet implemented");
 
-                //    if (!chunkHashes.Any())
-                //        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
+                    //    // Validate the manifest
+                    //    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
 
-                //    double length = 0;
-                //    foreach (var chunkHash in chunkHashes)
-                //    {
-                //        var cb = repo.GetChunkBlobByHash(chunkHash, false);
-                //        length += cb.Length;
-                //    }
+                    //    if (!chunkHashes.Any())
+                    //        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
 
-                //    var bfi = pointerFile.BinaryFileInfo;
-                //    if (bfi.Exists)
-                //    {
-                //        //TODO if we would know the EXACT/uncompressed size from the PointerFileEntry - use that
-                //        if (bfi.Length / length < 0.9)
-                //            throw new InvalidOperationException("something is wrong");
-                //    }
-                //    else
-                //    {
-                //        //TODO if we would know the expected size from the PointerFileEntry - use that
-                //        if (length == 0)
-                //            throw new InvalidOperationException("something is wrong");
-                //    }
+                    //    double length = 0;
+                    //    foreach (var chunkHash in chunkHashes)
+                    //    {
+                    //        var cb = repo.GetChunkBlobByHash(chunkHash, false);
+                    //        length += cb.Length;
+                    //    }
 
-                //    logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
-                //}
-                //catch (Exception e)
-                //{
-                //    logger.LogError(e, "ERRORTODO");
-                //    throw;
-                //}
+                    //    var bfi = pointerFile.BinaryFileInfo;
+                    //    if (bfi.Exists)
+                    //    {
+                    //        //TODO if we would know the EXACT/uncompressed size from the PointerFileEntry - use that
+                    //        if (bfi.Length / length < 0.9)
+                    //            throw new InvalidOperationException("something is wrong");
+                    //    }
+                    //    else
+                    //    {
+                    //        //TODO if we would know the expected size from the PointerFileEntry - use that
+                    //        if (length == 0)
+                    //            throw new InvalidOperationException("something is wrong");
+                    //    }
+
+                    logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "ERRORTODO");
+                    throw;
+                }
             }, new() { MaxDegreeOfParallelism = Environment.ProcessorCount /*DataflowBlockOptions.Unbounded*/ });
         }
-
     }
 
 

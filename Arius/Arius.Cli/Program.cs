@@ -1,18 +1,20 @@
-﻿using Arius.CommandLine;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
-using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Invocation;
-using System.CommandLine.Parsing;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
+using Karambolo.Extensions.Logging.File;
+using Arius.Cli.Extensions;
+using Microsoft.Extensions.DependencyInjection;
+using Arius.Core.Facade;
+using System.IO;
+using System.CommandLine.Parsing;
+using Arius.Cli.CommandLine;
 
 /*
  * This is required to test the internals of the Arius.Cli assembly
@@ -31,81 +33,111 @@ namespace Arius.Cli
         internal InvocationContext InvocationContext { get; private set; }
 
         public static async Task<int> Main(string[] args) => await (new Program().Main(args));
-        internal async Task<int> Main(string[] args, Core.Facade.IFacade facade = default)
+        internal async Task<int> Main(string[] args, IFacade facade = default)
         {
-            //Environment.ExitCode = (int)ExitCode.ERROR;
+            //TaskScheduler.UnobservedTaskException += (sender, e) =>
+            //{
+            //};
 
-            var r = await GetCommandLineBuilder()
-                .UseHost(_ => Host.CreateDefaultBuilder(),
-                    host =>
+            //AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+            //{
+            //};
+
+            Console.WriteLine("Arius started.");
+
+            int? r = default;
+            DirectoryInfo? tempDir = default;
+
+            try
+            {
+                var cliParser = GetCommandLineBuilder()
+                    .UseHost(_ => Host.CreateDefaultBuilder(), host =>
                     {
-                        InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow?
-                        
+                        InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow? see https://github.com/dotnet/command-line-api/issues/1025 ? https://github.com/dotnet/command-line-api/issues/1312 ? By design https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine.Hosting.Tests/HostingTests.cs#L357 ?
+
                         host
-                            .ConfigureAppConfiguration(builder =>
-                            {
-                                builder.AddJsonFile("appsettings.json");
-                            })
-                            //.ConfigureLogging((hostBuilderContext, loggingBuilder) =>
-                            // {
+                                .ConfigureAppConfiguration(builder =>
+                                {
+                                    builder.AddJsonFile("appsettings.json");
+                                })
+                                .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
+                                {
+                                    loggingBuilder
+                                    .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
+                                    .AddSimpleConsole(options =>
+                                    {
+                                        // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                                    });
 
-                            // })
-                            .ConfigureServices(services =>
-                            {
-                                if (facade is null)
-                                    services.AddSingleton<Core.Facade.IFacade, Arius.Core.Facade.Facade>();
-                                else
-                                    services.AddSingleton<Core.Facade.IFacade>(facade);
+                                    // Check whether we are running in a unit test
+                                    if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                                    {
+                                        /* Do not configure Karambola file logging in a unit test
+                                            The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution */
+                                        loggingBuilder.AddFile(options =>
+                                        {
+                                            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                                                options.RootPath = "/logs";
+                                            else
+                                                options.RootPath = AppContext.BaseDirectory;
 
-                                //services.Configure<HostOptions>(c => c.)
-                            })
-                            ;
+                                            options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+
+                                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                                        });
+
+                                    }
+
+                                })
+                                .ConfigureServices((hostContext, services) =>
+                                {
+                                    if (facade is null)
+                                        services.AddSingleton<IFacade, Facade>();
+                                    else
+                                        services.AddSingleton(facade);
+
+                                    services.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostContext.Configuration.GetSection("AzCopier"));
+                                    services.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostContext.Configuration.GetSection("TempDir"));
+                                });
                     })
 
-
-
                     /* Replace .UseDefaults() by its implementation to allow for custom ExceptionHandler
-                     *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
-                     *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
-                     */
+                        *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
+                        *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
+                        */
                     .UseDefaults()
-                     
-//                    .UseVersionOption()
-//                    .UseHelp()
-//                    .UseEnvironmentVariableDirective()
-//                    .UseParseDirective()
-//                    .UseDebugDirective()
-//                    .UseSuggestDirective()
-//                    .RegisterWithDotnetSuggest()
-//                    .UseTypoCorrections()
-//                    .UseParseErrorReporting((int)ExitCode.COMMAND_INCOMPLETE)
-//#if DEBUG
-//                    .UseExceptionHandler((a, e) =>
-//                    {
-//                        throw a;
-//                        //e.ExitCode = 5;
+                    .UseExceptionHandler((e, context) =>
+                    {
+                        // NOTE: Logging is not available here -- https://github.com/dotnet/command-line-api/issues/1311
+                        //var logger = context.GetHost().Services.GetRequiredService<ILogger>();
+                        HandleUnloggableException(e);
+                    })
+                    .Build();
 
-//                    })
-//#else
-//                    .UseExceptionHandler()
-//#endif
-//                    .CancelOnProcessTermination()
+                r = await cliParser.InvokeAsync(args);
+            }
+            catch (Exception e)
+            {
+                HandleUnloggableException(e);
+            }
 
-                    .Build()
-                    .InvokeAsync(args);
-
-            Environment.ExitCode = r;
-
-            return r;
+            Environment.ExitCode = r ?? (int)ExitCode.ERROR;
+            return Environment.ExitCode;
         }
 
-        private static CommandLineBuilder GetCommandLineBuilder()
+        private static void HandleUnloggableException(Exception e)
         {
-            var root = new RootCommand();
+            Console.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:\n{e}");
+        }
+
+        private CommandLineBuilder GetCommandLineBuilder()
+        {
+            var root = new RootCommand
+            {
+                new ArchiveCliCommand().GetCommand(),
+                new RestoreCliCommand().GetCommand()
+            };
             root.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
-            
-            root.AddCommand(new ArchiveCliCommand().GetCommand());
-            root.AddCommand(new RestoreCliCommand().GetCommand());
 
             return new CommandLineBuilder(root);
         }

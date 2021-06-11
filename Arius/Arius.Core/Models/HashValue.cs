@@ -4,6 +4,8 @@ namespace Arius.Core.Models
 {
     public struct HashValue
     {
+        // TODO implement like https://github.com/Azure/azure-sdk-for-net/blob/master/sdk/storage/Azure.Storage.Blobs/src/Generated/Models/AccessTier.cs
+
         public string Value { get; init; }
         public override string ToString() => Value;
 

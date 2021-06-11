@@ -1,0 +1,39 @@
+name: Arius.Core - Test & Release Nuget Package
+
+on:
+  push:
+    paths:
+      - 'Arius/Arius.Core/**'
+        
+
+# See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
+  ## See 'Set VERSION variable from tag'
+# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+
+jobs:
+  job1:
+    name: Release Nuget Package
+
+    defaults:
+      run:
+        working-directory: ./Arius
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Build
+      run: dotnet build Arius.Core -c Release
+    
+    - name: Test
+      run: dotnet test Arius.Core.Tests -c Release --no-build
+    
+    - name: Pack
+      run: dotnet pack Arius.Core -c Release --no-build --output .
+    
+    - name: Push
+      run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}

@@ -302,7 +302,7 @@ namespace Arius.Core.Commands
             {
                 _enqueueBlock = new(chunkBlob =>
                 {
-                    lock (_downloadQueue)
+                    lock (_downloadQueue) //TODO locking not needed on thread safe collection?
                     {
                         lock (_downloadedOrDownloading)
                         {
