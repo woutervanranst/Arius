@@ -18,7 +18,9 @@ namespace Arius.Cli.CommandLine
     {
         public Command GetCommand()
         {
-            var archiveCommand = new Command("archive", "Archive to blob");
+            var archiveCommand = new Command(
+                name: "archive", 
+                description: "Archive to blob");
 
             var accountNameOption = new Option<string>(
                 alias: "--accountname",
@@ -127,12 +129,12 @@ namespace Arius.Cli.CommandLine
                             logger.LogInformation("Creating Facade...");
                             var facade = host.Services.GetRequiredService<IFacade>();
 
-                            logger.LogInformation("Creating ArchiveCommand...");
+                            logger.LogInformation($@"Creating ArchiveCommand: archiving {path} to {accountName}\{container}...");
                             var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-                            logger.LogInformation("Executing ArchiveCommand...");
+                            logger.LogInformation("Executing Command...");
                             var r = await c.Execute();
-                            logger.LogInformation("Done with execution");
+                            logger.LogInformation("Executing Command... Done");
 
                             return r;
                         }
