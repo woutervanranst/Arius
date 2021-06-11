@@ -1,5 +1,10 @@
+using Arius.Cli.Extensions;
+using Arius.Core.Configuration;
 using Arius.Core.Facade;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
@@ -15,8 +20,9 @@ namespace Arius.Cli.CommandLine
         {
             var archiveCommand = new Command("archive", "Archive to blob");
 
-            var accountNameOption = new Option<string>("--accountname",
-                "Blob Account Name");
+            var accountNameOption = new Option<string>(
+                alias: "--accountname",
+                description: "Blob Account Name");
             accountNameOption.AddAlias("-n");
             accountNameOption.IsRequired = true;
             archiveCommand.AddOption(accountNameOption);
@@ -26,33 +32,42 @@ namespace Arius.Cli.CommandLine
             var accountKeyEnvironmentVariable = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
             if (string.IsNullOrEmpty(accountKeyEnvironmentVariable))
             {
-                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key"); //TODO to --accountkey to const
+                accountKeyOption = new Option<string>(
+                    alias: "--accountkey",
+                    description: "Account Key"); //TODO to --accountkey to const
                 accountKeyOption.IsRequired = true;
             }
             else
             {
-                accountKeyOption = new Option<string>(alias: "--accountkey", description: "Account Key", getDefaultValue: () => accountKeyEnvironmentVariable);
+                accountKeyOption = new Option<string>(
+                    alias: "--accountkey", 
+                    description: "Account Key", 
+                    getDefaultValue: () => accountKeyEnvironmentVariable);
             }
             accountKeyOption.AddAlias("-k");
             archiveCommand.AddOption(accountKeyOption);
 
-            var passphraseOption = new Option<string>("--passphrase",
-                "Passphrase");
+            var passphraseOption = new Option<string>(
+                alias: "--passphrase",
+                description: "Passphrase");
             passphraseOption.AddAlias("-p");
             passphraseOption.IsRequired = true;
             archiveCommand.AddOption(passphraseOption);
 
-            var containerOption = new Option<string>("--container",
+            var containerOption = new Option<string>(
+                alias: "--container",
                 getDefaultValue: () => "arius",
                 description: "Blob container to use");
             containerOption.AddAlias("-c");
             archiveCommand.AddOption(containerOption);
 
-            var removeLocalOption = new Option<bool>("--remove-local",
-                "Remove local file after a successful upload");
+            var removeLocalOption = new Option<bool>(
+                alias: "--remove-local",
+                description: "Remove local file after a successful upload");
             archiveCommand.AddOption(removeLocalOption);
 
-            var tierOption = new Option<string>("--tier",
+            var tierOption = new Option<string>(
+                alias: "--tier",
                 getDefaultValue: () => "archive",
                 description: "Storage tier to use. Defaut: archive");
             tierOption.AddValidator(o =>
@@ -68,40 +83,74 @@ namespace Arius.Cli.CommandLine
             });
             archiveCommand.AddOption(tierOption);
 
-            var dedupOption = new Option<bool>("--dedup",
+            var dedupOption = new Option<bool>(
+                alias: "--dedup",
                 getDefaultValue: () => false,
-                "Deduplicate the chunks in the binary files"); //TODO better explanation
+                description: "Deduplicate the chunks in the binary files"); //TODO better explanation
             archiveCommand.AddOption(dedupOption);
 
-            var fastHashOption = new Option<bool>("--fasthash",
+            var fastHashOption = new Option<bool>(
+                alias: "--fasthash",
                 getDefaultValue: () => false,
-                "Use the cached hash of a file (faster, do not use in an archive where file contents change)");
+                description: "Use the cached hash of a file (faster, do not use in an archive where file contents change)");
             archiveCommand.AddOption(fastHashOption);
 
             Argument pathArgument;
             if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
             {
-                pathArgument = new Argument<string>("path",
-                    getDefaultValue: () => "/archive");
-                archiveCommand.AddArgument(pathArgument);
+                pathArgument = new Argument<string>(
+                    name: "path",
+                    getDefaultValue: () => "/archive",
+                    description: "Path to archive.");
             }
             else
             {
-                pathArgument = new Argument<string>("path",
+                pathArgument = new Argument<string>(
+                    name: "path",
                     //getDefaultValue: () => Environment.CurrentDirectory,
                     //"Path to archive. Default: current directory");
-                    "Path to archive.");
-                archiveCommand.AddArgument(pathArgument);
+                    description: "Path to archive.");
             }
+            archiveCommand.AddArgument(pathArgument);
+
 
             archiveCommand.Handler = CommandHandler
-                .Create<string, string, string, string, bool, string, bool, bool, string, Microsoft.Extensions.Hosting.IHost>(
+                .Create<string, string, string, string, bool, string, bool, bool, string, IHost>(
                     async (accountName, accountKey, passphrase, container, removeLocal, tier, dedup, fastHash, path, host) =>
                     {
-                        var facade = host.Services.GetRequiredService<IFacade>();
-                        var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+                        ILogger logger = default;
 
-                        return await c.Execute();
+                        try
+                        {
+                            logger = host.Services.GetRequiredService<ILogger<ArchiveCliCommand>>();
+
+                            logger.LogInformation("Creating Facade...");
+                            var facade = host.Services.GetRequiredService<IFacade>();
+
+                            logger.LogInformation("Creating ArchiveCommand...");
+                            var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+
+                            logger.LogInformation("Executing ArchiveCommand...");
+                            var r = await c.Execute();
+                            logger.LogInformation("Done with execution");
+
+                            return r;
+                        }
+                        catch (Exception e)
+                        {
+                            logger?.LogError(e, $"Error in {nameof(CommandHandler)} of {this.GetType().Name}");
+                        }
+                        finally
+                        {
+                            logger?.LogInformation("Deleting tempdir...");
+
+                            var tempDir = host.Services.GetRequiredService<IOptions<TempDirectoryAppSettings>>().Value.TempDirectory;
+                            if (tempDir.Exists) tempDir.Delete(true);
+
+                            logger?.LogInformation("Deleting tempdir... done");
+                        }
+
+                        return (int)Program.ExitCode.ERROR;
                     });
 
             return archiveCommand;
