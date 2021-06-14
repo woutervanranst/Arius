@@ -159,6 +159,9 @@ namespace Arius.Core.Facade
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
                 .AddSingleton<AzureRepository>()
+                .AddSingleton<AzureRepository.ChunkRepository>()
+                .AddSingleton<AzureRepository.ManifestRepository>()
+                .AddSingleton<AzureRepository.PointerFileEntryRepository>()
 
                 // Add Chunkers
                 .AddSingleton<Chunker>()

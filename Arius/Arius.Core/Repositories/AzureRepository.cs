@@ -21,11 +21,18 @@ namespace Arius.Core.Repositories
             string Passphrase { get; }
         }
 
-        public AzureRepository(IOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
+        //public AzureRepository(IOptions options, ILoggerFactory loggerFactory, IBlobCopier blobCopier)
+        //{
+        //    chunkRepo = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
+        //    manifestRepo = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
+        //    pointerFileEntryRepo = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>(), loggerFactory);
+        //}
+
+        public AzureRepository(ChunkRepository cr, ManifestRepository mrm, PointerFileEntryRepository pfer)
         {
-            chunkRepo = new ChunkRepository(options, loggerFactory.CreateLogger<ChunkRepository>(), blobCopier);
-            manifestRepo = new ManifestRepository(options, loggerFactory.CreateLogger<ManifestRepository>());
-            pointerFileEntryRepo = new PointerFileEntryRepository(options, loggerFactory.CreateLogger<PointerFileEntryRepository>(), loggerFactory);
+            chunkRepo = cr;
+            manifestRepo = mrm;
+            pointerFileEntryRepo = pfer;
         }
 
         // -- CHUNK REPOSITORY
