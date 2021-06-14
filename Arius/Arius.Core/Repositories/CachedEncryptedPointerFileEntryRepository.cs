@@ -19,7 +19,7 @@ namespace Arius.Core.Repositories
     {
         internal const string TableNameSuffix = "pointers";
 
-        private partial class PointerFileEntryRepository
+        internal partial class PointerFileEntryRepository
         {
             private class CachedEncryptedPointerFileEntryRepository
             {
@@ -132,8 +132,11 @@ namespace Arius.Core.Repositories
 
                             //Insert into the versions
                             var vs = await versions;
-                            if (!vs.Contains(pfe.Version))
-                                vs.Add(pfe.Version); //TODO: aan het einde?
+                            lock (vs)
+                            { 
+                                if (!vs.Contains(pfe.Version))
+                                    vs.Add(pfe.Version); //TODO: aan het einde?
+                            }
                         }
 
                         return toAdd;

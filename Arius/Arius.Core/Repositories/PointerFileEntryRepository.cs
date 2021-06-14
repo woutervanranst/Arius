@@ -11,7 +11,7 @@ namespace Arius.Core.Repositories
 {
     internal partial class AzureRepository
     {
-        private partial class PointerFileEntryRepository
+        internal partial class PointerFileEntryRepository
         {
             public PointerFileEntryRepository(IOptions options, ILogger<PointerFileEntryRepository> logger, ILoggerFactory loggerFactory)
             {
