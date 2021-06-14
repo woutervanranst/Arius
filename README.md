@@ -2,7 +2,9 @@
 
 <img src="docs/iceberg.svg" width="200" />
 
-![Arius.Tests](https://github.com/woutervanranst/Arius/workflows/Arius.Tests/badge.svg)
+[![Arius.Cli - Docker](https://github.com/woutervanranst/Arius/actions/workflows/cli-release-docker.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/cli-release-docker.yml)
+
+[![Arius.Core - Nuget Package](https://github.com/woutervanranst/Arius/actions/workflows/core-release-nuget.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/core-release-nuget.yml)
 
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
