@@ -8,6 +8,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Spectre.Console;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -64,7 +65,8 @@ namespace Arius.Core.Facade
         }
 
         public Facade(ILoggerFactory loggerFactory,
-            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings,
+            ProgressContext progressContext)
         {
             if (loggerFactory is null)
                 throw new ArgumentNullException(nameof(loggerFactory));
@@ -74,11 +76,13 @@ namespace Arius.Core.Facade
                 throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
 
             this.loggerFactory = loggerFactory;
+            this.progressContext = progressContext;
             this.azCopyAppSettings = azCopyAppSettings.Value;
             this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
         }
 
         private readonly ILoggerFactory loggerFactory;
+        private readonly ProgressContext progressContext;
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
@@ -86,7 +90,7 @@ namespace Arius.Core.Facade
         {
             var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options, progressContext);
 
             var ac = sp.GetRequiredService<Archive2Command>();
 
@@ -144,7 +148,8 @@ namespace Arius.Core.Facade
 
 
         private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
-            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options)
+            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options,
+            ProgressContext progressContext = null)
         {
             var sc = new ServiceCollection();
 
@@ -168,6 +173,10 @@ namespace Arius.Core.Facade
                 .AddSingleton<Chunker>()
                 .AddSingleton<DedupChunker>();
 
+            if (progressContext is not null)
+                sc.AddSingleton(progressContext);
+
+
             if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
             {
                 sc
@@ -190,6 +199,7 @@ namespace Arius.Core.Facade
                 sc.AddSingleton(type, options);
 
             ArchiveCommand.AddBlockProviders(sc);
+            Archive2Command.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
 
             sc
