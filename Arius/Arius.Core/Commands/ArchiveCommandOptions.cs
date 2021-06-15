@@ -9,6 +9,7 @@ namespace Arius.Core.Commands
         Facade.Facade.IOptions,
 
         ArchiveCommand.IOptions,
+        Archive2Command.IOptions,
 
         UploadEncryptedChunksBlockProvider.IOptions,
         RemoveDeletedPointersTaskProvider.IOptions,
