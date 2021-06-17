@@ -20,38 +20,23 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        //public WfCoreArchiveCommand(IOptions options,
-        //    ILogger<ArchiveCommand> logger)
-        //{
-        //    root = new DirectoryInfo(options.Path);
+        public WfCoreArchiveCommand(IOptions options,
+            ILogger<ArchiveCommand> logger)
+        {
+            root = new DirectoryInfo(options.Path);
 
+            IServiceProvider serviceProvider = ConfigureServices();
 
-        //    IServiceProvider serviceProvider = ConfigureServices();
+            //start the workflow host
+            host = serviceProvider.GetService<IWorkflowHost>();
+            host.RegisterWorkflow<HelloWorldWorkflow>();
+            host.Start();
+        }
 
-        //    //start the workflow host
-        //    host = serviceProvider.GetService<IWorkflowHost>();
-        //    host.RegisterWorkflow<ArchiveWorkflow>();
-        //    host.Start();
-        //}
-
-        //private readonly DirectoryInfo root;
-        //private readonly IWorkflowHost host;
+        private readonly DirectoryInfo root;
+        private readonly IWorkflowHost host;
 
         IServiceProvider ICommand.Services => throw new NotImplementedException();
-
-        //private static IServiceProvider ConfigureServices()
-        //{
-        //    //setup dependency injection
-        //    IServiceCollection services = new ServiceCollection();
-        //    services.AddLogging();
-        //    services.AddWorkflow();
-        //    //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
-        //    services.AddTransient<GoodbyeWorld>();
-
-        //    var serviceProvider = services.BuildServiceProvider();
-
-        //    return serviceProvider;
-        //}
 
         private static IServiceProvider ConfigureServices()
         {
@@ -77,14 +62,10 @@ namespace Arius.Core.Commands
             //    host.Stop();
 
 
-            IServiceProvider serviceProvider = ConfigureServices();
-
-            //start the workflow host
-            var host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<HelloWorldWorkflow>();
-            host.Start();
-
             host.StartWorkflow("HelloWorld");
+
+            // https://github.com/danielgerlag/workflow-core/issues/162#issuecomment-450663329
+            //https://gist.github.com/kpko/f4c10ae7646d58038e0137278e6f49f9
 
             Console.ReadLine();
             host.Stop();
