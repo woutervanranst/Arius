@@ -45,6 +45,7 @@ namespace Arius.Core.Commands
             services.AddLogging();
             services.AddWorkflow();
             //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
+            services.AddTransient<IndexDirectoryStep>();
             services.AddTransient<GoodbyeWorld>();
 
             var serviceProvider = services.BuildServiceProvider();
@@ -119,10 +120,10 @@ namespace Arius.Core.Commands
         {
             private readonly ILogger<IndexDirectoryStep> _logger = null;
 
-            //public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
-            //{
-            //    this._logger = logger;
-            //}
+            public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
+            {
+                this._logger = logger;
+            }
 
             public DirectoryInfo Root { get; set; }
 
