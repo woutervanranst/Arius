@@ -124,25 +124,22 @@ namespace Arius.Core.Commands
                 this._logger = logger;
             }
 
-            public DirectoryInfo Root { get; set; }
+            public IReadOnlyCollection<IFile> Files { get; set; }
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
-                var di = context.Workflow.Data as DirectoryInfo;
+                var root = context.Workflow.Data as DirectoryInfo;
 
-                _logger.LogInformation($"Indexing {di.FullName}");
+                _logger.LogInformation($"Indexing {root.FullName}");
 
-                IndexDirectory(di, di);
+                Files = IndexDirectory(root).ToList();
 
                 return ExecutionResult.Next();
             }
 
-            /// <summary>
-            /// (new implemenation that excludes system/hidden files (eg .git / @eaDir)
-            /// </summary>
-            /// <param name="directory"></param>
-            /// <returns></returns>
-            private IEnumerable<IAriusEntry> IndexDirectory(DirectoryInfo root, DirectoryInfo directory)
+            private IEnumerable<IFile> IndexDirectory(DirectoryInfo directory) => IndexDirectory(directory, directory);
+
+            private IEnumerable<IFile> IndexDirectory(DirectoryInfo root, DirectoryInfo directory)
             {
                 foreach (var file in directory.GetFiles())
                 {
@@ -206,7 +203,7 @@ namespace Arius.Core.Commands
                     lowercaseFilename.Equals(".ds_store");
             }
 
-            private IAriusEntry GetAriusEntry(DirectoryInfo root, FileInfo fi)
+            private IFile GetAriusEntry(DirectoryInfo root, FileInfo fi)
             {
                 if (fi.IsPointerFile())
                 {
