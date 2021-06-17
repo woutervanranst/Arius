@@ -31,7 +31,7 @@ namespace Arius.Core.Commands
 
             //start the workflow host
             host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<HelloWorldWorkflow>();
+            host.RegisterWorkflow<ArchiveWorkflow>();
             host.Start();
         }
 
@@ -52,7 +52,7 @@ namespace Arius.Core.Commands
             services.AddWorkflow();
             //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
             services.AddTransient<IndexDirectoryStep>();
-            services.AddTransient<GoodbyeWorld>();
+            services.AddTransient<AddHashStep>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -73,13 +73,14 @@ namespace Arius.Core.Commands
             return Task.FromResult(0);
         }
 
-        public class HelloWorldWorkflow : IWorkflow
+        public class ArchiveWorkflow : IWorkflow
         {
             public void Build(IWorkflowBuilder<object> builder)
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
-                    .Then<GoodbyeWorld>()
+                    //                //.Input(step => step.Root = root)
+                    .Then<AddHashStep>()
                     ;
             }
 
@@ -90,30 +91,6 @@ namespace Arius.Core.Commands
         }
 
 
-        //public class HelloWorld : StepBody
-        //{
-        //    public override ExecutionResult Run(IStepExecutionContext context)
-        //    {
-        //        Console.WriteLine("Hello world");
-        //        return ExecutionResult.Next();
-        //    }
-        //}
-
-        //internal class ArchiveWorkflow : IWorkflow
-        //{
-        //    public void Build(IWorkflowBuilder<object> builder)
-        //    {
-        //        builder
-        //            .StartWith<IndexDirectoryStep>()
-        //                //.Input(step => step.Root = root)
-        //            .Then<GoodbyeWorld>()
-        //            ;
-        //    }
-
-        //    public string Id => "Archive";
-
-        //    public int Version => 1;
-        //}
 
         internal class IndexDirectoryStep : StepBody
         {
@@ -124,7 +101,7 @@ namespace Arius.Core.Commands
                 this._logger = logger;
             }
 
-            public IReadOnlyCollection<IFile> Files { get; set; }
+            public IEnumerable<IFile> Files { get; set; }
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
@@ -132,7 +109,7 @@ namespace Arius.Core.Commands
 
                 _logger.LogInformation($"Indexing {root.FullName}");
 
-                Files = IndexDirectory(root).ToList();
+                Files = IndexDirectory(root);
 
                 return ExecutionResult.Next();
             }
@@ -220,14 +197,14 @@ namespace Arius.Core.Commands
             }
         }
 
-        public class GoodbyeWorld : StepBody
+        public class AddHashStep : StepBody
         {
 
             private ILogger _logger;
 
-            public GoodbyeWorld(ILoggerFactory loggerFactory)
+            public AddHashStep(ILoggerFactory loggerFactory)
             {
-                _logger = loggerFactory.CreateLogger<GoodbyeWorld>();
+                _logger = loggerFactory.CreateLogger<AddHashStep>();
             }
 
             public override ExecutionResult Run(IStepExecutionContext context)
