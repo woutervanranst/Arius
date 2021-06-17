@@ -78,7 +78,7 @@ namespace Arius.Core.Commands
             public void Build(IWorkflowBuilder<object> builder)
             {
                 builder
-                    .StartWith<HelloWorld>()
+                    .StartWith<IndexDirectoryStep>()
                     .Then<GoodbyeWorld>()
                     ;
             }
@@ -95,25 +95,6 @@ namespace Arius.Core.Commands
             public override ExecutionResult Run(IStepExecutionContext context)
             {
                 Console.WriteLine("Hello world");
-                return ExecutionResult.Next();
-            }
-        }
-
-
-        public class GoodbyeWorld : StepBody
-        {
-
-            private ILogger _logger;
-
-            public GoodbyeWorld(ILoggerFactory loggerFactory)
-            {
-                _logger = loggerFactory.CreateLogger<GoodbyeWorld>();
-            }
-
-            public override ExecutionResult Run(IStepExecutionContext context)
-            {
-                Console.WriteLine("Goodbye world");
-                _logger.LogInformation("Hi there!");
                 return ExecutionResult.Next();
             }
         }
@@ -136,12 +117,12 @@ namespace Arius.Core.Commands
 
         internal class IndexDirectoryStep : StepBody
         {
-            private readonly ILogger<IndexDirectoryStep> _logger;
+            private readonly ILogger<IndexDirectoryStep> _logger = null;
 
-            public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
-            {
-                this._logger = logger;
-            }
+            //public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
+            //{
+            //    this._logger = logger;
+            //}
 
             public DirectoryInfo Root { get; set; }
 
@@ -240,22 +221,22 @@ namespace Arius.Core.Commands
             }
         }
 
-        //public class GoodbyeWorld : StepBody
-        //{
+        public class GoodbyeWorld : StepBody
+        {
 
-        //    private ILogger _logger;
+            private ILogger _logger;
 
-        //    public GoodbyeWorld(ILoggerFactory loggerFactory)
-        //    {
-        //        _logger = loggerFactory.CreateLogger<GoodbyeWorld>();
-        //    }
+            public GoodbyeWorld(ILoggerFactory loggerFactory)
+            {
+                _logger = loggerFactory.CreateLogger<GoodbyeWorld>();
+            }
 
-        //    public override ExecutionResult Run(IStepExecutionContext context)
-        //    {
-        //        Console.WriteLine("Goodbye world");
-        //        _logger.LogInformation("Hi there!");
-        //        return ExecutionResult.Next();
-        //    }
-        //}
+            public override ExecutionResult Run(IStepExecutionContext context)
+            {
+                Console.WriteLine("Goodbye world");
+                _logger.LogInformation("Hi there!");
+                return ExecutionResult.Next();
+            }
+        }
     }
 }
