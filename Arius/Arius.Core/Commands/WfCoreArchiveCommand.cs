@@ -3,6 +3,7 @@ using Arius.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -31,7 +32,7 @@ namespace Arius.Core.Commands
 
             //start the workflow host
             host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<ArchiveWorkflow>();
+            host.RegisterWorkflow<ArchiveWorkflow, STATE>();
             host.Start();
         }
 
@@ -73,14 +74,20 @@ namespace Arius.Core.Commands
             return Task.FromResult(0);
         }
 
-        public class ArchiveWorkflow : IWorkflow
+        internal class STATE
         {
-            public void Build(IWorkflowBuilder<object> builder)
+            public ConcurrentQueue<IFile> ha { get; set; }
+        }
+
+        public class ArchiveWorkflow : IWorkflow<STATE>
+        {
+            public void Build(IWorkflowBuilder<STATE> builder)
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
-                    //                //.Input(step => step.Root = root)
+                        .Output(state => state.ha, step => step.Files)
                     .Then<AddHashStep>()
+                        //.Input()
                     ;
             }
 
@@ -110,6 +117,10 @@ namespace Arius.Core.Commands
                 _logger.LogInformation($"Indexing {root.FullName}");
 
                 Files = IndexDirectory(root);
+
+                //foreach (var item in IndexDirectory(root))
+                //{
+                //}
 
                 return ExecutionResult.Next();
             }
@@ -199,13 +210,12 @@ namespace Arius.Core.Commands
 
         public class AddHashStep : StepBody
         {
-
-            private ILogger _logger;
-
             public AddHashStep(ILoggerFactory loggerFactory)
             {
                 _logger = loggerFactory.CreateLogger<AddHashStep>();
             }
+            private ILogger _logger;
+            public IEnumerable<IFile> Files { get; set; }
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
