@@ -91,14 +91,14 @@ namespace Arius.Core.Commands
         }
 
 
-        public class HelloWorld : StepBody
-        {
-            public override ExecutionResult Run(IStepExecutionContext context)
-            {
-                Console.WriteLine("Hello world");
-                return ExecutionResult.Next();
-            }
-        }
+        //public class HelloWorld : StepBody
+        //{
+        //    public override ExecutionResult Run(IStepExecutionContext context)
+        //    {
+        //        Console.WriteLine("Hello world");
+        //        return ExecutionResult.Next();
+        //    }
+        //}
 
         //internal class ArchiveWorkflow : IWorkflow
         //{
@@ -118,7 +118,7 @@ namespace Arius.Core.Commands
 
         internal class IndexDirectoryStep : StepBody
         {
-            private readonly ILogger<IndexDirectoryStep> _logger = null;
+            private readonly ILogger<IndexDirectoryStep> _logger;
 
             public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
             {
@@ -131,7 +131,7 @@ namespace Arius.Core.Commands
             {
                 //_logger.LogInformation($"Indexing {di.FullName}");
 
-                //return IndexDirectory(di, di);
+                //IndexDirectory(di, di);
 
                 return ExecutionResult.Next();
             }
