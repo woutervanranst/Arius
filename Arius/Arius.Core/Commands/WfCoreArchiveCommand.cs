@@ -21,9 +21,11 @@ namespace Arius.Core.Commands
         }
 
         public WfCoreArchiveCommand(IOptions options,
-            ILogger<ArchiveCommand> logger)
+            ILogger<ArchiveCommand> logger,
+            ILoggerFactory loggerFactory)
         {
             root = new DirectoryInfo(options.Path);
+            this.loggingBuilder = loggerFactory;
 
             IServiceProvider serviceProvider = ConfigureServices();
 
@@ -35,14 +37,18 @@ namespace Arius.Core.Commands
 
         private readonly DirectoryInfo root;
         private readonly IWorkflowHost host;
+        private readonly ILoggerFactory loggingBuilder;
 
         IServiceProvider ICommand.Services => throw new NotImplementedException();
 
-        private static IServiceProvider ConfigureServices()
+        private IServiceProvider ConfigureServices()
         {
             //setup dependency injection
             IServiceCollection services = new ServiceCollection();
+            
+            services.AddSingleton(loggingBuilder);
             services.AddLogging();
+
             services.AddWorkflow();
             //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
             services.AddTransient<IndexDirectoryStep>();
@@ -56,14 +62,7 @@ namespace Arius.Core.Commands
 
         public Task<int> Execute()
         {
-            //    host.StartWorkflow("Archive");
-
-            //    Console.ReadLine();
-
-            //    host.Stop();
-
-
-            host.StartWorkflow("HelloWorld");
+            host.StartWorkflow("ArchiveWorkflow", root);
 
             // https://github.com/danielgerlag/workflow-core/issues/162#issuecomment-450663329
             //https://gist.github.com/kpko/f4c10ae7646d58038e0137278e6f49f9
@@ -84,7 +83,7 @@ namespace Arius.Core.Commands
                     ;
             }
 
-            public string Id => "HelloWorld";
+            public string Id => "ArchiveWorkflow";
 
             public int Version => 1;
 
@@ -129,9 +128,11 @@ namespace Arius.Core.Commands
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
-                //_logger.LogInformation($"Indexing {di.FullName}");
+                var di = context.Workflow.Data as DirectoryInfo;
 
-                //IndexDirectory(di, di);
+                _logger.LogInformation($"Indexing {di.FullName}");
+
+                IndexDirectory(di, di);
 
                 return ExecutionResult.Next();
             }
