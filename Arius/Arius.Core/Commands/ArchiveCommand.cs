@@ -2,6 +2,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Extensions;
@@ -11,6 +13,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
+    public class SomeEvent
+    {
+        public string BlockName { get; init; }
+        public string Description { get; set; }
+        //public DateTime Date { get; set; }
+        //public SomeEvent(string description, DateTime date)
+        //{
+        //    Description = description;
+        //    Date = date;
+        //}
+    }
+
     internal class ArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
         internal interface IOptions
@@ -62,6 +76,14 @@ namespace Arius.Core.Commands
             // Define blocks & intermediate variables
             var indexDirectoryBlock = services.GetRequiredService<IndexDirectoryBlockProvider>().GetBlock();
 
+            indexDirectoryBlock.AsObservable().Subscribe((e) =>
+            {
+                NotificationEvent(indexDirectoryBlock.GetType().Name, "STARTED");
+            });
+            indexDirectoryBlock.Completion.ToObservable().Subscribe((u) => 
+            {
+                NotificationEvent(indexDirectoryBlock.GetType().Name, "DONE");
+            });
 
             var addHashBlock = services.GetRequiredService<AddHashBlockProvider>().GetBlock();
 
@@ -294,6 +316,42 @@ namespace Arius.Core.Commands
             logger.LogInformation("Done");
 
             return 0;
+        }
+
+
+
+        // Maintain a list of observers
+        private readonly List<IObserver<SomeEvent>> _observers = new List<IObserver<SomeEvent>>();
+        
+        // Define Unsubscriber class
+        private class Unsubscriber : IDisposable
+        {
+            private readonly List<IObserver<SomeEvent>> _observers;
+            private readonly IObserver<SomeEvent> _observer;
+            public Unsubscriber(List<IObserver<SomeEvent>> observers,
+                                IObserver<SomeEvent> observer)
+            {
+                this._observers = observers;
+                this._observer = observer;
+            }
+            public void Dispose()
+            {
+                if (!(_observer == null)) 
+                    _observers.Remove(_observer);
+            }
+        }
+        // Define Subscribe method
+        public IDisposable Subscribe(IObserver<SomeEvent> observer)
+        {
+            if (!_observers.Contains(observer))
+                _observers.Add(observer);
+            return new Unsubscriber(_observers, observer);
+        }
+        // Notify observers when event occurs
+        private void NotificationEvent(string blockName, string description)
+        {
+            foreach (var observer in _observers)
+                observer.OnNext(new SomeEvent { BlockName = blockName, Description = description });
         }
     }
 }

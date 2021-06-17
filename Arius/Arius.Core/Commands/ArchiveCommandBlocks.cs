@@ -55,6 +55,8 @@ namespace Arius.Core.Commands
         {
             foreach (var file in directory.GetFiles())
             {
+                Thread.Sleep(5000);
+
                 if (IsHiddenOrSystem(file))
                 {
                     _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");

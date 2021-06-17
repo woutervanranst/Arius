@@ -214,5 +214,10 @@ namespace Arius.Core.Commands
 
             return 0;
         }
+
+        public IDisposable Subscribe(IObserver<SomeEvent> observer)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

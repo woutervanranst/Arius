@@ -15,6 +15,8 @@ using Arius.Core.Facade;
 using System.IO;
 using System.CommandLine.Parsing;
 using Arius.Cli.CommandLine;
+using Spectre.Console;
+using System.Threading;
 
 /*
  * This is required to test the internals of the Arius.Cli assembly
@@ -43,83 +45,100 @@ namespace Arius.Cli
             //{
             //};
 
-            Console.WriteLine("Arius started.");
-
             int? r = default;
             DirectoryInfo? tempDir = default;
 
-            try
-            {
-                var cliParser = GetCommandLineBuilder()
-                    .UseHost(_ => Host.CreateDefaultBuilder(), host =>
+            await AnsiConsole.Progress()
+                .AutoClear(false)
+                .Columns(new ProgressColumn[]
+                {
+                    new TaskDescriptionColumn(),    // Task description
+                    new ProgressBarColumn(),        // Progress bar
+                    new PercentageColumn(),         // Percentage
+                    new ElapsedTimeColumn(),
+                    //new RemainingTimeColumn(),      // Remaining time
+                    new SpinnerColumn(),            // Spinner
+                }).StartAsync(async ctx => 
+                {
+                    AnsiConsole.Render(new FigletText("Arius"));
+                    AnsiConsole.MarkupLine("[yellow]Arius started[/]...");
+
+                    try
                     {
-                        InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow? see https://github.com/dotnet/command-line-api/issues/1025 ? https://github.com/dotnet/command-line-api/issues/1312 ? By design https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine.Hosting.Tests/HostingTests.cs#L357 ?
+                        var cliParser = GetCommandLineBuilder()
+                            .UseHost(_ => Host.CreateDefaultBuilder(), host =>
+                            {
+                                InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow? see https://github.com/dotnet/command-line-api/issues/1025 ? https://github.com/dotnet/command-line-api/issues/1312 ? By design https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine.Hosting.Tests/HostingTests.cs#L357 ?
 
-                        host
-                                .ConfigureAppConfiguration(builder =>
-                                {
-                                    builder.AddJsonFile("appsettings.json");
-                                })
-                                .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
-                                {
-                                    loggingBuilder
-                                    .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
-                                    .AddSimpleConsole(options =>
-                                    {
-                                        // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                                    });
-
-                                    // Check whether we are running in a unit test
-                                    if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
-                                    {
-                                        /* Do not configure Karambola file logging in a unit test
-                                            The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution */
-                                        loggingBuilder.AddFile(options =>
+                                host
+                                        .ConfigureAppConfiguration(builder =>
                                         {
-                                            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
-                                                options.RootPath = "/logs";
+                                            builder.AddJsonFile("appsettings.json");
+                                        })
+                                        .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
+                                        {
+                                            loggingBuilder
+                                            .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
+                                            //.AddSimpleConsole(options =>
+                                            //{
+                                            //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                                            //})
+                                            ;
+
+                                            // Check whether we are running in a unit test
+                                            if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                                            {
+                                                /* Do not configure Karambola file logging in a unit test
+                                                    The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution */
+                                                loggingBuilder.AddFile(options =>
+                                                {
+                                                    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
+                                                        options.RootPath = "/logs";
+                                                    else
+                                                        options.RootPath = AppContext.BaseDirectory;
+
+                                                    options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+
+                                                    options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                                                });
+
+                                            }
+
+                                        })
+                                        .ConfigureServices((hostContext, services) =>
+                                        {
+                                            if (facade is null)
+                                                services.AddSingleton<IFacade, Facade>();
                                             else
-                                                options.RootPath = AppContext.BaseDirectory;
+                                                services.AddSingleton(facade);
 
-                                            options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+                                            services.AddSingleton(ctx);
 
-                                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                                            services.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostContext.Configuration.GetSection("AzCopier"));
+                                            services.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostContext.Configuration.GetSection("TempDir"));
                                         });
+                            })
 
-                                    }
+                            /* Replace .UseDefaults() by its implementation to allow for custom ExceptionHandler
+                                *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
+                                *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
+                                */
+                            .UseDefaults()
+                            .UseExceptionHandler((e, context) =>
+                            {
+                                // NOTE: Logging is not available here -- https://github.com/dotnet/command-line-api/issues/1311
+                                //var logger = context.GetHost().Services.GetRequiredService<ILogger>();
+                                HandleUnloggableException(e);
+                            })
+                            .Build();
 
-                                })
-                                .ConfigureServices((hostContext, services) =>
-                                {
-                                    if (facade is null)
-                                        services.AddSingleton<IFacade, Facade>();
-                                    else
-                                        services.AddSingleton(facade);
-
-                                    services.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostContext.Configuration.GetSection("AzCopier"));
-                                    services.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostContext.Configuration.GetSection("TempDir"));
-                                });
-                    })
-
-                    /* Replace .UseDefaults() by its implementation to allow for custom ExceptionHandler
-                        *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
-                        *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
-                        */
-                    .UseDefaults()
-                    .UseExceptionHandler((e, context) =>
+                        r = await cliParser.InvokeAsync(args);
+                    }
+                    catch (Exception e)
                     {
-                        // NOTE: Logging is not available here -- https://github.com/dotnet/command-line-api/issues/1311
-                        //var logger = context.GetHost().Services.GetRequiredService<ILogger>();
                         HandleUnloggableException(e);
-                    })
-                    .Build();
-
-                r = await cliParser.InvokeAsync(args);
-            }
-            catch (Exception e)
-            {
-                HandleUnloggableException(e);
-            }
+                    }
+                });
 
             Environment.ExitCode = r ?? (int)ExitCode.ERROR;
             return Environment.ExitCode;
@@ -127,7 +146,9 @@ namespace Arius.Cli
 
         private static void HandleUnloggableException(Exception e)
         {
-            Console.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:\n{e}");
+            AnsiConsole.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:");
+            AnsiConsole.WriteException(e);
+
         }
 
         private CommandLineBuilder GetCommandLineBuilder()

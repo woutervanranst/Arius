@@ -5,11 +5,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Spectre.Console;
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Linq;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 
 namespace Arius.Cli.CommandLine
@@ -131,6 +135,33 @@ namespace Arius.Cli.CommandLine
 
                             logger.LogInformation($@"Creating ArchiveCommand: archiving '{path}' to '{accountName}\{container}'...");
                             var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+
+                            
+                            var x = host.Services.GetRequiredService<ProgressContext>();
+                            var xx = new Dictionary<string, ProgressTask>();
+                            c
+                                //.ObserveOn(Scheduler.CurrentThread)
+                                .Subscribe((e) =>
+                            {
+                                lock (xx)
+                                { 
+                                    if (!xx.ContainsKey(e.BlockName))
+                                    {
+                                        var t = x.AddTask(e.BlockName);
+                                        t.IsIndeterminate().StartTask();
+
+                                        xx.Add(e.BlockName, t);
+                                    }
+                                }
+
+                                var tt = xx[e.BlockName];
+
+                                if (e.Description == "DONE")
+                                    tt.StopTask();
+
+
+                            });
+
 
                             logger.LogInformation("Executing Command...");
                             var r = await c.Execute();
