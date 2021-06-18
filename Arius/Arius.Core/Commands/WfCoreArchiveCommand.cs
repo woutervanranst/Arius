@@ -86,16 +86,18 @@ namespace Arius.Core.Commands
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
+                    .ForEach(data => (data as STATE).IndexedFileQueue)
+                    .Do(x => x.StartWith<AddHashStep>())
                         //.Output(state => state.ha, step => step.Files)
-                        .Output((step, state) =>
-                        {
-                            var k = state as STATE;
+                    //    .Output((step, state) =>
+                    //    {
+                    //        var k = state as STATE;
 
-                            foreach (var item in step.Files)
-                                k.IndexedFileQueue.Enqueue(item);
-                        })
-                    .Then<AddHashStep>()
-                        .Input(step => step.)
+                    //        foreach (var item in step.Files)
+                    //            k.IndexedFileQueue.Enqueue(item);
+                    //    })
+                    //.Then<AddHashStep>()
+                    //    .Input(step => step.)
                     ;
             }
 
