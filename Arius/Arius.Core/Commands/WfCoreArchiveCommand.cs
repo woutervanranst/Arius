@@ -32,7 +32,7 @@ namespace Arius.Core.Commands
 
             //start the workflow host
             host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<ArchiveWorkflow>();
+            host.RegisterWorkflow<ArchiveWorkflow, STATE>();
             host.Start();
         }
 
@@ -80,13 +80,14 @@ namespace Arius.Core.Commands
             public ConcurrentQueue<IFile> IndexedFileQueue { get; set; } = new();
         }
 
-        public class ArchiveWorkflow : IWorkflow //<STATE>
+        public class ArchiveWorkflow : IWorkflow<STATE>
         {
-            public void Build(IWorkflowBuilder<object> builder)
+            public void Build(IWorkflowBuilder<STATE> builder)
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
-                    .ForEach(data => (data as STATE).IndexedFileQueue)
+                        .Output(state => state.IndexedFileQueue, step => step.Files)
+                    .ForEach(data => data.IndexedFileQueue)
                     .Do(x => x.StartWith<AddHashStep>())
                         //.Output(state => state.ha, step => step.Files)
                     //    .Output((step, state) =>
@@ -118,7 +119,8 @@ namespace Arius.Core.Commands
                 this._logger = logger;
             }
 
-            public IEnumerable<IFile> Files { get; set; }
+            //public IEnumerable<IFile> Files { get; set; }
+            public ConcurrentQueue<IFile> Files { get; init; } = new();
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
@@ -126,11 +128,10 @@ namespace Arius.Core.Commands
 
                 _logger.LogInformation($"Indexing {root.FullName}");
 
-                Files = IndexDirectory(root);
+                //Files = IndexDirectory(root);
 
-                //foreach (var item in IndexDirectory(root))
-                //{
-                //}
+                foreach (var item in IndexDirectory(root))
+                    Files.Enqueue(item);
 
                 return ExecutionResult.Next();
             }
