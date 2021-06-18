@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using WorkflowCore.Interface;
 using WorkflowCore.Models;
@@ -77,7 +78,7 @@ namespace Arius.Core.Commands
         internal class STATE
         {
             public DirectoryInfo Root { get; set; }
-            public ConcurrentQueue<IFile> IndexedFileQueue { get; set; } = new();
+            public BlockingCollection<IFile> IndexedFileQueue { get; set; } = new();
         }
 
         public class ArchiveWorkflow : IWorkflow<STATE>
@@ -86,10 +87,14 @@ namespace Arius.Core.Commands
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
-                        .Output(state => state.IndexedFileQueue, step => step.Files)
-                    .ForEach(state => state.IndexedFileQueue.AsEnumerable()/*, _ => true*/)
-                        .Do(x => x
-                            .StartWith<AddHashStep>())
+                        //.Output(state => state.IndexedFileQueue, step => step.Files)
+                        .Then<AddHashStep>()
+
+                    //.ForEach(state => state.IndexedFileQueue.AsEnumerable()/*, _ => true*/)
+                    //    .Do(x => x
+                    //        .StartWith<AddHashStep>())
+
+
                         //.Output(state => state.ha, step => step.Files)
                     //    .Output((step, state) =>
                     //    {
@@ -121,11 +126,12 @@ namespace Arius.Core.Commands
             }
 
             //public IEnumerable<IFile> Files { get; set; }
-            public ConcurrentQueue<IFile> Files { get; init; } = new();
+            //public ConcurrentQueue<IFile> Files { get; init; } = new();
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
-                var root = (context.Workflow.Data as STATE).Root;
+                var state = context.Workflow.Data as STATE;
+                var root = state.Root;
 
                 _logger.LogInformation($"Indexing {root.FullName}");
 
@@ -138,7 +144,8 @@ namespace Arius.Core.Commands
                         //await Task.Yield();
                         //await Task.Delay(1000);
 
-                        Files.Enqueue(item);
+                        state.IndexedFileQueue.Add(item);
+                        //Files.Enqueue(item);
                     }
                 });
 
@@ -241,14 +248,29 @@ namespace Arius.Core.Commands
 
             public override async Task<ExecutionResult> RunAsync(IStepExecutionContext context)
             {
-                var x = context.Item as IFile;
+                var wf = context.Workflow;
+                var state = wf.Data as STATE;
+                var queue = state.IndexedFileQueue;
 
-                _logger.LogInformation("STARTED");
+                while (!queue.IsCompleted)
+                {
+                    Parallel.ForEach(
+                        queue.GetConsumingPartitioner(), 
+                        new ParallelOptions { MaxDegreeOfParallelism = 3 }, 
+                        async (item) =>
+                        {
+                            //var x = context.Item as IFile;
 
-                await Task.Delay(4000);
+                            _logger.LogInformation($"STARTED {Thread.CurrentThread.ManagedThreadId}");
 
-                //Console.WriteLine("Goodbye world");
-                _logger.LogInformation(x.FullName);
+                            //Thread.Sleep(1000);
+                            await Task.Delay(4000);
+
+                            ////Console.WriteLine("Goodbye world");
+                            _logger.LogInformation(item.FullName);
+                        });
+
+                }
 
                 return ExecutionResult.Next();
             }
