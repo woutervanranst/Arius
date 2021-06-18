@@ -38,11 +38,11 @@ namespace Arius.Core.Commands
 
         internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
         {
-            coll
-                .AddWorkflow()
+            //coll
+                //.AddWorkflow()
 
-                .AddTransient<IndexDirectoryStep>()
-                .AddTransient<AddHashStep>()
+                //.AddTransient<IndexDirectoryStep>()
+                //.AddTransient<AddHashStep>()
 
                 //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
                 ;
@@ -53,71 +53,25 @@ namespace Arius.Core.Commands
 
         public Task<int> Execute()
         {
-            //start the workflow host
-            var host = services.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<ArchiveWorkflow, ArchiveWorkflowState>();
-            host.Start();
-
-            host.StartWorkflow("ArchiveWorkflow", new ArchiveWorkflowState { Root = root } );
-
-            // https://github.com/danielgerlag/workflow-core/issues/162#issuecomment-450663329
-            //https://gist.github.com/kpko/f4c10ae7646d58038e0137278e6f49f9
-
-            Console.ReadLine();
-            host.Stop();
-
+            var pipeline = new GenericBCPipelineAwait<DirectoryInfo, int>((di, builder) => di.Step2<>
+                )
             return Task.FromResult(0);
         }
 
-        internal class ArchiveWorkflowState
-        {
-            public DirectoryInfo Root { get; set; }
-            public BlockingCollection<IFile> IndexedFileQueue { get; set; } = new();
-            public BlockingCollection<FileBase> HashedFiles { get; set; } = new();
-        }
+        //internal class ArchiveWorkflowState
+        //{
+        //    public DirectoryInfo Root { get; set; }
+        //    public BlockingCollection<IFile> IndexedFileQueue { get; set; } = new();
+        //    public BlockingCollection<FileBase> HashedFiles { get; set; } = new();
+        //}
 
-        public class ArchiveWorkflow : IWorkflow<ArchiveWorkflowState>
+
+
+        internal static class IndexDirectoryStep
         {
-            public void Build(IWorkflowBuilder<ArchiveWorkflowState> builder)
+            public static int Ka(this DirectoryInfo di)
             {
-                builder
-                    .StartWith<IndexDirectoryStep>()
-                        //.Output(state => state.IndexedFileQueue, step => step.Files)
-                        .Then<AddHashStep>()
-
-                    //.ForEach(state => state.IndexedFileQueue.AsEnumerable()/*, _ => true*/)
-                    //    .Do(x => x
-                    //        .StartWith<AddHashStep>())
-
-
-                        //.Output(state => state.ha, step => step.Files)
-                    //    .Output((step, state) =>
-                    //    {
-                    //        var k = state as STATE;
-
-                    //        foreach (var item in step.Files)
-                    //            k.IndexedFileQueue.Enqueue(item);
-                    //    })
-                    //.Then<AddHashStep>()
-                    //    .Input(step => step.)
-                    ;
-            }
-
-            public string Id => "ArchiveWorkflow";
-
-            public int Version => 1;
-
-        }
-
-
-
-        internal class IndexDirectoryStep : StepBody
-        {
-            private readonly ILogger<IndexDirectoryStep> _logger;
-
-            public IndexDirectoryStep(ILogger<IndexDirectoryStep> logger)
-            {
-                this._logger = logger;
+                return 5;
             }
 
             public override ExecutionResult Run(IStepExecutionContext context)
@@ -129,7 +83,7 @@ namespace Arius.Core.Commands
 
                 //Files = IndexDirectory(root);
 
-                Task.Run(async () => 
+                Task.Run(async () =>
                 {
                     foreach (var item in IndexDirectory(root))
                     {
@@ -142,7 +96,7 @@ namespace Arius.Core.Commands
                     }
                 });
 
-                
+
 
                 return ExecutionResult.Next();
             }
@@ -250,7 +204,7 @@ namespace Arius.Core.Commands
                 while (!queue.IsCompleted)
                 {
                     Parallel.ForEach(
-                        queue.GetConsumingPartitioner(), 
+                        queue.GetConsumingPartitioner(),
                         new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
                         (item) =>
                         {
@@ -282,5 +236,198 @@ namespace Arius.Core.Commands
                 return ExecutionResult.Next();
             }
         }
+
+
     }
-}
+
+
+
+
+
+    public static class GenericBCPipelineAwaitExtensions
+    {
+        public static TOutput Step2<TInput, TOutput, TInputOuter, TOutputOuter>(this TInput inputType,
+            GenericBCPipelineAwait<TInputOuter, TOutputOuter> pipelineBuilder,
+            Func<TInput, TOutput> step)
+        {
+            var pipelineStep = pipelineBuilder.GenerateStep<TInput, TOutput>();
+            pipelineStep.StepAction = step;
+            return default(TOutput);
+        }
+    }
+
+    public class GenericBCPipelineAwait<TPipeIn, TPipeOut>
+    {
+        public interface IPipelineAwaitStep<TStepIn>
+        {
+            BlockingCollection<Item<TStepIn>> Buffer { get; set; }
+        }
+
+        public class GenericBCPipelineAwaitStep<TStepIn, TStepOut> : IPipelineAwaitStep<TStepIn>
+        {
+            public BlockingCollection<Item<TStepIn>> Buffer { get; set; } = new BlockingCollection<Item<TStepIn>>();
+            public Func<TStepIn, TStepOut> StepAction { get; set; }
+        }
+
+        public class Item<T>
+        {
+            public T Input { get; set; }
+            public TaskCompletionSource<TPipeOut> TaskCompletionSource { get; set; }
+        }
+
+        List<object> _pipelineSteps = new List<object>();
+
+
+        public GenericBCPipelineAwait(Func<TPipeIn, GenericBCPipelineAwait<TPipeIn, TPipeOut>, TPipeOut> steps)
+        {
+            steps.Invoke(default(TPipeIn), this);//Invoke just once to build blocking collections
+        }
+
+        public Task<TPipeOut> Execute(TPipeIn input)
+        {
+            var first = _pipelineSteps[0] as IPipelineAwaitStep<TPipeIn>;
+            TaskCompletionSource<TPipeOut> tsk = new TaskCompletionSource<TPipeOut>();
+            first.Buffer.Add(/*input*/new Item<TPipeIn>()
+            {
+                Input = input,
+                TaskCompletionSource = tsk
+            });
+            return tsk.Task;
+        }
+
+        public GenericBCPipelineAwaitStep<TStepIn, TStepOut> GenerateStep<TStepIn, TStepOut>()
+        {
+            var pipelineStep = new GenericBCPipelineAwaitStep<TStepIn, TStepOut>();
+            var stepIndex = _pipelineSteps.Count;
+
+            Task.Run(() =>
+            {
+                IPipelineAwaitStep<TStepOut> nextPipelineStep = null;
+
+                foreach (var input in pipelineStep.Buffer.GetConsumingEnumerable())
+                {
+                    bool isLastStep = stepIndex == _pipelineSteps.Count - 1;
+                    TStepOut output;
+                    try
+                    {
+                        output = pipelineStep.StepAction(input.Input);
+                    }
+                    catch (Exception e)
+                    {
+                        input.TaskCompletionSource.SetException(e);
+                        continue;
+                    }
+                    if (isLastStep)
+                    {
+                        input.TaskCompletionSource.SetResult((TPipeOut)(object)output);
+                    }
+                    else
+                    {
+                        nextPipelineStep = nextPipelineStep ?? (isLastStep ? null : _pipelineSteps[stepIndex + 1] as IPipelineAwaitStep<TStepOut>);
+                        nextPipelineStep.Buffer.Add(new Item<TStepOut>() { Input = output, TaskCompletionSource = input.TaskCompletionSource });
+                    }
+                }
+            });
+
+            _pipelineSteps.Add(pipelineStep);
+            return pipelineStep;
+
+        }
+
+
+
+        //public interface IAwaitablePipeline<TOutput>
+        //{
+        //    Task<TOutput> Execute(object input);
+        //}
+
+        //public class CastingPipelineWithAwait<TOutput> : IAwaitablePipeline<TOutput>
+        //{
+        //    class Step
+        //    {
+        //        public Func<object, object> Func { get; set; }
+        //        public int DegreeOfParallelism { get; set; }
+        //        public int MaxCapacity { get; set; }
+        //    }
+
+        //    class Item
+        //    {
+        //        public object Input { get; set; }
+        //        public TaskCompletionSource<TOutput> TaskCompletionSource { get; set; }
+        //    }
+
+        //    List<Step> _pipelineSteps = new List<Step>();
+        //    BlockingCollection<Item>[] _buffers;
+
+        //    public event Action<TOutput> Finished;
+
+        //    public void AddStep(Func<object, object> stepFunc, int degreeOfParallelism, int maxCapacity)
+        //    {
+        //        _pipelineSteps.Add(new Step()
+        //        {
+        //            Func = stepFunc,
+        //            DegreeOfParallelism = degreeOfParallelism,
+        //            MaxCapacity = maxCapacity,
+        //        });
+        //    }
+
+        //    public Task<TOutput> Execute(object input)
+        //    {
+        //        var first = _buffers[0];
+        //        var item = new Item()
+        //        {
+        //            Input = input,
+        //            TaskCompletionSource = new TaskCompletionSource<TOutput>()
+        //        };
+        //        first.Add(item);
+        //        return item.TaskCompletionSource.Task;
+        //    }
+
+        //    public IAwaitablePipeline<TOutput> GetPipeline()
+        //    {
+        //        _buffers = _pipelineSteps.Select(step => new BlockingCollection<Item>()).ToArray();
+
+        //        int bufferIndex = 0;
+        //        foreach (var pipelineStep in _pipelineSteps)
+        //        {
+        //            var bufferIndexLocal = bufferIndex;
+
+        //            for (int i = 0; i < pipelineStep.DegreeOfParallelism; i++)
+        //            {
+        //                Task.Run(() => { StartStep(bufferIndexLocal, pipelineStep); });
+        //            }
+
+        //            bufferIndex++;
+        //        }
+        //        return this;
+        //    }
+
+        //    private void StartStep(int bufferIndexLocal, Step pipelineStep)
+        //    {
+        //        foreach (var input in _buffers[bufferIndexLocal].GetConsumingEnumerable())
+        //        {
+        //            object output;
+        //            try
+        //            {
+        //                output = pipelineStep.Func.Invoke(input.Input);
+        //            }
+        //            catch (Exception e)
+        //            {
+        //                input.TaskCompletionSource.SetException(e);
+        //                continue;
+        //            }
+
+        //            bool isLastStep = bufferIndexLocal == _pipelineSteps.Count - 1;
+        //            if (isLastStep)
+        //            {
+        //                input.TaskCompletionSource.SetResult((TOutput)(object)output);
+        //            }
+        //            else
+        //            {
+        //                var next = _buffers[bufferIndexLocal + 1];
+        //                next.Add(new Item() { Input = output, TaskCompletionSource = input.TaskCompletionSource });
+        //            }
+        //        }
+        //    }
+        //}
+    }
