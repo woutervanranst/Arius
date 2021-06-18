@@ -135,6 +135,7 @@ namespace Arius.Core.Commands
                     {
                         //await Task.Yield();
                         //await Task.Delay(1000);
+                        //Thread.Sleep(4000);
 
                         state.IndexedFileQueue.Add(item);
                         //Files.Enqueue(item);
@@ -229,7 +230,7 @@ namespace Arius.Core.Commands
             }
         }
 
-        public class AddHashStep : StepBodyAsync
+        public class AddHashStep : StepBody
         {
             public AddHashStep(ILogger<AddHashBlockProvider> logger, IHashValueProvider hashValueProvider)
             {
@@ -240,7 +241,7 @@ namespace Arius.Core.Commands
             private readonly ILogger<AddHashBlockProvider> logger;
             private readonly IHashValueProvider hashValueProvider;
 
-            public override async Task<ExecutionResult> RunAsync(IStepExecutionContext context)
+            public override ExecutionResult Run(IStepExecutionContext context)
             {
                 var wf = context.Workflow;
                 var state = wf.Data as ArchiveWorkflowState;
@@ -250,11 +251,9 @@ namespace Arius.Core.Commands
                 {
                     Parallel.ForEach(
                         queue.GetConsumingPartitioner(), 
-                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, 
-                        async (item) =>
+                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                        (item) =>
                         {
-                            //logger.LogInformation($"STARTED {Thread.CurrentThread.ManagedThreadId}");
-
                             if (item is PointerFile pf)
                                 state.HashedFiles.Add(pf);
                             else if (item is BinaryFile bf)
