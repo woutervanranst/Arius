@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ namespace Arius.Cli.Extensions
 {
     // https://github.com/adams85/filelogger/tree/5263fa0424f1fed0a1fddc7b0f7454fb59e27c53/samples/CustomFormat
 
+    [DebuggerStepThroughAttribute]
     internal class SingleLineLogEntryTextBuilder : FileLogEntryTextBuilder
     {
         public static readonly SingleLineLogEntryTextBuilder Default = new SingleLineLogEntryTextBuilder();
