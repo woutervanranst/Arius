@@ -49,28 +49,57 @@ namespace Arius.Core.Commands
         IServiceProvider ICommand.Services => throw new NotImplementedException();
 
 
-        public Task<int> Execute()
+        public async Task<int> Execute()
         {
-            var ha = new BlockingCollection<IFile>();
+            var indexedFiles = new BlockingCollection<IFile>();
+            var hashedFiles = new BlockingCollection<FileBase>();
 
 
-            Task.Run(() =>
+            var t1 = Task.Run(() =>
             {
                 foreach (var file in IndexDirectory(root))
-                    ha.Add(file);
+                    indexedFiles.Add(file);
 
-                ha.CompleteAdding();
+                indexedFiles.CompleteAdding();
+            });
+
+            var t2 = Task.Run(() =>
+            {
+                var hvp = services.GetRequiredService<IHashValueProvider>();
+
+                while (!indexedFiles.IsCompleted)
+                {
+                    Parallel.ForEach(
+                        indexedFiles.GetConsumingPartitioner(),
+                        new ParallelOptions { MaxDegreeOfParallelism = 2 /*Environment.ProcessorCount */},
+                        (file) =>
+                        {
+                            if (file is PointerFile pf)
+                                hashedFiles.Add(pf);
+                            else if (file is BinaryFile bf)
+                            {
+                                _logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
+
+                                bf.Hash = hvp.GetHashValue(bf);
+
+                                _logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
+
+                                hashedFiles.Add(bf);
+                            }
+                            else
+                                throw new ArgumentException($"Cannot add hash to item of type {file.GetType().Name}");
+
+
+                            //Thread.Sleep(1000);
+                            //await Task.Delay(4000);
+                        });
+                }
             });
 
 
+            await Task.WhenAll(t1, t2);
 
-            
-
-
-
-
-
-            return Task.FromResult(0);
+            return 0;
         }
 
 
@@ -152,60 +181,6 @@ namespace Arius.Core.Commands
                     return new BinaryFile(root, fi);
                 }
             }
-
-        //public class AddHashStep : StepBody
-        //{
-        //    public AddHashStep(ILogger<AddHashBlockProvider> logger, IHashValueProvider hashValueProvider)
-        //    {
-        //        this.logger = logger;
-        //        this.hashValueProvider = hashValueProvider;
-        //    }
-
-        //    private readonly ILogger<AddHashBlockProvider> logger;
-        //    private readonly IHashValueProvider hashValueProvider;
-
-        //    public override ExecutionResult Run(IStepExecutionContext context)
-        //    {
-        //        var wf = context.Workflow;
-        //        var state = wf.Data as ArchiveWorkflowState;
-        //        var queue = state.IndexedFileQueue;
-
-        //        while (!queue.IsCompleted)
-        //        {
-        //            Parallel.ForEach(
-        //                queue.GetConsumingPartitioner(),
-        //                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
-        //                (item) =>
-        //                {
-        //                    if (item is PointerFile pf)
-        //                        state.HashedFiles.Add(pf);
-        //                    else if (item is BinaryFile bf)
-        //                    {
-        //                        logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
-
-        //                        bf.Hash = hashValueProvider.GetHashValue(bf);
-
-        //                        logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
-
-        //                        state.HashedFiles.Add(bf);
-        //                    }
-        //                    else
-        //                        throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
-
-
-        //                    //Thread.Sleep(1000);
-        //                    //await Task.Delay(4000);
-
-        //                    ////Console.WriteLine("Goodbye world");
-        //                    //_logger.LogInformation(item.FullName);
-        //                });
-
-        //        }
-
-        //        return ExecutionResult.Next();
-        //    }
-        //}
-
 
     }
 }
