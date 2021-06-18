@@ -28,6 +28,8 @@
     <Authors>Wouter Van Ranst</Authors>
     <Company>Wouter Van Ranst</Company>
     <Copyright>Wouter Van Ranst</Copyright>
+
+    <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
 
 </Project>
