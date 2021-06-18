@@ -87,8 +87,9 @@ namespace Arius.Core.Commands
                 builder
                     .StartWith<IndexDirectoryStep>()
                         .Output(state => state.IndexedFileQueue, step => step.Files)
-                    .ForEach(data => data.IndexedFileQueue)
-                    .Do(x => x.StartWith<AddHashStep>())
+                    .ForEach(state => state.IndexedFileQueue.AsEnumerable()/*, _ => true*/)
+                        .Do(x => x
+                            .StartWith<AddHashStep>())
                         //.Output(state => state.ha, step => step.Files)
                     //    .Output((step, state) =>
                     //    {
@@ -130,8 +131,18 @@ namespace Arius.Core.Commands
 
                 //Files = IndexDirectory(root);
 
-                foreach (var item in IndexDirectory(root))
-                    Files.Enqueue(item);
+                Task.Run(async () => 
+                {
+                    foreach (var item in IndexDirectory(root))
+                    {
+                        //await Task.Yield();
+                        //await Task.Delay(1000);
+
+                        Files.Enqueue(item);
+                    }
+                });
+
+                
 
                 return ExecutionResult.Next();
             }
@@ -219,7 +230,7 @@ namespace Arius.Core.Commands
             }
         }
 
-        public class AddHashStep : StepBody
+        public class AddHashStep : StepBodyAsync
         {
             public AddHashStep(ILoggerFactory loggerFactory)
             {
@@ -228,10 +239,17 @@ namespace Arius.Core.Commands
             private ILogger _logger;
             public IEnumerable<IFile> Files { get; set; }
 
-            public override ExecutionResult Run(IStepExecutionContext context)
+            public override async Task<ExecutionResult> RunAsync(IStepExecutionContext context)
             {
-                Console.WriteLine("Goodbye world");
-                _logger.LogInformation("Hi there!");
+                var x = context.Item as IFile;
+
+                _logger.LogInformation("STARTED");
+
+                await Task.Delay(4000);
+
+                //Console.WriteLine("Goodbye world");
+                _logger.LogInformation(x.FullName);
+
                 return ExecutionResult.Next();
             }
         }
