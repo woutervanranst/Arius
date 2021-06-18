@@ -190,6 +190,7 @@ namespace Arius.Core.Facade
                 sc.AddSingleton(type, options);
 
             ArchiveCommand.AddBlockProviders(sc);
+            WfCoreArchiveCommand.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
 
             sc

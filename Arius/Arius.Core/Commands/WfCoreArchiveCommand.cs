@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -24,47 +25,40 @@ namespace Arius.Core.Commands
 
         public WfCoreArchiveCommand(IOptions options,
             ILogger<ArchiveCommand> logger,
-            ILoggerFactory loggerFactory)
+            IServiceProvider serviceProvider)
         {
             root = new DirectoryInfo(options.Path);
-            this.loggingBuilder = loggerFactory;
-
-            IServiceProvider serviceProvider = ConfigureServices();
-
-            //start the workflow host
-            host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<ArchiveWorkflow, STATE>();
-            host.Start();
+            this.logger = logger;
+            this.services = serviceProvider;
         }
 
         private readonly DirectoryInfo root;
-        private readonly IWorkflowHost host;
-        private readonly ILoggerFactory loggingBuilder;
+        private readonly ILogger<ArchiveCommand> logger;
+        private readonly IServiceProvider services;
+
+        internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
+        {
+            coll
+                .AddWorkflow()
+
+                .AddTransient<IndexDirectoryStep>()
+                .AddTransient<AddHashStep>()
+
+                //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
+                ;
+        }
 
         IServiceProvider ICommand.Services => throw new NotImplementedException();
-
-        private IServiceProvider ConfigureServices()
-        {
-            //setup dependency injection
-            IServiceCollection services = new ServiceCollection();
-            
-            services.AddSingleton(loggingBuilder);
-            services.AddLogging();
-
-            services.AddWorkflow();
-            //services.AddWorkflow(x => x.UseMongoDB(@"mongodb://localhost:27017", "workflow"));
-            services.AddTransient<IndexDirectoryStep>();
-            services.AddTransient<AddHashStep>();
-
-            var serviceProvider = services.BuildServiceProvider();
-
-            return serviceProvider;
-        }
 
 
         public Task<int> Execute()
         {
-            host.StartWorkflow("ArchiveWorkflow", new STATE { Root = root } );
+            //start the workflow host
+            var host = services.GetService<IWorkflowHost>();
+            host.RegisterWorkflow<ArchiveWorkflow, ArchiveWorkflowState>();
+            host.Start();
+
+            host.StartWorkflow("ArchiveWorkflow", new ArchiveWorkflowState { Root = root } );
 
             // https://github.com/danielgerlag/workflow-core/issues/162#issuecomment-450663329
             //https://gist.github.com/kpko/f4c10ae7646d58038e0137278e6f49f9
@@ -75,15 +69,16 @@ namespace Arius.Core.Commands
             return Task.FromResult(0);
         }
 
-        internal class STATE
+        internal class ArchiveWorkflowState
         {
             public DirectoryInfo Root { get; set; }
             public BlockingCollection<IFile> IndexedFileQueue { get; set; } = new();
+            public BlockingCollection<FileBase> HashedFiles { get; set; } = new();
         }
 
-        public class ArchiveWorkflow : IWorkflow<STATE>
+        public class ArchiveWorkflow : IWorkflow<ArchiveWorkflowState>
         {
-            public void Build(IWorkflowBuilder<STATE> builder)
+            public void Build(IWorkflowBuilder<ArchiveWorkflowState> builder)
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
@@ -125,12 +120,9 @@ namespace Arius.Core.Commands
                 this._logger = logger;
             }
 
-            //public IEnumerable<IFile> Files { get; set; }
-            //public ConcurrentQueue<IFile> Files { get; init; } = new();
-
             public override ExecutionResult Run(IStepExecutionContext context)
             {
-                var state = context.Workflow.Data as STATE;
+                var state = context.Workflow.Data as ArchiveWorkflowState;
                 var root = state.Root;
 
                 _logger.LogInformation($"Indexing {root.FullName}");
@@ -239,35 +231,51 @@ namespace Arius.Core.Commands
 
         public class AddHashStep : StepBodyAsync
         {
-            public AddHashStep(ILoggerFactory loggerFactory)
+            public AddHashStep(ILogger<AddHashBlockProvider> logger, IHashValueProvider hashValueProvider)
             {
-                _logger = loggerFactory.CreateLogger<AddHashStep>();
+                this.logger = logger;
+                this.hashValueProvider = hashValueProvider;
             }
-            private ILogger _logger;
-            public IEnumerable<IFile> Files { get; set; }
+
+            private readonly ILogger<AddHashBlockProvider> logger;
+            private readonly IHashValueProvider hashValueProvider;
 
             public override async Task<ExecutionResult> RunAsync(IStepExecutionContext context)
             {
                 var wf = context.Workflow;
-                var state = wf.Data as STATE;
+                var state = wf.Data as ArchiveWorkflowState;
                 var queue = state.IndexedFileQueue;
 
                 while (!queue.IsCompleted)
                 {
                     Parallel.ForEach(
                         queue.GetConsumingPartitioner(), 
-                        new ParallelOptions { MaxDegreeOfParallelism = 3 }, 
+                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, 
                         async (item) =>
                         {
-                            //var x = context.Item as IFile;
+                            //logger.LogInformation($"STARTED {Thread.CurrentThread.ManagedThreadId}");
 
-                            _logger.LogInformation($"STARTED {Thread.CurrentThread.ManagedThreadId}");
+                            if (item is PointerFile pf)
+                                state.HashedFiles.Add(pf);
+                            else if (item is BinaryFile bf)
+                            {
+                                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
+
+                                bf.Hash = hashValueProvider.GetHashValue(bf);
+
+                                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
+
+                                state.HashedFiles.Add(bf);
+                            }
+                            else
+                                throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+
 
                             //Thread.Sleep(1000);
-                            await Task.Delay(4000);
+                            //await Task.Delay(4000);
 
                             ////Console.WriteLine("Goodbye world");
-                            _logger.LogInformation(item.FullName);
+                            //_logger.LogInformation(item.FullName);
                         });
 
                 }
