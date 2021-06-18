@@ -32,7 +32,7 @@ namespace Arius.Core.Commands
 
             //start the workflow host
             host = serviceProvider.GetService<IWorkflowHost>();
-            host.RegisterWorkflow<ArchiveWorkflow, STATE>();
+            host.RegisterWorkflow<ArchiveWorkflow>();
             host.Start();
         }
 
@@ -63,7 +63,7 @@ namespace Arius.Core.Commands
 
         public Task<int> Execute()
         {
-            host.StartWorkflow("ArchiveWorkflow", root);
+            host.StartWorkflow("ArchiveWorkflow", new STATE { Root = root } );
 
             // https://github.com/danielgerlag/workflow-core/issues/162#issuecomment-450663329
             //https://gist.github.com/kpko/f4c10ae7646d58038e0137278e6f49f9
@@ -76,18 +76,26 @@ namespace Arius.Core.Commands
 
         internal class STATE
         {
-            public ConcurrentQueue<IFile> ha { get; set; }
+            public DirectoryInfo Root { get; set; }
+            public ConcurrentQueue<IFile> IndexedFileQueue { get; set; } = new();
         }
 
-        public class ArchiveWorkflow : IWorkflow<STATE>
+        public class ArchiveWorkflow : IWorkflow //<STATE>
         {
-            public void Build(IWorkflowBuilder<STATE> builder)
+            public void Build(IWorkflowBuilder<object> builder)
             {
                 builder
                     .StartWith<IndexDirectoryStep>()
-                        .Output(state => state.ha, step => step.Files)
+                        //.Output(state => state.ha, step => step.Files)
+                        .Output((step, state) =>
+                        {
+                            var k = state as STATE;
+
+                            foreach (var item in step.Files)
+                                k.IndexedFileQueue.Enqueue(item);
+                        })
                     .Then<AddHashStep>()
-                        //.Input()
+                        .Input(step => step.)
                     ;
             }
 
@@ -112,7 +120,7 @@ namespace Arius.Core.Commands
 
             public override ExecutionResult Run(IStepExecutionContext context)
             {
-                var root = context.Workflow.Data as DirectoryInfo;
+                var root = (context.Workflow.Data as STATE).Root;
 
                 _logger.LogInformation($"Indexing {root.FullName}");
 
