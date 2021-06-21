@@ -1,0 +1,72 @@
+<mxfile host="app.diagrams.net" modified="2021-06-21T15:12:28.781Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36 Edg/91.0.864.48" etag="Bmz2bh6GjWLB0ZfxXS3c" version="14.8.0" type="github">
+  <diagram id="ynTLqjROGl6LlpKR909r" name="Page-1">
+    <mxGraphModel dx="872" dy="488" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-1" value="" style="endArrow=none;html=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="120" y="278" as="sourcePoint" />
+            <mxPoint x="650" y="278" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-6" value="indexedFiles : BlockingCollection&amp;lt;IFile&amp;gt;" style="text;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="120" y="248" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="j0uAW_TOX1rogn1TUl9k-7" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-7" value="indexBlock" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="360" y="200" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" target="j0uAW_TOX1rogn1TUl9k-7" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="160" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-10" value="root : DirectoryInfo" style="text;whiteSpace=wrap;html=1;align=center;" parent="1" vertex="1">
+          <mxGeometry x="360" y="130" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-12" value="" style="endArrow=none;html=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="120" y="400" as="sourcePoint" />
+            <mxPoint x="650" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-13" value="createPointerFileEntry : BlockingCollection&amp;lt;PointerFile&amp;gt;" style="text;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="120" y="370" width="330" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-15" value="" style="endArrow=none;html=1;" parent="1" edge="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="120" y="520" as="sourcePoint" />
+            <mxPoint x="650" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-16" value="createManifest : BlockingCollection&amp;lt;BinaryFile&amp;gt;" style="text;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="120" y="490" width="330" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="72bqqWS9BI2ylJYkVRHG-1" value="is PointerFile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="j0uAW_TOX1rogn1TUl9k-17">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="510" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="72bqqWS9BI2ylJYkVRHG-2" value="is BinaryFile" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="j0uAW_TOX1rogn1TUl9k-17">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-17" value="hashBlock" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="480" y="320" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="j0uAW_TOX1rogn1TUl9k-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" target="j0uAW_TOX1rogn1TUl9k-17" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="290" as="targetPoint" />
+            <mxPoint x="540" y="280" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
