@@ -68,7 +68,7 @@ namespace Arius.Core.Commands
 
             var hashBlock = new HashBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
-                continueWhile: () => !indexedFiles.IsCompleted,
+                //continueWhile: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
                 hashedPointerFile: (pf) => createPointerFileEntry.Add(pf),
@@ -83,19 +83,19 @@ namespace Arius.Core.Commands
 
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var waitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
+            var manifestWaitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
             var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
             //var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
-                continueWhile: () => !createManifest.IsCompleted,
+                //continueWhile: () => !createManifest.IsCompleted,
                 source: createManifest.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) =>
                 {
-                    waitPipe.AddOrUpdate(
+                    manifestWaitPipe.AddOrUpdate(
                         key: bf.Hash,
                         addValue: new() { bf },
                         updateValueFactory: (h, bag) =>
@@ -118,7 +118,7 @@ namespace Arius.Core.Commands
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
-                continueWhile: () => !binariesToChunk.IsCompleted,
+                //continueWhile: () => !binariesToChunk.IsCompleted,
                 source: binariesToChunk.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2,
                 chunker: services.GetRequiredService<IChunker>(),
@@ -144,7 +144,7 @@ namespace Arius.Core.Commands
     {
         public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done) 
             : base(
-                  continueWhile: () => false, //no not keep running after the directory is indexed
+                  //continueWhile: () => false, //no not keep running after the directory is indexed
                   done: done)
         {
             this.logger = logger;
@@ -246,13 +246,13 @@ namespace Arius.Core.Commands
     internal class HashBlock : MultiThreadForEachTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
-            Func<bool> continueWhile,
+            //Func<bool> continueWhile,
             Partitioner<IFile> source, 
             int maxDegreeOfParallelism,
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(continueWhile, source, done)
+            Action done) : base(/*continueWhile, */source, done)
         {
             this.logger = logger;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
@@ -298,13 +298,13 @@ namespace Arius.Core.Commands
     internal class ProcessHashedBinaryBlock : SingleThreadForEachTaskBlockBase<BinaryFile>
     {
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
-           Func<bool> continueWhile,
+           //Func<bool> continueWhile,
            IEnumerable<BinaryFile> source,
            AzureRepository repo,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
-           Action done) : base(source, continueWhile, done)
+           Action done) : base(source, /*continueWhile, */done)
         {
             this.logger = logger;
             this.repo = repo;
@@ -379,7 +379,7 @@ namespace Arius.Core.Commands
     internal class ChunkBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
-            Func<bool> continueWhile,
+            //Func<bool> continueWhile,
             Partitioner<BinaryFile> source,
             int maxDegreeOfParallelism,
             IChunker chunker, 
@@ -387,26 +387,72 @@ namespace Arius.Core.Commands
             //Action<PointerFile> hashedPointerFile,
             //Action<BinaryFile> hashedBinaryFile,
             //IHashValueProvider hvp,
-            Action done) : base(continueWhile, source, done)
+            Action done) : base(/*continueWhile, */source, done)
         {
             this.logger = logger;
-            this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.chunker = chunker;
-            this.azureRepository = azureRepository;
+            this.repo = azureRepository;
         }
 
         private readonly ILogger<ChunkBlock> logger;
-        private readonly Partitioner<BinaryFile> source;
         private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
-        private readonly AzureRepository azureRepository;
+        private readonly AzureRepository repo;
 
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
         protected override void ForEachBodyImpl(BinaryFile item)
         {
-            throw new NotImplementedException();
+            logger.LogInformation($"Chunking BinaryFile {item.RelativeName}...");
+            var chunks = chunker.Chunk(item).ToArray();
+            logger.LogInformation($"Chunking BinaryFile {item.RelativeName}... in {chunks.Length} chunks");
+
+            foreach (var chunk in chunks)
+            {
+                lock (creating)
+                {
+                    if (ChunkExists(item.Hash))
+                    {
+                    }
+            }
+
+            lock (creating)
+            {
+                
+                    // 1 - Exists remote
+                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
+
+                    manifestExists(item);
+                }
+                else if (!creating.Contains(item.Hash))
+                {
+                    // 2 Does not yet exist remote and not yet being created --> upload
+                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
+
+                    creating.Add(item.Hash);
+                    uploadBinaryFile(item);
+                    waitForCreatedManifest(item);
+                }
+                else
+                {
+                    // 3 Does not exist remote but is being created
+                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+                    waitForCreatedManifest(item);
+                }
+            }
+            //}
         }
+        private readonly AsyncLock _mutex = new AsyncLock();
+
+
+        private bool ChunkExists(HashValue h)
+        {
+            return repo.ChunkExistsAsync(h).Result;
+        }
+
+
+        private readonly List<HashValue> creating = new();
     }
 }

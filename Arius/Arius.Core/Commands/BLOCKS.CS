@@ -12,12 +12,12 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        protected BlockBase(Func<bool> continueWhile, Action done)
+        protected BlockBase(/*Func<bool> continueWhile, */Action done)
         {
-            this.continueWhile = continueWhile;
+            //this.continueWhile = continueWhile;
             this.done = done;
         }
-        protected readonly Func<bool> continueWhile;
+        //protected readonly Func<bool> continueWhile;
         protected readonly Action done;
 
         public Task GetTask
@@ -41,7 +41,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
-        protected SingleTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
+        protected SingleTaskBlockBase(/*Func<bool> continueWhile, */Action done) : base(/*continueWhile, */done)
         {
         }
         protected abstract void TaskBodyImpl();
@@ -51,11 +51,11 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(() =>
                 {
-                    do
-                    {
+                    //do
+                    //{
                         TaskBodyImpl();
-                    }
-                    while (continueWhile());
+                    //}
+                    //while (continueWhile());
 
                     done();
                 });
@@ -65,7 +65,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected SingleThreadForEachTaskBlockBase(IEnumerable<TSource> source, Func<bool> continueWhile, Action done) : base(continueWhile, done)
+        protected SingleThreadForEachTaskBlockBase(IEnumerable<TSource> source, /*Func<bool> continueWhile, */Action done) : base(/*continueWhile, */done)
         {
             this.source = source;
         }
@@ -79,14 +79,14 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(async () =>
                 {
-                    do
-                    {
+                    //do
+                    //{
                         foreach (var item in source)
                         {
                             await ForEachBodyImplAsync(item);
                         }
-                    }
-                    while (continueWhile());
+                    //}
+                    //while (continueWhile());
 
                     done();
                 });
@@ -97,12 +97,12 @@ namespace Arius.Core.Commands
 
     internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiThreadForEachTaskBlockBase(Func<bool> continueWhile, IEnumerable<TSource> source, Action done) : base(continueWhile, done)
+        protected MultiThreadForEachTaskBlockBase(/*Func<bool> continueWhile, */Partitioner<TSource> source, Action done) : base(/*continueWhile, */done)
         {
             this.source = source;
         }
 
-        private readonly IEnumerable<TSource> source;
+        private readonly Partitioner<TSource> source;
 
         //protected abstract Partitioner<TSource> Source { get; }
         protected abstract int MaxDegreeOfParallelism { get; }
