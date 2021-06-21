@@ -71,7 +71,7 @@ namespace Arius.Core.Commands
                 okToStop: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
-                hashedFile: (file) => hashedFiles.Add(file),
+                hashedPointerFile: (file) => hashedFiles.Add(file),
                 hvp: services.GetRequiredService<IHashValueProvider>());
             var hashTask = hashBlock.GetTask;
 
@@ -246,22 +246,25 @@ namespace Arius.Core.Commands
             Func<bool> okToStop,
             Partitioner<IFile> source, 
             int maxDegreeOfParallelism,
-            Action<FileBase> hashedFile,
+            Action<PointerFile> hashedPointerFile,
+            Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp)
         {
-            this.hvp = hvp;
             this.logger = logger;
             this.okToStop = okToStop;
             this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-            this.hashedFile = hashedFile;
+            this.hashedPointerFile = hashedPointerFile;
+            this.hashedBinaryFile = hashedBinaryFile;
+            this.hvp = hvp;
         }
 
         private readonly ILogger<HashBlock> logger;
         private readonly Func<bool> okToStop;
         private readonly Partitioner<IFile> source;
         private readonly int maxDegreeOfParallelism;
-        private readonly Action<FileBase> hashedFile;
+        private readonly Action<PointerFile> hashedPointerFile;
+        private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
         protected override bool OkToStop => okToStop();
@@ -272,7 +275,7 @@ namespace Arius.Core.Commands
             if (item is PointerFile pf)
             {
                 // A pointerfile already knows its hash
-                hashedFile(pf);
+                hashedPointerFile(pf);
             }
             else if (item is BinaryFile bf)
             {
@@ -283,7 +286,7 @@ namespace Arius.Core.Commands
 
                 logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
 
-                hashedFile(bf);
+                hashedBinaryFile(bf);
             }
             else
                 throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
