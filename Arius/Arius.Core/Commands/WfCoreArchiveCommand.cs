@@ -58,6 +58,7 @@ namespace Arius.Core.Commands
             var createManifest = new BlockingCollection<BinaryFile>();
 
             var indexBlock = new IndexBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
                 root: root, 
                 indexedFile: (file) => indexedFiles.Add(file),
                 done: () => indexedFiles.CompleteAdding());
@@ -65,7 +66,7 @@ namespace Arius.Core.Commands
 
 
             var hashBlock = new HashBlock(
-                logger: services.GetRequiredService<LoggerFactory>().CreateLogger<HashBlock>(),
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
                 keepRunning: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
@@ -81,7 +82,7 @@ namespace Arius.Core.Commands
 
 
 
-            await Task.WhenAll(indexTask, hashTask, s);
+            await Task.WhenAll(BlockBase.AllTasks);
 
             return 0;
         }
@@ -101,7 +102,22 @@ namespace Arius.Core.Commands
         protected readonly Action done;
 
         protected abstract bool KeepRunning { get; }
-        public abstract Task GetTask { get; }
+        public Task GetTask
+        {
+            get
+            {
+                var t = GetTaskImpl;
+                tasks.Add(t);
+                
+                return t;
+            }
+        }
+
+        protected abstract Task GetTaskImpl { get; }
+
+        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
+        private static ConcurrentBag<Task> tasks = new();
+
     }
 
     internal abstract class SingleTaskBlockBase : BlockBase
@@ -110,16 +126,17 @@ namespace Arius.Core.Commands
         {
         }
         protected abstract void BodyImpl();
-        public override sealed Task GetTask
+        protected override sealed Task GetTaskImpl
         {
             get
             {
                 return Task.Run(() =>
                 {
-                    while (KeepRunning)
-                    { 
+                    do
+                    {
                         BodyImpl();
                     }
+                    while (KeepRunning);
 
                     done();
                 });
@@ -137,19 +154,20 @@ namespace Arius.Core.Commands
         protected abstract int MaxDegreeOfParallelism { get; }
         protected abstract void BodyImpl(TSource item);
 
-        public override sealed Task GetTask
+        protected override sealed Task GetTaskImpl
         {
             get
             {
                 return Task.Run(() =>
                 {
-                    while (KeepRunning)
-                    { 
+                    do
+                    {
                         Parallel.ForEach(
                             Source,
                             new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
                             item => BodyImpl(item));
                     }
+                    while (KeepRunning);
 
                     done();
                 });
@@ -159,15 +177,18 @@ namespace Arius.Core.Commands
 
     internal class IndexBlock : SingleTaskBlockBase
     {
-        public IndexBlock(DirectoryInfo root, Action<IFile> indexedFile, Action done) : base(done)
+        public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done) : base(done)
         {
+            this.logger = logger;
             this.root = root;
             this.indexedFile = indexedFile;
+            this.done = done;
         }
 
+        private readonly ILogger<IndexBlock> logger;
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
-        
+        private readonly Action done;
 
         protected override bool KeepRunning => false; //no not keep running after the directory is indexed
 
@@ -185,12 +206,12 @@ namespace Arius.Core.Commands
             {
                 if (IsHiddenOrSystem(file))
                 {
-                    _logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
+                    logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
                 else if (IsIgnoreFile(file))
                 {
-                    _logger.LogDebug($"Ignoring file {file.FullName}");
+                    logger.LogDebug($"Ignoring file {file.FullName}");
                     continue;
                 }
                 else
@@ -203,7 +224,7 @@ namespace Arius.Core.Commands
             {
                 if (IsHiddenOrSystem(dir))
                 {
-                    _logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
+                    logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
                     continue;
                 }
 
@@ -224,7 +245,7 @@ namespace Arius.Core.Commands
             if (fi.FullName.Contains("eaDir") ||
                 fi.FullName.Contains("SynoResource"))
                 //fi.FullName.Contains("@")) // commenting out -- email adresses are not weird
-                _logger.LogWarning("WEIRD FILE: " + fi.FullName);
+                logger.LogWarning("WEIRD FILE: " + fi.FullName);
 
             return IsHiddenOrSystem(fi.Attributes);
         }
@@ -244,13 +265,13 @@ namespace Arius.Core.Commands
         {
             if (fi.IsPointerFile())
             {
-                _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+                logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
                 return new PointerFile(root, fi);
             }
             else
             {
-                _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+                logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
                 return new BinaryFile(root, fi);
             }
