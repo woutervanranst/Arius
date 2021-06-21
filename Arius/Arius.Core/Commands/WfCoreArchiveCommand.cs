@@ -114,6 +114,8 @@ namespace Arius.Core.Commands
                 {
 
                 });
+            var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
+
 
             await Task.WhenAll(BlockBase.AllTasks);
 
@@ -313,8 +315,8 @@ namespace Arius.Core.Commands
              *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
              */
 
-            lock (created) // lock because created can be modified by the 'file uploaded' handler on another thread
-            {
+            //lock (created) // lock because created can be modified by the 'file uploaded' handler on another thread
+            //{
                 lock (creating) // TODO WHY double locking?
                 {
                     if (ManifestExists(item.Hash))
@@ -324,7 +326,7 @@ namespace Arius.Core.Commands
 
                         manifestExistsCreatePointer(item);
                     }
-                    else if (creating.Contains(item.Hash))
+                    else if (!creating.Contains(item.Hash))
                     {
                         // 2 Does not yet exist remote and not yet being created --> upload
                         logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
@@ -341,24 +343,23 @@ namespace Arius.Core.Commands
                         waitForUploadedManifest(item);
                     }
                 }
-            }
+            //}
         }
 
         private readonly List<HashValue> creating = new();
 
         private bool ManifestExists(HashValue h)
         {
-            // Check cache
-            if (created.ContainsKey(h))
-                return created[h];
+            //// Check cache
+            //if (created.ContainsKey(h))
+            //    return created[h];
 
             // Check remote
             var e = repo.ManifestExistsAsync(h).Result;
-            created.Add(h, e); //Add result to cache so we dont need to recheck again next time
+            //created.Add(h, e); //Add result to cache so we dont need to recheck again next time
 
             return e;
         }
-        private readonly Dictionary<HashValue, bool> created = new();
-
+        //private readonly Dictionary<HashValue, bool> created = new();
     }
 }
