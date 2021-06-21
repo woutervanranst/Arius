@@ -54,10 +54,8 @@ namespace Arius.Core.Commands
             var indexedFiles = new BlockingCollection<IFile>();
             var hashedFiles = new BlockingCollection<FileBase>();
 
-
-            var createPointerFileEntryIfNotExistsInput = new BlockingCollection<PointerFile>();
-            var createIfNotExistManifestInput = new BlockingCollection<BinaryFile>();
-
+            var createPointerFileEntry = new BlockingCollection<PointerFile>();
+            var createManifest = new BlockingCollection<BinaryFile>();
 
             var indexBlock = new IndexBlock(
                 root: root, 
@@ -68,31 +66,19 @@ namespace Arius.Core.Commands
 
             var hashBlock = new HashBlock(
                 logger: services.GetRequiredService<LoggerFactory>().CreateLogger<HashBlock>(),
-                okToStop: () => !indexedFiles.IsCompleted,
+                keepRunning: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
-                hashedPointerFile: (file) => hashedFiles.Add(file),
-                hvp: services.GetRequiredService<IHashValueProvider>());
+                hashedPointerFile: (pf) => createPointerFileEntry.Add(pf),
+                hashedBinaryFile: (bf) => createManifest.Add(bf),
+                hvp: services.GetRequiredService<IHashValueProvider>(),
+                done: () =>
+                {
+                    createManifest.CompleteAdding();
+                    createPointerFileEntry.CompleteAdding();
+                });
             var hashTask = hashBlock.GetTask;
 
-
-            var s = Task.Run(() =>
-            {
-                while (!hashedFiles.IsCompleted)
-                {
-                    foreach (var file in hashedFiles.GetConsumingEnumerable())
-                    {
-                        if (file is PointerFile pf)
-                            createPointerFileEntryIfNotExistsInput.Add(pf);
-                        else if (file is BinaryFile bf)
-                            createIfNotExistManifestInput.Add(bf);
-                        else
-                            throw new InvalidOperationException();
-                    }
-
-                    createPointerFileEntryIfNotExistsInput.CompleteAdding();
-                    createIfNotExistManifestInput.CompleteAdding();
-            });
 
 
             await Task.WhenAll(indexTask, hashTask, s);
@@ -108,18 +94,45 @@ namespace Arius.Core.Commands
 
     internal abstract class BlockBase
     {
+        protected BlockBase(Action done)
+        {
+            this.done = done;
+        }
+        protected readonly Action done;
+
+        protected abstract bool KeepRunning { get; }
         public abstract Task GetTask { get; }
     }
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
+        protected SingleTaskBlockBase(Action done) : base(done)
+        {
+        }
         protected abstract void BodyImpl();
-        public override sealed Task GetTask => Task.Run(() => BodyImpl());
+        public override sealed Task GetTask
+        {
+            get
+            {
+                return Task.Run(() =>
+                {
+                    while (KeepRunning)
+                    { 
+                        BodyImpl();
+                    }
+
+                    done();
+                });
+            }
+        }
     }
 
     internal abstract class MultiTaskBlockBase<TSource> : BlockBase
     {
-        protected abstract bool OkToStop { get; }
+        protected MultiTaskBlockBase(Action done) : base(done)
+        { 
+        }
+
         protected abstract Partitioner<TSource> Source { get; }
         protected abstract int MaxDegreeOfParallelism { get; }
         protected abstract void BodyImpl(TSource item);
@@ -130,10 +143,15 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(() =>
                 {
-                    Parallel.ForEach(
-                        Source,
-                        new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
-                        item => BodyImpl(item));
+                    while (KeepRunning)
+                    { 
+                        Parallel.ForEach(
+                            Source,
+                            new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
+                            item => BodyImpl(item));
+                    }
+
+                    done();
                 });
             }
         }
@@ -141,23 +159,22 @@ namespace Arius.Core.Commands
 
     internal class IndexBlock : SingleTaskBlockBase
     {
-        public IndexBlock(DirectoryInfo root, Action<IFile> indexedFile, Action done)
+        public IndexBlock(DirectoryInfo root, Action<IFile> indexedFile, Action done) : base(done)
         {
             this.root = root;
             this.indexedFile = indexedFile;
-            this.done = done;
         }
 
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
-        private readonly Action done;
+        
+
+        protected override bool KeepRunning => false; //no not keep running after the directory is indexed
 
         protected override void BodyImpl()
         {
             foreach (var file in IndexDirectory(root))
                 indexedFile(file);
-
-            done();
         }
 
 
@@ -243,15 +260,16 @@ namespace Arius.Core.Commands
     internal class HashBlock : MultiTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
-            Func<bool> okToStop,
+            Func<bool> keepRunning,
             Partitioner<IFile> source, 
             int maxDegreeOfParallelism,
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
-            IHashValueProvider hvp)
+            IHashValueProvider hvp,
+            Action done) : base(done)
         {
             this.logger = logger;
-            this.okToStop = okToStop;
+            this.keepRunning = keepRunning;
             this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
@@ -260,14 +278,14 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<HashBlock> logger;
-        private readonly Func<bool> okToStop;
+        private readonly Func<bool> keepRunning;
         private readonly Partitioner<IFile> source;
         private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
-        protected override bool OkToStop => okToStop();
+        protected override bool KeepRunning => keepRunning();
         protected override Partitioner<IFile> Source => source;
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
         protected override void BodyImpl(IFile item)
