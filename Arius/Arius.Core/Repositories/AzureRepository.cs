@@ -53,6 +53,11 @@ namespace Arius.Core.Repositories
             return chunkRepo.GetChunkBlobByName(folder, name);
         }
 
+        public async Task<bool> ChunkExistsAsync(HashValue manifestHash)
+        {
+            return await chunkRepo.ChunkExistsAsync(manifestHash);
+        }
+
         public void Hydrate(ChunkBlobBase itemToHydrate)
         {
             chunkRepo.Hydrate(itemToHydrate);
@@ -92,14 +97,14 @@ namespace Arius.Core.Repositories
             return manifestRepo.GetAllManifestHashes();
         }
 
-        public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
-        {
-            return await manifestRepo.ManifestExistsAsync(manifestHash);
-        }
-
         public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
         {
             return await manifestRepo.GetChunkHashesAsync(manifestHash);
+        }
+
+        public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
+        {
+            return await manifestRepo.ManifestExistsAsync(manifestHash);
         }
 
 

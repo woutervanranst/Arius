@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Models;
 using Arius.Core.Services;
@@ -107,6 +108,11 @@ namespace Arius.Core.Repositories
                 {
                     return null;
                 }
+            }
+
+            public async Task<bool> ChunkExistsAsync(HashValue manifestHash)
+            {
+                return await _bcc.GetBlobClient($"{EncryptedChunkDirectoryName}/{manifestHash}").ExistsAsync();
             }
 
 
