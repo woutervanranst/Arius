@@ -150,7 +150,7 @@ namespace Arius.Core.Models
     {
         public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
 
-        internal IEnumerable<IChunkFile> Chunks { get; set; }
+        internal IEnumerable<IChunkFile> Chunks { get; set; } //TODO delete this
 
         public FileInfo PointerFileInfo => new FileInfo(fi.FullName + PointerFile.Extension);
 
