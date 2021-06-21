@@ -118,8 +118,8 @@ namespace Arius.Core.Commands
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
-                continueWhile: () => true,
-                source: null,
+                continueWhile: () => !binariesToChunk.IsCompleted,
+                source: binariesToChunk.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2,
                 chunker: services.GetRequiredService<IChunker>(),
                 azureRepository: services.GetRequiredService<AzureRepository>(),
