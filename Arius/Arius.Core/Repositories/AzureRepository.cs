@@ -92,9 +92,9 @@ namespace Arius.Core.Repositories
             return manifestRepo.GetAllManifestHashes();
         }
 
-        public async Task<bool> ExistsAsync(HashValue manifestHash)
+        public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
         {
-            return await manifestRepo.ExistsAsync(manifestHash);
+            return await manifestRepo.ManifestExistsAsync(manifestHash);
         }
 
         public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)

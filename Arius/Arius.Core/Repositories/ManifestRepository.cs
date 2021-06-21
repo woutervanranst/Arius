@@ -82,7 +82,7 @@ namespace Arius.Core.Repositories
                 return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
             }
 
-            public Task<bool> Ha(HashValue manifestHash)
+            public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
             {
                 return await _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}").ExistsAsync();
             }
