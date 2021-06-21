@@ -55,15 +55,23 @@ namespace Arius.Core.Commands
             var hashedFiles = new BlockingCollection<FileBase>();
 
 
-            var t1 = Task.Run(() =>
-            {
-                foreach (var file in IndexDirectory(root))
+            var createPointerFileEntryIfNotExistsInput = new BlockingCollection<PointerFile>();
+            var createIfNotExistManifestInput = new BlockingCollection<BinaryFile>();
+
+
+            var indexBlock = new IndexBlock(
+                root: root, 
+                indexedFile: (file) =>
+                {
                     indexedFiles.Add(file);
+                },
+                done: () =>
+                {
+                    indexedFiles.CompleteAdding();
+                });
+            var indexTask = indexBlock.GetTask;
 
-                indexedFiles.CompleteAdding();
-            });
-
-            var t2 = Task.Run(() =>
+            var hashTask = Task.Run(() =>
             {
                 var hvp = services.GetRequiredService<IHashValueProvider>();
 
@@ -75,7 +83,9 @@ namespace Arius.Core.Commands
                         (file) =>
                         {
                             if (file is PointerFile pf)
+                            { 
                                 hashedFiles.Add(pf);
+                            }
                             else if (file is BinaryFile bf)
                             {
                                 _logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
@@ -96,12 +106,96 @@ namespace Arius.Core.Commands
                 }
             });
 
+            var s = Task.Run(() =>
+            {
+                while (!hashedFiles.IsCompleted)
+                {
+                    foreach (var file in hashedFiles.GetConsumingEnumerable())
+                    {
+                        if (file is PointerFile pf)
+                            createPointerFileEntryIfNotExistsInput.Add(pf);
+                        else if (file is BinaryFile bf)
+                            createIfNotExistManifestInput.Add(bf);
+                        else
+                            throw new InvalidOperationException();
+                    }
 
-            await Task.WhenAll(t1, t2);
+                    createPointerFileEntryIfNotExistsInput.CompleteAdding();
+                    createIfNotExistManifestInput.CompleteAdding();
+            });
+
+
+            await Task.WhenAll(indexTask, hashTask, s);
 
             return 0;
         }
 
+
+
+        
+
+    }
+
+    internal abstract class BlockBase
+    {
+        public abstract Task GetTask { get; };
+        
+        protected abstract void GetTaskImpl();
+    }
+
+    internal abstract class SingleTaskBlockBase : BlockBase
+    {
+        public override sealed Task GetTask => Task.Run(() => GetTaskImpl());
+    }
+
+    internal abstract class MultiTaskBlockBase<TSource> : BlockBase
+    {
+        public MultiTaskBlockBase(Partitioner<TSource> source, int maxDegreeOfParallelism, Action<TSource> body)
+        {
+            this.source = source;
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.body = body;
+        }
+
+        private readonly Partitioner<TSource> source;
+        private readonly int maxDegreeOfParallelism;
+        private readonly Action<TSource> body;
+
+        public override sealed Task GetTask
+        {
+            get
+            {
+                return Task.Run(() =>
+                {
+                    Parallel.ForEach(
+                        source,
+                        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                        item => body(item));
+                });
+            }
+        }
+    }
+
+    internal class IndexBlock : SingleTaskBlockBase
+    {
+        public IndexBlock(DirectoryInfo root, Action<IFile> indexedFile, Action done)
+        {
+            this.root = root;
+            this.indexedFile = indexedFile;
+            this.done = done;
+        }
+
+        private readonly DirectoryInfo root;
+        private readonly Action<IFile> indexedFile;
+        private readonly Action done;
+
+        protected override void GetTaskImpl()
+        {
+            foreach (var file in IndexDirectory(root))
+                indexedFile(file);
+
+            done();
+        }
 
 
         private IEnumerable<IFile> IndexDirectory(DirectoryInfo directory) => IndexDirectory(directory, directory);
@@ -138,49 +232,48 @@ namespace Arius.Core.Commands
             }
         }
         private bool IsHiddenOrSystem(DirectoryInfo d)
-            {
-                if (d.Name == "@eaDir") //synology internals -- ignore
-                    return true;
+        {
+            if (d.Name == "@eaDir") //synology internals -- ignore
+                return true;
 
-                return IsHiddenOrSystem(d.Attributes);
+            return IsHiddenOrSystem(d.Attributes);
 
-            }
+        }
         private bool IsHiddenOrSystem(FileInfo fi)
-            {
-                if (fi.FullName.Contains("eaDir") ||
-                    fi.FullName.Contains("SynoResource"))
-                    //fi.FullName.Contains("@")) // commenting out -- email adresses are not weird
-                    _logger.LogWarning("WEIRD FILE: " + fi.FullName);
+        {
+            if (fi.FullName.Contains("eaDir") ||
+                fi.FullName.Contains("SynoResource"))
+                //fi.FullName.Contains("@")) // commenting out -- email adresses are not weird
+                _logger.LogWarning("WEIRD FILE: " + fi.FullName);
 
-                return IsHiddenOrSystem(fi.Attributes);
-            }
+            return IsHiddenOrSystem(fi.Attributes);
+        }
         private static bool IsHiddenOrSystem(FileAttributes attr)
-            {
-                return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
-            }
+        {
+            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
+        }
         private static bool IsIgnoreFile(FileInfo fi)
-            {
-                var lowercaseFilename = fi.Name.ToLower();
+        {
+            var lowercaseFilename = fi.Name.ToLower();
 
-                return lowercaseFilename.Equals("autorun.ini") ||
-                    lowercaseFilename.Equals("thumbs.db") ||
-                    lowercaseFilename.Equals(".ds_store");
-            }
+            return lowercaseFilename.Equals("autorun.ini") ||
+                lowercaseFilename.Equals("thumbs.db") ||
+                lowercaseFilename.Equals(".ds_store");
+        }
         private IFile GetAriusEntry(DirectoryInfo root, FileInfo fi)
+        {
+            if (fi.IsPointerFile())
             {
-                if (fi.IsPointerFile())
-                {
-                    _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+                _logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
-                    return new PointerFile(root, fi);
-                }
-                else
-                {
-                    _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
-
-                    return new BinaryFile(root, fi);
-                }
+                return new PointerFile(root, fi);
             }
+            else
+            {
+                _logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
 
+                return new BinaryFile(root, fi);
+            }
+        }
     }
 }
