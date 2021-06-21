@@ -4,6 +4,7 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -81,24 +82,18 @@ namespace Arius.Core.Commands
             var hashTask = hashBlock.GetTask;
 
 
-
-
-            
-
-
-
-
-            var binariesToUpload = new BlockingCollection<BinaryFile>();
+            var binariesToChunk = new BlockingCollection<BinaryFile>();
             var waitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
             var pointersToCreate = new BlockingCollection<BinaryFile>();
+            var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
                 continueWhile: () => !createManifest.IsCompleted,
                 source: createManifest.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
-                uploadBinaryFile: (bf) => binariesToUpload.Add(bf),  //B401
-                waitForUploadedManifest: (bf) =>
+                uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
+                waitForCreatedManifest: (bf) =>
                 {
                     waitPipe.AddOrUpdate(
                         key: bf.Hash,
@@ -109,13 +104,24 @@ namespace Arius.Core.Commands
                             return bag;
                         });
                 }, //B402
-                manifestExistsCreatePointer: (bf) => pointersToCreate.Add(bf), //B403
+                manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 done: () =>
                 {
+                    binariesToChunk.CompleteAdding();
+                    pointersToCreateDone.Set();
+                    //pointersToCreate.CompleteAdding(); NIET HIER
 
                 });
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
+
+
+            var chunkBlock = new ChunkBlock(
+                logger: services.GetRequiredService<ChunkBlock>().CreateLogger<ProcessHashedBinaryBlock>(),
+                );
+            var chunkTask = chunkBlock.GetTask;
+
+            Task.WhenAll(pointersToCreateDone.WaitAsync());
 
             await Task.WhenAll(BlockBase.AllTasks);
 
@@ -289,22 +295,22 @@ namespace Arius.Core.Commands
            IEnumerable<BinaryFile> source,
            AzureRepository repo,
            Action<BinaryFile> uploadBinaryFile,
-           Action<BinaryFile> waitForUploadedManifest,
-           Action<BinaryFile> manifestExistsCreatePointer,
+           Action<BinaryFile> waitForCreatedManifest,
+           Action<BinaryFile> manifestExists,
            Action done) : base(source, continueWhile, done)
         {
             this.logger = logger;
             this.repo = repo;
             this.uploadBinaryFile = uploadBinaryFile;
-            this.waitForUploadedManifest = waitForUploadedManifest;
-            this.manifestExistsCreatePointer = manifestExistsCreatePointer;
+            this.waitForCreatedManifest = waitForCreatedManifest;
+            this.manifestExists = manifestExists;
         }
 
         private readonly ILogger<ProcessHashedBinaryBlock> logger;
         private readonly AzureRepository repo;
         private readonly Action<BinaryFile> uploadBinaryFile;
-        private readonly Action<BinaryFile> waitForUploadedManifest;
-        private readonly Action<BinaryFile> manifestExistsCreatePointer;
+        private readonly Action<BinaryFile> waitForCreatedManifest;
+        private readonly Action<BinaryFile> manifestExists;
 
         protected override async Task ForEachBodyImplAsync(BinaryFile item)
         {
@@ -324,7 +330,7 @@ namespace Arius.Core.Commands
                         // 1 - Exists remote
                         logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
 
-                        manifestExistsCreatePointer(item);
+                        manifestExists(item);
                     }
                     else if (!creating.Contains(item.Hash))
                     {
@@ -333,14 +339,14 @@ namespace Arius.Core.Commands
 
                         creating.Add(item.Hash);
                         uploadBinaryFile(item);
-                        waitForUploadedManifest(item);
+                        waitForCreatedManifest(item);
                     }
                     else
                     {
                         // 3 Does not exist remote but is being created
                         logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
 
-                        waitForUploadedManifest(item);
+                        waitForCreatedManifest(item);
                     }
                 }
             //}
@@ -361,5 +367,41 @@ namespace Arius.Core.Commands
             return e;
         }
         //private readonly Dictionary<HashValue, bool> created = new();
+    }
+
+    internal class ChunkBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    {
+        public ChunkBlock(ILogger<ChunkBlock> logger,
+            Func<bool> continueWhile,
+            Partitioner<BinaryFile> source,
+            int maxDegreeOfParallelism,
+            IChunker chunker, 
+            AzureRepository azureRepository,
+            //Action<PointerFile> hashedPointerFile,
+            //Action<BinaryFile> hashedBinaryFile,
+            //IHashValueProvider hvp,
+            Action done) : base(continueWhile, done)
+        {
+            this.logger = logger;
+            this.source = source;
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.chunker = chunker;
+            this.azureRepository = azureRepository;
+        }
+
+        private readonly ILogger<ChunkBlock> logger;
+        private readonly Partitioner<BinaryFile> source;
+        private readonly int maxDegreeOfParallelism;
+        private readonly IChunker chunker;
+        private readonly AzureRepository azureRepository;
+
+        protected override Partitioner<BinaryFile> Source => source;
+
+        protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
+
+        protected override void ForEachBodyImpl(BinaryFile item)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
