@@ -61,50 +61,20 @@ namespace Arius.Core.Commands
 
             var indexBlock = new IndexBlock(
                 root: root, 
-                indexedFile: (file) =>
-                {
-                    indexedFiles.Add(file);
-                },
-                done: () =>
-                {
-                    indexedFiles.CompleteAdding();
-                });
+                indexedFile: (file) => indexedFiles.Add(file),
+                done: () => indexedFiles.CompleteAdding());
             var indexTask = indexBlock.GetTask;
 
-            var hashTask = Task.Run(() =>
-            {
-                var hvp = services.GetRequiredService<IHashValueProvider>();
 
-                while (!indexedFiles.IsCompleted)
-                {
-                    Parallel.ForEach(
-                        indexedFiles.GetConsumingPartitioner(),
-                        new ParallelOptions { MaxDegreeOfParallelism = 2 /*Environment.ProcessorCount */},
-                        (file) =>
-                        {
-                            if (file is PointerFile pf)
-                            { 
-                                hashedFiles.Add(pf);
-                            }
-                            else if (file is BinaryFile bf)
-                            {
-                                _logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
+            var hashBlock = new HashBlock(
+                logger: services.GetRequiredService<LoggerFactory>().CreateLogger<HashBlock>(),
+                okToStop: () => !indexedFiles.IsCompleted,
+                source: indexedFiles.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
+                hashedFile: (file) => hashedFiles.Add(file),
+                hvp: services.GetRequiredService<IHashValueProvider>());
+            var hashTask = hashBlock.GetTask;
 
-                                bf.Hash = hvp.GetHashValue(bf);
-
-                                _logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
-
-                                hashedFiles.Add(bf);
-                            }
-                            else
-                                throw new ArgumentException($"Cannot add hash to item of type {file.GetType().Name}");
-
-
-                            //Thread.Sleep(1000);
-                            //await Task.Delay(4000);
-                        });
-                }
-            });
 
             var s = Task.Run(() =>
             {
@@ -138,28 +108,21 @@ namespace Arius.Core.Commands
 
     internal abstract class BlockBase
     {
-        public abstract Task GetTask { get; };
-        
-        protected abstract void GetTaskImpl();
+        public abstract Task GetTask { get; }
     }
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
-        public override sealed Task GetTask => Task.Run(() => GetTaskImpl());
+        protected abstract void BodyImpl();
+        public override sealed Task GetTask => Task.Run(() => BodyImpl());
     }
 
     internal abstract class MultiTaskBlockBase<TSource> : BlockBase
     {
-        public MultiTaskBlockBase(Partitioner<TSource> source, int maxDegreeOfParallelism, Action<TSource> body)
-        {
-            this.source = source;
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-            this.body = body;
-        }
-
-        private readonly Partitioner<TSource> source;
-        private readonly int maxDegreeOfParallelism;
-        private readonly Action<TSource> body;
+        protected abstract bool OkToStop { get; }
+        protected abstract Partitioner<TSource> Source { get; }
+        protected abstract int MaxDegreeOfParallelism { get; }
+        protected abstract void BodyImpl(TSource item);
 
         public override sealed Task GetTask
         {
@@ -168,9 +131,9 @@ namespace Arius.Core.Commands
                 return Task.Run(() =>
                 {
                     Parallel.ForEach(
-                        source,
-                        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        item => body(item));
+                        Source,
+                        new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
+                        item => BodyImpl(item));
                 });
             }
         }
@@ -189,7 +152,7 @@ namespace Arius.Core.Commands
         private readonly Action<IFile> indexedFile;
         private readonly Action done;
 
-        protected override void GetTaskImpl()
+        protected override void BodyImpl()
         {
             foreach (var file in IndexDirectory(root))
                 indexedFile(file);
@@ -274,6 +237,59 @@ namespace Arius.Core.Commands
 
                 return new BinaryFile(root, fi);
             }
+        }
+    }
+
+    internal class HashBlock : MultiTaskBlockBase<IFile>
+    {
+        public HashBlock(ILogger<HashBlock> logger,
+            Func<bool> okToStop,
+            Partitioner<IFile> source, 
+            int maxDegreeOfParallelism,
+            Action<FileBase> hashedFile,
+            IHashValueProvider hvp)
+        {
+            this.hvp = hvp;
+            this.logger = logger;
+            this.okToStop = okToStop;
+            this.source = source;
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.hashedFile = hashedFile;
+        }
+
+        private readonly ILogger<HashBlock> logger;
+        private readonly Func<bool> okToStop;
+        private readonly Partitioner<IFile> source;
+        private readonly int maxDegreeOfParallelism;
+        private readonly Action<FileBase> hashedFile;
+        private readonly IHashValueProvider hvp;
+
+        protected override bool OkToStop => okToStop();
+        protected override Partitioner<IFile> Source => source;
+        protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
+        protected override void BodyImpl(IFile item)
+        {
+            if (item is PointerFile pf)
+            {
+                // A pointerfile already knows its hash
+                hashedFile(pf);
+            }
+            else if (item is BinaryFile bf)
+            {
+                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
+
+                // For BinaryFiles we need to calculate it
+                bf.Hash = hvp.GetHashValue(bf);
+
+                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
+
+                hashedFile(bf);
+            }
+            else
+                throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+
+            //Thread.Sleep(1000);
+            //await Task.Delay(4000);
         }
     }
 }
