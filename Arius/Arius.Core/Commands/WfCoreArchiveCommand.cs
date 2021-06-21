@@ -83,7 +83,7 @@ namespace Arius.Core.Commands
 
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var manifestWaitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
+            var manifestWaitList = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash
             var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
             //var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
@@ -95,7 +95,7 @@ namespace Arius.Core.Commands
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) =>
                 {
-                    manifestWaitPipe.AddOrUpdate(
+                    manifestWaitList.AddOrUpdate(
                         key: bf.Hash,
                         addValue: new() { bf },
                         updateValueFactory: (h, bag) =>
@@ -115,6 +115,7 @@ namespace Arius.Core.Commands
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
 
+            var chunkWaitList = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key: ManifestHash, Value: bag of ChunkHash
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
@@ -334,7 +335,7 @@ namespace Arius.Core.Commands
                 {
                     if (ManifestExists(item.Hash))
                     {
-                        // 1 - Exists remote
+                        // 1 Exists remote
                         logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
 
                         manifestExists(item);
@@ -358,7 +359,6 @@ namespace Arius.Core.Commands
                 }
             //}
         }
-
         private readonly List<HashValue> creating = new();
 
         private bool ManifestExists(HashValue h)
@@ -382,8 +382,12 @@ namespace Arius.Core.Commands
             //Func<bool> continueWhile,
             Partitioner<BinaryFile> source,
             int maxDegreeOfParallelism,
-            IChunker chunker, 
+            IChunker chunker,
             AzureRepository azureRepository,
+
+            Action<BinaryFile, IEnumerable<IChunkFile>> chunkedBinary,
+            Action<IChunkFile> uploadChunkFile,
+
             //Action<PointerFile> hashedPointerFile,
             //Action<BinaryFile> hashedBinaryFile,
             //IHashValueProvider hvp,
@@ -393,12 +397,16 @@ namespace Arius.Core.Commands
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.chunker = chunker;
             this.repo = azureRepository;
+            this.chunkedBinary = chunkedBinary;
+            this.uploadChunkFile = uploadChunkFile;
         }
 
         private readonly ILogger<ChunkBlock> logger;
         private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly AzureRepository repo;
+        private readonly Action<BinaryFile, (IChunkFile ChunkFile, bool Uploaded)[]> chunkedBinary;
+        private readonly Action<IChunkFile> uploadChunkFile;
 
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
@@ -408,43 +416,43 @@ namespace Arius.Core.Commands
             var chunks = chunker.Chunk(item).ToArray();
             logger.LogInformation($"Chunking BinaryFile {item.RelativeName}... in {chunks.Length} chunks");
 
+            chunkedBinary(item, chunks);
+
             foreach (var chunk in chunks)
             {
                 lock (creating)
                 {
-                    if (ChunkExists(item.Hash))
+                    if (ChunkExists(chunk.Hash))
                     {
+                        // 1 Exists remote
+                        logger.LogInformation($"Chunk for hash {chunk.Hash} already exists. No need to upload.");
+
+                        if (chunk is ChunkFile)
+                            chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
+                    }
+                    else if (!creating.Contains(chunk.Hash)) 
+                    {
+                        // 2 Does not yet exist remote and not yet being created --> upload
+                        logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely. To upload.");
+
+                        creating.Add(chunk.Hash);
+                        uploadChunkFile(chunk);
+                        chunkForManifest()
+                        //waitForCreatedManifest(item);
+                    }
+                    else
+                    {
+                        // 3 Does not exist remote but is being created
+                        logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+                        //waitForCreatedManifest(item);
                     }
             }
-
-            lock (creating)
-            {
-                
-                    // 1 - Exists remote
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
-
-                    manifestExists(item);
-                }
-                else if (!creating.Contains(item.Hash))
-                {
-                    // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
-
-                    creating.Add(item.Hash);
-                    uploadBinaryFile(item);
-                    waitForCreatedManifest(item);
-                }
-                else
-                {
-                    // 3 Does not exist remote but is being created
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
-
-                    waitForCreatedManifest(item);
-                }
-            }
             //}
-        }
-        private readonly AsyncLock _mutex = new AsyncLock();
+     
+            }
+        private readonly List<HashValue> creating = new();
+
 
 
         private bool ChunkExists(HashValue h)
@@ -453,6 +461,5 @@ namespace Arius.Core.Commands
         }
 
 
-        private readonly List<HashValue> creating = new();
     }
 }
