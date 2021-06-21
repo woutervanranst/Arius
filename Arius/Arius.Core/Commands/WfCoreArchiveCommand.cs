@@ -117,8 +117,16 @@ namespace Arius.Core.Commands
 
 
             var chunkBlock = new ChunkBlock(
-                logger: services.GetRequiredService<ChunkBlock>().CreateLogger<ProcessHashedBinaryBlock>(),
-                );
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
+                continueWhile: () => true,
+                source: null,
+                maxDegreeOfParallelism: 2,
+                chunker: services.GetRequiredService<IChunker>(),
+                azureRepository: services.GetRequiredService<AzureRepository>(),
+                done: () =>
+                {
+
+                });
             var chunkTask = chunkBlock.GetTask;
 
 
