@@ -1,9 +1,11 @@
 ﻿using Arius.Core.Models;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
@@ -122,5 +124,21 @@ namespace Arius.Core.Commands
                 });
             }
         }
+    }
+
+
+
+    public class BlockingCollectionEx<T> : BlockingCollection<T>
+    {
+        public new void CompleteAdding()
+        {
+            base.CompleteAdding();
+
+            mre.Set();
+        }
+
+        private AsyncManualResetEvent mre = new();
+
+        public Task AddingCompleted => mre.WaitAsync();
     }
 }
