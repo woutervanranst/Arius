@@ -93,105 +93,24 @@ namespace Arius.Core.Commands
 
     }
 
-    internal abstract class BlockBase
-    {
-        protected BlockBase(Action done)
-        {
-            this.done = done;
-        }
-        protected readonly Action done;
-
-        protected abstract bool KeepRunning { get; }
-        public Task GetTask
-        {
-            get
-            {
-                var t = GetTaskImpl;
-                tasks.Add(t);
-                
-                return t;
-            }
-        }
-
-        protected abstract Task GetTaskImpl { get; }
-
-        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
-        private static ConcurrentBag<Task> tasks = new();
-
-    }
-
-    internal abstract class SingleTaskBlockBase : BlockBase
-    {
-        protected SingleTaskBlockBase(Action done) : base(done)
-        {
-        }
-        protected abstract void BodyImpl();
-        protected override sealed Task GetTaskImpl
-        {
-            get
-            {
-                return Task.Run(() =>
-                {
-                    do
-                    {
-                        BodyImpl();
-                    }
-                    while (KeepRunning);
-
-                    done();
-                });
-            }
-        }
-    }
-
-    internal abstract class MultiTaskBlockBase<TSource> : BlockBase
-    {
-        protected MultiTaskBlockBase(Action done) : base(done)
-        { 
-        }
-
-        protected abstract Partitioner<TSource> Source { get; }
-        protected abstract int MaxDegreeOfParallelism { get; }
-        protected abstract void BodyImpl(TSource item);
-
-        protected override sealed Task GetTaskImpl
-        {
-            get
-            {
-                return Task.Run(() =>
-                {
-                    do
-                    {
-                        Parallel.ForEach(
-                            Source,
-                            new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
-                            item => BodyImpl(item));
-                    }
-                    while (KeepRunning);
-
-                    done();
-                });
-            }
-        }
-    }
+    
 
     internal class IndexBlock : SingleTaskBlockBase
     {
-        public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done) : base(done)
+        public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done) 
+            : base(
+                  keepRunning: () => false, //no not keep running after the directory is indexed
+                  done: done)
         {
             this.logger = logger;
             this.root = root;
             this.indexedFile = indexedFile;
-            this.done = done;
         }
 
         private readonly ILogger<IndexBlock> logger;
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
-        private readonly Action done;
-
-        protected override bool KeepRunning => false; //no not keep running after the directory is indexed
-
+        
         protected override void BodyImpl()
         {
             foreach (var file in IndexDirectory(root))
@@ -287,10 +206,9 @@ namespace Arius.Core.Commands
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(done)
+            Action done) : base(keepRunning, done)
         {
             this.logger = logger;
-            this.keepRunning = keepRunning;
             this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
@@ -299,14 +217,12 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<HashBlock> logger;
-        private readonly Func<bool> keepRunning;
         private readonly Partitioner<IFile> source;
         private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
-        protected override bool KeepRunning => keepRunning();
         protected override Partitioner<IFile> Source => source;
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
         protected override void BodyImpl(IFile item)
