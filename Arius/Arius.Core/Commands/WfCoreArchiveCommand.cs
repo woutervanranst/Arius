@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -80,13 +81,28 @@ namespace Arius.Core.Commands
             var hashTask = hashBlock.GetTask;
 
 
+            var createPointer = new BlockingCollection<BinaryFile>();
+            var uploadPipe = new BlockingCollection<BinaryFile>();
+            var waitPipe = new BlockingCollection<BinaryFile>();
+
+            var kaka = new kaka(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<kaka>(),
+                continueWhile: () => !createManifest.IsCompleted,
+                source: createManifest.GetConsumingEnumerable(),
+                repo: services.GetRequiredService<AzureRepository>(),
+                manifestExistsCreatePointer: (bf) => createPointer.Add(bf), //403
+                uploadBinaryFile: (bf) => uploadPipe.Add(bf),  //401
+                waitForUploadedManifest: (bf) => waitPipe.Add(bf), // 402
+                done: () =>
+                {
+
+                });
 
             await Task.WhenAll(BlockBase.AllTasks);
 
             return 0;
         }
     }
-
     
 
     internal class IndexBlock : SingleTaskBlockBase
@@ -105,7 +121,7 @@ namespace Arius.Core.Commands
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
         
-        protected override void BodyImpl()
+        protected override void TaskBodyImpl()
         {
             foreach (var file in IndexDirectory(root))
                 indexedFile(file);
@@ -129,7 +145,7 @@ namespace Arius.Core.Commands
                 }
                 else
                 {
-                    yield return GetAriusEntry(root, file);
+                    yield return GetFile(root, file);
                 }
             }
 
@@ -174,7 +190,7 @@ namespace Arius.Core.Commands
                 lowercaseFilename.Equals("thumbs.db") ||
                 lowercaseFilename.Equals(".ds_store");
         }
-        private IFile GetAriusEntry(DirectoryInfo root, FileInfo fi)
+        private IFile GetFile(DirectoryInfo root, FileInfo fi)
         {
             if (fi.IsPointerFile())
             {
@@ -191,7 +207,8 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class HashBlock : MultiTaskBlockBase<IFile>
+
+    internal class HashBlock : MultiThreadForEachTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
             Func<bool> continueWhile,
@@ -219,7 +236,7 @@ namespace Arius.Core.Commands
 
         protected override Partitioner<IFile> Source => source;
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
-        protected override void BodyImpl(IFile item)
+        protected override void ForEachBodyImpl(IFile item)
         {
             if (item is PointerFile pf)
             {
@@ -243,5 +260,82 @@ namespace Arius.Core.Commands
             //Thread.Sleep(1000);
             //await Task.Delay(4000);
         }
+    }
+
+
+    internal class kaka : SingleThreadForEachTaskBlockBase<BinaryFile>
+    {
+        public kaka(ILogger<kaka> logger,
+           Func<bool> continueWhile,
+           IEnumerable<BinaryFile> source,
+           AzureRepository repo,
+           Action<BinaryFile> manifestExistsCreatePointer,
+           Action<BinaryFile> uploadBinaryFile,
+           Action<BinaryFile> waitForUploadedManifest,
+           Action done) : base(source, continueWhile, done)
+        {
+            this.logger = logger;
+            this.continueWhile = continueWhile;
+            this.source = source;
+            this.repo = repo;
+            this.manifestExistsCreatePointer = manifestExistsCreatePointer;
+            this.uploadBinaryFile = uploadBinaryFile;
+            this.waitForUploadedManifest = waitForUploadedManifest;
+            this.done = done;
+        }
+
+        private readonly ILogger<kaka> logger;
+        private readonly Func<bool> continueWhile;
+        private readonly IEnumerable<BinaryFile> source;
+        private readonly AzureRepository repo;
+        private readonly Action<BinaryFile> manifestExistsCreatePointer;
+        private readonly Action<BinaryFile> uploadBinaryFile;
+        private readonly Action<BinaryFile> waitForUploadedManifest;
+
+        private readonly Action done;
+
+        protected override async Task ForEachBodyImplAsync(BinaryFile item)
+        {
+            /* 
+             * Three possibilities:
+             *      1. BinaryFile arrives, remote manifest already exists --> send to next block //TODO explain WHY
+             *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
+             *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
+             */
+
+            lock (created) // lock because created can be modified by the 'file uploaded' handler on another thread
+            {
+                lock (creating) // TODO WHY double locking?
+                {
+                    if (ManifestExists(item.Hash))
+                        manifestExistsCreatePointer(item);
+
+                    if (creating.Contains(item.Hash))
+                    {
+                        creating.Add(item.Hash);
+                        uploadBinaryFile(item);
+                    }
+
+                    waitForUploadedManifest(item);
+                }
+            }
+        }
+
+        private readonly List<HashValue> creating = new();
+
+        private bool ManifestExists(HashValue h)
+        {
+            // Check cache
+            if (created.ContainsKey(h))
+                return created[h];
+
+            // Check remote
+            var e = repo.ManifestExistsAsync(h).Result;
+            created.Add(h, e); //Add result to cache so we dont need to recheck again next time
+
+            return e;
+        }
+        private readonly Dictionary<HashValue, bool> created = new();
+
     }
 }

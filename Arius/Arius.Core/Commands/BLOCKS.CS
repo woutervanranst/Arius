@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Arius.Core.Models;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,12 +36,13 @@ namespace Arius.Core.Commands
 
     }
 
+
     internal abstract class SingleTaskBlockBase : BlockBase
     {
         protected SingleTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
         {
         }
-        protected abstract void BodyImpl();
+        protected abstract void TaskBodyImpl();
         protected override sealed Task GetTaskImpl
         {
             get
@@ -49,7 +51,7 @@ namespace Arius.Core.Commands
                 {
                     do
                     {
-                        BodyImpl();
+                        TaskBodyImpl();
                     }
                     while (continueWhile());
 
@@ -59,15 +61,47 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal abstract class MultiTaskBlockBase<TSource> : BlockBase
+    internal abstract class SingleThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
+        protected SingleThreadForEachTaskBlockBase(IEnumerable<TSource> source, Func<bool> continueWhile, Action done) : base(continueWhile, done)
+        {
+            this.source = source;
+        }
+        private readonly IEnumerable<TSource> source;
+
+
+        protected abstract Task ForEachBodyImplAsync(TSource item);
+        protected override sealed Task GetTaskImpl
+        {
+            get
+            {
+                return Task.Run(async () =>
+                {
+                    do
+                    {
+                        foreach (var item in source)
+                        {
+                            await ForEachBodyImplAsync(item);
+                        }
+                    }
+                    while (continueWhile());
+
+                    done();
+                });
+            }
+        }
+    }
+
+
+    internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
+    {
+        protected MultiThreadForEachTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
         {
         }
 
         protected abstract Partitioner<TSource> Source { get; }
         protected abstract int MaxDegreeOfParallelism { get; }
-        protected abstract void BodyImpl(TSource item);
+        protected abstract void ForEachBodyImpl(TSource item);
 
         protected override sealed Task GetTaskImpl
         {
@@ -80,7 +114,7 @@ namespace Arius.Core.Commands
                         Parallel.ForEach(
                             Source,
                             new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
-                            item => BodyImpl(item));
+                            item => ForEachBodyImpl(item));
                     }
                     while (continueWhile());
 
