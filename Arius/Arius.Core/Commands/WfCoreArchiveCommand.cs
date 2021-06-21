@@ -52,7 +52,6 @@ namespace Arius.Core.Commands
         public async Task<int> Execute()
         {
             var indexedFiles = new BlockingCollection<IFile>();
-            var hashedFiles = new BlockingCollection<FileBase>();
 
             var createPointerFileEntry = new BlockingCollection<PointerFile>();
             var createManifest = new BlockingCollection<BinaryFile>();
@@ -86,11 +85,6 @@ namespace Arius.Core.Commands
 
             return 0;
         }
-
-
-
-        
-
     }
 
     
