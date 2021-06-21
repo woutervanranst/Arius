@@ -139,6 +139,6 @@ namespace Arius.Core.Commands
 
         private AsyncManualResetEvent mre = new();
 
-        public Task AddingCompleted => mre.WaitAsync();
+        public Task WaitAddingCompleted => mre.WaitAsync();
     }
 }

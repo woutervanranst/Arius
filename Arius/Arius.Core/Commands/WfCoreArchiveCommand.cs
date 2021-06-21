@@ -84,8 +84,8 @@ namespace Arius.Core.Commands
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
             var waitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
-            var pointersToCreate = new BlockingCollection<BinaryFile>();
-            var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
+            var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
+            //var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
@@ -108,7 +108,7 @@ namespace Arius.Core.Commands
                 done: () =>
                 {
                     binariesToChunk.CompleteAdding();
-                    pointersToCreateDone.Set();
+                    //pointersToCreateDone.Set();
                     //pointersToCreate.CompleteAdding(); NIET HIER
 
                 });
@@ -121,7 +121,9 @@ namespace Arius.Core.Commands
                 );
             var chunkTask = chunkBlock.GetTask;
 
-            Task.WhenAll(pointersToCreateDone.WaitAsync());
+
+
+            await Task.WhenAll(pointersToCreate.WaitAddingCompleted);
 
             await Task.WhenAll(BlockBase.AllTasks);
 
