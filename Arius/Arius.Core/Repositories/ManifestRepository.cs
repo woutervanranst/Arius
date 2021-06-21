@@ -82,6 +82,11 @@ namespace Arius.Core.Repositories
                 return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
             }
 
+            public Task<bool> Ha(HashValue manifestHash)
+            {
+                return await _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}").ExistsAsync();
+            }
+
             public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
             {
                 _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
