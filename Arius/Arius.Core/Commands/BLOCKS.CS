@@ -9,12 +9,12 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        protected BlockBase(Func<bool> keepRunning, Action done)
+        protected BlockBase(Func<bool> continueWhile, Action done)
         {
-            this.keepRunning = keepRunning;
+            this.continueWhile = continueWhile;
             this.done = done;
         }
-        protected readonly Func<bool> keepRunning;
+        protected readonly Func<bool> continueWhile;
         protected readonly Action done;
 
         public Task GetTask
@@ -37,7 +37,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
-        protected SingleTaskBlockBase(Func<bool> keepRunning, Action done) : base(keepRunning, done)
+        protected SingleTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
         {
         }
         protected abstract void BodyImpl();
@@ -51,7 +51,7 @@ namespace Arius.Core.Commands
                     {
                         BodyImpl();
                     }
-                    while (keepRunning());
+                    while (continueWhile());
 
                     done();
                 });
@@ -61,7 +61,7 @@ namespace Arius.Core.Commands
 
     internal abstract class MultiTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiTaskBlockBase(Func<bool> keepRunning, Action done) : base(keepRunning, done)
+        protected MultiTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
         {
         }
 
@@ -82,7 +82,7 @@ namespace Arius.Core.Commands
                             new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
                             item => BodyImpl(item));
                     }
-                    while (keepRunning());
+                    while (continueWhile());
 
                     done();
                 });

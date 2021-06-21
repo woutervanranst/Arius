@@ -52,21 +52,21 @@ namespace Arius.Core.Commands
         public async Task<int> Execute()
         {
             var indexedFiles = new BlockingCollection<IFile>();
-
-            var createPointerFileEntry = new BlockingCollection<PointerFile>();
-            var createManifest = new BlockingCollection<BinaryFile>();
-
+            
             var indexBlock = new IndexBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
                 root: root, 
                 indexedFile: (file) => indexedFiles.Add(file),
                 done: () => indexedFiles.CompleteAdding());
             var indexTask = indexBlock.GetTask;
+            
 
+            var createPointerFileEntry = new BlockingCollection<PointerFile>();
+            var createManifest = new BlockingCollection<BinaryFile>();
 
             var hashBlock = new HashBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
-                keepRunning: () => !indexedFiles.IsCompleted,
+                continueWhile: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
                 hashedPointerFile: (pf) => createPointerFileEntry.Add(pf),
@@ -93,7 +93,7 @@ namespace Arius.Core.Commands
     {
         public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done) 
             : base(
-                  keepRunning: () => false, //no not keep running after the directory is indexed
+                  continueWhile: () => false, //no not keep running after the directory is indexed
                   done: done)
         {
             this.logger = logger;
@@ -194,13 +194,13 @@ namespace Arius.Core.Commands
     internal class HashBlock : MultiTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
-            Func<bool> keepRunning,
+            Func<bool> continueWhile,
             Partitioner<IFile> source, 
             int maxDegreeOfParallelism,
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(keepRunning, done)
+            Action done) : base(continueWhile, done)
         {
             this.logger = logger;
             this.source = source;
