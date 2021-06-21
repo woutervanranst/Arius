@@ -97,11 +97,14 @@ namespace Arius.Core.Commands
 
     internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiThreadForEachTaskBlockBase(Func<bool> continueWhile, Action done) : base(continueWhile, done)
+        protected MultiThreadForEachTaskBlockBase(Func<bool> continueWhile, IEnumerable<TSource> source, Action done) : base(continueWhile, done)
         {
+            this.source = source;
         }
 
-        protected abstract Partitioner<TSource> Source { get; }
+        private readonly IEnumerable<TSource> source;
+
+        //protected abstract Partitioner<TSource> Source { get; }
         protected abstract int MaxDegreeOfParallelism { get; }
         protected abstract void ForEachBodyImpl(TSource item);
 
@@ -111,14 +114,14 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(() =>
                 {
-                    do
-                    {
+                    //do
+                    //{
                         Parallel.ForEach(
-                            Source,
+                            source,
                             new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
                             item => ForEachBodyImpl(item));
-                    }
-                    while (continueWhile());
+                    //}
+                    //while (continueWhile());
 
                     done();
                 });

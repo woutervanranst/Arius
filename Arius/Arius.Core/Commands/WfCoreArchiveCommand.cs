@@ -252,10 +252,9 @@ namespace Arius.Core.Commands
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(continueWhile, done)
+            Action done) : base(continueWhile, source, done)
         {
             this.logger = logger;
-            this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
@@ -263,13 +262,11 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<HashBlock> logger;
-        private readonly Partitioner<IFile> source;
         private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
-        protected override Partitioner<IFile> Source => source;
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
         protected override void ForEachBodyImpl(IFile item)
         {
@@ -390,7 +387,7 @@ namespace Arius.Core.Commands
             //Action<PointerFile> hashedPointerFile,
             //Action<BinaryFile> hashedBinaryFile,
             //IHashValueProvider hvp,
-            Action done) : base(continueWhile, done)
+            Action done) : base(continueWhile, source, done)
         {
             this.logger = logger;
             this.source = source;
@@ -404,8 +401,6 @@ namespace Arius.Core.Commands
         private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly AzureRepository azureRepository;
-
-        protected override Partitioner<BinaryFile> Source => source;
 
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
