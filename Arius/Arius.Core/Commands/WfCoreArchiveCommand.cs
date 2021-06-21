@@ -53,14 +53,14 @@ namespace Arius.Core.Commands
         public async Task<int> Execute()
         {
             var indexedFiles = new BlockingCollection<IFile>();
-            
+
             var indexBlock = new IndexBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
-                root: root, 
+                root: root,
                 indexedFile: (file) => indexedFiles.Add(file),
                 done: () => indexedFiles.CompleteAdding());
             var indexTask = indexBlock.GetTask;
-            
+
 
             var createPointerFileEntry = new BlockingCollection<PointerFile>();
             var createManifest = new BlockingCollection<BinaryFile>();
@@ -81,18 +81,35 @@ namespace Arius.Core.Commands
             var hashTask = hashBlock.GetTask;
 
 
-            var createPointer = new BlockingCollection<BinaryFile>();
-            var uploadPipe = new BlockingCollection<BinaryFile>();
-            var waitPipe = new BlockingCollection<BinaryFile>();
 
-            var kaka = new kaka(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<kaka>(),
+
+            
+
+
+
+
+            var binariesToUpload = new BlockingCollection<BinaryFile>();
+            var waitPipe = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>();
+            var pointersToCreate = new BlockingCollection<BinaryFile>();
+
+            var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
                 continueWhile: () => !createManifest.IsCompleted,
                 source: createManifest.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
-                manifestExistsCreatePointer: (bf) => createPointer.Add(bf), //403
-                uploadBinaryFile: (bf) => uploadPipe.Add(bf),  //401
-                waitForUploadedManifest: (bf) => waitPipe.Add(bf), // 402
+                uploadBinaryFile: (bf) => binariesToUpload.Add(bf),  //B401
+                waitForUploadedManifest: (bf) =>
+                {
+                    waitPipe.AddOrUpdate(
+                        key: bf.Hash,
+                        addValue: new() { bf },
+                        updateValueFactory: (h, bag) =>
+                        {
+                            bag.Add(bf);
+                            return bag;
+                        });
+                }, //B402
+                manifestExistsCreatePointer: (bf) => pointersToCreate.Add(bf), //B403
                 done: () =>
                 {
 
@@ -263,36 +280,29 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class kaka : SingleThreadForEachTaskBlockBase<BinaryFile>
+    internal class ProcessHashedBinaryBlock : SingleThreadForEachTaskBlockBase<BinaryFile>
     {
-        public kaka(ILogger<kaka> logger,
+        public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
            Func<bool> continueWhile,
            IEnumerable<BinaryFile> source,
            AzureRepository repo,
-           Action<BinaryFile> manifestExistsCreatePointer,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForUploadedManifest,
+           Action<BinaryFile> manifestExistsCreatePointer,
            Action done) : base(source, continueWhile, done)
         {
             this.logger = logger;
-            this.continueWhile = continueWhile;
-            this.source = source;
             this.repo = repo;
-            this.manifestExistsCreatePointer = manifestExistsCreatePointer;
             this.uploadBinaryFile = uploadBinaryFile;
             this.waitForUploadedManifest = waitForUploadedManifest;
-            this.done = done;
+            this.manifestExistsCreatePointer = manifestExistsCreatePointer;
         }
 
-        private readonly ILogger<kaka> logger;
-        private readonly Func<bool> continueWhile;
-        private readonly IEnumerable<BinaryFile> source;
+        private readonly ILogger<ProcessHashedBinaryBlock> logger;
         private readonly AzureRepository repo;
-        private readonly Action<BinaryFile> manifestExistsCreatePointer;
         private readonly Action<BinaryFile> uploadBinaryFile;
         private readonly Action<BinaryFile> waitForUploadedManifest;
-
-        private readonly Action done;
+        private readonly Action<BinaryFile> manifestExistsCreatePointer;
 
         protected override async Task ForEachBodyImplAsync(BinaryFile item)
         {
@@ -308,15 +318,28 @@ namespace Arius.Core.Commands
                 lock (creating) // TODO WHY double locking?
                 {
                     if (ManifestExists(item.Hash))
-                        manifestExistsCreatePointer(item);
-
-                    if (creating.Contains(item.Hash))
                     {
+                        // 1 - Exists remote
+                        logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
+
+                        manifestExistsCreatePointer(item);
+                    }
+                    else if (creating.Contains(item.Hash))
+                    {
+                        // 2 Does not yet exist remote and not yet being created --> upload
+                        logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
+
                         creating.Add(item.Hash);
                         uploadBinaryFile(item);
+                        waitForUploadedManifest(item);
                     }
+                    else
+                    {
+                        // 3 Does not exist remote but is being created
+                        logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
 
-                    waitForUploadedManifest(item);
+                        waitForUploadedManifest(item);
+                    }
                 }
             }
         }
