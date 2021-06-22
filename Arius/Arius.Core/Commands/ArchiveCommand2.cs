@@ -77,7 +77,6 @@ namespace Arius.Core.Commands
             var binariesToChunk = new BlockingCollection<BinaryFile>();
             var binariesWaitingForManifests = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
-            //var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
@@ -100,35 +99,52 @@ namespace Arius.Core.Commands
                 done: () =>
                 {
                     binariesToChunk.CompleteAdding(); //B410
-                    //pointersToCreateDone.Set();
                     //pointersToCreate.CompleteAdding(); NIET HIER
 
                 });
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
 
-            var chunkWaitList = new ConcurrentDictionary<HashValue, List<HashValue>>(); //Key: ManifestHash, Value: bag of ChunkHash
-            var chunksForManifestList = new ConcurrentDictionary<HashValue, HashValue[]>(); //Key: ManifestHash, Value: ChunkHashes
-            var chunksToUpload = new BlockingCollection<IChunkFile>();
+            var chunksToProcess = new BlockingCollection<IChunkFile>();
+            var allChunksForManifest = new ConcurrentDictionary<HashValue, HashValue[]>(); //Key: ManifestHash, Value: ChunkHashes. 
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
-                //continueWhile: () => !binariesToChunk.IsCompleted,
                 source: binariesToChunk.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 2,
                 chunker: services.GetRequiredService<IChunker>(),
-                azureRepository: services.GetRequiredService<AzureRepository>(),
-                chunkedBinary: (bf, cfs) => chunksForManifestList.AddOrUpdate(
-                    key: bf.Hash,
-                    addValue: cfs.Select(ch => ch.Hash).ToArray(),
-                    updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated")), //B501
-                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B502
+                chunkedBinary: (bf, cfs) => 
+                {
+                    //B501
+                    chunksToProcess.AddFromEnumerable(cfs, false);
+
+                    //B502
+                    allChunksForManifest.AddOrUpdate( 
+                        key: bf.Hash,
+                        addValue: cfs.Select(ch => ch.Hash).ToArray(),
+                        updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
+                },
                 done: () =>
                 {
-                    chunksToUpload.CompleteAdding(); //B503
+                    
                 });
             var chunkTask = chunkBlock.GetTask;
 
+
+            var chunksToUpload = new BlockingCollection<IChunkFile>();
+            var chunkWaitList = new ConcurrentDictionary<HashValue, List<HashValue>>(); //Key: ManifestHash, Value: bag of ChunkHash
+
+            var processChunkBlock = new ProcessChunkBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessChunkBlock>(),
+                source: chunksToProcess.GetConsumingEnumerable(),
+                repo: services.GetRequiredService<AzureRepository>(),
+
+                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B502
+                done: () =>
+                {
+                    //chunksToUpload.CompleteAdding(); //B503
+                });
+                );
 
 
             await Task.WhenAll(pointersToCreate.WaitAddingCompleted);
