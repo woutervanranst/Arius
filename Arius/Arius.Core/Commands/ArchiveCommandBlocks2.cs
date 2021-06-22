@@ -261,8 +261,9 @@ namespace Arius.Core.Commands
             IChunker chunker,
             AzureRepository azureRepository,
 
-            Action<BinaryFile, IEnumerable<IChunkFile>> chunkedBinary,
+            Action<BinaryFile, IChunkFile[]> chunkedBinary,
             Action<IChunkFile> uploadChunkFile,
+            Action<HashValue> chunkHashExistsRemote,
 
             //Action<PointerFile> hashedPointerFile,
             //Action<BinaryFile> hashedBinaryFile,
@@ -275,6 +276,7 @@ namespace Arius.Core.Commands
             this.repo = azureRepository;
             this.chunkedBinary = chunkedBinary;
             this.uploadChunkFile = uploadChunkFile;
+            //this.chunkHashExistsRemote = chunkHashExistsRemote;
         }
 
         private readonly ILogger<ChunkBlock> logger;
@@ -283,52 +285,55 @@ namespace Arius.Core.Commands
         private readonly AzureRepository repo;
         private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
         private readonly Action<IChunkFile> uploadChunkFile;
+        private readonly Action<HashValue, HashValue[]> requiredChunksForManifest;
+
 
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
         protected override void ForEachBodyImpl(BinaryFile item)
         {
             logger.LogInformation($"Chunking BinaryFile {item.RelativeName}...");
-            var chunks = chunker.Chunk(item).ToArray();
+            var chunks = chunker.Chunk(item);
             logger.LogInformation($"Chunking BinaryFile {item.RelativeName}... in {chunks.Length} chunks");
 
             chunkedBinary(item, chunks);
 
+            var toBeUploaded = new List<HashValue>();
+
             foreach (var chunk in chunks)
             {
+                if (ChunkExists(chunk.Hash))
+                {
+                    // 1 Exists remote
+                    logger.LogInformation($"Chunk for hash {chunk.Hash} already exists. No need to upload.");
+
+                    if (chunk is ChunkFile)
+                        chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
+                }
+
                 lock (creating)
                 {
-                    if (ChunkExists(chunk.Hash))
-                    {
-                        // 1 Exists remote
-                        logger.LogInformation($"Chunk for hash {chunk.Hash} already exists. No need to upload.");
-
-                        if (chunk is ChunkFile)
-                            chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
-                    }
-                    else if (!creating.Contains(chunk.Hash))
+                    if (!creating.Contains(chunk.Hash))
                     {
                         // 2 Does not yet exist remote and not yet being created --> upload
                         logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely. To upload.");
 
                         creating.Add(chunk.Hash);
-                        uploadChunkFile(chunk);
-                        chunkForManifest()
-                        //waitForCreatedManifest(item);
-                    }
-                    else
-                    {
-                        // 3 Does not exist remote but is being created
-                        logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
 
-                        //waitForCreatedManifest(item);
+                        uploadChunkFile(chunk); //Signal that this chunk needs to be uploaded
+                        toBeUploaded.Add(chunk.Hash); //Signal that this chunk is still required to be uploaded for this manifest
                     }
                 }
-                //}
 
+                // 3 Does not exist remote but is being created
+                logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+                toBeUploaded.Add(chunk.Hash); //Signal that this chunk is still required to be uploaded for this manifest
             }
-        private readonly List<HashValue> creating = new();
 
+            requiredChunksForManifest(item.Hash, toBeUploaded.ToArray());
+        }
+        private readonly List<HashValue> creating = new();
 
 
         private bool ChunkExists(HashValue h)
