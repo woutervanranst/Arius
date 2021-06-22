@@ -205,11 +205,11 @@ namespace Arius.Core.Commands
              *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
              */
 
-            
+
             if (await ManifestExists(item.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' already exists. No need to upload.");
+                logger.LogInformation($"Manifest for hash of '{item.Name}' already exists. No need to upload.");
 
                 manifestExists(item);
 
@@ -221,7 +221,7 @@ namespace Arius.Core.Commands
                 if (!creating.Contains(item.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Manifest for hash of '{item.Name}' does not exist remotely. To upload and create pointer.");
                     creating.Add(item.Hash);
 
                     uploadBinaryFile(item);
@@ -230,15 +230,15 @@ namespace Arius.Core.Commands
                     return;
                 }
             }
-             
+
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Manifest for hash of '{item.Name}' does not exist remotely but is already being uploaded. To wait and create pointer.");
 
             waitForCreatedManifest(item);
         }
         private readonly List<HashValue> creating = new();
 
-        private Task <bool> ManifestExists(HashValue h)
+        private Task<bool> ManifestExists(HashValue h)
         {
             //// Check cache
             //if (created.ContainsKey(h))
@@ -253,7 +253,7 @@ namespace Arius.Core.Commands
         //private readonly Dictionary<HashValue, bool> created = new();
     }
 
-    
+
     internal class ChunkBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
@@ -306,13 +306,13 @@ namespace Arius.Core.Commands
         private readonly AzureRepository repo;
         private readonly Action<IChunkFile> chunkToUpload;
         private readonly Action<HashValue> chunkAlreadyUploaded;
- 
+
         protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
         {
             if (await ChunkExists(chunk.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Chunk for hash {chunk.Hash} already exists. No need to upload.");
+                logger.LogInformation($"Chunk with hash {chunk.Hash} already exists. No need to upload.");
 
                 if (chunk is ChunkFile)
                     chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
@@ -327,7 +327,7 @@ namespace Arius.Core.Commands
                 if (!creating.Contains(chunk.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely. To upload.");
+                    logger.LogInformation($"Chunk with hash {chunk.Hash} does not exist remotely. To upload.");
                     creating.Add(chunk.Hash);
 
                     chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
@@ -337,7 +337,7 @@ namespace Arius.Core.Commands
             }
 
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Chunk with hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
         }
         private readonly List<HashValue> creating = new();
 
@@ -353,7 +353,7 @@ namespace Arius.Core.Commands
         public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
             Partitioner<IChunkFile> source,
             int maxDegreeOfParallelism,
-            TempDirectoryAppSettings tempDirAppSettings, 
+            TempDirectoryAppSettings tempDirAppSettings,
             IEncrypter encrypter,
             Action<EncryptedChunkFile> chunkEncrypted,
             Action done) : base(source, maxDegreeOfParallelism, done)
@@ -383,5 +383,58 @@ namespace Arius.Core.Commands
 
             chunkEncrypted(ecf);
         }
+    }
+
+
+    internal class UploadEncryptedChunkBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile>
+    {
+        public UploadEncryptedChunkBlock(ILogger<UploadEncryptedChunkBlock> logger,
+            Partitioner<EncryptedChunkFile> source,
+            int maxDegreeOfParallelism,
+            AzCopyAppSettings azCopyAppSettings,
+            AzureRepository repo,
+            Func<bool> finished,
+            Action<HashValue> chunkUploaded,
+            Action done) : base(source, maxDegreeOfParallelism, done)
+        {
+            this.source = source;
+            this.azCopyAppSettings = azCopyAppSettings;
+            this.repo = repo;
+            this.finished = finished;
+            this.chunkUploaded = chunkUploaded;
+        }
+
+        private readonly Partitioner<EncryptedChunkFile> source;
+        private readonly AzCopyAppSettings azCopyAppSettings;
+        private readonly AzureRepository repo;
+        private readonly Func<bool> finished;
+        private readonly Action<HashValue> chunkUploaded;
+
+        protected override void ForEachBodyImpl(EncryptedChunkFile item)
+        {
+            EncryptedChunkFile[] uploadBatch1 = null;
+
+            lock (uploadBatch0)
+            { 
+                uploadBatch0.Add(item);
+
+                if (uploadBatch0.Count >= azCopyAppSettings.BatchCount ||
+                    uploadBatch0.Sum(b => b.Length) >= azCopyAppSettings.BatchSize ||
+                    finished())
+                {
+                    uploadBatch1 = uploadBatch0.ToArray(); //.CopyTo(uploadBatch1);
+                    uploadBatch0.Clear();
+                }
+            }
+
+            if (uploadBatch1 is not null)
+            {
+
+            }
+        }
+
+        private List<EncryptedChunkFile> uploadBatch0 = new();
+
+
     }
 }

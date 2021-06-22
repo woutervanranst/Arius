@@ -129,7 +129,7 @@ namespace Arius.Core.Commands
                 },
                 done: () =>
                 {
-                    
+                    chunksToProcess.CompleteAdding(); //B503
                 });
             var chunkTask = chunkBlock.GetTask;
 
@@ -151,21 +151,33 @@ namespace Arius.Core.Commands
 
             var chunksToUpload = new BlockingCollection<EncryptedChunkFile>();
 
-            var x = services.GetRequiredService<TempDirectoryAppSettings>();
-
             var encryptChunkBlock = new EncryptChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<EncryptChunkBlock>(),
                 source: chunksToEncrypt.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
                 encrypter: services.GetRequiredService<IEncrypter>(),
-                chunkEncrypted: (ecf) => chunksToUpload.Add(ecf),
+                chunkEncrypted: (ecf) => chunksToUpload.Add(ecf), //B701
+                done: () =>
+                {
+                    chunksToUpload.CompleteAdding(); //B702
+                });
+            var encyptChunkBlockTask = encryptChunkBlock.GetTask;
+
+
+            var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
+                source: chunksToUpload.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 2,
+                azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
+                repo: services.GetRequiredService<AzureRepository>(),
+                finished: () => chunksToUpload.IsAddingCompleted, //B802
+                chunkUploaded: (h) => removeFromPendingUpload(h), //B803
                 done: () =>
                 {
 
                 });
-            var encyptChunkBlockTask = encryptChunkBlock.GetTask;
-
+            var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
 
 
