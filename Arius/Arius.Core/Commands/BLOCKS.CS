@@ -97,15 +97,17 @@ namespace Arius.Core.Commands
 
     internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiThreadForEachTaskBlockBase(/*Func<bool> continueWhile, */Partitioner<TSource> source, Action done) : base(/*continueWhile, */done)
+        protected MultiThreadForEachTaskBlockBase(/*Func<bool> continueWhile, */Partitioner<TSource> source, int maxDegreeOfParallelism, Action done) : base(/*continueWhile, */done)
         {
             this.source = source;
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
         }
 
         private readonly Partitioner<TSource> source;
+        private readonly int maxDegreeOfParallelism;
 
         //protected abstract Partitioner<TSource> Source { get; }
-        protected abstract int MaxDegreeOfParallelism { get; }
+        //protected abstract int MaxDegreeOfParallelism { get; }
         protected abstract void ForEachBodyImpl(TSource item);
 
         protected override sealed Task GetTaskImpl
@@ -118,7 +120,7 @@ namespace Arius.Core.Commands
                     //{
                         Parallel.ForEach(
                             source,
-                            new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
+                            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                             item => ForEachBodyImpl(item));
                     //}
                     //while (continueWhile());
