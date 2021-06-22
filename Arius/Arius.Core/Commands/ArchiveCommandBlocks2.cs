@@ -209,7 +209,7 @@ namespace Arius.Core.Commands
             if (await ManifestExists(item.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
+                logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' already exists. No need to upload.");
 
                 manifestExists(item);
 
@@ -221,7 +221,7 @@ namespace Arius.Core.Commands
                 if (!creating.Contains(item.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' does not exist remotely. To upload and create pointer.");
                     creating.Add(item.Hash);
 
                     uploadBinaryFile(item);
@@ -232,7 +232,7 @@ namespace Arius.Core.Commands
             }
              
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Manifest for hash of BinaryFile '{item.Name}' does not exist remotely but is already being uploaded. To wait and create pointer.");
 
             waitForCreatedManifest(item);
         }
@@ -371,7 +371,7 @@ namespace Arius.Core.Commands
 
         protected override void ForEachBodyImpl(IChunkFile chunkFile)
         {
-            logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
+            logger.LogInformation($"Encrypting ChunkFile '{chunkFile.Name}'");
 
             var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
 
@@ -379,7 +379,7 @@ namespace Arius.Core.Commands
 
             var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
-            logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
+            logger.LogInformation($"Encrypting ChunkFile '{chunkFile.Name}'... done");
 
             chunkEncrypted(ecf);
         }
