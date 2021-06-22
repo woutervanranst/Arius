@@ -1,9 +1,11 @@
-﻿using Arius.Core.Extensions;
+﻿using Arius.Core.Configuration;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
@@ -132,21 +134,39 @@ namespace Arius.Core.Commands
             var chunkTask = chunkBlock.GetTask;
 
 
-            var chunksToUpload = new BlockingCollection<IChunkFile>();
-            //var chunkWaitList = new ConcurrentDictionary<HashValue, List<HashValue>>(); //Key: ManifestHash, Value: bag of ChunkHash
+            var chunksToEncrypt = new BlockingCollection<IChunkFile>();
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessChunkBlock>(),
                 source: chunksToProcess.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
-
-                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B601
-                chunkAlreadyUploaded: (h) => removeFromPendingUpload(h),
+                chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
+                chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
                 done: () =>
                 {
                     //chunksToUpload.CompleteAdding(); //B503
                 });
             var processChunkTask = processChunkBlock.GetTask;
+
+
+            var chunksToUpload = new BlockingCollection<EncryptedChunkFile>();
+
+            var x = services.GetRequiredService<TempDirectoryAppSettings>();
+
+            var encryptChunkBlock = new EncryptChunkBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<EncryptChunkBlock>(),
+                source: chunksToEncrypt.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 1 /*2*/,
+                tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
+                encrypter: services.GetRequiredService<IEncrypter>(),
+                chunkEncrypted: (ecf) => chunksToUpload.Add(ecf),
+                done: () =>
+                {
+
+                });
+            var encyptChunkBlockTask = encryptChunkBlock.GetTask;
+
+
 
 
             void removeFromPendingUpload(HashValue h)
@@ -163,6 +183,10 @@ namespace Arius.Core.Commands
                 }
             };
 
+            while (true)
+            {
+                await Task.Yield();
+            }
 
 
             await Task.WhenAll(pointersToCreate.WaitAddingCompleted);

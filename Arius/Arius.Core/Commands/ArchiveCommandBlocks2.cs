@@ -1,4 +1,5 @@
-﻿using Arius.Core.Extensions;
+﻿using Arius.Core.Configuration;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
@@ -128,22 +129,22 @@ namespace Arius.Core.Commands
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(/*continueWhile, */source, done)
+            Action done) : base(/*continueWhile, */source, maxDegreeOfParallelism, done)
         {
             this.logger = logger;
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
             this.hvp = hvp;
         }
 
         private readonly ILogger<HashBlock> logger;
-        private readonly int maxDegreeOfParallelism;
+        //private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
-        protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
+        //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
         protected override void ForEachBodyImpl(IFile item)
         {
             if (item is PointerFile pf)
@@ -260,21 +261,21 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             IChunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
-            Action done) : base(source, done)
+            Action done) : base(source, maxDegreeOfParallelism, done)
         {
             this.logger = logger;
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.chunker = chunker;
             this.chunkedBinary = chunkedBinary;
         }
 
         private readonly ILogger<ChunkBlock> logger;
-        private readonly int maxDegreeOfParallelism;
+        //private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
 
 
-        protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
+        //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
         protected override void ForEachBodyImpl(BinaryFile item)
         {
@@ -290,23 +291,20 @@ namespace Arius.Core.Commands
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
             IEnumerable<IChunkFile> source,
-
             AzureRepository repo,
-
-            Action<IChunkFile> uploadChunkFile,
+            Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
-
             Action done) : base(source, done)
         {
             this.logger = logger;
             this.repo = repo;
-            this.uploadChunkFile = uploadChunkFile;
+            this.chunkToUpload = chunkToUpload;
             this.chunkAlreadyUploaded = chunkAlreadyUploaded;
         }
 
         private readonly ILogger<ProcessChunkBlock> logger;
         private readonly AzureRepository repo;
-        private readonly Action<IChunkFile> uploadChunkFile;
+        private readonly Action<IChunkFile> chunkToUpload;
         private readonly Action<HashValue> chunkAlreadyUploaded;
  
         protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
@@ -332,7 +330,7 @@ namespace Arius.Core.Commands
                     logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely. To upload.");
                     creating.Add(chunk.Hash);
 
-                    uploadChunkFile(chunk); //Signal that this chunk needs to be uploaded
+                    chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
 
                     return;
                 }
@@ -347,6 +345,43 @@ namespace Arius.Core.Commands
         private Task<bool> ChunkExists(HashValue h)
         {
             return repo.ChunkExistsAsync(h); //TODO: CACHE RESULTS
+        }
+    }
+
+    internal class EncryptChunkBlock : MultiThreadForEachTaskBlockBase<IChunkFile>
+    {
+        public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
+            Partitioner<IChunkFile> source,
+            int maxDegreeOfParallelism,
+            TempDirectoryAppSettings tempDirAppSettings, 
+            IEncrypter encrypter,
+            Action<EncryptedChunkFile> chunkEncrypted,
+            Action done) : base(source, maxDegreeOfParallelism, done)
+        {
+            this.logger = logger;
+            this.tempDirAppSettings = tempDirAppSettings;
+            this.encrypter = encrypter;
+            this.chunkEncrypted = chunkEncrypted;
+        }
+
+        private readonly ILogger<EncryptChunkBlock> logger;
+        private readonly TempDirectoryAppSettings tempDirAppSettings;
+        private readonly IEncrypter encrypter;
+        private readonly Action<EncryptedChunkFile> chunkEncrypted;
+
+        protected override void ForEachBodyImpl(IChunkFile chunkFile)
+        {
+            logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name}");
+
+            var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
+
+            encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
+
+            var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
+
+            logger.LogInformation($"Encrypting ChunkFile {chunkFile.Name} done");
+
+            chunkEncrypted(ecf);
         }
     }
 }
