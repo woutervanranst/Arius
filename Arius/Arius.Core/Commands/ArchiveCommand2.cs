@@ -69,13 +69,13 @@ namespace Arius.Core.Commands
                 done: () =>
                 {
                     createManifest.CompleteAdding();
-                    createPointerFileEntry.CompleteAdding();
+                    //createPointerFileEntry.CompleteAdding(); HIER NIET
                 });
             var hashTask = hashBlock.GetTask;
 
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var manifestWaitList = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash
+            var binariesWaitingForManifests = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
             //var pointersToCreateDone = new AsyncManualResetEvent(); // new Mutex(); // SemaphoreSlim(1);
 
@@ -87,7 +87,7 @@ namespace Arius.Core.Commands
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) =>
                 {
-                    manifestWaitList.AddOrUpdate(
+                    binariesWaitingForManifests.AddOrUpdate(
                         key: bf.Hash,
                         addValue: new() { bf },
                         updateValueFactory: (h, bag) =>
@@ -107,7 +107,9 @@ namespace Arius.Core.Commands
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
 
-            var chunkWaitList = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key: ManifestHash, Value: bag of ChunkHash
+            //var chunkWaitList = new ConcurrentDictionary<HashValue, ConcurrentDictionary<HashValue, bool>>(); //Key: ManifestHash, Value: bag of ChunkHash
+            var manifestsWaitingForChunks = new ConcurrentDictionary<HashValue, HashValue[]>(); //Key: ManifestHash, Value: ChunkHashes
+            var chunksToUpload = new BlockingCollection<IChunkFile>();
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
@@ -116,9 +118,14 @@ namespace Arius.Core.Commands
                 maxDegreeOfParallelism: 2,
                 chunker: services.GetRequiredService<IChunker>(),
                 azureRepository: services.GetRequiredService<AzureRepository>(),
+                chunkedBinary: (bf, cfs) => manifestsWaitingForChunks.AddOrUpdate(
+                    key: bf.Hash,
+                    addValue: cfs.Select(ch => ch.Hash).ToArray(),
+                    updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated")), //B501
+                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B502
                 done: () =>
                 {
-
+                    chunksToUpload.CompleteAdding(); //B503
                 });
             var chunkTask = chunkBlock.GetTask;
 

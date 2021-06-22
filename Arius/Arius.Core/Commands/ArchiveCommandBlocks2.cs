@@ -281,7 +281,7 @@ namespace Arius.Core.Commands
         private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly AzureRepository repo;
-        private readonly Action<BinaryFile, (IChunkFile ChunkFile, bool Uploaded)[]> chunkedBinary;
+        private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
         private readonly Action<IChunkFile> uploadChunkFile;
 
         protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
