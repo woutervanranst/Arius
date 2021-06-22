@@ -62,7 +62,7 @@ namespace Arius.Core.Commands
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
                 //continueWhile: () => !indexedFiles.IsCompleted,
                 source: indexedFiles.GetConsumingPartitioner(),
-                maxDegreeOfParallelism: 2 /*Environment.ProcessorCount */,
+                maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 hashedPointerFile: (pf) => createPointerFileEntry.Add(pf),
                 hashedBinaryFile: (bf) => createManifest.Add(bf),
                 hvp: services.GetRequiredService<IHashValueProvider>(),
@@ -111,7 +111,7 @@ namespace Arius.Core.Commands
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
                 source: binariesToChunk.GetConsumingPartitioner(),
-                maxDegreeOfParallelism: 2,
+                maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<IChunker>(),
                 chunkedBinary: (bf, cfs) => 
                 {
