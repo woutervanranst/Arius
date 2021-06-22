@@ -106,7 +106,7 @@ namespace Arius.Core.Commands
 
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
-            var allChunksForManifest = new ConcurrentDictionary<HashValue, HashValue[]>(); //Key: ManifestHash, Value: ChunkHashes. 
+            var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
@@ -119,9 +119,10 @@ namespace Arius.Core.Commands
                     chunksToProcess.AddFromEnumerable(cfs, false);
 
                     //B502
-                    allChunksForManifest.AddOrUpdate( 
+                    var chs = cfs.Select(ch => ch.Hash).ToArray();
+                    chunksForManifest.AddOrUpdate( 
                         key: bf.Hash,
-                        addValue: cfs.Select(ch => ch.Hash).ToArray(),
+                        addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
                         updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
                 },
                 done: () =>
@@ -132,19 +133,36 @@ namespace Arius.Core.Commands
 
 
             var chunksToUpload = new BlockingCollection<IChunkFile>();
-            var chunkWaitList = new ConcurrentDictionary<HashValue, List<HashValue>>(); //Key: ManifestHash, Value: bag of ChunkHash
+            //var chunkWaitList = new ConcurrentDictionary<HashValue, List<HashValue>>(); //Key: ManifestHash, Value: bag of ChunkHash
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessChunkBlock>(),
                 source: chunksToProcess.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
 
-                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B502
+                uploadChunkFile: (cf) => chunksToUpload.Add(cf), //B601
+                chunkAlreadyUploaded: (h) => removeFromPendingUpload(h),
                 done: () =>
                 {
                     //chunksToUpload.CompleteAdding(); //B503
                 });
-                );
+            var processChunkTask = processChunkBlock.GetTask;
+
+
+            void removeFromPendingUpload(HashValue h)
+            {
+                foreach (var item in chunksForManifest.Values)
+                {
+                    item.PendingUpload.Remove(h);
+
+                    if (!item.PendingUpload.Any())
+                    {
+                        // all chunks are now uploaded
+
+                    }
+                }
+            };
+
 
 
             await Task.WhenAll(pointersToCreate.WaitAddingCompleted);

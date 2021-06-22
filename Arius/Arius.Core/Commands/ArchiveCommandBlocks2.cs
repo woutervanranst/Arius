@@ -204,46 +204,47 @@ namespace Arius.Core.Commands
              *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
              */
 
-            //lock (created) // lock because created can be modified by the 'file uploaded' handler on another thread
-            //{
+            
+            if (await ManifestExists(item.Hash))
+            {
+                // 1 Exists remote
+                logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
+
+                manifestExists(item);
+
+                return;
+            }
+
             lock (creating) // TODO WHY double locking?
             {
-                if (ManifestExists(item.Hash))
-                {
-                    // 1 Exists remote
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} already exists. No need to upload.");
-
-                    manifestExists(item);
-                }
-                else if (!creating.Contains(item.Hash))
+                if (!creating.Contains(item.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely. To upload and create pointer.");
-
                     creating.Add(item.Hash);
+
                     uploadBinaryFile(item);
                     waitForCreatedManifest(item);
-                }
-                else
-                {
-                    // 3 Does not exist remote but is being created
-                    logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
 
-                    waitForCreatedManifest(item);
+                    return;
                 }
             }
-            //}
+             
+            // 3 Does not exist remote but is being created
+            logger.LogInformation($"Manifest for hash of BinaryFile {item.Name} does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+            waitForCreatedManifest(item);
         }
         private readonly List<HashValue> creating = new();
 
-        private bool ManifestExists(HashValue h)
+        private Task <bool> ManifestExists(HashValue h)
         {
             //// Check cache
             //if (created.ContainsKey(h))
             //    return created[h];
 
             // Check remote
-            var e = repo.ManifestExistsAsync(h).Result;
+            var e = repo.ManifestExistsAsync(h); //TODO: Cache results
             //created.Add(h, e); //Add result to cache so we dont need to recheck again next time
 
             return e;
@@ -303,10 +304,7 @@ namespace Arius.Core.Commands
             this.chunkAlreadyUploaded = chunkAlreadyUploaded;
         }
 
-        private readonly ILogger<ChunkBlock> logger;
-
-        //private readonly Action<IChunkFile> uploadChunkFile;
-        //private readonly Action<HashValue, HashValue[]> requiredChunksForManifest;
+        private readonly ILogger<ProcessChunkBlock> logger;
         private readonly AzureRepository repo;
         private readonly Action<IChunkFile> uploadChunkFile;
         private readonly Action<HashValue> chunkAlreadyUploaded;
@@ -322,6 +320,8 @@ namespace Arius.Core.Commands
                     chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
 
                 chunkAlreadyUploaded(chunk.Hash);
+
+                return;
             }
 
             lock (creating)
@@ -333,21 +333,20 @@ namespace Arius.Core.Commands
                     creating.Add(chunk.Hash);
 
                     uploadChunkFile(chunk); //Signal that this chunk needs to be uploaded
+
+                    return;
                 }
             }
 
             // 3 Does not exist remote but is being created
             logger.LogInformation($"Chunk for hash {chunk.Hash} does not exist remotely but is already being uploaded. To wait and create pointer.");
         }
-
-        //requiredChunksForManifest(item.Hash, toBeUploaded.ToArray());
-    //}
         private readonly List<HashValue> creating = new();
 
 
         private Task<bool> ChunkExists(HashValue h)
         {
-            return repo.ChunkExistsAsync(h);
+            return repo.ChunkExistsAsync(h); //TODO: CACHE RESULTS
         }
     }
 }
