@@ -64,10 +64,11 @@ namespace Arius.Cli
                                 {
                                     loggingBuilder
                                     .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
-                                    .AddSimpleConsole(options =>
-                                    {
-                                        // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                                    });
+                                    //.AddSimpleConsole(options =>
+                                    //{
+                                    //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                                    //});
+                                    .AddCustomFormatter(options => { });
 
                                     // Check whether we are running in a unit test
                                     if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
