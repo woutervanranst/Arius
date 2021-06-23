@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using System;
 
 namespace Arius.Core.Models
 {
@@ -7,7 +8,12 @@ namespace Arius.Core.Models
         // TODO implement like https://github.com/Azure/azure-sdk-for-net/blob/master/sdk/storage/Azure.Storage.Blobs/src/Generated/Models/AccessTier.cs
 
         public string Value { get; init; }
-        public override string ToString() => Value;
+
+        /// <summary>
+        /// Print the first 8 characters of the value
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() => Value.Left(8);
 
 
         public static bool operator ==(HashValue c1, HashValue c2)
