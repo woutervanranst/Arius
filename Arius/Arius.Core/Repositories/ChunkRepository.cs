@@ -110,9 +110,9 @@ namespace Arius.Core.Repositories
                 }
             }
 
-            public async Task<bool> ChunkExistsAsync(HashValue manifestHash)
+            public async bool ChunkExists(HashValue chunkHash)
             {
-                return await _bcc.GetBlobClient($"{EncryptedChunkDirectoryName}/{manifestHash}").ExistsAsync();
+                return GetChunkBlobByHash(chunkHash, false) is not null; //await _bcc.GetBlobClient($"{EncryptedChunkDirectoryName}/{manifestHash}").ExistsAsync();
             }
 
 

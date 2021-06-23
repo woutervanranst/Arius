@@ -293,7 +293,7 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
         {
-            if (await ChunkExists(chunk.Hash))
+            if (ChunkExists(chunk.Hash))
             {
                 // 1 Exists remote
                 logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
@@ -326,9 +326,9 @@ namespace Arius.Core.Commands
         private readonly List<HashValue> creating = new();
 
 
-        private Task<bool> ChunkExists(HashValue h)
+        private bool ChunkExists(HashValue h)
         {
-            return repo.ChunkExistsAsync(h); //TODO: CACHE RESULTS
+            return repo.ChunkExists(h); //TODO: CACHE RESULTS
         }
     }
 
