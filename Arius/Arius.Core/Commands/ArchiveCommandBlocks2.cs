@@ -151,12 +151,12 @@ namespace Arius.Core.Commands
             }
             else if (item is BinaryFile bf)
             {
-                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName}");
+                logger.LogInformation($"Hashing BinaryFile {bf.RelativeName}");
 
                 // For BinaryFiles we need to calculate it
                 bf.Hash = hvp.GetHashValue(bf);
 
-                logger.LogInformation($"[{Thread.CurrentThread.ManagedThreadId}] Hashing BinaryFile {bf.RelativeName} done");
+                logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done");
 
                 hashedBinaryFile(bf);
             }
@@ -397,7 +397,8 @@ namespace Arius.Core.Commands
         {
             var uploadBatch = new List<EncryptedChunkFile>();
 
-            while (!isAddingCompleted())
+            while (!isAddingCompleted() //loop until the preceding block has finished adding chunks to be uploaded
+                || !source.IsCompleted) //if adding is completed, it can be that we still need to generate multiple batches with whatever is left in the queue
             {
                 string reason = default;
                 long size = default;
