@@ -24,7 +24,7 @@ namespace Arius.Core.Services
             string Container { get; }
         }
 
-        void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
+        void Upload(IFile[] filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
         IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten);
     }
 
@@ -77,18 +77,16 @@ namespace Arius.Core.Services
         /// <summary>
         /// Upload IFiles
         /// </summary>
-        public void Upload(IEnumerable<IFile> filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
+        public void Upload(IFile[] filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false)
         {
-            filesToUpload = filesToUpload.ToArray();
-
             var size = filesToUpload.Sum(f => f.Length);
 
             _logger.LogInformation($"Uploading {size.GetBytesReadable()} in {filesToUpload.Count()} files to '{remoteDirectoryName}'");
 
             var start = DateTime.Now;
 
-            filesToUpload.GroupBy(f => f.Directory.FullName)
-                .AsParallel() // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+            filesToUpload.GroupBy(f => f.Directory.FullName) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+                .AsParallel() 
                 .WithDegreeOfParallelism(1)
                 .ForAll(g =>
                 {

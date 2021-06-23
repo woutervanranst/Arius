@@ -68,13 +68,15 @@ namespace Arius.Core.Repositories
             chunkRepo.DeleteHydrateFolder();
         }
 
-        public IEnumerable<ChunkBlobBase> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
+        public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
         {
+            // TODO is the return actually needed? Remove
             return chunkRepo.Upload(ecfs, tier);
         }
 
         public IEnumerable<EncryptedChunkFile> Download(IEnumerable<ChunkBlobBase> cbs, DirectoryInfo target, bool flatten)
         {
+            // TODO is the return actually needed? Remove
             return chunkRepo.Download(cbs, target, flatten);
         }
 

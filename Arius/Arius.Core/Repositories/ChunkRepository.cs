@@ -163,10 +163,8 @@ namespace Arius.Core.Repositories
 
             // UPLOAD & DOWNLOAD
 
-            public IEnumerable<ChunkBlobBase> Upload(IEnumerable<EncryptedChunkFile> ecfs, AccessTier tier)
+            public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
             {
-                ecfs = ecfs.ToArray();
-
                 _blobCopier.Upload(ecfs, tier, EncryptedChunkDirectoryName, false);
 
                 return ecfs.Select(ecf =>
