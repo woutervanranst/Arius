@@ -103,18 +103,13 @@ namespace Arius.Core.Commands
         }
         private IFile GetFile(DirectoryInfo root, FileInfo fi)
         {
-            if (fi.IsPointerFile())
-            {
-                logger.LogInformation($"Found PointerFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+            RelativeFileBase file = fi.IsPointerFile() ? 
+                new PointerFile(root, fi) : 
+                new BinaryFile(root, fi);
 
-                return new PointerFile(root, fi);
-            }
-            else
-            {
-                logger.LogInformation($"Found BinaryFile {Path.GetRelativePath(root.FullName, fi.FullName)}");
+            logger.LogInformation($"Found {file.GetType().Name} '{file.RelativeName}'");
 
-                return new BinaryFile(root, fi);
-            }
+            return file;
         }
     }
 
