@@ -53,9 +53,9 @@ namespace Arius.Core.Repositories
             return chunkRepo.GetChunkBlobByName(folder, name);
         }
 
-        public bool ChunkExists(HashValue chunkHash)
+        public async Task<bool> ChunkExists(HashValue chunkHash)
         {
-            return chunkRepo.ChunkExists(chunkHash);
+            return await chunkRepo.ChunkExists(chunkHash);
         }
 
         public void Hydrate(ChunkBlobBase itemToHydrate)
@@ -84,11 +84,16 @@ namespace Arius.Core.Repositories
         // -- MANIFEST REPOSITORY
         private readonly ManifestRepository manifestRepo;
 
-        public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
+        public async Task AddManifestAsync(BinaryFile binaryFile, IChunkFile[] chunkFiles)
         {
-            await manifestRepo.AddManifestAsync(bf, cfs);
+            await manifestRepo.AddManifestAsync(binaryFile, chunkFiles);
         }
-        
+        public async Task AddManifestAsync(HashValue manifestHash, HashValue[] chunkHashes)
+        {
+            await manifestRepo.AddManifestAsync(manifestHash, chunkHashes);
+        }
+
+
         internal ManifestBlob[] GetAllManifestBlobs()
         {
             return manifestRepo.GetAllManifestBlobs();

@@ -197,7 +197,6 @@ namespace Arius.Core.Commands
             var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
 
-
             void removeFromPendingUpload(HashValue h)
             {
                 //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
@@ -216,6 +215,26 @@ namespace Arius.Core.Commands
                     }
                 }
             };
+
+
+            var createManifestBlock = new CreateManifestBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateManifestBlock>(),
+                source: manifestsToCreate.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 1 /*2*/,
+                repo: services.GetRequiredService<AzureRepository>(),
+                manifestCreated: (h) => { },
+                done: () =>
+                {
+
+                });
+            var createManifestTask = createManifestBlock.GetTask;
+
+
+
+
+
+
+            //await Task.WhenAll(batchesForUpload.is)
 
             while (true)
             {

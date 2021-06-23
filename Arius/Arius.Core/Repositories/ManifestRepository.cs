@@ -91,32 +91,37 @@ namespace Arius.Core.Repositories
                 }
             }
 
-            
-            // ADD
 
-            public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
+            // ADD
+            
+            public async Task AddManifestAsync(BinaryFile binaryFile, IChunkFile[] chunkFiles)
+            {
+                _logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}");
+
+                await AddManifestAsync(binaryFile.Hash, chunkFiles.Select(cf => cf.Hash).ToArray());
+
+                _logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}... done");
+            }
+            public async Task AddManifestAsync(HashValue manifestHash, HashValue[] chunkHashes)
             {
                 try
                 {
-                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}");
-
-                    var bc = _bcc.GetBlobClient(GetManifestBlobName(bf.Hash));
+                    var bc = _bcc.GetBlobClient(GetManifestBlobName(manifestHash));
 
                     if (bc.Exists())
                         throw new InvalidOperationException("Manifest Already Exists");
 
-                    var json = JsonSerializer.Serialize(cfs.Select(cf => cf.Hash.Value));
+                    var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value));
                     var bytes = Encoding.UTF8.GetBytes(json);
                     var ms = new MemoryStream(bytes);
 
                     await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
-
-                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}... done");
                 }
                 catch (Exception)
                 {
                     throw;
                 }
+
             }
         }
     }

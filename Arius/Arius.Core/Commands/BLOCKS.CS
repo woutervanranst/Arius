@@ -52,7 +52,7 @@ namespace Arius.Core.Commands
         protected SingleTaskBlockBase(ILogger logger, /*Func<bool> continueWhile, */Action done) : base(logger, /*continueWhile, */done)
         {
         }
-        protected abstract void TaskBodyImpl();
+        protected abstract Task TaskBodyImpl();
         protected override sealed Task GetTaskImpl
         {
             get
@@ -94,9 +94,9 @@ namespace Arius.Core.Commands
                     //do
                     //{
                     foreach (var item in source)
-                        {
-                            await ForEachBodyImplAsync(item);
-                        }
+                    {
+                        await ForEachBodyImplAsync(item);
+                    }
                     //}
                     //while (continueWhile());
 
@@ -153,7 +153,7 @@ namespace Arius.Core.Commands
 
         //protected abstract Partitioner<TSource> Source { get; }
         //protected abstract int MaxDegreeOfParallelism { get; }
-        protected abstract void ForEachBodyImpl(TSource item);
+        protected abstract Task ForEachBodyImplAsync(TSource item);
 
         protected override sealed Task GetTaskImpl
         {
@@ -168,7 +168,7 @@ namespace Arius.Core.Commands
                     Parallel.ForEach(
                             source,
                             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                            item => ForEachBodyImpl(item));
+                            async (item) => await ForEachBodyImplAsync(item));
                     //}
                     //while (continueWhile());
 
@@ -186,11 +186,50 @@ namespace Arius.Core.Commands
         {
             base.CompleteAdding();
 
-            mre.Set();
+            completeAddingManualResetEvent.Set();
         }
 
-        private readonly AsyncManualResetEvent mre = new();
+        public Task WaitAddingCompleted => completeAddingManualResetEvent.WaitAsync();
+        private readonly AsyncManualResetEvent completeAddingManualResetEvent = new();
 
-        public Task WaitAddingCompleted => mre.WaitAsync();
+
+        public new IEnumerable<T> GetConsumingEnumerable(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
+        public new IEnumerable<T> GetConsumingEnumerable()
+        {
+            foreach (var item in base.GetConsumingEnumerable())
+                yield return item;
+
+            completedManualResetEvent.SetResult();
+        }
+
+        //public Task WaitCompleted => completedManualResetEvent.WaitAsync();
+        //private readonly AsyncManualResetEvent completedManualResetEvent = new();
+        public Task WaitCompleted => completedManualResetEvent.Task;
+        private readonly TaskCompletionSource completedManualResetEvent = new();
+
+        public Partitioner<T> GetConsumingPartitioner()
+        {
+            throw new NotImplementedException();
+        }
+
+        /*
+            * 
+            * TO TEST
+    var x = new BlockingCollectionEx<int> { 1, 2, 3 };
+    x.CompleteAdding();
+    Task.Run(async () =>
+    {
+        await Task.Delay(1000);
+        foreach (var item in x.GetConsumingEnumerable())
+        {
+        }
+    });
+
+    await x.WaitCompleted;
+
+            */
     }
 }

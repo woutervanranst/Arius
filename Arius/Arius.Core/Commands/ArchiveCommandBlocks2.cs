@@ -33,10 +33,12 @@ namespace Arius.Core.Commands
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
 
-        protected override void TaskBodyImpl()
+        protected override Task TaskBodyImpl()
         {
             foreach (var file in IndexDirectory(root))
                 indexedFile(file);
+
+            return Task.CompletedTask;
         }
 
 
@@ -138,7 +140,7 @@ namespace Arius.Core.Commands
         private readonly IHashValueProvider hvp;
 
         //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
-        protected override void ForEachBodyImpl(IFile item)
+        protected override Task ForEachBodyImplAsync(IFile item)
         {
             if (item is PointerFile pf)
             {
@@ -158,6 +160,8 @@ namespace Arius.Core.Commands
             }
             else
                 throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+
+            return Task.CompletedTask;
         }
     }
 
@@ -263,13 +267,15 @@ namespace Arius.Core.Commands
 
         //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
-        protected override void ForEachBodyImpl(BinaryFile bf)
+        protected override Task ForEachBodyImplAsync(BinaryFile bf)
         {
             logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')...");
             var chunks = chunker.Chunk(bf);
             logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')... done. Created {chunks.Length} chunk(s)");
 
             chunkedBinary(bf, chunks);
+
+            return Task.CompletedTask;
         }
     }
 
@@ -293,7 +299,7 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
         {
-            if (ChunkExists(chunk.Hash))
+            if (await ChunkExists(chunk.Hash))
             {
                 // 1 Exists remote
                 logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
@@ -322,13 +328,15 @@ namespace Arius.Core.Commands
 
             // 3 Does not exist remote but is being created
             logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+            return;
         }
         private readonly List<HashValue> creating = new();
 
 
-        private bool ChunkExists(HashValue h)
+        private async Task<bool> ChunkExists(HashValue h)
         {
-            return repo.ChunkExists(h); //TODO: CACHE RESULTS
+            return await repo.ChunkExists(h); //TODO: CACHE RESULTS
         }
     }
 
@@ -351,7 +359,7 @@ namespace Arius.Core.Commands
         private readonly IEncrypter encrypter;
         private readonly Action<EncryptedChunkFile> chunkEncrypted;
 
-        protected override void ForEachBodyImpl(IChunkFile chunkFile)
+        protected override Task ForEachBodyImplAsync(IChunkFile chunkFile)
         {
             logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}' (source: '{chunkFile.Name}')");
 
@@ -364,6 +372,8 @@ namespace Arius.Core.Commands
             logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}'... done");
 
             chunkEncrypted(ecf);
+
+            return Task.CompletedTask;
         }
     }
 
@@ -386,7 +396,7 @@ namespace Arius.Core.Commands
         private readonly Func<bool> isAddingCompleted;
         private readonly Action<EncryptedChunkFile[]> batchForUpload;
 
-        protected override async Task TaskBodyImplAsync(BlockingCollection<EncryptedChunkFile> source)
+        protected override Task TaskBodyImplAsync(BlockingCollection<EncryptedChunkFile> source)
         {
             var uploadBatch = new List<EncryptedChunkFile>();
 
@@ -424,6 +434,8 @@ namespace Arius.Core.Commands
                     uploadBatch.Clear();
                 }
             }
+
+            return Task.CompletedTask;
         }
     }
 
@@ -447,7 +459,7 @@ namespace Arius.Core.Commands
         private readonly AccessTier tier;
         private readonly Action<HashValue> chunkUploaded;
 
-        protected override void ForEachBodyImpl(EncryptedChunkFile[] ecfs)
+        protected override Task ForEachBodyImplAsync(EncryptedChunkFile[] ecfs)
         {
             logger.LogInformation($"Uploading batch..."); // Remaining Batches queue depth: {_block!.Value.InputCount}");
 
@@ -462,6 +474,29 @@ namespace Arius.Core.Commands
 
             foreach (var chunk in ecfs)
                 chunkUploaded(chunk.Hash);
+
+            return Task.CompletedTask;
+        }
+    }
+
+
+    internal class CreateManifestBlock : MultiThreadForEachTaskBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
+    {
+        public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
+            Partitioner<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
+            int maxDegreeOfParallelism,
+            AzureRepository repo,
+            Action<HashValue> manifestCreated,
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+        {
+            this.repo = repo;
+        }
+
+        private readonly AzureRepository repo;
+
+        protected override async Task ForEachBodyImplAsync((HashValue ManifestHash, HashValue[] ChunkHashes) item)
+        {
+            await repo.AddManifestAsync()
         }
     }
 }
