@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace Arius.Cli.Extensions
@@ -89,10 +90,10 @@ namespace Arius.Cli.Extensions
 
             // category and event id
             textWriter.Write(LoglevelPadding);
-            textWriter.Write(logEntry.Category);
+            textWriter.Write(logEntry.Category.Split('.').Last().PadRight(20));
             textWriter.Write('[');
 
-            textWriter.Write(Thread.CurrentThread.ManagedThreadId);
+            textWriter.Write(Thread.CurrentThread.ManagedThreadId.ToString().PadRight(2));
 //#if NETCOREAPP
 //            Span<char> span = stackalloc char[10];
 //            if (eventId.TryFormat(span, out int charsWritten))
