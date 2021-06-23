@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -62,7 +63,6 @@ namespace Arius.Core.Services
         private readonly Task<string> _AzCopyPath;
         private readonly BlobContainerClient _bcc;
         private readonly StorageSharedKeyCredential _skc;
-        //private readonly IAzCopyUploaderOptions _options;
         private readonly ILogger<AzCopier> _logger;
 
 
@@ -75,7 +75,7 @@ namespace Arius.Core.Services
 
             _logger.LogInformation($"Uploading {size.GetBytesReadable()} in {filesToUpload.Count()} files to '{remoteDirectoryName}'");
 
-            var start = DateTime.Now;
+            var duration = Stopwatch.StartNew();
 
             filesToUpload.GroupBy(f => f.Directory.FullName) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
                 .AsParallel() 
@@ -87,9 +87,9 @@ namespace Arius.Core.Services
                     Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
                 });
 
-            var elapsed = DateTime.Now - start;
+            duration.Stop();
 
-            _logger.LogInformation($"Upload complete. Avg. speed {((long)(size / elapsed.TotalSeconds)).GetBytesReadable()}/s");
+            _logger.LogInformation($"Upload complete. Avg. speed {((long)(size / duration.Elapsed.TotalSeconds)).GetBytesReadable()}/s");
         }
 
         private void Upload(string localDirectoryFullName, string remoteDirectoryName, string[] fileNames, AccessTier tier, bool overwrite)
@@ -134,16 +134,13 @@ namespace Arius.Core.Services
 
             _logger.LogInformation($"Downloading {size.GetBytesReadable()} in {blobsToDownload.Count()} files to '{target.FullName}'");
 
-            var start = DateTime.Now;
+            var duration = Stopwatch.StartNew();
 
             var r = Download(blobsToDownload.Select(b => b.FullName), target, flatten);
 
             // TODO test 1 download die vanuit verschillende folders komt
-            //TODO use System.Diagnostics.Stopwatch.
 
-            var elapsed = DateTime.Now - start;
-
-            _logger.LogInformation($"Download complete. Avg. speed {((long)(size / elapsed.TotalSeconds)).GetBytesReadable()}/s");
+            _logger.LogInformation($"Download complete. Avg. speed {((long)(size / duration.Elapsed.TotalSeconds)).GetBytesReadable()}/s");
 
             return r;
         }
