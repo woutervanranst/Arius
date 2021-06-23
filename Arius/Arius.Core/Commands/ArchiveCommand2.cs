@@ -194,7 +194,7 @@ namespace Arius.Core.Commands
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
                 done: () =>
                 {
-
+                    manifestsToCreate.CompleteAdding(); //B910
                 });
             var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
@@ -213,7 +213,7 @@ namespace Arius.Core.Commands
                         if (!chunksForManifest.TryRemove(item.Key, out _))
                             throw new InvalidOperationException("Key should be present but is not");
 
-                        manifestsToCreate.Add((item.Key, item.Value.All));
+                        manifestsToCreate.Add((item.Key, item.Value.All)); //B1001
                     }
                 }
             };
