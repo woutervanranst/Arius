@@ -77,15 +77,12 @@ namespace Arius.Core.Services
 
             var duration = Stopwatch.StartNew();
 
-            filesToUpload.GroupBy(f => f.Directory.FullName) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
-                .AsParallel() 
-                .WithDegreeOfParallelism(1)
-                .ForAll(g =>
-                {
-                    var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+            foreach (var g in filesToUpload.GroupBy(f => f.Directory.FullName)) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+            {
+                var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
 
-                    Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
-                });
+                Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
+            }
 
             duration.Stop();
 
