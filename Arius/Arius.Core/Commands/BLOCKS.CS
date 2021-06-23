@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Models;
+using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
@@ -12,11 +13,14 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        protected BlockBase(/*Func<bool> continueWhile, */Action done)
+        protected BlockBase(ILogger logger, /*Func<bool> continueWhile, */Action done)
         {
+            this.logger = logger;
             //this.continueWhile = continueWhile;
             this.done = done;
         }
+
+        protected readonly ILogger logger;
         //protected readonly Func<bool> continueWhile;
         protected readonly Action done;
 
@@ -87,6 +91,37 @@ namespace Arius.Core.Commands
                         }
                     //}
                     //while (continueWhile());
+
+                    done();
+                });
+            }
+        }
+    }
+
+    internal abstract class SingleThreadTaskBlockBase<TSource> : BlockBase
+    {
+        protected SingleThreadTaskBlockBase(BlockingCollection<TSource> source, /*Func<bool> @while, */Action done) : base(/*continueWhile, */done)
+        {
+            this.source = source;
+            //this.@while = @while;
+        }
+        private readonly BlockingCollection<TSource> source;
+        //private readonly Func<bool> @while;
+
+        protected abstract Task TaskBodyImplAsync(BlockingCollection<TSource> source);
+        protected override sealed Task GetTaskImpl
+        {
+            get
+            {
+                return Task.Run(async () =>
+                {
+                    //while (@while())
+                    //{
+                    //    foreach (var item in source)
+                    //    {
+                            await TaskBodyImplAsync(source);
+                    //    }
+                    //}
 
                     done();
                 });

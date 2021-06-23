@@ -86,7 +86,7 @@ namespace Arius.Core.Commands
                 source: createManifest.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
-                waitForCreatedManifest: (bf) =>
+                waitForCreatedManifest: (bf) => //B402
                 {
                     binariesWaitingForManifests.AddOrUpdate(
                         key: bf.Hash,
@@ -96,7 +96,7 @@ namespace Arius.Core.Commands
                             bag.Add(bf);
                             return bag;
                         });
-                }, //B402
+                },
                 manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 done: () =>
                 {
@@ -129,7 +129,7 @@ namespace Arius.Core.Commands
                 },
                 done: () =>
                 {
-                    chunksToProcess.CompleteAdding(); //B503
+                    chunksToProcess.CompleteAdding(); //B510
                 });
             var chunkTask = chunkBlock.GetTask;
 
@@ -144,7 +144,7 @@ namespace Arius.Core.Commands
                 chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
                 done: () =>
                 {
-                    //chunksToUpload.CompleteAdding(); //B503
+                    chunksToEncrypt.CompleteAdding(); //B610
                 });
             var processChunkTask = processChunkBlock.GetTask;
 
@@ -160,24 +160,30 @@ namespace Arius.Core.Commands
                 chunkEncrypted: (ecf) => chunksToUpload.Add(ecf), //B701
                 done: () =>
                 {
-                    chunksToUpload.CompleteAdding(); //B702
+                    chunksToUpload.CompleteAdding(); //B710
                 });
             var encyptChunkBlockTask = encryptChunkBlock.GetTask;
 
 
-            var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
-                source: chunksToUpload.GetConsumingPartitioner(),
-                maxDegreeOfParallelism: 2,
+            var batchesForUpload = new BlockingCollection<EncryptedChunkFile[]>();
+
+            var uploadEncryptedChunkBlock = new CreateUploadBatchBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateUploadBatchBlock>(),
+                source: chunksToUpload.GetConsumingEnumerable(),
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-                repo: services.GetRequiredService<AzureRepository>(),
-                finished: () => chunksToUpload.IsAddingCompleted, //B802
-                chunkUploaded: (h) => removeFromPendingUpload(h), //B803
+                isAddingCompleted: () => chunksToUpload.IsAddingCompleted, //B802
+                batchForUpload: (b) => batchesForUpload.Add(b), //B804
                 done: () =>
                 {
-
+                    batchesForUpload.CompleteAdding(); //B810
                 });
             var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
+
+
+
+        //var uploadEncryptedChunkBlock = new CreateUploadBatchBlock(
+        //chunkUploaded: (h) => removeFromPendingUpload(h), //B803
+            //var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
 
 

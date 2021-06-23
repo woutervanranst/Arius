@@ -386,55 +386,64 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class UploadEncryptedChunkBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile>
+    internal class CreateUploadBatchBlock : SingleThreadTaskBlockBase<EncryptedChunkFile>
     {
-        public UploadEncryptedChunkBlock(ILogger<UploadEncryptedChunkBlock> logger,
-            Partitioner<EncryptedChunkFile> source,
-            int maxDegreeOfParallelism,
+        public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
+            BlockingCollection<EncryptedChunkFile> source,
             AzCopyAppSettings azCopyAppSettings,
-            AzureRepository repo,
-            Func<bool> finished,
-            Action<HashValue> chunkUploaded,
-            Action done) : base(source, maxDegreeOfParallelism, done)
+            Func<bool> isAddingCompleted,
+            Action<EncryptedChunkFile[]> batchForUpload,
+            Action done) : base(source, done)
         {
-            this.source = source;
+            this.logger = logger;
             this.azCopyAppSettings = azCopyAppSettings;
-            this.repo = repo;
-            this.finished = finished;
-            this.chunkUploaded = chunkUploaded;
+            this.isAddingCompleted = isAddingCompleted;
+            this.batchForUpload = batchForUpload;
         }
 
-        private readonly Partitioner<EncryptedChunkFile> source;
+        private readonly ILogger<CreateUploadBatchBlock> logger;
         private readonly AzCopyAppSettings azCopyAppSettings;
-        private readonly AzureRepository repo;
-        private readonly Func<bool> finished;
-        private readonly Action<HashValue> chunkUploaded;
+        private readonly Func<bool> isAddingCompleted;
+        private readonly Action<EncryptedChunkFile[]> batchForUpload;
 
-        protected override void ForEachBodyImpl(EncryptedChunkFile item)
+        protected override async Task TaskBodyImplAsync(BlockingCollection<EncryptedChunkFile> source)
         {
-            EncryptedChunkFile[] uploadBatch1 = null;
+            var uploadBatch = new List<EncryptedChunkFile>();
 
-            lock (uploadBatch0)
-            { 
-                uploadBatch0.Add(item);
+            while (!isAddingCompleted())
+            {
+                string reason = default;
+                long size = default;
 
-                if (uploadBatch0.Count >= azCopyAppSettings.BatchCount ||
-                    uploadBatch0.Sum(b => b.Length) >= azCopyAppSettings.BatchSize ||
-                    finished())
+                foreach (var item in source.GetConsumingEnumerable())
                 {
-                    uploadBatch1 = uploadBatch0.ToArray(); //.CopyTo(uploadBatch1);
-                    uploadBatch0.Clear();
+                    uploadBatch.Add(item);
+                    size += item.Length;
+                    
+                    if (uploadBatch.Count >= azCopyAppSettings.BatchCount)
+                    {
+                        reason = "of batchcount";
+                        break;
+                    }
+                    else if (size >= azCopyAppSettings.BatchSize)
+                    {
+                        reason = "of batchsize";
+                        break;
+                    }
+                    else if (isAddingCompleted())
+                    {
+                        reason = "adding is completed";
+                        break;
+                    }
+                }
+
+                if (uploadBatch.Any())
+                {
+                    logger.LogInformation($"Creating batch because {reason} with {uploadBatch.Count} elements, total size: {size.GetBytesReadable()}. Remaining Queue Count: {source.Count}");
+                    batchForUpload(uploadBatch.ToArray());
+                    uploadBatch.Clear();
                 }
             }
-
-            if (uploadBatch1 is not null)
-            {
-
-            }
         }
-
-        private List<EncryptedChunkFile> uploadBatch0 = new();
-
-
     }
 }
