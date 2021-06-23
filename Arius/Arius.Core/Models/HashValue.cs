@@ -9,11 +9,13 @@ namespace Arius.Core.Models
 
         public string Value { get; init; }
 
+        public override string ToString() => Value;
+
         /// <summary>
         /// Print the first 8 characters of the value
         /// </summary>
         /// <returns></returns>
-        public override string ToString() => Value.Left(8);
+        public string ToShortString() => Value.Left(8);
 
 
         public static bool operator ==(HashValue c1, HashValue c2)
