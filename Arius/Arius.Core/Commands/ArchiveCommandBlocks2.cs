@@ -3,6 +3,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
@@ -151,7 +152,7 @@ namespace Arius.Core.Commands
                 // For BinaryFiles we need to calculate it
                 bf.Hash = hvp.GetHashValue(bf);
 
-                logger.LogInformation($"Hashing BinaryFile '{bf.RelativeName}'... done. Hash: '{bf.Hash}'");
+                logger.LogInformation($"Hashing BinaryFile '{bf.RelativeName}'... done. Hash: '{bf.Hash.ToShortString()}'");
 
                 hashedBinaryFile(bf);
             }
@@ -196,7 +197,7 @@ namespace Arius.Core.Commands
             if (await ManifestExists(bf.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest '{bf.Hash}' ('{bf.Name}') already exists. No need to upload.");
+                logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') already exists. No need to upload.");
 
                 manifestExists(bf);
 
@@ -208,7 +209,7 @@ namespace Arius.Core.Commands
                 if (!creating.Contains(bf.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest '{bf.Hash}' ('{bf.Name}') does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') does not exist remotely. To upload and create pointer.");
                     creating.Add(bf.Hash);
 
                     uploadBinaryFile(bf);
@@ -219,7 +220,7 @@ namespace Arius.Core.Commands
             }
 
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Manifest '{bf.Hash}' ('{bf.Name}') does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') does not exist remotely but is already being uploaded. To wait and create pointer.");
 
             waitForCreatedManifest(bf);
         }
@@ -264,9 +265,9 @@ namespace Arius.Core.Commands
 
         protected override void ForEachBodyImpl(BinaryFile bf)
         {
-            logger.LogInformation($"Chunking '{bf.Hash}' ('{bf.RelativeName}')...");
+            logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')...");
             var chunks = chunker.Chunk(bf);
-            logger.LogInformation($"Chunking '{bf.Hash}' ('{bf.RelativeName}')... done. Created {chunks.Length} chunk(s)");
+            logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')... done. Created {chunks.Length} chunk(s)");
 
             chunkedBinary(bf, chunks);
         }
@@ -295,7 +296,7 @@ namespace Arius.Core.Commands
             if (await ChunkExists(chunk.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Chunk with hash '{chunk.Hash}' already exists. No need to upload.");
+                logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
 
                 if (chunk is ChunkFile)
                     chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
@@ -310,7 +311,7 @@ namespace Arius.Core.Commands
                 if (!creating.Contains(chunk.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Chunk with hash '{chunk.Hash}' does not exist remotely. To upload.");
+                    logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
                     creating.Add(chunk.Hash);
 
                     chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
@@ -320,7 +321,7 @@ namespace Arius.Core.Commands
             }
 
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Chunk with hash '{chunk.Hash}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
         }
         private readonly List<HashValue> creating = new();
 
@@ -352,7 +353,7 @@ namespace Arius.Core.Commands
 
         protected override void ForEachBodyImpl(IChunkFile chunkFile)
         {
-            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash}' (source: '{chunkFile.Name}')");
+            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}' (source: '{chunkFile.Name}')");
 
             var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash}{EncryptedChunkFile.Extension}"));
 
@@ -360,7 +361,7 @@ namespace Arius.Core.Commands
 
             var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
 
-            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash}'... done");
+            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}'... done");
 
             chunkEncrypted(ecf);
         }
@@ -432,14 +433,35 @@ namespace Arius.Core.Commands
         public UploadEncryptedChunkBlock(ILogger<UploadEncryptedChunkBlock> logger,
             Partitioner<EncryptedChunkFile[]> source,
             int maxDegreeOfParallelism,
+            AzureRepository repo,
+            AccessTier tier,
             Action<HashValue> chunkUploaded,
             Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
+            this.repo = repo;
+            this.tier = tier;
+            this.chunkUploaded = chunkUploaded;
         }
 
-        protected override void ForEachBodyImpl(EncryptedChunkFile[] item)
+        private readonly AzureRepository repo;
+        private readonly AccessTier tier;
+        private readonly Action<HashValue> chunkUploaded;
+
+        protected override void ForEachBodyImpl(EncryptedChunkFile[] ecfs)
         {
-            throw new NotImplementedException();
+            logger.LogInformation($"Uploading batch..."); // Remaining Batches queue depth: {_block!.Value.InputCount}");
+
+            //Upload the files
+            repo.Upload(ecfs, tier);
+
+            //Delete the (temporary) encrypted chunk files
+            foreach (var ecf in ecfs)
+                ecf.Delete();
+
+            logger.LogInformation($"Uploading batch... done");
+
+            foreach (var chunk in ecfs)
+                chunkUploaded(chunk.Hash);
         }
     }
 }
