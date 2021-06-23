@@ -19,7 +19,7 @@ namespace Arius.Core.Commands
             //this.continueWhile = continueWhile;
             this.done = () =>
             {
-                logger.LogTrace("Done.");
+                logger.LogTrace("Done");
                 done();
             };
         }
@@ -59,9 +59,11 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(() =>
                 {
+                    logger.LogTrace("Started");
+
                     //do
                     //{
-                        TaskBodyImpl();
+                    TaskBodyImpl();
                     //}
                     //while (continueWhile());
 
@@ -87,9 +89,11 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(async () =>
                 {
+                    logger.LogTrace("Started");
+
                     //do
                     //{
-                        foreach (var item in source)
+                    foreach (var item in source)
                         {
                             await ForEachBodyImplAsync(item);
                         }
@@ -119,11 +123,13 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(async () =>
                 {
+                    logger.LogTrace("Started");
+
                     //while (@while())
                     //{
                     //    foreach (var item in source)
                     //    {
-                            await TaskBodyImplAsync(source);
+                    await TaskBodyImplAsync(source);
                     //    }
                     //}
 
@@ -155,9 +161,11 @@ namespace Arius.Core.Commands
             {
                 return Task.Run(() =>
                 {
+                    logger.LogTrace("Started");
+
                     //do
                     //{
-                        Parallel.ForEach(
+                    Parallel.ForEach(
                             source,
                             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                             item => ForEachBodyImpl(item));
@@ -181,7 +189,7 @@ namespace Arius.Core.Commands
             mre.Set();
         }
 
-        private AsyncManualResetEvent mre = new();
+        private readonly AsyncManualResetEvent mre = new();
 
         public Task WaitAddingCompleted => mre.WaitAsync();
     }
