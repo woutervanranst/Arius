@@ -108,6 +108,8 @@ namespace Arius.Core.Commands
                 });
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
+            //await Task.Delay(10000);
+
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
             var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
