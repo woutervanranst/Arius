@@ -167,7 +167,7 @@ namespace Arius.Core.Commands
 
             var batchesForUpload = new BlockingCollection<EncryptedChunkFile[]>();
 
-            var uploadEncryptedChunkBlock = new CreateUploadBatchBlock(
+            var createUploadBatchBlock = new CreateUploadBatchBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateUploadBatchBlock>(),
                 source: chunksToUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
@@ -177,13 +177,19 @@ namespace Arius.Core.Commands
                 {
                     batchesForUpload.CompleteAdding(); //B810
                 });
+            var createUploadBatchTask = createUploadBatchBlock.GetTask;
+
+
+            var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
+                source: batchesForUpload.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 2,
+                chunkUploaded: (h) => removeFromPendingUpload(h), //B901
+                done: () =>
+                {
+
+                });
             var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
-
-
-
-        //var uploadEncryptedChunkBlock = new CreateUploadBatchBlock(
-        //chunkUploaded: (h) => removeFromPendingUpload(h), //B803
-            //var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
 
 

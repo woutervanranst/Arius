@@ -425,4 +425,21 @@ namespace Arius.Core.Commands
             }
         }
     }
+
+
+    internal class UploadEncryptedChunkBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile[]>
+    {
+        public UploadEncryptedChunkBlock(ILogger<UploadEncryptedChunkBlock> logger,
+            Partitioner<EncryptedChunkFile[]> source,
+            int maxDegreeOfParallelism,
+            Action<HashValue> chunkUploaded,
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+        {
+        }
+
+        protected override void ForEachBodyImpl(EncryptedChunkFile[] item)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
