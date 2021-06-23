@@ -156,7 +156,7 @@ namespace Arius.Core.Commands
                 // For BinaryFiles we need to calculate it
                 bf.Hash = hvp.GetHashValue(bf);
 
-                logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done");
+                logger.LogInformation($"Hashing BinaryFile {bf.RelativeName} done. Hash: {bf.Hash}");
 
                 hashedBinaryFile(bf);
             }
@@ -427,7 +427,7 @@ namespace Arius.Core.Commands
 
                 if (uploadBatch.Any())
                 {
-                    logger.LogInformation($"Creating batch because {reason} with {uploadBatch.Count} elements, total size: {size.GetBytesReadable()}. Remaining Queue Count: {source.Count}");
+                    logger.LogInformation($"Creating batch because {reason} with {uploadBatch.Count} element(s), total size: {size.GetBytesReadable()}. Remaining elements in queue: {source.Count}");
                     batchForUpload(uploadBatch.ToArray());
                     uploadBatch.Clear();
                 }
