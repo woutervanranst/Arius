@@ -53,9 +53,9 @@ namespace Arius.Core.Repositories
             return chunkRepo.GetChunkBlobByName(folder, name);
         }
 
-        public async bool ChunkExists(HashValue chunkHash)
+        public bool ChunkExists(HashValue chunkHash)
         {
-            return await chunkRepo.ChunkExists(chunkHash);
+            return chunkRepo.ChunkExists(chunkHash);
         }
 
         public void Hydrate(ChunkBlobBase itemToHydrate)
