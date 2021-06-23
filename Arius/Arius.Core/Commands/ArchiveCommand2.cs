@@ -209,7 +209,8 @@ namespace Arius.Core.Commands
                     if (!item.Value.PendingUpload.Any())
                     {
                         //All chunks for this manifest are now uploaded
-                        chunksForManifest.Remove(item.Key, out _);
+                        if (!chunksForManifest.TryRemove(item.Key, out _))
+                            throw new InvalidOperationException("Key should be present but is not");
 
                         manifestsToCreate.Add((item.Key, item.Value.All));
                     }
