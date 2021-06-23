@@ -25,8 +25,6 @@ namespace Arius.Core.Repositories
 
                 var bsc = new BlobServiceClient(connectionString);
                 _bcc = bsc.GetBlobContainerClient(options.Container);
-
-                // Is created in ChunkRepository
             }
 
             private readonly ILogger<ManifestRepository> _logger;
@@ -34,32 +32,9 @@ namespace Arius.Core.Repositories
 
             internal const string ManifestDirectoryName = "manifests";
 
-            public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
-            {
-                try
-                {
-                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}");
+            // GET
 
-                    var bc = _bcc.GetBlobClient($"{ManifestDirectoryName}/{bf.Hash}");
-
-                    if (bc.Exists())
-                        throw new InvalidOperationException("Manifest Already Exists");
-
-                    var json = JsonSerializer.Serialize(cfs.Select(cf => cf.Hash.Value));
-                    var bytes = Encoding.UTF8.GetBytes(json);
-                    var ms = new MemoryStream(bytes);
-
-                    await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
-
-                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}... done");
-                }
-                catch (Exception)
-                {
-                    throw;
-                }
-            }
-
-            public IEnumerable<ManifestBlob> GetAllManifestBlobs()
+            public ManifestBlob[] GetAllManifestBlobs()
             {
                 _logger.LogInformation($"Getting all manifests...");
                 var r = Array.Empty<ManifestBlob>();
@@ -77,32 +52,34 @@ namespace Arius.Core.Repositories
                 }
             }
 
-            public IEnumerable<HashValue> GetAllManifestHashes()
+            public HashValue[] GetAllManifestHashes()
             {
                 return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
             }
 
             public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
             {
-                return await _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}").ExistsAsync();
+                return await _bcc.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
             }
 
-            public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
+            private string GetManifestBlobName(HashValue manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
+
+            public async Task<HashValue[]> GetChunkHashesForManifestAsync(HashValue manifestHash)
             {
                 _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
-                var chunks = Array.Empty<HashValue>();
+                var chunkHashes = Array.Empty<HashValue>();
 
                 try
                 {
-                    var bc = _bcc.GetBlobClient($"{ManifestDirectoryName}/{manifestHash}");
+                    var bc = _bcc.GetBlobClient(GetManifestBlobName(manifestHash));
 
                     var ms = new MemoryStream();
                     await bc.DownloadToAsync(ms);
                     var bytes = ms.ToArray();
                     var json = Encoding.UTF8.GetString(bytes);
-                    chunks = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
+                    chunkHashes = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
 
-                    return chunks;
+                    return chunkHashes;
                 }
                 catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
                 {
@@ -110,7 +87,35 @@ namespace Arius.Core.Repositories
                 }
                 finally
                 {
-                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunks.Length} chunk(s)");
+                    _logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunkHashes.Length} chunk(s)");
+                }
+            }
+
+            
+            // ADD
+
+            public async Task AddManifestAsync(BinaryFile bf, IChunkFile[] cfs)
+            {
+                try
+                {
+                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}");
+
+                    var bc = _bcc.GetBlobClient(GetManifestBlobName(bf.Hash));
+
+                    if (bc.Exists())
+                        throw new InvalidOperationException("Manifest Already Exists");
+
+                    var json = JsonSerializer.Serialize(cfs.Select(cf => cf.Hash.Value));
+                    var bytes = Encoding.UTF8.GetBytes(json);
+                    var ms = new MemoryStream(bytes);
+
+                    await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+
+                    _logger.LogInformation($"Creating manifest for {bf.RelativeName}... done");
+                }
+                catch (Exception)
+                {
+                    throw;
                 }
             }
         }

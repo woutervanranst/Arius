@@ -38,7 +38,7 @@ namespace Arius.Core.Repositories
         // -- CHUNK REPOSITORY
         private readonly ChunkRepository chunkRepo;
         
-        public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
+        public ChunkBlobBase[] GetAllChunkBlobs()
         {
             return chunkRepo.GetAllChunkBlobs();
         }
@@ -89,19 +89,19 @@ namespace Arius.Core.Repositories
             await manifestRepo.AddManifestAsync(bf, cfs);
         }
         
-        internal IEnumerable<ManifestBlob> GetAllManifestBlobs()
+        internal ManifestBlob[] GetAllManifestBlobs()
         {
             return manifestRepo.GetAllManifestBlobs();
         }
 
-        public IEnumerable<HashValue> GetAllManifestHashes()
+        public HashValue[] GetAllManifestHashes()
         {
             return manifestRepo.GetAllManifestHashes();
         }
 
-        public async Task<IEnumerable<HashValue>> GetChunkHashesAsync(HashValue manifestHash)
+        public async Task<HashValue[]> GetChunkHashesForManifestAsync(HashValue manifestHash)
         {
-            return await manifestRepo.GetChunkHashesAsync(manifestHash);
+            return await manifestRepo.GetChunkHashesForManifestAsync(manifestHash);
         }
 
         public async Task<bool> ManifestExistsAsync(HashValue manifestHash)

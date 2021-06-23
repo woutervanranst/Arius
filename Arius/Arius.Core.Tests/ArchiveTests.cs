@@ -523,7 +523,7 @@ namespace Arius.Core.Tests
 
             //11
             var pfi1 = bfi1.GetPointerFile();
-            var chunkHashes = await repo.GetChunkHashesAsync(pfi1.Hash);
+            var chunkHashes = await repo.GetChunkHashesForManifestAsync(pfi1.Hash);
             var chunk = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(tier, chunk.AccessTier);
 

@@ -183,7 +183,7 @@ namespace Arius.Core.Commands
                     //TODO TEST: binary file already exist - do not 
                 }
 
-                pf.ChunkHashes = (await _repo.GetChunkHashesAsync(pf.Hash)).ToArray();
+                pf.ChunkHashes = (await _repo.GetChunkHashesForManifestAsync(pf.Hash)).ToArray();
 
                 bool atLeastOneToMerge = false, atLeastOneToDecrypt = false, atLeastOneToDownload = false, atLeastOneToHydrate = false;
 

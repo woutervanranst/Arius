@@ -77,7 +77,7 @@ namespace Arius.Core.Tests
 
 
 
-            var mm = await repo.GetChunkHashesAsync(manifestBlob.Hash);
+            var mm = await repo.GetChunkHashesForManifestAsync(manifestBlob.Hash);
 
         }
 

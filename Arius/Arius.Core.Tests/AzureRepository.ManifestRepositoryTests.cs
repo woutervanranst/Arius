@@ -25,7 +25,7 @@ namespace Arius.Core.Tests
         {
             var manifestRepo = TestSetup.GetAzureRepository(); //TODO as ManifestRepository?
 
-            Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunkHashesAsync(new HashValue { Value = "idonotexist" }));
+            Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunkHashesForManifestAsync(new HashValue { Value = "idonotexist" }));
         }
 
 

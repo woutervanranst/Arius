@@ -81,7 +81,7 @@ namespace Arius.Core.Tests
 
             //10 The chunk is in the Archive tier
             var pf = bfi.GetPointerFile();
-            var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
+            var chunkHashes = await repo.GetChunkHashesForManifestAsync(pf.Hash);
             var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
@@ -127,7 +127,7 @@ namespace Arius.Core.Tests
 
             //10 - The chunk is in the cool tier
             var pf = bfi.GetPointerFile();
-            var chunkHashes = await repo.GetChunkHashesAsync(pf.Hash);
+            var chunkHashes = await repo.GetChunkHashesForManifestAsync(pf.Hash);
             var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(AccessTier.Cool, cb.AccessTier);
 

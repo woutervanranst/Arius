@@ -111,6 +111,7 @@ namespace Arius.Core.Commands
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
             var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
+            var manifestsToCreate = new BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)>();
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
@@ -199,14 +200,18 @@ namespace Arius.Core.Commands
 
             void removeFromPendingUpload(HashValue h)
             {
-                foreach (var item in chunksForManifest.Values)
+                //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
+
+                foreach (var item in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
                 {
-                    item.PendingUpload.Remove(h);
+                    item.Value.PendingUpload.Remove(h);
 
-                    if (!item.PendingUpload.Any())
+                    if (!item.Value.PendingUpload.Any())
                     {
-                        // all chunks are now uploaded
+                        //All chunks for this manifest are now uploaded
+                        chunksForManifest.Remove(item.Key, out _);
 
+                        manifestsToCreate.Add((item.Key, item.Value.All));
                     }
                 }
             };

@@ -41,7 +41,7 @@ namespace Arius.Core.Repositories
 
             // GET
 
-            public IEnumerable<ChunkBlobBase> GetAllChunkBlobs()
+            public ChunkBlobBase[] GetAllChunkBlobs()
             {
                 _logger.LogInformation($"Getting all ChunkBlobs...");
                 var r = Array.Empty<ChunkBlobBase>();
@@ -61,12 +61,13 @@ namespace Arius.Core.Repositories
 
             /// <summary>
             /// Get the RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
-            /// if requireHydrated is true and the chunk does not exist in cold storage, returns null
+            /// If the chunk does not exist, throws an InvalidOperationException
+            /// If requireHydrated is true and the chunk does not exist in cold storage, returns null
             /// </summary>
             public ChunkBlobBase GetChunkBlobByHash(HashValue chunkHash, bool requireHydrated)
             {
-                var name = $"{chunkHash.Value}{ChunkBlobBase.Extension}";
-                var cb1 = GetChunkBlobByName(EncryptedChunkDirectoryName, name);
+                var blobName = GetChunkBlobName(EncryptedChunkDirectoryName, chunkHash);
+                var cb1 = GetChunkBlobByName(blobName);
 
                 if (cb1 is null)
                     throw new InvalidOperationException($"No Chunk for hash {chunkHash.Value}");
@@ -79,8 +80,8 @@ namespace Arius.Core.Repositories
                 if (requireHydrated && cb1.Downloadable)
                     return cb1;
 
-
-                var cb2 = GetChunkBlobByName(RehydrationDirectoryName, name);
+                blobName = GetChunkBlobName(RehydrationDirectoryName, chunkHash);
+                var cb2 = GetChunkBlobByName(blobName);
 
                 if (cb2 is null || !cb2.Downloadable)
                 {
@@ -92,15 +93,28 @@ namespace Arius.Core.Repositories
                     return cb2;
             }
 
+            private string GetChunkBlobName(string folder, HashValue chunkHash) => GetChunkBlobFullName(folder, chunkHash.Value);
+            private string GetChunkBlobFullName(string folder, string chunkHashValue) => $"{folder}/{chunkHashValue}{ChunkBlobBase.Extension}";
+
             /// <summary>
-            /// Get a RemoteEncryptedChunkBlobItem by Name. Return null if it doesn't exist.
+            /// Get a ChunkBlobBase in the given folder with the given name.
+            /// Return null if it doesn't exist.
+            /// </summary>
+            /// <param name="folder"></param>
+            /// <param name="name"></param>
+            /// <returns></returns>
+            internal ChunkBlobBase GetChunkBlobByName(string folder, string name) => GetChunkBlobByName(GetChunkBlobFullName(folder, name));
+
+            /// <summary>
+            /// Get a ChunkBlobBase by FullName.
+            /// Return null if it doesn't exist.
             /// </summary>
             /// <returns></returns>
-            internal ChunkBlobBase GetChunkBlobByName(string folder, string name)
+            internal ChunkBlobBase GetChunkBlobByName(string blobName)
             {
                 try
                 {
-                    var bc = _bcc.GetBlobClient($"{folder}/{name}");
+                    var bc = _bcc.GetBlobClient(blobName);
                     var cb = ChunkBlobBase.GetChunkBlob(bc);
                     return cb;
                 }
@@ -112,11 +126,12 @@ namespace Arius.Core.Repositories
 
             public bool ChunkExists(HashValue chunkHash)
             {
-                return GetChunkBlobByHash(chunkHash, false) is not null; //await _bcc.GetBlobClient($"{EncryptedChunkDirectoryName}/{manifestHash}").ExistsAsync();
+                return _bcc.GetBlobClient(GetChunkBlobName(EncryptedChunkDirectoryName, chunkHash)).Exists();
             }
 
 
-            // PUT
+            // HYDRATE
+
             public void Hydrate(ChunkBlobBase blobToHydrate)
             {
                 _logger.LogInformation($"Hydrating chunk {blobToHydrate.Name}");
@@ -150,6 +165,9 @@ namespace Arius.Core.Repositories
                 }
             }
 
+
+            // DELETE
+
             public void DeleteHydrateFolder()
             {
                 _logger.LogInformation("Deleting temporary hydration folder");
@@ -160,6 +178,7 @@ namespace Arius.Core.Repositories
                     bc.Delete();
                 }
             }
+
 
             // UPLOAD & DOWNLOAD
 
