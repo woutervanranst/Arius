@@ -328,8 +328,6 @@ namespace Arius.Core.Commands
 
             // 3 Does not exist remote but is being created
             logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
-
-            return;
         }
         private readonly List<HashValue> creating = new();
 
@@ -496,7 +494,11 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync((HashValue ManifestHash, HashValue[] ChunkHashes) item)
         {
-            await repo.AddManifestAsync()
+            logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'...");
+
+            await repo.AddManifestAsync(item.ManifestHash, item.ChunkHashes);
+
+            logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'... done");
         }
     }
 }
