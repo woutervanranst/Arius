@@ -17,7 +17,11 @@ namespace Arius.Core.Commands
         {
             this.logger = logger;
             //this.continueWhile = continueWhile;
-            this.done = done;
+            this.done = () =>
+            {
+                logger.LogTrace("Done.");
+                done();
+            };
         }
 
         protected readonly ILogger logger;
