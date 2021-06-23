@@ -45,7 +45,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
-        protected SingleTaskBlockBase(/*Func<bool> continueWhile, */Action done) : base(/*continueWhile, */done)
+        protected SingleTaskBlockBase(ILogger logger, /*Func<bool> continueWhile, */Action done) : base(logger, /*continueWhile, */done)
         {
         }
         protected abstract void TaskBodyImpl();
@@ -69,7 +69,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected SingleThreadForEachTaskBlockBase(IEnumerable<TSource> source, /*Func<bool> continueWhile, */Action done) : base(/*continueWhile, */done)
+        protected SingleThreadForEachTaskBlockBase(ILogger logger, IEnumerable<TSource> source, /*Func<bool> continueWhile, */Action done) : base(logger, /*continueWhile, */done)
         {
             this.source = source;
         }
@@ -100,7 +100,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleThreadTaskBlockBase<TSource> : BlockBase
     {
-        protected SingleThreadTaskBlockBase(BlockingCollection<TSource> source, /*Func<bool> @while, */Action done) : base(/*continueWhile, */done)
+        protected SingleThreadTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, /*Func<bool> @while, */Action done) : base(logger, /*continueWhile, */done)
         {
             this.source = source;
             //this.@while = @while;
@@ -132,7 +132,7 @@ namespace Arius.Core.Commands
 
     internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
     {
-        protected MultiThreadForEachTaskBlockBase(/*Func<bool> continueWhile, */Partitioner<TSource> source, int maxDegreeOfParallelism, Action done) : base(/*continueWhile, */done)
+        protected MultiThreadForEachTaskBlockBase(ILogger logger, /*Func<bool> continueWhile, */Partitioner<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, /*continueWhile, */done)
         {
             this.source = source;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;

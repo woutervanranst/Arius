@@ -19,17 +19,16 @@ namespace Arius.Core.Commands
 {
     internal class IndexBlock : SingleTaskBlockBase
     {
-        public IndexBlock(ILogger<IndexBlock> logger, DirectoryInfo root, Action<IFile> indexedFile, Action done)
-            : base(
-                  //continueWhile: () => false, //no not keep running after the directory is indexed
-                  done: done)
+        public IndexBlock(ILogger<IndexBlock> logger, 
+            DirectoryInfo root, 
+            Action<IFile> indexedFile, 
+            Action done)
+            : base(logger, done)
         {
-            this.logger = logger;
             this.root = root;
             this.indexedFile = indexedFile;
         }
 
-        private readonly ILogger<IndexBlock> logger;
         private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
 
@@ -129,16 +128,14 @@ namespace Arius.Core.Commands
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(/*continueWhile, */source, maxDegreeOfParallelism, done)
+            Action done) : base(logger, /*continueWhile, */source, maxDegreeOfParallelism, done)
         {
-            this.logger = logger;
             //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
             this.hvp = hvp;
         }
 
-        private readonly ILogger<HashBlock> logger;
         //private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
@@ -181,16 +178,14 @@ namespace Arius.Core.Commands
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
-           Action done) : base(source, /*continueWhile, */done)
+           Action done) : base(logger, source, /*continueWhile, */done)
         {
-            this.logger = logger;
             this.repo = repo;
             this.uploadBinaryFile = uploadBinaryFile;
             this.waitForCreatedManifest = waitForCreatedManifest;
             this.manifestExists = manifestExists;
         }
 
-        private readonly ILogger<ProcessHashedBinaryBlock> logger;
         private readonly AzureRepository repo;
         private readonly Action<BinaryFile> uploadBinaryFile;
         private readonly Action<BinaryFile> waitForCreatedManifest;
@@ -261,15 +256,13 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             IChunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
-            Action done) : base(source, maxDegreeOfParallelism, done)
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
-            this.logger = logger;
             //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.chunker = chunker;
             this.chunkedBinary = chunkedBinary;
         }
 
-        private readonly ILogger<ChunkBlock> logger;
         //private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
@@ -294,15 +287,13 @@ namespace Arius.Core.Commands
             AzureRepository repo,
             Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
-            Action done) : base(source, done)
+            Action done) : base(logger,source, done)
         {
-            this.logger = logger;
             this.repo = repo;
             this.chunkToUpload = chunkToUpload;
             this.chunkAlreadyUploaded = chunkAlreadyUploaded;
         }
 
-        private readonly ILogger<ProcessChunkBlock> logger;
         private readonly AzureRepository repo;
         private readonly Action<IChunkFile> chunkToUpload;
         private readonly Action<HashValue> chunkAlreadyUploaded;
@@ -356,15 +347,13 @@ namespace Arius.Core.Commands
             TempDirectoryAppSettings tempDirAppSettings,
             IEncrypter encrypter,
             Action<EncryptedChunkFile> chunkEncrypted,
-            Action done) : base(source, maxDegreeOfParallelism, done)
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
-            this.logger = logger;
             this.tempDirAppSettings = tempDirAppSettings;
             this.encrypter = encrypter;
             this.chunkEncrypted = chunkEncrypted;
         }
 
-        private readonly ILogger<EncryptChunkBlock> logger;
         private readonly TempDirectoryAppSettings tempDirAppSettings;
         private readonly IEncrypter encrypter;
         private readonly Action<EncryptedChunkFile> chunkEncrypted;
@@ -393,15 +382,13 @@ namespace Arius.Core.Commands
             AzCopyAppSettings azCopyAppSettings,
             Func<bool> isAddingCompleted,
             Action<EncryptedChunkFile[]> batchForUpload,
-            Action done) : base(source, done)
+            Action done) : base(logger, source, done)
         {
-            this.logger = logger;
             this.azCopyAppSettings = azCopyAppSettings;
             this.isAddingCompleted = isAddingCompleted;
             this.batchForUpload = batchForUpload;
         }
 
-        private readonly ILogger<CreateUploadBatchBlock> logger;
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly Func<bool> isAddingCompleted;
         private readonly Action<EncryptedChunkFile[]> batchForUpload;

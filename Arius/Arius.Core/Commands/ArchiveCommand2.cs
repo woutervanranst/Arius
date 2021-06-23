@@ -169,7 +169,7 @@ namespace Arius.Core.Commands
 
             var uploadEncryptedChunkBlock = new CreateUploadBatchBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateUploadBatchBlock>(),
-                source: chunksToUpload.GetConsumingEnumerable(),
+                source: chunksToUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
                 isAddingCompleted: () => chunksToUpload.IsAddingCompleted, //B802
                 batchForUpload: (b) => batchesForUpload.Add(b), //B804
