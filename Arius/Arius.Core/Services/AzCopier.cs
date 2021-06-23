@@ -36,20 +36,12 @@ namespace Arius.Core.Services
 
             //Search async for the AZCopy Library (on another thread)
             _AzCopyPath = Task.Run(() => ExternalProcess.FindFullName(logger, "azcopy.exe", "azcopy"));
-            // TODO KARL 
             //    .ContinueWith(tsk =>
             //{
             //    if (tsk.IsFaulted)
             //        throw tsk.Exception;
-
             //    return tsk.Result;
-
             //}, TaskScheduler.FromCurrentSynchronizationContext());
-            //.ContinueWith(t =>
-            //{
-            //    if (t.IsFaulted)
-            //        throw t.Exception;
-
             //    return string.Empty;
             //}, TaskScheduler..OnlyOnFaulted);
             //TODO Error handling back to main thread
