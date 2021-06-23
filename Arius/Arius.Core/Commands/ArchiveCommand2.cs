@@ -3,6 +3,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ namespace Arius.Core.Commands
     {
         internal interface IOptions
         {
+            AccessTier Tier { get; }
             string Path { get; }
         }
 
@@ -29,12 +31,12 @@ namespace Arius.Core.Commands
             ILogger<ArchiveCommand> logger,
             IServiceProvider serviceProvider)
         {
-            root = new DirectoryInfo(options.Path);
+            this.options = options;
             this._logger = logger;
             this.services = serviceProvider;
         }
 
-        private readonly DirectoryInfo root;
+        private readonly IOptions options;
         private readonly ILogger<ArchiveCommand> _logger;
         private readonly IServiceProvider services;
 
@@ -51,7 +53,7 @@ namespace Arius.Core.Commands
 
             var indexBlock = new IndexBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
-                root: root,
+                root: new DirectoryInfo(options.Path),
                 indexedFile: (file) => indexedFiles.Add(file),
                 done: () => indexedFiles.CompleteAdding());
             var indexTask = indexBlock.GetTask;
@@ -70,7 +72,7 @@ namespace Arius.Core.Commands
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 done: () =>
                 {
-                    createManifest.CompleteAdding();
+                    createManifest.CompleteAdding(); //B310
                     //createPointerFileEntry.CompleteAdding(); HIER NIET
                 });
             var hashTask = hashBlock.GetTask;
@@ -183,7 +185,9 @@ namespace Arius.Core.Commands
             var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
                 source: batchesForUpload.GetConsumingPartitioner(),
-                maxDegreeOfParallelism: 2,
+                maxDegreeOfParallelism: 1 /*2*/,
+                repo: services.GetRequiredService<AzureRepository>(),
+                tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
                 done: () =>
                 {
