@@ -79,8 +79,8 @@ namespace Arius.Core.Commands
 
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var binariesWaitingForManifests = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
-            var pointersToCreate = new BlockingCollectionEx<BinaryFile>();
+            var binariesWaitingForManifestCreation = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
+            var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
@@ -90,7 +90,7 @@ namespace Arius.Core.Commands
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) => //B402
                 {
-                    binariesWaitingForManifests.AddOrUpdate(
+                    binariesWaitingForManifestCreation.AddOrUpdate(
                         key: bf.Hash,
                         addValue: new() { bf },
                         updateValueFactory: (h, bag) =>
@@ -113,22 +113,21 @@ namespace Arius.Core.Commands
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
             var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
-            var manifestsToCreate = new BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)>();
 
             var chunkBlock = new ChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
                 source: binariesToChunk.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<IChunker>(),
-                chunkedBinary: (bf, cfs) => 
+                chunkedBinary: (binaryFile, chunkFiles) => 
                 {
                     //B501
-                    chunksToProcess.AddFromEnumerable(cfs, false);
+                    chunksToProcess.AddFromEnumerable(chunkFiles, false);
 
                     //B502
-                    var chs = cfs.Select(ch => ch.Hash).ToArray();
+                    var chs = chunkFiles.Select(ch => ch.Hash).ToArray();
                     chunksForManifest.AddOrUpdate( 
-                        key: bf.Hash,
+                        key: binaryFile.Hash,
                         addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
                         updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
                 },
@@ -140,6 +139,7 @@ namespace Arius.Core.Commands
 
 
             var chunksToEncrypt = new BlockingCollection<IChunkFile>();
+            var manifestsToCreate = new BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)>();
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessChunkBlock>(),
@@ -184,7 +184,7 @@ namespace Arius.Core.Commands
                 });
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
 
-
+            
             var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
                 source: batchesForUpload.GetConsumingPartitioner(),
@@ -198,22 +198,24 @@ namespace Arius.Core.Commands
                 });
             var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
 
-
-            void removeFromPendingUpload(HashValue h)
+            
+            void removeFromPendingUpload(HashValue chunkHash)
             {
+                // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
+
                 //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
 
-                foreach (var item in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
+                foreach (var manifest in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
                 {
-                    item.Value.PendingUpload.Remove(h);
+                    manifest.Value.PendingUpload.Remove(chunkHash);
 
-                    if (!item.Value.PendingUpload.Any())
+                    if (!manifest.Value.PendingUpload.Any())
                     {
                         //All chunks for this manifest are now uploaded
-                        if (!chunksForManifest.TryRemove(item.Key, out _))
-                            throw new InvalidOperationException("Key should be present but is not");
+                        if (!chunksForManifest.TryRemove(manifest.Key, out _))
+                            throw new InvalidOperationException($"Manifest '{manifest.Key}'should have been present in the {nameof(chunksForManifest)} list but isn't");
 
-                        manifestsToCreate.Add((item.Key, item.Value.All)); //B1001
+                        manifestsToCreate.Add((ManifestHash: manifest.Key, ChunkHashes: manifest.Value.All)); //B1001
                     }
                 }
             };
@@ -224,15 +226,25 @@ namespace Arius.Core.Commands
                 source: manifestsToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: services.GetRequiredService<AzureRepository>(),
-                manifestCreated: (h) => { },
+                manifestCreated: (manifestHash) => onManifestCreated(manifestHash), //B1101
                 done: () =>
                 {
-
+                    throw new NotImplementedException();
                 });
             var createManifestTask = createManifestBlock.GetTask;
 
+            
+            void onManifestCreated(HashValue manifestHash)
+            {
+                if (!binariesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
+                    throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binariesWaitingForManifestCreation)} list but isn't");
+
+                pointersToCreate.AddFromEnumerable(binaryFiles.AsEnumerable(), false); //B1201
+            }
 
 
+            await Task.WhenAll(processHashedBinaryBlock.GetTask, createManifestBlock.GetTask)
+                .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1301 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 
 
 
@@ -243,8 +255,6 @@ namespace Arius.Core.Commands
                 await Task.Yield();
             }
 
-
-            await Task.WhenAll(pointersToCreate.WaitAddingCompleted);
 
             await Task.WhenAll(BlockBase.AllTasks);
 

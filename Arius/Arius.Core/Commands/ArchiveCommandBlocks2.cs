@@ -237,7 +237,7 @@ namespace Arius.Core.Commands
             //    return created[h];
 
             // Check remote
-            var e = repo.ManifestExistsAsync(h); //TODO: Cache results
+            var e = repo.ManifestExistsAsync(h); //TODO: Cache results - maar pas op met synchronization issues in B1201
             //created.Add(h, e); //Add result to cache so we dont need to recheck again next time
 
             return e;
@@ -272,6 +272,7 @@ namespace Arius.Core.Commands
             logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')...");
             var chunks = chunker.Chunk(bf);
             logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')... done. Created {chunks.Length} chunk(s)");
+            logger.LogDebug($"Chunks for manifest '{bf.Hash.ToShortString()}': '{string.Join("', '", chunks.Select(c => c.Hash.ToShortString()))}'");
 
             chunkedBinary(bf, chunks);
 
@@ -488,15 +489,18 @@ namespace Arius.Core.Commands
             Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
             this.repo = repo;
+            this.manifestCreated = manifestCreated;
         }
 
         private readonly AzureRepository repo;
+        private readonly Action<HashValue> manifestCreated;
 
         protected override async Task ForEachBodyImplAsync((HashValue ManifestHash, HashValue[] ChunkHashes) item)
         {
             logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'...");
 
             await repo.AddManifestAsync(item.ManifestHash, item.ChunkHashes);
+            manifestCreated(item.ManifestHash);
 
             logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'... done");
         }

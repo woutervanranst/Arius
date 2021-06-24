@@ -4,6 +4,7 @@ using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -180,56 +181,89 @@ namespace Arius.Core.Commands
 
 
 
-    public class BlockingCollectionEx<T> : BlockingCollection<T>
-    {
-        public new void CompleteAdding()
-        {
-            base.CompleteAdding();
+    //public class BlockingCollectionEx<T> : BlockingCollection<T> 
+    // THIS IS A BAD IDEA: https://stackoverflow.com/questions/68101714/await-completion-of-blockingcollection
+    //{
+    //    public Task WaitAddingCompleted => completeAddingManualResetEvent.Task;
+    //    private readonly TaskCompletionSource completeAddingManualResetEvent = new();
+    //    public Task WaitCompleted => completedManualResetEvent.Task;
+    //    private readonly TaskCompletionSource completedManualResetEvent = new();
 
-            completeAddingManualResetEvent.Set();
-        }
+    //    public new void CompleteAdding()
+    //    {
+    //        base.CompleteAdding();
 
-        public Task WaitAddingCompleted => completeAddingManualResetEvent.WaitAsync();
-        private readonly AsyncManualResetEvent completeAddingManualResetEvent = new();
+    //        lock (completeAddingManualResetEvent)
+    //        {
+    //            if (!completeAddingManualResetEvent.Task.IsCompleted)
+    //                completeAddingManualResetEvent.SetResult();
+    //        }
+
+    //        lock (completedManualResetEvent)
+    //        {
+    //            if (base.Count == 0 && !completedManualResetEvent.Task.IsCompleted)
+    //                completedManualResetEvent.SetResult();
+    //        }
+    //    }
 
 
-        public new IEnumerable<T> GetConsumingEnumerable(CancellationToken cancellationToken)
-        {
-            throw new NotImplementedException();
-        }
-        public new IEnumerable<T> GetConsumingEnumerable()
-        {
-            foreach (var item in base.GetConsumingEnumerable())
-                yield return item;
 
-            completedManualResetEvent.SetResult();
-        }
 
-        //public Task WaitCompleted => completedManualResetEvent.WaitAsync();
-        //private readonly AsyncManualResetEvent completedManualResetEvent = new();
-        public Task WaitCompleted => completedManualResetEvent.Task;
-        private readonly TaskCompletionSource completedManualResetEvent = new();
 
-        public Partitioner<T> GetConsumingPartitioner()
-        {
-            throw new NotImplementedException();
-        }
 
-        /*
-            * 
-            * TO TEST
-    var x = new BlockingCollectionEx<int> { 1, 2, 3 };
-    x.CompleteAdding();
-    Task.Run(async () =>
-    {
-        await Task.Delay(1000);
-        foreach (var item in x.GetConsumingEnumerable())
-        {
-        }
-    });
 
-    await x.WaitCompleted;
 
-            */
-    }
+
+    //    public new IEnumerable<T> GetConsumingEnumerable(CancellationToken cancellationToken) => throw new NotImplementedException();
+    //    public new IEnumerable<T> GetConsumingEnumerable()
+    //    {
+    //        foreach (var item in base.GetConsumingEnumerable())
+    //            yield return item;
+
+    //        lock (completedManualResetEvent) //if GetConsumingEnumerable is used by multiple threads, the 2nd one would throw an InvalidOperationException 
+    //        {
+    //            if (!completedManualResetEvent.Task.IsCompleted)
+    //                completedManualResetEvent.SetResult();
+    //        }
+    //    }
+
+
+
+    //    public new T Take() => throw new NotImplementedException();
+    //    public new T Take(CancellationToken cancellationToken) => throw new NotImplementedException();
+
+    //    public new bool TryTake([MaybeNullWhen(false)] out T item) => throw new NotImplementedException();
+    //    public new bool TryTake([MaybeNullWhen(false)] out T item, int millisecondsTimeout) => throw new NotImplementedException();
+    //    public new bool TryTake([MaybeNullWhen(false)] out T item, int millisecondsTimeout, CancellationToken cancellationToken) => throw new NotImplementedException();
+    //    public new bool TryTake([MaybeNullWhen(false)] out T item, TimeSpan timeout) => throw new NotImplementedException();
+
+    //    public Partitioner<T> GetConsumingPartitioner() => throw new NotImplementedException();
+
+
+
+    //    /*
+    //        * 
+    //        * 
+    //    await x.WaitCompleted;
+
+
+    //    var x = new BlockingCollectionEx<int> { 1, 2, 3 };
+    //        x.CompleteAdding();
+    //        Task.Run(() =>
+    //        {
+    //            await Task.Delay(1000);
+    //            foreach (var item in x.GetConsumingEnumerable())
+    //            { }
+    //            });
+    //        Task.Run(() =>
+    //        {
+    //            await Task.Delay(1000);
+    //            foreach (var item in x.GetConsumingEnumerable())
+    //            { }
+    //            // do stuff in Task 2
+    //        });
+    //        await x.WaitCompleted;
+
+    //        */
+    //}
 }
