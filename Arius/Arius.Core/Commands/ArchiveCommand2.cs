@@ -55,7 +55,7 @@ namespace Arius.Core.Commands
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
                 root: new DirectoryInfo(options.Path),
                 indexedFile: (file) => filesToHash.Add(file),
-                done: () => filesToHash.CompleteAdding());
+                done: () => filesToHash.CompleteAdding()); //B210
             var indexTask = indexBlock.GetTask;
 
 
@@ -70,11 +70,7 @@ namespace Arius.Core.Commands
                 hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf),
                 hashedBinaryFile: (bf) => binariesToUpload.Add(bf),
                 hvp: services.GetRequiredService<IHashValueProvider>(),
-                done: () =>
-                {
-                    binariesToUpload.CompleteAdding(); //B310
-                    //createPointerFileEntry.CompleteAdding(); HIER NIET
-                });
+                done: () => binariesToUpload.CompleteAdding()); //B310
             var hashTask = hashBlock.GetTask;
 
 
@@ -100,15 +96,8 @@ namespace Arius.Core.Commands
                         });
                 },
                 manifestExists: (bf) => pointersToCreate.Add(bf), //B403
-                done: () =>
-                {
-                    binariesToChunk.CompleteAdding(); //B410
-                    //pointersToCreate.CompleteAdding(); NIET HIER
-
-                });
+                done: () => binariesToChunk.CompleteAdding()); //B410
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
-
-            //await Task.Delay(10000);
 
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
@@ -131,10 +120,7 @@ namespace Arius.Core.Commands
                         addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
                         updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
                 },
-                done: () =>
-                {
-                    chunksToProcess.CompleteAdding(); //B510
-                });
+                done: () => chunksToProcess.CompleteAdding()); //B510
             var chunkTask = chunkBlock.GetTask;
 
 
@@ -147,10 +133,7 @@ namespace Arius.Core.Commands
                 repo: services.GetRequiredService<AzureRepository>(),
                 chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
                 chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
-                done: () =>
-                {
-                    chunksToEncrypt.CompleteAdding(); //B610
-                });
+                done: () => chunksToEncrypt.CompleteAdding()); //B610
             var processChunkTask = processChunkBlock.GetTask;
 
 
@@ -163,10 +146,7 @@ namespace Arius.Core.Commands
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
                 encrypter: services.GetRequiredService<IEncrypter>(),
                 chunkEncrypted: (ecf) => chunksToBatchForUpload.Add(ecf), //B701
-                done: () =>
-                {
-                    chunksToBatchForUpload.CompleteAdding(); //B710
-                });
+                done: () => chunksToBatchForUpload.CompleteAdding()); //B710
             var encyptChunkBlockTask = encryptChunkBlock.GetTask;
 
 
@@ -178,10 +158,7 @@ namespace Arius.Core.Commands
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
                 isAddingCompleted: () => chunksToBatchForUpload.IsAddingCompleted, //B802
                 batchForUpload: (b) => batchesToUpload.Add(b), //B804
-                done: () =>
-                {
-                    batchesToUpload.CompleteAdding(); //B810
-                });
+                done: () => batchesToUpload.CompleteAdding()); //B810
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
 
             
@@ -192,10 +169,8 @@ namespace Arius.Core.Commands
                 repo: services.GetRequiredService<AzureRepository>(),
                 tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
-                done: () =>
-                {
-                    manifestsToCreate.CompleteAdding(); //B910
-                });
+                done: () => manifestsToCreate.CompleteAdding()); //B910
+
             var uploadBatchTask = uploadBatchBlock.GetTask;
 
             
@@ -226,27 +201,31 @@ namespace Arius.Core.Commands
                 source: manifestsToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: services.GetRequiredService<AzureRepository>(),
-                manifestCreated: (manifestHash) => onManifestCreated(manifestHash), //B1101
-                done: () =>
+                manifestCreated: (manifestHash) =>
                 {
-                    throw new NotImplementedException();
-                });
+                    if (!binariesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
+                        throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binariesWaitingForManifestCreation)} list but isn't");
+
+                    pointersToCreate.AddFromEnumerable(binaryFiles.AsEnumerable(), false); //B1101
+                },
+                done: () => { });
             var createManifestTask = createManifestBlock.GetTask;
 
             
-            void onManifestCreated(HashValue manifestHash)
-            {
-                if (!binariesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
-                    throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binariesWaitingForManifestCreation)} list but isn't");
-
-                pointersToCreate.AddFromEnumerable(binaryFiles.AsEnumerable(), false); //B1201
-            }
-
-
-            await Task.WhenAll(processHashedBinaryBlock.GetTask, createManifestBlock.GetTask)
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+                               // can be ignored since we'll be awaiting the pointersToCreate
+            Task.WhenAll(processHashedBinaryBlock.GetTask, createManifestBlock.GetTask)
                 .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1301 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 
+            var createPointerBlock = new CreatePointerBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreatePointerBlock>(),
+                source: pointersToCreate.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 1 /*2*/,
+
+                );
+            var createPoiterTask = createPointerBlock.GetTask;
 
             //await Task.WhenAll(batchesForUpload.is)
 

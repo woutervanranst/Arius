@@ -505,4 +505,20 @@ namespace Arius.Core.Commands
             logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'... done");
         }
     }
+
+
+    internal class CreatePointerBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    {
+        public CreatePointerBlock(ILogger<CreatePointerBlock> logger,
+            Partitioner<BinaryFile> source,
+            int maxDegreeOfParallelism,
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+        {
+        }
+
+        protected override Task ForEachBodyImplAsync(BinaryFile item)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }
