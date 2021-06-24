@@ -50,10 +50,14 @@ namespace Arius.Core.Commands
 
         public async Task<int> Execute()
         {
+            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+            var repo = services.GetRequiredService<AzureRepository>();
+
+
             var filesToHash = new BlockingCollection<IFile>();
 
             var indexBlock = new IndexBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
+                logger: loggerFactory.CreateLogger<IndexBlock>(),
                 root: new DirectoryInfo(options.Path),
                 indexedFile: (file) => filesToHash.Add(file),
                 done: () => filesToHash.CompleteAdding()); //B210
@@ -64,7 +68,7 @@ namespace Arius.Core.Commands
             var binariesToUpload = new BlockingCollection<BinaryFile>();
 
             var hashBlock = new HashBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
+                logger: loggerFactory.CreateLogger<HashBlock>(),
                 //continueWhile: () => !indexedFiles.IsCompleted,
                 source: filesToHash.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
@@ -80,10 +84,10 @@ namespace Arius.Core.Commands
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
+                logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
                 //continueWhile: () => !createManifest.IsCompleted,
                 source: binariesToUpload.GetConsumingEnumerable(),
-                repo: services.GetRequiredService<AzureRepository>(),
+                repo: repo,
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) => //B402
                 {
@@ -105,7 +109,7 @@ namespace Arius.Core.Commands
             var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
 
             var chunkBlock = new ChunkBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ChunkBlock>(),
+                logger: loggerFactory.CreateLogger<ChunkBlock>(),
                 source: binariesToChunk.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<IChunker>(),
@@ -129,9 +133,9 @@ namespace Arius.Core.Commands
             var manifestsToCreate = new BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)>();
 
             var processChunkBlock = new ProcessChunkBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessChunkBlock>(),
+                logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
                 source: chunksToProcess.GetConsumingEnumerable(),
-                repo: services.GetRequiredService<AzureRepository>(),
+                repo: repo,
                 chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
                 chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
                 done: () => chunksToEncrypt.CompleteAdding()); //B610
@@ -141,7 +145,7 @@ namespace Arius.Core.Commands
             var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();
 
             var encryptChunkBlock = new EncryptChunkBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<EncryptChunkBlock>(),
+                logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
                 source: chunksToEncrypt.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
@@ -154,7 +158,7 @@ namespace Arius.Core.Commands
             var batchesToUpload = new BlockingCollection<EncryptedChunkFile[]>();
 
             var createUploadBatchBlock = new CreateUploadBatchBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateUploadBatchBlock>(),
+                logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
                 source: chunksToBatchForUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
                 isAddingCompleted: () => chunksToBatchForUpload.IsAddingCompleted, //B802
@@ -164,10 +168,10 @@ namespace Arius.Core.Commands
 
             
             var uploadBatchBlock = new UploadBatchBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadBatchBlock>(),
+                logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
                 source: batchesToUpload.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
-                repo: services.GetRequiredService<AzureRepository>(),
+                repo: repo,
                 tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
                 done: () => manifestsToCreate.CompleteAdding()); //B910
@@ -198,10 +202,10 @@ namespace Arius.Core.Commands
 
 
             var createManifestBlock = new CreateManifestBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateManifestBlock>(),
+                logger: loggerFactory.CreateLogger<CreateManifestBlock>(),
                 source: manifestsToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
-                repo: services.GetRequiredService<AzureRepository>(),
+                repo: repo,
                 manifestCreated: (manifestHash) =>
                 {
                     if (!binariesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
@@ -215,35 +219,54 @@ namespace Arius.Core.Commands
             
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
                                // can be ignored since we'll be awaiting the pointersToCreate
-            Task.WhenAll(processHashedBinaryBlock.GetTask, createManifestBlock.GetTask)
-                .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1301 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
+            Task.WhenAll(processHashedBinaryTask, createManifestTask)
+                .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1110 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 
-            var createPointerBlock = new CreatePointerBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreatePointerBlock>(),
+            var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
+                logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 source: pointersToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 pointerService: services.GetRequiredService<PointerService>(),
                 removeLocal: options.RemoveLocal,
-                pointerFileCreated: (pf) =>
-                {
-                    pointerFileEntriesToCreate.Add(pf); //B1201
-                },
-                done: () => { 
+                pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
+                done: () => 
+                { 
                 });
-            var createPointerTask = createPointerBlock.GetTask;
+            var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
 
-            //await Task.WhenAll(batchesForUpload.is)
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            // can be ignored since we'll be awaiting the pointersToCreate
+            Task.WhenAll(hashTask, createPointerFileIfNotExistsTask)
+                .ContinueWith(_ => pointerFileEntriesToCreate.CompleteAdding()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
-            while (true)
-            {
-                await Task.Yield();
-            }
+            var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
+                logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
+                source: pointerFileEntriesToCreate.GetConsumingPartitioner(),
+                maxDegreeOfParallelism: 1 /*2*/,
+                repo: repo,
+                done: () => 
+                {
+                });
+            var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
 
+
+
+            // Await the current stage of the pipeline
             await Task.WhenAll(BlockBase.AllTasks);
+
+
+
+            //while (true)
+            //{
+            //    await Task.Yield();
+            //}
+
+
 
             return 0;
         }

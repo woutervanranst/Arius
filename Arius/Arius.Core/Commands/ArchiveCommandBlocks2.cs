@@ -507,9 +507,9 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreatePointerBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    internal class CreatePointerFileIfNotExistsBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
-        public CreatePointerBlock(ILogger<CreatePointerBlock> logger,
+        public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             Partitioner<BinaryFile> source,
             int maxDegreeOfParallelism,
             PointerService pointerService,
@@ -547,6 +547,20 @@ namespace Arius.Core.Commands
         }
     }
 
+    internal class CreatePointerFileEntryIfNotExistsBlock : MultiThreadForEachTaskBlockBase<PointerFile>
+    {
+        public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
+            Partitioner<PointerFile> source,
+            int maxDegreeOfParallelism,
+            AzureRepository repo,
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+        {
+        }
 
-   
+        protected override Task ForEachBodyImplAsync(PointerFile item)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 }
