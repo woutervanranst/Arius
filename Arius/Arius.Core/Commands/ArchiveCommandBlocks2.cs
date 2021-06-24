@@ -20,9 +20,9 @@ namespace Arius.Core.Commands
 {
     internal class IndexBlock : SingleTaskBlockBase
     {
-        public IndexBlock(ILogger<IndexBlock> logger, 
-            DirectoryInfo root, 
-            Action<IFile> indexedFile, 
+        public IndexBlock(ILogger<IndexBlock> logger,
+            DirectoryInfo root,
+            Action<IFile> indexedFile,
             Action done)
             : base(logger, done)
         {
@@ -106,8 +106,8 @@ namespace Arius.Core.Commands
         }
         private IFile GetFile(DirectoryInfo root, FileInfo fi)
         {
-            RelativeFileBase file = fi.IsPointerFile() ? 
-                new PointerFile(root, fi) : 
+            RelativeFileBase file = fi.IsPointerFile() ?
+                new PointerFile(root, fi) :
                 new BinaryFile(root, fi);
 
             logger.LogInformation($"Found {file.GetType().Name} '{file.RelativeName}'");
@@ -287,7 +287,7 @@ namespace Arius.Core.Commands
             AzureRepository repo,
             Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
-            Action done) : base(logger,source, done)
+            Action done) : base(logger, source, done)
         {
             this.repo = repo;
             this.chunkToUpload = chunkToUpload;
@@ -512,13 +512,41 @@ namespace Arius.Core.Commands
         public CreatePointerBlock(ILogger<CreatePointerBlock> logger,
             Partitioner<BinaryFile> source,
             int maxDegreeOfParallelism,
+            PointerService pointerService,
+            bool removeLocal,
+            Action<PointerFile> pointerFileCreated,
             Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
+            this.pointerService = pointerService;
+            this.removeLocal = removeLocal;
+            this.pointerFileCreated = pointerFileCreated;
         }
 
-        protected override Task ForEachBodyImplAsync(BinaryFile item)
+        private readonly PointerService pointerService;
+        private readonly bool removeLocal;
+        private readonly Action<PointerFile> pointerFileCreated;
+
+        protected override Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            throw new NotImplementedException();
+            logger.LogInformation($"Creating pointer for '{bf.RelativeName}'...");
+
+            var pf = pointerService.CreatePointerFileIfNotExists(bf);
+
+            logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
+
+            if (removeLocal)
+            {
+                logger.LogInformation($"Deleting binary '{bf.RelativeName}'...");
+                bf.Delete();
+                logger.LogInformation($"Deleting binary '{bf.RelativeName}'... done");
+            }
+
+            pointerFileCreated(pf);
+
+            return Task.CompletedTask;
         }
     }
+
+
+   
 }

@@ -23,6 +23,7 @@ namespace Arius.Core.Commands
     {
         internal interface IOptions
         {
+            bool RemoveLocal { get; }
             AccessTier Tier { get; }
             string Path { get; }
         }
@@ -223,9 +224,16 @@ namespace Arius.Core.Commands
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreatePointerBlock>(),
                 source: pointersToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
+                pointerService: services.GetRequiredService<PointerService>(),
+                removeLocal: options.RemoveLocal,
+                pointerFileCreated: (pf) =>
+                {
+                    pointerFileEntriesToCreate.Add(pf); //B1201
+                },
+                done: () => { 
+                });
+            var createPointerTask = createPointerBlock.GetTask;
 
-                );
-            var createPoiterTask = createPointerBlock.GetTask;
 
             //await Task.WhenAll(batchesForUpload.is)
 
