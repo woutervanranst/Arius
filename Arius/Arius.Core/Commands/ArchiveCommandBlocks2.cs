@@ -237,7 +237,7 @@ namespace Arius.Core.Commands
             //    return created[h];
 
             // Check remote
-            var e = repo.ManifestExistsAsync(h); //TODO: Cache results - maar pas op met synchronization issues in B1201
+            var e = repo.ManifestExistsAsync(h); //TODO: Cache results - maar pas op met synchronization issues in CreateManifestBlock.manifestCreated handler
             //created.Add(h, e); //Add result to cache so we dont need to recheck again next time
 
             return e;
@@ -439,9 +439,9 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class UploadEncryptedChunkBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile[]>
+    internal class UploadBatchBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile[]>
     {
-        public UploadEncryptedChunkBlock(ILogger<UploadEncryptedChunkBlock> logger,
+        public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
             Partitioner<EncryptedChunkFile[]> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,

@@ -49,30 +49,30 @@ namespace Arius.Core.Commands
 
         public async Task<int> Execute()
         {
-            var indexedFiles = new BlockingCollection<IFile>();
+            var filesToHash = new BlockingCollection<IFile>();
 
             var indexBlock = new IndexBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<IndexBlock>(),
                 root: new DirectoryInfo(options.Path),
-                indexedFile: (file) => indexedFiles.Add(file),
-                done: () => indexedFiles.CompleteAdding());
+                indexedFile: (file) => filesToHash.Add(file),
+                done: () => filesToHash.CompleteAdding());
             var indexTask = indexBlock.GetTask;
 
 
-            var createPointerFileEntry = new BlockingCollection<PointerFile>();
-            var createManifest = new BlockingCollection<BinaryFile>();
+            var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
+            var binariesToUpload = new BlockingCollection<BinaryFile>();
 
             var hashBlock = new HashBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<HashBlock>(),
                 //continueWhile: () => !indexedFiles.IsCompleted,
-                source: indexedFiles.GetConsumingPartitioner(),
+                source: filesToHash.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
-                hashedPointerFile: (pf) => createPointerFileEntry.Add(pf),
-                hashedBinaryFile: (bf) => createManifest.Add(bf),
+                hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf),
+                hashedBinaryFile: (bf) => binariesToUpload.Add(bf),
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 done: () =>
                 {
-                    createManifest.CompleteAdding(); //B310
+                    binariesToUpload.CompleteAdding(); //B310
                     //createPointerFileEntry.CompleteAdding(); HIER NIET
                 });
             var hashTask = hashBlock.GetTask;
@@ -85,7 +85,7 @@ namespace Arius.Core.Commands
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<ProcessHashedBinaryBlock>(),
                 //continueWhile: () => !createManifest.IsCompleted,
-                source: createManifest.GetConsumingEnumerable(),
+                source: binariesToUpload.GetConsumingEnumerable(),
                 repo: services.GetRequiredService<AzureRepository>(),
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) => //B402
@@ -154,7 +154,7 @@ namespace Arius.Core.Commands
             var processChunkTask = processChunkBlock.GetTask;
 
 
-            var chunksToUpload = new BlockingCollection<EncryptedChunkFile>();
+            var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();
 
             var encryptChunkBlock = new EncryptChunkBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<EncryptChunkBlock>(),
@@ -162,32 +162,32 @@ namespace Arius.Core.Commands
                 maxDegreeOfParallelism: 1 /*2*/,
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
                 encrypter: services.GetRequiredService<IEncrypter>(),
-                chunkEncrypted: (ecf) => chunksToUpload.Add(ecf), //B701
+                chunkEncrypted: (ecf) => chunksToBatchForUpload.Add(ecf), //B701
                 done: () =>
                 {
-                    chunksToUpload.CompleteAdding(); //B710
+                    chunksToBatchForUpload.CompleteAdding(); //B710
                 });
             var encyptChunkBlockTask = encryptChunkBlock.GetTask;
 
 
-            var batchesForUpload = new BlockingCollection<EncryptedChunkFile[]>();
+            var batchesToUpload = new BlockingCollection<EncryptedChunkFile[]>();
 
             var createUploadBatchBlock = new CreateUploadBatchBlock(
                 logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<CreateUploadBatchBlock>(),
-                source: chunksToUpload,
+                source: chunksToBatchForUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-                isAddingCompleted: () => chunksToUpload.IsAddingCompleted, //B802
-                batchForUpload: (b) => batchesForUpload.Add(b), //B804
+                isAddingCompleted: () => chunksToBatchForUpload.IsAddingCompleted, //B802
+                batchForUpload: (b) => batchesToUpload.Add(b), //B804
                 done: () =>
                 {
-                    batchesForUpload.CompleteAdding(); //B810
+                    batchesToUpload.CompleteAdding(); //B810
                 });
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
 
             
-            var uploadEncryptedChunkBlock = new UploadEncryptedChunkBlock(
-                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadEncryptedChunkBlock>(),
-                source: batchesForUpload.GetConsumingPartitioner(),
+            var uploadBatchBlock = new UploadBatchBlock(
+                logger: services.GetRequiredService<ILoggerFactory>().CreateLogger<UploadBatchBlock>(),
+                source: batchesToUpload.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: services.GetRequiredService<AzureRepository>(),
                 tier: options.Tier,
@@ -196,7 +196,7 @@ namespace Arius.Core.Commands
                 {
                     manifestsToCreate.CompleteAdding(); //B910
                 });
-            var uploadEncryptedChunkTask = uploadEncryptedChunkBlock.GetTask;
+            var uploadBatchTask = uploadBatchBlock.GetTask;
 
             
             void removeFromPendingUpload(HashValue chunkHash)
