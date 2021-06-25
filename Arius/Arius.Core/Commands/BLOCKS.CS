@@ -14,10 +14,9 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        protected BlockBase(ILogger logger, /*Func<bool> continueWhile, */Action done)
+        protected BlockBase(ILogger logger, Action done)
         {
             this.logger = logger;
-            //this.continueWhile = continueWhile;
             this.done = () =>
             {
                 logger.LogTrace("Done");
@@ -26,7 +25,6 @@ namespace Arius.Core.Commands
         }
 
         protected readonly ILogger logger;
-        //protected readonly Func<bool> continueWhile;
         protected readonly Action done;
 
         public Task GetTask
@@ -50,7 +48,7 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleTaskBlockBase : BlockBase
     {
-        protected SingleTaskBlockBase(ILogger logger, /*Func<bool> continueWhile, */Action done) : base(logger, /*continueWhile, */done)
+        protected SingleTaskBlockBase(ILogger logger, Action done) : base(logger, done)
         {
         }
         protected abstract Task TaskBodyImpl();
@@ -72,13 +70,13 @@ namespace Arius.Core.Commands
 
     internal abstract class SingleThreadTaskBlockBase<TSource> : BlockBase
     {
-        protected SingleThreadTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, /*Func<bool> @while, */Action done) : base(logger, /*continueWhile, */done)
+        protected SingleThreadTaskBlockBase(ILogger logger, TSource source, Action done) : base(logger, done)
         {
             this.source = source;
         }
-        private readonly BlockingCollection<TSource> source;
+        private readonly TSource source;
 
-        protected abstract Task TaskBodyImplAsync(BlockingCollection<TSource> source);
+        protected abstract Task TaskBodyImplAsync(TSource source);
         protected override sealed Task GetTaskImpl
         {
             get
@@ -98,34 +96,6 @@ namespace Arius.Core.Commands
 
 
 
-
-
-    //internal abstract class SingleThreadForEachTaskBlockBase<TSource> : BlockBase
-    //{
-    //    protected SingleThreadForEachTaskBlockBase(ILogger logger, IEnumerable<TSource> source, /*Func<bool> continueWhile, */Action done) : base(logger, /*continueWhile, */done)
-    //    {
-    //        this.source = source;
-    //    }
-    //    private readonly IEnumerable<TSource> source;
-
-
-    //    protected abstract Task ForEachBodyImplAsync(TSource item);
-    //    protected override sealed Task GetTaskImpl
-    //    {
-    //        get
-    //        {
-    //            return Task.Run(async () =>
-    //            {
-    //                logger.LogTrace("Started");
-
-    //                foreach (var item in source)
-    //                    await ForEachBodyImplAsync(item);
-
-    //                done();
-    //            });
-    //        }
-    //    }
-    //}
 
     
 

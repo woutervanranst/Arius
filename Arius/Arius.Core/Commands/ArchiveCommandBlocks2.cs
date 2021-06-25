@@ -377,7 +377,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateUploadBatchBlock : SingleThreadTaskBlockBase<EncryptedChunkFile>
+    internal class CreateUploadBatchBlock : SingleThreadTaskBlockBase<BlockingCollection<EncryptedChunkFile>>
     {
         public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile> source,
