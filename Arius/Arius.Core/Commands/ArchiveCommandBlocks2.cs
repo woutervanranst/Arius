@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
 {
-    internal class IndexBlock : SingleThreadTaskBlockBase<DirectoryInfo>
+    internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
         public IndexBlock(ILogger<IndexBlock> logger,
             DirectoryInfo root,
@@ -115,7 +115,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class HashBlock : MultiThreadForEachTaskBlockBase<IFile>
+    internal class HashBlock : BlockingCollectionBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
             //Func<bool> continueWhile,
@@ -164,7 +164,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ProcessHashedBinaryBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    internal class ProcessHashedBinaryBlock : BlockingCollectionBlockBase<BinaryFile>
     {
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
            //Func<bool> continueWhile,
@@ -244,7 +244,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ChunkBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    internal class ChunkBlock : BlockingCollectionBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
             BlockingCollection<BinaryFile> source,
@@ -278,7 +278,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class ProcessChunkBlock : MultiThreadForEachTaskBlockBase<IChunkFile>
+    internal class ProcessChunkBlock : BlockingCollectionBlockBase<IChunkFile>
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
             BlockingCollection<IChunkFile> source,
@@ -337,7 +337,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class EncryptChunkBlock : MultiThreadForEachTaskBlockBase<IChunkFile>
+    internal class EncryptChunkBlock : BlockingCollectionBlockBase<IChunkFile>
     {
         public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
             BlockingCollection<IChunkFile> source,
@@ -375,7 +375,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateUploadBatchBlock : SingleThreadTaskBlockBase<BlockingCollection<EncryptedChunkFile>>
+    internal class CreateUploadBatchBlock : TaskBlockBase<BlockingCollection<EncryptedChunkFile>>
     {
         public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile> source,
@@ -437,7 +437,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class UploadBatchBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile[]>
+    internal class UploadBatchBlock : BlockingCollectionBlockBase<EncryptedChunkFile[]>
     {
         public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile[]> source,
@@ -477,7 +477,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateManifestBlock : MultiThreadForEachTaskBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
+    internal class CreateManifestBlock : BlockingCollectionBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
     {
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
             BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
@@ -505,7 +505,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreatePointerFileIfNotExistsBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
+    internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionBlockBase<BinaryFile>
     {
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             BlockingCollection<BinaryFile> source,
@@ -545,7 +545,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class CreatePointerFileEntryIfNotExistsBlock : MultiThreadForEachTaskBlockBase<PointerFile>
+    internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionBlockBase<PointerFile>
     {
         private readonly AzureRepository repo;
         private readonly DateTime version;

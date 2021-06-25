@@ -46,9 +46,9 @@ namespace Arius.Core.Commands
     }
 
 
-    internal abstract class SingleThreadTaskBlockBase<TSource> : BlockBase
+    internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected SingleThreadTaskBlockBase(ILogger logger, TSource source, Action done) : base(logger, done)
+        protected TaskBlockBase(ILogger logger, TSource source, Action done) : base(logger, done)
         {
             this.source = source;
         }
@@ -71,19 +71,12 @@ namespace Arius.Core.Commands
         }
     }
 
-
-
-
-
-    
-
-
-    internal abstract class MultiThreadForEachTaskBlockBase<TSource> : BlockBase
+    internal abstract class BlockingCollectionBlockBase<TSource> : BlockBase
     {
-        protected MultiThreadForEachTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
+        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
         {
         }
-        protected MultiThreadForEachTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, done)
+        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, done)
         {
             this.partitioner = source.GetConsumingPartitioner();
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
