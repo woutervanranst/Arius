@@ -160,16 +160,34 @@ namespace Arius.Core.Commands
         {
             get
             {
-                return Task.Run(() =>
+                return Task.Run(async () =>
                 {
                     logger.LogTrace("Started");
 
+                    // UNTESTED ALTERNATIVE:
+                    //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
+                    //await Task.WhenAll(ts);
+
+
+                    // FROM https://stackoverflow.com/a/14678329/1582323
+                    var partitions = source.GetPartitions(maxDegreeOfParallelism);
+                    var tasks = partitions.Select(async (partition) => 
+                    {
+                        using (partition)
+                            while (partition.MoveNext())
+                                await ForEachBodyImplAsync(partition.Current);
+                    });
+
+                    await Task.WhenAll(tasks);
+
+                    
+                    // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
                     //do
                     //{
-                    Parallel.ForEach(
-                            source,
-                            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                            async (item) => await ForEachBodyImplAsync(item));
+                    //Parallel.ForEach(
+                    //        source,
+                    //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                    //        async (item) => await ForEachBodyImplAsync(item));
                     //}
                     //while (continueWhile());
 
@@ -178,6 +196,33 @@ namespace Arius.Core.Commands
             }
         }
     }
+
+
+
+    //public static class Extensions
+    //{
+    //    public static Task ForEachAsync<TSource, TResult>(
+    //        this IEnumerable<TSource> source,
+    //        Func<TSource, Task<TResult>> taskSelector, Action<TSource, TResult> resultProcessor)
+    //    {
+    //        var oneAtATime = new SemaphoreSlim(initialCount: 1, maxCount: 1);
+    //        return Task.WhenAll(
+    //            from item in source
+    //            select ProcessAsync(item, taskSelector, resultProcessor, oneAtATime));
+    //    }
+
+    //    private static async Task ProcessAsync<TSource, TResult>(
+    //        TSource item,
+    //        Func<TSource, Task<TResult>> taskSelector, Action<TSource, TResult> resultProcessor,
+    //        SemaphoreSlim oneAtATime)
+    //    {
+    //        TResult result = await taskSelector(item);
+    //        await oneAtATime.WaitAsync();
+    //        try { resultProcessor(item, result); }
+    //        finally { oneAtATime.Release(); }
+    //    }
+    //}
+   
 
 
 
