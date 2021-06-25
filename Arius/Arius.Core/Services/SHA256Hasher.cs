@@ -26,41 +26,80 @@ namespace Arius.Core.Services
     {
         public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
         {
-            _salt = options.Passphrase;
-            _fastHash = options.FastHash;
-            _logger = logger;
+            salt = options.Passphrase;
+            fastHash = options.FastHash;
+            this.logger = logger;
         }
 
-        private readonly string _salt;
-        private readonly bool _fastHash;
-        private readonly ILogger<SHA256Hasher> _logger;
+        private readonly string salt;
+        private readonly bool fastHash;
+        private readonly ILogger<SHA256Hasher> logger;
 
+        /// <summary>
+        /// Get the HashValue for the given BinaryFile.
+        /// If the FastHash option is set and a corresponding PointerFile with the same LastWriteTime is found, return the hash from the PointerFile
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <returns></returns>
         public HashValue GetHashValue(BinaryFile bf)
         {
-            var h = default(HashValue?);
-
-            if (_fastHash)
+            if (fastHash &&
+                bf.GetPointerFile() is var pf && pf is not null)
             {
-                var pointerFileInfo = bf.PointerFileInfo;
-                if (pointerFileInfo.Exists &&
-                    pointerFileInfo.LastWriteTimeUtc == File.GetLastWriteTimeUtc(bf.FullName))
-                {
-                    _logger.LogDebug($"Using fasthash for {bf.RelativeName}");
+                //A corresponding PointerFile exists
+                logger.LogDebug($"Using fasthash for {bf.RelativeName}");
 
-                    var pf = new PointerFile(bf.Root, pointerFileInfo);
-                    h = pf.Hash;
-                }
+                return pf.Hash;
+            }
+            else
+            {
+
             }
 
-            if (!h.HasValue)
-                h = GetHashValue(bf.FullName);
+            //TODO what with in place update of binary file (hash changed)?
+            // TODO what with lastmodifieddate changed but not hash?
 
-            return h.Value;
+            //if (fastHash && 
+            //    bf.GetPointerFile() is var pf && pf is not null)
+            //{
+            //    //A corresponding PointerFile exists
+            //    if (File.GetLastWriteTimeUtc(pf.FullName) == File.GetLastWriteTimeUtc(bf.FullName))
+            //    {
+            //        //LastWriteTime matches
+            //        logger.LogDebug($"Using fasthash for {bf.RelativeName}");
+
+            //        return pf.Hash;
+            //    }
+            //    else
+            //    {
+            //        //LastWriteTime does not match
+            //        var h = GetHashValue(bf.FullName);
+
+            //        if (pf.Hash == h)
+            //        {
+            //            //LastWriteTime was modified but the hash did not change. Update the LastWriteTime
+            //            File.SetLastWriteTimeUtc(pf.FullName, File.GetLastWriteTimeUtc(bf.FullName));
+
+            //            logger.LogWarning($"Using fasthash for {bf.RelativeName}. LastWriteTime of PointerFile was out of sync with BinaryFile. Corrected."); //TODO does this get reflected in the PoitnerFileENtry?
+
+            //            return h;
+            //        }
+            //        else
+            //        {
+            //            //LastWriteTime was modified AND the hash changed.
+            //            logger.LogError($"Using fasthash for {bf.RelativeName}. Hash out of sync.");
+
+            //            throw new NotImplementedException(); //TODO what if the binaryfile was modified in place?!
+            //        }
+            //    }
+            //}
+
+            //return GetHashValue(bf.FullName);
         }
 
         public HashValue GetHashValue(string fullName)
         {
-            return new HashValue { Value = GetHashValue(fullName, _salt) };
+            return new HashValue { Value = GetHashValue(fullName, salt) };
         }
 
         public static string GetHashValue(string fullName, string salt)
