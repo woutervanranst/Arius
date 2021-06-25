@@ -26,7 +26,7 @@ namespace Arius.Core.Repositories
             /// <summary>
             /// Create a PointerFileEntry for the given PointerFile and the given version
             /// </summary>
-            public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime version)
+            public async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime version)
             {
                 var pfe = new PointerFileEntry()
                 {
@@ -38,14 +38,13 @@ namespace Arius.Core.Repositories
                     LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
                 };
 
-                await CreatePointerFileEntryIfNotExistsAsync(pfe);
-
+                return await CreatePointerFileEntryIfNotExistsAsync(pfe);
             }
 
             /// <summary>
             /// Create a PointerFileEntry that is deleted form the given PointerFileEntry
             /// </summary>
-            public async Task CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)
+            public async Task<CreatePointerFileEntryResult> CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)
             {
                 pfe = pfe with
                 {
@@ -56,18 +55,35 @@ namespace Arius.Core.Repositories
                 };
 
                 await CreatePointerFileEntryIfNotExistsAsync(pfe);
+
+                return CreatePointerFileEntryResult.InsertedDeleted;
             }
 
-            private async Task CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
+            public enum CreatePointerFileEntryResult
+            {
+                InsertedAdd,
+                InsertedDeleted,
+                AlreadyExisted
+            }
+
+            private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
                 if (await _repo.CreatePointerFileEntryIfNotExistsAsync(pfe))
                 {
                     //We inserted the entry
                     if (pfe.IsDeleted)
+                    { 
                         _logger.LogInformation($"Deleted '{pfe.RelativeName}'");
+                        return CreatePointerFileEntryResult.InsertedDeleted;
+                    }
                     else
+                    { 
                         _logger.LogInformation($"Added '{pfe.RelativeName}'");
+                        return CreatePointerFileEntryResult.InsertedAdd;
+                    }
                 }
+
+                return CreatePointerFileEntryResult.AlreadyExisted;
             }
 
 

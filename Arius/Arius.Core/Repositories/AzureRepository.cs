@@ -133,9 +133,9 @@ namespace Arius.Core.Repositories
             return await pointerFileEntryRepo.GetEntries(version, includeDeleted);
         }
 
-        public async Task CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
+        public async Task<PointerFileEntryRepository.CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pointerFile, DateTime version)
         {
-            await pointerFileEntryRepo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+            return await pointerFileEntryRepo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
         }
 
         public async Task CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime version)

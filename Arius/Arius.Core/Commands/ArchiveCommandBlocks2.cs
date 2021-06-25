@@ -549,17 +549,49 @@ namespace Arius.Core.Commands
 
     internal class CreatePointerFileEntryIfNotExistsBlock : MultiThreadForEachTaskBlockBase<PointerFile>
     {
+        private readonly AzureRepository repo;
+        private readonly DateTime version;
+
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
             Partitioner<PointerFile> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,
+            DateTime version,
             Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
+            this.repo = repo;
+            this.version = version;
         }
 
-        protected override Task ForEachBodyImplAsync(PointerFile item)
+        protected override async Task ForEachBodyImplAsync(PointerFile pointerFile)
         {
-            throw new NotImplementedException();
+            logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'...");
+
+            try
+            {
+                var x = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+
+                switch (x)
+                {
+                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedAdd:
+                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added new entry.");
+                        break;
+                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added deleted entry.");
+                        break;
+                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.AlreadyExisted:
+                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... no change.");
+                        break;
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+            catch (Exception e)
+            {
+
+            }
+            
+            
         }
     }
 

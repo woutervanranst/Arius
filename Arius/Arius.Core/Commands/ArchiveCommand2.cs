@@ -248,6 +248,7 @@ namespace Arius.Core.Commands
                 source: pointerFileEntriesToCreate.GetConsumingPartitioner(),
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
+                version: DateTime.Now.ToUniversalTime(), //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
                 done: () => 
                 {
                 });
