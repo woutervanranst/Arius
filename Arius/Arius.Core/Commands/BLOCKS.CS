@@ -31,17 +31,17 @@ namespace Arius.Core.Commands
         {
             get
             {
-                var t = GetTaskImpl;
+                var t = TaskImpl();
                 tasks.Add(t);
 
                 return t;
             }
         }
 
-        protected abstract Task GetTaskImpl { get; }
+        protected abstract Task TaskImpl();
 
         public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
-        private static ConcurrentBag<Task> tasks = new();
+        private static readonly ConcurrentBag<Task> tasks = new();
 
     }
 
@@ -55,19 +55,16 @@ namespace Arius.Core.Commands
         private readonly TSource source;
 
         protected abstract Task TaskBodyImplAsync(TSource source);
-        protected override sealed Task GetTaskImpl
+        protected override sealed Task TaskImpl()
         {
-            get
+            return Task.Run(async () =>
             {
-                return Task.Run(async () =>
-                {
-                    logger.LogTrace("Started");
+                logger.LogTrace("Started");
 
-                    await TaskBodyImplAsync(source);
+                await TaskBodyImplAsync(source);
 
-                    done();
-                });
-            }
+                done();
+            });
         }
     }
 
