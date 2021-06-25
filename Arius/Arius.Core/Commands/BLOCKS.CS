@@ -69,6 +69,7 @@ namespace Arius.Core.Commands
         }
     }
 
+
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
         protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)

@@ -153,7 +153,7 @@ namespace Arius.Core.Models
 
         internal IEnumerable<IChunkFile> Chunks { get; set; } //TODO delete this
 
-        public FileInfo PointerFileInfo => new FileInfo(fi.FullName + PointerFile.Extension);
+        public FileInfo PointerFileInfo => new($"{fi.FullName}{PointerFile.Extension}");
 
         public override string ContentName => Name;
     }
