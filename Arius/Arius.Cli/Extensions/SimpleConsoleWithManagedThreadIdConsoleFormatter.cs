@@ -93,6 +93,7 @@ namespace Arius.Cli.Extensions
             textWriter.Write(logEntry.Category.Split('.').Last().PadRight(20));
             textWriter.Write('[');
 
+            //textWriter.Write($"{System.Threading.Tasks.Task.CurrentId},{Thread.CurrentThread.ManagedThreadId}");
             textWriter.Write(Thread.CurrentThread.ManagedThreadId.ToString().PadRight(2));
 //#if NETCOREAPP
 //            Span<char> span = stackalloc char[10];
