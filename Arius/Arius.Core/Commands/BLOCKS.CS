@@ -71,12 +71,12 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal abstract class BlockingCollectionBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
+    internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
         {
         }
-        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, source, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, source, done)
         {
             this.partitioner = source.GetConsumingPartitioner();
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;

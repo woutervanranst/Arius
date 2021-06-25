@@ -115,7 +115,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class HashBlock : BlockingCollectionBlockBase<IFile>
+    internal class HashBlock : BlockingCollectionTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
             //Func<bool> continueWhile,
@@ -164,7 +164,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ProcessHashedBinaryBlock : BlockingCollectionBlockBase<BinaryFile>
+    internal class ProcessHashedBinaryBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
            //Func<bool> continueWhile,
@@ -244,7 +244,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ChunkBlock : BlockingCollectionBlockBase<BinaryFile>
+    internal class ChunkBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
             BlockingCollection<BinaryFile> source,
@@ -278,7 +278,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class ProcessChunkBlock : BlockingCollectionBlockBase<IChunkFile>
+    internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
             BlockingCollection<IChunkFile> source,
@@ -337,7 +337,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class EncryptChunkBlock : BlockingCollectionBlockBase<IChunkFile>
+    internal class EncryptChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
         public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
             BlockingCollection<IChunkFile> source,
@@ -437,7 +437,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class UploadBatchBlock : BlockingCollectionBlockBase<EncryptedChunkFile[]>
+    internal class UploadBatchBlock : BlockingCollectionTaskBlockBase<EncryptedChunkFile[]>
     {
         public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile[]> source,
@@ -477,7 +477,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateManifestBlock : BlockingCollectionBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
+    internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
     {
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
             BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
@@ -505,7 +505,7 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionBlockBase<BinaryFile>
+    internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             BlockingCollection<BinaryFile> source,
@@ -545,7 +545,7 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionBlockBase<PointerFile>
+    internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
         private readonly AzureRepository repo;
         private readonly DateTime version;
