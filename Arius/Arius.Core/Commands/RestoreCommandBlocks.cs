@@ -174,8 +174,8 @@ namespace Arius.Core.Commands
                 }
 
                 // Chunks Downloaded & Merged?
-                if (pf.BinaryFileInfo is var bfi && bfi.Exists &&
-                    new BinaryFile(pf.Root, bfi) is var bf && _hvp.GetHashValue(bf).Equals(pf.Hash))
+                if (pf.GetBinaryFile() is var bf && bf is not null && 
+                    _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
                     return (pf, PointerState.Restored);

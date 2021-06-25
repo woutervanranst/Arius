@@ -141,7 +141,20 @@ namespace Arius.Core.Models
             Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
-        internal FileInfo BinaryFileInfo => new(fi.FullName.TrimEnd(Extension));
+        /// <summary>
+        /// Get the local BinaryFile for this pointer if it exists.
+        /// If it does not exist, return null.
+        /// </summary>
+        /// <returns></returns>
+        public BinaryFile GetBinaryFile()
+        {
+            var bfi = new FileInfo(fi.FullName.TrimEnd(Extension));
+
+            if (!bfi.Exists)
+                return null;
+
+            return new BinaryFile(Root, bfi);
+        }
 
         internal IEnumerable<HashValue> ChunkHashes { get; set; } //TODO Delete this
 

@@ -216,7 +216,7 @@ namespace Arius.Core.Tests
             pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
 
             var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
-            var bf1 = new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+            var bf1 = pf1.GetBinaryFile(); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
 
             Assert.IsTrue(File.Exists(pf1.FullName));
             Assert.IsFalse(File.Exists(bf1.FullName));

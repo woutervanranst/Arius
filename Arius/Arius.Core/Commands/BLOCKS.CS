@@ -43,7 +43,6 @@ namespace Arius.Core.Commands
 
         public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
         private static readonly ConcurrentBag<Task> tasks = new();
-
     }
 
 

@@ -256,10 +256,8 @@ namespace Arius.Core.Commands
 
 
 
-
             // Await the current stage of the pipeline
             await Task.WhenAll(BlockBase.AllTasks);
-
 
 
             //while (true)
@@ -267,12 +265,7 @@ namespace Arius.Core.Commands
             //    await Task.Yield();
             //}
 
-
-
             return 0;
         }
     }
-    
-
-    
 }
