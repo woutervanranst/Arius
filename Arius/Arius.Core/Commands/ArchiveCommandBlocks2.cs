@@ -121,7 +121,7 @@ namespace Arius.Core.Commands
     {
         public HashBlock(ILogger<HashBlock> logger,
             //Func<bool> continueWhile,
-            Partitioner<IFile> source,
+            BlockingCollection<IFile> source,
             int maxDegreeOfParallelism,
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
@@ -166,11 +166,11 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ProcessHashedBinaryBlock : SingleThreadForEachTaskBlockBase<BinaryFile>
+    internal class ProcessHashedBinaryBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
            //Func<bool> continueWhile,
-           IEnumerable<BinaryFile> source,
+           BlockingCollection<BinaryFile> source,
            AzureRepository repo,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
@@ -249,7 +249,7 @@ namespace Arius.Core.Commands
     internal class ChunkBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
-            Partitioner<BinaryFile> source,
+            BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
             IChunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
@@ -280,10 +280,10 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal class ProcessChunkBlock : SingleThreadForEachTaskBlockBase<IChunkFile>
+    internal class ProcessChunkBlock : MultiThreadForEachTaskBlockBase<IChunkFile>
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
-            IEnumerable<IChunkFile> source,
+            BlockingCollection<IChunkFile> source,
             AzureRepository repo,
             Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
@@ -342,7 +342,7 @@ namespace Arius.Core.Commands
     internal class EncryptChunkBlock : MultiThreadForEachTaskBlockBase<IChunkFile>
     {
         public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
-            Partitioner<IChunkFile> source,
+            BlockingCollection<IChunkFile> source,
             int maxDegreeOfParallelism,
             TempDirectoryAppSettings tempDirAppSettings,
             IEncrypter encrypter,
@@ -442,7 +442,7 @@ namespace Arius.Core.Commands
     internal class UploadBatchBlock : MultiThreadForEachTaskBlockBase<EncryptedChunkFile[]>
     {
         public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
-            Partitioner<EncryptedChunkFile[]> source,
+            BlockingCollection<EncryptedChunkFile[]> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,
             AccessTier tier,
@@ -482,7 +482,7 @@ namespace Arius.Core.Commands
     internal class CreateManifestBlock : MultiThreadForEachTaskBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
     {
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
-            Partitioner<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
+            BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,
             Action<HashValue> manifestCreated,
@@ -510,7 +510,7 @@ namespace Arius.Core.Commands
     internal class CreatePointerFileIfNotExistsBlock : MultiThreadForEachTaskBlockBase<BinaryFile>
     {
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
-            Partitioner<BinaryFile> source,
+            BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
             PointerService pointerService,
             bool removeLocal,
@@ -553,7 +553,7 @@ namespace Arius.Core.Commands
         private readonly DateTime version;
 
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
-            Partitioner<PointerFile> source,
+            BlockingCollection<PointerFile> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,
             DateTime version,
@@ -567,32 +567,22 @@ namespace Arius.Core.Commands
         {
             logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'...");
 
-            try
-            {
-                var x = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+            var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
 
-                switch (x)
-                {
-                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedAdd:
-                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added new entry.");
-                        break;
-                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
-                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added deleted entry.");
-                        break;
-                    case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.AlreadyExisted:
-                        logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... no change.");
-                        break;
-                    default:
-                        throw new NotImplementedException();
-                }
-            }
-            catch (Exception e)
+            switch (r)
             {
-
+                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedAdd:
+                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added new entry.");
+                    break;
+                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added deleted entry.");
+                    break;
+                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.AlreadyExisted:
+                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... no change.");
+                    break;
+                default:
+                    throw new NotImplementedException();
             }
-            
-            
         }
     }
-
 }

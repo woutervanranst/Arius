@@ -70,7 +70,7 @@ namespace Arius.Core.Commands
             var hashBlock = new HashBlock(
                 logger: loggerFactory.CreateLogger<HashBlock>(),
                 //continueWhile: () => !indexedFiles.IsCompleted,
-                source: filesToHash.GetConsumingPartitioner(),
+                source: filesToHash,
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf),
                 hashedBinaryFile: (bf) => binariesToUpload.Add(bf),
@@ -86,7 +86,7 @@ namespace Arius.Core.Commands
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
                 //continueWhile: () => !createManifest.IsCompleted,
-                source: binariesToUpload.GetConsumingEnumerable(),
+                source: binariesToUpload,
                 repo: repo,
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
                 waitForCreatedManifest: (bf) => //B402
@@ -110,7 +110,7 @@ namespace Arius.Core.Commands
 
             var chunkBlock = new ChunkBlock(
                 logger: loggerFactory.CreateLogger<ChunkBlock>(),
-                source: binariesToChunk.GetConsumingPartitioner(),
+                source: binariesToChunk,
                 maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<IChunker>(),
                 chunkedBinary: (binaryFile, chunkFiles) => 
@@ -134,7 +134,7 @@ namespace Arius.Core.Commands
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
-                source: chunksToProcess.GetConsumingEnumerable(),
+                source: chunksToProcess,
                 repo: repo,
                 chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
                 chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
@@ -146,7 +146,7 @@ namespace Arius.Core.Commands
 
             var encryptChunkBlock = new EncryptChunkBlock(
                 logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
-                source: chunksToEncrypt.GetConsumingPartitioner(),
+                source: chunksToEncrypt,
                 maxDegreeOfParallelism: 1 /*2*/,
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
                 encrypter: services.GetRequiredService<IEncrypter>(),
@@ -169,7 +169,7 @@ namespace Arius.Core.Commands
             
             var uploadBatchBlock = new UploadBatchBlock(
                 logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
-                source: batchesToUpload.GetConsumingPartitioner(),
+                source: batchesToUpload,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 tier: options.Tier,
@@ -203,7 +203,7 @@ namespace Arius.Core.Commands
 
             var createManifestBlock = new CreateManifestBlock(
                 logger: loggerFactory.CreateLogger<CreateManifestBlock>(),
-                source: manifestsToCreate.GetConsumingPartitioner(),
+                source: manifestsToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 manifestCreated: (manifestHash) =>
@@ -226,7 +226,7 @@ namespace Arius.Core.Commands
 
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
-                source: pointersToCreate.GetConsumingPartitioner(),
+                source: pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 pointerService: services.GetRequiredService<PointerService>(),
                 removeLocal: options.RemoveLocal,
@@ -245,7 +245,7 @@ namespace Arius.Core.Commands
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
-                source: pointerFileEntriesToCreate.GetConsumingPartitioner(),
+                source: pointerFileEntriesToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 version: DateTime.Now.ToUniversalTime(), //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
