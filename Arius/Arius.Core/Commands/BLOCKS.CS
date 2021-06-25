@@ -17,6 +17,15 @@ namespace Arius.Core.Commands
         protected BlockBase(ILogger logger, Action done)
         {
             this.logger = logger;
+
+            this.task = new(() =>
+            {
+                var t = TaskImpl();
+                tasks.Add(t);
+
+                return t;
+            }, isThreadSafe: true);
+
             this.done = () =>
             {
                 logger.LogTrace("Done");
@@ -25,18 +34,10 @@ namespace Arius.Core.Commands
         }
 
         protected readonly ILogger logger;
+        private readonly Lazy<Task> task;
         protected readonly Action done;
 
-        public Task GetTask
-        {
-            get
-            {
-                var t = TaskImpl();
-                tasks.Add(t);
-
-                return t;
-            }
-        }
+        public Task GetTask => task.Value;
 
         protected abstract Task TaskImpl();
 
