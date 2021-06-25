@@ -188,6 +188,9 @@ namespace Arius.Core.Commands
             {
                 //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
+                if (!await ManifestExists(bf.Hash))
+                    throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists");
+
                 logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping.");
 
                 return;
