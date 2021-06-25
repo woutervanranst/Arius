@@ -71,12 +71,12 @@ namespace Arius.Core.Commands
         }
     }
 
-    internal abstract class BlockingCollectionBlockBase<TSource> : BlockBase
+    internal abstract class BlockingCollectionBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
         protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
         {
         }
-        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, done)
+        protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, source, done)
         {
             this.partitioner = source.GetConsumingPartitioner();
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
@@ -87,44 +87,98 @@ namespace Arius.Core.Commands
 
         protected abstract Task ForEachBodyImplAsync(TSource item);
 
-        protected override sealed Task GetTaskImpl
+        protected override Task TaskBodyImplAsync(BlockingCollection<TSource> source)
         {
-            get
+            return Task.Run(async () =>
             {
-                return Task.Run(async () =>
+                logger.LogTrace("Started");
+
+                // UNTESTED ALTERNATIVE:
+                //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
+                //await Task.WhenAll(ts);
+
+
+                // FROM https://stackoverflow.com/a/14678329/1582323
+                var partitions = partitioner.GetPartitions(maxDegreeOfParallelism);
+                var tasks = partitions.Select(async (partition) =>
                 {
-                    logger.LogTrace("Started");
-
-                    // UNTESTED ALTERNATIVE:
-                    //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
-                    //await Task.WhenAll(ts);
-
-
-                    // FROM https://stackoverflow.com/a/14678329/1582323
-                    var partitions = partitioner.GetPartitions(maxDegreeOfParallelism);
-                    var tasks = partitions.Select(async (partition) => 
-                    {
-                        using (partition)
-                            while (partition.MoveNext())
-                                await ForEachBodyImplAsync(partition.Current);
-                    });
-
-                    await Task.WhenAll(tasks);
-
-                    
-                    // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
-                    //do
-                    //{
-                    //Parallel.ForEach(
-                    //        source,
-                    //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                    //        async (item) => await ForEachBodyImplAsync(item));
-                    //}
-                    //while (continueWhile());
-
-                    done();
+                    using (partition)
+                        while (partition.MoveNext())
+                            await ForEachBodyImplAsync(partition.Current);
                 });
-            }
+
+                await Task.WhenAll(tasks);
+
+
+                // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
+                //do
+                //{
+                //Parallel.ForEach(
+                //        source,
+                //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                //        async (item) => await ForEachBodyImplAsync(item));
+                //}
+                //while (continueWhile());
+
+                done();
+            });
         }
     }
+
+    //internal abstract class BlockingCollectionBlockBase<TSource> : BlockBase
+    //{
+    //    protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
+    //    {
+    //    }
+    //    protected BlockingCollectionBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, done)
+    //    {
+    //        this.partitioner = source.GetConsumingPartitioner();
+    //        this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+    //    }
+
+    //    private readonly Partitioner<TSource> partitioner;
+    //    private readonly int maxDegreeOfParallelism;
+
+    //    protected abstract Task ForEachBodyImplAsync(TSource item);
+
+    //    protected override sealed Task GetTaskImpl
+    //    {
+    //        get
+    //        {
+    //            return Task.Run(async () =>
+    //            {
+    //                logger.LogTrace("Started");
+
+    //                // UNTESTED ALTERNATIVE:
+    //                //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
+    //                //await Task.WhenAll(ts);
+
+
+    //                // FROM https://stackoverflow.com/a/14678329/1582323
+    //                var partitions = partitioner.GetPartitions(maxDegreeOfParallelism);
+    //                var tasks = partitions.Select(async (partition) =>
+    //                {
+    //                    using (partition)
+    //                        while (partition.MoveNext())
+    //                            await ForEachBodyImplAsync(partition.Current);
+    //                });
+
+    //                await Task.WhenAll(tasks);
+
+
+    //                // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
+    //                //do
+    //                //{
+    //                //Parallel.ForEach(
+    //                //        source,
+    //                //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+    //                //        async (item) => await ForEachBodyImplAsync(item));
+    //                //}
+    //                //while (continueWhile());
+
+    //                done();
+    //            });
+    //        }
+    //    }
+    //}
 }
