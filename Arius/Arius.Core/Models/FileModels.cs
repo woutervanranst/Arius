@@ -100,6 +100,7 @@ namespace Arius.Core.Models
         public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
         public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
         public DirectoryInfo Root { get; }
+        public override string ToString() => RelativeName;
     }
 
     public abstract class RelativeAriusFileBase : RelativeFileBase, IAriusEntryWithHash
@@ -109,7 +110,6 @@ namespace Arius.Core.Models
         }
 
         public abstract string ContentName { get; }
-        public override string ToString() => RelativeName;
     }
 
 
