@@ -118,26 +118,23 @@ namespace Arius.Core.Commands
     internal class HashBlock : BlockingCollectionTaskBlockBase<IFile>
     {
         public HashBlock(ILogger<HashBlock> logger,
-            //Func<bool> continueWhile,
             BlockingCollection<IFile> source,
             int maxDegreeOfParallelism,
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(logger, /*continueWhile, */source, maxDegreeOfParallelism, done)
+            Action done) : base(logger, source, maxDegreeOfParallelism, done)
         {
-            //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
             this.hvp = hvp;
         }
 
-        //private readonly int maxDegreeOfParallelism;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
-        //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
+
         protected override Task ForEachBodyImplAsync(IFile item)
         {
             if (item is PointerFile pf)
@@ -151,9 +148,7 @@ namespace Arius.Core.Commands
 
                 // For BinaryFiles we need to calculate it
                 bf.Hash = hvp.GetHashValue(bf);
-
                 logger.LogInformation($"Hashing BinaryFile '{bf.RelativeName}'... done. Hash: '{bf.Hash.ToShortString()}'");
-
                 hashedBinaryFile(bf);
             }
             else
@@ -188,30 +183,40 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            /* 
-             * Three possibilities:
-             *      1. BinaryFile arrives, remote manifest already exists --> send to next block //TODO explain WHY
-             *      2. BinaryFile arrives, remote manifest does not exist and is not being created --> send to the creation pipe
-             *      3. BinaryFile arrives, remote manifest does not exist and IS beign created --> add to the waiting pipe
-             */
+            if (bf.GetPointerFile() is var pf && pf is not null &&
+                pf.Hash == bf.Hash)
+            {
+                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
+                logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping.");
+
+                return;
+            }
+
+            /* 
+                * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
+                * Three possibilities:
+                *   1. The manifest already exists (ie the binary is already uploaded but this may be a duplicate in another path) --> create the pointer
+                *   2. The manifest does not exist and IS NOT yet being created --> upload the binary and send this BinaryFile to the waiting queue until it is uploaded
+                *   3. The manifest does not exist and IS being created --> send this binaryFile to the waiting queue until it is uploaded
+                */
 
             if (await ManifestExists(bf.Hash))
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') already exists. No need to upload.");
+                logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') already exists. No need to upload.");
 
                 manifestExists(bf);
 
                 return;
             }
 
-            lock (creating) // TODO WHY double locking?
+            lock (creating)
             {
                 if (!creating.Contains(bf.Hash))
                 {
                     // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
                     creating.Add(bf.Hash);
 
                     uploadBinaryFile(bf);
@@ -222,7 +227,7 @@ namespace Arius.Core.Commands
             }
 
             // 3 Does not exist remote but is being created
-            logger.LogInformation($"Manifest '{bf.Hash.ToShortString()}' ('{bf.Name}') does not exist remotely but is already being uploaded. To wait and create pointer.");
+            logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely but is already being uploaded. To wait and create pointer.");
 
             waitForCreatedManifest(bf);
         }
@@ -563,20 +568,20 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync(PointerFile pointerFile)
         {
-            logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'...");
+            logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
 
             var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
 
             switch (r)
             {
                 case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedAdd:
-                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added new entry.");
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'updated' entry.");
                     break;
                 case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
-                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... done. Added deleted entry.");
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
                     break;
                 case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.AlreadyExisted:
-                    logger.LogInformation($"Creating pointer file entry for '{pointerFile.RelativeName}'... no change.");
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
                     break;
                 default:
                     throw new NotImplementedException();

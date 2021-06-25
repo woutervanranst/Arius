@@ -20,11 +20,11 @@ namespace Arius.Core.Services
         /// </summary>
         public PointerFile CreatePointerFileIfNotExists(BinaryFile f)
         {
-            var pointerFileInfo = f.PointerFileInfo;
+            var target = new FileInfo(PointerFile.GetFullName(f));
 
             return CreatePointerFileIfNotExists(
+                target,
                 f.Root,
-                pointerFileInfo,
                 f.Hash,
                 File.GetCreationTimeUtc(f.FullName),
                 File.GetLastWriteTimeUtc(f.FullName));
@@ -35,49 +35,47 @@ namespace Arius.Core.Services
         /// </summary>
         public PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, AzureRepository.PointerFileEntry pfe)
         {
-            var pointerFileInfo = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+            var target = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
 
-            //if (pointerFileInfo.Exists)
-            //    throw new ArgumentException("The Pointer file already exists"); //TODO i  expect issies here when the binnary is changed?
-
-            return CreatePointerFileIfNotExists(root,
-                pointerFileInfo,
+            return CreatePointerFileIfNotExists(
+                target,
+                root,
                 pfe.ManifestHash,
                 pfe.CreationTimeUtc!.Value,
                 pfe.LastWriteTimeUtc!.Value);
         }
 
-        private PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, FileInfo pointerFileInfo, HashValue manifestHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+        private PointerFile CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, HashValue manifestHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
         {
-            if (!pointerFileInfo.Exists)
+            if (!target.Exists)
             {
-                if (!pointerFileInfo.Directory!.Exists)
-                    pointerFileInfo.Directory.Create();
+                if (!target.Directory!.Exists)
+                    target.Directory.Create();
 
-                File.WriteAllText(pointerFileInfo.FullName, manifestHash.Value);
+                File.WriteAllText(target.FullName, manifestHash.Value);
 
                 //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
                 //pointerFileInfo.CreationTimeUtc = creationTimeUtc;
                 //pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
 
-                File.SetCreationTimeUtc(pointerFileInfo.FullName, creationTimeUtc);
-                File.SetLastWriteTimeUtc(pointerFileInfo.FullName, lastWriteTimeUtc);
+                File.SetCreationTimeUtc(target.FullName, creationTimeUtc);
+                File.SetLastWriteTimeUtc(target.FullName, lastWriteTimeUtc);
 
-                _logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, pointerFileInfo.FullName)}'");
+                _logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, target.FullName)}'");
             }
 
-            var pf = new PointerFile(root, pointerFileInfo);
+            var pf = new PointerFile(root, target);
 
             //Check whether the contents of the PointerFile are correct / is it a valid POinterFile / does the hash it refer to match the manifestHash (eg. not in the case of 0 bytes or ...)
             if (!pf.Hash.Equals(manifestHash))
             {
                 //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
 
-                _logger.LogWarning($"The PointerFile {pf.RelativeName} is out of sync. Overwriting");
+                _logger.LogWarning($"The PointerFile {pf.RelativeName} is broken. Overwriting");
 
                 //Recreate the pointer
-                pointerFileInfo.Delete();
-                pf = CreatePointerFileIfNotExists(root, pointerFileInfo, manifestHash, creationTimeUtc, lastWriteTimeUtc);
+                target.Delete();
+                pf = CreatePointerFileIfNotExists(target, root, manifestHash, creationTimeUtc, lastWriteTimeUtc);
             }
 
             return pf;

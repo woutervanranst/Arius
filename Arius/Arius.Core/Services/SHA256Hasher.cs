@@ -51,27 +51,13 @@ namespace Arius.Core.Services
 
                 return pf.Hash;
             }
-            else
-            {
 
-            }
+            return GetHashValue(bf.FullName);
+
 
             //TODO what with in place update of binary file (hash changed)?
             // TODO what with lastmodifieddate changed but not hash?
 
-            //if (fastHash && 
-            //    bf.GetPointerFile() is var pf && pf is not null)
-            //{
-            //    //A corresponding PointerFile exists
-            //    if (File.GetLastWriteTimeUtc(pf.FullName) == File.GetLastWriteTimeUtc(bf.FullName))
-            //    {
-            //        //LastWriteTime matches
-            //        logger.LogDebug($"Using fasthash for {bf.RelativeName}");
-
-            //        return pf.Hash;
-            //    }
-            //    else
-            //    {
             //        //LastWriteTime does not match
             //        var h = GetHashValue(bf.FullName);
 
@@ -92,9 +78,6 @@ namespace Arius.Core.Services
             //            throw new NotImplementedException(); //TODO what if the binaryfile was modified in place?!
             //        }
             //    }
-            //}
-
-            //return GetHashValue(bf.FullName);
         }
 
         public HashValue GetHashValue(string fullName)
