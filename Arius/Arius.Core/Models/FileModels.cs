@@ -109,6 +109,7 @@ namespace Arius.Core.Models
         }
 
         public abstract string ContentName { get; }
+        public override string ToString() => RelativeName;
     }
 
 
