@@ -46,28 +46,6 @@ namespace Arius.Core.Commands
     }
 
 
-    internal abstract class SingleTaskBlockBase : BlockBase
-    {
-        protected SingleTaskBlockBase(ILogger logger, Action done) : base(logger, done)
-        {
-        }
-        protected abstract Task TaskBodyImpl();
-        protected override sealed Task GetTaskImpl
-        {
-            get
-            {
-                return Task.Run(() =>
-                {
-                    logger.LogTrace("Started");
-
-                    TaskBodyImpl();
-
-                    done();
-                });
-            }
-        }
-    }
-
     internal abstract class SingleThreadTaskBlockBase<TSource> : BlockBase
     {
         protected SingleThreadTaskBlockBase(ILogger logger, TSource source, Action done) : base(logger, done)

@@ -18,22 +18,20 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
 {
-    internal class IndexBlock : SingleTaskBlockBase
+    internal class IndexBlock : SingleThreadTaskBlockBase<DirectoryInfo>
     {
         public IndexBlock(ILogger<IndexBlock> logger,
             DirectoryInfo root,
             Action<IFile> indexedFile,
             Action done)
-            : base(logger, done)
+            : base(logger, root, done)
         {
-            this.root = root;
             this.indexedFile = indexedFile;
         }
 
-        private readonly DirectoryInfo root;
         private readonly Action<IFile> indexedFile;
 
-        protected override Task TaskBodyImpl()
+        protected override Task TaskBodyImplAsync(DirectoryInfo root)
         {
             foreach (var file in IndexDirectory(root))
                 indexedFile(file);
