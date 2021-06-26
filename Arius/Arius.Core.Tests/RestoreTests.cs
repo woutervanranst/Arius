@@ -219,7 +219,7 @@ namespace Arius.Core.Tests
             var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
 
             Assert.IsTrue(File.Exists(pf1.FullName));
-            Assert.IsFalse(File.Exists(bf1.FullName));
+            Assert.IsNull(bf1); //does not exist
 
 
             //This is not yet implemented
