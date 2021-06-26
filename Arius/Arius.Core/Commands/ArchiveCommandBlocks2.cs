@@ -164,18 +164,21 @@ namespace Arius.Core.Commands
            //Func<bool> continueWhile,
            BlockingCollection<BinaryFile> source,
            AzureRepository repo,
+           Action<BinaryFile> binaryFileAlreadyBackedUp,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
            Action done) : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
+            this.binaryFileAlreadyBackedUp = binaryFileAlreadyBackedUp;
             this.uploadBinaryFile = uploadBinaryFile;
             this.waitForCreatedManifest = waitForCreatedManifest;
             this.manifestExists = manifestExists;
         }
 
         private readonly AzureRepository repo;
+        private readonly Action<BinaryFile> binaryFileAlreadyBackedUp;
         private readonly Action<BinaryFile> uploadBinaryFile;
         private readonly Action<BinaryFile> waitForCreatedManifest;
         private readonly Action<BinaryFile> manifestExists;
@@ -185,12 +188,13 @@ namespace Arius.Core.Commands
             if (PointerService.GetPointerFile(bf) is var pf && pf is not null &&
                 pf.Hash == bf.Hash)
             {
-                //An equivalent PointerFile already exists and is already being sent through the pipe - skip. //B401
+                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
                 if (!await ManifestExists(bf.Hash))
                     throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists.");
 
-                logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping.");
+                logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                binaryFileAlreadyBackedUp(bf);
 
                 return;
             }
@@ -514,17 +518,17 @@ namespace Arius.Core.Commands
             BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
             PointerService pointerService,
-            bool removeLocal,
+            Action<BinaryFile> succesfullyBackedUp,
             Action<PointerFile> pointerFileCreated,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
-            this.removeLocal = removeLocal;
+            this.succesfullyBackedUp = succesfullyBackedUp;
             this.pointerFileCreated = pointerFileCreated;
         }
 
         private readonly PointerService pointerService;
-        private readonly bool removeLocal;
+        private readonly Action<BinaryFile> succesfullyBackedUp;
         private readonly Action<PointerFile> pointerFileCreated;
 
         protected override Task ForEachBodyImplAsync(BinaryFile bf)
@@ -535,13 +539,7 @@ namespace Arius.Core.Commands
 
             logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
 
-            if (removeLocal)
-            {
-                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
-                bf.Delete();
-                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
-            }
-
+            succesfullyBackedUp(bf);
             pointerFileCreated(pf);
 
             return Task.CompletedTask;
@@ -585,6 +583,33 @@ namespace Arius.Core.Commands
                 default:
                     throw new NotImplementedException();
             }
+        }
+    }
+
+
+    internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+    {
+        public DeleteBinaryFilesBlock(ILogger<DeleteBinaryFilesBlock> logger,
+            BlockingCollection<BinaryFile> source,
+            int maxDegreeOfParallelism,
+            bool removeLocal,
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        {
+            this.removeLocal = removeLocal;
+        }
+
+        private readonly bool removeLocal;
+
+        protected override Task ForEachBodyImplAsync(BinaryFile bf)
+        {
+            if (removeLocal)
+            {
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
+                bf.Delete();
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
+            }
+
+            return Task.CompletedTask;
         }
     }
 

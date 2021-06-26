@@ -73,13 +73,14 @@ namespace Arius.Core.Commands
                 //continueWhile: () => !indexedFiles.IsCompleted,
                 source: filesToHash,
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
-                hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf),
-                hashedBinaryFile: (bf) => binariesToUpload.Add(bf),
+                hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
+                hashedBinaryFile: (bf) => binariesToUpload.Add(bf), //B302
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 done: () => binariesToUpload.CompleteAdding()); //B310
             var hashTask = hashBlock.GetTask;
 
 
+            var binariesToDelete = new BlockingCollection<BinaryFile>();
             var binariesToChunk = new BlockingCollection<BinaryFile>();
             var binariesWaitingForManifestCreation = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
@@ -89,7 +90,9 @@ namespace Arius.Core.Commands
                 //continueWhile: () => !createManifest.IsCompleted,
                 source: binariesToUpload,
                 repo: repo,
+                binaryFileAlreadyBackedUp: (bf) => binariesToDelete.Add(bf), //B401
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B402
+                manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 waitForCreatedManifest: (bf) => //B404
                 {
                     binariesWaitingForManifestCreation.AddOrUpdate(
@@ -101,7 +104,6 @@ namespace Arius.Core.Commands
                             return bag;
                         });
                 },
-                manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 done: () => binariesToChunk.CompleteAdding()); //B410
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
@@ -176,7 +178,6 @@ namespace Arius.Core.Commands
                 tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
                 done: () => manifestsToCreate.CompleteAdding()); //B910
-
             var uploadBatchTask = uploadBatchBlock.GetTask;
 
             
@@ -230,7 +231,7 @@ namespace Arius.Core.Commands
                 source: pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 pointerService: pointerFileService,
-                removeLocal: options.RemoveLocal,
+                succesfullyBackedUp: bf => binariesToDelete.Add(bf), //B1202
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () => 
                 { 
@@ -244,16 +245,35 @@ namespace Arius.Core.Commands
                 .ContinueWith(_ => pointerFileEntriesToCreate.CompleteAdding()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
+
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
                 source: pointerFileEntriesToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 version: version,
-                done: () => 
+                done: () =>
                 {
                 });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
+
+
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+            // can be ignored since we'll be awaiting the pointersToCreate
+            Task.WhenAll(processHashedBinaryTask, createPointerFileIfNotExistsTask)
+                .ContinueWith(_ => binariesToDelete.CompleteAdding()); //B1310
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+
+            var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
+                logger: loggerFactory.CreateLogger<DeleteBinaryFilesBlock>(),
+                source: binariesToDelete,
+                maxDegreeOfParallelism: 1 /*2*/,
+                removeLocal: options.RemoveLocal,
+                done: () =>
+                {
+                });
+            var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
             var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<AzureRepository.PointerFileEntry>();
@@ -268,7 +288,7 @@ namespace Arius.Core.Commands
                 {
                     var pfes = (await repo.GetCurrentEntries(true))
                                           .Where(e => e.Version < version); // that were not created in the current run (those are assumed to be up to date)
-                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1301
+                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
                 },
                 done: () => { });
             var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
