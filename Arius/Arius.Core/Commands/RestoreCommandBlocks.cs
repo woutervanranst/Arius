@@ -23,7 +23,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerFileService ps)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerService ps)
         {
             _logger = logger;
             _root = new DirectoryInfo(options.Path);
@@ -34,7 +34,7 @@ namespace Arius.Core.Commands
         private readonly ILogger<SynchronizeBlockProvider> _logger;
         private readonly DirectoryInfo _root;
         private readonly AzureRepository _repo;
-        private readonly PointerFileService _ps;
+        private readonly PointerService _ps;
 
         /// <summary>
         /// Synchronize the local root to the remote repository
@@ -67,7 +67,7 @@ namespace Arius.Core.Commands
         {
             var pfs = pfes
                 .AsParallelWithParallelism()
-                .Select(pfe => _ps.CreatePointerFileIfNotExists(_root, pfe));
+                .Select(pfe => _ps.CreatePointerFileIfNotExists(pfe));
 
             return pfs.ToArray();
         }
@@ -112,7 +112,6 @@ namespace Arius.Core.Commands
             _logger = logger;
             _hvp = hvp;
             _repo = repo;
-
             _downloadTempDir = tempDirAppSettings.RestoreTempDirectory(new DirectoryInfo(options.Path));
         }
 
@@ -174,7 +173,7 @@ namespace Arius.Core.Commands
                 }
 
                 // Chunks Downloaded & Merged?
-                if (pf.GetBinaryFile() is var bf && bf is not null && 
+                if (PointerService.GetBinaryFile(pf) is var bf && bf is not null && 
                     _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");

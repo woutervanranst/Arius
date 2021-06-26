@@ -26,9 +26,9 @@ namespace Arius.Core.Services
     {
         public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
         {
+            this.logger = logger;
             salt = options.Passphrase;
             fastHash = options.FastHash;
-            this.logger = logger;
         }
 
         private readonly string salt;
@@ -44,7 +44,7 @@ namespace Arius.Core.Services
         public HashValue GetHashValue(BinaryFile bf)
         {
             if (fastHash &&
-                bf.GetPointerFile() is var pf && pf is not null)
+                PointerService.GetPointerFile(bf) is var pf && pf is not null)
             {
                 //A corresponding PointerFile exists
                 logger.LogDebug($"Using fasthash for {bf.RelativeName}");

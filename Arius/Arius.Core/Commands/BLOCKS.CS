@@ -32,12 +32,12 @@ namespace Arius.Core.Commands
             this.start = () =>
             {
                 logger.LogTrace("Started");
-                start();
+                start?.Invoke();
             };
             this.done = () =>
             {
                 logger.LogTrace("Done");
-                done();
+                done?.Invoke();
             };
 
             this.task = new(() =>

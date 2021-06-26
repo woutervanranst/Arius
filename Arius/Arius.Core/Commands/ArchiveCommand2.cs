@@ -53,7 +53,7 @@ namespace Arius.Core.Commands
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var repo = services.GetRequiredService<AzureRepository>();
             var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
-
+            var pointerFileService = services.GetRequiredService<PointerService>();
 
             var filesToHash = new BlockingCollection<IFile>();
 
@@ -229,7 +229,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 source: pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
-                pointerService: services.GetRequiredService<PointerFileService>(),
+                pointerService: pointerFileService,
                 removeLocal: options.RemoveLocal,
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () => 
@@ -257,20 +257,21 @@ namespace Arius.Core.Commands
 
 
             var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<AzureRepository.PointerFileEntry>();
-            var Remove = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
+            var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
                 logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
                 source: pointerFileEntriesToCheckForDeletedPointers,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
+                pointerService: pointerFileService,
                 version: version,
                 start: async () => 
                 {
                     var pfes = (await repo.GetCurrentEntries(true))
                                           .Where(e => e.Version < version); // that were not created in the current run (those are assumed to be up to date)
-                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, false);
-                    
+                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1301
                 },
                 done: () => { });
+            var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
 
             //while (true)

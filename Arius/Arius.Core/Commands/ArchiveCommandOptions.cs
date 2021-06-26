@@ -18,6 +18,7 @@ namespace Arius.Core.Commands
         //AzureRepository.IOptions,
         IBlobCopier.IOptions,
         IChunker.IOptions,
+        PointerService.IOptions,
         IEncrypter.IOptions,
         IHashValueProvider.IOptions
     {

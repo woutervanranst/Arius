@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Arius.Core.Extensions;
+using Arius.Core.Repositories;
 
 namespace Arius.Core.Models
 {
@@ -126,7 +127,6 @@ namespace Arius.Core.Models
     public class PointerFile : RelativeAriusFileBase, IAriusEntryWithHash
     {
         public static readonly string Extension = ".pointer.arius";
-        public static string GetFullName(BinaryFile bf) => $"{bf.FullName}{PointerFile.Extension}";
 
         //public PointerFile(FileInfo fi) : this(fi.Directory, fi)
         //{
@@ -141,21 +141,6 @@ namespace Arius.Core.Models
             Hash = new HashValue() { Value = File.ReadAllText(fi.FullName) };
         }
 
-        /// <summary>
-        /// Get the local BinaryFile for this pointer if it exists.
-        /// If it does not exist, return null.
-        /// </summary>
-        /// <returns></returns>
-        public BinaryFile GetBinaryFile()
-        {
-            var bfi = new FileInfo(fi.FullName.TrimEnd(Extension));
-
-            if (!bfi.Exists)
-                return null;
-
-            return new BinaryFile(Root, bfi);
-        }
-
         internal IEnumerable<HashValue> ChunkHashes { get; set; } //TODO Delete this
 
         public override string ContentName => Name.TrimEnd(Extension);
@@ -164,23 +149,8 @@ namespace Arius.Core.Models
     public class BinaryFile : RelativeAriusFileBase, IAriusEntryWithHash, IChunkFile
     {
         public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
-
+        
         internal IEnumerable<IChunkFile> Chunks { get; set; } //TODO delete this
-
-        /// <summary>
-        /// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
-        /// If it does not exist, return null.
-        /// </summary>
-        /// <returns></returns>
-        public PointerFile GetPointerFile()
-        {
-            var pfi = new FileInfo(PointerFile.GetFullName(this));
-
-            if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(FullName))
-                return null;
-
-            return new PointerFile(Root, pfi);
-        }
 
         public override string ContentName => Name;
     }

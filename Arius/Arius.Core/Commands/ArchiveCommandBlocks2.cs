@@ -23,7 +23,7 @@ namespace Arius.Core.Commands
             DirectoryInfo root,
             Action<IFile> indexedFile,
             Action done)
-            : base(logger, root, done)
+            : base(logger: logger, source: root, done: done)
         {
             this.indexedFile = indexedFile;
         }
@@ -122,7 +122,7 @@ namespace Arius.Core.Commands
             Action<PointerFile> hashedPointerFile,
             Action<BinaryFile> hashedBinaryFile,
             IHashValueProvider hvp,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
@@ -132,7 +132,6 @@ namespace Arius.Core.Commands
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
-
 
         protected override Task ForEachBodyImplAsync(IFile item)
         {
@@ -167,7 +166,7 @@ namespace Arius.Core.Commands
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
-           Action done) : base(logger, source, /*continueWhile, */done)
+           Action done) : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
             this.uploadBinaryFile = uploadBinaryFile;
@@ -182,7 +181,7 @@ namespace Arius.Core.Commands
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            if (bf.GetPointerFile() is var pf && pf is not null &&
+            if (PointerService.GetPointerFile(bf) is var pf && pf is not null &&
                 pf.Hash == bf.Hash)
             {
                 //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
@@ -258,19 +257,14 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             IChunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
-            //this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.chunker = chunker;
             this.chunkedBinary = chunkedBinary;
         }
 
-        //private readonly int maxDegreeOfParallelism;
         private readonly IChunker chunker;
         private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
-
-
-        //protected override int MaxDegreeOfParallelism => maxDegreeOfParallelism;
 
         protected override Task ForEachBodyImplAsync(BinaryFile bf)
         {
@@ -285,6 +279,7 @@ namespace Arius.Core.Commands
         }
     }
 
+
     internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
@@ -292,7 +287,7 @@ namespace Arius.Core.Commands
             AzureRepository repo,
             Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
-            Action done) : base(logger, source, done)
+            Action done) : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
             this.chunkToUpload = chunkToUpload;
@@ -337,12 +332,12 @@ namespace Arius.Core.Commands
         }
         private readonly List<HashValue> creating = new();
 
-
         private async Task<bool> ChunkExists(HashValue h)
         {
             return await repo.ChunkExists(h); //TODO: CACHE RESULTS
         }
     }
+
 
     internal class EncryptChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
@@ -352,7 +347,7 @@ namespace Arius.Core.Commands
             TempDirectoryAppSettings tempDirAppSettings,
             IEncrypter encrypter,
             Action<EncryptedChunkFile> chunkEncrypted,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.tempDirAppSettings = tempDirAppSettings;
             this.encrypter = encrypter;
@@ -389,7 +384,7 @@ namespace Arius.Core.Commands
             AzCopyAppSettings azCopyAppSettings,
             Func<bool> isAddingCompleted,
             Action<EncryptedChunkFile[]> batchForUpload,
-            Action done) : base(logger, source, done)
+            Action done) : base(logger: logger, source: source, done: done)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.isAddingCompleted = isAddingCompleted;
@@ -452,7 +447,7 @@ namespace Arius.Core.Commands
             AzureRepository repo,
             AccessTier tier,
             Action<HashValue> chunkUploaded,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.tier = tier;
@@ -491,7 +486,7 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             AzureRepository repo,
             Action<HashValue> manifestCreated,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.manifestCreated = manifestCreated;
@@ -517,17 +512,17 @@ namespace Arius.Core.Commands
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
-            PointerFileService pointerService,
+            PointerService pointerService,
             bool removeLocal,
             Action<PointerFile> pointerFileCreated,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
             this.removeLocal = removeLocal;
             this.pointerFileCreated = pointerFileCreated;
         }
 
-        private readonly PointerFileService pointerService;
+        private readonly PointerService pointerService;
         private readonly bool removeLocal;
         private readonly Action<PointerFile> pointerFileCreated;
 
@@ -541,9 +536,9 @@ namespace Arius.Core.Commands
 
             if (removeLocal)
             {
-                logger.LogInformation($"Deleting binary '{bf.RelativeName}'...");
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
                 bf.Delete();
-                logger.LogInformation($"Deleting binary '{bf.RelativeName}'... done");
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
             }
 
             pointerFileCreated(pf);
@@ -552,6 +547,7 @@ namespace Arius.Core.Commands
         }
     }
 
+
     internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
@@ -559,7 +555,7 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             AzureRepository repo,
             DateTime version,
-            Action done) : base(logger, source, maxDegreeOfParallelism, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.version = version;
@@ -591,28 +587,33 @@ namespace Arius.Core.Commands
         }
     }
 
+
     internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<AzureRepository.PointerFileEntry>
     {
         public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
             BlockingCollection<AzureRepository.PointerFileEntry> source,
             int maxDegreeOfParallelism,
             AzureRepository repo,
+            PointerService pointerService,
             DateTime version,
             Action start,
-            Action done) : base(logger, source, maxDegreeOfParallelism, start, done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
         {
             this.repo = repo;
+            this.pointerService = pointerService;
             this.version = version;
         }
 
         private readonly AzureRepository repo;
+        private readonly PointerService pointerService;
         private readonly DateTime version;
 
         protected override async Task ForEachBodyImplAsync(AzureRepository.PointerFileEntry pfe)
         {
-            var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
-            if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+            if (!pfe.IsDeleted &&
+                pointerService.GetPointerFile(pfe) is null && pointerService.GetBinaryFile(pfe) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
+                logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
                 await repo.CreateDeletedPointerFileEntryAsync(pfe, version);
             }
         }
