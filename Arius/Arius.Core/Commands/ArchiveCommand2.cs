@@ -286,12 +286,30 @@ namespace Arius.Core.Commands
                 version: version,
                 start: async () => 
                 {
-                    var pfes = (await repo.GetCurrentEntries(true))
+                    var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
                                           .Where(e => e.Version < version); // that were not created in the current run (those are assumed to be up to date)
                     pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
                 },
                 done: () => { });
             var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
+
+
+            var pointerFileEntriesToExport = new BlockingCollection<AzureRepository.PointerFileEntry>();
+            var exportJsonBlock = new ExportToJsonBlock(
+                logger: loggerFactory.CreateLogger<ExportToJsonBlock>(),
+                source: pointerFileEntriesToExport,
+                repo: repo,
+                version: version,
+                start: async () =>
+                {
+                    var pfes = await repo.GetCurrentEntries(includeDeleted: false);
+                    pointerFileEntriesToExport.AddFromEnumerable(pfes, true); //B1502
+                },
+                done: () => { });
+            var exportJsonTask = await createPointerFileEntryIfNotExistsTask.ContinueWith(async _ => 
+            {
+                await exportJsonBlock.GetTask; //B1501
+            });
 
 
             //while (true)
@@ -302,6 +320,7 @@ namespace Arius.Core.Commands
 
             // Await the current stage of the pipeline
             await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
+            await exportJsonTask;
 
             if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
                 && ts.Any())

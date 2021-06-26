@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -650,12 +651,10 @@ namespace Arius.Core.Commands
     {
         public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
             BlockingCollection<AzureRepository.PointerFileEntry> source,
-            int maxDegreeOfParallelism,
             AzureRepository repo,
-            //PointerService pointerService,
             DateTime version,
             Action start,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: 1, start: start, done: done) //! must be single threaded
         {
             this.repo = repo;
             //this.pointerService = pointerService;
@@ -671,12 +670,18 @@ namespace Arius.Core.Commands
             using Stream file = File.Create(@"c:\ha.json");
 
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
+            
 
-            writer.WriteStartObject();
+            //writer.WriteStartObject();
 
             var json = JsonSerializer.Serialize(item);
-            writer.WriteString("ha", json);
-            writer.WriteEndObject();
+            var x = JsonEncodedText.Encode(json, JavaScriptEncoder.Default);
+            writer.WriteStartArray();
+            writer.WriteStringValue(x);
+            //writer.WriteEndObject();
+            writer.WriteEndArray();
+
+            writer.Flush();
 
             return Task.CompletedTask;
         }
