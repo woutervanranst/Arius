@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,61 +14,75 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        protected BlockBase(ILogger logger, Action done)
+        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
+        protected static readonly ConcurrentBag<Task> tasks = new();
+
+        protected static readonly CancellationTokenSource cts = new();
+        protected static readonly CancellationToken ct = cts.Token;
+        public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
+    }
+
+    internal abstract class TaskBlockBase<TSource> : BlockBase
+    {
+        protected TaskBlockBase(ILogger logger, TSource source, Action done)
         {
             this.logger = logger;
 
-            this.task = new(() =>
-            {
-                var t = TaskImpl();
-                tasks.Add(t);
-
-                return t;
-            }, isThreadSafe: true);
+            this.source = source;
 
             this.done = () =>
             {
                 logger.LogTrace("Done");
                 done();
             };
+
+            this.task = new(() =>
+            {
+                var t = TaskImpl();
+
+                // When one task has an exception, set the CancellationToken to all other Tasks
+                //NOTE do not put this on one line, ContinueWith returns another task that will not be faulted
+                var t2 = t.ContinueWith(t => cts.Cancel(), TaskContinuationOptions.OnlyOnFaulted); 
+                
+                tasks.Add(t);
+
+                logger.LogTrace($"Created {t.Id}");
+
+                return t;
+            }, isThreadSafe: false);
         }
 
+        private readonly TSource source;
         protected readonly ILogger logger;
         private readonly Lazy<Task> task;
-        protected readonly Action done;
+        private readonly Action done;
 
         public Task GetTask => task.Value;
 
-        protected abstract Task TaskImpl();
-
-        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
-        private static readonly ConcurrentBag<Task> tasks = new();
-    }
-
-
-    internal abstract class TaskBlockBase<TSource> : BlockBase
-    {
-        protected TaskBlockBase(ILogger logger, TSource source, Action done) : base(logger, done)
-        {
-            this.source = source;
-        }
-        private readonly TSource source;
-
-        protected abstract Task TaskBodyImplAsync(TSource source);
-        protected override sealed Task TaskImpl()
+        private Task TaskImpl()
         {
             return Task.Run(async () =>
             {
-                logger.LogTrace("Started");
+                try
+                {
+                    logger.LogTrace("Started");
 
-                await TaskBodyImplAsync(source);
+                    await TaskBodyImplAsync(source);
 
-                done();
+                    done();
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Exception");
+
+                    throw; //Set this task to Faulted
+                }
             });
         }
+
+        protected abstract Task TaskBodyImplAsync(TSource source);
     }
-
-
+    
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
         protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
@@ -95,9 +110,17 @@ namespace Arius.Core.Commands
             var partitions = partitioner.GetPartitions(maxDegreeOfParallelism);
             var tasks = partitions.Select(async (partition) =>
             {
-                using (partition)
-                    while (partition.MoveNext())
-                        await ForEachBodyImplAsync(partition.Current);
+                //await Task.Run(async () => 
+                //{
+                    using (partition)
+                        while (partition.MoveNext())
+                        //{
+                        //    if (ct.IsCancellationRequested)
+                        //        ct.ThrowIfCancellationRequested();
+
+                            await ForEachBodyImplAsync(partition.Current);
+                        //}
+                //}, ct);
             });
 
             await Task.WhenAll(tasks);

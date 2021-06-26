@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.9.1" />
     <PackageReference Include="FluentValidation" Version="10.2.3" />
     <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="1.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="5.0.1" />
@@ -9,7 +9,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
     <PackageReference Include="murmurhash" Version="1.0.3" />
-    <PackageReference Include="ParallelExtensionsExtras.NetFxStandard" Version="1.4.0" />
+    <PackageReference Include="Nito.AsyncEx.Tasks" Version="5.1.0" />
     <PackageReference Include="System.Linq" Version="4.3.0" />
   </ItemGroup>
 

@@ -15,6 +15,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 
 namespace Arius.Core.Commands
 {
@@ -255,14 +256,20 @@ namespace Arius.Core.Commands
 
 
 
-            // Await the current stage of the pipeline
-            await Task.WhenAll(BlockBase.AllTasks);
-
-
             //while (true)
             //{
             //    await Task.Yield();
             //}
+
+
+            // Await the current stage of the pipeline
+            await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
+
+            if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
+                && ts.Any())
+            {
+                throw ts.First().Exception;
+            }
 
             return 0;
         }
