@@ -17,7 +17,7 @@ namespace Arius.Core.Commands
         public static IEnumerable<Task> AllTasks => tasks.AsEnumerable(); //Put this on the nongeneric base class to have access to it via BlockBase.AllTasks. Cannot access static members on generic classes.
         protected static readonly ConcurrentBag<Task> tasks = new();
 
-        protected static readonly CancellationTokenSource cts = new();
+        protected static readonly CancellationTokenSource cts = new(); //put this here since static fields are not shared in generic classes with different T
         private static readonly CancellationToken ct = cts.Token;
         public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
     }
@@ -90,10 +90,10 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action done) : this(logger, source, 1, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action start = default, Action done = default) : this(logger, source, 1, start, done)
         {
         }
-        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action done) : base(logger, source, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action start = default, Action done = default) : base(logger, source, start, done)
         {
             this.partitioner = source.GetConsumingPartitioner();
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
