@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -184,7 +185,7 @@ namespace Arius.Core.Commands
             if (PointerService.GetPointerFile(bf) is var pf && pf is not null &&
                 pf.Hash == bf.Hash)
             {
-                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
+                //An equivalent PointerFile already exists and is already being sent through the pipe - skip. //B401
 
                 if (!await ManifestExists(bf.Hash))
                     throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists.");
@@ -572,13 +573,13 @@ namespace Arius.Core.Commands
 
             switch (r)
             {
-                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedAdd:
-                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'updated' entry.");
+                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.Upserted:
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Upserted entry.");
                     break;
                 case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
                     break;
-                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.AlreadyExisted:
+                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
                     break;
                 default:
@@ -616,6 +617,43 @@ namespace Arius.Core.Commands
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
                 await repo.CreateDeletedPointerFileEntryAsync(pfe, version);
             }
+        }
+    }
+
+
+    internal class ExportToJsonBlock : BlockingCollectionTaskBlockBase<AzureRepository.PointerFileEntry>
+    {
+        public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
+            BlockingCollection<AzureRepository.PointerFileEntry> source,
+            int maxDegreeOfParallelism,
+            AzureRepository repo,
+            //PointerService pointerService,
+            DateTime version,
+            Action start,
+            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
+        {
+            this.repo = repo;
+            //this.pointerService = pointerService;
+            this.version = version;
+        }
+
+        private readonly AzureRepository repo;
+        //private readonly PointerService pointerService;
+        private readonly DateTime version;
+
+        protected override Task ForEachBodyImplAsync(AzureRepository.PointerFileEntry item)
+        {
+            using Stream file = File.Create(@"c:\ha.json");
+
+            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
+
+            writer.WriteStartObject();
+
+            var json = JsonSerializer.Serialize(item);
+            writer.WriteString("ha", json);
+            writer.WriteEndObject();
+
+            return Task.CompletedTask;
         }
     }
 }

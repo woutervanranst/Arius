@@ -14,6 +14,7 @@ namespace Arius.Core.Commands
         MergeBlockProvider.IOptions,
 
         //IChunker.IOptions, // geen IChunker options
+        PointerService.IOptions,
 
         IBlobCopier.IOptions,
         IHashValueProvider.IOptions,

@@ -61,9 +61,9 @@ namespace Arius.Core.Repositories
 
             public enum CreatePointerFileEntryResult
             {
-                InsertedAdd,
+                Upserted,
                 InsertedDeleted,
-                AlreadyExisted
+                NoChange
             }
 
             private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
@@ -79,11 +79,11 @@ namespace Arius.Core.Repositories
                     else
                     { 
                         _logger.LogInformation($"Added '{pfe.RelativeName}'");
-                        return CreatePointerFileEntryResult.InsertedAdd;
+                        return CreatePointerFileEntryResult.Upserted;
                     }
                 }
 
-                return CreatePointerFileEntryResult.AlreadyExisted;
+                return CreatePointerFileEntryResult.NoChange;
             }
 
 
@@ -103,11 +103,20 @@ namespace Arius.Core.Repositories
 
             private async Task<IReadOnlyList<PointerFileEntry>> GetEntriesAtPointInTimeAsync(DateTime pointInTime)
             {
-                var version = await GetVersionAsync(pointInTime);
+                try
+                { 
+                    var version = await GetVersionAsync(pointInTime);
 
-                var r = await GetEntriesAtVersionAsync(version);
+                    var r = await GetEntriesAtVersionAsync(version);
 
-                return r;
+                    return r;
+                }
+                catch (ArgumentException e)
+                {
+                    _logger.LogWarning($"{e.Message} Returning empty list of PointerFileEntries.");
+
+                    return Array.Empty<PointerFileEntry>();
+                }
             }
 
             /// <summary>
@@ -135,7 +144,7 @@ namespace Arius.Core.Repositories
                 }
 
                 if (version is null)
-                    throw new ArgumentException($"No backup version found for pointInTime {pointInTime}");
+                    throw new ArgumentException($"{nameof(GetVersionAsync)}: No version found for {nameof(pointInTime)} {pointInTime}.");
 
                 return version.Value;
             }
