@@ -89,8 +89,8 @@ namespace Arius.Core.Commands
                 //continueWhile: () => !createManifest.IsCompleted,
                 source: binariesToUpload,
                 repo: repo,
-                uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B401
-                waitForCreatedManifest: (bf) => //B402
+                uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B402
+                waitForCreatedManifest: (bf) => //B404
                 {
                     binariesWaitingForManifestCreation.AddOrUpdate(
                         key: bf.Hash,
