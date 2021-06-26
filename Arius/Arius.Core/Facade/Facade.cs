@@ -155,7 +155,7 @@ namespace Arius.Core.Facade
                 .AddSingleton<RestoreCommand>()
 
                 //Add Services
-                .AddSingleton<PointerService>()
+                .AddSingleton<PointerFileService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()

@@ -6,11 +6,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services
 {
-    internal class PointerService
+    internal class PointerFileService
     {
-        private readonly ILogger<PointerService> _logger;
+        private readonly ILogger<PointerFileService> _logger;
 
-        public PointerService(ILogger<PointerService> logger)
+        public PointerFileService(ILogger<PointerFileService> logger)
         {
             _logger = logger;
         }

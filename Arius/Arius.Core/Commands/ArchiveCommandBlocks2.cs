@@ -517,7 +517,7 @@ namespace Arius.Core.Commands
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
-            PointerService pointerService,
+            PointerFileService pointerService,
             bool removeLocal,
             Action<PointerFile> pointerFileCreated,
             Action done) : base(logger, source, maxDegreeOfParallelism, done)
@@ -527,7 +527,7 @@ namespace Arius.Core.Commands
             this.pointerFileCreated = pointerFileCreated;
         }
 
-        private readonly PointerService pointerService;
+        private readonly PointerFileService pointerService;
         private readonly bool removeLocal;
         private readonly Action<PointerFile> pointerFileCreated;
 

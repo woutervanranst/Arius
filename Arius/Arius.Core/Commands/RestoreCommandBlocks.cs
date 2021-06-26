@@ -23,7 +23,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerService ps)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerFileService ps)
         {
             _logger = logger;
             _root = new DirectoryInfo(options.Path);
@@ -34,7 +34,7 @@ namespace Arius.Core.Commands
         private readonly ILogger<SynchronizeBlockProvider> _logger;
         private readonly DirectoryInfo _root;
         private readonly AzureRepository _repo;
-        private readonly PointerService _ps;
+        private readonly PointerFileService _ps;
 
         /// <summary>
         /// Synchronize the local root to the remote repository

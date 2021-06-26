@@ -229,7 +229,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 source: pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
-                pointerService: services.GetRequiredService<PointerService>(),
+                pointerService: services.GetRequiredService<PointerFileService>(),
                 removeLocal: options.RemoveLocal,
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () => 

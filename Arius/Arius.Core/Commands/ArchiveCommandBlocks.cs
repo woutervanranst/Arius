@@ -819,14 +819,14 @@ namespace Arius.Core.Commands
 
     internal class CreatePointerBlockProvider
     {
-        public CreatePointerBlockProvider(ILogger<CreatePointerBlockProvider> logger, PointerService ps)
+        public CreatePointerBlockProvider(ILogger<CreatePointerBlockProvider> logger, PointerFileService ps)
         {
             _logger = logger;
             _ps = ps;
         }
 
         private readonly ILogger<CreatePointerBlockProvider> _logger;
-        private readonly PointerService _ps;
+        private readonly PointerFileService _ps;
 
 
         public CreatePointerBlockProvider AddBinaryFilesToDelete(List<BinaryFile> binaryFilesToDelete)
@@ -899,7 +899,7 @@ namespace Arius.Core.Commands
 
     internal class ValidateBlockProvider
     {
-        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, AzureRepository repo, PointerService pointerService)
+        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, AzureRepository repo, PointerFileService pointerService)
         {
             this.logger = logger;
             this.repo = repo;
@@ -908,7 +908,7 @@ namespace Arius.Core.Commands
 
         private readonly ILogger<ValidateBlockProvider> logger;
         private readonly AzureRepository repo;
-        private readonly PointerService pointerService;
+        private readonly PointerFileService pointerService;
 
         public ActionBlock<PointerFile> GetBlock()
         {
