@@ -188,7 +188,7 @@ namespace Arius.Core.Commands
                 //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
                 if (!await ManifestExists(bf.Hash))
-                    throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists");
+                    throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists.");
 
                 logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping.");
 
@@ -554,9 +554,6 @@ namespace Arius.Core.Commands
 
     internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
-        private readonly AzureRepository repo;
-        private readonly DateTime version;
-
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
             BlockingCollection<PointerFile> source,
             int maxDegreeOfParallelism,
@@ -567,6 +564,9 @@ namespace Arius.Core.Commands
             this.repo = repo;
             this.version = version;
         }
+
+        private readonly AzureRepository repo;
+        private readonly DateTime version;
 
         protected override async Task ForEachBodyImplAsync(PointerFile pointerFile)
         {
@@ -587,6 +587,33 @@ namespace Arius.Core.Commands
                     break;
                 default:
                     throw new NotImplementedException();
+            }
+        }
+    }
+
+    internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<AzureRepository.PointerFileEntry>
+    {
+        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
+            BlockingCollection<AzureRepository.PointerFileEntry> source,
+            int maxDegreeOfParallelism,
+            AzureRepository repo,
+            DateTime version,
+            Action start,
+            Action done) : base(logger, source, maxDegreeOfParallelism, start, done)
+        {
+            this.repo = repo;
+            this.version = version;
+        }
+
+        private readonly AzureRepository repo;
+        private readonly DateTime version;
+
+        protected override async Task ForEachBodyImplAsync(AzureRepository.PointerFileEntry pfe)
+        {
+            var pointerFullName = Path.Combine(_root.FullName, pfe.RelativeName);
+            if (!File.Exists(pointerFullName) && !pfe.IsDeleted)
+            {
+                await repo.CreateDeletedPointerFileEntryAsync(pfe, version);
             }
         }
     }

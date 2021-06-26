@@ -45,13 +45,14 @@ namespace Arius.Core.Commands
         {
         }
 
-        IServiceProvider ICommand.Services => throw new NotImplementedException();
+        IServiceProvider ICommand.Services => services;
 
 
         public async Task<int> Execute()
         {
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var repo = services.GetRequiredService<AzureRepository>();
+            var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
 
 
             var filesToHash = new BlockingCollection<IFile>();
@@ -248,12 +249,28 @@ namespace Arius.Core.Commands
                 source: pointerFileEntriesToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
-                version: DateTime.Now.ToUniversalTime(), //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
+                version: version,
                 done: () => 
                 {
                 });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
+
+            var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<AzureRepository.PointerFileEntry>();
+            var Remove = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
+                logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
+                source: pointerFileEntriesToCheckForDeletedPointers,
+                maxDegreeOfParallelism: 1 /*2*/,
+                repo: repo,
+                version: version,
+                start: async () => 
+                {
+                    var pfes = (await repo.GetCurrentEntries(true))
+                                          .Where(e => e.Version < version); // that were not created in the current run (those are assumed to be up to date)
+                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, false);
+                    
+                },
+                done: () => { });
 
 
             //while (true)
@@ -268,7 +285,8 @@ namespace Arius.Core.Commands
             if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
                 && ts.Any())
             {
-                throw ts.First().Exception;
+                var exceptions = ts.Select(t => t.Exception);
+                throw new AggregateException(exceptions);
             }
 
             return 0;
