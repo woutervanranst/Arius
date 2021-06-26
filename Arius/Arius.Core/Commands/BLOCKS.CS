@@ -14,22 +14,26 @@ namespace Arius.Core.Commands
 {
     internal abstract class BlockBase
     {
-        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable();
+        public static IEnumerable<Task> AllTasks => tasks.AsEnumerable(); //Put this on the nongeneric base class to have access to it via BlockBase.AllTasks. Cannot access static members on generic classes.
         protected static readonly ConcurrentBag<Task> tasks = new();
 
         protected static readonly CancellationTokenSource cts = new();
-        protected static readonly CancellationToken ct = cts.Token;
+        private static readonly CancellationToken ct = cts.Token;
         public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
     }
 
     internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected TaskBlockBase(ILogger logger, TSource source, Action done)
+        protected TaskBlockBase(ILogger logger, TSource source, Action start = default, Action done = default)
         {
             this.logger = logger;
-
             this.source = source;
 
+            this.start = () =>
+            {
+                logger.LogTrace("Started");
+                start();
+            };
             this.done = () =>
             {
                 logger.LogTrace("Done");
@@ -53,6 +57,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly TSource source;
+        private readonly Action start;
         protected readonly ILogger logger;
         private readonly Lazy<Task> task;
         private readonly Action done;
@@ -65,7 +70,7 @@ namespace Arius.Core.Commands
             {
                 try
                 {
-                    logger.LogTrace("Started");
+                    start();
 
                     await TaskBodyImplAsync(source);
 
