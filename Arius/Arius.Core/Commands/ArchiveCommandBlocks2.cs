@@ -647,14 +647,14 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ExportToJsonBlock : BlockingCollectionTaskBlockBase<AzureRepository.PointerFileEntry>
+    internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<AzureRepository.PointerFileEntry>>
     {
         public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
             BlockingCollection<AzureRepository.PointerFileEntry> source,
             AzureRepository repo,
             DateTime version,
             Action start,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: 1, start: start, done: done) //! must be single threaded
+            Action done) : base(logger: logger, source: source, start: start, done: done) //! must be single threaded
         {
             this.repo = repo;
             //this.pointerService = pointerService;
@@ -665,21 +665,39 @@ namespace Arius.Core.Commands
         //private readonly PointerService pointerService;
         private readonly DateTime version;
 
-        protected override Task ForEachBodyImplAsync(AzureRepository.PointerFileEntry item)
+
+        protected override Task TaskBodyImplAsync(BlockingCollection<AzureRepository.PointerFileEntry> source)
         {
             using Stream file = File.Create(@"c:\ha.json");
 
-            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
-            
+            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping } );
 
-            //writer.WriteStartObject();
+            writer.WriteStartObject();
 
-            var json = JsonSerializer.Serialize(item);
-            var x = JsonEncodedText.Encode(json, JavaScriptEncoder.Default);
-            writer.WriteStartArray();
-            writer.WriteStringValue(x);
-            //writer.WriteEndObject();
+            writer.WriteStartArray("hehe");
+
+
+
+            foreach (var entry in source.AsEnumerable()) //.GetConsumingEnumerable())
+            {
+
+
+                var json = JsonSerializer.Serialize(entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+                //var x = JsonEncodedText.Encode(json, JavaScriptEncoder.UnsafeRelaxedJsonEscaping);
+                writer.WriteStringValue(json);
+
+                //writer.Flush();
+
+            }
+
             writer.WriteEndArray();
+
+            writer.WriteEndObject();
+
+
+
+
+
 
             writer.Flush();
 
