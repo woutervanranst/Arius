@@ -670,38 +670,42 @@ namespace Arius.Core.Commands
         {
             using Stream file = File.Create(@"c:\ha.json");
 
-            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping } );
+            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
 
             writer.WriteStartObject();
 
             writer.WriteStartArray("hehe");
 
-
-
             foreach (var entry in source.AsEnumerable()) //.GetConsumingEnumerable())
             {
-
-
-                var json = JsonSerializer.Serialize(entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-                //var x = JsonEncodedText.Encode(json, JavaScriptEncoder.UnsafeRelaxedJsonEscaping);
-                writer.WriteStringValue(json);
-
-                //writer.Flush();
-
+                var kaka = new ha(entry);
+                
+                JsonSerializer.Serialize(writer, kaka /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
             }
 
             writer.WriteEndArray();
 
             writer.WriteEndObject();
 
-
-
-
-
-
             writer.Flush();
 
             return Task.CompletedTask;
+        }
+
+        private class ha
+        {
+            private readonly AzureRepository.PointerFileEntry he;
+
+            public ha(AzureRepository.PointerFileEntry he)
+            {
+                this.he = he;
+            }
+            public string ManifestHash => he.ManifestHash.Value;
+            public string RelativeName => he.RelativeName;
+            public DateTime VersionUtc => he.Version;
+            public bool IsDeleted => he.IsDeleted;
+            public DateTime? CreationTimeUtc => he.CreationTimeUtc;
+            public DateTime? LastWriteTimeUtc => he.LastWriteTimeUtc;
         }
     }
 }
