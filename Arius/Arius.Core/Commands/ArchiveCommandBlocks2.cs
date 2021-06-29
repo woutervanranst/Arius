@@ -468,7 +468,7 @@ namespace Arius.Core.Commands
         {
             logger.LogInformation($"Uploading batch..."); // Remaining Batches queue depth: {_block!.Value.InputCount}");
 
-            //Upload the files
+            //Upload the chunks
             repo.Upload(ecfs, tier);
 
             //Delete the (temporary) encrypted chunk files
@@ -669,7 +669,7 @@ namespace Arius.Core.Commands
             logger.LogInformation($"Writing state to JSON...");
 
             using Stream file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
-            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
+            var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
             writer.WriteStartArray();
 
             // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
@@ -681,10 +681,10 @@ namespace Arius.Core.Commands
             {
                 var chs = await repo.GetChunkHashesForManifestAsync(pfe.ManifestHash);
                 var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
-                
+
                 //lock (writer)
                 //{ 
-                    JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+                JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
                 //}
             }
 
@@ -713,5 +713,51 @@ namespace Arius.Core.Commands
             public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
             public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;
         }
+    }
+
+
+    internal class ValidateBlock
+    {
+        public ValidateBlock(ILogger<ExportToJsonBlock> logger,
+            BlockingCollection<PointerFileEntry> source,
+            Repository repo,
+            DateTime versionUtc,
+            Action start,
+            Action done)
+        {
+            //logger.LogInformation($"Validating {pointerFile.FullName}...");
+
+            //logger.LogWarning($"Validating {pointerFile.FullName}... - Not yet implemented");
+
+            ////    // Validate the manifest
+            ////    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
+
+            ////    if (!chunkHashes.Any())
+            ////        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
+
+            ////    double length = 0;
+            ////    foreach (var chunkHash in chunkHashes)
+            ////    {
+            ////        var cb = repo.GetChunkBlobByHash(chunkHash, false);
+            ////        length += cb.Length;
+            ////    }
+
+            ////    var bfi = pointerFile.BinaryFileInfo;
+            ////    if (bfi.Exists)
+            ////    {
+            ////        //TODO if we would know the EXACT/uncompressed size from the PointerFileEntry - use that
+            ////        if (bfi.Length / length < 0.9)
+            ////            throw new InvalidOperationException("something is wrong");
+            ////    }
+            ////    else
+            ////    {
+            ////        //TODO if we would know the expected size from the PointerFileEntry - use that
+            ////        if (length == 0)
+            ////            throw new InvalidOperationException("something is wrong");
+            ////    }
+
+            //logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
+        }
+
     }
 }

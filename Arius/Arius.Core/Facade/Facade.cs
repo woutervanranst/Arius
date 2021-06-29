@@ -150,7 +150,6 @@ namespace Arius.Core.Facade
 
             sc
                 //Add Commmands
-                .AddSingleton<ArchiveCommand>()
                 .AddSingleton<ArchiveCommand2>()
                 .AddSingleton<RestoreCommand>()
 
@@ -186,7 +185,6 @@ namespace Arius.Core.Facade
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
 
-            ArchiveCommand.AddBlockProviders(sc);
             ArchiveCommand2.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
 

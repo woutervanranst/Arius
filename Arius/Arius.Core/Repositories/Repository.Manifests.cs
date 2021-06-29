@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -20,6 +21,8 @@ namespace Arius.Core.Repositories
         {
             // 'Partial constructor' for this part of the repo
         }
+
+        private ConcurrentDictionary<HashValue, IEnumerable<HashValue>> manifestCache = new();
 
 
         // GET
@@ -61,9 +64,9 @@ namespace Arius.Core.Repositories
 
             try
             {
-                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
-
                 var ms = new MemoryStream();
+
+                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
                 await bc.DownloadToAsync(ms);
                 var bytes = ms.ToArray();
                 var json = Encoding.UTF8.GetString(bytes);

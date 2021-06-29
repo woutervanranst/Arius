@@ -8,13 +8,8 @@ namespace Arius.Core.Commands
     internal class ArchiveCommandOptions : AzureRepositoryOptions, 
         Facade.Facade.IOptions,
 
-        ArchiveCommand.IOptions,
         ArchiveCommand2.IOptions,
 
-        UploadEncryptedChunksBlockProvider.IOptions,
-        RemoveDeletedPointersTaskProvider.IOptions,
-        DeleteBinaryFilesTaskProvider.IOptions,
-        
         //AzureRepository.IOptions,
         IBlobCopier.IOptions,
         IChunker.IOptions,

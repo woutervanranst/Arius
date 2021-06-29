@@ -29,16 +29,16 @@ namespace Arius.Core.Commands
         }
 
         public ArchiveCommand2(IOptions options,
-            ILogger<ArchiveCommand> logger,
+            ILogger<ArchiveCommand2> logger,
             IServiceProvider serviceProvider)
         {
             this.options = options;
-            this._logger = logger;
+            this.logger = logger;
             this.services = serviceProvider;
         }
 
         private readonly IOptions options;
-        private readonly ILogger<ArchiveCommand> _logger;
+        private readonly ILogger<ArchiveCommand2> logger;
         private readonly IServiceProvider services;
 
         internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
