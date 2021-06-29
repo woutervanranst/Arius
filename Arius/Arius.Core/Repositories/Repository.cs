@@ -33,15 +33,15 @@ namespace Arius.Core.Repositories
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
 
             var bsc = new BlobServiceClient(connectionString);
-            _bcc = bsc.GetBlobContainerClient(options.Container);
+            container = bsc.GetBlobContainerClient(options.Container);
 
-            var r = _bcc.CreateIfNotExists(PublicAccessType.None);
+            var r = container.CreateIfNotExists(PublicAccessType.None);
 
             if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
                 this.logger.LogInformation($"Created container {options.Container}... ");
         }
 
         private readonly ILogger<Repository> logger;
-        private readonly BlobContainerClient _bcc;
+        private readonly BlobContainerClient container;
     }
 }

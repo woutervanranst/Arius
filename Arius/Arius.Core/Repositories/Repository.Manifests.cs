@@ -31,7 +31,7 @@ namespace Arius.Core.Repositories
 
             try
             {
-                return r = _bcc.GetBlobs(prefix: $"{ManifestDirectoryName}/")
+                return r = container.GetBlobs(prefix: $"{ManifestDirectoryName}/")
                     .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
                     .Select(bi => new ManifestBlob(bi))
                     .ToArray();
@@ -49,7 +49,7 @@ namespace Arius.Core.Repositories
 
         public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
         {
-            return await _bcc.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
+            return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }
 
         private string GetManifestBlobName(HashValue manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
@@ -61,7 +61,7 @@ namespace Arius.Core.Repositories
 
             try
             {
-                var bc = _bcc.GetBlobClient(GetManifestBlobName(manifestHash));
+                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 
                 var ms = new MemoryStream();
                 await bc.DownloadToAsync(ms);
@@ -96,7 +96,7 @@ namespace Arius.Core.Repositories
         {
             try
             {
-                var bc = _bcc.GetBlobClient(GetManifestBlobName(manifestHash));
+                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 
                 if (bc.Exists())
                     throw new InvalidOperationException("Manifest Already Exists");

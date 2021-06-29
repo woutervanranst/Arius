@@ -34,7 +34,7 @@ namespace Arius.Core.Repositories
 
             try
             {
-                return r = _bcc.GetBlobs(prefix: $"{ChunkDirectoryName}/")
+                return r = container.GetBlobs(prefix: $"{ChunkDirectoryName}/")
                     .Select(bi => new ChunkBlobItem(bi))
                     .ToArray();
             }
@@ -100,7 +100,7 @@ namespace Arius.Core.Repositories
         {
             try
             {
-                var bc = _bcc.GetBlobClient(blobName);
+                var bc = container.GetBlobClient(blobName);
                 var cb = ChunkBlobBase.GetChunkBlob(bc);
                 return cb;
             }
@@ -112,7 +112,7 @@ namespace Arius.Core.Repositories
 
         public async Task<bool> ChunkExists(HashValue chunkHash)
         {
-            return await _bcc.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
+            return await container.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
         }
 
 
@@ -126,12 +126,12 @@ namespace Arius.Core.Repositories
                 blobToHydrate.AccessTier == AccessTier.Cool)
                 throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-            var hydratedItem = _bcc.GetBlobClient($"{RehydratedChunkDirectoryName}/{blobToHydrate.Name}");
+            var hydratedItem = container.GetBlobClient($"{RehydratedChunkDirectoryName}/{blobToHydrate.Name}");
 
             if (!hydratedItem.Exists())
             {
                 //Start hydration
-                var archiveItem = _bcc.GetBlobClient(blobToHydrate.FullName);
+                var archiveItem = container.GetBlobClient(blobToHydrate.FullName);
                 hydratedItem.StartCopyFromUri(archiveItem.Uri, new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
                 logger.LogInformation($"Hydration started for {blobToHydrate.Name}");
@@ -158,9 +158,9 @@ namespace Arius.Core.Repositories
         {
             logger.LogInformation("Deleting temporary hydration folder");
 
-            foreach (var bi in _bcc.GetBlobs(prefix: RehydratedChunkDirectoryName))
+            foreach (var bi in container.GetBlobs(prefix: RehydratedChunkDirectoryName))
             {
-                var bc = _bcc.GetBlobClient(bi.Name);
+                var bc = container.GetBlobClient(bi.Name);
                 bc.Delete();
             }
         }
