@@ -118,7 +118,7 @@ namespace Arius.Core.Repositories
 
         // HYDRATE
 
-        public void Hydrate(ChunkBlobBase blobToHydrate)
+        public void HydrateChunk(ChunkBlobBase blobToHydrate)
         {
             logger.LogInformation($"Hydrating chunk {blobToHydrate.Name}");
 
@@ -182,10 +182,8 @@ namespace Arius.Core.Repositories
             });
         }
 
-        public IEnumerable<EncryptedChunkFile> Download(IEnumerable<ChunkBlobBase> chunkBlobs, DirectoryInfo target, bool flatten)
+        public IEnumerable<EncryptedChunkFile> Download(ChunkBlobBase[] chunkBlobs, DirectoryInfo target, bool flatten)
         {
-            chunkBlobs = chunkBlobs.ToArray();
-
             var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
 
             if (chunkBlobs.Count() != downloadedFiles.Count())

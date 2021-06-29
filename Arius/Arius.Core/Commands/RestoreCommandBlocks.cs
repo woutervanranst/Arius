@@ -261,7 +261,7 @@ namespace Arius.Core.Commands
         {
             return new(chunkBlob =>
             {
-                _repo.Hydrate(chunkBlob);
+                _repo.HydrateChunk(chunkBlob);
 
                 AtLeastOneHydrating = true;
             });
