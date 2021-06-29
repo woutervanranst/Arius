@@ -8,7 +8,7 @@ namespace Arius.Core.Commands
     internal class ArchiveCommandOptions : AzureRepositoryOptions, 
         Facade.Facade.IOptions,
 
-        ArchiveCommand2.IOptions,
+        ArchiveCommand.IOptions,
 
         //AzureRepository.IOptions,
         IBlobCopier.IOptions,

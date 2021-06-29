@@ -88,7 +88,7 @@ namespace Arius.Core.Facade
 
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
-            var ac = sp.GetRequiredService<ArchiveCommand2>();
+            var ac = sp.GetRequiredService<ArchiveCommand>();
 
             return ac;
         }
@@ -150,7 +150,7 @@ namespace Arius.Core.Facade
 
             sc
                 //Add Commmands
-                .AddSingleton<ArchiveCommand2>()
+                .AddSingleton<ArchiveCommand>()
                 .AddSingleton<RestoreCommand>()
 
                 //Add Services
@@ -185,7 +185,7 @@ namespace Arius.Core.Facade
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
 
-            ArchiveCommand2.AddBlockProviders(sc);
+            ArchiveCommand.AddBlockProviders(sc);
             RestoreCommand.AddBlockProviders(sc);
 
             sc

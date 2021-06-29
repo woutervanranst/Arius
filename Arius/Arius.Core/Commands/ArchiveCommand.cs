@@ -19,7 +19,7 @@ using Nito.AsyncEx;
 
 namespace Arius.Core.Commands
 {
-    internal class ArchiveCommand2 : ICommand
+    internal class ArchiveCommand : ICommand
     {
         internal interface IOptions
         {
@@ -28,8 +28,8 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public ArchiveCommand2(IOptions options,
-            ILogger<ArchiveCommand2> logger,
+        public ArchiveCommand(IOptions options,
+            ILogger<ArchiveCommand> logger,
             IServiceProvider serviceProvider)
         {
             this.options = options;
@@ -38,7 +38,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly IOptions options;
-        private readonly ILogger<ArchiveCommand2> logger;
+        private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
 
         internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
