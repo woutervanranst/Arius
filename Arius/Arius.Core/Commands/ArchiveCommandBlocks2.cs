@@ -672,6 +672,8 @@ namespace Arius.Core.Commands
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
             writer.WriteStartArray();
 
+            // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
+
             foreach (var pfe in source
                     //.AsParallel().WithDegreeOfParallelism(8)
                     //.AsEnumerable()) 
