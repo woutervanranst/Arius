@@ -666,46 +666,45 @@ namespace Arius.Core.Commands
         private readonly DateTime version;
 
 
-        protected override Task TaskBodyImplAsync(BlockingCollection<AzureRepository.PointerFileEntry> source)
+        protected override async Task TaskBodyImplAsync(BlockingCollection<AzureRepository.PointerFileEntry> source)
         {
             using Stream file = File.Create(@"c:\ha.json");
 
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
 
-            writer.WriteStartObject();
+            writer.WriteStartArray();
 
-            writer.WriteStartArray("hehe");
-
-            foreach (var entry in source.AsEnumerable()) //.GetConsumingEnumerable())
+            foreach (var pfe in source.AsEnumerable()) //.GetConsumingEnumerable())
             {
-                var kaka = new ha(entry);
+                var chs = await repo.GetChunkHashesForManifestAsync(pfe.ManifestHash);
+                var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
                 
-                JsonSerializer.Serialize(writer, kaka /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+                JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
             }
 
             writer.WriteEndArray();
 
-            writer.WriteEndObject();
-
-            writer.Flush();
-
-            return Task.CompletedTask;
+            await writer.FlushAsync();
         }
 
-        private class ha
+        private struct PointerFileEntryWithChunkHashes
         {
-            private readonly AzureRepository.PointerFileEntry he;
-
-            public ha(AzureRepository.PointerFileEntry he)
+            public PointerFileEntryWithChunkHashes(AzureRepository.PointerFileEntry pfe, HashValue[] chs)
             {
-                this.he = he;
+                this.pfe = pfe;
+                this.chs = chs;
             }
-            public string ManifestHash => he.ManifestHash.Value;
-            public string RelativeName => he.RelativeName;
-            public DateTime VersionUtc => he.Version;
-            public bool IsDeleted => he.IsDeleted;
-            public DateTime? CreationTimeUtc => he.CreationTimeUtc;
-            public DateTime? LastWriteTimeUtc => he.LastWriteTimeUtc;
+
+            private readonly AzureRepository.PointerFileEntry pfe;
+            private readonly HashValue[] chs;
+
+            public string ManifestHash => pfe.ManifestHash.Value;
+            public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
+            public string RelativeName => pfe.RelativeName;
+            public DateTime VersionUtc => pfe.Version;
+            public bool IsDeleted => pfe.IsDeleted;
+            public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
+            public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;
         }
     }
 }
