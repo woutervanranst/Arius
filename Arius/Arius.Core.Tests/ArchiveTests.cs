@@ -74,7 +74,7 @@ namespace Arius.Core.Tests
             //11
             Assert.AreEqual(tier, repo.GetAllChunkBlobs().First().AccessTier);
             //20
-            Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes + 1, await repo.GetManifestCount());
             expectedManifestHashes++;
 
             //30
@@ -194,7 +194,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
             
             //20
-            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, await repo.GetManifestCount());
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
@@ -258,7 +258,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
-            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, await repo.GetManifestCount());
 
             //30
             var pfes = await repo.GetCurrentEntries(true);
@@ -320,7 +320,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
-            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, await repo.GetManifestCount());
 
             //30
             var lastExistingPfes = await repo.GetCurrentEntries(false);
@@ -380,7 +380,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
-            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, await repo.GetManifestCount());
 
             //30
             var pfes_OnlyExisting = await repo.GetCurrentEntries(false);
@@ -464,7 +464,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
 
             //20
-            Assert.AreEqual(expectedManifestHashes, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes, await repo.GetManifestCount());
 
             var pfes_WithoutDeleted = (await repo.GetCurrentEntries(false)).ToList();
             var pfes_WithDeleted = (await repo.GetCurrentEntries(true)).ToList();
@@ -528,7 +528,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(tier, chunk.AccessTier);
 
             //20
-            Assert.AreEqual(expectedManifestHashes + 1, repo.GetAllManifestHashes().Count());
+            Assert.AreEqual(expectedManifestHashes + 1, await repo.GetManifestCount());
             expectedManifestHashes++;
 
             //30

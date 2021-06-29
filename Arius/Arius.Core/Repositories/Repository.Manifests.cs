@@ -27,32 +27,53 @@ namespace Arius.Core.Repositories
 
         // GET
 
-        public ManifestBlob[] GetAllManifestBlobs()
+        /// <summary>
+        /// Get the count of (distinct) ManifestHashes
+        /// </summary>
+        /// <returns></returns>
+        public async Task<int> GetManifestCount()
         {
-            logger.LogInformation($"Getting all manifests...");
-            var r = Array.Empty<ManifestBlob>();
+            var hs = await GetAllManifestHashes();
 
-            try
-            {
-                return r = container.GetBlobs(prefix: $"{ManifestDirectoryName}/")
-                    .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
-                    .Select(bi => new ManifestBlob(bi))
-                    .ToArray();
-            }
-            finally
-            {
-                logger.LogInformation($"Getting all manifests... got {r.Length}");
-            }
+            return hs.Count();
         }
 
-        public HashValue[] GetAllManifestHashes()
+        /// <summary>
+        /// Get all the (distinct) ManifestHashes
+        /// </summary>
+        /// <returns></returns>
+        public async Task<IEnumerable<HashValue>> GetAllManifestHashes()
         {
-            return GetAllManifestBlobs().Select(mb => mb.Hash).ToArray();
+            var pfes = await GetPointerFileEntries();
+
+            return pfes.Select(pfe => pfe.ManifestHash).Distinct();
         }
+
+        //public ManifestBlob[] GetAllManifestBlobs()
+        //{
+        //    logger.LogInformation($"Getting all manifests...");
+        //    var r = Array.Empty<ManifestBlob>();
+
+        //    try
+        //    {
+        //        return r = container.GetBlobs(prefix: $"{ManifestDirectoryName}/")
+        //            .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
+        //            .Select(bi => new ManifestBlob(bi))
+        //            .ToArray();
+        //    }
+        //    finally
+        //    {
+        //        logger.LogInformation($"Getting all manifests... got {r.Length}");
+        //    }
+        //}
 
         public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
         {
-            return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
+            var pfes = await GetAllManifestHashes();
+
+            return pfes.Any(pfe => pfe == manifestHash);
+
+            //return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }
 
         private string GetManifestBlobName(HashValue manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
@@ -97,24 +118,16 @@ namespace Arius.Core.Repositories
         }
         public async Task AddManifestAsync(HashValue manifestHash, HashValue[] chunkHashes)
         {
-            try
-            {
-                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
+            var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 
-                if (bc.Exists())
-                    throw new InvalidOperationException("Manifest Already Exists");
+            if (bc.Exists())
+                throw new InvalidOperationException("Manifest Already Exists");
 
-                var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value));
-                var bytes = Encoding.UTF8.GetBytes(json);
-                var ms = new MemoryStream(bytes);
+            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value));
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var ms = new MemoryStream(bytes);
 
-                await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-
+            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
         }
     }
 }

@@ -31,17 +31,17 @@ namespace Arius.Core.Repositories
 
                 var csa = CloudStorageAccount.Parse(connectionString);
                 var tc = csa.CreateCloudTableClient();
-                pointerFileEntryTable = tc.GetTableReference($"{options.Container}{TableNameSuffix}");
+                table = tc.GetTableReference($"{options.Container}{TableNameSuffix}");
 
-                var r = pointerFileEntryTable.CreateIfNotExists();
+                var r = table.CreateIfNotExists();
                 if (r)
                     logger.LogInformation($"Created tables for {options.Container}... ");
 
                 //Asynchronously download all PointerFileEntryDtos
-                pointerFileEntries = new(() =>
+                pointerFileEntries = Task.Run(() =>
                 {
-                        // get all rows - we're getting them anyway as GroupBy is not natively supported
-                        var r = pointerFileEntryTable
+                    // get all rows - we're getting them anyway as GroupBy is not natively supported
+                    var r = table
                         .CreateQuery<PointerFileEntryDto>()
                         .AsEnumerable()
                         .Select(dto => ConvertFromDto(dto))
@@ -65,8 +65,8 @@ namespace Arius.Core.Repositories
             }
 
             private readonly ILogger logger;
-            private readonly CloudTable pointerFileEntryTable;
-            private readonly AsyncLazy<List<PointerFileEntry>> pointerFileEntries;
+            private readonly CloudTable table;
+            private readonly Task<List<PointerFileEntry>> pointerFileEntries;
             private readonly AsyncLazy<List<DateTime>> versions;
             private readonly string passphrase;
             private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
@@ -126,7 +126,7 @@ namespace Arius.Core.Repositories
                         //Insert into Table Storage
                         var dto = ConvertToDto(pfe);
                         var op = TableOperation.Insert(dto);
-                        await pointerFileEntryTable.ExecuteAsync(op);
+                        await table.ExecuteAsync(op);
 
                         //Insert into the versions
                         var vs = await versions;

@@ -82,16 +82,16 @@ namespace Arius.Core.Repositories
 
         internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
         {
-            return await GetEntries(DateTime.Now, includeDeleted);
+            return await GetPointerFileEntries(DateTime.Now, includeDeleted);
         }
 
         /// <summary>
         /// Get the PointerFileEntries at the given version.
         /// If no version is specified, the current (most recent) will be returned
         /// </summary>
-        public async Task<IEnumerable<PointerFileEntry>> GetEntries(DateTime pointInTime, bool includeDeleted)
+        public async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntries(DateTime pointInTime, bool includeDeleted)
         {
-            var pfes = await GetEntriesAtPointInTimeAsync(pointInTime);
+            var pfes = await GetPointerFileEntriesAtPointInTimeAsync(pointInTime);
 
             if (includeDeleted)
                 return pfes;
@@ -99,13 +99,13 @@ namespace Arius.Core.Repositories
                 return pfes.Where(pfe => !pfe.IsDeleted);
         }
 
-        private async Task<IReadOnlyList<PointerFileEntry>> GetEntriesAtPointInTimeAsync(DateTime pointInTime)
+        private async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTime)
         {
             try
             {
                 var version = await GetVersionAsync(pointInTime);
 
-                var r = await GetEntriesAtVersionAsync(version);
+                var r = await GetPointerFileEntriesAtVersionAsync(version);
 
                 return r;
             }
@@ -116,6 +116,30 @@ namespace Arius.Core.Repositories
                 return Array.Empty<PointerFileEntry>();
             }
         }
+
+        private async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
+        {
+            var pfes = await GetPointerFileEntries();
+
+            //TODO an exception here is swallowed
+
+            var r = pfes
+                .GroupBy(pfe => pfe.RelativeName)
+                .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc)).Where(c => c.Any())
+                .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last()).ToList();
+
+            return r;
+        }
+
+        /// <summary>
+        /// Get All PointerFileEntries
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntries()
+        {
+            return await pfeRepo.GetEntriesAsync();
+        }
+
 
         /// <summary>
         /// Get the version that corresponds to the state of the archive at pointInTime
@@ -145,20 +169,6 @@ namespace Arius.Core.Repositories
                 throw new ArgumentException($"{nameof(GetVersionAsync)}: No version found for {nameof(pointInTime)} {pointInTime}.");
 
             return version.Value;
-        }
-
-        private async Task<IReadOnlyList<PointerFileEntry>> GetEntriesAtVersionAsync(DateTime version)
-        {
-            var pfes = await pfeRepo.GetEntriesAsync();
-
-            //TODO an exception here is swallowed
-
-            var r = pfes
-                .GroupBy(pfe => pfe.RelativeName)
-                .Select(g => g.Where(pfe => pfe.VersionUtc <= version)).Where(c => c.Any())
-                .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last()).ToList();
-
-            return r;
         }
 
         /// <summary>
