@@ -668,18 +668,24 @@ namespace Arius.Core.Commands
 
         protected override async Task TaskBodyImplAsync(BlockingCollection<AzureRepository.PointerFileEntry> source)
         {
-            using Stream file = File.Create(@"c:\ha.json");
+            using Stream file = File.Create($"arius-state-{DateTime.Now:yyyyMMdd-HHmmss}.json");
 
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
 
             writer.WriteStartArray();
 
-            foreach (var pfe in source.AsEnumerable()) //.GetConsumingEnumerable())
+            foreach (var pfe in source
+                    //.AsParallel().WithDegreeOfParallelism(8)
+                    //.AsEnumerable()) 
+                    .GetConsumingEnumerable())
             {
                 var chs = await repo.GetChunkHashesForManifestAsync(pfe.ManifestHash);
                 var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
                 
-                JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+                //lock (writer)
+                //{ 
+                    JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+                //}
             }
 
             writer.WriteEndArray();
