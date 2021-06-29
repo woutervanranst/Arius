@@ -93,8 +93,8 @@ namespace Arius.Core.Repositories
                     return cb2;
             }
 
-            private string GetChunkBlobName(string folder, HashValue chunkHash) => GetChunkBlobFullName(folder, chunkHash.Value);
-            private string GetChunkBlobFullName(string folder, string chunkHashValue) => $"{folder}/{chunkHashValue}{ChunkBlobBase.Extension}";
+            private string GetChunkBlobName(string folder, HashValue chunkHash) => GetChunkBlobFullName(folder, $"{chunkHash.Value}{ChunkBlobBase.Extension}");
+            private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
 
             /// <summary>
             /// Get a ChunkBlobBase in the given folder with the given name.
