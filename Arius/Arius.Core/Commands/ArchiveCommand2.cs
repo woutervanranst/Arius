@@ -51,8 +51,8 @@ namespace Arius.Core.Commands
         public async Task<int> Execute()
         {
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-            var repo = services.GetRequiredService<AzureRepository>();
-            var version = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
+            var repo = services.GetRequiredService<Repository>();
+            var versionUtc = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
             var pointerFileService = services.GetRequiredService<PointerService>();
 
             var filesToHash = new BlockingCollection<IFile>();
@@ -251,7 +251,7 @@ namespace Arius.Core.Commands
                 source: pointerFileEntriesToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
-                version: version,
+                versionUtc: versionUtc,
                 done: () =>
                 {
                 });
@@ -276,18 +276,18 @@ namespace Arius.Core.Commands
             var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
-            var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<AzureRepository.PointerFileEntry>();
+            var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
             var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
                 logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
                 source: pointerFileEntriesToCheckForDeletedPointers,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 pointerService: pointerFileService,
-                version: version,
+                versionUtc: versionUtc,
                 start: async () => 
                 {
                     var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
-                                          .Where(e => e.Version < version); // that were not created in the current run (those are assumed to be up to date)
+                                          .Where(e => e.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
                     pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
                 },
                 done: () => { });
@@ -296,12 +296,12 @@ namespace Arius.Core.Commands
             
 
             
-            var pointerFileEntriesToExport = new BlockingCollection<AzureRepository.PointerFileEntry>();
+            var pointerFileEntriesToExport = new BlockingCollection<PointerFileEntry>();
             var exportJsonBlock = new ExportToJsonBlock(
                 logger: loggerFactory.CreateLogger<ExportToJsonBlock>(),
                 source: pointerFileEntriesToExport,
                 repo: repo,
-                version: version,
+                versionUtc: versionUtc,
                 start: async () =>
                 {
                     var pfes = await repo.GetCurrentEntries(includeDeleted: false);

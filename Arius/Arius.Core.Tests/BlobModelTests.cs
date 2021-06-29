@@ -28,7 +28,7 @@ namespace Arius.Core.Tests
         [Test]
         public void Properties_ChunkBlobBase_Valid()
         {
-            var repo = TestSetup.GetAzureRepository();
+            var repo = TestSetup.GetRepository();
 
             var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
             var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobClient;
@@ -38,7 +38,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
             Assert.AreEqual(cb1.Folder, cb2.Folder);
-            Assert.AreEqual(cb1.Folder, AzureRepository.ChunkRepository.EncryptedChunkDirectoryName);
+            Assert.AreEqual(cb1.Folder, Repository.ChunkDirectoryName);
             
             Assert.AreEqual(cb1.FullName, cb2.FullName);
             Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
@@ -58,11 +58,11 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Properties_ManifestBlob_Valid()
         {
-            var repo = TestSetup.GetAzureRepository(); //TODO as ManifestRepository?
+            var repo = TestSetup.GetRepository();
 
             var manifestBlob = repo.GetAllManifestBlobs().First();
 
-            Assert.AreEqual(manifestBlob.Folder, AzureRepository.ManifestRepository.ManifestDirectoryName);
+            Assert.AreEqual(manifestBlob.Folder, Repository.ManifestDirectoryName);
 
             Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
             Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension

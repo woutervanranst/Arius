@@ -76,7 +76,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
 
             //10 The chunk is in the Archive tier
@@ -86,7 +86,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
             //11 A hydrated blob does not yet exist
-            var bc_Hydrating = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
+            var bc_Hydrating = TestSetup.container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
             
             //12 Obtaining properties results in an exception
@@ -123,7 +123,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10 - The chunk is in the cool tier
             var pf = bfi.GetPointerFile();
@@ -138,7 +138,7 @@ namespace Arius.Core.Tests
             Assert.IsTrue(bc_Original.Exists());
             
             //22 The hydrated blob does not yet exist
-            var bc_Hydrated = TestSetup.container.GetBlobClient($"{AzureRepository.ChunkRepository.RehydrationDirectoryName}/{cb.Name}");
+            var bc_Hydrated = TestSetup.container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
             
             //23 Copy the original to the hydrated folder

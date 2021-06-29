@@ -43,7 +43,7 @@ namespace Arius.Core.Services
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public PointerFile CreatePointerFileIfNotExists(AzureRepository.PointerFileEntry pfe)
+        public PointerFile CreatePointerFileIfNotExists(PointerFileEntry pfe)
         {
             var target = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
 
@@ -113,7 +113,7 @@ namespace Arius.Core.Services
         /// </summary>
         /// <param name="pfe"></param>
         /// <returns></returns>
-        public PointerFile GetPointerFile(AzureRepository.PointerFileEntry pfe)
+        public PointerFile GetPointerFile(PointerFileEntry pfe)
         {
             var pfi = new FileInfo(GetPointerFileFullName(pfe));
 
@@ -125,7 +125,7 @@ namespace Arius.Core.Services
 
         private static string GetPointerFileFullName(BinaryFile bf) => $"{bf.FullName}{PointerFile.Extension}";
 
-        private string GetPointerFileFullName(AzureRepository.PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
+        private string GetPointerFileFullName(PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
 
         /// <summary>
@@ -143,7 +143,7 @@ namespace Arius.Core.Services
             return new BinaryFile(pf.Root, bfi);
         }
 
-        public BinaryFile GetBinaryFile(AzureRepository.PointerFileEntry pfe)
+        public BinaryFile GetBinaryFile(PointerFileEntry pfe)
         {
             var bfi = new FileInfo(GetBinaryFileFullname(pfe));
 
@@ -153,7 +153,7 @@ namespace Arius.Core.Services
             return new BinaryFile(root, bfi);
         }
 
-        private string GetBinaryFileFullname(AzureRepository.PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(pfe));
+        private string GetBinaryFileFullname(PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(pfe));
         private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
         private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
     }

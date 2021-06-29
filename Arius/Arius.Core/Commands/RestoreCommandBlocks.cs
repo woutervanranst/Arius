@@ -23,7 +23,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, AzureRepository repo, PointerService ps)
+        public SynchronizeBlockProvider(ILogger<SynchronizeBlockProvider> logger, IOptions options, Repository repo, PointerService ps)
         {
             _logger = logger;
             _root = new DirectoryInfo(options.Path);
@@ -33,7 +33,7 @@ namespace Arius.Core.Commands
 
         private readonly ILogger<SynchronizeBlockProvider> _logger;
         private readonly DirectoryInfo _root;
-        private readonly AzureRepository _repo;
+        private readonly Repository _repo;
         private readonly PointerService _ps;
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace Arius.Core.Commands
         /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
         /// </summary>
         /// <returns></returns>
-        private IEnumerable<PointerFile> CreateIfNotExists(IEnumerable<AzureRepository.PointerFileEntry> pfes)
+        private IEnumerable<PointerFile> CreateIfNotExists(IEnumerable<PointerFileEntry> pfes)
         {
             var pfs = pfes
                 .AsParallelWithParallelism()
@@ -76,7 +76,7 @@ namespace Arius.Core.Commands
         /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
         /// </summary>
         /// <param name="pfes"></param>
-        private void DeleteIfExists(IEnumerable<AzureRepository.PointerFileEntry> pfes)
+        private void DeleteIfExists(IEnumerable<PointerFileEntry> pfes)
         {
             var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
@@ -107,7 +107,7 @@ namespace Arius.Core.Commands
 
         public ProcessPointerChunksBlockProvider(ILogger<ProcessPointerChunksBlockProvider> logger, TempDirectoryAppSettings tempDirAppSettings, IOptions options,
             IHashValueProvider hvp,
-            AzureRepository repo)
+            Repository repo)
         {
             _logger = logger;
             _hvp = hvp;
@@ -117,7 +117,7 @@ namespace Arius.Core.Commands
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
-        private readonly AzureRepository _repo;
+        private readonly Repository _repo;
         private readonly DirectoryInfo _downloadTempDir;
 
         private ITargetBlock<ChunkFile> _reconcileChunkBlock;
@@ -251,9 +251,9 @@ namespace Arius.Core.Commands
 
     internal class HydrateBlockProvider
     {
-        private readonly AzureRepository _repo;
+        private readonly Repository _repo;
 
-        public HydrateBlockProvider(AzureRepository repo)
+        public HydrateBlockProvider(Repository repo)
         {
             _repo = repo;
         }
@@ -277,7 +277,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public DownloadBlockProvider(IOptions options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, AzureRepository repo)
+        public DownloadBlockProvider(IOptions options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, Repository repo)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
@@ -287,7 +287,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly AzCopyAppSettings azCopyAppSettings;
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly DirectoryInfo downloadTempDir;
 
         private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue

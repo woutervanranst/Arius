@@ -301,7 +301,7 @@ namespace Arius.Core.Commands
 
     internal class ManifestBlocksProvider : ProcessIfNotExistBlocksProvider<BinaryFile>
     {
-        public ManifestBlocksProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository repo) : base(logger, repo.GetAllManifestHashes())
+        public ManifestBlocksProvider(ILogger<CreateManifestBlockProvider> logger, Repository repo) : base(logger, repo.GetAllManifestHashes())
         {
         }
     }
@@ -419,7 +419,7 @@ namespace Arius.Core.Commands
 
     internal class ChunkBlockProvider
     {
-        public ChunkBlockProvider(ILogger<ChunkBlockProvider> logger, IChunker chunker, AzureRepository azureRepository)
+        public ChunkBlockProvider(ILogger<ChunkBlockProvider> logger, IChunker chunker, Repository azureRepository)
         {
             _logger = logger;
             _chunker = chunker;
@@ -684,7 +684,7 @@ namespace Arius.Core.Commands
             AccessTier Tier { get; }
         }
 
-        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, IOptions options, AzureRepository azureRepository)
+        public UploadEncryptedChunksBlockProvider(ILogger<UploadEncryptedChunksBlockProvider> logger, IOptions options, Repository azureRepository)
         {
             _logger = logger;
             _options = options;
@@ -695,7 +695,7 @@ namespace Arius.Core.Commands
 
         private readonly ILogger<UploadEncryptedChunksBlockProvider> _logger;
         private readonly IOptions _options;
-        private readonly AzureRepository _azureRepository;
+        private readonly Repository _azureRepository;
 
         public TransformManyBlock<EncryptedChunkFile[], HashValue> InitBlock()
         {
@@ -788,14 +788,14 @@ namespace Arius.Core.Commands
 
     internal class CreateManifestBlockProvider
     {
-        public CreateManifestBlockProvider(ILogger<CreateManifestBlockProvider> logger, AzureRepository azureRepository)
+        public CreateManifestBlockProvider(ILogger<CreateManifestBlockProvider> logger, Repository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
         }
 
         private readonly ILogger<CreateManifestBlockProvider> _logger;
-        private readonly AzureRepository _azureRepository;
+        private readonly Repository _azureRepository;
 
         public TransformBlock<BinaryFile, object> GetBlock()
         {
@@ -859,14 +859,14 @@ namespace Arius.Core.Commands
 
     internal class CreatePointerFileEntryIfNotExistsBlockProvider
     {
-        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, AzureRepository repo)
+        public CreatePointerFileEntryIfNotExistsBlockProvider(ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger, Repository repo)
         {
             this.logger = logger;
             this.repo = repo;
         }
 
         private readonly ILogger<CreatePointerFileEntryIfNotExistsBlockProvider> logger;
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
 
 
         public CreatePointerFileEntryIfNotExistsBlockProvider AddVersion(DateTime version)
@@ -899,7 +899,7 @@ namespace Arius.Core.Commands
 
     internal class ValidateBlockProvider
     {
-        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, AzureRepository repo, PointerService pointerService)
+        public ValidateBlockProvider(ILogger<ValidateBlockProvider> logger, Repository repo, PointerService pointerService)
         {
             this.logger = logger;
             this.repo = repo;
@@ -907,7 +907,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<ValidateBlockProvider> logger;
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly PointerService pointerService;
 
         public ActionBlock<PointerFile> GetBlock()
@@ -966,7 +966,7 @@ namespace Arius.Core.Commands
             string Path { get; }
         }
 
-        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, IOptions options, AzureRepository azureRepository)
+        public RemoveDeletedPointersTaskProvider(ILogger<RemoveDeletedPointersTaskProvider> logger, IOptions options, Repository azureRepository)
         {
             _logger = logger;
             _azureRepository = azureRepository;
@@ -975,7 +975,7 @@ namespace Arius.Core.Commands
         }
 
         private readonly ILogger<RemoveDeletedPointersTaskProvider> _logger;
-        private readonly AzureRepository _azureRepository;
+        private readonly Repository _azureRepository;
         private readonly DirectoryInfo _root;
 
         public RemoveDeletedPointersTaskProvider AddVersion(DateTime version)
@@ -993,7 +993,7 @@ namespace Arius.Core.Commands
                 try
                 {
                     var pfes = await _azureRepository.GetCurrentEntries(true);
-                    pfes = pfes.Where(e => e.Version < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
+                    pfes = pfes.Where(e => e.VersionUtc < _version).ToList(); // that were not created in the current run (those are assumed to be up to date)
 
                     // NOTE - Parallel.ForEach does not work here - it does not await the result of the threads
                     foreach (var pfe in pfes)
@@ -1017,7 +1017,7 @@ namespace Arius.Core.Commands
 
     internal class ExportToJsonTaskProvider
     {
-        private readonly AzureRepository _azureRepository;
+        private readonly Repository _azureRepository;
         //private readonly ILogger _logger;
         //private readonly DateTime _version;
         //private readonly DirectoryInfo _root;
@@ -1029,7 +1029,7 @@ namespace Arius.Core.Commands
         //    _root = root;
         //}
 
-        public ExportToJsonTaskProvider(AzureRepository azureRepository)
+        public ExportToJsonTaskProvider(Repository azureRepository)
         {
             _azureRepository = azureRepository;
         }

@@ -23,11 +23,11 @@ namespace Arius.Core.Tests
         [Test]
         public void GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
         {
-            var repo = TestSetup.GetAzureRepository(); //TODO as ChunkRepository?
+            var repo = TestSetup.GetRepository();
             
             var cb1 = repo.GetAllChunkBlobs().First();
 
-            var cb2 = repo.GetChunkBlobByName(AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, cb1.Name);
+            var cb2 = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, cb1.Name);
 
             Assert.AreEqual(cb1.FullName, cb2.FullName);
         }
@@ -35,9 +35,9 @@ namespace Arius.Core.Tests
 
         public void GetChunkBlobByName_NotExisting_Null()
         {
-            var repo = TestSetup.GetAzureRepository(); //TODO as ChunkRepository?
+            var repo = TestSetup.GetRepository();
 
-            var cb = repo.GetChunkBlobByName(AzureRepository.ChunkRepository.EncryptedChunkDirectoryName, "idonotexist");
+            var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
             
             Assert.IsNull(cb);
         }

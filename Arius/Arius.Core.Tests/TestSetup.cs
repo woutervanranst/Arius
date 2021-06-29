@@ -121,9 +121,9 @@ namespace Arius.Core.Tests
             }
         }
 
-        internal static AzureRepository GetAzureRepository()
+        internal static Repository GetRepository()
         {
-            return Facade.GetAzureRepository(AccountName, AccountKey, container.Name, passphrase);
+            return Facade.GetRepository(AccountName, AccountKey, container.Name, passphrase);
         }
 
 

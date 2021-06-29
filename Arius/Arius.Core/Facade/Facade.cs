@@ -104,13 +104,13 @@ namespace Arius.Core.Facade
             return rc;
         }
 
-        internal AzureRepository GetAzureRepository(string accountName, string accountKey, string container, string passphrase)
+        internal Repository GetRepository(string accountName, string accountKey, string container, string passphrase)
         {
             var options = new AzureRepositoryOptions(accountName, accountKey, container, passphrase);
             
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
             
-            var repo = sp.GetRequiredService<AzureRepository>();
+            var repo = sp.GetRequiredService<Repository>();
             
             return repo;
 
@@ -159,10 +159,7 @@ namespace Arius.Core.Facade
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
                 .AddSingleton<IBlobCopier, AzCopier>()
-                .AddSingleton<AzureRepository>()
-                .AddSingleton<AzureRepository.ChunkRepository>()
-                .AddSingleton<AzureRepository.ManifestRepository>()
-                .AddSingleton<AzureRepository.PointerFileEntryRepository>()
+                .AddSingleton<Repository>()
 
                 // Add Chunkers
                 .AddSingleton<Chunker>()

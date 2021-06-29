@@ -65,7 +65,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount + 1, repo.GetAllChunkBlobs().Count());
@@ -113,7 +113,7 @@ namespace Arius.Core.Tests
 
             // Archive it
             var services = await ArchiveCommand(tier, dedup: false);
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             // Expected one additional PointerFileEntry
             var pfes = await repo.GetCurrentEntries(true);
@@ -133,7 +133,7 @@ namespace Arius.Core.Tests
             expectedCurrentPfeCountWithoutDeleted = 0;
 
             services = await ArchiveCommand(tier, dedup: false);
-            repo = services.GetRequiredService<AzureRepository>();
+            repo = services.GetRequiredService<Repository>();
             pfes = await repo.GetCurrentEntries(false);
             Assert.AreEqual(expectedCurrentPfeCountWithoutDeleted, pfes.Count());
 
@@ -145,7 +145,7 @@ namespace Arius.Core.Tests
             bfi2.CopyTo(TestSetup.archiveTestDirectory);
 
             services = await ArchiveCommand(tier, dedup: false);
-            repo = services.GetRequiredService<AzureRepository>();
+            repo = services.GetRequiredService<Repository>();
 
             // Expected: it is there again
             pfes = await repo.GetCurrentEntries(true);
@@ -188,7 +188,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -252,7 +252,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCODE
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -314,7 +314,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -374,7 +374,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -424,7 +424,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //20
             Assert.IsTrue(!TestSetup.archiveTestDirectory.GetBinaryFileInfos().Any());
@@ -458,7 +458,7 @@ namespace Arius.Core.Tests
             var services = await ArchiveCommand(AccessTier.Cool);
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
             //10
             Assert.AreEqual(expectedChunkBlobItemsCount, repo.GetAllChunkBlobs().Count());
@@ -514,7 +514,7 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var repo = services.GetRequiredService<AzureRepository>();
+            var repo = services.GetRequiredService<Repository>();
 
 
             //10

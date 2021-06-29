@@ -209,7 +209,7 @@ namespace Arius.Core.Commands
                 //TODO
 
                 //Delete hydration directory
-                services.GetRequiredService<AzureRepository>().DeleteHydrateFolder();
+                services.GetRequiredService<Repository>().DeleteHydrateFolder();
             }
 
             return 0;

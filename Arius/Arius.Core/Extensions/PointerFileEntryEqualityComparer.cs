@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Arius.Core.Repositories;
+using Arius.Core.Models;
 
 namespace Arius.Core.Extensions
 {
-    internal class PointerFileEntryEqualityComparer : IEqualityComparer<AzureRepository.PointerFileEntry>
+    internal class PointerFileEntryEqualityComparer : IEqualityComparer<PointerFileEntry>
     {
-        public bool Equals(AzureRepository.PointerFileEntry x, AzureRepository.PointerFileEntry y)
+        public bool Equals(PointerFileEntry x, PointerFileEntry y)
         {
             if (x is null && y is null)
                 throw new ArgumentException("Both PointerFileEntries are null");
@@ -26,7 +26,7 @@ namespace Arius.Core.Extensions
                    x.LastWriteTimeUtc.Equals(y.LastWriteTimeUtc);
         }
 
-        public int GetHashCode(AzureRepository.PointerFileEntry obj)
+        public int GetHashCode(PointerFileEntry obj)
         {
             return HashCode.Combine(obj.RelativeName,
                 //obj.Version,  //DO NOT Compare on DateTime Version

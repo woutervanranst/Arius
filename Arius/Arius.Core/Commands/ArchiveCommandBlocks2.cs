@@ -164,7 +164,7 @@ namespace Arius.Core.Commands
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
            //Func<bool> continueWhile,
            BlockingCollection<BinaryFile> source,
-           AzureRepository repo,
+           Repository repo,
            Action<BinaryFile> binaryFileAlreadyBackedUp,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
@@ -178,7 +178,7 @@ namespace Arius.Core.Commands
             this.manifestExists = manifestExists;
         }
 
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly Action<BinaryFile> binaryFileAlreadyBackedUp;
         private readonly Action<BinaryFile> uploadBinaryFile;
         private readonly Action<BinaryFile> waitForCreatedManifest;
@@ -290,7 +290,7 @@ namespace Arius.Core.Commands
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
             BlockingCollection<IChunkFile> source,
-            AzureRepository repo,
+            Repository repo,
             Action<IChunkFile> chunkToUpload,
             Action<HashValue> chunkAlreadyUploaded,
             Action done) : base(logger: logger, source: source, done: done)
@@ -300,7 +300,7 @@ namespace Arius.Core.Commands
             this.chunkAlreadyUploaded = chunkAlreadyUploaded;
         }
 
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly Action<IChunkFile> chunkToUpload;
         private readonly Action<HashValue> chunkAlreadyUploaded;
 
@@ -450,7 +450,7 @@ namespace Arius.Core.Commands
         public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile[]> source,
             int maxDegreeOfParallelism,
-            AzureRepository repo,
+            Repository repo,
             AccessTier tier,
             Action<HashValue> chunkUploaded,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
@@ -460,7 +460,7 @@ namespace Arius.Core.Commands
             this.chunkUploaded = chunkUploaded;
         }
 
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly AccessTier tier;
         private readonly Action<HashValue> chunkUploaded;
 
@@ -490,7 +490,7 @@ namespace Arius.Core.Commands
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
             BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
             int maxDegreeOfParallelism,
-            AzureRepository repo,
+            Repository repo,
             Action<HashValue> manifestCreated,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
@@ -498,7 +498,7 @@ namespace Arius.Core.Commands
             this.manifestCreated = manifestCreated;
         }
 
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly Action<HashValue> manifestCreated;
 
         protected override async Task ForEachBodyImplAsync((HashValue ManifestHash, HashValue[] ChunkHashes) item)
@@ -553,32 +553,32 @@ namespace Arius.Core.Commands
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
             BlockingCollection<PointerFile> source,
             int maxDegreeOfParallelism,
-            AzureRepository repo,
-            DateTime version,
+            Repository repo,
+            DateTime versionUtc,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
-            this.version = version;
+            this.versionUtc = versionUtc;
         }
 
-        private readonly AzureRepository repo;
-        private readonly DateTime version;
+        private readonly Repository repo;
+        private readonly DateTime versionUtc;
 
         protected override async Task ForEachBodyImplAsync(PointerFile pointerFile)
         {
             logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
 
-            var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, version);
+            var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
 
             switch (r)
             {
-                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.Upserted:
+                case Repository.CreatePointerFileEntryResult.Upserted:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Upserted entry.");
                     break;
-                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                case Repository.CreatePointerFileEntryResult.InsertedDeleted:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
                     break;
-                case AzureRepository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
+                case Repository.CreatePointerFileEntryResult.NoChange:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
                     break;
                 default:
@@ -615,63 +615,61 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<AzureRepository.PointerFileEntry>
+    internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
     {
         public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
-            BlockingCollection<AzureRepository.PointerFileEntry> source,
+            BlockingCollection<PointerFileEntry> source,
             int maxDegreeOfParallelism,
-            AzureRepository repo,
+            Repository repo,
             PointerService pointerService,
-            DateTime version,
+            DateTime versionUtc,
             Action start,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
         {
             this.repo = repo;
             this.pointerService = pointerService;
-            this.version = version;
+            this.versionUtc = versionUtc;
         }
 
-        private readonly AzureRepository repo;
+        private readonly Repository repo;
         private readonly PointerService pointerService;
-        private readonly DateTime version;
+        private readonly DateTime versionUtc;
 
-        protected override async Task ForEachBodyImplAsync(AzureRepository.PointerFileEntry pfe)
+        protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe)
         {
             if (!pfe.IsDeleted &&
                 pointerService.GetPointerFile(pfe) is null && pointerService.GetBinaryFile(pfe) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
-                await repo.CreateDeletedPointerFileEntryAsync(pfe, version);
+                await repo.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
             }
         }
     }
 
 
-    internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<AzureRepository.PointerFileEntry>>
+    internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>>
     {
         public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
-            BlockingCollection<AzureRepository.PointerFileEntry> source,
-            AzureRepository repo,
-            DateTime version,
+            BlockingCollection<PointerFileEntry> source,
+            Repository repo,
+            DateTime versionUtc,
             Action start,
             Action done) : base(logger: logger, source: source, start: start, done: done) //! must be single threaded
         {
             this.repo = repo;
-            //this.pointerService = pointerService;
-            this.version = version;
+            this.versionUtc = versionUtc;
         }
 
-        private readonly AzureRepository repo;
-        //private readonly PointerService pointerService;
-        private readonly DateTime version;
+        private readonly Repository repo;
+        private readonly DateTime versionUtc;
 
 
-        protected override async Task TaskBodyImplAsync(BlockingCollection<AzureRepository.PointerFileEntry> source)
+        protected override async Task TaskBodyImplAsync(BlockingCollection<PointerFileEntry> source)
         {
-            using Stream file = File.Create($"arius-state-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+            logger.LogInformation($"Writing state to JSON...");
 
+            using Stream file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true } );
-
             writer.WriteStartArray();
 
             foreach (var pfe in source
@@ -689,25 +687,26 @@ namespace Arius.Core.Commands
             }
 
             writer.WriteEndArray();
-
             await writer.FlushAsync();
+
+            logger.LogInformation($"Writing state to JSON... done");
         }
 
         private struct PointerFileEntryWithChunkHashes
         {
-            public PointerFileEntryWithChunkHashes(AzureRepository.PointerFileEntry pfe, HashValue[] chs)
+            public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, HashValue[] chs)
             {
                 this.pfe = pfe;
                 this.chs = chs;
             }
 
-            private readonly AzureRepository.PointerFileEntry pfe;
+            private readonly PointerFileEntry pfe;
             private readonly HashValue[] chs;
 
             public string ManifestHash => pfe.ManifestHash.Value;
             public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
             public string RelativeName => pfe.RelativeName;
-            public DateTime VersionUtc => pfe.Version;
+            public DateTime VersionUtc => pfe.VersionUtc;
             public bool IsDeleted => pfe.IsDeleted;
             public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
             public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;

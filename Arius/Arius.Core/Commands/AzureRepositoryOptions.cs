@@ -6,7 +6,7 @@ using System;
 namespace Arius.Core.Commands
 {
     internal class AzureRepositoryOptions : Facade.Facade.IOptions,
-        AzureRepository.IOptions,
+        Repository.IOptions,
         IBlobCopier.IOptions //TODO remove this? see https://github.com/woutervanranst/Arius/issues/28
     {
         public string AccountName { get; private init; }
