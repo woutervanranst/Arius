@@ -5,15 +5,10 @@ using System.Linq;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 
-namespace Arius.Core.Services
+namespace Arius.Core.Services.Chunkers
 {
     internal abstract class Chunker
     {
-        internal interface IOptions
-        {
-            bool Dedup { get; }
-        }
-
         public abstract IChunkFile[] Chunk(BinaryFile fileToChunk);
         public virtual BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
         {

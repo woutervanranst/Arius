@@ -16,6 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
+using Arius.Core.Services.Chunkers;
 
 namespace Arius.Core.Commands
 {
@@ -23,6 +24,7 @@ namespace Arius.Core.Commands
     {
         internal interface IOptions
         {
+            bool Dedup { get; }
             bool RemoveLocal { get; }
             AccessTier Tier { get; }
             string Path { get; }

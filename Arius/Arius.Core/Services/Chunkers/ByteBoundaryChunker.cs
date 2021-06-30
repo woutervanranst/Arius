@@ -48,6 +48,27 @@ namespace Arius.Core.Services.Chunkers
 
         private IEnumerable<IChunkFile> CreateChunks(BinaryFile bf, Func<int, string> chunkFullFileName)
         {
+            /* Idea for future optimization:
+             *      
+             *      1. With Span: https://stackoverflow.com/a/58347430/1582323
+             *      
+             *      using var fs = File.OpenRead(bf.FullName);
+             *      using var ms = new MemoryStream();
+             *      fs.CopyTo(ms);
+             *      
+             *      byte[] twoZeroes = { 0, 0 };
+             *      
+             *      var span = new ReadOnlySpan<byte>(ms.GetBuffer());
+             *      var z = span.IndexOf(twoZeroes);
+             *      
+             *      
+             *      2. With Pipes?
+             *      var pipe = new Pipe();
+             *      await stream.CopyToAsync(pipe.Writer);
+             *      https://stackoverflow.com/questions/53801581/using-system-io-pipelines-together-with-stream
+             *      https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/Sequence.md ?
+             */
+
             var chunkMemoryStream = new MemoryStream();
             Stream stream = default;
 

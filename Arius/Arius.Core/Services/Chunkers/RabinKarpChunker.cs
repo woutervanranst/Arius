@@ -8,7 +8,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Services
+namespace Arius.Core.Services.Chunkers
 {
     internal class RabinKarpChunker : Chunker
     {

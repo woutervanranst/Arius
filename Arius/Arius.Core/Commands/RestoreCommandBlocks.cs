@@ -11,6 +11,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging;
 using Enumerable = System.Linq.Enumerable;
 

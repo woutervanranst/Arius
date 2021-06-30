@@ -3,6 +3,7 @@ using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -162,19 +163,14 @@ namespace Arius.Core.Facade
 
                 // Add Chunkers
                 .AddSingleton<SimpleChunker>()
-                .AddSingleton<RabinKarpChunker>();
+                .AddSingleton<RabinKarpChunker>()
+                .AddSingleton<ByteBoundaryChunker>();
 
-            if (options is Chunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
-            {
+            if (options is ArchiveCommandOptions archiveCommandOptions)
                 sc
-                    .AddSingleton<Chunker>((sp) =>
-                    {
-                        if (chunkerOptions.Dedup)
-                            return sp.GetRequiredService<RabinKarpChunker>();
-                        else
-                            return sp.GetRequiredService<SimpleChunker>();
-                    });
-            }
+                    .AddSingleton<Chunker>((sp) => archiveCommandOptions.Dedup ?
+                        sp.GetRequiredService<ByteBoundaryChunker>() :
+                        sp.GetRequiredService<SimpleChunker>());
 
             // Add Options
             sc
