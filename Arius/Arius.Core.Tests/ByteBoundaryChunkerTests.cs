@@ -1,6 +1,11 @@
-﻿using Arius.Core.Extensions;
+﻿using Arius.Core.Configuration;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -28,7 +33,50 @@ namespace Arius.Core.Tests
             // Runs before each test. (Optional)
         }
 
-        
+        [Test]
+        public void ChunkAndMerge_DedupFile_Match()
+        {
+            //Create the HashValueProvider and the Chunker
+            GetServices(out var hvp, out var chunker);
+
+            //Generate new dedup file
+            var bf = CreateNewBinaryFile();
+            bf.Hash = hvp.GetHashValue(bf.FullName);
+
+            //Chunk it
+            var chunks = chunker.Chunk(bf);
+
+            Assert.IsTrue(chunks.Length > 1);
+
+            //Merge it
+            var target = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile2.xyz"));
+            chunker.Merge(chunks, target);
+
+            //Calculate the hash of the result
+            var hash_target = hvp.GetHashValue(target.FullName);
+
+            Assert.AreEqual(bf.Hash, hash_target);
+        }
+
+
+        private static void GetServices(out IHashValueProvider hvp, out ByteBoundaryChunker chunker)
+        {
+            //var services = await ArchiveRestoreTests.ArchiveCommand(AccessTier.Cool, dedup: true);
+            var loggerFactory = (ILoggerFactory)NullLoggerFactory.Instance;
+            var config = new TempDirectoryAppSettings { TempDirectoryName = "test" };
+            hvp = new SHA256Hasher(loggerFactory.CreateLogger<SHA256Hasher>(), new DummyHashValueProviderOptions());
+            chunker = new ByteBoundaryChunker(loggerFactory.CreateLogger<ByteBoundaryChunker>(), config, hvp);
+        }
+
+        private static BinaryFile CreateNewBinaryFile()
+        {
+            var original = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
+            CreateRandomDedupableFile(original, 1024 * 1024, 10);
+            var fi_original = new FileInfo(original);
+            var bf = new BinaryFile(fi_original.Directory, fi_original);
+            return bf;
+        }
+
         private static void CreateRandomDedupableFile(string fileFullName, long blockSizeInBytes, int repeats)
         {
             var f = new FileInfo(fileFullName);
@@ -40,31 +88,18 @@ namespace Arius.Core.Tests
             var rng = new Random();
             rng.NextBytes(block);
 
-            using (FileStream stream = File.OpenWrite(fileFullName))
-            {
-                for (int i = 0; i < repeats; i++)
-                {
-                    stream.Write(block, 0, block.Length);
-                }
-            }
+            using FileStream stream = File.OpenWrite(fileFullName);
+            for (int i = 0; i < repeats; i++)
+                stream.Write(block, 0, block.Length);
+
+            stream.Close();
         }
 
-
-        [Test]
-        public async Task Archive_DedupFile_Deduped()
+        private class DummyHashValueProviderOptions : IHashValueProvider.IOptions
         {
-            //Generate new dedup file
-            var fileFullName = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
-            CreateRandomDedupableFile(fileFullName, 100 * 1024, 10);
-
-
-            var services = await ArchiveRestoreTests.ArchiveCommand(AccessTier.Cool, dedup: true);
-
-
+            public string Passphrase => "test";
+            public bool FastHash => false;
         }
-
-
-
 
         public void TestCleanup()
         {
@@ -75,276 +110,6 @@ namespace Arius.Core.Tests
         {
             // Runs once after all tests in this class are executed. (Optional)
             // Not guaranteed that it executes instantly after all tests from the class.
-        }
-
-
-        [Test]
-        public void AriusDedupTest()
-        {
-            return;
-
-
-
-
-
-            //var options = new RestoreOptions { 
-            //    Passphrase = "woutervr"
-            //};
-
-            //var configurationRoot = new ConfigurationBuilder()
-            //        .AddInMemoryCollection(new Dictionary<string, string> { 
-            //            { "TempDirName", ".ariustemp" },
-            //            { "UploadTempDirName", ".ariustempupload" }
-            //        })
-            //        .Build();
-
-            //var config = new Configuration(options, configurationRoot);
-
-            //var hvp = new SHA256Hasher(null, options);
-
-
-            //var dc = new DedupChunker(null, config, hvp);
-
-            //var file = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
-            //var fi = new FileInfo(file);
-
-            //var bf1 = new BinaryFile(null, fi);
-
-
-            //var h1 = hvp.GetHashValue(file);
-
-            //var cs = dc.Chunk(bf1);
-
-            //var f2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
-            //var fi2 = new FileInfo(f2);
-            //var bf2 = dc.Merge(cs, fi2);
-
-            //var h2 = hvp.GetHashValue(f2);
-
-            //Assert.AreEqual(h1, h2);
-
-        }
-
-        [Test]
-        public void BareMetalTest()
-        {
-            return;
-
-            //var options = new RestoreOptions
-            //{
-            //    Passphrase = "woutervr"
-            //};
-
-            //var hvp = new SHA256Hasher(null, options);
-
-
-
-
-            //var originalFileName = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
-
-            //var h1 = hvp.GetHashValue(originalFileName);
-
-            //StreamBreaker.Chunk[] chunkDefs;
-            //using (var hasher = SHA256.Create())
-            //{
-            //    var streamBreaker = new StreamBreaker();
-            //    using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
-            //    chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
-            //}
-
-
-            //DirectoryInfo di = new DirectoryInfo(@"C:\Users\Wouter\Documents\Test\");
-            //di = di.CreateSubdirectory("chunked");
-            //di.Delete(true);
-            //di.Create();
-
-
-            //using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
-            //{
-            //    Position = 0
-            //};
-
-            //for (int i = 0; i < chunkDefs.Length; i++)
-            //{
-            //    var chunk = chunkDefs[i];
-
-            //    byte[] buff = new byte[chunk.Length];
-            //    fs.Read(buff, 0, (int)chunk.Length);
-
-            //    using var fileStream = File.Create($@"{di.FullName}\{i}");
-            //    fileStream.Write(buff, 0, (int)chunk.Length);
-            //    fileStream.Close();
-            //}
-
-
-
-
-            //var zzz = new List<Stream>();
-            //for (int i = 0; i < chunkDefs.Length; i++)
-            //{
-            //    var s = new FileStream($@"{di.FullName}\{i}", FileMode.Open, FileAccess.Read);
-            //    zzz.Add(s);
-            //}
-
-            //var css = new ConcatenatedStream(zzz);
-
-
-            //var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
-            //File.Delete(fi2);
-
-            //var fff = File.Create(fi2);
-            //css.CopyTo(fff);
-            //fff.Close();
-
-            //var h2 = hvp.GetHashValue(fi2);
-
-            //Assert.AreEqual(h1, h2);
-        }
-
-
-
-        [Test]
-        public void BareMetalChunkWithAriusRestore()
-        {
-            return;
-
-            //var options = new RestoreOptions
-            //{
-            //    Passphrase = "woutervr"
-            //};
-
-            //var hvp = new SHA256Hasher(null, options);
-
-
-
-
-            //var originalFileName = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
-
-            //var h1 = hvp.GetHashValue(originalFileName);
-
-            //StreamBreaker.Chunk[] chunkDefs;
-            //using (var hasher = SHA256.Create())
-            //{
-            //    var streamBreaker = new StreamBreaker();
-            //    using var fs1 = new FileStream(originalFileName, FileMode.Open, FileAccess.Read);
-            //    chunkDefs = streamBreaker.GetChunks(fs1, fs1.Length, hasher).ToArray();
-            //}
-
-
-            //DirectoryInfo di = new DirectoryInfo(@"C:\Users\Wouter\Documents\Test\");
-            //di = di.CreateSubdirectory("chunked");
-            //di.Delete(true);
-            //di.Create();
-
-
-            //using var fs = new FileStream(originalFileName, FileMode.Open, FileAccess.Read)
-            //{
-            //    Position = 0
-            //};
-
-            //var chunks = new List<ChunkFile>();
-
-            //for (int i = 0; i < chunkDefs.Length; i++)
-            //{
-            //    var chunk = chunkDefs[i];
-
-            //    byte[] buff = new byte[chunk.Length];
-            //    fs.Read(buff, 0, (int)chunk.Length);
-
-            //    using var fileStream = File.Create($@"{di.FullName}\{i}");
-            //    fileStream.Write(buff, 0, (int)chunk.Length);
-            //    fileStream.Close();
-
-
-            //    chunks.Add(new ChunkFile(new FileInfo($@"{di.FullName}\{i}"), default));
-            //}
-
-
-
-
-
-
-            //var config = new Configuration(options, configurationRoot);
-
-
-
-            //var dc = new DedupChunker(null, config, hvp);
-
-
-            //var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
-            //var fil2 = new FileInfo(fi2);
-            //var bf = dc.Merge(chunks.ToArray(), fil2);
-
-
-
-
-            //var h2 = hvp.GetHashValue(fi2);
-
-            //Assert.AreEqual(h1, h2);
-        }
-
-
-        [Test]
-        public void AriusChunkWithBareMetalRestore()
-        {
-            return;
-
-
-            //var options = new RestoreOptions
-            //{
-            //    Passphrase = "woutervr"
-            //};
-
-            //var configurationRoot = new ConfigurationBuilder()
-            //        .AddInMemoryCollection(new Dictionary<string, string> {
-            //            { "TempDirName", ".ariustemp" },
-            //            { "UploadTempDirName", ".ariustempupload" }
-            //        })
-            //        .Build();
-
-            //var config = new Configuration(options, configurationRoot);
-
-            //var hvp = new SHA256Hasher(null, options);
-
-
-            //var dc = new DedupChunker(null, config, hvp);
-
-            //var file = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy.exe";
-            //var fi = new FileInfo(file);
-
-            //var bf1 = new BinaryFile(null, fi);
-
-
-            //var h1 = hvp.GetHashValue(file);
-
-            //var chunks = dc.Chunk(bf1);
-
-
-
-
-
-
-            //var zzz = new List<Stream>();
-            //for (int i = 0; i < chunks.Length; i++)
-            //{
-            //    var s = new FileStream(chunks[i].FullName, FileMode.Open, FileAccess.Read);
-            //    zzz.Add(s);
-            //}
-
-            //var css = new ConcatenatedStream(zzz);
-
-
-            //var fi2 = @"C:\Users\Wouter\Documents\Test\Git-2.29.2.2-64-bit - Copy222.exe";
-            //File.Delete(fi2);
-
-            //var fff = File.Create(fi2);
-            //css.CopyTo(fff);
-            //fff.Close();
-
-            //var h2 = hvp.GetHashValue(fi2);
-
-            //Assert.AreEqual(h1, h2);
-
         }
     }
 }

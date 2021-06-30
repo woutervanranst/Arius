@@ -31,7 +31,7 @@ namespace Arius.Core.Services
 
             var di = new DirectoryInfo(Path.Combine(_uploadTempDirFullName, "chunks", $"{bf.RelativeName}"));
             if (di.Exists)
-                di.Delete();
+                di.Delete(true);
             di.Create();
 
             using var bffs = new FileStream(bf.FullName, FileMode.Open, FileAccess.Read);
