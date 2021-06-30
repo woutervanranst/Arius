@@ -261,7 +261,7 @@ namespace Arius.Core.Commands
         public ChunkBlock(ILogger<ChunkBlock> logger,
             BlockingCollection<BinaryFile> source,
             int maxDegreeOfParallelism,
-            IChunker chunker,
+            Chunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
@@ -269,7 +269,7 @@ namespace Arius.Core.Commands
             this.chunkedBinary = chunkedBinary;
         }
 
-        private readonly IChunker chunker;
+        private readonly Chunker chunker;
         private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
 
         protected override Task ForEachBodyImplAsync(BinaryFile bf)

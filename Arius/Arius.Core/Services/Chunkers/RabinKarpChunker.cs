@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -9,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services
 {
-    internal class RabinKarpChunker : IChunker
+    internal class RabinKarpChunker : Chunker
     {
         public RabinKarpChunker(ILogger<RabinKarpChunker> logger, TempDirectoryAppSettings config, IHashValueProvider hvp)
         {
@@ -17,7 +18,6 @@ namespace Arius.Core.Services
             _hvp = hvp;
 
             _uploadTempDirFullName = config.TempDirectoryFullName;
-
         }
 
         private static readonly StreamBreaker _sb = new();
@@ -25,7 +25,7 @@ namespace Arius.Core.Services
         private readonly IHashValueProvider _hvp;
         private readonly string _uploadTempDirFullName;
 
-        public IChunkFile[] Chunk(BinaryFile bf)
+        public override IChunkFile[] Chunk(BinaryFile bf)
         {
             _logger.LogInformation($"Chunking {bf.RelativeName}...");
 
@@ -89,22 +89,6 @@ namespace Arius.Core.Services
 
             return chunks.ToArray();
         }
-
-        public BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
-        {
-            var chunkStreams = new List<Stream>();
-            for (int i = 0; i < chunksToJoin.Length; i++)
-                chunkStreams.Add(new FileStream(chunksToJoin[i].FullName, FileMode.Open, FileAccess.Read));
-
-            var stream = new ConcatenatedStream(chunkStreams);
-
-            using var targetStream = File.Create(target.FullName); // target.Create();
-            stream.CopyTo(targetStream);
-            targetStream.Close();
-
-            return new BinaryFile(null, target);
-        }
-
 
         /// <summary>Uses a rolling hash (Rabin-Karp) to segment a large file</summary>
         // https://www.codeproject.com/Articles/801608/Using-a-rolling-hash-to-break-up-binary-files

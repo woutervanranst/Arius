@@ -115,7 +115,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<ChunkBlock>(),
                 source: binariesToChunk,
                 maxDegreeOfParallelism: 1 /*2*/,
-                chunker: services.GetRequiredService<IChunker>(),
+                chunker: services.GetRequiredService<Chunker>(),
                 chunkedBinary: (binaryFile, chunkFiles) => 
                 {
                     //B501

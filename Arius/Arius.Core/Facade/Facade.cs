@@ -164,10 +164,10 @@ namespace Arius.Core.Facade
                 .AddSingleton<SimpleChunker>()
                 .AddSingleton<RabinKarpChunker>();
 
-            if (options is IChunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
+            if (options is Chunker.IOptions chunkerOptions) // this is eg not the case for RestoreCommandOptions
             {
                 sc
-                    .AddSingleton<IChunker>((sp) =>
+                    .AddSingleton<Chunker>((sp) =>
                     {
                         if (chunkerOptions.Dedup)
                             return sp.GetRequiredService<RabinKarpChunker>();
