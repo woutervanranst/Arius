@@ -26,7 +26,7 @@ namespace Arius.Core.Services
         }
 
         void Upload(IFile[] filesToUpload, AccessTier tier, string remoteDirectoryName, bool overwrite = false);
-        IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten);
+        IEnumerable<FileInfo> Download(BlobBase[] blobsToDownload, DirectoryInfo target, bool flatten);
     }
 
     internal class AzCopier : IBlobCopier
@@ -123,10 +123,8 @@ namespace Arius.Core.Services
         }
 
 
-        public IEnumerable<FileInfo> Download(IEnumerable<BlobBase> blobsToDownload, DirectoryInfo target, bool flatten)
+        public IEnumerable<FileInfo> Download(BlobBase[] blobsToDownload, DirectoryInfo target, bool flatten)
         {
-            blobsToDownload = blobsToDownload.ToArray();
-
             var size = blobsToDownload.Sum(b => b.Length);
 
             _logger.LogInformation($"Downloading {size.GetBytesReadable()} in {blobsToDownload.Count()} files to '{target.FullName}'");

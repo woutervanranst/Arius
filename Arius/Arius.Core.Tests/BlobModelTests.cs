@@ -11,7 +11,7 @@ namespace Arius.Core.Tests
     class BlobModelTests
     {
         [OneTimeSetUp]
-        public void ClassInit_Archive()
+        public void ClassInit()
         {
             // Executes once for the test class. (Optional)
 

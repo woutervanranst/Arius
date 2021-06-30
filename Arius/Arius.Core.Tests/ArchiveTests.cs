@@ -550,7 +550,7 @@ namespace Arius.Core.Tests
         }
 
 
-        private static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        public static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var c = TestSetup.Facade.CreateArchiveCommand(
                 TestSetup.AccountName,

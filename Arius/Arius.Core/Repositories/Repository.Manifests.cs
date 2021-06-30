@@ -69,9 +69,9 @@ namespace Arius.Core.Repositories
 
         public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
         {
-            var pfes = await GetAllManifestHashes();
+            var hs = await GetAllManifestHashes();
 
-            return pfes.Any(pfe => pfe == manifestHash);
+            return hs.Any(pfe => pfe == manifestHash);
 
             //return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }

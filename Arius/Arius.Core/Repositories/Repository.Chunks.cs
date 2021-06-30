@@ -186,7 +186,10 @@ namespace Arius.Core.Repositories
         {
             var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
 
-            if (chunkBlobs.Count() != downloadedFiles.Count())
+            //if (chunkBlobs.Count() != downloadedFiles.Count())
+            //    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
+
+            if (chunkBlobs.Select(cb => cb.Name).Except(downloadedFiles.Select(f => f.Name)).Any())
                 throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
 
             // Return an IEnumerable - the result may not be needed/materialized by the caller

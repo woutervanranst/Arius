@@ -88,9 +88,9 @@ namespace Arius.Core.Services
         public static string GetHashValue(string fullName, string salt)
         {
             var byteArray = Encoding.ASCII.GetBytes(salt);
-            using Stream ss = new MemoryStream(byteArray);
+            using var ss = new MemoryStream(byteArray);
 
-            using Stream fs = File.OpenRead(fullName);
+            using var fs = File.OpenRead(fullName);
 
             using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
             using var sha256 = SHA256.Create();
