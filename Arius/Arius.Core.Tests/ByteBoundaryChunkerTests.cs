@@ -71,7 +71,8 @@ namespace Arius.Core.Tests
         private static BinaryFile CreateNewBinaryFile()
         {
             var original = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
-            CreateRandomDedupableFile(original, 1024 * 1024, 10);
+            int sizeInKB = 1024 * 5;
+            CreateRandomDedupableFile(original, sizeInKB / 10 * 1024, 10);
             var fi_original = new FileInfo(original);
             var bf = new BinaryFile(fi_original.Directory, fi_original);
             return bf;
