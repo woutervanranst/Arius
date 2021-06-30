@@ -50,7 +50,7 @@ namespace Arius.Core.Commands
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var repo = services.GetRequiredService<Repository>();
             var versionUtc = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
-            var pointerFileService = services.GetRequiredService<PointerService>();
+            var pointerService = services.GetRequiredService<PointerService>();
 
             var filesToHash = new BlockingCollection<IFile>();
 
@@ -159,7 +159,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
                 source: chunksToBatchForUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-                isAddingCompleted: () => chunksToBatchForUpload.IsAddingCompleted, //B802
+                inputQueueCompleted: () => chunksToBatchForUpload.IsCompleted, //B802
                 batchForUpload: (b) => batchesToUpload.Add(b), //B804
                 done: () => batchesToUpload.CompleteAdding()); //B810
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
@@ -172,11 +172,11 @@ namespace Arius.Core.Commands
                 repo: repo,
                 tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
-                done: () => manifestsToCreate.CompleteAdding()); //B910
+                done: () =>  manifestsToCreate.CompleteAdding()); //B910
             var uploadBatchTask = uploadBatchBlock.GetTask;
 
             
-            void removeFromPendingUpload(HashValue chunkHash)
+            void removeFromPendingUpload(params HashValue[] chunkHash)
             {
                 // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
 
@@ -184,7 +184,7 @@ namespace Arius.Core.Commands
 
                 foreach (var manifest in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
                 {
-                    manifest.Value.PendingUpload.Remove(chunkHash);
+                    manifest.Value.PendingUpload.RemoveAll(h => chunkHash.Contains(h));
 
                     if (!manifest.Value.PendingUpload.Any())
                     {
@@ -225,7 +225,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 source: pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
-                pointerService: pointerFileService,
+                pointerService: pointerService,
                 succesfullyBackedUp: bf => binariesToDelete.Add(bf), //B1202
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () => 
@@ -277,7 +277,7 @@ namespace Arius.Core.Commands
                 source: pointerFileEntriesToCheckForDeletedPointers,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
-                pointerService: pointerFileService,
+                pointerService: pointerService,
                 versionUtc: versionUtc,
                 start: async () => 
                 {
@@ -316,15 +316,18 @@ namespace Arius.Core.Commands
 
 
             // Await the current stage of the pipeline
-            await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
-
-            await exportJsonTask;
+            await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks.Append(exportJsonTask)), BlockBase.CancellationTask);
 
             if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
                 && ts.Any())
             {
                 var exceptions = ts.Select(t => t.Exception);
                 throw new AggregateException(exceptions);
+            }
+            else if (binariesWaitingForManifestCreation.Count > 0 || chunksForManifest.Count > 0)
+            {
+                //something went wrong
+                throw new InvalidOperationException("Not all queues are emptied");
             }
 
             return 0;

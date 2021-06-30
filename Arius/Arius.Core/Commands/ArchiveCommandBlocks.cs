@@ -389,25 +389,21 @@ namespace Arius.Core.Commands
         public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
             BlockingCollection<EncryptedChunkFile> source,
             AzCopyAppSettings azCopyAppSettings,
-            Func<bool> isAddingCompleted,
             Action<EncryptedChunkFile[]> batchForUpload,
             Action done) : base(logger: logger, source: source, done: done)
         {
             this.azCopyAppSettings = azCopyAppSettings;
-            this.isAddingCompleted = isAddingCompleted;
             this.batchForUpload = batchForUpload;
         }
 
         private readonly AzCopyAppSettings azCopyAppSettings;
-        private readonly Func<bool> isAddingCompleted;
         private readonly Action<EncryptedChunkFile[]> batchForUpload;
 
         protected override Task TaskBodyImplAsync(BlockingCollection<EncryptedChunkFile> source)
         {
             var uploadBatch = new List<EncryptedChunkFile>();
 
-            while (!isAddingCompleted() //loop until the preceding block has finished adding chunks to be uploaded
-                || !source.IsCompleted) //if adding is completed, it can be that we still need to generate multiple batches with whatever is left in the queue
+            while (!source.IsCompleted) // loop until the source is empty and no more elements will be added
             {
                 string reason = "adding is completed"; //this is the default reason: if source is marked as CompleteAdding and the queue is empty, the for each loop will no longer loop
                 long size = default;
@@ -427,7 +423,7 @@ namespace Arius.Core.Commands
                         reason = "of batchsize";
                         break;
                     }
-                    else if (isAddingCompleted())
+                    else if (!source.IsAddingCompleted)
                     {
                         break;
                     }
@@ -453,7 +449,7 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             Repository repo,
             AccessTier tier,
-            Action<HashValue> chunkUploaded,
+            Action<HashValue[]> chunkUploaded,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
@@ -463,7 +459,7 @@ namespace Arius.Core.Commands
 
         private readonly Repository repo;
         private readonly AccessTier tier;
-        private readonly Action<HashValue> chunkUploaded;
+        private readonly Action<HashValue[]> chunkUploaded;
 
         protected override Task ForEachBodyImplAsync(EncryptedChunkFile[] ecfs)
         {
@@ -478,8 +474,8 @@ namespace Arius.Core.Commands
 
             logger.LogInformation($"Uploading batch... done");
 
-            foreach (var chunk in ecfs)
-                chunkUploaded(chunk.Hash);
+            //foreach (var chunk in ecfs)
+                chunkUploaded(ecfs.Select(c => c.Hash).ToArray());
 
             return Task.CompletedTask;
         }
