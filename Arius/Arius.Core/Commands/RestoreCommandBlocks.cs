@@ -16,6 +16,78 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    
+    internal class SynchronizeBlock : TaskBlockBase<DirectoryInfo>
+    {
+        public SynchronizeBlock(ILogger<SynchronizeBlock> logger,
+            DirectoryInfo root,
+            Repository repo,
+            PointerService pointerService,
+            Action<PointerFile> pointerToDownload,
+            Action done)
+            : base(logger: logger, source: root, done: done)
+        {
+            this.root = root;
+            this.repo = repo;
+            this.pointerService = pointerService;
+            this.pointerToDownload = pointerToDownload;
+        }
+
+        private readonly DirectoryInfo root;
+        private readonly Repository repo;
+        private readonly PointerService pointerService;
+        private readonly Action<PointerFile> pointerToDownload;
+
+        protected override async Task TaskBodyImplAsync(DirectoryInfo source)
+        {
+            var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
+
+            logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");
+
+            var t1 = Task.Run(() => CreateIfNotExists(currentPfes));
+            var t2 = Task.Run(() => DeleteIfExists(currentPfes));
+
+            await Task.WhenAll(t1, t2);
+        }
+
+        /// <summary>
+        /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
+        /// </summary>
+        /// <returns></returns>
+        private void CreateIfNotExists(IEnumerable<PointerFileEntry> pfes)
+        {
+            pfes
+                .AsParallel()
+                .ForAll(pfe =>
+                {
+                    var pf = pointerService.CreatePointerFileIfNotExists(pfe);
+                    pointerToDownload(pf);
+                });
+        }
+
+        /// <summary>
+        /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
+        /// </summary>
+        /// <param name="pfes"></param>
+        private void DeleteIfExists(IEnumerable<PointerFileEntry> pfes)
+        {
+            var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
+
+            root.GetFiles($"*{PointerFile.Extension}", SearchOption.AllDirectories)
+                .AsParallel()
+                .ForAll(pfi =>
+                {
+                    var relativeName = Path.GetRelativePath(root.FullName, pfi.FullName);
+
+                    if (relativeNames.Contains(relativeName))
+                        return;
+                    pfi.Delete();
+                    logger.LogInformation($"Pointer for '{relativeName}' deleted");
+                });
+
+            root.DeleteEmptySubdirectories();
+        }
+    }
+
+
 }
 

@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Core.Commands;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
@@ -10,7 +11,7 @@ using Arius.Core.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands2
 {
     internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
