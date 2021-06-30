@@ -1,21 +1,16 @@
 ﻿using Arius.Core.Configuration;
-using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 using Arius.Core.Services.Chunkers;
 
 namespace Arius.Core.Commands
@@ -43,7 +38,7 @@ namespace Arius.Core.Commands
         private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
 
-        internal static void AddBlockProviders(IServiceCollection coll/*, Facade.Facade.ArchiveCommandOptions options*/)
+        internal static void AddBlockProviders(IServiceCollection coll)
         {
         }
 
@@ -72,7 +67,6 @@ namespace Arius.Core.Commands
 
             var hashBlock = new HashBlock(
                 logger: loggerFactory.CreateLogger<HashBlock>(),
-                //continueWhile: () => !indexedFiles.IsCompleted,
                 source: filesToHash,
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
@@ -89,7 +83,6 @@ namespace Arius.Core.Commands
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
-                //continueWhile: () => !createManifest.IsCompleted,
                 source: binariesToUpload,
                 repo: repo,
                 binaryFileAlreadyBackedUp: (bf) => binariesToDelete.Add(bf), //B401
