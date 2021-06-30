@@ -20,6 +20,7 @@ namespace Arius.Core.Services
 
         HashValue GetHashValue(BinaryFile bf);
         HashValue GetHashValue(string fullName);
+        HashValue GetHashValue(Stream stream);
     }
 
     internal class SHA256Hasher : IHashValueProvider
@@ -85,22 +86,31 @@ namespace Arius.Core.Services
             return new HashValue { Value = GetHashValue(fullName, salt) };
         }
 
-        public static string GetHashValue(string fullName, string salt)
+        public HashValue GetHashValue(Stream stream)
+        {
+            return new HashValue { Value = GetHashValue(stream, salt) };
+        }
+
+        internal static string GetHashValue(string fullName, string salt)
+        {
+            using var fs = File.OpenRead(fullName);
+
+            return GetHashValue(fs, salt);
+        }
+
+        internal static string GetHashValue(Stream stream, string salt)
         {
             var byteArray = Encoding.ASCII.GetBytes(salt);
             using var ss = new MemoryStream(byteArray);
 
-            using var fs = File.OpenRead(fullName);
+            using var stream2 = new ConcatenatedStream(new Stream[] { ss, stream });
+            using var sha256 = SHA256.Create(); //not thread safe
 
-            using var stream = new ConcatenatedStream(new Stream[] { ss, fs });
-            using var sha256 = SHA256.Create();
-
-            var hash = sha256.ComputeHash(stream);
-
-            fs.Close();
+            var hash = sha256.ComputeHash(stream2);
 
             return ByteArrayToString(hash);
         }
+
 
         private static string ByteArrayToString(byte[] ba)
         {

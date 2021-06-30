@@ -1,22 +1,89 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Services;
+using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    class DedupChunkerTests
+    class ByteBoundaryChunkerTests
     {
+        [OneTimeSetUp]
+        public void ClassInit()
+        {
+            // Executes once for the test class. (Optional)
+
+            if (TestSetup.archiveTestDirectory.Exists) TestSetup.archiveTestDirectory.Delete(true);
+            TestSetup.archiveTestDirectory.Create();
+        }
+
+        [SetUp]
+        public void TestInit()
+        {
+            // Runs before each test. (Optional)
+        }
+
+        
+        private static void CreateRandomDedupableFile(string fileFullName, long blockSizeInBytes, int repeats)
+        {
+            var f = new FileInfo(fileFullName);
+            if (!f.Directory.Exists)
+                f.Directory.Create();
+
+            //Generate block
+            byte[] block = new byte[blockSizeInBytes];
+            var rng = new Random();
+            rng.NextBytes(block);
+
+            using (FileStream stream = File.OpenWrite(fileFullName))
+            {
+                for (int i = 0; i < repeats; i++)
+                {
+                    stream.Write(block, 0, block.Length);
+                }
+            }
+        }
+
+
+        [Test]
+        public async Task Archive_DedupFile_Deduped()
+        {
+            //Generate new dedup file
+            var fileFullName = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
+            CreateRandomDedupableFile(fileFullName, 100 * 1024, 10);
+
+
+            var services = await ArchiveRestoreTests.ArchiveCommand(AccessTier.Cool, dedup: true);
+
+
+        }
+
+
+
+
+        public void TestCleanup()
+        {
+            // Runs after each test. (Optional)
+        }
+        [OneTimeTearDown]
+        public void ClassCleanup()
+        {
+            // Runs once after all tests in this class are executed. (Optional)
+            // Not guaranteed that it executes instantly after all tests from the class.
+        }
+
+
         [Test]
         public void AriusDedupTest()
         {
             return;
 
-                
+
 
 
 
