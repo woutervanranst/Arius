@@ -533,7 +533,7 @@ namespace Arius.Core.Commands
             bool KeepPointers { get; }
         }
 
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, DedupChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, RabinKarpChunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
@@ -542,8 +542,8 @@ namespace Arius.Core.Commands
             _keepPointers = options.KeepPointers;
         }
 
-        private readonly Chunker _chunker;
-        private readonly DedupChunker _dedupChunker;
+        private readonly SimpleChunker _chunker;
+        private readonly RabinKarpChunker _dedupChunker;
         private readonly ILogger<MergeBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly bool _keepPointers;
