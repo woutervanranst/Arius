@@ -541,12 +541,18 @@ namespace Arius.Core.Tests
         [Test, Order(1000)]
         public async Task Archive_FullDirectory()
         {
+            await EnsureFullDirectoryArchived();
+        }
+
+        public static async Task<IServiceProvider> EnsureFullDirectoryArchived(bool removeLocal = false)
+        {
             // Empty the test directory
             TestSetup.archiveTestDirectory.Clear();
             TestSetup.sourceFolder.CopyTo(TestSetup.archiveTestDirectory);
 
             //EXECUTE
-            var services = await ArchiveCommand(AccessTier.Cool);
+            var services = await ArchiveCommand(AccessTier.Cool, removeLocal);
+            return services;
         }
 
 

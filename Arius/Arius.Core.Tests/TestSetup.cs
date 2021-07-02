@@ -133,7 +133,11 @@ namespace Arius.Core.Tests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            archiveTestDirectory.Parent.Delete(true);
+            foreach (var d in archiveTestDirectory.Parent.GetDirectories())
+                d.Delete(true);
+
+            foreach (var d in restoreTestDirectory.Parent.GetDirectories())
+                d.Delete(true);
 
             foreach (var c in bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
                 bsc.GetBlobContainerClient(c.Name).Delete();

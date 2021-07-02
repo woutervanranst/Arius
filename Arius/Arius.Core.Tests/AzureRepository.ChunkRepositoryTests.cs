@@ -8,7 +8,7 @@ namespace Arius.Core.Tests
     class ChunkRepositoryTests
     {
         [OneTimeSetUp]
-        public void ClassInit_Archive()
+        public void ClassInit()
         {
             // Executes once for the test class. (Optional)
         }
