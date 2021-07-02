@@ -136,7 +136,8 @@ namespace Arius.Cli
             var root = new RootCommand
             {
                 new ArchiveCliCommand().GetCommand(),
-                new RestoreCliCommand().GetCommand()
+                new RestoreCliCommand().GetCommand(),
+                new DedupEvalCliCommand().GetCommand()
             };
             root.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
 

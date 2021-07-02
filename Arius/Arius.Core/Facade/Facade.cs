@@ -30,10 +30,11 @@ using System.Threading.Tasks.Dataflow;
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 namespace Arius.Core.Facade
 {
-    public interface IFacade
+    public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
     {
         ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path);
         ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
+        ICommand CreateDedupEvalCommand(string path);
     }
 
 
@@ -58,7 +59,7 @@ namespace Arius.Core.Facade
     //    }
     //}
 
-    public partial class Facade : IFacade
+    public class Facade : IFacade
     {
         internal interface IOptions // Used for DI in the facade
         {
@@ -83,6 +84,18 @@ namespace Arius.Core.Facade
         private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
+
+        public ICommand CreateDedupEvalCommand(string path)
+        {
+            var options = new DedupEvalCommand.Options { Root = new DirectoryInfo(path) };
+
+            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+
+            var dec = sp.GetRequiredService<DedupEvalCommand>();
+
+            return dec;
+
+        }
         public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
         {
             var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
@@ -151,6 +164,7 @@ namespace Arius.Core.Facade
 
             sc
                 //Add Commmands
+                .AddSingleton<DedupEvalCommand>()
                 .AddSingleton<ArchiveCommand>()
                 .AddSingleton<RestoreCommand>()
 
@@ -181,8 +195,8 @@ namespace Arius.Core.Facade
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
 
-            ArchiveCommand.AddBlockProviders(sc);
-            RestoreCommand.AddBlockProviders(sc);
+            //ArchiveCommand.AddBlockProviders(sc);
+            //RestoreCommand.AddBlockProviders(sc);
 
             sc
                 .AddSingleton<ILoggerFactory>(loggerFactory)
