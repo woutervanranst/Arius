@@ -159,7 +159,6 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
                 source: chunksToBatchForUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-                inputQueueCompleted: () => chunksToBatchForUpload.IsCompleted, //B802
                 batchForUpload: (b) => batchesToUpload.Add(b), //B804
                 done: () => batchesToUpload.CompleteAdding()); //B810
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
