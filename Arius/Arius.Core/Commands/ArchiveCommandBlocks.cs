@@ -423,7 +423,7 @@ namespace Arius.Core.Commands
                         reason = "of batchsize";
                         break;
                     }
-                    else if (!source.IsAddingCompleted)
+                    else if (source.IsCompleted) //this will be the final block
                     {
                         break;
                     }
