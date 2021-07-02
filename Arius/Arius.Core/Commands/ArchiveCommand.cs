@@ -38,9 +38,9 @@ namespace Arius.Core.Commands
         private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
 
-        internal static void AddBlockProviders(IServiceCollection coll)
-        {
-        }
+        //internal static void AddBlockProviders(IServiceCollection coll)
+        //{
+        //}
 
         IServiceProvider ICommand.Services => services;
 
@@ -181,17 +181,17 @@ namespace Arius.Core.Commands
 
                 //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
 
-                foreach (var manifest in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
+                foreach (var (manifestHash, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
                 {
-                    manifest.Value.PendingUpload.RemoveAll(h => chunkHash.Contains(h));
+                    pendingUploadChunkHashes.RemoveAll(h => chunkHash.Contains(h));
 
-                    if (!manifest.Value.PendingUpload.Any())
+                    if (!pendingUploadChunkHashes.Any())
                     {
                         //All chunks for this manifest are now uploaded
-                        if (!chunksForManifest.TryRemove(manifest.Key, out _))
-                            throw new InvalidOperationException($"Manifest '{manifest.Key}'should have been present in the {nameof(chunksForManifest)} list but isn't");
+                        if (!chunksForManifest.TryRemove(manifestHash, out _))
+                            throw new InvalidOperationException($"Manifest '{manifestHash}' should have been present in the {nameof(chunksForManifest)} list but isn't");
 
-                        manifestsToCreate.Add((ManifestHash: manifest.Key, ChunkHashes: manifest.Value.All)); //B1001
+                        manifestsToCreate.Add((ManifestHash: manifestHash, ChunkHashes: allChunkHashes)); //B1001
                     }
                 }
             };
