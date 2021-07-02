@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,17 +8,31 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
 {
+    internal class DedupEvalCommandOptions : Facade.Facade.IOptions,
+        DedupEvalCommand.IOptions
+    {
+        public DirectoryInfo Root { get; init; }
+    }
+
     internal class DedupEvalCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
-        internal class Options : Facade.Facade.IOptions
+        internal interface IOptions
         {
-            public DirectoryInfo Root { get; init; }
+            DirectoryInfo Root { get; }
         }
 
-        public DedupEvalCommand()
+        public DedupEvalCommand(IOptions options,
+            ILogger<DedupEvalCommand> logger,
+            IServiceProvider serviceProvider)
         {
-
+            this.options = options;
+            this.logger = logger;
+            this.services = serviceProvider;
         }
+
+        private readonly IOptions options;
+        private readonly ILogger<DedupEvalCommand> logger;
+        private readonly IServiceProvider services;
 
         public Task<int> Execute()
         {

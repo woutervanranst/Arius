@@ -87,7 +87,7 @@ namespace Arius.Core.Facade
 
         public ICommand CreateDedupEvalCommand(string path)
         {
-            var options = new DedupEvalCommand.Options { Root = new DirectoryInfo(path) };
+            var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
 
             var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
 
