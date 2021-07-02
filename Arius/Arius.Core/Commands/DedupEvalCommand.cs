@@ -63,7 +63,6 @@ namespace Arius.Core.Commands
             var indexTask = indexBlock.GetTask;
 
 
-
             await indexTask;
 
             logger.LogInformation($"{fileCount} total files");
