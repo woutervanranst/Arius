@@ -16,35 +16,33 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    internal class SynchronizeBlock : TaskBlockBase<DirectoryInfo>
+    internal class SynchronizeBlock : BlockingCollectionTaskBlockBase<DirectoryInfo>
     {
         public SynchronizeBlock(ILogger<SynchronizeBlock> logger,
-            DirectoryInfo root,
+            BlockingCollection<DirectoryInfo> source,
             Repository repo,
             PointerService pointerService,
             Action<PointerFile> pointerToDownload,
             Action done)
-            : base(logger: logger, source: root, done: done)
+            : base(logger: logger, source: source, done: done)
         {
-            this.root = root;
             this.repo = repo;
             this.pointerService = pointerService;
             this.pointerToDownload = pointerToDownload;
         }
 
-        private readonly DirectoryInfo root;
         private readonly Repository repo;
         private readonly PointerService pointerService;
         private readonly Action<PointerFile> pointerToDownload;
 
-        protected override async Task TaskBodyImplAsync(DirectoryInfo source)
+        protected override async Task ForEachBodyImplAsync(DirectoryInfo root)
         {
             var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
 
             logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");
 
             var t1 = Task.Run(() => CreateIfNotExists(currentPfes));
-            var t2 = Task.Run(() => DeleteIfExists(currentPfes));
+            var t2 = Task.Run(() => DeleteIfExists(root, currentPfes));
 
             await Task.WhenAll(t1, t2);
         }
@@ -68,7 +66,7 @@ namespace Arius.Core.Commands
         /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
         /// </summary>
         /// <param name="pfes"></param>
-        private void DeleteIfExists(IEnumerable<PointerFileEntry> pfes)
+        private void DeleteIfExists(DirectoryInfo root, IEnumerable<PointerFileEntry> pfes)
         {
             var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
