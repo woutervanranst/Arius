@@ -15,14 +15,16 @@ namespace Arius.Core.Services
         }
 
 
-        public PointerService(IOptions options, ILogger<PointerService> logger)
+        public PointerService(IOptions options, ILogger<PointerService> logger, IHashValueProvider hvp)
         {
             root = new DirectoryInfo(options.Path);
             this.logger = logger;
+            this.hvp = hvp;
         }
 
         private readonly DirectoryInfo root;
         private readonly ILogger<PointerService> logger;
+        private readonly IHashValueProvider hvp;
 
 
         /// <summary>
@@ -132,25 +134,35 @@ namespace Arius.Core.Services
         /// Get the local BinaryFile for this pointer if it exists.
         /// If it does not exist, return null.
         /// </summary>
+        /// <param name="pf"></param>
+        /// <param name="ensureCorrectHash">If we find an existing BinaryFile, calculate the hash and ensure it is correct</param>
         /// <returns></returns>
-        public static BinaryFile GetBinaryFile(PointerFile pf)
+        public BinaryFile GetBinaryFile(PointerFile pf, bool ensureCorrectHash)
         {
             var bfi = new FileInfo(GetBinaryFileFullName(pf));
 
-            if (!bfi.Exists)
-                return null;
-
-            return new BinaryFile(pf.Root, bfi);
+            return GetBinaryFile(bfi, pf.Hash, ensureCorrectHash);
         }
 
-        public BinaryFile GetBinaryFile(PointerFileEntry pfe)
+        public BinaryFile GetBinaryFile(PointerFileEntry pfe, bool ensureCorrectHash)
         {
             var bfi = new FileInfo(GetBinaryFileFullname(pfe));
 
+            return GetBinaryFile(bfi, pfe.ManifestHash, ensureCorrectHash);
+        }
+
+        private BinaryFile GetBinaryFile(FileInfo bfi, HashValue manifestHash, bool ensureCorrectHash)
+        {
             if (!bfi.Exists)
                 return null;
 
-            return new BinaryFile(root, bfi);
+            if (ensureCorrectHash)
+            {
+                if (manifestHash != hvp.GetHashValue(bfi.FullName))
+                    throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again.");
+            }
+
+            return new BinaryFile(root, bfi) { Hash = manifestHash };
         }
 
         private string GetBinaryFileFullname(PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(pfe));

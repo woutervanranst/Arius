@@ -209,21 +209,23 @@ namespace Arius.Core.Tests
         [Test, Order(1003)]
         public async Task Restore_FullSourceDirectory_Selectively()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+            throw new NotImplementedException();
 
-            // Copy one pointer (to restore) to the restoredirectory
-            var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-            pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
+            //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
-            var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
-            var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+            //// Copy one pointer (to restore) to the restoredirectory
+            //var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
+            //pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
 
-            Assert.IsTrue(File.Exists(pf1.FullName));
-            Assert.IsNull(bf1); //does not exist
+            //var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
+            //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsNull(bf1); //does not exist
 
 
-            //This is not yet implemented
-            Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
+            ////This is not yet implemented
+            //Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
 
             //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
 

@@ -174,7 +174,8 @@ namespace Arius.Core.Commands2
                 }
 
                 // Chunks Downloaded & Merged?
-                if (PointerService.GetBinaryFile(pf) is var bf && bf is not null && 
+                PointerService ps = default;
+                if (ps.GetBinaryFile(pf, true) is var bf && bf is not null && 
                     _hvp.GetHashValue(bf).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
