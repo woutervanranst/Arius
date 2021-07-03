@@ -635,7 +635,8 @@ namespace Arius.Core.Commands
         protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe)
         {
             if (!pfe.IsDeleted &&
-                pointerService.GetPointerFile(pfe) is null && pointerService.GetBinaryFile(pfe) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+                pointerService.GetPointerFile(pfe) is null && 
+                pointerService.GetBinaryFile(pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
                 await repo.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
