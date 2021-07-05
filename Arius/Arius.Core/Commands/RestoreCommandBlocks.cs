@@ -16,56 +16,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands
 {
-    internal class SynchronizeBlock2 : TaskBlockBase<DirectoryInfo>
-    {
-        public IndexBlock(
-            ILogger<SynchronizeBlock2> logger,
-            DirectoryInfo root,
-            int maxDegreeOfParallelism,
-            //bool fastHash,
-            Repository repo,
-            //Action<PointerFile> hashedPointerFile,
-            //Action<BinaryFile> hashedBinaryFile,
-            //Action<BinaryFile> binaryFileAlreadyBackedUp,
-            //IHashValueProvider hvp,
-            Action done)
-            : base(logger: logger, source: root, done: done)
-        {
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-            this.repo = repo;
-        }
-
-        private readonly int maxDegreeOfParallelism;
-        private readonly Repository repo;
-
-        protected override async Task TaskBodyImplAsync(DirectoryInfo source)
-        {
-            var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
-            foreach (var pfe in currentPfes)
-            {
-
-            }
-
-
-            foreach (var item in source.GetPointerFileInfos()
-                                        .AsParallel()
-                                        .WithDegreeOfParallelism(maxDegreeOfParallelism))
-            {
-
-            }
-
-            return Task.CompletedTask;
-        }
-    }
-
-
     internal class SynchronizeBlock : BlockingCollectionTaskBlockBase<DirectoryInfo>
     {
         public SynchronizeBlock(ILogger<SynchronizeBlock> logger,
             BlockingCollection<DirectoryInfo> source,
             Repository repo,
             PointerService pointerService,
-            Action<PointerFile> pointerToDownload,
+            Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload,
             Action done)
             : base(logger: logger, source: source, done: done)
         {
@@ -76,7 +33,7 @@ namespace Arius.Core.Commands
 
         private readonly Repository repo;
         private readonly PointerService pointerService;
-        private readonly Action<PointerFile> pointerToDownload;
+        private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload;
 
         protected override async Task ForEachBodyImplAsync(DirectoryInfo root)
         {
@@ -99,7 +56,9 @@ namespace Arius.Core.Commands
             foreach (var pfe in pfes.AsParallel())
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(pfe);
-                pointerToDownload(pf);
+                var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+
+                pointerToDownload((pf, bf is not null));
             }
         }
 

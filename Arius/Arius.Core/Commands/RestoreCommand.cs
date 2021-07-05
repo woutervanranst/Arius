@@ -47,6 +47,7 @@ namespace Arius.Core.Commands
                 new DirectoryInfo(options.Path) :
                 new FileInfo(options.Path);
 
+
             var directoriesToSynchronize = new BlockingCollection<DirectoryInfo>();
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
 
@@ -87,9 +88,11 @@ namespace Arius.Core.Commands
                 source: directoriesToSynchronize,
                 repo: repo,
                 pointerService: pointerService,
-                pointerToDownload: pf =>
+                pointerToDownload: p =>
                 {
-                    if (options.Download) //S21
+                    var (pf, alreadyRestored) = p;
+
+                    if (options.Download && !alreadyRestored) //S21
                         pointerFilesToDownload.Add(pf);
                 },
                 done: () => { });

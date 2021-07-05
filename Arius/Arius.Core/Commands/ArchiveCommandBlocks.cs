@@ -28,8 +28,7 @@ namespace Arius.Core.Commands
             bool fastHash,
             Repository repo,
             Action<PointerFile> hashedPointerFile,
-            Action<BinaryFile> hashedBinaryFile,
-            Action<BinaryFile> binaryFileAlreadyBackedUp,
+            Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile,
             IHashValueProvider hvp,
             Action done)
             : base(logger: logger, source: root, done: done)
@@ -39,7 +38,6 @@ namespace Arius.Core.Commands
             this.repo = repo;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
-            this.binaryFileAlreadyBackedUp = binaryFileAlreadyBackedUp;
             this.hvp = hvp;
         }
 
@@ -47,8 +45,7 @@ namespace Arius.Core.Commands
         private readonly bool fastHash;
         private readonly Repository repo;
         private readonly Action<PointerFile> hashedPointerFile;
-        private readonly Action<BinaryFile> hashedBinaryFile;
-        private readonly Action<BinaryFile> binaryFileAlreadyBackedUp;
+        private readonly Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile;
         private readonly IHashValueProvider hvp;
 
         protected override async Task TaskBodyImplAsync(DirectoryInfo root)
@@ -101,12 +98,12 @@ namespace Arius.Core.Commands
                             throw new InvalidOperationException($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{manifestHash.ToShortString()}') that no longer exists.");
 
                         logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                        binaryFileAlreadyBackedUp(bf);
+                        hashedBinaryFile((bf, AlreadyBackedUp: true));
                     }
                     else
                     {
                         // To process
-                        hashedBinaryFile(bf);
+                        hashedBinaryFile((bf, AlreadyBackedUp: false));
                     }
                 }
             }

@@ -61,8 +61,14 @@ namespace Arius.Core.Commands
                 fastHash: options.FastHash,
                 repo: repo,
                 hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
-                hashedBinaryFile: (bf) => binariesToUpload.Add(bf), //B302
-                binaryFileAlreadyBackedUp: (bf) => binariesToDelete.Add(bf), //B401
+                hashedBinaryFile: (p) =>
+                {
+                    var (bf, alreadyBackedUp) = p;
+                    if (alreadyBackedUp)
+                        binariesToDelete.Add(bf); //B401
+                    else
+                        binariesToUpload.Add(bf); //B302
+                },
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 done: () => binariesToUpload.CompleteAdding()); //B310
             var indexTask = indexBlock.GetTask;
