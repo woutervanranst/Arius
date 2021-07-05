@@ -22,7 +22,7 @@ namespace Arius.Core.Repositories
             // 'Partial constructor' for this part of the repo
         }
 
-        private ConcurrentDictionary<HashValue, IEnumerable<HashValue>> manifestCache = new();
+        //private ConcurrentDictionary<HashValue, IEnumerable<HashValue>> manifestCache = new();
 
 
         // GET
@@ -42,7 +42,7 @@ namespace Arius.Core.Repositories
         /// Get all the (distinct) ManifestHashes
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<HashValue>> GetAllManifestHashes()
+        public async Task<IEnumerable<ManifestHash>> GetAllManifestHashes()
         {
             var pfes = await GetPointerFileEntries();
 
@@ -67,7 +67,7 @@ namespace Arius.Core.Repositories
         //    }
         //}
 
-        public async Task<bool> ManifestExistsAsync(HashValue manifestHash)
+        public async Task<bool> ManifestExistsAsync(ManifestHash manifestHash)
         {
             var hs = await GetAllManifestHashes();
 
@@ -76,12 +76,12 @@ namespace Arius.Core.Repositories
             //return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }
 
-        private string GetManifestBlobName(HashValue manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
+        private string GetManifestBlobName(ManifestHash manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
 
-        public async Task<HashValue[]> GetChunkHashesForManifestAsync(HashValue manifestHash)
+        public async Task<ChunkHash[]> GetChunkHashesForManifestAsync(ManifestHash manifestHash)
         {
             logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
-            var chunkHashes = Array.Empty<HashValue>();
+            var chunkHashes = Array.Empty<ChunkHash>();
 
             try
             {
@@ -91,7 +91,7 @@ namespace Arius.Core.Repositories
                 await bc.DownloadToAsync(ms);
                 var bytes = ms.ToArray();
                 var json = Encoding.UTF8.GetString(bytes);
-                chunkHashes = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new HashValue() { Value = hv }).ToArray();
+                chunkHashes = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new ChunkHash() { Value = hv }).ToArray();
 
                 return chunkHashes;
             }
@@ -116,7 +116,7 @@ namespace Arius.Core.Repositories
 
             logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}... done");
         }
-        public async Task AddManifestAsync(HashValue manifestHash, HashValue[] chunkHashes)
+        public async Task AddManifestAsync(ManifestHash manifestHash, ChunkHash[] chunkHashes)
         {
             var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 

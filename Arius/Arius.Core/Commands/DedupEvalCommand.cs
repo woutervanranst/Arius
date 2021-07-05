@@ -68,8 +68,8 @@ namespace Arius.Core.Commands
 
         private int fileCount;
         private long fileSize;
-        private readonly Dictionary<HashValue, long> uniqueFiles = new();
-        private readonly Dictionary<HashValue, long> uniqueChunks = new();
+        private readonly Dictionary<ManifestHash, long> uniqueFiles = new();
+        private readonly Dictionary<ChunkHash, long> uniqueChunks = new();
 
         private void AddFile(IFile f)
         {

@@ -157,7 +157,7 @@ namespace Arius.Core.Commands2
             return this;
         }
 
-        private readonly List<HashValue> _inFlightManifests = new();
+        private readonly List<ManifestHash> _inFlightManifests = new();
 
         public TransformBlock<PointerFile, (PointerFile PointerFile, PointerState State)> GetBlock()
         {
@@ -292,8 +292,8 @@ namespace Arius.Core.Commands2
         private readonly Repository repo;
         private readonly DirectoryInfo downloadTempDir;
 
-        private readonly List<HashValue> _downloadedOrDownloading = new(); //Key = ChunkHashValue
-        private readonly BlockingCollection<KeyValuePair<HashValue, ChunkBlobBase>> _downloadQueue = new(); //Key = ChunkHashValue
+        private readonly List<ChunkHash> _downloadedOrDownloading = new(); //Key = ChunkHashValue
+        private readonly BlockingCollection<KeyValuePair<ChunkHash, ChunkBlobBase>> _downloadQueue = new(); //Key = ChunkHashValue
 
         public ActionBlock<ChunkBlobBase> GetEnqueueBlock()
         {
@@ -435,8 +435,8 @@ namespace Arius.Core.Commands2
 
         private readonly ILogger<ReconcilePointersWithChunksBlockProvider> _logger;
 
-        private readonly Dictionary<HashValue, ChunkFile> _processedChunks = new();
-        private readonly Dictionary<HashValue, (List<PointerFile> PointerFiles, List<HashValue> ChunkHashes)> _inFlightPointers = new(); // Key = ManifestHash
+        private readonly Dictionary<ChunkHash, ChunkFile> _processedChunks = new();
+        private readonly Dictionary<ManifestHash, (List<PointerFile> PointerFiles, List<ChunkHash> ChunkHashes)> _inFlightPointers = new(); // Key = ManifestHash
 
         public ActionBlock<PointerFile> GetReconcilePointerBlock()
         {

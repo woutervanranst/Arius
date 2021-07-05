@@ -50,7 +50,7 @@ namespace Arius.Core.Repositories
         /// If the chunk does not exist, throws an InvalidOperationException
         /// If requireHydrated is true and the chunk does not exist in cold storage, returns null
         /// </summary>
-        public ChunkBlobBase GetChunkBlobByHash(HashValue chunkHash, bool requireHydrated)
+        public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
         {
             var blobName = GetChunkBlobName(ChunkDirectoryName, chunkHash);
             var cb1 = GetChunkBlobByName(blobName);
@@ -79,7 +79,7 @@ namespace Arius.Core.Repositories
                 return cb2;
         }
 
-        private string GetChunkBlobName(string folder, HashValue chunkHash) => GetChunkBlobFullName(folder, $"{chunkHash.Value}{ChunkBlobBase.Extension}");
+        private string GetChunkBlobName(string folder, ChunkHash chunkHash) => GetChunkBlobFullName(folder, $"{chunkHash.Value}{ChunkBlobBase.Extension}");
         private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Arius.Core.Repositories
             }
         }
 
-        public async Task<bool> ChunkExists(HashValue chunkHash)
+        public async Task<bool> ChunkExists(ChunkHash chunkHash)
         {
             return await container.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
         }

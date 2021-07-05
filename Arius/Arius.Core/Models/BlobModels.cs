@@ -6,7 +6,7 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Models
 {
-    internal abstract class BlobBase : IWithHashValue
+    internal abstract class BlobBase //: IWithHashValue
     {
         /// <summary>
         /// Full Name (with path and extension)
@@ -28,7 +28,7 @@ namespace Arius.Core.Models
         /// </summary>
         public abstract long Length { get; }
 
-        public abstract HashValue Hash { get; }
+        public abstract Hash Hash { get; }
 
         private const char BlobFolderSeparatorChar = '/';
     }
@@ -43,7 +43,7 @@ namespace Arius.Core.Models
         }
         protected readonly BlobItem bi;
 
-        public override HashValue Hash => new() { Value = Name };
+        public override ManifestHash Hash => new() { Value = Name };
         public override string FullName => bi.Name;
         public override long Length => bi.Properties.ContentLength!.Value;
     }
@@ -65,7 +65,7 @@ namespace Arius.Core.Models
 
         public static readonly string Extension = ".7z.arius";
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-        public override HashValue Hash => new() { Value = Name.TrimEnd(Extension) };
+        public override ChunkHash Hash => new() { Value = Name.TrimEnd(Extension) };
     }
 
     internal class ChunkBlobItem : ChunkBlobBase

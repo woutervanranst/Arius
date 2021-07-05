@@ -41,7 +41,7 @@ namespace Arius.Core.Tests
 
             //Generate new dedup file
             var bf = CreateNewBinaryFile();
-            bf.Hash = hvp.GetHashValue(bf.FullName);
+            bf.Hash = hvp.GetHashValue(bf);
 
             //Chunk it
             var chunks = chunker.Chunk(bf);
@@ -53,7 +53,7 @@ namespace Arius.Core.Tests
             chunker.Merge(chunks, target);
 
             //Calculate the hash of the result
-            var hash_target = hvp.GetHashValue(target.FullName);
+            var hash_target = hvp.GetHashValue<ManifestHash>(target.FullName);
 
             Assert.AreEqual(bf.Hash, hash_target);
         }

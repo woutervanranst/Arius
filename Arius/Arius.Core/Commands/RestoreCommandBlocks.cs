@@ -105,7 +105,7 @@ namespace Arius.Core.Commands
         private readonly PointerService pointerService;
         private readonly Action<PointerFile, BinaryFile> alreadyRestored;
 
-        private readonly ConcurrentBag<HashValue> restoredOrRestoring = new();
+        private readonly ConcurrentBag<ManifestHash> restoredOrRestoring = new();
 
 
         protected override Task ForEachBodyImplAsync(PointerFile pf)

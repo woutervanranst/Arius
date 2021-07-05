@@ -118,7 +118,7 @@ namespace Arius.Core.Services.Chunkers
 
                         //Calculate the hash
                         chunkMemoryStream.Position = 0;
-                        var hash = hvp.GetHashValue(chunkMemoryStream);
+                        var hash = hvp.GetHashValue<ChunkHash>(chunkMemoryStream);
 
                         logger.LogDebug($"Chunking '{bf.Name}'... wrote chunk {i}, progress: {Math.Round(stream.Position / (double)stream.Length * 100)}%");
 

@@ -239,9 +239,9 @@ namespace Arius.Core.Commands
 
             waitForCreatedManifest(bf);
         }
-        private readonly List<HashValue> creating = new();
+        private readonly List<ManifestHash> creating = new();
 
-        private Task<bool> ManifestExists(HashValue h)
+        private Task<bool> ManifestExists(ManifestHash h)
         {
             //// Check cache
             //if (created.ContainsKey(h))
@@ -293,7 +293,7 @@ namespace Arius.Core.Commands
             BlockingCollection<IChunkFile> source,
             Repository repo,
             Action<IChunkFile> chunkToUpload,
-            Action<HashValue> chunkAlreadyUploaded,
+            Action<ChunkHash> chunkAlreadyUploaded,
             Action done) : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
@@ -303,7 +303,7 @@ namespace Arius.Core.Commands
 
         private readonly Repository repo;
         private readonly Action<IChunkFile> chunkToUpload;
-        private readonly Action<HashValue> chunkAlreadyUploaded;
+        private readonly Action<ChunkHash> chunkAlreadyUploaded;
 
         protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
         {
@@ -337,9 +337,9 @@ namespace Arius.Core.Commands
             // 3 Does not exist remote but is being created
             logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
         }
-        private readonly List<HashValue> creating = new();
+        private readonly List<ChunkHash> creating = new();
 
-        private async Task<bool> ChunkExists(HashValue h)
+        private async Task<bool> ChunkExists(ChunkHash h)
         {
             return await repo.ChunkExists(h); //TODO: CACHE RESULTS
         }
@@ -449,7 +449,7 @@ namespace Arius.Core.Commands
             int maxDegreeOfParallelism,
             Repository repo,
             AccessTier tier,
-            Action<HashValue[]> chunkUploaded,
+            Action<ChunkHash[]> chunkUploaded,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
@@ -459,7 +459,7 @@ namespace Arius.Core.Commands
 
         private readonly Repository repo;
         private readonly AccessTier tier;
-        private readonly Action<HashValue[]> chunkUploaded;
+        private readonly Action<ChunkHash[]> chunkUploaded;
 
         protected override Task ForEachBodyImplAsync(EncryptedChunkFile[] ecfs)
         {
@@ -482,13 +482,13 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(HashValue ManifestHash, HashValue[] ChunkHashes)>
+    internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
     {
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
-            BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)> source,
+            BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)> source,
             int maxDegreeOfParallelism,
             Repository repo,
-            Action<HashValue> manifestCreated,
+            Action<ManifestHash> manifestCreated,
             Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
@@ -496,9 +496,9 @@ namespace Arius.Core.Commands
         }
 
         private readonly Repository repo;
-        private readonly Action<HashValue> manifestCreated;
+        private readonly Action<ManifestHash> manifestCreated;
 
-        protected override async Task ForEachBodyImplAsync((HashValue ManifestHash, HashValue[] ChunkHashes) item)
+        protected override async Task ForEachBodyImplAsync((ManifestHash ManifestHash, ChunkHash[] ChunkHashes) item)
         {
             logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'...");
 
@@ -694,14 +694,14 @@ namespace Arius.Core.Commands
 
         private struct PointerFileEntryWithChunkHashes
         {
-            public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, HashValue[] chs)
+            public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, ChunkHash[] chs)
             {
                 this.pfe = pfe;
                 this.chs = chs;
             }
 
             private readonly PointerFileEntry pfe;
-            private readonly HashValue[] chs;
+            private readonly ChunkHash[] chs;
 
             public string ManifestHash => pfe.ManifestHash.Value;
             public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);

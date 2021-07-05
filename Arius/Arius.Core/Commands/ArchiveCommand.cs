@@ -78,7 +78,7 @@ namespace Arius.Core.Commands
 
             var binariesToDelete = new BlockingCollection<BinaryFile>();
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var binariesWaitingForManifestCreation = new ConcurrentDictionary<HashValue, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
+            var binariesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
@@ -104,7 +104,7 @@ namespace Arius.Core.Commands
 
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
-            var chunksForManifest = new ConcurrentDictionary<HashValue, (HashValue[] All, List<HashValue> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
+            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
 
             var chunkBlock = new ChunkBlock(
                 logger: loggerFactory.CreateLogger<ChunkBlock>(),
@@ -128,7 +128,7 @@ namespace Arius.Core.Commands
 
 
             var chunksToEncrypt = new BlockingCollection<IChunkFile>();
-            var manifestsToCreate = new BlockingCollection<(HashValue ManifestHash, HashValue[] ChunkHashes)>();
+            var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
@@ -175,7 +175,7 @@ namespace Arius.Core.Commands
             var uploadBatchTask = uploadBatchBlock.GetTask;
 
             
-            void removeFromPendingUpload(params HashValue[] chunkHash)
+            void removeFromPendingUpload(params ChunkHash[] chunkHash)
             {
                 // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
 

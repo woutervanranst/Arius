@@ -18,9 +18,9 @@ namespace Arius.Core.Services
             bool FastHash { get; }
         }
 
-        HashValue GetHashValue(BinaryFile bf);
-        HashValue GetHashValue(string fullName);
-        HashValue GetHashValue(Stream stream);
+        ManifestHash GetHashValue(BinaryFile bf);
+        T GetHashValue<T>(string fullName) where T : Hash, new();
+        T GetHashValue<T>(Stream stream) where T : Hash, new();
     }
 
     internal class SHA256Hasher : IHashValueProvider
@@ -42,7 +42,7 @@ namespace Arius.Core.Services
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        public HashValue GetHashValue(BinaryFile bf)
+        public ManifestHash GetHashValue(BinaryFile bf)
         {
             if (fastHash &&
                 PointerService.GetPointerFile(bf) is var pf && pf is not null)
@@ -53,7 +53,7 @@ namespace Arius.Core.Services
                 return pf.Hash;
             }
 
-            return GetHashValue(bf.FullName);
+            return GetHashValue<ManifestHash>(bf.FullName);
 
 
             //TODO what with in place update of binary file (hash changed)?
@@ -81,14 +81,14 @@ namespace Arius.Core.Services
             //    }
         }
 
-        public HashValue GetHashValue(string fullName)
+        public T GetHashValue<T>(string fullName) where T : Hash, new()
         {
-            return new HashValue { Value = GetHashValue(fullName, salt) };
+            return new T { Value = GetHashValue(fullName, salt) };
         }
 
-        public HashValue GetHashValue(Stream stream)
+        public T GetHashValue<T>(Stream stream) where T : Hash, new()
         {
-            return new HashValue { Value = GetHashValue(stream, salt) };
+            return new T { Value = GetHashValue(stream, salt) };
         }
 
         internal static string GetHashValue(string fullName, string salt)

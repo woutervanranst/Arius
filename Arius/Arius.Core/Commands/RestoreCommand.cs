@@ -100,7 +100,7 @@ namespace Arius.Core.Commands
             var synchronizeTask = synchronizeBlock.GetTask;
 
 
-            var restoredManifests = new ConcurrentDictionary<HashValue, BinaryFile>(); //Key = Manifest
+            var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>(); //Key = Manifest
 
             var processPointerFileBlock = new ProcessPointerFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),
