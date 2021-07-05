@@ -32,10 +32,10 @@ namespace Arius.Core.Models
         //    return !c1.Equals(c2);
         //}
 
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Value);
-        }
+        //public override int GetHashCode()
+        //{
+        //    return HashCode.Combine(Value);
+        //}
 
         //public override bool Equals(object obj)
         //{
