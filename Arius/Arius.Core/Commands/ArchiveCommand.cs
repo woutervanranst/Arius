@@ -39,10 +39,6 @@ namespace Arius.Core.Commands
         private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
 
-        //internal static void AddBlockProviders(IServiceCollection coll)
-        //{
-        //}
-
         IServiceProvider ICommand.Services => services;
 
 

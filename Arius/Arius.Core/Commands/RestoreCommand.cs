@@ -36,10 +36,6 @@ namespace Arius.Core.Commands
         private readonly ILogger<RestoreCommand> logger;
         private readonly IServiceProvider services;
 
-        //internal static void AddBlockProviders(IServiceCollection coll)
-        //{
-        //}
-
         IServiceProvider ICommand.Services => services;
 
         public async Task<int> Execute()
