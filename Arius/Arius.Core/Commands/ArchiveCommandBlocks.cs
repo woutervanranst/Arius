@@ -93,7 +93,7 @@ namespace Arius.Core.Commands
                     var bf = new BinaryFile(root, fi, manifestHash);
                     
 
-                    if (manifestHash == pf.Hash)
+                    if (pf is not null && pf.Hash == manifestHash)
                     {
                         //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
