@@ -73,7 +73,7 @@ namespace Arius.Core.Services
                 File.SetCreationTimeUtc(target.FullName, creationTimeUtc);
                 File.SetLastWriteTimeUtc(target.FullName, lastWriteTimeUtc);
 
-                logger.LogInformation($"Created PointerFile '{Path.GetRelativePath(root.FullName, target.FullName)}'");
+                logger.LogInformation($"Created PointerFile '{target.GetRelativePath(root)}'");
             }
 
             var pf = new PointerFile(root, target);
@@ -94,21 +94,59 @@ namespace Arius.Core.Services
         }
 
 
+        ///// <summary>
+        ///// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
+        ///// If it does not exist, return null.
+        ///// </summary>
+        ///// <returns></returns>
+        //public static PointerFile GetPointerFile(BinaryFile bf)
+        //{
+        //    var pfi = new FileInfo(GetPointerFileFullName(bf));
+
+        //    if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
+        //        return null;
+
+        //    return new PointerFile(bf.Root, pfi);
+        //}
+
         /// <summary>
-        /// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
+        /// Get the equivalent (in name and LastWriteTime) PointerFile for the given BinaryFileInfo, if it exists.
         /// If it does not exist, return null.
         /// </summary>
-        /// <returns></returns>
-        public static PointerFile GetPointerFile(BinaryFile bf)
+        public static PointerFile GetPointerFile(DirectoryInfo root, FileInfo bfi)
         {
-            var pfi = new FileInfo(GetPointerFileFullName(bf));
+            var pfi = new FileInfo(GetPointerFileFullName(bfi.FullName));
 
-            if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
+            if (!pfi.Exists || pfi.LastWriteTimeUtc != bfi.LastWriteTimeUtc)
                 return null;
 
-            return new PointerFile(bf.Root, pfi);
+            return new PointerFile(root, pfi);
         }
-        
+
+
+
+
+
+        //public static PointerFile GetPointerFile(BinaryFile bf)
+        //{
+        //    return GetPointerFile(bf.FullName);
+        //}
+
+        //public static PointerFile GetPointerFile(string binaryFileFullName)
+        //{
+        //    var pfi = new FileInfo(GetPointerFileFullName(binaryFileFullName));
+
+        //    return GetPointerFile(pfi);
+        //}
+
+        //private static PointerFile GetPointerFile(FileInfo pfi)
+        //{
+        //    if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
+        //        return null;
+
+        //    return new PointerFile(bf.Root, pfi);
+        //}
+
         /// <summary>
         /// Get the PointerFile corresponding to the PointerFileEntry, if it exists.
         /// If it does not, return null
@@ -125,7 +163,8 @@ namespace Arius.Core.Services
             return new PointerFile(root, pfi);
         }
 
-        private static string GetPointerFileFullName(BinaryFile bf) => $"{bf.FullName}{PointerFile.Extension}";
+        private static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
+        private static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
 
         private string GetPointerFileFullName(PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
@@ -162,7 +201,7 @@ namespace Arius.Core.Services
                     throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again.");
             }
 
-            return new BinaryFile(root, bfi) { Hash = manifestHash };
+            return new BinaryFile(root, bfi, manifestHash);
         }
 
         private string GetBinaryFileFullname(PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(pfe));

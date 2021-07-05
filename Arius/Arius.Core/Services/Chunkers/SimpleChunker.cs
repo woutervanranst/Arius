@@ -9,6 +9,10 @@ namespace Arius.Core.Services.Chunkers
     /// </summary>
     internal class SimpleChunker : Chunker
     {
+        public SimpleChunker(IHashValueProvider hvp) : base(hvp)
+        { 
+        }
+
         public override IChunkFile[] Chunk(BinaryFile item)
         {
             return new[] { item };

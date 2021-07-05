@@ -12,17 +12,15 @@ namespace Arius.Core.Services.Chunkers
 {
     internal class RabinKarpChunker : Chunker
     {
-        public RabinKarpChunker(ILogger<RabinKarpChunker> logger, TempDirectoryAppSettings config, IHashValueProvider hvp)
+        public RabinKarpChunker(ILogger<RabinKarpChunker> logger, TempDirectoryAppSettings config, IHashValueProvider hvp) : base(hvp)
         {
             _logger = logger;
-            _hvp = hvp;
 
             _uploadTempDirFullName = config.TempDirectoryFullName;
         }
 
         private static readonly StreamBreaker _sb = new();
         private readonly ILogger<RabinKarpChunker> _logger;
-        private readonly IHashValueProvider _hvp;
         private readonly string _uploadTempDirFullName;
 
         public override IChunkFile[] Chunk(BinaryFile bf)
@@ -55,7 +53,7 @@ namespace Arius.Core.Services.Chunkers
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                var hashValue = _hvp.GetChunkHash(chunkFullName);
+                var hashValue = hvp.GetChunkHash(chunkFullName);
                 chunks.Add(new ChunkFile(new FileInfo(chunkFullName), hashValue));
 
                 //var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.Name}.arius"));

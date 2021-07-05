@@ -9,6 +9,13 @@ namespace Arius.Core.Services.Chunkers
 {
     internal abstract class Chunker
     {
+        protected Chunker(IHashValueProvider hvp)
+        {
+            this.hvp = hvp;
+        }
+
+        protected readonly IHashValueProvider hvp;
+
         public abstract IChunkFile[] Chunk(BinaryFile fileToChunk);
         public virtual BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
         {
@@ -18,9 +25,10 @@ namespace Arius.Core.Services.Chunkers
             }
             else if (chunksToJoin.Length == 1)
             {
-                File.Move(chunksToJoin.Single().FullName, target.FullName);
+                var chunk = chunksToJoin.Single();
+                File.Move(chunk.FullName, target.FullName);
 
-                return new BinaryFile(null, target);
+                return new BinaryFile(null, target, new ManifestHash(chunk.Hash.Value));
             }
             else
             {
@@ -34,7 +42,7 @@ namespace Arius.Core.Services.Chunkers
                 stream.CopyTo(targetStream);
                 targetStream.Close();
 
-                return new BinaryFile(null, target);
+                return new BinaryFile(null, target, hvp.GetManifestHash(target));
             }
         }
     }

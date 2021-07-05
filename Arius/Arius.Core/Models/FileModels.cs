@@ -153,10 +153,11 @@ namespace Arius.Core.Models
 
     internal class BinaryFile : RelativeFileBase /*, IAriusEntryWithHash*/, IChunkFile
     {
-        public BinaryFile(DirectoryInfo root, FileInfo fi) : base(root, fi) { }
+        public BinaryFile(DirectoryInfo root, FileInfo fi, ManifestHash hash) : base(root, fi) 
+        {
+            Hash = hash;
+        }
         
-        //internal IEnumerable<IChunkFile> Chunks { get; set; } //TODO delete this
-
         //public override string ContentName => Name;
 
         public override ManifestHash Hash { get; }

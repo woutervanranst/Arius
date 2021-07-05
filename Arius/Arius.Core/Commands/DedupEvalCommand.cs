@@ -41,18 +41,11 @@ namespace Arius.Core.Commands
 
         public async Task<int> Execute()
         {
-            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-
-
-            var indexBlock = new IndexBlock(
-                logger: loggerFactory.CreateLogger<IndexBlock>(),
-                root: options.Root,
-                indexedFile: file => AddFile(file),
-                done: () => { });
-            var indexTask = indexBlock.GetTask;
-
-
-            await indexTask;
+            foreach (var bfi in options.Root.GetBinaryFileInfos())
+            {
+                var manifestHash = hvp.GetManifestHash(bfi);
+                AddFile(new BinaryFile(options.Root, bfi, manifestHash));
+            }
 
             logger.LogInformation($"{fileCount} total files");
             logger.LogInformation($"{uniqueFiles.Count} unique files");
@@ -71,20 +64,14 @@ namespace Arius.Core.Commands
         private readonly Dictionary<ManifestHash, long> uniqueFiles = new();
         private readonly Dictionary<ChunkHash, long> uniqueChunks = new();
 
-        private void AddFile(IFile f)
+        private void AddFile(BinaryFile bf)
         {
-            if (f is not BinaryFile)
-                return;
-
             fileCount++;
-            fileSize += f.Length;
+            fileSize += bf.Length;
 
-
-            var bf = (BinaryFile)f;
-            bf.Hash = hvp.GetHashValue(bf);
             if (!uniqueFiles.ContainsKey(bf.Hash))
             { 
-                uniqueFiles.Add(bf.Hash, f.Length);
+                uniqueFiles.Add(bf.Hash, bf.Length);
 
                 foreach (var c in chunker.Chunk(bf))
                 { 

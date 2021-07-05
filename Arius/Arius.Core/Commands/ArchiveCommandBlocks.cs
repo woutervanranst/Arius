@@ -24,138 +24,92 @@ namespace Arius.Core.Commands
     {
         public IndexBlock(ILogger<IndexBlock> logger,
             DirectoryInfo root,
-            Action<IFile> indexedFile,
+            int maxDegreeOfParallelism,
+            bool fastHash,
+            Repository repo,
+            Action<PointerFile> hashedPointerFile,
+            Action<BinaryFile> hashedBinaryFile,
+            Action<BinaryFile> binaryFileAlreadyBackedUp,
+            IHashValueProvider hvp,
             Action done)
             : base(logger: logger, source: root, done: done)
         {
-            this.indexedFile = indexedFile;
-        }
-
-        private readonly Action<IFile> indexedFile;
-
-        protected override Task TaskBodyImplAsync(DirectoryInfo root)
-        {
-            foreach (var file in IndexDirectory(root))
-                indexedFile(file);
-
-            return Task.CompletedTask;
-        }
-
-
-        private IEnumerable<IFile> IndexDirectory(DirectoryInfo directory) => IndexDirectory(directory, directory);
-        private IEnumerable<IFile> IndexDirectory(DirectoryInfo root, DirectoryInfo directory)
-        {
-            foreach (var file in directory.GetFiles())
-            {
-                if (IsHiddenOrSystem(file))
-                {
-                    logger.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
-                    continue;
-                }
-                else if (IsIgnoreFile(file))
-                {
-                    logger.LogDebug($"Ignoring file {file.FullName}");
-                    continue;
-                }
-                else
-                {
-                    yield return GetFile(root, file);
-                }
-            }
-
-            foreach (var dir in directory.GetDirectories())
-            {
-                if (IsHiddenOrSystem(dir))
-                {
-                    logger.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
-                    continue;
-                }
-
-                foreach (var f in IndexDirectory(root, dir))
-                    yield return f;
-            }
-        }
-        private bool IsHiddenOrSystem(DirectoryInfo d)
-        {
-            if (d.Name == "@eaDir") //synology internals -- ignore
-                return true;
-
-            return IsHiddenOrSystem(d.Attributes);
-
-        }
-        private bool IsHiddenOrSystem(FileInfo fi)
-        {
-            if (fi.FullName.Contains("eaDir") ||
-                fi.FullName.Contains("SynoResource"))
-                //fi.FullName.Contains("@")) // commenting out -- email adresses are not weird
-                logger.LogWarning("WEIRD FILE: " + fi.FullName);
-
-            return IsHiddenOrSystem(fi.Attributes);
-        }
-        private static bool IsHiddenOrSystem(FileAttributes attr)
-        {
-            return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
-        }
-        private static bool IsIgnoreFile(FileInfo fi)
-        {
-            var lowercaseFilename = fi.Name.ToLower();
-
-            return lowercaseFilename.Equals("autorun.ini") ||
-                lowercaseFilename.Equals("thumbs.db") ||
-                lowercaseFilename.Equals(".ds_store");
-        }
-        private IFile GetFile(DirectoryInfo root, FileInfo fi)
-        {
-            RelativeFileBase file = fi.IsPointerFile() ?
-                new PointerFile(root, fi) :
-                new BinaryFile(root, fi);
-
-            logger.LogInformation($"Found {file.GetType().Name} '{file.RelativeName}'");
-
-            return file;
-        }
-    }
-
-
-    internal class HashBlock : BlockingCollectionTaskBlockBase<IFile>
-    {
-        public HashBlock(ILogger<HashBlock> logger,
-            BlockingCollection<IFile> source,
-            int maxDegreeOfParallelism,
-            Action<PointerFile> hashedPointerFile,
-            Action<BinaryFile> hashedBinaryFile,
-            IHashValueProvider hvp,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
-        {
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.fastHash = fastHash;
+            this.repo = repo;
             this.hashedPointerFile = hashedPointerFile;
             this.hashedBinaryFile = hashedBinaryFile;
+            this.binaryFileAlreadyBackedUp = binaryFileAlreadyBackedUp;
             this.hvp = hvp;
         }
 
+        private readonly int maxDegreeOfParallelism;
+        private readonly bool fastHash;
+        private readonly Repository repo;
         private readonly Action<PointerFile> hashedPointerFile;
         private readonly Action<BinaryFile> hashedBinaryFile;
+        private readonly Action<BinaryFile> binaryFileAlreadyBackedUp;
         private readonly IHashValueProvider hvp;
 
-        protected override Task ForEachBodyImplAsync(IFile item)
+        protected override async Task TaskBodyImplAsync(DirectoryInfo root)
         {
-            if (item is PointerFile pf)
+            foreach (var fi in root.GetAllFileInfos(logger)
+                                    .AsParallel()
+                                    .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
-                // A pointerfile already knows its hash
-                hashedPointerFile(pf);
-            }
-            else if (item is BinaryFile bf)
-            {
-                logger.LogInformation($"Hashing BinaryFile '{bf.RelativeName}'...");
+                var rn = fi.GetRelativePath(root);
 
-                // For BinaryFiles we need to calculate it
-                bf.Hash = hvp.GetHashValue(bf);
-                logger.LogInformation($"Hashing BinaryFile '{bf.RelativeName}'... done. Hash: '{bf.Hash.ToShortString()}'");
-                hashedBinaryFile(bf);
-            }
-            else
-                throw new ArgumentException($"Cannot add hash to item of type {item.GetType().Name}");
+                if (fi.IsPointerFile())
+                {
+                    //PointerFile
+                    logger.LogInformation($"Found PointerFile '{rn}'");
 
-            return Task.CompletedTask;
+                    var pf = new PointerFile(root, fi);
+
+                    hashedPointerFile(pf);
+                }
+                else
+                {
+                    //BinaryFile
+                    logger.LogInformation($"Found BinaryFile '{rn}'");
+
+                    //Get the Hash for this file
+                    ManifestHash manifestHash;
+                    var pf = PointerService.GetPointerFile(root, fi);
+                    if (fastHash && pf is not null)
+                    {
+                        //A corresponding PointerFile exists
+                        logger.LogDebug($"Using fasthash for '{rn}'");
+                        manifestHash = pf.Hash;
+                    }
+                    else
+                    { 
+                        manifestHash = hvp.GetManifestHash(fi);
+                    }
+
+                    logger.LogInformation($"Hashing BinaryFile '{rn}'... done. Hash: '{manifestHash.ToShortString()}'");
+
+
+                    var bf = new BinaryFile(root, fi, manifestHash);
+                    
+
+                    if (manifestHash == pf.Hash)
+                    {
+                        //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
+
+                        if (!await repo.ManifestExistsAsync(manifestHash))
+                            throw new InvalidOperationException($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{manifestHash.ToShortString()}') that no longer exists.");
+
+                        logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                        binaryFileAlreadyBackedUp(bf);
+                    }
+                    else
+                    {
+                        // To process
+                        hashedBinaryFile(bf);
+                    }
+                }
+            }
         }
     }
 
@@ -166,41 +120,24 @@ namespace Arius.Core.Commands
            //Func<bool> continueWhile,
            BlockingCollection<BinaryFile> source,
            Repository repo,
-           Action<BinaryFile> binaryFileAlreadyBackedUp,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
            Action done) : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
-            this.binaryFileAlreadyBackedUp = binaryFileAlreadyBackedUp;
             this.uploadBinaryFile = uploadBinaryFile;
             this.waitForCreatedManifest = waitForCreatedManifest;
             this.manifestExists = manifestExists;
         }
 
         private readonly Repository repo;
-        private readonly Action<BinaryFile> binaryFileAlreadyBackedUp;
         private readonly Action<BinaryFile> uploadBinaryFile;
         private readonly Action<BinaryFile> waitForCreatedManifest;
         private readonly Action<BinaryFile> manifestExists;
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            if (PointerService.GetPointerFile(bf) is var pf && pf is not null &&
-                pf.Hash == bf.Hash)
-            {
-                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
-
-                if (!await ManifestExists(bf.Hash))
-                    throw new InvalidOperationException($"BinaryFile '{bf.Name}' has a PointerFile that points to a manifest ('{bf.Hash.ToShortString()}') that no longer exists.");
-
-                logger.LogInformation($"BinaryFile '{bf.Name}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                binaryFileAlreadyBackedUp(bf);
-
-                return;
-            }
-
             /* 
                 * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
                 * Three possibilities:

@@ -40,8 +40,7 @@ namespace Arius.Core.Tests
             GetServices(out var hvp, out var chunker);
 
             //Generate new dedup file
-            var bf = CreateNewBinaryFile();
-            bf.Hash = hvp.GetHashValue(bf);
+            var bf = CreateNewBinaryFile(hvp);
 
             //Chunk it
             var chunks = chunker.Chunk(bf);
@@ -53,7 +52,7 @@ namespace Arius.Core.Tests
             chunker.Merge(chunks, target);
 
             //Calculate the hash of the result
-            var hash_target = hvp.GetHashValue<ManifestHash>(target.FullName);
+            var hash_target = hvp.GetManifestHash(target);
 
             Assert.AreEqual(bf.Hash, hash_target);
         }
@@ -68,13 +67,14 @@ namespace Arius.Core.Tests
             chunker = new ByteBoundaryChunker(loggerFactory.CreateLogger<ByteBoundaryChunker>(), config, hvp);
         }
 
-        private static BinaryFile CreateNewBinaryFile()
+        private static BinaryFile CreateNewBinaryFile(IHashValueProvider hvp)
         {
             var original = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
             int sizeInKB = 1024 * 5;
             CreateRandomDedupableFile(original, sizeInKB / 10 * 1024, 10);
             var fi_original = new FileInfo(original);
-            var bf = new BinaryFile(fi_original.Directory, fi_original);
+            var h = hvp.GetManifestHash(fi_original);
+            var bf = new BinaryFile(fi_original.Directory, fi_original, h);
             return bf;
         }
 

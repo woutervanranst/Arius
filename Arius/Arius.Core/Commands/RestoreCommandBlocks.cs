@@ -74,7 +74,7 @@ namespace Arius.Core.Commands
                 .AsParallel()
                 .ForAll(pfi =>
                 {
-                    var relativeName = Path.GetRelativePath(root.FullName, pfi.FullName);
+                    var relativeName = pfi.GetRelativePath(root);
 
                     if (relativeNames.Contains(relativeName))
                         return;

@@ -83,7 +83,7 @@ namespace Arius.Core.Commands2
 
             Parallel.ForEach(_root.GetFiles($"*{PointerFile.Extension}", SearchOption.AllDirectories), pfi =>
             {
-                var relativeName = Path.GetRelativePath(_root.FullName, pfi.FullName);
+                var relativeName = pfi.GetRelativePath(_root);
 
                 if (!relativeNames.Contains(relativeName))
                 {
@@ -176,7 +176,7 @@ namespace Arius.Core.Commands2
                 // Chunks Downloaded & Merged?
                 PointerService ps = default;
                 if (ps.GetBinaryFile(pf, true) is var bf && bf is not null && 
-                    _hvp.GetHashValue(bf).Equals(pf.Hash))
+                    _hvp.GetManifestHash(bf.FullName).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
                     return (pf, PointerState.Restored);
@@ -539,7 +539,7 @@ namespace Arius.Core.Commands2
         {
             _logger = logger;
             _hvp = hvp;
-            _chunker = new();
+            _chunker = new(hvp);
             _dedupChunker = dedupChunker;
             _keepPointers = options.KeepPointers;
         }
@@ -562,7 +562,7 @@ namespace Arius.Core.Commands2
                 var bf = Merge(withChunks, target);
 
                 // Verify hash
-                var h = _hvp.GetHashValue(bf);
+                var h = _hvp.GetManifestHash(bf.FullName);
 
                 if (h != pointersToRestore.First().Hash)
                     throw new InvalidDataException("Hash of restored BinaryFile does not match hash of PointerFile");

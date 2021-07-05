@@ -13,17 +13,15 @@ namespace Arius.Core.Services.Chunkers
 {
     internal class ByteBoundaryChunker : Chunker
     {
-        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, TempDirectoryAppSettings config, IHashValueProvider hvp)
+        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, TempDirectoryAppSettings config, IHashValueProvider hvp) : base(hvp)
         {
             this.logger = logger;
-            this.hvp = hvp;
             uploadTempDirFullName = config.TempDirectoryFullName;
 
             useMemory = true;
         }
 
         private readonly ILogger<ByteBoundaryChunker> logger;
-        private readonly IHashValueProvider hvp;
         private readonly string uploadTempDirFullName;
         private readonly bool useMemory;
 
