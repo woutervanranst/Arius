@@ -86,6 +86,44 @@ namespace Arius.Core.Commands
         }
     }
 
+    internal class ProcessPointerFileBlock : BlockingCollectionTaskBlockBase<PointerFile>
+    {
+        public ProcessPointerFileBlock(ILogger<ProcessPointerFileBlock> logger,
+            BlockingCollection<PointerFile> source,
+            Repository repo,
+            PointerService pointerService,
+            Action<PointerFile, BinaryFile> alreadyRestored,
+            Action done)
+            : base(logger: logger, source: source, done: done)
+        {
+            this.repo = repo;
+            this.pointerService = pointerService;
+            this.alreadyRestored = alreadyRestored;
+        }
+        
+        private readonly Repository repo;
+        private readonly PointerService pointerService;
+        private readonly Action<PointerFile, BinaryFile> alreadyRestored;
 
+        private readonly ConcurrentBag<HashValue> restoredOrRestoring = new();
+
+
+        protected override Task ForEachBodyImplAsync(PointerFile pf)
+        {
+            //if (pointerService.GetBinaryFile(pf, ensureCorrectHash: true) is BinaryFile bf &&
+            //    bf is not null) //NOTE: we are deliberatebly not checking whether this PointerFile is already in restoredOrRestoring -- from the PoV of this block, this doesnt matter
+            //{
+            //    //This PointerFile already has a restored BinaryFile
+            //    if (!restoredOrRestoring.Contains(bf.Hash))
+            //        restoredOrRestoring.Add(bf.Hash);
+            //    alreadyRestored(pf, bf); 
+
+            //}
+
+
+            return Task.CompletedTask;
+        }
+
+    }
 }
 

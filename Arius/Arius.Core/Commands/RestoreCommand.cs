@@ -47,10 +47,9 @@ namespace Arius.Core.Commands
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var repo = services.GetRequiredService<Repository>();
             var pointerService = services.GetRequiredService<PointerService>();
-            object path = File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
+            FileSystemInfo path = File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
                 new DirectoryInfo(options.Path) :
                 new FileInfo(options.Path);
-
 
             var directoriesToSynchronize = new BlockingCollection<DirectoryInfo>();
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
@@ -101,14 +100,19 @@ namespace Arius.Core.Commands
             var synchronizeTask = synchronizeBlock.GetTask;
 
 
+            var restoredManifests = new ConcurrentDictionary<HashValue, BinaryFile>(); //Key = Manifest
 
-
-
-
-
-            
-
-
+            var processPointerFileBlock = new ProcessPointerFileBlock(
+                logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),
+                source: pointerFilesToDownload,
+                repo: repo,
+                pointerService: pointerService,
+                alreadyRestored: (_, bf) =>
+                {
+                    restoredManifests.TryAdd(bf.Hash, bf); //S31 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
+                }, 
+                done: () => { }
+                );
             
 
 
