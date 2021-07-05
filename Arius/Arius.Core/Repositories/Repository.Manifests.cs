@@ -71,12 +71,12 @@ namespace Arius.Core.Repositories
         {
             var hs = await GetAllManifestHashes();
 
-            return hs.Any(pfe => pfe == manifestHash);
+            return hs.Any(h => h == manifestHash);
 
             //return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }
 
-        private string GetManifestBlobName(ManifestHash manifestHash) => $"{ManifestDirectoryName}/{manifestHash}";
+        private string GetManifestBlobName(ManifestHash manifestHash) => $"{ManifestDirectoryName}/{manifestHash.Value}";
 
         public async Task<ChunkHash[]> GetChunkHashesForManifestAsync(ManifestHash manifestHash)
         {
