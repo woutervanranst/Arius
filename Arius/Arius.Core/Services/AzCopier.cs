@@ -29,6 +29,7 @@ namespace Arius.Core.Services
         IEnumerable<FileInfo> Download(BlobBase[] blobsToDownload, DirectoryInfo target, bool flatten);
     }
 
+
     internal class AzCopier : IBlobCopier
     {
         public AzCopier(IBlobCopier.IOptions options, ILogger<AzCopier> logger)
@@ -77,11 +78,11 @@ namespace Arius.Core.Services
 
             var duration = Stopwatch.StartNew();
 
-            foreach (var g in filesToUpload.GroupBy(f => f.Directory.FullName)) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
+            foreach (var (dir, files) in filesToUpload.GroupBy(f => f.Directory.FullName)) // Kan nog altijd gebeuren als we LocalContentFiles uit verschillende directories uploaden //TODO TEST DIT
             {
-                var fileNames = g.Select(af => Path.GetRelativePath(g.Key, af.FullName)).ToArray();
+                var fileNames = files.Select(f => Path.GetRelativePath(dir, f.FullName)).ToArray();
 
-                Upload(g.Key, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
+                Upload(dir, $"/{remoteDirectoryName}", fileNames, tier, overwrite);
             }
 
             duration.Stop();
