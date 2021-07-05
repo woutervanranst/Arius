@@ -154,7 +154,7 @@ namespace Arius.Core.Repositories
 
                 return new()
                 {
-                    ManifestHash = new ManifestHash() { Value = dto.PartitionKey },
+                    ManifestHash = new ManifestHash(dto.PartitionKey),
                     RelativeName = rn,
                     VersionUtc = dto.Version,
                     IsDeleted = dto.IsDeleted,

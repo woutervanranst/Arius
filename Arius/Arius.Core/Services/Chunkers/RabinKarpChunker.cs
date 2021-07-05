@@ -55,7 +55,7 @@ namespace Arius.Core.Services.Chunkers
                 fileStream.Write(buff, 0, (int)chunk.Length);
                 fileStream.Close();
 
-                var hashValue = _hvp.GetHashValue<ChunkHash>(chunkFullName);
+                var hashValue = _hvp.GetChunkHash(chunkFullName);
                 chunks.Add(new ChunkFile(new FileInfo(chunkFullName), hashValue));
 
                 //var di = new DirectoryInfo(Path.Combine(_uploadTempDir.FullName, "chunks", $"{bf.Name}.arius"));

@@ -43,7 +43,7 @@ namespace Arius.Core.Models
         }
         protected readonly BlobItem bi;
 
-        public override ManifestHash Hash => new() { Value = Name };
+        public override ManifestHash Hash => new(Name);
         public override string FullName => bi.Name;
         public override long Length => bi.Properties.ContentLength!.Value;
     }
@@ -65,7 +65,7 @@ namespace Arius.Core.Models
 
         public static readonly string Extension = ".7z.arius";
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-        public override ChunkHash Hash => new() { Value = Name.TrimEnd(Extension) };
+        public override ChunkHash Hash => new(Name.TrimEnd(Extension));
     }
 
     internal class ChunkBlobItem : ChunkBlobBase

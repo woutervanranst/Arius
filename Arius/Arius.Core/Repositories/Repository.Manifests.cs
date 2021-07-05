@@ -91,7 +91,7 @@ namespace Arius.Core.Repositories
                 await bc.DownloadToAsync(ms);
                 var bytes = ms.ToArray();
                 var json = Encoding.UTF8.GetString(bytes);
-                chunkHashes = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new ChunkHash() { Value = hv }).ToArray();
+                chunkHashes = JsonSerializer.Deserialize<IEnumerable<string>>(json)!.Select(hv => new ChunkHash(hv)).ToArray();
 
                 return chunkHashes;
             }

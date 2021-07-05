@@ -158,7 +158,7 @@ namespace Arius.Core.Services
 
             if (ensureCorrectHash)
             {
-                if (manifestHash != hvp.GetHashValue<ManifestHash>(bfi.FullName))
+                if (manifestHash != hvp.GetManifestHash(bfi.FullName))
                     throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again.");
             }
 

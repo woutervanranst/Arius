@@ -19,8 +19,9 @@ namespace Arius.Core.Services
         }
 
         ManifestHash GetHashValue(BinaryFile bf);
-        T GetHashValue<T>(string fullName) where T : Hash, new();
-        T GetHashValue<T>(Stream stream) where T : Hash, new();
+        ManifestHash GetManifestHash(string fullName);
+        ChunkHash GetChunkHash(string fullName);
+        ChunkHash GetChunkHash(Stream stream);
     }
 
     internal class SHA256Hasher : IHashValueProvider
@@ -53,7 +54,7 @@ namespace Arius.Core.Services
                 return pf.Hash;
             }
 
-            return GetHashValue<ManifestHash>(bf.FullName);
+            return GetManifestHash(bf.FullName);
 
 
             //TODO what with in place update of binary file (hash changed)?
@@ -81,15 +82,9 @@ namespace Arius.Core.Services
             //    }
         }
 
-        public T GetHashValue<T>(string fullName) where T : Hash, new()
-        {
-            return new T { Value = GetHashValue(fullName, salt) };
-        }
-
-        public T GetHashValue<T>(Stream stream) where T : Hash, new()
-        {
-            return new T { Value = GetHashValue(stream, salt) };
-        }
+        public ManifestHash GetManifestHash(string fullName) => new(GetHashValue(fullName, salt));
+        public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName, salt));
+        public ChunkHash GetChunkHash(Stream stream) => new(GetHashValue(stream, salt));
 
         internal static string GetHashValue(string fullName, string salt)
         {
@@ -98,7 +93,7 @@ namespace Arius.Core.Services
             return GetHashValue(fs, salt);
         }
 
-        internal static string GetHashValue(Stream stream, string salt)
+        private static string GetHashValue(Stream stream, string salt)
         {
             var byteArray = Encoding.ASCII.GetBytes(salt);
             using var ss = new MemoryStream(byteArray);
@@ -112,21 +107,7 @@ namespace Arius.Core.Services
         }
 
 
-        private static string ByteArrayToString(byte[] ba)
-        {
-            // https://stackoverflow.com/questions/311165/how-do-you-convert-a-byte-array-to-a-hexadecimal-string-and-vice-versa?page=1&tab=votes#tab-top
-
-            //StringBuilder hex = new StringBuilder(ba.Length * 2);
-            //foreach (byte b in ba)
-            //    hex.AppendFormat("{0:x2}", b);
-            //return hex.ToString();
-
-            // Encoding.UTF8.GetString(hash)}; // BitConverter.ToString(hash) };
-
-            //return BitConverter.ToString(ba).Replace("-", "").ToLower();
-
-            return Convert.ToHexString(ba).ToLower();
-        }
+        private static string ByteArrayToString(byte[] ba) => Convert.ToHexString(ba).ToLower();
     }
 }
 

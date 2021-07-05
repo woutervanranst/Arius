@@ -5,9 +5,13 @@ namespace Arius.Core.Models
 {
     internal abstract record Hash
     {
+        public Hash(string value)
+        {
+            Value = value;
+        }
         // TODO implement like https://github.com/Azure/azure-sdk-for-net/blob/master/sdk/storage/Azure.Storage.Blobs/src/Generated/Models/AccessTier.cs
 
-        public string Value { get; init; }
+        public string Value { get; }
 
         //public override string ToString() => Value;
 
@@ -55,9 +59,18 @@ namespace Arius.Core.Models
 
     internal record ManifestHash : Hash
     {
+        public ManifestHash(string value) : base(value)
+        { 
+        }
     }
     internal record ChunkHash : Hash
     {
+        public ChunkHash(string value) : base(value)
+        {
+        }
+        public ChunkHash(ManifestHash manifestHash) : base(manifestHash.Value)
+        { 
+        }
     }
 }
 
