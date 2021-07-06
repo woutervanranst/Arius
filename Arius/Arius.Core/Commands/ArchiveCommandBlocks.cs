@@ -23,7 +23,7 @@ namespace Arius.Core.Commands
     internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
         public IndexBlock(ILogger<IndexBlock> logger,
-            DirectoryInfo root,
+            Func<DirectoryInfo> sourceFunc,
             int maxDegreeOfParallelism,
             bool fastHash,
             Repository repo,
@@ -31,7 +31,7 @@ namespace Arius.Core.Commands
             Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile,
             IHashValueProvider hvp,
             Action done)
-            : base(logger: logger, sourceFunc: () => root, done: done)
+            : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
@@ -548,13 +548,12 @@ namespace Arius.Core.Commands
     internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
     {
         public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
-            Func<BlockingCollection<PointerFileEntry>> sourceFunc,
+            Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
             PointerService pointerService,
             DateTime versionUtc,
-            Action start,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.pointerService = pointerService;
@@ -581,7 +580,7 @@ namespace Arius.Core.Commands
     internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
     {
         public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
-            Func<BlockingCollection<PointerFileEntry>> sourceFunc,
+            Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
             Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done) 

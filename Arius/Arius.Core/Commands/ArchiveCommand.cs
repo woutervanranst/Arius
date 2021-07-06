@@ -56,7 +56,7 @@ namespace Arius.Core.Commands
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
-                root: new DirectoryInfo(options.Path),
+                sourceFunc: () => new DirectoryInfo(options.Path),
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 fastHash: options.FastHash,
                 repo: repo,
@@ -267,24 +267,23 @@ namespace Arius.Core.Commands
             var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
-            var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
+            
             var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
                 logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
-                sourceFunc: () => pointerFileEntriesToCheckForDeletedPointers,
+                sourceFunc: async () =>
+                {
+                    var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
+                    var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
+                                          .Where(e => e.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
+                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
+                    return pointerFileEntriesToCheckForDeletedPointers;
+                },
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 pointerService: pointerService,
                 versionUtc: versionUtc,
-                start: async () => 
-                {
-                    var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
-                                          .Where(e => e.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
-                    pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
-                },
                 done: () => { });
             var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
-
-            
 
             
             

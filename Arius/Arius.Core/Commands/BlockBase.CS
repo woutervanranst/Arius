@@ -24,20 +24,19 @@ namespace Arius.Core.Commands
 
     internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected TaskBlockBase(ILogger logger, Func<TSource> sourceFunc, Action start = default, Action done = default)
+        protected TaskBlockBase(ILogger logger, Func<TSource> sourceFunc, Action done = default)
+            : this(logger, () => Task.FromResult(sourceFunc()), done)
+        {
+        }
+        protected TaskBlockBase(ILogger logger, Func<Task<TSource>> sourceFunc, Action done = default)
         {
             this.logger = logger;
             this.sourceFunc = sourceFunc;
 
-            this.start = () =>
-            {
-                logger.LogTrace("Started");
-                start?.Invoke();
-            };
             this.done = () =>
             {
-                logger.LogTrace("Done");
                 done?.Invoke();
+                logger.LogTrace("Done");
             };
 
             this.task = new(() =>
@@ -56,8 +55,7 @@ namespace Arius.Core.Commands
             }, isThreadSafe: false);
         }
 
-        private readonly Func<TSource> sourceFunc;
-        private readonly Action start;
+        private readonly Func<Task<TSource>> sourceFunc;
         protected readonly ILogger logger;
         private readonly Lazy<Task> task;
         private readonly Action done;
@@ -70,9 +68,10 @@ namespace Arius.Core.Commands
             {
                 try
                 {
-                    start();
+                    logger.LogTrace("Started");
 
-                    await TaskBodyImplAsync(sourceFunc());
+                    var source = await sourceFunc();
+                    await TaskBodyImplAsync(source);
 
                     done();
                 }
@@ -90,8 +89,12 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action start = default, Action done = default) 
-            : base(logger, sourceFunc, start, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+            : this(logger, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
+        {
+        }
+        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default) 
+            : base(logger, sourceFunc, done)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
         }
