@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
+using Arius.Core.Commands.Archive;
 
 namespace Arius.Core.Commands
 {

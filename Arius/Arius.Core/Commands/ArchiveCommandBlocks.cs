@@ -18,7 +18,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Archive
 {
     internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
