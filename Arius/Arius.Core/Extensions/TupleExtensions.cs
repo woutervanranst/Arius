@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions
 {
-    public static class DeconstructionExtensions
+    public static class TupleExtensions
     {
         // https://github.com/gitextensions/gitextensions/blob/master/GitCommands/DeconstructionExtensions.cs
 

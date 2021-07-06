@@ -21,17 +21,20 @@ namespace Arius.Core.Commands
         public SynchronizeBlock(ILogger<SynchronizeBlock> logger,
             BlockingCollection<DirectoryInfo> source,
             Repository repo,
+            int maxDegreeOfParallelism,
             PointerService pointerService,
             Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload,
             Action done)
             : base(logger: logger, source: source, done: done)
         {
             this.repo = repo;
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.pointerService = pointerService;
             this.pointerToDownload = pointerToDownload;
         }
 
         private readonly Repository repo;
+        private readonly int maxDegreeOfParallelism;
         private readonly PointerService pointerService;
         private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload;
 
@@ -39,7 +42,7 @@ namespace Arius.Core.Commands
         {
             var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
 
-            logger.LogInformation($"{currentPfes.Count()} files in latest version of remote");
+            logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
             var t1 = Task.Run(() => CreateIfNotExists(currentPfes));
             var t2 = Task.Run(() => DeleteIfExists(root, currentPfes));
@@ -53,7 +56,9 @@ namespace Arius.Core.Commands
         /// <returns></returns>
         private void CreateIfNotExists(PointerFileEntry[] pfes)
         {
-            foreach (var pfe in pfes.AsParallel())
+            foreach (var pfe in pfes
+                                    .AsParallel()
+                                    .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(pfe);
                 var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
@@ -70,7 +75,9 @@ namespace Arius.Core.Commands
         {
             var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
-            foreach (var pfi in root.GetPointerFileInfos().AsParallel())
+            foreach (var pfi in root.GetPointerFileInfos()
+                                        .AsParallel()
+                                        .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var relativeName = pfi.GetRelativePath(root);
 

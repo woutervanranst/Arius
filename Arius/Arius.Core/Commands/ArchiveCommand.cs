@@ -61,9 +61,9 @@ namespace Arius.Core.Commands
                 fastHash: options.FastHash,
                 repo: repo,
                 hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
-                hashedBinaryFile: (p) =>
+                hashedBinaryFile: arg =>
                 {
-                    var (bf, alreadyBackedUp) = p;
+                    var (bf, alreadyBackedUp) = arg;
                     if (alreadyBackedUp)
                         binariesToDelete.Add(bf); //B401
                     else

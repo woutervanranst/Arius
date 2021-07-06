@@ -87,11 +87,11 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<SynchronizeBlock>(),
                 source: directoriesToSynchronize,
                 repo: repo,
+                maxDegreeOfParallelism: 1,
                 pointerService: pointerService,
-                pointerToDownload: p =>
+                pointerToDownload: arg =>
                 {
-                    var (pf, alreadyRestored) = p;
-
+                    var (pf, alreadyRestored) = arg;
                     if (options.Download && !alreadyRestored) //S21
                         pointerFilesToDownload.Add(pf);
                 },
