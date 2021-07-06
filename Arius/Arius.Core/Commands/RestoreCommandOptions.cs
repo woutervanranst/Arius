@@ -48,8 +48,8 @@ namespace Arius.Core.Commands
                     .NotEmpty()
                     .Custom((path, context) =>
                     {
-                        if (!Directory.Exists(path))
-                            context.AddFailure($"Directory {path} does not exist.");
+                        if (!(Directory.Exists(path) || File.Exists(path)))
+                            context.AddFailure($"File or folder '{path}' does not exist.");
                     });
             }
         }
