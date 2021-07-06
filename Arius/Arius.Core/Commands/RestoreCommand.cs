@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
@@ -43,51 +44,21 @@ namespace Arius.Core.Commands
             var loggerFactory = services.GetRequiredService<ILoggerFactory>();
             var repo = services.GetRequiredService<Repository>();
             var pointerService = services.GetRequiredService<PointerService>();
-            FileSystemInfo path = File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
-                new DirectoryInfo(options.Path) :
-                new FileInfo(options.Path);
 
-
-            var directoriesToSynchronize = new BlockingCollection<DirectoryInfo>();
+            
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
 
-            // Start the flow
-            if (options.Synchronize)
-            {
-                if (path is DirectoryInfo root)
+            var indexBlock = new IndexBlock(
+                logger: loggerFactory.CreateLogger<IndexBlock>(),
+                sourceFunc: () =>
                 {
-                    // Synchronize a Directory
-                    directoriesToSynchronize.Add(root); //S10
-                    directoriesToSynchronize.CompleteAdding(); //S11
-                }
-                else
-                {
-                    throw new InvalidOperationException("The synchronize flag is not valid when the path is a file");
-                }
-            }
-            else if (options.Download)
-            {
-                directoriesToSynchronize.CompleteAdding(); //S12
-
-                if (path is DirectoryInfo root)
-                {
-                    var pfs = root.GetPointerFileInfos().Select(fi => new PointerFile(root, fi));
-                    pointerFilesToDownload.AddFromEnumerable(pfs, completeAddingWhenDone: true); //S13
-                }
-                else if (path is FileInfo fi)
-                {
-                    var pf = new PointerFile(null, fi);
-                    pointerFilesToDownload.Add(pf); //S14     //TODO test dit in een NON ROOT!
-                    pointerFilesToDownload.CompleteAdding(); //S15
-                }
-            }
-
-
-            var synchronizeBlock = new SynchronizeBlock(
-                logger: loggerFactory.CreateLogger<SynchronizeBlock>(),
-                source: directoriesToSynchronize,
-                repo: repo,
+                    return File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
+                        new DirectoryInfo(options.Path) :
+                        new FileInfo(options.Path);
+                },
                 maxDegreeOfParallelism: 1,
+                synchronize: options.Synchronize,
+                repo: repo,
                 pointerService: pointerService,
                 pointerToDownload: arg =>
                 {
@@ -96,7 +67,7 @@ namespace Arius.Core.Commands
                         pointerFilesToDownload.Add(pf);
                 },
                 done: () => { });
-            var synchronizeTask = synchronizeBlock.GetTask;
+            var indexTask = indexBlock.GetTask;
 
 
             var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>(); //Key = Manifest
@@ -117,7 +88,17 @@ namespace Arius.Core.Commands
 
             await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
 
-
+            if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
+                && ts.Any())
+            {
+                var exceptions = ts.Select(t => t.Exception);
+                throw new AggregateException(exceptions);
+            }
+            //else if (binariesWaitingForManifestCreation.Count > 0 || chunksForManifest.Count > 0)
+            //{
+            //    //something went wrong
+            //    throw new InvalidOperationException("Not all queues are emptied");
+            //}
 
             /*
             //var root = new DirectoryInfo(_options.Path);

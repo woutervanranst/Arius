@@ -251,10 +251,10 @@ namespace Arius.Core.Tests
         internal static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
             return await RestoreCommand(
-                synchronize,
-                download,
-                keepPointers,
-                TestSetup.restoreTestDirectory.FullName);
+                synchronize: synchronize,
+                download: download,
+                keepPointers: keepPointers,
+                path: TestSetup.restoreTestDirectory.FullName);
         }
 
         /// <summary>
@@ -265,7 +265,11 @@ namespace Arius.Core.Tests
         /// <param name="keepPointers"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        internal static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers, string path)
+        internal static async Task<IServiceProvider> RestoreCommand(
+            string path,
+            bool synchronize = true, 
+            bool download = true, 
+            bool keepPointers = true)
         {
             var c = TestSetup.Facade.CreateRestoreCommand(
                 TestSetup.AccountName,

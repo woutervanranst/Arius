@@ -14,56 +14,77 @@ using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Restore
 {
-    internal class SynchronizeBlock : BlockingCollectionTaskBlockBase<DirectoryInfo>
+    internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     {
-        public SynchronizeBlock(ILogger<SynchronizeBlock> logger,
-            BlockingCollection<DirectoryInfo> source,
-            Repository repo,
+        public IndexBlock(ILogger<IndexBlock> logger,
+            Func<FileSystemInfo> sourceFunc,
             int maxDegreeOfParallelism,
+            bool synchronize,
+            Repository repo,
             PointerService pointerService,
             Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload,
             Action done)
-            : base(logger: logger, sourceFunc: new (() => source), done: done)
+            : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
+            this.synchronize = synchronize;
             this.repo = repo;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.pointerService = pointerService;
             this.pointerToDownload = pointerToDownload;
         }
 
+        private readonly bool synchronize;
         private readonly Repository repo;
         private readonly int maxDegreeOfParallelism;
         private readonly PointerService pointerService;
         private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload;
 
-        protected override async Task ForEachBodyImplAsync(DirectoryInfo root)
+        protected override async Task TaskBodyImplAsync(FileSystemInfo fsi)
         {
-            var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
+            if (synchronize)
+            {
+                if (fsi is DirectoryInfo root)
+                {
+                    // Synchronize a Directory
+                    var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
 
-            logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
+                    logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
-            var t1 = Task.Run(() => CreateIfNotExists(currentPfes));
-            var t2 = Task.Run(() => DeleteIfExists(root, currentPfes));
+                    var t1 = Task.Run(() => CreatePointerFilesIfNotExist(currentPfes));
+                    var t2 = Task.Run(() => DeletePointerFilesIfShouldNotExist(root, currentPfes));
 
-            await Task.WhenAll(t1, t2);
+                    await Task.WhenAll(t1, t2);
+                }
+                else if (fsi is FileInfo)
+                    throw new InvalidOperationException($"The synchronize flag is not valid when the path is a file"); //TODO UNIT TEST
+                else
+                    throw new InvalidOperationException($"The synchronize flag is not valid with argument {fsi}");
+            }
+            else
+            {
+                if (fsi is DirectoryInfo root)
+                    ProcessPointersInDirectory(root);
+                else if (fsi is FileInfo fi && fi.IsPointerFile())
+                    ProcessPointerFile(new PointerFile(null, fi)); //TODO test dit in non root
+                else
+                    throw new InvalidOperationException($"Argument {fsi} is not valid");
+            }
         }
 
         /// <summary>
         /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
         /// </summary>
         /// <returns></returns>
-        private void CreateIfNotExists(PointerFileEntry[] pfes)
+        private void CreatePointerFilesIfNotExist(PointerFileEntry[] pfes)
         {
             foreach (var pfe in pfes
                                     .AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(pfe);
-                var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
-
-                pointerToDownload((pf, bf is not null));
+                ProcessPointerFile(pf);
             }
         }
 
@@ -71,7 +92,7 @@ namespace Arius.Core.Commands
         /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
         /// </summary>
         /// <param name="pfes"></param>
-        private void DeleteIfExists(DirectoryInfo root, PointerFileEntry[] pfes)
+        private void DeletePointerFilesIfShouldNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
         {
             var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
@@ -89,6 +110,21 @@ namespace Arius.Core.Commands
             }
 
             root.DeleteEmptySubdirectories();
+        }
+
+        private void ProcessPointersInDirectory(DirectoryInfo root)
+        {
+            var pfs = root.GetPointerFileInfos().Select(fi => new PointerFile(root, fi));
+
+            foreach (var pf in pfs)
+                ProcessPointerFile(pf);
+        }
+
+        private void ProcessPointerFile(PointerFile pf)
+        {
+            var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+
+            pointerToDownload((pf, bf is not null));
         }
     }
 
