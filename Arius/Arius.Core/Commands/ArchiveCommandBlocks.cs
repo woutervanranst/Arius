@@ -31,7 +31,7 @@ namespace Arius.Core.Commands
             Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile,
             IHashValueProvider hvp,
             Action done)
-            : base(logger: logger, source: root, done: done)
+            : base(logger: logger, sourceFunc: () => root, done: done)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
@@ -114,13 +114,12 @@ namespace Arius.Core.Commands
     internal class ProcessHashedBinaryBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
-           //Func<bool> continueWhile,
-           BlockingCollection<BinaryFile> source,
+           Func<BlockingCollection<BinaryFile>> sourceFunc,
            Repository repo,
            Action<BinaryFile> uploadBinaryFile,
            Action<BinaryFile> waitForCreatedManifest,
            Action<BinaryFile> manifestExists,
-           Action done) : base(logger: logger, source: source, done: done)
+           Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.uploadBinaryFile = uploadBinaryFile;
@@ -194,11 +193,11 @@ namespace Arius.Core.Commands
     internal class ChunkBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public ChunkBlock(ILogger<ChunkBlock> logger,
-            BlockingCollection<BinaryFile> source,
+            Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Chunker chunker,
             Action<BinaryFile, IChunkFile[]> chunkedBinary,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.chunkedBinary = chunkedBinary;
@@ -224,11 +223,11 @@ namespace Arius.Core.Commands
     internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
         public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
-            BlockingCollection<IChunkFile> source,
+            Func<BlockingCollection<IChunkFile>> sourceFunc,
             Repository repo,
             Action<IChunkFile> chunkToUpload,
             Action<ChunkHash> chunkAlreadyUploaded,
-            Action done) : base(logger: logger, source: source, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.chunkToUpload = chunkToUpload;
@@ -283,12 +282,12 @@ namespace Arius.Core.Commands
     internal class EncryptChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
     {
         public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
-            BlockingCollection<IChunkFile> source,
+            Func<BlockingCollection<IChunkFile>> sourceFunc,
             int maxDegreeOfParallelism,
             TempDirectoryAppSettings tempDirAppSettings,
             IEncrypter encrypter,
             Action<EncryptedChunkFile> chunkEncrypted,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.tempDirAppSettings = tempDirAppSettings;
             this.encrypter = encrypter;
@@ -321,10 +320,10 @@ namespace Arius.Core.Commands
     internal class CreateUploadBatchBlock : TaskBlockBase<BlockingCollection<EncryptedChunkFile>>
     {
         public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
-            BlockingCollection<EncryptedChunkFile> source,
+            Func<BlockingCollection<EncryptedChunkFile>> sourceFunc,
             AzCopyAppSettings azCopyAppSettings,
             Action<EncryptedChunkFile[]> batchForUpload,
-            Action done) : base(logger: logger, source: source, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.azCopyAppSettings = azCopyAppSettings;
             this.batchForUpload = batchForUpload;
@@ -379,12 +378,12 @@ namespace Arius.Core.Commands
     internal class UploadBatchBlock : BlockingCollectionTaskBlockBase<EncryptedChunkFile[]>
     {
         public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
-            BlockingCollection<EncryptedChunkFile[]> source,
+            Func<BlockingCollection<EncryptedChunkFile[]>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
             AccessTier tier,
             Action<ChunkHash[]> chunkUploaded,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.tier = tier;
@@ -419,11 +418,11 @@ namespace Arius.Core.Commands
     internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
     {
         public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
-            BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)> source,
+            Func<BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
             Action<ManifestHash> manifestCreated,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.manifestCreated = manifestCreated;
@@ -447,12 +446,12 @@ namespace Arius.Core.Commands
     internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
-            BlockingCollection<BinaryFile> source,
+            Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             PointerService pointerService,
             Action<BinaryFile> succesfullyBackedUp,
             Action<PointerFile> pointerFileCreated,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
             this.succesfullyBackedUp = succesfullyBackedUp;
@@ -482,11 +481,11 @@ namespace Arius.Core.Commands
     internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
-            BlockingCollection<PointerFile> source,
+            Func<BlockingCollection<PointerFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
@@ -522,10 +521,10 @@ namespace Arius.Core.Commands
     internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public DeleteBinaryFilesBlock(ILogger<DeleteBinaryFilesBlock> logger,
-            BlockingCollection<BinaryFile> source,
+            Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             bool removeLocal,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.removeLocal = removeLocal;
         }
@@ -549,13 +548,13 @@ namespace Arius.Core.Commands
     internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
     {
         public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
-            BlockingCollection<PointerFileEntry> source,
+            Func<BlockingCollection<PointerFileEntry>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
             PointerService pointerService,
             DateTime versionUtc,
             Action start,
-            Action done) : base(logger: logger, source: source, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, start: start, done: done)
         {
             this.repo = repo;
             this.pointerService = pointerService;
@@ -579,14 +578,13 @@ namespace Arius.Core.Commands
     }
 
 
-    internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>>
+    internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
     {
         public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
-            BlockingCollection<PointerFileEntry> source,
+            Func<BlockingCollection<PointerFileEntry>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
-            Action start,
-            Action done) : base(logger: logger, source: source, start: start, done: done) //! must be single threaded
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done) 
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
@@ -651,7 +649,7 @@ namespace Arius.Core.Commands
     internal class ValidateBlock
     {
         public ValidateBlock(ILogger<ExportToJsonBlock> logger,
-            BlockingCollection<PointerFileEntry> source,
+            Func<BlockingCollection<PointerFileEntry>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
             Action start,

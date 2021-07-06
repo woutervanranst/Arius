@@ -25,7 +25,7 @@ namespace Arius.Core.Commands
             PointerService pointerService,
             Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload,
             Action done)
-            : base(logger: logger, source: source, done: done)
+            : base(logger: logger, sourceFunc: new (() => source), done: done)
         {
             this.repo = repo;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
@@ -95,12 +95,12 @@ namespace Arius.Core.Commands
     internal class ProcessPointerFileBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
         public ProcessPointerFileBlock(ILogger<ProcessPointerFileBlock> logger,
-            BlockingCollection<PointerFile> source,
+            Func<BlockingCollection<PointerFile>> sourceFunc,
             Repository repo,
             PointerService pointerService,
             Action<PointerFile, BinaryFile> alreadyRestored,
             Action done)
-            : base(logger: logger, source: source, done: done)
+            : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.pointerService = pointerService;

@@ -103,7 +103,7 @@ namespace Arius.Core.Commands
 
             var processPointerFileBlock = new ProcessPointerFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),
-                source: pointerFilesToDownload,
+                sourceFunc: () => pointerFilesToDownload,
                 repo: repo,
                 pointerService: pointerService,
                 alreadyRestored: (_, bf) =>

@@ -80,7 +80,7 @@ namespace Arius.Core.Commands
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
                 logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
-                source: binariesToUpload,
+                sourceFunc: () => binariesToUpload,
                 repo: repo,
                 
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B402
@@ -105,7 +105,7 @@ namespace Arius.Core.Commands
 
             var chunkBlock = new ChunkBlock(
                 logger: loggerFactory.CreateLogger<ChunkBlock>(),
-                source: binariesToChunk,
+                sourceFunc: () => binariesToChunk,
                 maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<Chunker>(),
                 chunkedBinary: (binaryFile, chunkFiles) => 
@@ -129,7 +129,7 @@ namespace Arius.Core.Commands
 
             var processChunkBlock = new ProcessChunkBlock(
                 logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
-                source: chunksToProcess,
+                sourceFunc: () => chunksToProcess,
                 repo: repo,
                 chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
                 chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
@@ -141,7 +141,7 @@ namespace Arius.Core.Commands
 
             var encryptChunkBlock = new EncryptChunkBlock(
                 logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
-                source: chunksToEncrypt,
+                sourceFunc: () => chunksToEncrypt,
                 maxDegreeOfParallelism: 1 /*2*/,
                 tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
                 encrypter: services.GetRequiredService<IEncrypter>(),
@@ -154,7 +154,7 @@ namespace Arius.Core.Commands
 
             var createUploadBatchBlock = new CreateUploadBatchBlock(
                 logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
-                source: chunksToBatchForUpload,
+                sourceFunc: () => chunksToBatchForUpload,
                 azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
                 batchForUpload: (b) => batchesToUpload.Add(b), //B804
                 done: () => batchesToUpload.CompleteAdding()); //B810
@@ -163,7 +163,7 @@ namespace Arius.Core.Commands
             
             var uploadBatchBlock = new UploadBatchBlock(
                 logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
-                source: batchesToUpload,
+                sourceFunc: () => batchesToUpload,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 tier: options.Tier,
@@ -196,7 +196,7 @@ namespace Arius.Core.Commands
 
             var createManifestBlock = new CreateManifestBlock(
                 logger: loggerFactory.CreateLogger<CreateManifestBlock>(),
-                source: manifestsToCreate,
+                sourceFunc: () => manifestsToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 manifestCreated: (manifestHash) =>
@@ -219,7 +219,7 @@ namespace Arius.Core.Commands
 
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
-                source: pointersToCreate,
+                sourceFunc: () => pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 pointerService: pointerService,
                 succesfullyBackedUp: bf => binariesToDelete.Add(bf), //B1202
@@ -239,7 +239,7 @@ namespace Arius.Core.Commands
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
-                source: pointerFileEntriesToCreate,
+                sourceFunc: () => pointerFileEntriesToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 versionUtc: versionUtc,
@@ -258,7 +258,7 @@ namespace Arius.Core.Commands
 
             var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
                 logger: loggerFactory.CreateLogger<DeleteBinaryFilesBlock>(),
-                source: binariesToDelete,
+                sourceFunc: () => binariesToDelete,
                 maxDegreeOfParallelism: 1 /*2*/,
                 removeLocal: options.RemoveLocal,
                 done: () =>
@@ -270,7 +270,7 @@ namespace Arius.Core.Commands
             var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
             var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
                 logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
-                source: pointerFileEntriesToCheckForDeletedPointers,
+                sourceFunc: () => pointerFileEntriesToCheckForDeletedPointers,
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
                 pointerService: pointerService,
@@ -287,17 +287,18 @@ namespace Arius.Core.Commands
             
 
             
-            var pointerFileEntriesToExport = new BlockingCollection<PointerFileEntry>();
+            
             var exportJsonBlock = new ExportToJsonBlock(
                 logger: loggerFactory.CreateLogger<ExportToJsonBlock>(),
-                source: pointerFileEntriesToExport,
-                repo: repo,
-                versionUtc: versionUtc,
-                start: async () =>
+                sourceFunc: async () =>
                 {
                     var pfes = await repo.GetCurrentEntries(includeDeleted: false);
+                    var pointerFileEntriesToExport = new BlockingCollection<PointerFileEntry>();
                     pointerFileEntriesToExport.AddFromEnumerable(pfes, true); //B1501
+                    return pointerFileEntriesToExport;
                 },
+                repo: repo,
+                versionUtc: versionUtc,
                 done: () => { });
             var exportJsonTask = await createPointerFileEntryIfNotExistsTask.ContinueWith(async _ => 
             {

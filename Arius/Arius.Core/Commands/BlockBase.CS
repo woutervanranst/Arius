@@ -24,10 +24,10 @@ namespace Arius.Core.Commands
 
     internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected TaskBlockBase(ILogger logger, TSource source, Action start = default, Action done = default)
+        protected TaskBlockBase(ILogger logger, Func<TSource> sourceFunc, Action start = default, Action done = default)
         {
             this.logger = logger;
-            this.source = source;
+            this.sourceFunc = sourceFunc;
 
             this.start = () =>
             {
@@ -56,7 +56,7 @@ namespace Arius.Core.Commands
             }, isThreadSafe: false);
         }
 
-        private readonly TSource source;
+        private readonly Func<TSource> sourceFunc;
         private readonly Action start;
         protected readonly ILogger logger;
         private readonly Lazy<Task> task;
@@ -72,7 +72,7 @@ namespace Arius.Core.Commands
                 {
                     start();
 
-                    await TaskBodyImplAsync(source);
+                    await TaskBodyImplAsync(sourceFunc());
 
                     done();
                 }
@@ -90,29 +90,20 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, Action start = default, Action done = default) : this(logger, source, 1, start, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action start = default, Action done = default) 
+            : base(logger, sourceFunc, start, done)
         {
-        }
-        protected BlockingCollectionTaskBlockBase(ILogger logger, BlockingCollection<TSource> source, int maxDegreeOfParallelism, Action start = default, Action done = default) : base(logger, source, start, done)
-        {
-            this.partitioner = source.GetConsumingPartitioner();
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
         }
 
-        private readonly Partitioner<TSource> partitioner;
         private readonly int maxDegreeOfParallelism;
 
         protected abstract Task ForEachBodyImplAsync(TSource item);
 
         protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
         {
-            // UNTESTED ALTERNATIVE:
-            //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
-            //await Task.WhenAll(ts);
-
-
             // FROM https://stackoverflow.com/a/14678329/1582323
-            var partitions = partitioner.GetPartitions(maxDegreeOfParallelism);
+            var partitions = source.GetConsumingPartitioner().GetPartitions(maxDegreeOfParallelism);
             var tasks = partitions.Select(async (partition) =>
             {
                 //await Task.Run(async () => 
@@ -129,6 +120,10 @@ namespace Arius.Core.Commands
             });
 
             await Task.WhenAll(tasks);
+
+            // UNTESTED ALTERNATIVE:
+            //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
+            //await Task.WhenAll(ts);
 
 
             // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
