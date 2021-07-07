@@ -10,19 +10,10 @@ namespace Arius.Core.Tests
 {
     class BlobModelTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit()
+        protected override void BeforeTestClass()
         {
-            // Executes once for the test class. (Optional)
-
             if (TestSetup.ArchiveTestDirectory.Exists) TestSetup.ArchiveTestDirectory.Delete(true);
             TestSetup.ArchiveTestDirectory.Create();
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
         }
 
         [Test]
@@ -81,21 +72,6 @@ namespace Arius.Core.Tests
 
 
             var mm = await repo.GetChunkHashesForManifestAsync(manifestBlob.Hash);
-        }
-
-
-
-
-
-        public void TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
         }
     }
 }

@@ -13,21 +13,12 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Core.Tests
 {
-    internal partial class ArchiveRestoreTests : TestBase
+    partial class ArchiveRestoreTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit_Archive()
+        protected override void BeforeTestClass()
         {
-            // Executes once for the test class. (Optional)
-
             if (TestSetup.ArchiveTestDirectory.Exists) TestSetup.ArchiveTestDirectory.Delete(true);
             TestSetup.ArchiveTestDirectory.Create();
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
         }
 
         private int expectedCurrentPfeCountWithDeleted = 0;
@@ -549,18 +540,6 @@ namespace Arius.Core.Tests
 
         
 
-
-        [TearDown]
-        public void Archive_TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void Archive_ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
-        }
 
 
 

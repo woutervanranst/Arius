@@ -19,7 +19,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(cb1.FullName, cb2.FullName);
         }
 
-
+        [Test]
         public void GetChunkBlobByName_NotExisting_Null()
         {
             var repo = GetRepository();

@@ -16,7 +16,7 @@ using NUnit.Framework;
 namespace Arius.Core.Tests
 {
     [SetUpFixture]
-    internal static class TestSetup
+    static class TestSetup
     {
         public const string Passphrase = "myPassphrase";
         private const string TestContainerNamePrefix = "unittest";

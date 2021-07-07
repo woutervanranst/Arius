@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    internal abstract class TestBase
+    abstract class TestBase
     {
         [OneTimeSetUp]
         protected virtual void BeforeTestClass()
@@ -117,6 +117,5 @@ namespace Arius.Core.Tests
 
             return c.Services;
         }
-
     }
 }

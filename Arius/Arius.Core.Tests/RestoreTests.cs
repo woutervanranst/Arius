@@ -18,19 +18,10 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Core.Tests
 {
-    internal partial class ArchiveRestoreTests
+    partial class ArchiveRestoreTests
     {
-        [OneTimeSetUp]
-        public void ClassInit_Restore()
+        protected override void BeforeEachTest()
         {
-            // Executes once for the test class. (Optional)
-        }
-
-        [SetUp]
-        public void TestInit_Restore()
-        {
-            // Runs before each test. (Optional)
-
             TestSetup.RestoreTestDirectory.Clear();
         }
 
@@ -232,19 +223,6 @@ namespace Arius.Core.Tests
             {
                 return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
             }
-        }
-
-        [TearDown]
-        public void Restore_TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-
-        [OneTimeTearDown]
-        public void Restore_ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
         }
     }
 
