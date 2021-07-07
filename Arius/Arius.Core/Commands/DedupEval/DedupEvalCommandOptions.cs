@@ -1,7 +1,7 @@
 ﻿using Arius.Core.Services;
 using System.IO;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.DedupEval
 {
     internal class DedupEvalCommandOptions : Facade.Facade.IOptions,
         DedupEvalCommand.IOptions,

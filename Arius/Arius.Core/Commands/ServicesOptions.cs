@@ -5,7 +5,7 @@ using FluentValidation;
 using System;
 namespace Arius.Core.Commands
 {
-    internal class OptionsForServices : 
+    internal class ServicesOptions : 
         Facade.Facade.IOptions,
         
         Repository.IOptions,
@@ -19,7 +19,7 @@ namespace Arius.Core.Commands
         public string Container { get; private init; }
         public string Passphrase { get; private init; }
 
-        internal OptionsForServices(string accountName, string accountKey, string container, string passphrase)
+        internal ServicesOptions(string accountName, string accountKey, string container, string passphrase)
         {
             AccountName = accountName;
             AccountKey = accountKey;
@@ -29,7 +29,7 @@ namespace Arius.Core.Commands
             var validator = new Validator();
             validator.ValidateAndThrow(this);
         }
-        private class Validator : AbstractValidator<OptionsForServices>
+        private class Validator : AbstractValidator<ServicesOptions>
         {
             public Validator()
             {

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.DedupEval
 {
     internal class DedupEvalCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
@@ -28,7 +28,7 @@ namespace Arius.Core.Commands
         {
             this.options = options;
             this.logger = logger;
-            this.services = serviceProvider;
+            services = serviceProvider;
             this.hvp = hvp;
             this.chunker = chunker;
         }
@@ -70,11 +70,11 @@ namespace Arius.Core.Commands
             fileSize += bf.Length;
 
             if (!uniqueFiles.ContainsKey(bf.Hash))
-            { 
+            {
                 uniqueFiles.Add(bf.Hash, bf.Length);
 
                 foreach (var c in chunker.Chunk(bf))
-                { 
+                {
                     if (!uniqueChunks.ContainsKey(c.Hash))
                         uniqueChunks.Add(c.Hash, c.Length);
 

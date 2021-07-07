@@ -1,4 +1,7 @@
 ﻿using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.DedupEval;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Repositories;
@@ -120,7 +123,7 @@ namespace Arius.Core.Facade
 
         internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
         {
-            var options = new OptionsForServices(accountName, accountKey, container, passphrase);
+            var options = new ServicesOptions(accountName, accountKey, container, passphrase);
             
             return CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
         }

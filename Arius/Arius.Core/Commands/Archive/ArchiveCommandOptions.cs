@@ -1,11 +1,10 @@
-﻿using Arius.Core.Services;
-using Azure.Storage.Blobs.Models;
+﻿using Azure.Storage.Blobs.Models;
 using FluentValidation;
 using System.IO;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Archive
 {
-    internal class ArchiveCommandOptions : OptionsForServices, 
+    internal class ArchiveCommandOptions : ServicesOptions,
         Facade.Facade.IOptions,
 
         ArchiveCommand.IOptions

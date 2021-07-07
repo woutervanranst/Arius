@@ -11,7 +11,7 @@ using Arius.Core.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Commands2
+namespace Arius.Core.Commands.Restore2
 {
     internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {

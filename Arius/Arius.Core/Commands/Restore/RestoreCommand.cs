@@ -3,9 +3,6 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using Arius.Core.Commands.Restore;
-using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
@@ -13,7 +10,7 @@ using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Restore
 {
     internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
     {
@@ -30,7 +27,7 @@ namespace Arius.Core.Commands
         {
             this.options = options;
             this.logger = logger;
-            this.services = serviceProvider;
+            services = serviceProvider;
         }
 
         private readonly IOptions options;
@@ -45,7 +42,7 @@ namespace Arius.Core.Commands
             var repo = services.GetRequiredService<Repository>();
             var pointerService = services.GetRequiredService<PointerService>();
 
-            
+
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
 
             var indexBlock = new IndexBlock(
@@ -63,7 +60,7 @@ namespace Arius.Core.Commands
                 pointerToDownload: arg =>
                 {
                     var (pf, alreadyRestored) = arg;
-                    if (options.Download && !alreadyRestored) 
+                    if (options.Download && !alreadyRestored)
                         pointerFilesToDownload.Add(pf); //S21
                 },
                 done: () => { });
@@ -80,10 +77,10 @@ namespace Arius.Core.Commands
                 alreadyRestored: (_, bf) =>
                 {
                     restoredManifests.TryAdd(bf.Hash, bf); //S31 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
-                }, 
+                },
                 done: () => { }
                 );
-            
+
 
 
             await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);

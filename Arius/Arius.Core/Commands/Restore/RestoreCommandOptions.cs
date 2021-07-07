@@ -1,11 +1,11 @@
-﻿using Arius.Core.Commands2;
+﻿using Arius.Core.Commands.Restore2;
 using Arius.Core.Services;
 using FluentValidation;
 using System.IO;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Restore
 {
-    internal class RestoreCommandOptions : OptionsForServices,
+    internal class RestoreCommandOptions : ServicesOptions,
         Facade.Facade.IOptions,
         RestoreCommand.IOptions,
 
@@ -19,7 +19,7 @@ namespace Arius.Core.Commands
         IBlobCopier.IOptions,
         IHashValueProvider.IOptions,
         IEncrypter.IOptions
-        //AzureRepository.IOptions
+    //AzureRepository.IOptions
     {
         public bool FastHash => false; //Do not fasthash on restore to ensure integrity
         public bool Synchronize { get; private init; }

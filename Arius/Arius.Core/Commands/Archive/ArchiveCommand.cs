@@ -12,9 +12,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
-using Arius.Core.Commands.Archive;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands.Archive
 {
     internal class ArchiveCommand : ICommand
     {
@@ -33,7 +32,7 @@ namespace Arius.Core.Commands
         {
             this.options = options;
             this.logger = logger;
-            this.services = serviceProvider;
+            services = serviceProvider;
         }
 
         private readonly IOptions options;
@@ -84,7 +83,7 @@ namespace Arius.Core.Commands
                 logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
                 sourceFunc: () => binariesToUpload,
                 repo: repo,
-                
+
                 uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B402
                 manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 waitForCreatedManifest: (bf) => //B404
@@ -110,14 +109,14 @@ namespace Arius.Core.Commands
                 sourceFunc: () => binariesToChunk,
                 maxDegreeOfParallelism: 1 /*2*/,
                 chunker: services.GetRequiredService<Chunker>(),
-                chunkedBinary: (binaryFile, chunkFiles) => 
+                chunkedBinary: (binaryFile, chunkFiles) =>
                 {
                     //B501
                     chunksToProcess.AddFromEnumerable(chunkFiles, false);
 
                     //B502
                     var chs = chunkFiles.Select(ch => ch.Hash).ToArray();
-                    chunksForManifest.AddOrUpdate( 
+                    chunksForManifest.AddOrUpdate(
                         key: binaryFile.Hash,
                         addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
                         updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
@@ -162,7 +161,7 @@ namespace Arius.Core.Commands
                 done: () => batchesToUpload.CompleteAdding()); //B810
             var createUploadBatchTask = createUploadBatchBlock.GetTask;
 
-            
+
             var uploadBatchBlock = new UploadBatchBlock(
                 logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
                 sourceFunc: () => batchesToUpload,
@@ -170,10 +169,10 @@ namespace Arius.Core.Commands
                 repo: repo,
                 tier: options.Tier,
                 chunkUploaded: (h) => removeFromPendingUpload(h), //B901
-                done: () =>  manifestsToCreate.CompleteAdding()); //B910
+                done: () => manifestsToCreate.CompleteAdding()); //B910
             var uploadBatchTask = uploadBatchBlock.GetTask;
 
-            
+
             void removeFromPendingUpload(params ChunkHash[] chunkHash)
             {
                 // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
@@ -211,9 +210,9 @@ namespace Arius.Core.Commands
                 done: () => { });
             var createManifestTask = createManifestBlock.GetTask;
 
-            
+
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-                               // can be ignored since we'll be awaiting the pointersToCreate
+            // can be ignored since we'll be awaiting the pointersToCreate
             Task.WhenAll(processHashedBinaryTask, createManifestTask)
                 .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1110 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -226,8 +225,8 @@ namespace Arius.Core.Commands
                 pointerService: pointerService,
                 succesfullyBackedUp: bf => binariesToDelete.Add(bf), //B1202
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
-                done: () => 
-                { 
+                done: () =>
+                {
                 });
             var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
@@ -269,7 +268,7 @@ namespace Arius.Core.Commands
             var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
-            
+
             var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
                 logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
                 sourceFunc: async () =>
@@ -288,8 +287,8 @@ namespace Arius.Core.Commands
                 done: () => { });
             var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
-            
-            
+
+
             var exportJsonBlock = new ExportToJsonBlock(
                 logger: loggerFactory.CreateLogger<ExportToJsonBlock>(),
                 sourceFunc: async () =>
@@ -302,7 +301,7 @@ namespace Arius.Core.Commands
                 repo: repo,
                 versionUtc: versionUtc,
                 done: () => { });
-            var exportJsonTask = await createPointerFileEntryIfNotExistsTask.ContinueWith(async _ => 
+            var exportJsonTask = await createPointerFileEntryIfNotExistsTask.ContinueWith(async _ =>
             {
                 await exportJsonBlock.GetTask; //B1502
             });

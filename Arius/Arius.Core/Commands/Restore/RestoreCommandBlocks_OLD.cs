@@ -15,7 +15,7 @@ using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging;
 using Enumerable = System.Linq.Enumerable;
 
-namespace Arius.Core.Commands2
+namespace Arius.Core.Commands.Restore2
 {
     internal class SynchronizeBlockProvider
     {
@@ -175,7 +175,7 @@ namespace Arius.Core.Commands2
 
                 // Chunks Downloaded & Merged?
                 PointerService ps = default;
-                if (ps.GetBinaryFile(pf, true) is var bf && bf is not null && 
+                if (ps.GetBinaryFile(pf, true) is var bf && bf is not null &&
                     _hvp.GetManifestHash(bf.FullName).Equals(pf.Hash))
                 {
                     _logger.LogInformation($"PointerFile {pf.RelativeName} already downloaded - skipping");
