@@ -63,14 +63,14 @@ namespace Arius.Core.Commands
                 pointerToDownload: arg =>
                 {
                     var (pf, alreadyRestored) = arg;
-                    if (options.Download && !alreadyRestored) //S21
-                        pointerFilesToDownload.Add(pf);
+                    if (options.Download && !alreadyRestored) 
+                        pointerFilesToDownload.Add(pf); //S21
                 },
                 done: () => { });
             var indexTask = indexBlock.GetTask;
 
 
-            var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>(); //Key = Manifest
+            var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>();
 
             var processPointerFileBlock = new ProcessPointerFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),

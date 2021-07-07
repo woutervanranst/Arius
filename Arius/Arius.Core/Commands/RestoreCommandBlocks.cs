@@ -79,8 +79,7 @@ namespace Arius.Core.Commands.Restore
         /// <returns></returns>
         private void CreatePointerFilesIfNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
         {
-            foreach (var pfe in pfes
-                                    .AsParallel()
+            foreach (var pfe in pfes.AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);

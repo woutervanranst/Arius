@@ -46,8 +46,7 @@ namespace Arius.Cli
             Console.WriteLine("Arius started.");
 
             int? r = default;
-            DirectoryInfo? tempDir = default;
-
+            
             try
             {
                 var cliParser = GetCommandLineBuilder()
