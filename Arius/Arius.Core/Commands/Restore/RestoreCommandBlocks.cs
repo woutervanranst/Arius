@@ -24,7 +24,7 @@ namespace Arius.Core.Commands.Restore
             bool synchronize,
             Repository repo,
             PointerService pointerService,
-            Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload,
+            Action<(PointerFile PointerFile, bool AlreadyRestored)> indexedPointerFile,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
@@ -32,14 +32,14 @@ namespace Arius.Core.Commands.Restore
             this.repo = repo;
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.pointerService = pointerService;
-            this.pointerToDownload = pointerToDownload;
+            this.indexedPointerFile = indexedPointerFile;
         }
 
         private readonly bool synchronize;
         private readonly Repository repo;
         private readonly int maxDegreeOfParallelism;
         private readonly PointerService pointerService;
-        private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> pointerToDownload;
+        private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> indexedPointerFile;
 
         protected override async Task TaskBodyImplAsync(FileSystemInfo fsi)
         {
@@ -123,7 +123,7 @@ namespace Arius.Core.Commands.Restore
         {
             var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
 
-            pointerToDownload((pf, bf is not null));
+            indexedPointerFile((pf, bf is not null));
         }
     }
 

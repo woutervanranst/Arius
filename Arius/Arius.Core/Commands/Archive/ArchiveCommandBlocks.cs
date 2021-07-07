@@ -27,8 +27,8 @@ namespace Arius.Core.Commands.Archive
             int maxDegreeOfParallelism,
             bool fastHash,
             Repository repo,
-            Action<PointerFile> hashedPointerFile,
-            Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile,
+            Action<PointerFile> indexedPointerFile,
+            Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile,
             IHashValueProvider hvp,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
@@ -36,16 +36,16 @@ namespace Arius.Core.Commands.Archive
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
             this.repo = repo;
-            this.hashedPointerFile = hashedPointerFile;
-            this.hashedBinaryFile = hashedBinaryFile;
+            this.indexedPointerFile = indexedPointerFile;
+            this.indexedBinaryFile = indexedBinaryFile;
             this.hvp = hvp;
         }
 
         private readonly int maxDegreeOfParallelism;
         private readonly bool fastHash;
         private readonly Repository repo;
-        private readonly Action<PointerFile> hashedPointerFile;
-        private readonly Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> hashedBinaryFile;
+        private readonly Action<PointerFile> indexedPointerFile;
+        private readonly Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile;
         private readonly IHashValueProvider hvp;
 
         protected override async Task TaskBodyImplAsync(DirectoryInfo root)
@@ -63,7 +63,7 @@ namespace Arius.Core.Commands.Archive
 
                     var pf = new PointerFile(root, fi);
 
-                    hashedPointerFile(pf);
+                    indexedPointerFile(pf);
                 }
                 else
                 {
@@ -98,12 +98,12 @@ namespace Arius.Core.Commands.Archive
                             throw new InvalidOperationException($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{manifestHash.ToShortString()}') that no longer exists.");
 
                         logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                        hashedBinaryFile((bf, AlreadyBackedUp: true));
+                        indexedBinaryFile((bf, AlreadyBackedUp: true));
                     }
                     else
                     {
                         // To process
-                        hashedBinaryFile((bf, AlreadyBackedUp: false));
+                        indexedBinaryFile((bf, AlreadyBackedUp: false));
                     }
                 }
             }

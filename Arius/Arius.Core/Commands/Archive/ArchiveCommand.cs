@@ -61,8 +61,8 @@ namespace Arius.Core.Commands.Archive
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 fastHash: options.FastHash,
                 repo: repo,
-                hashedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
-                hashedBinaryFile: arg =>
+                indexedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
+                indexedBinaryFile: arg =>
                 {
                     var (bf, alreadyBackedUp) = arg;
                     if (alreadyBackedUp)

@@ -57,7 +57,7 @@ namespace Arius.Core.Commands.Restore
                 synchronize: options.Synchronize,
                 repo: repo,
                 pointerService: pointerService,
-                pointerToDownload: arg =>
+                indexedPointerFile: arg =>
                 {
                     var (pf, alreadyRestored) = arg;
                     if (options.Download && !alreadyRestored)
