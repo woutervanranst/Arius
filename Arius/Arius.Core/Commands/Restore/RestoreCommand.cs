@@ -44,6 +44,9 @@ namespace Arius.Core.Commands.Restore
 
 
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
+            var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>();
+
+            logger.LogInformation("Determining PointerFiles to restore...");
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
@@ -51,23 +54,26 @@ namespace Arius.Core.Commands.Restore
                 {
                     return File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
                         new DirectoryInfo(options.Path) :
-                        new FileInfo(options.Path);
+                        new FileInfo(options.Path); //S10
                 },
-                maxDegreeOfParallelism: 1,
+                maxDegreeOfParallelism: 2,
                 synchronize: options.Synchronize,
                 repo: repo,
                 pointerService: pointerService,
                 indexedPointerFile: arg =>
                 {
-                    var (pf, alreadyRestored) = arg;
-                    if (options.Download && !alreadyRestored)
-                        pointerFilesToDownload.Add(pf); //S21
+                    var (pf, bf) = arg;
+                    if (options.Download && bf is null)
+                        pointerFilesToDownload.Add(pf); //S11
+                    if (bf is not null)
+                        restoredManifests.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                 },
                 done: () => { });
             var indexTask = indexBlock.GetTask;
 
+            await indexTask;
 
-            var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>();
+            logger.LogInformation($"Determining PointerFiles to restore... done. {pointerFilesToDownload.Count} PointerFiles to restore in ");
 
             var processPointerFileBlock = new ProcessPointerFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),
@@ -76,7 +82,7 @@ namespace Arius.Core.Commands.Restore
                 pointerService: pointerService,
                 alreadyRestored: (_, bf) =>
                 {
-                    restoredManifests.TryAdd(bf.Hash, bf); //S31 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
+                    restoredManifests.TryAdd(bf.Hash, bf); //S31 
                 },
                 done: () => { }
                 );

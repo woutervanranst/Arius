@@ -24,7 +24,7 @@ namespace Arius.Core.Commands.Restore
             bool synchronize,
             Repository repo,
             PointerService pointerService,
-            Action<(PointerFile PointerFile, bool AlreadyRestored)> indexedPointerFile,
+            Action<(PointerFile PointerFile, BinaryFile RestoredBinaryFile)> indexedPointerFile,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
@@ -39,7 +39,7 @@ namespace Arius.Core.Commands.Restore
         private readonly Repository repo;
         private readonly int maxDegreeOfParallelism;
         private readonly PointerService pointerService;
-        private readonly Action<(PointerFile PointerFile, bool AlreadyRestored)> indexedPointerFile;
+        private readonly Action<(PointerFile PointerFile, BinaryFile RestoredBinaryFile)> indexedPointerFile;
 
         protected override async Task TaskBodyImplAsync(FileSystemInfo fsi)
         {
@@ -67,7 +67,7 @@ namespace Arius.Core.Commands.Restore
                 if (fsi is DirectoryInfo root)
                     ProcessPointersInDirectory(root);
                 else if (fsi is FileInfo fi && fi.IsPointerFile())
-                    ProcessPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
+                    IndexedPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
                 else
                     throw new InvalidOperationException($"Argument {fsi} is not valid");
             }
@@ -83,7 +83,7 @@ namespace Arius.Core.Commands.Restore
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);
-                ProcessPointerFile(pf);
+                IndexedPointerFile(pf);
             }
         }
 
@@ -116,14 +116,14 @@ namespace Arius.Core.Commands.Restore
             var pfs = root.GetPointerFileInfos().Select(fi => new PointerFile(root, fi));
 
             foreach (var pf in pfs)
-                ProcessPointerFile(pf);
+                IndexedPointerFile(pf);
         }
 
-        private void ProcessPointerFile(PointerFile pf)
+        private void IndexedPointerFile(PointerFile pf)
         {
             var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
 
-            indexedPointerFile((pf, bf is not null));
+            indexedPointerFile((pf, bf)); //bf can be null if it is not yet restored
         }
     }
 
