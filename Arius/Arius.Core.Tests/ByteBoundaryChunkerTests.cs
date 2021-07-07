@@ -29,7 +29,7 @@ namespace Arius.Core.Tests
         public void ChunkAndMerge_DedupFile_Match()
         {
             //Create the HashValueProvider and the Chunker
-            var s = GetServices(TestSetup.ArchiveTestDirectory);
+            var s = GetServices();
             var hvp = s.GetRequiredService<IHashValueProvider>();
             var chunker = s.GetRequiredService<ByteBoundaryChunker>();
 

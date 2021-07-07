@@ -38,19 +38,18 @@ namespace Arius.Core.Tests
 
 
 
-        protected Repository GetRepository(DirectoryInfo path)
+        protected Repository GetRepository()
         {
-            return GetServices(path).GetRequiredService<Repository>();
+            return GetServices().GetRequiredService<Repository>();
         }
 
-        protected ServiceProvider GetServices(DirectoryInfo path)
+        protected ServiceProvider GetServices()
         {
             return TestSetup.Facade.GetServices(
                 TestSetup.AccountName,
                 TestSetup.AccountKey,
                 TestSetup.Container.Name,
-                TestSetup.Passphrase,
-                path.FullName);
+                TestSetup.Passphrase);
         }
 
         protected async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)

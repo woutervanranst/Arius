@@ -551,24 +551,27 @@ namespace Arius.Core.Commands.Archive
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             int maxDegreeOfParallelism,
             Repository repo,
+            DirectoryInfo root,
             PointerService pointerService,
             DateTime versionUtc,
             Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.repo = repo;
+            this.root = root;
             this.pointerService = pointerService;
             this.versionUtc = versionUtc;
         }
 
         private readonly Repository repo;
+        private readonly DirectoryInfo root;
         private readonly PointerService pointerService;
         private readonly DateTime versionUtc;
 
         protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe)
         {
             if (!pfe.IsDeleted &&
-                pointerService.GetPointerFile(pfe) is null && 
-                pointerService.GetBinaryFile(pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+                pointerService.GetPointerFile(root, pfe) is null && 
+                pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
                 await repo.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);

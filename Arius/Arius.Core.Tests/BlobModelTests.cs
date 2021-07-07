@@ -28,7 +28,7 @@ namespace Arius.Core.Tests
         [Test]
         public void Properties_ChunkBlobBase_Valid()
         {
-            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
+            var repo = GetRepository();
 
             var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
             var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobClient;
@@ -58,7 +58,7 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Properties_ManifestBlob_Valid()
         {
-            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
+            var repo = GetRepository();
 
             //var manifestBlob = repo.GetAllManifestBlobs().First();
 

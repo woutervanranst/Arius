@@ -68,7 +68,7 @@ namespace Arius.Core.Commands2
         {
             var pfs = pfes
                 .AsParallelWithParallelism()
-                .Select(pfe => _ps.CreatePointerFileIfNotExists(pfe));
+                .Select(pfe => _ps.CreatePointerFileIfNotExists(_root, pfe));
 
             return pfs.ToArray();
         }

@@ -49,6 +49,7 @@ namespace Arius.Core.Commands
             var repo = services.GetRequiredService<Repository>();
             var versionUtc = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
             var pointerService = services.GetRequiredService<PointerService>();
+            var root = new DirectoryInfo(options.Path);
 
 
             var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
@@ -57,7 +58,7 @@ namespace Arius.Core.Commands
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
-                sourceFunc: () => new DirectoryInfo(options.Path),
+                sourceFunc: () => root,
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 fastHash: options.FastHash,
                 repo: repo,
@@ -281,6 +282,7 @@ namespace Arius.Core.Commands
                 },
                 maxDegreeOfParallelism: 1 /*2*/,
                 repo: repo,
+                root: root,
                 pointerService: pointerService,
                 versionUtc: versionUtc,
                 done: () => { });

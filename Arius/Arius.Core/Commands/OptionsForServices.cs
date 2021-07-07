@@ -5,33 +5,31 @@ using FluentValidation;
 using System;
 namespace Arius.Core.Commands
 {
-    internal class AllOptions : 
+    internal class OptionsForServices : 
         Facade.Facade.IOptions,
         
         Repository.IOptions,
 
         IHashValueProvider.IOptions,
-        PointerService.IOptions,
-        IBlobCopier.IOptions //TODO remove this? see https://github.com/woutervanranst/Arius/issues/28
+        IBlobCopier.IOptions, //TODO remove this? see https://github.com/woutervanranst/Arius/issues/28
+        IEncrypter.IOptions
     {
         public string AccountName { get; private init; }
         public string AccountKey { get; private init; }
         public string Container { get; private init; }
         public string Passphrase { get; private init; }
-        public string Path { get; private init; }
 
-        internal AllOptions(string accountName, string accountKey, string container, string passphrase, string path)
+        internal OptionsForServices(string accountName, string accountKey, string container, string passphrase)
         {
             AccountName = accountName;
             AccountKey = accountKey;
             Passphrase = passphrase;
             Container = container;
-            Path = path;
 
             var validator = new Validator();
             validator.ValidateAndThrow(this);
         }
-        private class Validator : AbstractValidator<AllOptions>
+        private class Validator : AbstractValidator<OptionsForServices>
         {
             public Validator()
             {
@@ -39,7 +37,6 @@ namespace Arius.Core.Commands
                 RuleFor(o => o.AccountKey).NotEmpty();
                 RuleFor(o => o.Container).NotEmpty();
                 RuleFor(o => o.Passphrase).NotEmpty();
-                RuleFor(o => o.Path).NotEmpty();
             }
         }
     }

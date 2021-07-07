@@ -118,9 +118,9 @@ namespace Arius.Core.Facade
             return rc;
         }
 
-        internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase, string path)
+        internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
         {
-            var options = new AllOptions(accountName, accountKey, container, passphrase, path);
+            var options = new OptionsForServices(accountName, accountKey, container, passphrase);
             
             return CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
         }

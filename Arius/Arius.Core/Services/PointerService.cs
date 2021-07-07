@@ -9,20 +9,12 @@ namespace Arius.Core.Services
 {
     internal class PointerService
     {
-        internal interface IOptions
+        public PointerService(ILogger<PointerService> logger, IHashValueProvider hvp)
         {
-            string Path { get; }
-        }
-
-
-        public PointerService(IOptions options, ILogger<PointerService> logger, IHashValueProvider hvp)
-        {
-            root = new DirectoryInfo(options.Path);
             this.logger = logger;
             this.hvp = hvp;
         }
 
-        private readonly DirectoryInfo root;
         private readonly ILogger<PointerService> logger;
         private readonly IHashValueProvider hvp;
 
@@ -45,7 +37,7 @@ namespace Arius.Core.Services
         /// <summary>
         /// Create a pointer from a PointerFileEntry
         /// </summary>
-        public PointerFile CreatePointerFileIfNotExists(PointerFileEntry pfe)
+        public PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileEntry pfe)
         {
             var target = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
 
@@ -153,9 +145,9 @@ namespace Arius.Core.Services
         /// </summary>
         /// <param name="pfe"></param>
         /// <returns></returns>
-        public PointerFile GetPointerFile(PointerFileEntry pfe)
+        public PointerFile GetPointerFile(DirectoryInfo root, PointerFileEntry pfe)
         {
-            var pfi = new FileInfo(GetPointerFileFullName(pfe));
+            var pfi = new FileInfo(GetPointerFileFullName(root, pfe));
 
             if (!pfi.Exists) //TODO check op LastWriteTimeUtc ook?
                 return null;
@@ -165,8 +157,7 @@ namespace Arius.Core.Services
 
         private static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
         private static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
-
-        private string GetPointerFileFullName(PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
+        private static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
 
         /// <summary>
@@ -180,17 +171,17 @@ namespace Arius.Core.Services
         {
             var bfi = new FileInfo(GetBinaryFileFullName(pf));
 
-            return GetBinaryFile(bfi, pf.Hash, ensureCorrectHash);
+            return GetBinaryFile(pf.Root, bfi, pf.Hash, ensureCorrectHash);
         }
 
-        public BinaryFile GetBinaryFile(PointerFileEntry pfe, bool ensureCorrectHash)
+        public BinaryFile GetBinaryFile(DirectoryInfo root, PointerFileEntry pfe, bool ensureCorrectHash)
         {
-            var bfi = new FileInfo(GetBinaryFileFullname(pfe));
+            var bfi = new FileInfo(GetBinaryFileFullname(root, pfe));
 
-            return GetBinaryFile(bfi, pfe.ManifestHash, ensureCorrectHash);
+            return GetBinaryFile(root, bfi, pfe.ManifestHash, ensureCorrectHash);
         }
 
-        private BinaryFile GetBinaryFile(FileInfo bfi, ManifestHash manifestHash, bool ensureCorrectHash)
+        private BinaryFile GetBinaryFile(DirectoryInfo root, FileInfo bfi, ManifestHash manifestHash, bool ensureCorrectHash)
         {
             if (!bfi.Exists)
                 return null;
@@ -204,7 +195,7 @@ namespace Arius.Core.Services
             return new BinaryFile(root, bfi, manifestHash);
         }
 
-        private string GetBinaryFileFullname(PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(pfe));
+        private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
         private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
         private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
     }

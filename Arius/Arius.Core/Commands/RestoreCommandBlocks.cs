@@ -52,7 +52,7 @@ namespace Arius.Core.Commands.Restore
 
                     logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
-                    var t1 = Task.Run(() => CreatePointerFilesIfNotExist(currentPfes));
+                    var t1 = Task.Run(() => CreatePointerFilesIfNotExist(root, currentPfes));
                     var t2 = Task.Run(() => DeletePointerFilesIfShouldNotExist(root, currentPfes));
 
                     await Task.WhenAll(t1, t2);
@@ -77,13 +77,13 @@ namespace Arius.Core.Commands.Restore
         /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
         /// </summary>
         /// <returns></returns>
-        private void CreatePointerFilesIfNotExist(PointerFileEntry[] pfes)
+        private void CreatePointerFilesIfNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
         {
             foreach (var pfe in pfes
                                     .AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
-                var pf = pointerService.CreatePointerFileIfNotExists(pfe);
+                var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);
                 ProcessPointerFile(pf);
             }
         }

@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Arius.Core.Commands
 {
-    internal class RestoreCommandOptions : AllOptions,
+    internal class RestoreCommandOptions : OptionsForServices,
         Facade.Facade.IOptions,
         RestoreCommand.IOptions,
 
@@ -15,7 +15,6 @@ namespace Arius.Core.Commands
         MergeBlockProvider.IOptions,
 
         //IChunker.IOptions, // geen IChunker options
-        PointerService.IOptions,
 
         IBlobCopier.IOptions,
         IHashValueProvider.IOptions,
@@ -26,13 +25,15 @@ namespace Arius.Core.Commands
         public bool Synchronize { get; private init; }
         public bool Download { get; private init; }
         public bool KeepPointers { get; private init; }
+        public string Path { get; private init; }
 
         internal RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
-            : base(accountName, accountKey, container, passphrase, path)
+            : base(accountName, accountKey, container, passphrase)
         {
             Synchronize = synchronize;
             Download = download;
             KeepPointers = keepPointers;
+            Path = path;
 
             var validator = new Validator();
             validator.ValidateAndThrow(this);

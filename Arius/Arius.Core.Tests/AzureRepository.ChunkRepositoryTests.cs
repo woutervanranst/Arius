@@ -10,7 +10,7 @@ namespace Arius.Core.Tests
         [Test]
         public void GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
         {
-            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
+            var repo = GetRepository();
             
             var cb1 = repo.GetAllChunkBlobs().First();
 
@@ -22,7 +22,7 @@ namespace Arius.Core.Tests
 
         public void GetChunkBlobByName_NotExisting_Null()
         {
-            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
+            var repo = GetRepository();
 
             var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
             

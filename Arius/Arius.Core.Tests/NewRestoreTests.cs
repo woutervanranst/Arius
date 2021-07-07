@@ -100,7 +100,7 @@ namespace Arius.Core.Tests
 
             var pf = pfi2.GetPointerFile();
 
-            var ps = GetServices(TestSetup.RestoreTestDirectory).GetRequiredService<PointerService>();
+            var ps = GetServices().GetRequiredService<PointerService>();
             var bf = ps.GetBinaryFile(pf, true);
 
             Assert.NotNull(bf);

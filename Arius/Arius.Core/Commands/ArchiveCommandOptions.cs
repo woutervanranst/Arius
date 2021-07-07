@@ -5,29 +5,26 @@ using System.IO;
 
 namespace Arius.Core.Commands
 {
-    internal class ArchiveCommandOptions : AllOptions, 
+    internal class ArchiveCommandOptions : OptionsForServices, 
         Facade.Facade.IOptions,
 
-        ArchiveCommand.IOptions,
-
-        //AzureRepository.IOptions,
-        IBlobCopier.IOptions,
-        PointerService.IOptions,
-        IEncrypter.IOptions,
-        IHashValueProvider.IOptions
+        ArchiveCommand.IOptions
     {
         public bool FastHash { get; private init; }
         public bool RemoveLocal { get; private init; }
         public AccessTier Tier { get; private init; }
         public bool Dedup { get; private init; }
+        public string Path { get; private init; }
+
 
         internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
-            : base(accountName, accountKey, container, passphrase, path)
+            : base(accountName, accountKey, container, passphrase)
         {
             FastHash = fastHash;
             RemoveLocal = removeLocal;
             Tier = tier;
             Dedup = dedup;
+            Path = path;
 
             var validator = new Validator();
             validator.ValidateAndThrow(this);
