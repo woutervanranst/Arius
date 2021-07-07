@@ -9,6 +9,8 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
@@ -16,7 +18,7 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Core.Tests
 {
-    public partial class ArchiveRestoreTests
+    internal partial class ArchiveRestoreTests
     {
         [OneTimeSetUp]
         public void ClassInit_Restore()
@@ -29,7 +31,7 @@ namespace Arius.Core.Tests
         {
             // Runs before each test. (Optional)
 
-            TestSetup.restoreTestDirectory.Clear();
+            TestSetup.RestoreTestDirectory.Clear();
         }
 
         private static readonly FileComparer comparer = new();
@@ -37,12 +39,12 @@ namespace Arius.Core.Tests
         [Test, Order(110)]
         public async Task Restore_OneFile_FromCoolTier()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
+            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
 
 
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
@@ -64,9 +66,9 @@ namespace Arius.Core.Tests
         public async Task Restore_FileArchiveTier_HydratingBlob()
         {
             //SET UP -- Clear directories & create a new file (with new hash) to archive
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
-            TestSetup.archiveTestDirectory.Clear();
-            var bfi = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "archivefile2.txt"));
+            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
+            TestSetup.ArchiveTestDirectory.Clear();
+            var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile2.txt"));
             Assert.IsFalse(bfi.Exists);
             TestSetup.CreateRandomFile(bfi.FullName, 0.1);
 
@@ -86,7 +88,7 @@ namespace Arius.Core.Tests
             Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
             //11 A hydrated blob does not yet exist
-            var bc_Hydrating = TestSetup.container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
+            var bc_Hydrating = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
             
             //12 Obtaining properties results in an exception
@@ -111,9 +113,9 @@ namespace Arius.Core.Tests
         public async Task Restore_FileArchiveTier_FromHydratedBlob()
         {
             //SET UP -- Clear directories & ceate a new file (with new hash) to archive
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
-            TestSetup.archiveTestDirectory.Clear();
-            var bfi = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "archivefile3.txt"));
+            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
+            TestSetup.ArchiveTestDirectory.Clear();
+            var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile3.txt"));
             Assert.IsFalse(bfi.Exists);
             TestSetup.CreateRandomFile(bfi.FullName, 0.1);
 
@@ -134,11 +136,11 @@ namespace Arius.Core.Tests
 
             //20 "Simulate" a hydrated blob
             //21 The original blob exists
-            var bc_Original = TestSetup.container.GetBlobClient(cb.FullName);
+            var bc_Original = TestSetup.Container.GetBlobClient(cb.FullName);
             Assert.IsTrue(bc_Original.Exists());
             
             //22 The hydrated blob does not yet exist
-            var bc_Hydrated = TestSetup.container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
+            var bc_Hydrated = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
             
             //23 Copy the original to the hydrated folder
@@ -157,8 +159,8 @@ namespace Arius.Core.Tests
 
 
             //ASSERT OUTCOME
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
+            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
 
             //30 The folders are identical
             bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
@@ -167,14 +169,14 @@ namespace Arius.Core.Tests
 
 
         [Test, Order(1001)]
-        public async Task Restore_FullSourceDirectory_NoPointers()
+        public async Task Restore_SynchronizeDirectoryNoPointers_Success()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: true, keepPointers: false);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
+            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
 
 
             bool allNonPointerFilesAreRestored = !restoredFiles.Except(archiveFiles, comparer).Any();
@@ -191,12 +193,12 @@ namespace Arius.Core.Tests
         [Test, Order(1002)]
         public async Task Restore_FullSourceDirectory_OnlyPointers()
         {
-            Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
             await RestoreCommand(synchronize: true, download: false, keepPointers: true);
 
-            var archiveFiles = TestSetup.archiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.restoreTestDirectory.GetAllFileInfos();
+            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
+            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
 
 
             archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
@@ -206,85 +208,13 @@ namespace Arius.Core.Tests
             Assert.IsTrue(areIdentical);
         }
 
-        [Test, Order(1003)]
-        public async Task Restore_FullSourceDirectory_Selectively()
-        {
-            throw new NotImplementedException();
-
-            //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
-
-            //// Copy one pointer (to restore) to the restoredirectory
-            //var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-            //pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
-
-            //var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
-            //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
-
-            //Assert.IsTrue(File.Exists(pf1.FullName));
-            //Assert.IsNull(bf1); //does not exist
+        
 
 
-            ////This is not yet implemented
-            //Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
-
-            //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
+        
 
 
-            //Assert.IsTrue(File.Exists(pf1.FullName));
-            //Assert.IsTrue(File.Exists(bf1.FullName));
-
-            //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
-
-            ////Assert.IsTrue(pfi1.Exists);
-            //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
-            //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
-        }
-
-
-        /// <summary>
-        /// Restore to TestSetup.RestoreTestDirectory
-        /// </summary>
-        /// <param name="synchronize"></param>
-        /// <param name="download"></param>
-        /// <param name="keepPointers"></param>
-        /// <returns></returns>
-        internal static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
-        {
-            return await RestoreCommand(
-                synchronize: synchronize,
-                download: download,
-                keepPointers: keepPointers,
-                path: TestSetup.restoreTestDirectory.FullName);
-        }
-
-        /// <summary>
-        /// Restore to the given path
-        /// </summary>
-        /// <param name="synchronize"></param>
-        /// <param name="download"></param>
-        /// <param name="keepPointers"></param>
-        /// <param name="path"></param>
-        /// <returns></returns>
-        internal static async Task<IServiceProvider> RestoreCommand(
-            string path,
-            bool synchronize = true, 
-            bool download = true, 
-            bool keepPointers = true)
-        {
-            var c = TestSetup.Facade.CreateRestoreCommand(
-                TestSetup.AccountName,
-                TestSetup.AccountKey,
-                TestSetup.container.Name,
-                TestSetup.passphrase,
-                synchronize,
-                download,
-                keepPointers,
-                path);
-
-            await c.Execute();
-
-            return c.Services;
-        }
+        
 
         private class FileComparer : IEqualityComparer<FileInfo>
         {

@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Arius.Core.Commands
 {
-    internal class RestoreCommandOptions : AzureRepositoryOptions,
+    internal class RestoreCommandOptions : AllOptions,
         Facade.Facade.IOptions,
         RestoreCommand.IOptions,
 
@@ -26,15 +26,13 @@ namespace Arius.Core.Commands
         public bool Synchronize { get; private init; }
         public bool Download { get; private init; }
         public bool KeepPointers { get; private init; }
-        public string Path { get; private init; }
 
         internal RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
-            : base(accountName, accountKey, container, passphrase)
+            : base(accountName, accountKey, container, passphrase, path)
         {
             Synchronize = synchronize;
             Download = download;
             KeepPointers = keepPointers;
-            Path = path;
 
             var validator = new Validator();
             validator.ValidateAndThrow(this);

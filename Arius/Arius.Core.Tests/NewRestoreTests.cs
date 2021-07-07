@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Extensions;
-using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
@@ -9,19 +9,11 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    class NewRestoreTests
+    class NewRestoreTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit()
+        protected override void BeforeEachTest()
         {
-            // Executes once for the test class. (Optional)
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
-            TestSetup.restoreTestDirectory.Clear();
+            TestSetup.RestoreTestDirectory.Clear();
         }
 
 
@@ -30,14 +22,14 @@ namespace Arius.Core.Tests
         /// </summary>
         /// <returns></returns>
         [Test] //Deze hoort bij Order(1001) maar gemaakt om apart te draaien
-        public async Task Restore_Synchronize_CreatedIfNotExistAndDeletedIfExist()
+        public async Task Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized()
         {
             //Archive the full directory so that only pointers remain
-            await ArchiveRestoreTests.EnsureFullDirectoryArchived(removeLocal: true);
+            await EnsureFullDirectoryArchived(removeLocal: true);
 
-            var pf1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-            var pf2 = TestSetup.archiveTestDirectory.GetPointerFileInfos().Skip(1).First();
-            var f3 = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "randomotherfile.doc"));
+            var pf1 = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pf2 = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
+            var f3 = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "randomotherfile.doc"));
             File.WriteAllText(f3.FullName, "stuff");
 
             //They do not refer to the same pointerfile
@@ -48,7 +40,7 @@ namespace Arius.Core.Tests
 
 
             //run archive
-            await ArchiveRestoreTests.RestoreCommand(synchronize: true, download: false, keepPointers: true, path: TestSetup.archiveTestDirectory.FullName);
+            await RestoreCommand(synchronize: true, download: false, keepPointers: true, path: TestSetup.ArchiveTestDirectory.FullName);
 
             Assert.IsTrue(pf1.Exists);
             Assert.IsFalse(pf2.Exists);
@@ -56,31 +48,23 @@ namespace Arius.Core.Tests
         }
 
 
-
         [Test]
-        public async Task ha()
+        public async Task Restore_SynchronizeFile_InvalidOperationException()
         {
+            // Scenario: Restore - pass synchronize option and pass a single file as path -- should result in InvalidOperation
+
             //Archive the full directory so that only pointers remain
-            await ArchiveRestoreTests.EnsureFullDirectoryArchived(removeLocal: true);
+            await EnsureFullDirectoryArchived(removeLocal: true);
 
-            // synchronize and download
-
-            // synchronize and do not download
-
-            // download a file
-
-            // download a directory
-
-
-            // synchronize + file
-            var pfi = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-            var pfi2 = pfi.CopyTo(TestSetup.restoreTestDirectory);
+            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory);
             Assert.CatchAsync<InvalidOperationException>(async () =>
-            { 
+            {
                 try
-                { 
-                    await ArchiveRestoreTests.RestoreCommand(
-                        synchronize: true, 
+                {
+                    await RestoreCommand(
+                        synchronize: true,
+                        download: false,
                         path: pfi2.FullName);
                 }
                 catch (AggregateException e)
@@ -88,25 +72,93 @@ namespace Arius.Core.Tests
                     throw e.InnerException.InnerException;
                 }
             });
-    }
+        }
+
+
+        [Test]
+        public async Task Restore_File_Success()
+        {
+            // Scenario: restore a single file
+
+            //Archive the full directory so that only pointers remain
+            await EnsureFullDirectoryArchived(removeLocal: true);
+
+            // 1. synchronize and do not download folder: Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
+            // 2.1 synchronize and do not fownload file -- invalidoperaiton
+            // 2.2 synchroniwe and download file -- invalidoperatoin
+            // 3. do not synchronize and download file
+
+            // synchronize and download folder --> Restore_SynchronizeDirectoryNoPointers_Success
+            // do not synchronize and download folder --> Restore_NoSynchronizeDownload_Success
+
+
+
+            // synchronize + file
+            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory.CreateSubdirectory("subdir"));
+            await RestoreCommand(synchronize: false, download: true, path: pfi2.FullName);
+
+            var pf = pfi2.GetPointerFile();
+
+            var ps = GetServices(TestSetup.RestoreTestDirectory).GetRequiredService<PointerService>();
+            var bf = ps.GetBinaryFile(pf, true);
+
+            Assert.NotNull(bf);
+        }
+
+
+        [Test]
+        public async Task Restore_NoSynchronizeDownload_Success()
+        {
+            // Selectively restore
+
+            throw new NotImplementedException();
+
+            //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+
+            //// Copy one pointer (to restore) to the restoredirectory
+            //var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
+            //pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
+
+            //var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
+            //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsNull(bf1); //does not exist
+
+
+            ////This is not yet implemented
+            //Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
+
+            //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
+
+
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsTrue(File.Exists(bf1.FullName));
+
+            //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+
+            ////Assert.IsTrue(pfi1.Exists);
+            //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
+            //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
+        }
 
 
         [Test]
         public async Task Restore_FileDoesNotExist_ValidationException()
         {
             //Archive the full directory so that only pointers remain
-            await ArchiveRestoreTests.EnsureFullDirectoryArchived(removeLocal: true);
+            await EnsureFullDirectoryArchived(removeLocal: true);
 
-            var pfi = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-            var pfi2 = pfi.CopyTo(TestSetup.restoreTestDirectory);
+            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory);
 
             // Delete the pointerfile
             pfi2.Delete();
 
             // Restore a file that does not exist
             Assert.CatchAsync<FluentValidation.ValidationException>(async () => 
-                await ArchiveRestoreTests.RestoreCommand(
-                    path: pfi2.FullName));
+                await RestoreCommand(path: pfi2.FullName));
         }
 
         [Test]
@@ -118,15 +170,6 @@ namespace Arius.Core.Tests
 
 
 
-        public void TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
-        }
+        
     }
 }

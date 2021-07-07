@@ -8,15 +8,15 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    class BlobModelTests
+    class BlobModelTests : TestBase
     {
         [OneTimeSetUp]
         public void ClassInit()
         {
             // Executes once for the test class. (Optional)
 
-            if (TestSetup.archiveTestDirectory.Exists) TestSetup.archiveTestDirectory.Delete(true);
-            TestSetup.archiveTestDirectory.Create();
+            if (TestSetup.ArchiveTestDirectory.Exists) TestSetup.ArchiveTestDirectory.Delete(true);
+            TestSetup.ArchiveTestDirectory.Create();
         }
 
         [SetUp]
@@ -28,7 +28,7 @@ namespace Arius.Core.Tests
         [Test]
         public void Properties_ChunkBlobBase_Valid()
         {
-            var repo = TestSetup.GetRepository();
+            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
 
             var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
             var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobClient;
@@ -58,12 +58,12 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Properties_ManifestBlob_Valid()
         {
-            var repo = TestSetup.GetRepository();
+            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
 
             //var manifestBlob = repo.GetAllManifestBlobs().First();
 
             var h = (await repo.GetAllManifestHashes()).First();
-            var bi = TestSetup.container.GetBlobs(prefix: $"{Repository.ManifestDirectoryName}/{h.Value}").Single();
+            var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.ManifestDirectoryName}/{h.Value}").Single();
             var manifestBlob = new ManifestBlob(bi);
 
 

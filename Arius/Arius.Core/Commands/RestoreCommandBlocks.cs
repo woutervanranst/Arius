@@ -67,7 +67,7 @@ namespace Arius.Core.Commands.Restore
                 if (fsi is DirectoryInfo root)
                     ProcessPointersInDirectory(root);
                 else if (fsi is FileInfo fi && fi.IsPointerFile())
-                    ProcessPointerFile(new PointerFile(null, fi)); //TODO test dit in non root
+                    ProcessPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
                 else
                     throw new InvalidOperationException($"Argument {fsi} is not valid");
             }

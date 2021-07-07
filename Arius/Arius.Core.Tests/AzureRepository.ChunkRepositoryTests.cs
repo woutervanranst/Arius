@@ -5,25 +5,12 @@ using System.Linq;
 
 namespace Arius.Core.Tests
 {
-    class ChunkRepositoryTests
+    class ChunkRepositoryTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit()
-        {
-            // Executes once for the test class. (Optional)
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
-        }
-
-
         [Test]
         public void GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
         {
-            var repo = TestSetup.GetRepository();
+            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
             
             var cb1 = repo.GetAllChunkBlobs().First();
 
@@ -35,23 +22,11 @@ namespace Arius.Core.Tests
 
         public void GetChunkBlobByName_NotExisting_Null()
         {
-            var repo = TestSetup.GetRepository();
+            var repo = GetRepository(TestSetup.ArchiveTestDirectory);
 
             var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
             
             Assert.IsNull(cb);
-        }
-
-
-        public void TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
         }
     }
 }

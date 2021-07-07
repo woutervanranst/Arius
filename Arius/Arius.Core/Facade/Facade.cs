@@ -118,42 +118,11 @@ namespace Arius.Core.Facade
             return rc;
         }
 
-        internal Repository GetRepository(string accountName, string accountKey, string container, string passphrase)
+        internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase, string path)
         {
-            var options = new AzureRepositoryOptions(accountName, accountKey, container, passphrase);
+            var options = new AllOptions(accountName, accountKey, container, passphrase, path);
             
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
-            
-            var repo = sp.GetRequiredService<Repository>();
-            
-            return repo;
-
-            //var sc = new ServiceCollection();
-
-            //sc
-            //    //Add Services
-            //    .AddSingleton<IBlobCopier, AzCopier>()
-            //    .AddSingleton<AzureRepository>();
-
-            //// Add Options
-            //sc
-            //    //sc.AddOptions<AzCopyAppSettings>().Bind().Configure((a) => a.() => azCopyAppSettings);
-            //    //sc.AddOptions<TempDirectoryAppSettings>(() => tempDirectoryAppSettings);
-            //    //.AddOptions<IAzCopyAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("AzCopier"));
-            //    //services.AddOptions<ITempDirectoryAppSettings>().Bind(hostBuilderContext.Configuration.GetSection("TempDir"));
-            //    .AddSingleton(azCopyAppSettings)
-            //    .AddSingleton(tempDirectoryAppSettings);
-
-            //// Add the options for the services
-            //sc
-            //    .AddSingleton<IBlobCopier.IOptions>(options);
-
-            //sc
-            //    .AddSingleton<ILoggerFactory>(loggerFactory)
-            //    .AddLogging();
-
-            //return sc.BuildServiceProvider()
-            //    .GetRequiredService<AzureRepository>();
+            return CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
         }
 
 

@@ -5,7 +5,7 @@ using System.IO;
 
 namespace Arius.Core.Commands
 {
-    internal class ArchiveCommandOptions : AzureRepositoryOptions, 
+    internal class ArchiveCommandOptions : AllOptions, 
         Facade.Facade.IOptions,
 
         ArchiveCommand.IOptions,
@@ -20,16 +20,14 @@ namespace Arius.Core.Commands
         public bool RemoveLocal { get; private init; }
         public AccessTier Tier { get; private init; }
         public bool Dedup { get; private init; }
-        public string Path { get; private init; }
 
         internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
-            : base(accountName, accountKey, container, passphrase)
+            : base(accountName, accountKey, container, passphrase, path)
         {
             FastHash = fastHash;
             RemoveLocal = removeLocal;
             Tier = tier;
             Dedup = dedup;
-            Path = path;
 
             var validator = new Validator();
             validator.ValidateAndThrow(this);

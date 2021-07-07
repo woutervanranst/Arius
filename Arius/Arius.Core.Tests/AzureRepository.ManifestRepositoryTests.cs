@@ -5,39 +5,14 @@ using System;
 
 namespace Arius.Core.Tests
 {
-    class ManifestRepositoryTests
+    class ManifestRepositoryTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit_Archive()
-        {
-            // Executes once for the test class. (Optional)
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
-        }
-
-
         [Test]
         public void GetChunkHashesAsync_InvalidManifestHash_InvalidOperationException()
         {
-            var manifestRepo = TestSetup.GetRepository(); //TODO as ManifestRepository?
+            var manifestRepo = GetRepository(TestSetup.ArchiveTestDirectory); //TODO as ManifestRepository?
 
             Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunkHashesForManifestAsync(new ManifestHash("idonotexist")));
-        }
-
-
-        public void TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
         }
     }
 }

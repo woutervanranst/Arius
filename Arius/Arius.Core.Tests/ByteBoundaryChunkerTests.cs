@@ -4,6 +4,7 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
@@ -16,28 +17,22 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    class ByteBoundaryChunkerTests
+    class ByteBoundaryChunkerTests : TestBase
     {
-        [OneTimeSetUp]
-        public void ClassInit()
+        protected override void BeforeTestClass()
         {
-            // Executes once for the test class. (Optional)
-
-            if (TestSetup.archiveTestDirectory.Exists) TestSetup.archiveTestDirectory.Delete(true);
-            TestSetup.archiveTestDirectory.Create();
-        }
-
-        [SetUp]
-        public void TestInit()
-        {
-            // Runs before each test. (Optional)
+            if (TestSetup.ArchiveTestDirectory.Exists) TestSetup.ArchiveTestDirectory.Delete(true);
+            TestSetup.ArchiveTestDirectory.Create();
         }
 
         [Test]
         public void ChunkAndMerge_DedupFile_Match()
         {
             //Create the HashValueProvider and the Chunker
-            GetServices(out var hvp, out var chunker);
+            var s = GetServices(TestSetup.ArchiveTestDirectory);
+            var hvp = s.GetRequiredService<IHashValueProvider>();
+            var chunker = s.GetRequiredService<ByteBoundaryChunker>();
+
 
             //Generate new dedup file
             var bf = CreateNewBinaryFile(hvp);
@@ -48,7 +43,7 @@ namespace Arius.Core.Tests
             Assert.IsTrue(chunks.Length > 1);
 
             //Merge it
-            var target = new FileInfo(Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile2.xyz"));
+            var target = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile2.xyz"));
             chunker.Merge(chunks, target);
 
             //Calculate the hash of the result
@@ -58,18 +53,9 @@ namespace Arius.Core.Tests
         }
 
 
-        private static void GetServices(out IHashValueProvider hvp, out ByteBoundaryChunker chunker)
-        {
-            //var services = await ArchiveRestoreTests.ArchiveCommand(AccessTier.Cool, dedup: true);
-            var loggerFactory = (ILoggerFactory)NullLoggerFactory.Instance;
-            var config = new TempDirectoryAppSettings { TempDirectoryName = "test" };
-            hvp = new SHA256Hasher(loggerFactory.CreateLogger<SHA256Hasher>(), new DummyHashValueProviderOptions());
-            chunker = new ByteBoundaryChunker(loggerFactory.CreateLogger<ByteBoundaryChunker>(), config, hvp);
-        }
-
         private static BinaryFile CreateNewBinaryFile(IHashValueProvider hvp)
         {
-            var original = Path.Combine(TestSetup.archiveTestDirectory.FullName, "dedupfile1.xyz");
+            var original = Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile1.xyz");
             int sizeInKB = 1024 * 5;
             CreateRandomDedupableFile(original, sizeInKB / 10 * 1024, 10);
             var fi_original = new FileInfo(original);
@@ -100,17 +86,6 @@ namespace Arius.Core.Tests
         {
             public string Passphrase => "test";
             public bool FastHash => false;
-        }
-
-        public void TestCleanup()
-        {
-            // Runs after each test. (Optional)
-        }
-        [OneTimeTearDown]
-        public void ClassCleanup()
-        {
-            // Runs once after all tests in this class are executed. (Optional)
-            // Not guaranteed that it executes instantly after all tests from the class.
         }
     }
 }

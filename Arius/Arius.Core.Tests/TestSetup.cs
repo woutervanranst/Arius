@@ -9,47 +9,50 @@ using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
 namespace Arius.Core.Tests
 {
     [SetUpFixture]
-    public class TestSetup
+    internal static class TestSetup
     {
-        public static DirectoryInfo sourceFolder;
-        public static DirectoryInfo archiveTestDirectory;
-        public static DirectoryInfo restoreTestDirectory;
-        
-        private static BlobServiceClient bsc;
-        public static BlobContainerClient container;
-
-        private static CloudTableClient ctc;
-        public static readonly string passphrase = "myPassphrase";
-
+        public const string Passphrase = "myPassphrase";
         private const string TestContainerNamePrefix = "unittest";
 
         public static string AccountName { get; set; }
         public static string AccountKey { get; set; }
+        
         public static Core.Facade.Facade Facade { get; set; }
-        //internal static IServiceProvider GetServiceProvider() => Facade.TEST;
-        //internal static Repositories.AzureRepository GetAzureRepository() => GetServiceProvider().GetRequiredService<Repositories.AzureRepository>();
+        
+        public static DirectoryInfo SourceFolder { get; private set; }
+        public static DirectoryInfo ArchiveTestDirectory { get; private set; }
+        public static DirectoryInfo RestoreTestDirectory { get; private set; }
+
+
+        private static BlobServiceClient blobService;
+        public static BlobContainerClient Container { get; private set; }
+        private static CloudTableClient ctc;
 
 
         [OneTimeSetUp]
-        public void OneTimeSetup()
+        public static void OneTimeSetup()
         {
             // Executes once before the test run. (Optional)
 
-            sourceFolder = PopulateSourceDirectory();
+            var containerName = $"{TestContainerNamePrefix}{DateTime.Now.Ticks}";
+            var unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
 
-            // Create temp folder
-            var containerName = TestContainerNamePrefix + $"{DateTime.Now.Ticks}";
-            archiveTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "archive" + containerName));
-            restoreTestDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "ariusunittests", "restore" + containerName));
+            //Create and populate source directory
+            SourceFolder = unitTestRoot.CreateSubdirectory("source");
+            SourceFolder.Clear();
+            Populate(SourceFolder);
 
-            //testDirectoryInfo.Create();
+            ArchiveTestDirectory = unitTestRoot.CreateSubdirectory("archive");
+            RestoreTestDirectory = unitTestRoot.CreateSubdirectory("restore");
 
+            
             // Create temp container
             AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
             if (string.IsNullOrEmpty(AccountName))
@@ -62,8 +65,8 @@ namespace Arius.Core.Tests
 
             // Create new blob container
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={AccountName};AccountKey={AccountKey};EndpointSuffix=core.windows.net";
-            bsc = new BlobServiceClient(connectionString);
-            container = bsc.CreateBlobContainer(containerName);
+            blobService = new BlobServiceClient(connectionString);
+            Container = blobService.CreateBlobContainer(containerName);
 
 
             // Create reference to the storage tables
@@ -72,7 +75,7 @@ namespace Arius.Core.Tests
 
 
             // Initialize Facade
-            var loggerFactory = new Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory();
+            var loggerFactory = new NullLoggerFactory();
 
             var azCopyAppSettings = Options.Create(new AzCopyAppSettings()
             {
@@ -85,21 +88,15 @@ namespace Arius.Core.Tests
                 RestoreTempDirectoryName = ".ariusrestore"
             });
 
-            Facade = new Core.Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
+            Facade = new Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
         }
 
-        private static DirectoryInfo PopulateSourceDirectory()
+        private static void Populate(DirectoryInfo dir)
         {
-            var sourceDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), ".ariustestsourcedir"));
-            if (sourceDirectory.Exists) sourceDirectory.Delete(true);
-            sourceDirectory.Create();
-
-            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileA.1"), 0.5);
-            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "fileB.1"), 2);
-            CreateRandomFile(Path.Combine(sourceDirectory.FullName, "file with space.txt"), 5);
-            CreateRandomFile(Path.Combine(sourceDirectory.FullName, $"directory with spaces{Path.DirectorySeparatorChar}file with space.txt"), 5);
-
-            return sourceDirectory;
+            CreateRandomFile(Path.Combine(dir.FullName, "fileA.1"), 0.5);
+            CreateRandomFile(Path.Combine(dir.FullName, "fileB.1"), 2);
+            CreateRandomFile(Path.Combine(dir.FullName, "file with space.txt"), 5);
+            CreateRandomFile(Path.Combine(dir.FullName, $"directory with spaces{Path.DirectorySeparatorChar}file with space.txt"), 5);
         }
 
         public static void CreateRandomFile(string fileFullName, double sizeInMB)
@@ -121,26 +118,17 @@ namespace Arius.Core.Tests
             }
         }
 
-        internal static Repository GetRepository()
-        {
-            return Facade.GetRepository(AccountName, AccountKey, container.Name, passphrase);
-        }
-
-
-
-
-
         [OneTimeTearDown]
-        public void OneTimeTearDown()
+        public static void OneTimeTearDown()
         {
-            foreach (var d in archiveTestDirectory.Parent.GetDirectories())
+            foreach (var d in ArchiveTestDirectory.Parent.GetDirectories())
                 d.Delete(true);
 
-            foreach (var d in restoreTestDirectory.Parent.GetDirectories())
+            foreach (var d in RestoreTestDirectory.Parent.GetDirectories())
                 d.Delete(true);
 
-            foreach (var c in bsc.GetBlobContainers(prefix: TestContainerNamePrefix))
-                bsc.GetBlobContainerClient(c.Name).Delete();
+            foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
+                blobService.GetBlobContainerClient(c.Name).Delete();
 
             foreach (var t in ctc.ListTables(prefix: TestContainerNamePrefix))
                 t.Delete();
