@@ -13,7 +13,7 @@ namespace Arius.Core.Models
 
         public string Value { get; }
 
-        //public override string ToString() => Value;
+        public override string ToString() => Value;
 
         /// <summary>
         /// Print the first 8 characters of the value
@@ -62,6 +62,10 @@ namespace Arius.Core.Models
         public ManifestHash(string value) : base(value)
         { 
         }
+#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
+        // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
+        public override string ToString() => base.ToString();
+#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
     }
     internal record ChunkHash : Hash
     {
@@ -71,6 +75,11 @@ namespace Arius.Core.Models
         public ChunkHash(ManifestHash manifestHash) : base(manifestHash.Value)
         { 
         }
+#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
+        // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
+        public override string ToString() => base.ToString();
+#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
+
     }
 }
 

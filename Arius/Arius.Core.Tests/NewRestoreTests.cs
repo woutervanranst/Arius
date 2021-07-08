@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Configuration;
 using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -168,33 +169,37 @@ namespace Arius.Core.Tests
         }
 
         [Test]
-        public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_Success()
+        public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
         {
             await EnsureFullDirectoryArchived(removeLocal: false);
 
-            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
-            pfi.CopyTo(RestoreTestDirectory);
-            
+            var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
             
             var ps = GetServices().GetRequiredService<PointerService>();
-            //var pf = pfi.GetPointerFileFromBinaryFile();
-            //pfi.GetPointerFile
-            //var bf = ps.GetBinaryFile(pf, true);
+            var a_pf = ps.GetPointerFile(a_pfi);
+            var a_bf = ps.GetBinaryFile(a_pf, false);
 
-            
             var restoreTempDir = GetServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+
+            var a_bfi = new FileInfo(a_bf.FullName);
+            a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
+
             //var enc = GetServices().GetRequiredService<IEncrypter>();
             //enc.Encrypt(bf)
-            
 
+            await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
 
+            // for the restore operation we only restored it fron the local chunk cache
+            Assert.IsTrue(Commands.Restore.ProcessPointerFileBlock.chunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow2Executed);
+            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow3Executed);
+            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow4Executed);
 
+            // the binaryfile is restored
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, true);
+            Assert.IsNotNull(r_bfi);
         }
-
-
-
-
-
-        
     }
 }

@@ -41,7 +41,7 @@ namespace Arius.Core.Tests
         {
             // Executes once before the test run. (Optional)
 
-            var containerName = $"{TestContainerNamePrefix}{DateTime.Now.Ticks}";
+            var containerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMddHHmmss}";
             var unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
 
             //Create and populate source directory

@@ -81,7 +81,10 @@ namespace Arius.Core.Commands.Restore
                     if (bf is not null)
                         restoredManifests.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                 },
-                done: () => { });
+                done: () => 
+                {
+                    pointerFilesToDownload.CompleteAdding(); //S13
+                });
             var indexTask = indexBlock.GetTask;
 
             await indexTask;
@@ -107,7 +110,7 @@ namespace Arius.Core.Commands.Restore
                 },
                 done: () => { }
                 );
-            //var processPointerFileTask = processPointerFileBlock.GetTask;
+            var processPointerFileTask = processPointerFileBlock.GetTask;
 
 
 
