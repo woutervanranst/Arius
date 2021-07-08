@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -38,10 +39,6 @@ namespace Arius.Core.Tests
 
 
 
-        protected Repository GetRepository()
-        {
-            return GetServices().GetRequiredService<Repository>();
-        }
 
         protected ServiceProvider GetServices()
         {
@@ -50,6 +47,14 @@ namespace Arius.Core.Tests
                 TestSetup.AccountKey,
                 TestSetup.Container.Name,
                 TestSetup.Passphrase);
+        }
+        protected Repository GetRepository()
+        {
+            return GetServices().GetRequiredService<Repository>();
+        }
+        protected PointerService GetPointerService()
+        {
+            return GetServices().GetRequiredService<PointerService>();
         }
 
         protected async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
@@ -117,5 +122,10 @@ namespace Arius.Core.Tests
 
             return c.Services;
         }
+
+
+        protected DirectoryInfo SourceFolder => TestSetup.SourceFolder;
+        protected DirectoryInfo ArchiveTestDirectory => TestSetup.ArchiveTestDirectory;
+        protected DirectoryInfo RestoreTestDirectory => TestSetup.RestoreTestDirectory;
     }
 }

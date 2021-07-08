@@ -60,6 +60,7 @@ namespace Arius.Core.Commands.Archive
                 sourceFunc: () => root,
                 maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
                 fastHash: options.FastHash,
+                pointerService: pointerService,
                 repo: repo,
                 indexedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
                 indexedBinaryFile: arg =>
@@ -102,7 +103,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var chunksToProcess = new BlockingCollection<IChunkFile>();
-            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>(); //Key: ManifestHash, Value: ChunkHashes. 
+            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>();
 
             var chunkBlock = new ChunkBlock(
                 logger: loggerFactory.CreateLogger<ChunkBlock>(),

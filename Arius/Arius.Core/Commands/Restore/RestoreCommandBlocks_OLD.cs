@@ -83,7 +83,7 @@ namespace Arius.Core.Commands.Restore2
 
             Parallel.ForEach(_root.GetFiles($"*{PointerFile.Extension}", SearchOption.AllDirectories), pfi =>
             {
-                var relativeName = pfi.GetRelativePath(_root);
+                var relativeName = pfi.GetRelativeName(_root);
 
                 if (!relativeNames.Contains(relativeName))
                 {
@@ -113,7 +113,7 @@ namespace Arius.Core.Commands.Restore2
             _logger = logger;
             _hvp = hvp;
             _repo = repo;
-            _downloadTempDir = tempDirAppSettings.RestoreTempDirectory(new DirectoryInfo(options.Path));
+            _downloadTempDir = tempDirAppSettings.GetRestoreTempDirectory(new DirectoryInfo(options.Path));
         }
 
         private readonly ILogger<ProcessPointerChunksBlockProvider> _logger;
@@ -285,7 +285,7 @@ namespace Arius.Core.Commands.Restore2
             this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
-            downloadTempDir = tempDirAppSettings.RestoreTempDirectory(root);
+            downloadTempDir = tempDirAppSettings.GetRestoreTempDirectory(root);
         }
 
         private readonly AzCopyAppSettings azCopyAppSettings;

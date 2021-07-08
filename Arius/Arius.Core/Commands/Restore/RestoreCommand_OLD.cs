@@ -197,7 +197,7 @@ namespace Arius.Core.Commands.Restore2
                 mergeBlock.Completion,
                 hydrateBlock.Completion);
 
-            services.GetRequiredService<TempDirectoryAppSettings>().RestoreTempDirectory(root).DeleteEmptySubdirectories(true);
+            services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root).DeleteEmptySubdirectories(true);
 
             if (hydrateBlockProvider.AtLeastOneHydrating)
             {

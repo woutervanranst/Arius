@@ -8,16 +8,7 @@ namespace Arius.Core.Tests
 {
     static class FileInfoExtensions
     {
-        public static PointerFile GetPointerFile(this FileInfo binaryFile)
-        {
-            return PointerService.GetPointerFile(binaryFile.Directory, binaryFile);
-
-            //if (binaryFile.IsPointerFile()) throw new ArgumentException("this is not a BinaryFile");
-
-            //return new PointerFile(binaryFile.Directory, binaryFile.GetPointerFileInfo());
-        }
-
-        public static FileInfo GetPointerFileInfo(this FileInfo binaryFile)
+        public static FileInfo GetPointerFileInfoFromBinaryFile(this FileInfo binaryFile)
         {
             //if (binaryFile.IsPointerFile()) throw new ArgumentException("this is not a BinaryFile");
 

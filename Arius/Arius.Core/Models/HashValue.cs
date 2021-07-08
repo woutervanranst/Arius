@@ -32,10 +32,10 @@ namespace Arius.Core.Models
         //    return !c1.Equals(c2);
         //}
 
-        //public override int GetHashCode()
-        //{
-        //    return HashCode.Combine(Value);
-        //}
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode(); // HashCode.Combine(Value);
+        }
 
         //public override bool Equals(object obj)
         //{
@@ -44,14 +44,14 @@ namespace Arius.Core.Models
         //        return false;
 
         //    // If parameter cannot be cast to HashValue return false.
-        //    if (obj is not HashValue)
+        //    if (obj is not Hash)
         //        return false;
 
         //    // Return true if the fields match:
-        //    return Equals((HashValue)obj);
+        //    return Equals((Hash)obj);
         //}
 
-        //public bool Equals(HashValue obj)
+        //public virtual bool Equals(Hash obj)
         //{
         //    return Value == obj.Value;
         //}

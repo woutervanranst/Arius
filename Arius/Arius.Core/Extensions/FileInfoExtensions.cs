@@ -28,6 +28,6 @@ namespace Arius.Core.Extensions
             source.MoveTo(Path.Combine(source.DirectoryName, targetName));
         }
 
-        public static string GetRelativePath(this FileInfo fi, DirectoryInfo root) => Path.GetRelativePath(root.FullName, fi.FullName);
+        public static string GetRelativeName(this FileInfo fi, DirectoryInfo root) => Path.GetRelativePath(root.FullName, fi.FullName);
     }
 }

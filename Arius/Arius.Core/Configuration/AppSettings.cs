@@ -11,11 +11,15 @@ namespace Arius.Core.Configuration
 
 
         public string RestoreTempDirectoryName { get; init; }
-        public DirectoryInfo RestoreTempDirectory(DirectoryInfo root)
+
+        /// <summary>
+        /// Create a temporary folder in the given root where restored files will be stored
+        /// </summary>
+        /// <returns></returns>
+        public DirectoryInfo GetRestoreTempDirectory(DirectoryInfo root)
         {
             var di = new DirectoryInfo(Path.Combine(root.FullName, RestoreTempDirectoryName));
-            if (!di.Exists)
-                di.Create();
+            if (!di.Exists) di.Create();
 
             return di;
         }

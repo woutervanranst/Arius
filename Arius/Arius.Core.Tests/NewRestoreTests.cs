@@ -1,4 +1,5 @@
-﻿using Arius.Core.Extensions;
+﻿using Arius.Core.Configuration;
+using Arius.Core.Extensions;
 using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
@@ -13,7 +14,7 @@ namespace Arius.Core.Tests
     {
         protected override void BeforeEachTest()
         {
-            TestSetup.RestoreTestDirectory.Clear();
+            RestoreTestDirectory.Clear();
         }
 
 
@@ -27,9 +28,9 @@ namespace Arius.Core.Tests
             //Archive the full directory so that only pointers remain
             await EnsureFullDirectoryArchived(removeLocal: true);
 
-            var pf1 = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
-            var pf2 = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
-            var f3 = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "randomotherfile.doc"));
+            var pf1 = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pf2 = ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
+            var f3 = new FileInfo(Path.Combine(ArchiveTestDirectory.FullName, "randomotherfile.doc"));
             File.WriteAllText(f3.FullName, "stuff");
 
             //They do not refer to the same pointerfile
@@ -56,8 +57,8 @@ namespace Arius.Core.Tests
             //Archive the full directory so that only pointers remain
             await EnsureFullDirectoryArchived(removeLocal: true);
 
-            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
-            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory);
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory);
             Assert.CatchAsync<InvalidOperationException>(async () =>
             {
                 try
@@ -94,13 +95,12 @@ namespace Arius.Core.Tests
 
 
             // synchronize + file
-            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
-            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory.CreateSubdirectory("subdir"));
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory.CreateSubdirectory("subdir"));
             await RestoreCommand(synchronize: false, download: true, path: pfi2.FullName);
 
-            var pf = pfi2.GetPointerFile();
-
-            var ps = GetServices().GetRequiredService<PointerService>();
+            var ps = GetPointerService();
+            var pf = ps.GetPointerFile(pfi2);
             var bf = ps.GetBinaryFile(pf, true);
 
             Assert.NotNull(bf);
@@ -150,8 +150,8 @@ namespace Arius.Core.Tests
             //Archive the full directory so that only pointers remain
             await EnsureFullDirectoryArchived(removeLocal: true);
 
-            var pfi = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
-            var pfi2 = pfi.CopyTo(TestSetup.RestoreTestDirectory);
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory);
 
             // Delete the pointerfile
             pfi2.Delete();
@@ -163,7 +163,32 @@ namespace Arius.Core.Tests
 
         [Test]
         public async Task Restore_FolderDoesNotExist_ValidationException()
-        { 
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
+        public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_Success()
+        {
+            await EnsureFullDirectoryArchived(removeLocal: false);
+
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            pfi.CopyTo(RestoreTestDirectory);
+            
+            
+            var ps = GetServices().GetRequiredService<PointerService>();
+            //var pf = pfi.GetPointerFileFromBinaryFile();
+            //pfi.GetPointerFile
+            //var bf = ps.GetBinaryFile(pf, true);
+
+            
+            var restoreTempDir = GetServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+            //var enc = GetServices().GetRequiredService<IEncrypter>();
+            //enc.Encrypt(bf)
+            
+
+
+
         }
 
 

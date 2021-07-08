@@ -26,6 +26,7 @@ namespace Arius.Core.Commands.Archive
             Func<DirectoryInfo> sourceFunc,
             int maxDegreeOfParallelism,
             bool fastHash,
+            PointerService pointerService,
             Repository repo,
             Action<PointerFile> indexedPointerFile,
             Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile,
@@ -35,6 +36,7 @@ namespace Arius.Core.Commands.Archive
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
+            this.pointerService = pointerService;
             this.repo = repo;
             this.indexedPointerFile = indexedPointerFile;
             this.indexedBinaryFile = indexedBinaryFile;
@@ -43,6 +45,7 @@ namespace Arius.Core.Commands.Archive
 
         private readonly int maxDegreeOfParallelism;
         private readonly bool fastHash;
+        private readonly PointerService pointerService;
         private readonly Repository repo;
         private readonly Action<PointerFile> indexedPointerFile;
         private readonly Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile;
@@ -54,7 +57,7 @@ namespace Arius.Core.Commands.Archive
                                     .AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
-                var rn = fi.GetRelativePath(root);
+                var rn = fi.GetRelativeName(root);
 
                 if (fi.IsPointerFile())
                 {
@@ -72,7 +75,7 @@ namespace Arius.Core.Commands.Archive
 
                     //Get the Hash for this file
                     ManifestHash manifestHash;
-                    var pf = PointerService.GetPointerFile(root, fi);
+                    var pf = pointerService.GetPointerFile(root, fi);
                     if (fastHash && pf is not null)
                     {
                         //A corresponding PointerFile exists

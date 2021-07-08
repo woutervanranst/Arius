@@ -78,7 +78,7 @@ namespace Arius.Core.Tests
             expectedCurrentPfeCountWithoutDeleted++;
 
             //31
-            var pf1 = bfi1.GetPointerFileInfo();
+            var pf1 = bfi1.GetPointerFileInfoFromBinaryFile();
             Assert.IsTrue(File.Exists(pf1.FullName));
 
             //40
@@ -197,8 +197,9 @@ namespace Arius.Core.Tests
             expectedCurrentPfeCountWithoutDeleted++;
 
             //31
-            var pf1 = bfi1.GetPointerFile();
-            var pf2 = bfi2.GetPointerFile();
+            var ps = GetPointerService();
+            var pf1 = ps.GetPointerFile(bfi1);
+            var pf2 = ps.GetPointerFile(bfi2);
             Assert.IsTrue(File.Exists(pf1.FullName));
             Assert.IsTrue(File.Exists(pf2.FullName));
 
@@ -291,7 +292,7 @@ namespace Arius.Core.Tests
         {
             //SET UP
             var bfi1 = TestSetup.ArchiveTestDirectory.GetBinaryFileInfos().First();
-            var pfi1 = bfi1.GetPointerFileInfo();
+            var pfi1 = bfi1.GetPointerFileInfoFromBinaryFile();
             var pfi1_FullName_Original = pfi1.FullName;
 
 
@@ -354,7 +355,7 @@ namespace Arius.Core.Tests
         {
             //SET UP
             var bfi = TestSetup.ArchiveTestDirectory.GetBinaryFileInfos().First();
-            var pfi = bfi.GetPointerFileInfo();
+            var pfi = bfi.GetPointerFileInfoFromBinaryFile();
             var pfi_FullName_Original = pfi.FullName;
             bfi.Rename($"Moving of {bfi.Name}");
             //TestSetup.MoveFile(pointerFileInfo, $"Moving of {pointerFileInfo.Name}"); <-- Dit doen we hier NIET vs de vorige
@@ -513,7 +514,8 @@ namespace Arius.Core.Tests
             expectedChunkBlobItemsCount++;
 
             //11
-            var pfi1 = bfi1.GetPointerFile();
+            var ps = GetPointerService();
+            var pfi1 = ps.GetPointerFile(bfi1);
             var chunkHashes = await repo.GetChunkHashesForManifestAsync(pfi1.Hash);
             var chunk = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
             Assert.AreEqual(tier, chunk.AccessTier);

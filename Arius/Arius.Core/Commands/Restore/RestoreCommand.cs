@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Configuration;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
@@ -42,6 +44,22 @@ namespace Arius.Core.Commands.Restore
             var repo = services.GetRequiredService<Repository>();
             var pointerService = services.GetRequiredService<PointerService>();
 
+            FileSystemInfo pathToRestore;
+            DirectoryInfo restoreTempDir;
+            
+            if (File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory))
+            {
+                var root = new DirectoryInfo(options.Path);
+                pathToRestore = root;
+                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
+            }
+            else
+            {
+                var file = new FileInfo(options.Path);
+                pathToRestore = file;
+                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(file.Directory);
+            }
+
 
             var pointerFilesToDownload = new BlockingCollection<PointerFile>();
             var restoredManifests = new ConcurrentDictionary<ManifestHash, BinaryFile>();
@@ -50,12 +68,7 @@ namespace Arius.Core.Commands.Restore
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
-                sourceFunc: () =>
-                {
-                    return File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory) ?
-                        new DirectoryInfo(options.Path) :
-                        new FileInfo(options.Path); //S10
-                },
+                sourceFunc: () => pathToRestore, //S10
                 maxDegreeOfParallelism: 2,
                 synchronize: options.Synchronize,
                 repo: repo,
@@ -73,19 +86,28 @@ namespace Arius.Core.Commands.Restore
 
             await indexTask;
 
-            logger.LogInformation($"Determining PointerFiles to restore... done. {pointerFilesToDownload.Count} PointerFiles to restore in ");
+            logger.LogInformation($"Determining PointerFiles to restore... done. {pointerFilesToDownload.Count} PointerFiles to restore.");
+
+            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
+            var pointersToRestore = new BlockingCollection<(PointerFile PointerFile, BinaryFile Binary)>();
 
             var processPointerFileBlock = new ProcessPointerFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessPointerFileBlock>(),
                 sourceFunc: () => pointerFilesToDownload,
+                restoreTempDir: restoreTempDir,
                 repo: repo,
-                pointerService: pointerService,
-                alreadyRestored: (_, bf) =>
+                restoredManifests: restoredManifests,
+                manifestRestored: (pf, bf) => pointersToRestore.Add((pf, bf)), //S21
+                chunksForManifest: (manifestHash, chunkHashes) =>
                 {
-                    restoredManifests.TryAdd(bf.Hash, bf); //S31 
+                    chunksForManifest.AddOrUpdate( //S22
+                        key: manifestHash,
+                        addValue: (All: chunkHashes, PendingDownload: chunkHashes.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon download for triggering manifest creation)
+                        updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
                 },
                 done: () => { }
                 );
+            //var processPointerFileTask = processPointerFileBlock.GetTask;
 
 
 

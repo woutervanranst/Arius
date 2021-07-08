@@ -99,7 +99,7 @@ namespace Arius.Core.Commands.Restore
                                         .AsParallel()
                                         .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
-                var relativeName = pfi.GetRelativePath(root);
+                var relativeName = pfi.GetRelativeName(root);
 
                 if (relativeNames.Contains(relativeName))
                     return;
@@ -131,40 +131,86 @@ namespace Arius.Core.Commands.Restore
     {
         public ProcessPointerFileBlock(ILogger<ProcessPointerFileBlock> logger,
             Func<BlockingCollection<PointerFile>> sourceFunc,
+            DirectoryInfo restoreTempDir,
             Repository repo,
-            PointerService pointerService,
-            Action<PointerFile, BinaryFile> alreadyRestored,
+            ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests,
+            Action<PointerFile, BinaryFile> manifestRestored,
+            Action<ManifestHash, ChunkHash[]> chunksForManifest,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
+            this.restoreTempDir = restoreTempDir;
             this.repo = repo;
-            this.pointerService = pointerService;
-            this.alreadyRestored = alreadyRestored;
+            this.restoredManifests = restoredManifests;
+            this.manifestRestored = manifestRestored;
+            this.chunksForManifest = chunksForManifest;
         }
-        
+
+        private readonly DirectoryInfo restoreTempDir;
         private readonly Repository repo;
-        private readonly PointerService pointerService;
-        private readonly Action<PointerFile, BinaryFile> alreadyRestored;
+        private readonly Action<PointerFile, BinaryFile> manifestRestored;
+        private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
 
-        private readonly ConcurrentBag<ManifestHash> restoredOrRestoring = new();
+        private readonly ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests;
+
+        private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
+        private readonly ConcurrentHashSet<ChunkHash> restoringChunks = new();
 
 
-        protected override Task ForEachBodyImplAsync(PointerFile pf)
+
+        protected override async Task ForEachBodyImplAsync(PointerFile pf)
         {
-            //if (pointerService.GetBinaryFile(pf, ensureCorrectHash: true) is BinaryFile bf &&
-            //    bf is not null) //NOTE: we are deliberatebly not checking whether this PointerFile is already in restoredOrRestoring -- from the PoV of this block, this doesnt matter
-            //{
-            //    //This PointerFile already has a restored BinaryFile
-            //    if (!restoredOrRestoring.Contains(bf.Hash))
-            //        restoredOrRestoring.Add(bf.Hash);
-            //    alreadyRestored(pf, bf); 
+            if (restoredManifests.ContainsKey(pf.Hash))
+            {
+                // the Manifest for this PointerFile is already restored
+                manifestRestored(pf, restoredManifests[pf.Hash]);
+                return;
+            }
 
-            //}
+            if (!restoringManifests.TryAdd(pf.Hash))
+                // the Manifest for this PointerFile is already being processed
+                return;
 
+            var chs = await repo.GetChunkHashesForManifestAsync(pf.Hash);
+            chunksForManifest(pf.Hash, chs);
 
-            return Task.CompletedTask;
+            foreach (var ch in chs)
+            {
+                if (!restoringChunks.TryAdd(ch))
+                    // the Chunk for this Manifest is already being processed
+                    continue;
+
+                ProcessChunk(ch);
+            }
         }
 
+        private void ProcessChunk(ChunkHash ch)
+        {
+            if (GetLocalChunkFileInfo(ch) is var cfi && cfi.Exists)
+            {
+                // Downloaded and Decrypted Chunk
+
+            }
+            else if (GetLocalEncryptedChunkFileInfo(ch) is var ecfi && ecfi.Exists)
+            {
+                // Downloaded but not yet decrypted chunk
+
+            }
+            else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var hcb && hcb is not null)
+            {
+                // Hydrated chunk (in cold/hot storage) but not yet downloaded
+            }
+            else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var cb && cb is not null)
+            {
+                // Archived chunk (in archive storage) not yet hydrated
+
+            }
+            else
+                throw new InvalidOperationException($"Unable to find a chunk '{ch}'");
+        }
+
+        private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
+        private FileInfo GetLocalEncryptedChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{EncryptedChunkFile.Extension}"));
     }
 }
 
