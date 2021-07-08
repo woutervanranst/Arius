@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2021-07-07T14:41:14.693Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.64" etag="jc5I_cmG8kt0Zl4xNd5J" version="14.8.4" type="github" pages="2">
+<mxfile host="app.diagrams.net" modified="2021-07-08T11:40:39.985Z" agent="5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/91.0.864.64" etag="3-SgTJhBUlR2hG3709E8" version="14.8.4" type="github" pages="2">
   <diagram id="ynTLqjROGl6LlpKR909r" name="Archive">
     <mxGraphModel dx="1130" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -526,7 +526,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="Restore" id="wl7TmaJfxipMBP2-h03A">
-    <mxGraphModel dx="452" dy="320" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1127" dy="797" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="EnfrKUZYTSboUuE-3vHQ-0" />
         <mxCell id="EnfrKUZYTSboUuE-3vHQ-1" parent="EnfrKUZYTSboUuE-3vHQ-0" />
@@ -599,9 +599,9 @@
           <mxGeometry x="310" y="520" width="40" height="40" as="geometry" />
         </mxCell>
         <mxCell id="A3zdOb0x3SjZbzXE-TR2-0" value="TODO&lt;br&gt;&lt;br&gt;* GetAllManifestHashes remove&lt;br&gt;POinterFile.ChunkHashes remove&lt;br&gt;&lt;br&gt;Tests for FastHash behavior&lt;br&gt;ChunkTest restore 1 part hydrated&lt;br&gt;&lt;br&gt;blocks: start to seed() Func&lt;br&gt;chunkhashes cache??&lt;br&gt;&lt;br&gt;DataFlowBlockExtensions remove?&lt;br&gt;AsParallelWithParalelism remove?&lt;br&gt;NitoAsync library remove?&lt;br&gt;CreatePointerFileResults enum test?&lt;br&gt;&lt;br&gt;pointerService.GetBinaryFile ensureCorrectHash TEST&lt;br&gt;&lt;br&gt;Restore_FullSourceDirectory_Selectively&lt;br&gt;&lt;br&gt;SHAHasher async&lt;br&gt;&lt;br&gt;archive : wat met BinaryFile.Hash != PointerFile.Hash?&lt;br&gt;&lt;br&gt;maxdegreeofconcurrency" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="EnfrKUZYTSboUuE-3vHQ-1" vertex="1">
-          <mxGeometry x="1200" y="215" width="360" height="139" as="geometry" />
+          <mxGeometry x="1130" y="395.5" width="360" height="139" as="geometry" />
         </mxCell>
-        <mxCell id="wv7-nN7wfWGE3ZTgmPZX-1" value="pointerFilesToDownload : BlockingCollection&amp;lt;PointerFile&amp;gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="EnfrKUZYTSboUuE-3vHQ-1">
+        <mxCell id="wv7-nN7wfWGE3ZTgmPZX-1" value="manifestsToDownload : BlockingCollection&amp;lt;ManifestHash&amp;gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="EnfrKUZYTSboUuE-3vHQ-1">
           <mxGeometry x="120" y="330" width="330" height="30" as="geometry" />
         </mxCell>
       </root>
