@@ -75,14 +75,17 @@ namespace Arius.Core.Tests
             return c.Services;
         }
 
-        protected async Task<IServiceProvider> EnsureFullDirectoryArchived(bool removeLocal = false)
+        protected async Task<IServiceProvider> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false)
         {
+            if (purgeRemote)
+                await TestSetup.PurgeRemote();
+
             // Empty the test directory
             TestSetup.ArchiveTestDirectory.Clear();
             TestSetup.SourceFolder.CopyTo(TestSetup.ArchiveTestDirectory);
 
             //EXECUTE
-            var services = await ArchiveCommand(AccessTier.Cool, removeLocal);
+            var services = await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
             return services;
         }
 

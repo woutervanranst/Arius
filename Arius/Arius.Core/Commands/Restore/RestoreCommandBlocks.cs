@@ -127,15 +127,16 @@ namespace Arius.Core.Commands.Restore
         }
     }
 
-    internal class ProcessPointerFileBlock : BlockingCollectionTaskBlockBase<PointerFile>
+    internal class ProcessManifestBlock : BlockingCollectionTaskBlockBase<ManifestHash>
     {
-        public ProcessPointerFileBlock(ILogger<ProcessPointerFileBlock> logger,
-            Func<BlockingCollection<PointerFile>> sourceFunc,
+        public ProcessManifestBlock(ILogger<ProcessManifestBlock> logger,
+            Func<BlockingCollection<ManifestHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
-            ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests,
-            Action<PointerFile, BinaryFile> manifestRestored,
-            Action<ManifestHash, ChunkHash[]> chunksForManifest,
+            ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests,
+            Action<ManifestHash> manifestRestored,
+            Action<ManifestHash, ChunkHash[]> setChunksForManifest,
+            Action<ChunkFile> chunkRestored,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
@@ -143,36 +144,38 @@ namespace Arius.Core.Commands.Restore
             this.repo = repo;
             this.restoredManifests = restoredManifests;
             this.manifestRestored = manifestRestored;
-            this.chunksForManifest = chunksForManifest;
+            this.setChunksForManifest = setChunksForManifest;
+            this.chunkRestored = chunkRestored;
         }
 
         private readonly DirectoryInfo restoreTempDir;
         private readonly Repository repo;
-        private readonly Action<PointerFile, BinaryFile> manifestRestored;
-        private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
+        private readonly Action<ManifestHash> manifestRestored;
+        private readonly Action<ManifestHash, ChunkHash[]> setChunksForManifest;
+        private readonly Action<ChunkFile> chunkRestored;
 
-        private readonly ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests;
+        private readonly ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests;
 
         private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
         private readonly ConcurrentHashSet<ChunkHash> restoringChunks = new();
 
 
 
-        protected override async Task ForEachBodyImplAsync(PointerFile pf)
+        protected override async Task ForEachBodyImplAsync(ManifestHash mh)
         {
-            if (restoredManifests.ContainsKey(pf.Hash))
+            if (restoredManifests.ContainsKey(mh))
             {
                 // the Manifest for this PointerFile is already restored
-                manifestRestored(pf, restoredManifests[pf.Hash]);
+                manifestRestored(mh);
                 return;
             }
 
-            if (!restoringManifests.TryAdd(pf.Hash))
+            if (!restoringManifests.TryAdd(mh))
                 // the Manifest for this PointerFile is already being processed
                 return;
 
-            var chs = await repo.GetChunkHashesForManifestAsync(pf.Hash);
-            chunksForManifest(pf.Hash, chs);
+            var chs = await repo.GetChunkHashesForManifestAsync(mh);
+            setChunksForManifest(mh, chs);
 
             foreach (var ch in chs)
             {
@@ -197,6 +200,9 @@ namespace Arius.Core.Commands.Restore
                 // Downloaded and Decrypted Chunk
                 chunkRestoredFromLocal = true;
 
+                var cf = new ChunkFile(cfi, ch);
+
+                chunkRestored(cf);
             }
             else if (GetLocalEncryptedChunkFileInfo(ch) is var ecfi && ecfi.Exists)
             {
@@ -223,25 +229,97 @@ namespace Arius.Core.Commands.Restore
         private FileInfo GetLocalEncryptedChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{EncryptedChunkFile.Extension}"));
     }
 
-    internal class RestorePointerFileBlock : BlockingCollectionTaskBlockBase<PointerFile>
+
+
+
+
+
+    //internal class RestoreManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
+    //{
+    //    public RestoreManifestBlock(ILogger<RestoreManifestBlock> logger,
+    //        Func<BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>> sourceFunc,
+    //        DirectoryInfo restoreTempDir,
+    //        //Repository repo,
+    //        //ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests,
+    //        //Action<ManifestHash> manifestRestored,
+    //        //Action<ManifestHash, ChunkHash[]> chunksForManifest,
+    //        Action<FileInfo> manifestRestored,
+    //        Action done)
+    //        : base(logger: logger, sourceFunc: sourceFunc, done: done)
+    //    {
+    //        this.restoreTempDir = restoreTempDir;
+    //        this.manifestRestored = manifestRestored;
+    //    }
+
+    //    private readonly DirectoryInfo restoreTempDir;
+    //    private readonly Action<FileInfo> manifestRestored;
+
+    //    protected override Task ForEachBodyImplAsync((ManifestHash ManifestHash, ChunkHash[] ChunkHashes) item)
+    //    {
+    //        throw new NotImplementedException();
+    //    }
+    //}
+
+    internal class RestorePointerFileBlock : BlockingCollectionTaskBlockBase<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>
     {
+        private readonly PointerService pointerService;
+        private readonly Chunker chunker;
+
         public RestorePointerFileBlock(ILogger<RestorePointerFileBlock> logger,
-            Func<BlockingCollection<PointerFile>> sourceFunc,
-            ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests,
+            Func<BlockingCollection<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>> sourceFunc,
+            //ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests,
             //Action<PointerFile, BinaryFile> manifestRestored,
             //Action<ManifestHash, ChunkHash[]> chunksForManifest,
+            PointerService pointerService,
+            Chunker chunker,
             Action done)
             : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
-            this.restoredManifests = restoredManifests;
+            this.pointerService = pointerService;
+            this.chunker = chunker;
+            //this.restoredManifests = restoredManifests;
         }
 
-        private readonly ConcurrentDictionary<ManifestHash, BinaryFile> restoredManifests;
+        //private readonly ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests;
 
 
-        protected override Task ForEachBodyImplAsync(PointerFile item)
+        protected override Task ForEachBodyImplAsync((IChunkFile[] ChunkFiles, PointerFile[] PointerFiles) item)
         {
-            throw new NotImplementedException();
+            // Restore 
+
+            if (item.PointerFiles.Length == 1)
+            {
+                var pf = item.PointerFiles.Single();
+                var target = pointerService.GetBinaryFileInfo(pf);
+
+                
+
+                if (target.Exists)
+                    throw new Exception();
+
+                chunker.Merge(item.ChunkFiles, target);
+
+                //item.Binary.MoveTo(target.FullName);
+
+                target.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
+                target.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
+            }
+            else
+            {
+                //More than one to restore
+                throw new NotImplementedException();
+            }
+
+
+            //TODO QUID DELET ECHUNKS
+
+
+
+            return Task.CompletedTask;
+
+
         }
+
     }
+}
 

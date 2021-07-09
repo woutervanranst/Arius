@@ -86,20 +86,7 @@ namespace Arius.Core.Services
         }
 
 
-        ///// <summary>
-        ///// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
-        ///// If it does not exist, return null.
-        ///// </summary>
-        ///// <returns></returns>
-        //public static PointerFile GetPointerFile(BinaryFile bf)
-        //{
-        //    var pfi = new FileInfo(GetPointerFileFullName(bf));
-
-        //    if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
-        //        return null;
-
-        //    return new PointerFile(bf.Root, pfi);
-        //}
+        
 
 
 
@@ -108,28 +95,6 @@ namespace Arius.Core.Services
 
 
 
-
-        ///// <summary>
-        ///// Get the equivalent (in name and LastWriteTime) PointerFile for the given BinaryFileInfo with the given root, if it exists.
-        ///// If it does not exist, return null.
-        ///// </summary>
-        //public PointerFile GetPointerFile(DirectoryInfo root, FileInfo bfi)
-        //{
-        //    if (bfi.IsPointerFile()) throw new ArgumentException($"{bfi.FullName} is not a BinaryFile");
-
-        //    var pfi = new FileInfo(GetPointerFileFullName(bfi.FullName));
-
-        //    if (!pfi.Exists || pfi.LastWriteTimeUtc != bfi.LastWriteTimeUtc)
-        //        return null;
-
-        //    return new PointerFile(root, pfi);
-        //}
-
-        ///// <summary>
-        ///// Get the equivalent (in name and LastWriteTime) PointerFile for the given BinaryFileInfo assuming it is in the root, if it exists.
-        ///// If it does not exist, return null.
-        ///// </summary>
-        //public PointerFile GetPointerFile(FileInfo bfi) => GetPointerFile(bfi.Directory, bfi);
 
         /// <summary>
         /// Get the PointerFile for the given FileInfo with the given root.
@@ -162,6 +127,20 @@ namespace Arius.Core.Services
         /// </summary>
         public PointerFile GetPointerFile(FileInfo fi) => GetPointerFile(fi.Directory, fi);
 
+        /// <summary>
+        /// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
+        /// If it does not exist, return null.
+        /// </summary>
+        /// <returns></returns>
+        public PointerFile GetPointerFile(BinaryFile bf)
+        {
+            var pfi = new FileInfo(GetPointerFileFullName(bf));
+
+            if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
+                return null;
+
+            return new PointerFile(bf.Root, pfi);
+        }
 
 
 
@@ -171,11 +150,6 @@ namespace Arius.Core.Services
 
 
 
-
-        //public static PointerFile GetPointerFile(BinaryFile bf)
-        //{
-        //    return GetPointerFile(bf.FullName);
-        //}
 
         //public static PointerFile GetPointerFile(string binaryFileFullName)
         //{
@@ -251,5 +225,16 @@ namespace Arius.Core.Services
         private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
         private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
         private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
+
+
+
+
+
+
+        public FileInfo GetBinaryFileInfo(PointerFile pf)
+        {
+            return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
+        }
+
     }
 }

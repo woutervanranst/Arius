@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Arius.Core.Configuration;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
@@ -23,9 +24,10 @@ namespace Arius.Core.Tests
 
         public static string AccountName { get; set; }
         public static string AccountKey { get; set; }
-        
+
         public static Core.Facade.Facade Facade { get; set; }
-        
+
+        private static DirectoryInfo unitTestRoot;
         public static DirectoryInfo SourceFolder { get; private set; }
         public static DirectoryInfo ArchiveTestDirectory { get; private set; }
         public static DirectoryInfo RestoreTestDirectory { get; private set; }
@@ -33,7 +35,7 @@ namespace Arius.Core.Tests
 
         private static BlobServiceClient blobService;
         public static BlobContainerClient Container { get; private set; }
-        private static CloudTableClient ctc;
+        private static CloudTableClient table;
 
 
         [OneTimeSetUp]
@@ -42,7 +44,7 @@ namespace Arius.Core.Tests
             // Executes once before the test run. (Optional)
 
             var containerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMddHHmmss}";
-            var unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
+            unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
 
             //Create and populate source directory
             SourceFolder = unitTestRoot.CreateSubdirectory("source");
@@ -52,7 +54,7 @@ namespace Arius.Core.Tests
             ArchiveTestDirectory = unitTestRoot.CreateSubdirectory("archive");
             RestoreTestDirectory = unitTestRoot.CreateSubdirectory("restore");
 
-            
+
             // Create temp container
             AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
             if (string.IsNullOrEmpty(AccountName))
@@ -71,7 +73,7 @@ namespace Arius.Core.Tests
 
             // Create reference to the storage tables
             var csa = CloudStorageAccount.Parse(connectionString);
-            ctc = csa.CreateCloudTableClient();
+            table = csa.CreateCloudTableClient();
 
 
             // Initialize Facade
@@ -119,19 +121,40 @@ namespace Arius.Core.Tests
         }
 
         [OneTimeTearDown]
-        public static void OneTimeTearDown()
+        public static async Task OneTimeTearDown()
         {
-            foreach (var d in ArchiveTestDirectory.Parent.GetDirectories())
-                d.Delete(true);
-
-            foreach (var d in RestoreTestDirectory.Parent.GetDirectories())
-                d.Delete(true);
+            unitTestRoot.Delete(true);
 
             foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                 blobService.GetBlobContainerClient(c.Name).Delete();
 
-            foreach (var t in ctc.ListTables(prefix: TestContainerNamePrefix))
+            foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 t.Delete();
+
+            //OperationContext x;
+            //x.LastResult.
+
+            //await PurgeRemote();
+        }
+
+        public static async Task PurgeRemote()
+        {
+            //foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
+            //    await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
+
+            //foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
+            //    await t.DeleteAsync();
+
+            //await Task.Delay(5000);
+
+            foreach (var b in Container.GetBlobs())
+                Container.DeleteBlob(b.Name);
+
+            foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
+                foreach (var item in t.CreateQuery<TableEntity>())
+                {
+                    await t.ExecuteAsync(TableOperation.Delete(item));
+                }
         }
     }
 }

@@ -171,6 +171,12 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
         {
+            //reset 
+            Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal = false;
+            Commands.Restore.ProcessManifestBlock.flow2Executed = false;
+            Commands.Restore.ProcessManifestBlock.flow3Executed = false;
+            Commands.Restore.ProcessManifestBlock.flow4Executed = false;
+
             await EnsureFullDirectoryArchived(removeLocal: false);
 
             var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
@@ -191,15 +197,24 @@ namespace Arius.Core.Tests
             await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
 
             // for the restore operation we only restored it fron the local chunk cache
-            Assert.IsTrue(Commands.Restore.ProcessPointerFileBlock.chunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow2Executed);
-            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow3Executed);
-            Assert.IsFalse(Commands.Restore.ProcessPointerFileBlock.flow4Executed);
+            Assert.IsTrue(Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow2Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow3Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow4Executed);
 
             // the binaryfile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
             var r_bfi = ps.GetBinaryFile(r_pf, true);
             Assert.IsNotNull(r_bfi);
+        }
+
+
+        [Test]
+        public async Task Restore_Chunked()
+        {
+            await EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
+
+            await RestoreCommand(RestoreTestDirectory.FullName, true, true);
         }
     }
 }

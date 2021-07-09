@@ -77,7 +77,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var binariesToChunk = new BlockingCollection<BinaryFile>();
-            var binariesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
+            var binaryFilesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
@@ -89,7 +89,7 @@ namespace Arius.Core.Commands.Archive
                 manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 waitForCreatedManifest: (bf) => //B404
                 {
-                    binariesWaitingForManifestCreation.AddOrUpdate(
+                    binaryFilesWaitingForManifestCreation.AddOrUpdate(
                         key: bf.Hash,
                         addValue: new() { bf },
                         updateValueFactory: (h, bag) =>
@@ -180,17 +180,17 @@ namespace Arius.Core.Commands.Archive
 
                 //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
 
-                foreach (var (manifestHash, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
+                foreach (var (mh, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
                 {
                     pendingUploadChunkHashes.RemoveAll(h => chunkHash.Contains(h));
 
                     if (!pendingUploadChunkHashes.Any())
                     {
                         //All chunks for this manifest are now uploaded
-                        if (!chunksForManifest.TryRemove(manifestHash, out _))
-                            throw new InvalidOperationException($"Manifest '{manifestHash}' should have been present in the {nameof(chunksForManifest)} list but isn't");
+                        if (!chunksForManifest.TryRemove(mh, out _))
+                            throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
 
-                        manifestsToCreate.Add((ManifestHash: manifestHash, ChunkHashes: allChunkHashes)); //B1001
+                        manifestsToCreate.Add((ManifestHash: mh, ChunkHashes: allChunkHashes)); //B1001
                     }
                 }
             };
@@ -203,8 +203,8 @@ namespace Arius.Core.Commands.Archive
                 repo: repo,
                 manifestCreated: (manifestHash) =>
                 {
-                    if (!binariesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
-                        throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binariesWaitingForManifestCreation)} list but isn't");
+                    if (!binaryFilesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
+                        throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binaryFilesWaitingForManifestCreation)} list but isn't");
 
                     pointersToCreate.AddFromEnumerable(binaryFiles.AsEnumerable(), false); //B1101
                 },
@@ -323,7 +323,7 @@ namespace Arius.Core.Commands.Archive
                 var exceptions = ts.Select(t => t.Exception);
                 throw new AggregateException(exceptions);
             }
-            else if (binariesWaitingForManifestCreation.Count > 0 || chunksForManifest.Count > 0)
+            else if (binaryFilesWaitingForManifestCreation.Count > 0 || chunksForManifest.Count > 0)
             {
                 //something went wrong
                 throw new InvalidOperationException("Not all queues are emptied");

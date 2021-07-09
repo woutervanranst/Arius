@@ -531,11 +531,11 @@ namespace Arius.Core.Tests
         }
 
 
-        [Test, Order(1000)]
-        public async Task Archive_FullDirectory()
-        {
-            await EnsureFullDirectoryArchived();
-        }
+        //[Test, Order(1000)]
+        //public async Task Archive_FullDirectory()
+        //{
+        //    await EnsureFullDirectoryArchived();
+        //}
 
         
 
