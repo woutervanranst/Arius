@@ -38,8 +38,6 @@ namespace Arius.Core.Tests
         }
 
 
-
-
         protected ServiceProvider GetServices()
         {
             return TestSetup.Facade.GetServices(
@@ -57,6 +55,24 @@ namespace Arius.Core.Tests
             return GetServices().GetRequiredService<PointerService>();
         }
 
+
+
+        /// <summary>
+        /// Archive to the cool tier
+        /// </summary>
+        protected async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        {
+            await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
+        }
+
+        /// <summary>
+        /// Archive to the given tier
+        /// </summary>
+        /// <param name="tier"></param>
+        /// <param name="removeLocal"></param>
+        /// <param name="fastHash"></param>
+        /// <param name="dedup"></param>
+        /// <returns></returns>
         protected async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var c = TestSetup.Facade.CreateArchiveCommand(
@@ -127,8 +143,8 @@ namespace Arius.Core.Tests
         }
 
 
-        protected DirectoryInfo SourceFolder => TestSetup.SourceFolder;
-        protected DirectoryInfo ArchiveTestDirectory => TestSetup.ArchiveTestDirectory;
-        protected DirectoryInfo RestoreTestDirectory => TestSetup.RestoreTestDirectory;
+        protected static DirectoryInfo SourceFolder => TestSetup.SourceFolder;
+        protected static DirectoryInfo ArchiveTestDirectory => TestSetup.ArchiveTestDirectory;
+        protected static DirectoryInfo RestoreTestDirectory => TestSetup.RestoreTestDirectory;
     }
 }

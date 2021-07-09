@@ -48,8 +48,8 @@ namespace Arius.Core.Tests
 
             //Create and populate source directory
             SourceFolder = unitTestRoot.CreateSubdirectory("source");
-            SourceFolder.Clear();
-            Populate(SourceFolder);
+            //SourceFolder.Clear();
+            //Populate(SourceFolder);
 
             ArchiveTestDirectory = unitTestRoot.CreateSubdirectory("archive");
             RestoreTestDirectory = unitTestRoot.CreateSubdirectory("restore");
@@ -93,15 +93,15 @@ namespace Arius.Core.Tests
             Facade = new Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
         }
 
-        private static void Populate(DirectoryInfo dir)
-        {
-            CreateRandomFile(Path.Combine(dir.FullName, "fileA.1"), 0.5);
-            CreateRandomFile(Path.Combine(dir.FullName, "fileB.1"), 2);
-            CreateRandomFile(Path.Combine(dir.FullName, "file with space.txt"), 5);
-            CreateRandomFile(Path.Combine(dir.FullName, $"directory with spaces{Path.DirectorySeparatorChar}file with space.txt"), 5);
-        }
+        //private static void Populate(DirectoryInfo dir)
+        //{
+        //    CreateRandomFile(Path.Combine(dir.FullName, "fileA.1"), 0.5);
+        //    CreateRandomFile(Path.Combine(dir.FullName, "fileB.1"), 2);
+        //    CreateRandomFile(Path.Combine(dir.FullName, "file with space.txt"), 5);
+        //    CreateRandomFile(Path.Combine(dir.FullName, $"directory with spaces{Path.DirectorySeparatorChar}file with space.txt"), 5);
+        //}
 
-        public static void CreateRandomFile(string fileFullName, double sizeInMB)
+        public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB)
         {
             var f = new FileInfo(fileFullName);
             if (!f.Directory.Exists)
@@ -118,6 +118,8 @@ namespace Arius.Core.Tests
                     stream.Write(data, 0, data.Length);
                 }
             }
+
+            return f;
         }
 
         [OneTimeTearDown]

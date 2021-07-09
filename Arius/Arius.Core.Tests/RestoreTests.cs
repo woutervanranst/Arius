@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
 {
-    class NewRestoreTests : TestBase
+    class RestoreTests : TestBase
     {
         protected override void BeforeEachTest()
         {
