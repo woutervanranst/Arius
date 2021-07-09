@@ -1,253 +1,220 @@
+﻿using Arius.Core.Configuration;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Services;
+using Microsoft.Extensions.DependencyInjection;
+using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using NUnit.Framework;
-using NUnit.Framework.Internal;
-
-// https://www.automatetheplanet.com/nunit-cheat-sheet/
 
 namespace Arius.Core.Tests
 {
-    partial class ArchiveRestoreTests
+    class NewRestoreTests : TestBase
     {
         protected override void BeforeEachTest()
         {
-            TestSetup.RestoreTestDirectory.Clear();
-        }
-
-        private static readonly FileComparer comparer = new();
-
-        [Test, Order(110)]
-        public async Task Restore_OneFile_FromCoolTier()
-        {
-            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
-
-            await RestoreCommand(synchronize: true, download: true, keepPointers: true);
-
-            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
-
-
-            bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
-
-            Assert.IsTrue(areIdentical);
+            RestoreTestDirectory.Clear();
         }
 
 
         /// <summary>
-        /// Prepare a file
-        /// 
-        /// Expectation:
-        /// 11/ a new file is stored in the cool tier
-        /// 12/ hydration fails since it is already hydrated
-        /// 
+        /// Test the --synchronize flag
         /// </summary>
         /// <returns></returns>
-        [Test, Order(801)]
-        public async Task Restore_FileArchiveTier_HydratingBlob()
+        [Test] //Deze hoort bij Order(1001) maar gemaakt om apart te draaien
+        public async Task Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized()
         {
-            //SET UP -- Clear directories & create a new file (with new hash) to archive
-            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
-            TestSetup.ArchiveTestDirectory.Clear();
-            var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile2.txt"));
-            Assert.IsFalse(bfi.Exists);
-            TestSetup.CreateRandomFile(bfi.FullName, 0.1);
+            //Archive the full directory so that only pointers remain
+            await EnsureFullDirectoryArchived(removeLocal: true);
+
+            var pf1 = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pf2 = ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
+            var f3 = new FileInfo(Path.Combine(ArchiveTestDirectory.FullName, "randomotherfile.doc"));
+            File.WriteAllText(f3.FullName, "stuff");
+
+            //They do not refer to the same pointerfile
+            Assert.IsTrue(pf1.FullName != pf2.FullName);
+
+            pf1.Delete(); //we delete this one, it will be recreated
+            pf2.Rename("bla.pointer.arius"); //we rename this one, it will be deleted
 
 
-            //EXECUTE -- Archive to cool tier
-            var services = await ArchiveCommand(AccessTier.Archive, dedup: false);
+            //run archive
+            await RestoreCommand(synchronize: true, download: false, keepPointers: true, path: TestSetup.ArchiveTestDirectory.FullName);
 
-
-            //ASSERT OUTCOME
-            var repo = services.GetRequiredService<Repository>();
-
-
-            //10 The chunk is in the Archive tier
-            var ps = GetPointerService();
-            var pf = ps.GetPointerFile(bfi);
-            var chunkHashes = await repo.GetChunkHashesForManifestAsync(pf.Hash);
-            var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
-
-            //11 A hydrated blob does not yet exist
-            var bc_Hydrating = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
-            Assert.IsFalse(bc_Hydrating.Exists());
-            
-            //12 Obtaining properties results in an exception
-            Assert.Catch<Azure.RequestFailedException>(() => bc_Hydrating.GetProperties());
-
-            
-            //EXECUTE -- Restore
-            await RestoreCommand(synchronize: true, download: true, keepPointers: true);
-
-
-            //ASSERT OUTCOME
-            //20 A hydrating blob exists
-            Assert.IsTrue(bc_Hydrating.Exists());
-
-            //21 The status is rehydrate-pending
-            var status = bc_Hydrating.GetProperties().Value.ArchiveStatus;
-            Assert.IsTrue(status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot");
+            Assert.IsTrue(pf1.Exists);
+            Assert.IsFalse(pf2.Exists);
+            Assert.IsTrue(f3.Exists); //non-pointer files remain intact
         }
 
 
-        [Test, Order(802)]
-        public async Task Restore_FileArchiveTier_FromHydratedBlob()
+        [Test]
+        public async Task Restore_SynchronizeFile_InvalidOperationException()
         {
-            //SET UP -- Clear directories & ceate a new file (with new hash) to archive
-            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
-            TestSetup.ArchiveTestDirectory.Clear();
-            var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile3.txt"));
-            Assert.IsFalse(bfi.Exists);
-            TestSetup.CreateRandomFile(bfi.FullName, 0.1);
+            // Scenario: Restore - pass synchronize option and pass a single file as path -- should result in InvalidOperation
 
+            //Archive the full directory so that only pointers remain
+            await EnsureFullDirectoryArchived(removeLocal: true);
 
-            //EXECUTE -- Archive to cool tier
-            var services = await ArchiveCommand(AccessTier.Cool, dedup: false);
-
-
-            //ASSERT OUTCOME
-            var repo = services.GetRequiredService<Repository>();
-
-            //10 - The chunk is in the cool tier
-            var ps = GetPointerService();
-            var pf = ps.GetPointerFile(bfi);
-            var chunkHashes = await repo.GetChunkHashesForManifestAsync(pf.Hash);
-            var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Cool, cb.AccessTier);
-
-
-            //20 "Simulate" a hydrated blob
-            //21 The original blob exists
-            var bc_Original = TestSetup.Container.GetBlobClient(cb.FullName);
-            Assert.IsTrue(bc_Original.Exists());
-            
-            //22 The hydrated blob does not yet exist
-            var bc_Hydrated = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
-            Assert.IsFalse(bc_Hydrated.Exists());
-            
-            //23 Copy the original to the hydrated folder
-            var copyTask = bc_Hydrated.StartCopyFromUri(bc_Original.Uri);
-            await copyTask.WaitForCompletionAsync();
-            Assert.IsTrue(bc_Hydrated.Exists());
-            
-            //24 Move the original blob to the archive tier
-            bc_Original.SetAccessTier(AccessTier.Archive);
-            cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
-            Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
-
-
-            //EXECUTE -- Restore
-            await RestoreCommand(synchronize: true, download: true, keepPointers: true);
-
-
-            //ASSERT OUTCOME
-            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
-
-            //30 The folders are identical
-            bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
-            Assert.IsTrue(areIdentical);
-        }
-
-
-        [Test, Order(1001)]
-        public async Task Restore_SynchronizeDirectoryNoPointers_Success()
-        {
-            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
-
-            await RestoreCommand(synchronize: true, download: true, keepPointers: false);
-
-            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
-
-
-            bool allNonPointerFilesAreRestored = !restoredFiles.Except(archiveFiles, comparer).Any();
-
-            // all non pointer files are restored
-            Assert.IsTrue(allNonPointerFilesAreRestored);
-
-            // Does not contain pointer files
-            var noPointerFiles = !restoredFiles.Any(fi => fi.IsPointerFile());
-            Assert.IsTrue(noPointerFiles);
-        }
-
-        
-        [Test, Order(1002)]
-        public async Task Restore_FullSourceDirectory_OnlyPointers()
-        {
-            Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
-
-            await RestoreCommand(synchronize: true, download: false, keepPointers: true);
-
-            var archiveFiles = TestSetup.ArchiveTestDirectory.GetAllFileInfos();
-            var restoredFiles = TestSetup.RestoreTestDirectory.GetAllFileInfos();
-
-
-            archiveFiles = archiveFiles.Where(fi => fi.IsPointerFile());
-
-            bool areIdentical = archiveFiles.SequenceEqual(restoredFiles, comparer);
-
-            Assert.IsTrue(areIdentical);
-        }
-
-        
-
-
-        
-
-
-        
-
-        private class FileComparer : IEqualityComparer<FileInfo>
-        {
-            public FileComparer() { }
-
-            public bool Equals(FileInfo x, FileInfo y)
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory);
+            Assert.CatchAsync<InvalidOperationException>(async () =>
             {
-                return x.Name == y.Name &&
-                    x.Length == y.Length &&
-                    x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                    SHA256Hasher.GetHashValue(x.FullName, "").Equals(SHA256Hasher.GetHashValue(y.FullName, ""));
-            }
+                try
+                {
+                    await RestoreCommand(
+                        synchronize: true,
+                        download: false,
+                        path: pfi2.FullName);
+                }
+                catch (AggregateException e)
+                {
+                    throw e.InnerException.InnerException;
+                }
+            });
+        }
 
-            public int GetHashCode(FileInfo obj)
-            {
-                return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
-            }
+
+        [Test]
+        public async Task Restore_File_Success()
+        {
+            // Scenario: restore a single file
+
+            //Archive the full directory so that only pointers remain
+            await EnsureFullDirectoryArchived(removeLocal: true);
+
+            // 1. synchronize and do not download folder: Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
+            // 2.1 synchronize and do not fownload file -- invalidoperaiton
+            // 2.2 synchroniwe and download file -- invalidoperatoin
+            // 3. do not synchronize and download file
+
+            // synchronize and download folder --> Restore_SynchronizeDirectoryNoPointers_Success
+            // do not synchronize and download folder --> Restore_NoSynchronizeDownload_Success
+
+
+
+            // synchronize + file
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory.CreateSubdirectory("subdir"));
+            await RestoreCommand(synchronize: false, download: true, path: pfi2.FullName);
+
+            var ps = GetPointerService();
+            var pf = ps.GetPointerFile(pfi2);
+            var bf = ps.GetBinaryFile(pf, true);
+
+            Assert.NotNull(bf);
+        }
+
+
+        [Test]
+        public async Task Restore_NoSynchronizeDownload_Success()
+        {
+            // Selectively restore
+
+            throw new NotImplementedException();
+
+            //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
+
+            //// Copy one pointer (to restore) to the restoredirectory
+            //var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
+            //pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
+
+            //var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
+            //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsNull(bf1); //does not exist
+
+
+            ////This is not yet implemented
+            //Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
+
+            //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
+
+
+            //Assert.IsTrue(File.Exists(pf1.FullName));
+            //Assert.IsTrue(File.Exists(bf1.FullName));
+
+            //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+
+            ////Assert.IsTrue(pfi1.Exists);
+            //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
+            //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
+        }
+
+
+        [Test]
+        public async Task Restore_FileDoesNotExist_ValidationException()
+        {
+            //Archive the full directory so that only pointers remain
+            await EnsureFullDirectoryArchived(removeLocal: true);
+
+            var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var pfi2 = pfi.CopyTo(RestoreTestDirectory);
+
+            // Delete the pointerfile
+            pfi2.Delete();
+
+            // Restore a file that does not exist
+            Assert.CatchAsync<FluentValidation.ValidationException>(async () => 
+                await RestoreCommand(path: pfi2.FullName));
+        }
+
+        [Test]
+        public async Task Restore_FolderDoesNotExist_ValidationException()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
+        public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
+        {
+            //reset 
+            Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal = false;
+            Commands.Restore.ProcessManifestBlock.flow2Executed = false;
+            Commands.Restore.ProcessManifestBlock.flow3Executed = false;
+            Commands.Restore.ProcessManifestBlock.flow4Executed = false;
+
+            await EnsureFullDirectoryArchived(removeLocal: false);
+
+            var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
+            
+            var ps = GetServices().GetRequiredService<PointerService>();
+            var a_pf = ps.GetPointerFile(a_pfi);
+            var a_bf = ps.GetBinaryFile(a_pf, false);
+
+            var restoreTempDir = GetServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+
+            var a_bfi = new FileInfo(a_bf.FullName);
+            a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
+
+            //var enc = GetServices().GetRequiredService<IEncrypter>();
+            //enc.Encrypt(bf)
+
+            await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
+
+            // for the restore operation we only restored it fron the local chunk cache
+            Assert.IsTrue(Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow2Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow3Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow4Executed);
+
+            // the binaryfile is restored
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, true);
+            Assert.IsNotNull(r_bfi);
+        }
+
+
+        [Test]
+        public async Task Restore_Chunked()
+        {
+            await EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
+
+            await RestoreCommand(RestoreTestDirectory.FullName, true, true);
         }
     }
-
-
-
-
-    //    /*
-    //     * Test cases
-    //     *      empty dir
-    //     *      dir with files > not to be touched?
-    //     *      dir with pointers - too many pointers > to be deleted
-    //     *      dir with pointers > not enough pointers > to be synchronzed
-    //     *      remote with isdeleted and local present > should be deleted
-    //     *      remote with !isdeleted and local not present > should be created
-    //     *      also in subdirectories
-    //     *      in ariusfile : de verschillende extensions
-    //     *      files met duplicates enz upload download
-    //     *      al 1 file lokaal > kopieert de rest
-    //     *      restore > normal binary file remains untouched
-    //     * directory more than 2 deep without other files
-    //     *  download > local files exist s> don't download all
-    // * restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
-
-    // restore a seoncd time without any changes
-    //     * */
 }
