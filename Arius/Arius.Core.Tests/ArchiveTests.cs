@@ -67,14 +67,22 @@ namespace Arius.Core.Tests
             allPfes = repo.GetPointerFileEntries().Result.ToArray();
         }
 
-        private void GetPointerInfo(FileInfo bfi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), bfi, out pf, out pfe);
-        private void GetPointerInfo(Repository repo, FileInfo bfi, out PointerFile pf, out PointerFileEntry pfe)
+        /// <summary>
+        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
+        /// FileInfo fi can either be a PointerFile or a BinaryFile
+        /// </summary>
+        private void GetPointerInfo(FileInfo fi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), fi, out pf, out pfe);
+        /// <summary>
+        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
+        /// FileInfo fi can either be a PointerFile or a BinaryFile
+        /// </summary>
+        private void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
         {
             var ps = GetPointerService();
 
-            pf = ps.GetPointerFile(bfi);
+            pf = ps.GetPointerFile(fi);
 
-            var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, bfi.FullName);
+            var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
             pfe = repo.GetCurrentEntries(true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
         }
 
@@ -199,13 +207,13 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Archive_DuplicatePointerFile_Success()
         {
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi1 = EnsureFileForArchiveNonDedup();
             await ArchiveCommand();
 
 
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-            GetPointerInfo(bfi, out var pf1, out _);
+            GetPointerInfo(bfi1, out var pf1, out _);
 
             // Add a duplicate of the pointer
             var pfi2 = new FileInfo(Path.Combine(ArchiveTestDirectory.FullName, $"Duplicate of {pf1.Name}"));
@@ -243,15 +251,17 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Archive_RenameBinaryFileWithPointerFile_Success()
         {
-            var bfi1 = EnsureFileForArchiveNonDedup();
+            // Rename BinaryFile and PointerFile -- this is like a 'move'
+
+            var bfi = EnsureFileForArchiveNonDedup();
             await ArchiveCommand();
 
 
-            //Rename BinaryFile + Pointer
-            var pfi1 = bfi1.GetPointerFileInfoFromBinaryFile();
-            var pfi1_FullName_Original = pfi1.FullName;
-            bfi1.Rename($"Renamed {bfi1.Name}");
-            pfi1.Rename($"Renamed {pfi1.Name}");
+            //Rename BinaryFile + PointerFile
+            var pfi = bfi.GetPointerFileInfoFromBinaryFile();
+            var pfi_FullName_Original = pfi.FullName;
+            bfi.Rename($"Renamed {bfi.Name}");
+            pfi.Rename($"Renamed {pfi.Name}");
 
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
@@ -266,25 +276,68 @@ namespace Arius.Core.Tests
             // One additional PointerFileEntry (the deleted one)
             Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
             // No net increase in current PointerFileEntries
-            Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted0.Count());
+            Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
 
-            var pfi1_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi1_FullName_Original);
-            var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
+            var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
+            var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
             // The original PointerFileEntry is marked as deleted
             Assert.IsTrue(originalPfe.IsDeleted);
 
             // No current entry exists for the original pointerfile
-            originalPfe = currentPfeWithoutDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
+            originalPfe = currentPfeWithoutDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
             Assert.IsNull(originalPfe);
 
-            var pfi1_Relativename_AfterMove = Path.GetRelativePath(TestSetup.ArchiveTestDirectory.FullName, pfi1.FullName);
-            var movedPfe = currentPfeWithoutDeleted1.SingleOrDefault(lcf => lcf.RelativeName == pfi1_Relativename_AfterMove);
+            var pfi_Relativename_AfterMove = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi.FullName);
+            var movedPfe = currentPfeWithoutDeleted1.SingleOrDefault(lcf => lcf.RelativeName == pfi_Relativename_AfterMove);
             // A new PointerFileEntry exists that is not marked as deleted
             Assert.IsFalse(movedPfe.IsDeleted);
         }
 
 
+        [Test]
+        public async Task Archive_RenameBinaryFileOnly_Success()
+        {
+            // Rename BinaryFile without renaming the PointerFile -- this is like a 'duplicate'
 
+            var bfi = EnsureFileForArchiveNonDedup();
+            await ArchiveCommand();
+
+
+            //Rename BinaryFile
+            var pfi = bfi.GetPointerFileInfoFromBinaryFile();
+            var pfi_FullName_Original = pfi.FullName;
+            bfi.Rename($"Renamed2 {bfi.Name}");
+            //pfi.Rename($"Renamed {pfi1.Name}"); // <-- dit doen we hier NIET vs de vorige
+
+            RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+
+            await ArchiveCommand();
+
+
+            RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+            // No additional chunks were uploaded (ie just 1)
+            Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
+            // No additional ManifestHash is created (ie just 1)
+            Assert.AreEqual(manifestCount0, manifestCount1);
+            // One additional PointerFileEntry (the deleted one)
+            Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+            // One additional PointerFileEntry
+            Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count()); //* CHANGED
+
+            var pfi1_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
+            var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
+            // The original PointerFileEntry is NOT marked as deleted
+            Assert.IsFalse(originalPfe.IsDeleted); //* CHANGED
+
+            // A current entry exists the original pointerfile and is not marked as deleted
+            originalPfe = currentPfeWithoutDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
+            Assert.IsFalse(originalPfe.IsDeleted); //* CHANED
+
+            var pfi1_Relativename_AfterMove = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi.FullName);
+            var movedPfe = currentPfeWithoutDeleted1.SingleOrDefault(lcf => lcf.RelativeName == pfi1_Relativename_AfterMove);
+            // A new PointerFileEntry exists that is not marked as deleted
+            Assert.IsFalse(movedPfe.IsDeleted);
+        }
 
 
         [Test]
@@ -297,12 +350,61 @@ namespace Arius.Core.Tests
             await ArchiveCommand(removeLocal: true);
             // The BinaryFile no longer exists
             Assert.IsFalse(File.Exists(bfi.FullName));
+            Assert.IsFalse(ArchiveTestDirectory.GetBinaryFileInfos().Any());
 
             GetPointerInfo(bfi, out var pf, out var pfe);
             // But the PointerFile exists
             Assert.IsTrue(File.Exists(pf.FullName));
             // And the PointerFileEntry is not marked as deleted
             Assert.IsFalse(pfe.IsDeleted);
+        }
+
+
+        [Test]
+        public async Task Archive_RenamePointerFileWithoutBinaryFile_Success()
+        {
+            // Rename PointerFile that no longer has a BinaryFile -- this is like a 'move'
+            
+            var bfi = EnsureFileForArchiveNonDedup();
+            await ArchiveCommand(removeLocal: true);
+            
+            
+            Assert.IsFalse(File.Exists(bfi.FullName));
+
+            //Rename PointerFile
+            var pfi = bfi.GetPointerFileInfoFromBinaryFile();
+            var pfi_FullName_Original = pfi.FullName;
+            //bfi.Rename($"Renamed {bfi.Name}"); // <-- dit doen we hier NIET vs de vorige
+            pfi.Rename($"Renamed3 {pfi.Name}"); 
+
+            RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+
+            await ArchiveCommand();
+
+
+            RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+            // No additional chunks were uploaded (ie just 1)
+            Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
+            // No additional ManifestHash is created (ie just 1)
+            Assert.AreEqual(manifestCount0, manifestCount1);
+            // One additional PointerFileEntry (the deleted one)
+            Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+            // No net increase in current PointerFileEntries
+            Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
+
+            var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
+            var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
+            // The original PointerFileEntry is marked as deleted
+            Assert.IsTrue(originalPfe.IsDeleted);
+
+            // No current entry exists for the original pointerfile
+            originalPfe = currentPfeWithoutDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
+            Assert.IsNull(originalPfe);
+
+            var pfi_Relativename_AfterMove = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi.FullName);
+            var movedPfe = currentPfeWithoutDeleted1.SingleOrDefault(lcf => lcf.RelativeName == pfi_Relativename_AfterMove);
+            // A new PointerFileEntry exists that is not marked as deleted
+            Assert.IsFalse(movedPfe.IsDeleted);
         }
     }
 }
