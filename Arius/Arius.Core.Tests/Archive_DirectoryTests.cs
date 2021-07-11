@@ -20,21 +20,7 @@ namespace Arius.Core.Tests
         }
 
 
-        private readonly Lazy<FileInfo[]> sourceFiles = new(() =>
-        {
-            return new []
-            { 
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 1.txt"), 0.5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 2.doc"), 2),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 3 large.txt"), 5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "directory with spaces", "file4 with space.txt"), 1)
-            };
-        });
-        private FileInfo[] EnsureArchiveTestDirectoryFileInfos()
-        {
-            var sfis = sourceFiles.Value;
-            return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
-        }
+        
 
 
 

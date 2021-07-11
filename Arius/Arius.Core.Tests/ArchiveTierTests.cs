@@ -20,19 +20,6 @@ namespace Arius.Core.Tests
         }
 
 
-        private Lazy<FileInfo> sourceFile = new(() =>
-        {
-            var fn = Path.Combine(SourceFolder.FullName, nameof(ArchiveTierTests), "file 1.txt");
-            var f = TestSetup.CreateRandomFile(fn, 0.1);
-
-            return f;
-        });
-        private FileInfo EnsureArchiveTestDirectoryFileInfo()
-        {
-            var sfi = sourceFile.Value;
-            return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
-        }
-
         [Test]
         public async Task Archive_OneFileArchiveTier_Success()
         {

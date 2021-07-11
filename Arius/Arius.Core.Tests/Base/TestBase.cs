@@ -41,6 +41,28 @@ namespace Arius.Core.Tests
         }
 
 
+        private readonly Lazy<FileInfo[]> sourceFiles = new(() =>
+        {
+            return new[]
+            {
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 1.txt"), 0.5),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 2.doc"), 2),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 3 large.txt"), 5),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "directory with spaces", "file4 with space.txt"), 1)
+            };
+        });
+        protected FileInfo EnsureArchiveTestDirectoryFileInfo()
+        {
+            var sfi = sourceFiles.Value.First();
+            return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
+        }
+        protected FileInfo[] EnsureArchiveTestDirectoryFileInfos()
+        {
+            var sfis = sourceFiles.Value;
+            return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
+        }
+
+
         protected ServiceProvider GetServices()
         {
             return TestSetup.Facade.GetServices(
@@ -65,7 +87,6 @@ namespace Arius.Core.Tests
         /// </summary>
         protected static async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
-            var s1 = System.Reflection.MethodBase.GetCurrentMethod().DeclaringType.Name;
             await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
         }
 

@@ -112,8 +112,11 @@ namespace Arius.Core.Services
             {
                 var pfi = new FileInfo(GetPointerFileFullName(fi.FullName));
 
-                if (!pfi.Exists || pfi.LastWriteTimeUtc != fi.LastWriteTimeUtc)
-                    return null;
+                if (!pfi.Exists)
+                    return null; // if the PointerFile does not exist, return null
+
+                if (File.Exists(fi.FullName) && pfi.LastWriteTimeUtc != fi.LastWriteTimeUtc) // TODO PointerComparer instead?
+                    return null; // if the BinaryFile exists but the LastWriteTime does not match, return null
 
                 return new PointerFile(root, pfi);
             }

@@ -18,7 +18,7 @@ using NUnit.Framework.Internal;
 
 namespace Arius.Core.Tests
 {
-    partial class ArchiveRestoreTests
+    partial class ArchiveRestoreTests : TestBase
     {
         protected override void BeforeEachTest()
         {
