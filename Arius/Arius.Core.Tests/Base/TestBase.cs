@@ -93,11 +93,6 @@ namespace Arius.Core.Tests
         /// <summary>
         /// Archive to the given tier
         /// </summary>
-        /// <param name="tier"></param>
-        /// <param name="removeLocal"></param>
-        /// <param name="fastHash"></param>
-        /// <param name="dedup"></param>
-        /// <returns></returns>
         protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var c = TestSetup.Facade.CreateArchiveCommand(

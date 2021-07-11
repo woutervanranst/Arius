@@ -37,7 +37,6 @@ namespace Arius.Core.Tests
             //1 additional Manifest exists
             Assert.AreEqual(manifestCount0 + 1, manifestCount1);
             //1 additional PointerFileEntry exists
-            Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
             Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
             GetPointerInfo(repo, bfi, out var pf, out var pfe);
