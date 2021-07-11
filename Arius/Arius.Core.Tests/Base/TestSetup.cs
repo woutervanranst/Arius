@@ -93,14 +93,7 @@ namespace Arius.Core.Tests
             Facade = new Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
         }
 
-        //private static void Populate(DirectoryInfo dir)
-        //{
-        //    CreateRandomFile(Path.Combine(dir.FullName, "fileA.1"), 0.5);
-        //    CreateRandomFile(Path.Combine(dir.FullName, "fileB.1"), 2);
-        //    CreateRandomFile(Path.Combine(dir.FullName, "file with space.txt"), 5);
-        //    CreateRandomFile(Path.Combine(dir.FullName, $"directory with spaces{Path.DirectorySeparatorChar}file with space.txt"), 5);
-        //}
-
+        
         public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB)
         {
             var f = new FileInfo(fileFullName);
@@ -128,10 +121,10 @@ namespace Arius.Core.Tests
             unitTestRoot.Delete(true);
 
             foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
-                blobService.GetBlobContainerClient(c.Name).Delete();
+                await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
 
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
-                t.Delete();
+                await t.DeleteAsync();
 
             //OperationContext x;
             //x.LastResult.

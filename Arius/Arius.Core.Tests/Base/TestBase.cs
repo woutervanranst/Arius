@@ -1,11 +1,14 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Tests
@@ -60,8 +63,9 @@ namespace Arius.Core.Tests
         /// <summary>
         /// Archive to the cool tier
         /// </summary>
-        protected async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        protected static async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
+            var s1 = System.Reflection.MethodBase.GetCurrentMethod().DeclaringType.Name;
             await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
         }
 
@@ -73,7 +77,7 @@ namespace Arius.Core.Tests
         /// <param name="fastHash"></param>
         /// <param name="dedup"></param>
         /// <returns></returns>
-        protected async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+        protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             var c = TestSetup.Facade.CreateArchiveCommand(
                 TestSetup.AccountName,
@@ -91,25 +95,11 @@ namespace Arius.Core.Tests
             return c.Services;
         }
 
-        protected async Task<IServiceProvider> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false)
-        {
-            if (purgeRemote)
-                await TestSetup.PurgeRemote();
-
-            // Empty the test directory
-            TestSetup.ArchiveTestDirectory.Clear();
-            TestSetup.SourceFolder.CopyTo(TestSetup.ArchiveTestDirectory);
-
-            //EXECUTE
-            var services = await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
-            return services;
-        }
-
-
+        
         /// <summary>
         /// Restore to TestSetup.RestoreTestDirectory
         /// </summary>
-        internal async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
+        internal static async Task<IServiceProvider> RestoreCommand(bool synchronize, bool download, bool keepPointers)
         {
             return await RestoreCommand(
                 synchronize: synchronize,
@@ -121,7 +111,7 @@ namespace Arius.Core.Tests
         /// <summary>
         /// Restore to the given path
         /// </summary>
-        internal async Task<IServiceProvider> RestoreCommand(
+        internal static async Task<IServiceProvider> RestoreCommand(
             string path,
             bool synchronize = false,
             bool download = false,
@@ -140,6 +130,44 @@ namespace Arius.Core.Tests
             await c.Execute();
 
             return c.Services;
+        }
+
+
+        protected void RepoStats(out Repository repo, 
+            out int chunkBlobItemCount, 
+            out int manifestCount, 
+            out IEnumerable<PointerFileEntry> currentPfeWithDeleted, out IEnumerable<PointerFileEntry> currentPfeWithoutDeleted,
+            out IEnumerable<PointerFileEntry> allPfes)
+        {
+            repo = GetRepository();
+
+            chunkBlobItemCount = repo.GetAllChunkBlobs().Length;
+            manifestCount = repo.GetManifestCount().Result;
+
+            currentPfeWithDeleted = repo.GetCurrentEntries(true).Result.ToArray();
+            currentPfeWithoutDeleted = repo.GetCurrentEntries(false).Result.ToArray();
+
+            allPfes = repo.GetPointerFileEntries().Result.ToArray();
+        }
+
+
+        /// <summary>
+        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
+        /// FileInfo fi can either be a PointerFile or a BinaryFile
+        /// </summary>
+        protected void GetPointerInfo(FileInfo fi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), fi, out pf, out pfe);
+        /// <summary>
+        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
+        /// FileInfo fi can either be a PointerFile or a BinaryFile
+        /// </summary>
+        protected void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
+        {
+            var ps = GetPointerService();
+
+            pf = ps.GetPointerFile(fi);
+
+            var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
+            pfe = repo.GetCurrentEntries(true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
         }
 
 

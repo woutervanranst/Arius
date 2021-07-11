@@ -27,7 +27,7 @@ namespace Arius.Core.Tests
         public async Task Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized()
         {
             //Archive the full directory so that only pointers remain
-            await EnsureFullDirectoryArchived(removeLocal: true);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(removeLocal: true);
 
             var pf1 = ArchiveTestDirectory.GetPointerFileInfos().First();
             var pf2 = ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
@@ -56,7 +56,7 @@ namespace Arius.Core.Tests
             // Scenario: Restore - pass synchronize option and pass a single file as path -- should result in InvalidOperation
 
             //Archive the full directory so that only pointers remain
-            await EnsureFullDirectoryArchived(removeLocal: true);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(removeLocal: true);
 
             var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
             var pfi2 = pfi.CopyTo(RestoreTestDirectory);
@@ -83,7 +83,7 @@ namespace Arius.Core.Tests
             // Scenario: restore a single file
 
             //Archive the full directory so that only pointers remain
-            await EnsureFullDirectoryArchived(removeLocal: true);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(removeLocal: true);
 
             // 1. synchronize and do not download folder: Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
             // 2.1 synchronize and do not fownload file -- invalidoperaiton
@@ -149,7 +149,7 @@ namespace Arius.Core.Tests
         public async Task Restore_FileDoesNotExist_ValidationException()
         {
             //Archive the full directory so that only pointers remain
-            await EnsureFullDirectoryArchived(removeLocal: true);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(removeLocal: true);
 
             var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
             var pfi2 = pfi.CopyTo(RestoreTestDirectory);
@@ -177,7 +177,7 @@ namespace Arius.Core.Tests
             Commands.Restore.ProcessManifestBlock.flow3Executed = false;
             Commands.Restore.ProcessManifestBlock.flow4Executed = false;
 
-            await EnsureFullDirectoryArchived(removeLocal: false);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(removeLocal: false);
 
             var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
             var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
@@ -212,7 +212,7 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Restore_Chunked()
         {
-            await EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
+            await Archive_DirectoryTests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
 
             await RestoreCommand(RestoreTestDirectory.FullName, true, true);
         }

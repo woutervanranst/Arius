@@ -7,101 +7,45 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
 namespace Arius.Core.Tests
 {
-    class ArchiveTests : TestBase
+    class Archive_OneFileTests : TestBase
     {
         protected override void BeforeEachTest()
         {
             ArchiveTestDirectory.Clear();
         }
 
-        private AccessTier tier = AccessTier.Cool;
-
-
-        private Lazy<FileInfo> sourceFileForArchiveNonDedup = new(() => 
+        
+        private readonly Lazy<FileInfo> sourceFile = new(() => 
         {
-            var fn = Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt");
+            var fn = Path.Combine(SourceFolder.FullName, nameof(Archive_OneFileTests), "file 1.txt");
             var f = TestSetup.CreateRandomFile(fn, 0.5);
 
             return f;
         });
-        private FileInfo EnsureFileForArchiveNonDedup(bool clearArchiveTestDirectory = false)
+        private FileInfo EnsureArchiveTestDirectoryFileInfo()
         {
-            if (clearArchiveTestDirectory) 
-                ArchiveTestDirectory.Clear();
-
-            var s_fi = sourceFileForArchiveNonDedup.Value;
-            var s_fi_rn = Path.GetRelativePath(SourceFolder.FullName, s_fi.FullName);
-            var a_fi = new FileInfo(Path.Combine(ArchiveTestDirectory.FullName, s_fi_rn));
-            a_fi.Directory.Create();
-
-            if (!a_fi.Exists)
-            { 
-                s_fi.CopyTo(a_fi.FullName);
-                a_fi.LastWriteTimeUtc = s_fi.LastWriteTimeUtc; //CopyTo does not do this somehow
-            }
-
-            return a_fi;
+            var sfi = sourceFile.Value;
+            return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
         }
-
-
-        private void RepoStats(out Repository repo, 
-            out int chunkBlobItemCount, 
-            out int manifestCount, 
-            out IEnumerable<PointerFileEntry> currentPfeWithDeleted, out IEnumerable<PointerFileEntry> currentPfeWithoutDeleted,
-            out IEnumerable<PointerFileEntry> allPfes)
-        {
-            repo = GetRepository();
-
-            chunkBlobItemCount = repo.GetAllChunkBlobs().Length;
-            manifestCount = repo.GetManifestCount().Result;
-
-            currentPfeWithDeleted = repo.GetCurrentEntries(true).Result.ToArray();
-            currentPfeWithoutDeleted = repo.GetCurrentEntries(false).Result.ToArray();
-
-            allPfes = repo.GetPointerFileEntries().Result.ToArray();
-        }
-
-        /// <summary>
-        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
-        /// FileInfo fi can either be a PointerFile or a BinaryFile
-        /// </summary>
-        private void GetPointerInfo(FileInfo fi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), fi, out pf, out pfe);
-        /// <summary>
-        /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
-        /// FileInfo fi can either be a PointerFile or a BinaryFile
-        /// </summary>
-        private void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
-        {
-            var ps = GetPointerService();
-
-            pf = ps.GetPointerFile(fi);
-
-            var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
-            pfe = repo.GetCurrentEntries(true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
-        }
-
 
 
         [Test, Order(1)]
-        public async Task Archive_OneFile_Success()
+        public async Task Archive_OneFileCoolTier_Success()
         {
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             AccessTier tier = AccessTier.Cool;
             await ArchiveCommand(tier);
             
             RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
             //1 additional chunk was uploaded
             Assert.AreEqual(chunkBlobItemCount0 + 1, chunkBlobItemCount1);
-            //The chunk is in the appropriate tier
-            Assert.AreEqual(tier, repo.GetAllChunkBlobs().First().AccessTier);
             //1 additional Manifest exists
             Assert.AreEqual(manifestCount0 + 1, manifestCount1);
             //1 additional PointerFileEntry exists
@@ -111,6 +55,10 @@ namespace Arius.Core.Tests
             GetPointerInfo(repo, bfi, out var pf, out var pfe);
             //PointerFile is created
             Assert.IsNotNull(pf);
+            //The chunk is in the appropriate tier
+            var ch = (await repo.GetChunkHashesForManifestAsync(pf.Hash)).Single();
+            var c = repo.GetChunkBlobByHash(ch, requireHydrated: false);
+            Assert.AreEqual(tier, c.AccessTier);
             //There is a matching PointerFileEntry
             Assert.IsNotNull(pfe);
             //The PointerFileEntry is not marked as deleted
@@ -122,9 +70,9 @@ namespace Arius.Core.Tests
 
 
         [Test]
-        public async Task Archive_OneFileDeleteUndelete_Success()
+        public async Task Archive_DeleteUndelete_Success()
         {
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
             
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -151,7 +99,7 @@ namespace Arius.Core.Tests
 
 
             // UNDELETE
-            _ = EnsureFileForArchiveNonDedup();
+            _ = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
 
             RepoStats(out _, out var chunkBlobItemCount2, out var manifestCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
@@ -169,7 +117,7 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Archive_DuplicateBinaryFile_Success()
         {
-            var bfi1 = EnsureFileForArchiveNonDedup();
+            var bfi1 = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
 
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -207,7 +155,7 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Archive_DuplicatePointerFile_Success()
         {
-            var bfi1 = EnsureFileForArchiveNonDedup();
+            var bfi1 = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
 
 
@@ -253,7 +201,7 @@ namespace Arius.Core.Tests
         {
             // Rename BinaryFile and PointerFile -- this is like a 'move'
 
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
 
 
@@ -299,7 +247,7 @@ namespace Arius.Core.Tests
         {
             // Rename BinaryFile without renaming the PointerFile -- this is like a 'duplicate'
 
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
 
 
@@ -343,7 +291,7 @@ namespace Arius.Core.Tests
         [Test]
         public async Task Archive_RemoveLocal_Success()
         {
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             // Ensure the BinaryFile exists
             Assert.IsTrue(File.Exists(bfi.FullName));
 
@@ -365,7 +313,7 @@ namespace Arius.Core.Tests
         {
             // Rename PointerFile that no longer has a BinaryFile -- this is like a 'move'
             
-            var bfi = EnsureFileForArchiveNonDedup();
+            var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand(removeLocal: true);
             
             
