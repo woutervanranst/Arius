@@ -41,7 +41,7 @@ namespace Arius.Core.Tests
         }
 
 
-        private readonly Lazy<FileInfo[]> sourceFiles = new(() =>
+        private static readonly Lazy<FileInfo[]> sourceFiles = new(() =>
         {
             return new[]
             {
@@ -51,12 +51,12 @@ namespace Arius.Core.Tests
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "directory with spaces", "file4 with space.txt"), 1)
             };
         });
-        protected FileInfo EnsureArchiveTestDirectoryFileInfo()
+        protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
         {
             var sfi = sourceFiles.Value.First();
             return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
         }
-        protected FileInfo[] EnsureArchiveTestDirectoryFileInfos()
+        protected static FileInfo[] EnsureArchiveTestDirectoryFileInfos()
         {
             var sfis = sourceFiles.Value;
             return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();

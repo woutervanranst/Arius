@@ -19,8 +19,34 @@ namespace Arius.Core.Tests
             ArchiveTestDirectory.Clear();
         }
 
+        public static async Task<FileInfo[]> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false)
+        {
+            if (purgeRemote)
+                await TestSetup.PurgeRemote();
 
-        
+            var bfis = EnsureArchiveTestDirectoryFileInfos();
+            await ArchiveCommand();
+            //await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
+
+            return bfis;
+        }
+
+
+        [Test]
+        public async Task Archive_FullDirectory()
+        {
+            var bfis = await EnsureFullDirectoryArchived();
+
+            RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
+            //Chunks for each file
+            Assert.AreEqual(bfis.Length, chunkBlobItemCount1);
+            //Manifests for each file
+            Assert.AreEqual(bfis.Length, manifestCount1);
+            //PointerFileEntries for each file
+            Assert.AreEqual(bfis.Length, currentPfeWithoutDeleted1.Count());
+        }
+
+
 
 
 
@@ -29,15 +55,9 @@ namespace Arius.Core.Tests
         //         * Delete file
         //* delete pointer, archive
 
-        //         * Add file again that was previously deleted
         //         * Modify the binary
         //            * azcopy fails
         //         * add binary > get .arius file > delete .arius file > archive again > arius file will reappear but cannot appear twice in the manifest
-        //         *
-        //         *
-        //         *
-        //         * add binary
-        //         * add another binary
         //         *
         //         *
         //            //TODO test File X is al geupload ik kopieer 'X - Copy' erbij> expectation gewoon pointer erbij binary weg
@@ -56,42 +76,13 @@ namespace Arius.Core.Tests
         //         * #2
         //         * change a manifest without the binary present
 
-
-
-
         // * archive a file for which ONLY the chunk (not deduped) exists (ie no pointer, no entries no manifest)
         // * archive a duplicated chunkfile
         // * chunk1, 2, 3 are already uploaded. file 2 = chunk 2,3. archive.
-        //         *
         //         */
 
 
 
 
-
-
-
-        public static async Task EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false)
-        {
-            //if (purgeRemote)
-            //    await TestSetup.PurgeRemote();
-
-            ////// Empty the test directory
-            ////ArchiveTestDirectory.Clear();
-            ////SourceFolder.CopyTo(ArchiveTestDirectory);
-            //var bfis = ensurearc
-
-            ////EXECUTE
-            //await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
-        }
-
-
-
-        [Test]
-        public async Task Archive_FullDirectory()
-        {
-            await EnsureFullDirectoryArchived();
-
-        }
     }
 }
