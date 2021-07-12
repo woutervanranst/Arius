@@ -15,12 +15,14 @@ namespace Arius.Core.Tests
 {
     abstract class TestBase
     {
+        // https://www.automatetheplanet.com/nunit-cheat-sheet/
+
         [OneTimeSetUp]
         protected virtual void BeforeTestClass()
         {
             // Executes once for the test class. (Optional)
         }
-        
+
         [SetUp]
         protected virtual void BeforeEachTest()
         {
@@ -32,7 +34,7 @@ namespace Arius.Core.Tests
         {
             // Runs after each test. (Optional)
         }
-        
+
         [OneTimeTearDown]
         protected virtual void AfterTestClass()
         {
@@ -45,10 +47,10 @@ namespace Arius.Core.Tests
         {
             return new[]
             {
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 1.txt"), 0.5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 2.doc"), 2),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "file 3 large.txt"), 5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, nameof(Archive_DirectoryTests), "directory with spaces", "file4 with space.txt"), 1)
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 0.5),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1)
             };
         });
         protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
@@ -111,7 +113,7 @@ namespace Arius.Core.Tests
             return c.Services;
         }
 
-        
+
         /// <summary>
         /// Restore to TestSetup.RestoreTestDirectory
         /// </summary>
@@ -149,9 +151,9 @@ namespace Arius.Core.Tests
         }
 
 
-        protected void RepoStats(out Repository repo, 
-            out int chunkBlobItemCount, 
-            out int manifestCount, 
+        protected void RepoStats(out Repository repo,
+            out int chunkBlobItemCount,
+            out int manifestCount,
             out IEnumerable<PointerFileEntry> currentPfeWithDeleted, out IEnumerable<PointerFileEntry> currentPfeWithoutDeleted,
             out IEnumerable<PointerFileEntry> allPfes)
         {

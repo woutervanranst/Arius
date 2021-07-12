@@ -7,7 +7,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.UnitTests
 {
     class AccessTierTests
     {

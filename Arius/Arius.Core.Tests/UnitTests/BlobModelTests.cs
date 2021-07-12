@@ -1,40 +1,43 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Tests;
+using Arius.Core.Tests.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.UnitTests
 {
     class BlobModelTests : TestBase
     {
         protected override void BeforeTestClass()
         {
-            if (TestSetup.ArchiveTestDirectory.Exists) TestSetup.ArchiveTestDirectory.Delete(true);
-            TestSetup.ArchiveTestDirectory.Create();
+            ArchiveTestDirectory.Clear();
         }
 
         [Test]
-        public void Properties_ChunkBlobBase_Valid()
+        public async Task Properties_ChunkBlobBase_Valid()
         {
+            //await EnsureArchiveTestDirectoryFileInfo();
+
             var repo = GetRepository();
 
             var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
             var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobClient;
 
             Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
-            
+
             Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
             Assert.AreEqual(cb1.Folder, cb2.Folder);
             Assert.AreEqual(cb1.Folder, Repository.ChunkDirectoryName);
-            
+
             Assert.AreEqual(cb1.FullName, cb2.FullName);
             Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
             Assert.IsTrue(cb1.FullName.EndsWith(ChunkBlobBase.Extension)); //the FullName contains the extension
-            
+
             Assert.AreEqual(cb1.Hash, cb2.Hash);
             Assert.IsFalse(cb1.Hash.Value.EndsWith(ChunkBlobBase.Extension)); //the Hash does NOT contain the extension
 

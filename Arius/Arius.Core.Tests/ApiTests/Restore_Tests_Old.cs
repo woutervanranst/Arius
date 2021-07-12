@@ -7,6 +7,8 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Tests;
+using Arius.Core.Tests.Extensions;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -14,11 +16,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
-// https://www.automatetheplanet.com/nunit-cheat-sheet/
-
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.ApiTests
 {
-    partial class ArchiveRestoreTests : TestBase
+    class Restore_Tests_Old : TestBase
     {
         protected override void BeforeEachTest()
         {
@@ -82,11 +82,11 @@ namespace Arius.Core.Tests
             //11 A hydrated blob does not yet exist
             var bc_Hydrating = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrating.Exists());
-            
+
             //12 Obtaining properties results in an exception
             Assert.Catch<Azure.RequestFailedException>(() => bc_Hydrating.GetProperties());
 
-            
+
             //EXECUTE -- Restore
             await RestoreCommand(synchronize: true, download: true, keepPointers: true);
 
@@ -131,16 +131,16 @@ namespace Arius.Core.Tests
             //21 The original blob exists
             var bc_Original = TestSetup.Container.GetBlobClient(cb.FullName);
             Assert.IsTrue(bc_Original.Exists());
-            
+
             //22 The hydrated blob does not yet exist
             var bc_Hydrated = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkDirectoryName}/{cb.Name}");
             Assert.IsFalse(bc_Hydrated.Exists());
-            
+
             //23 Copy the original to the hydrated folder
             var copyTask = bc_Hydrated.StartCopyFromUri(bc_Original.Uri);
             await copyTask.WaitForCompletionAsync();
             Assert.IsTrue(bc_Hydrated.Exists());
-            
+
             //24 Move the original blob to the archive tier
             bc_Original.SetAccessTier(AccessTier.Archive);
             cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
@@ -182,7 +182,7 @@ namespace Arius.Core.Tests
             Assert.IsTrue(noPointerFiles);
         }
 
-        
+
         [Test, Order(1002)]
         public async Task Restore_FullSourceDirectory_OnlyPointers()
         {
@@ -201,13 +201,13 @@ namespace Arius.Core.Tests
             Assert.IsTrue(areIdentical);
         }
 
-        
 
 
-        
 
 
-        
+
+
+
 
         private class FileComparer : IEqualityComparer<FileInfo>
         {

@@ -6,13 +6,14 @@ using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Tests;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.ApiTests
 {
-    class ArchiveTierTests : TestBase
+    class ArchiveTier_Tests : TestBase
     {
         protected override void BeforeEachTest()
         {

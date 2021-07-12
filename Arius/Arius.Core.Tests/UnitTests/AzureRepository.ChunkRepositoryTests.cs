@@ -1,9 +1,10 @@
 ﻿using Arius.Core.Repositories;
+using Arius.Core.Tests;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System.Linq;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.UnitTests
 {
     class ChunkRepositoryTests : TestBase
     {
@@ -11,7 +12,7 @@ namespace Arius.Core.Tests
         public void GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
         {
             var repo = GetRepository();
-            
+
             var cb1 = repo.GetAllChunkBlobs().First();
 
             var cb2 = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, cb1.Name);
@@ -25,7 +26,7 @@ namespace Arius.Core.Tests
             var repo = GetRepository();
 
             var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
-            
+
             Assert.IsNull(cb);
         }
     }

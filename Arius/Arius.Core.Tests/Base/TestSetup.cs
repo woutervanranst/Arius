@@ -25,7 +25,7 @@ namespace Arius.Core.Tests
         public static string AccountName { get; set; }
         public static string AccountKey { get; set; }
 
-        public static Core.Facade.Facade Facade { get; set; }
+        public static Facade.Facade Facade { get; set; }
 
         private static DirectoryInfo unitTestRoot;
         public static DirectoryInfo SourceFolder { get; private set; }
@@ -93,7 +93,7 @@ namespace Arius.Core.Tests
             Facade = new Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
         }
 
-        
+
         public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB)
         {
             var f = new FileInfo(fileFullName);
@@ -125,31 +125,16 @@ namespace Arius.Core.Tests
 
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 await t.DeleteAsync();
-
-            //OperationContext x;
-            //x.LastResult.
-
-            //await PurgeRemote();
         }
 
         public static async Task PurgeRemote()
         {
-            //foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
-            //    await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
-
-            //foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
-            //    await t.DeleteAsync();
-
-            //await Task.Delay(5000);
-
             foreach (var b in Container.GetBlobs())
                 Container.DeleteBlob(b.Name);
 
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 foreach (var item in t.CreateQuery<TableEntity>())
-                {
                     await t.ExecuteAsync(TableOperation.Delete(item));
-                }
         }
     }
 }

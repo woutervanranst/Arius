@@ -6,20 +6,22 @@ using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Tests;
+using Arius.Core.Tests.Extensions;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.ApiTests
 {
-    class Archive_OneFileTests : TestBase
+    class Archive_OneFile_Tests : TestBase
     {
         protected override void BeforeEachTest()
         {
             ArchiveTestDirectory.Clear();
         }
 
-        
+
         [Test, Order(1)]
         public async Task Archive_OneFileCoolTier_Success()
         {
@@ -28,7 +30,7 @@ namespace Arius.Core.Tests
             var bfi = EnsureArchiveTestDirectoryFileInfo();
             AccessTier tier = AccessTier.Cool;
             await ArchiveCommand(tier);
-            
+
             RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
             //1 additional chunk was uploaded
             Assert.AreEqual(chunkBlobItemCount0 + 1, chunkBlobItemCount1);
@@ -60,10 +62,10 @@ namespace Arius.Core.Tests
         {
             var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand();
-            
+
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-            
+
             // DELETE
             // Delete the binary and the pointer
             ArchiveTestDirectory.Clear();
@@ -298,18 +300,18 @@ namespace Arius.Core.Tests
         public async Task Archive_RenamePointerFileWithoutBinaryFile_Success()
         {
             // Rename PointerFile that no longer has a BinaryFile -- this is like a 'move'
-            
+
             var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand(removeLocal: true);
-            
-            
+
+
             Assert.IsFalse(File.Exists(bfi.FullName));
 
             //Rename PointerFile
             var pfi = bfi.GetPointerFileInfoFromBinaryFile();
             var pfi_FullName_Original = pfi.FullName;
             //bfi.Rename($"Renamed {bfi.Name}"); // <-- dit doen we hier NIET vs de vorige
-            pfi.Rename($"Renamed3 {pfi.Name}"); 
+            pfi.Rename($"Renamed3 {pfi.Name}");
 
             RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 

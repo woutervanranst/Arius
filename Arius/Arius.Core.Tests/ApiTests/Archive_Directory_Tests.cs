@@ -6,13 +6,15 @@ using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Tests;
+using Arius.Core.Tests.Extensions;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
-namespace Arius.Core.Tests
+namespace Arius.Core.Tests.ApiTests
 {
-    class Archive_DirectoryTests : TestBase
+    class Archive_Directory_Tests : TestBase
     {
         protected override void BeforeEachTest()
         {
@@ -25,8 +27,7 @@ namespace Arius.Core.Tests
                 await TestSetup.PurgeRemote();
 
             var bfis = EnsureArchiveTestDirectoryFileInfos();
-            await ArchiveCommand();
-            //await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
+            await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
 
             return bfis;
         }
