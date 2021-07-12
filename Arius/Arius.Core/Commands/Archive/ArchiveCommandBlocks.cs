@@ -4,14 +4,18 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Toolkit.HighPerformance;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -190,6 +194,215 @@ namespace Arius.Core.Commands.Archive
             return e;
         }
         //private readonly Dictionary<HashValue, bool> created = new();
+    }
+
+
+    internal class NewBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+    {
+        private readonly Chunker chunker;
+        private readonly IHashValueProvider hvp;
+        private readonly Repository repo;
+        private readonly IBlobCopier.IOptions options;
+
+        public NewBlock(ILogger<NewBlock> logger,
+           Func<BlockingCollection<BinaryFile>> sourceFunc,
+           Chunker chunker,
+           IHashValueProvider hvp,
+           Repository repo,
+           IBlobCopier.IOptions options,
+           //Action<BinaryFile> uploadBinaryFile,
+           //Action<BinaryFile> waitForCreatedManifest,
+           //Action<BinaryFile> manifestExists,
+           Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+        {
+            this.chunker = chunker;
+            this.hvp = hvp;
+            this.repo = repo;
+            this.options = options;
+        }
+        protected override async Task ForEachBodyImplAsync(BinaryFile bf)
+        {
+            using var fs = File.OpenRead(bf.FullName);
+            var u = new Uploader(options);
+
+            foreach (var chunk in ((ByteBoundaryChunker)chunker).Chunk(fs))
+            {
+                var ch = hvp.GetChunkHash(chunk.AsStream());
+
+                if (await repo.ChunkExists(ch))
+                    continue;
+
+                var compressed = Compress(chunk.AsStream(), CompressionLevel.Optimal).ToArray().AsMemory();
+
+                var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
+                var encrypted = await EncryptStringToBytes_Aes(compressed, key);
+
+
+                var decrypted = await DecryptStringFromBytes_Aes(encrypted, key);
+
+
+
+                //using var cryptStream = new CryptoStream(compressedStream, aes.CreateEncryptor(), CryptoStreamMode.Write); //https://www.c-sharpcorner.com/article/encryption-and-decryption-using-a-symmetric-key-in-c-sharp/
+
+                //var b = await cryptStream.ReadAllBytesAsync();
+
+                //var cec = b.AsMemory();
+
+
+                //using var sreader = new StreamReader(cryptStream);
+
+                //sreader.toar
+                //cryptStream.
+                //{
+                //    originalFileStream.CopyTo(compressionStream);
+                //    Console.WriteLine("Compressed {0} from {1} to {2} bytes.",
+                //        fileToCompress.Name, fileToCompress.Length.ToString(), compressedFileStream.Length.ToString());
+                //}
+
+
+
+                var decompressed = Decompress(decrypted.AsStream());
+
+
+
+                //await u.Upload(cec, ch);
+
+
+
+
+
+
+            }
+        }
+
+
+        public static MemoryStream Compress(Stream decompressed, CompressionLevel compressionLevel = CompressionLevel.Fastest) //https://stackoverflow.com/a/39157149/1582323
+        {
+            var compressed = new MemoryStream();
+            using (var zip = new GZipStream(compressed, compressionLevel, true))
+            {
+                decompressed.CopyTo(zip);
+            }
+
+            compressed.Seek(0, SeekOrigin.Begin);
+            return compressed;
+        }
+
+        public static MemoryStream Decompress(Stream compressed)
+        {
+            var decompressed = new MemoryStream();
+            using (var zip = new GZipStream(compressed, CompressionMode.Decompress, true))
+            {
+                zip.CopyTo(decompressed);
+            }
+
+            decompressed.Seek(0, SeekOrigin.Begin);
+            return decompressed;
+        }
+
+
+
+        // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
+        // https://stackoverflow.com/questions/37689233/encrypt-decrypt-stream-in-c-sharp-using-rijndaelmanaged
+        // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
+
+        static async Task<ReadOnlyMemory<byte>> EncryptStringToBytes_Aes(ReadOnlyMemory<byte> plain, byte[] Key/*, byte[] IV*/)
+        {
+            using var aesAlg = Aes.Create();
+            aesAlg.Key = Key;
+            aesAlg.IV = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+            // Create an encryptor to perform the stream transform.
+            using var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+            using var to = new MemoryStream();
+            using var writer = new CryptoStream(to, encryptor, CryptoStreamMode.Write);
+            //plain.Seek(0, SeekOrigin.Begin);
+            //plain.AsStream().CopyTo(writer);
+
+            await writer.WriteAsync(plain);
+            writer.FlushFinalBlock();
+
+            //to.Seek(0, SeekOrigin.Begin);
+            return to.ToArray().AsMemory();
+        }
+
+        static async Task<ReadOnlyMemory<byte>> DecryptStringFromBytes_Aes(ReadOnlyMemory<byte> cipher, byte[] Key/*, byte[] IV*/)
+        {
+            using var aesAlg = Aes.Create();
+            aesAlg.Key = Key;
+            aesAlg.IV = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8 };
+
+            // Create a decryptor to perform the stream transform.
+            using var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+            using var to = new MemoryStream();
+            using var writer = new CryptoStream(to, decryptor, CryptoStreamMode.Write);
+            //cipher.AsStream().CopyTo(writer);
+
+            await writer.WriteAsync(cipher);
+            writer.FlushFinalBlock();
+
+            //to.Seek(0, SeekOrigin.Begin);
+            return to.ToArray().AsMemory();
+
+            //    // Create the streams used for decryption.
+            //    using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+            //    {
+            //        using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+            //        {
+            //            using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+            //            {
+
+            //                // Read the decrypted bytes from the decrypting stream
+            //                // and place them in a string.
+            //                plaintext = srDecrypt.ReadToEnd();
+            //            }
+            //        }
+            //    }
+
+            //return plaintext;
+        }
+
+
+
+
+        class Uploader
+        {
+            private readonly IBlobCopier.IOptions options;
+
+            public Uploader(IBlobCopier.IOptions options)
+            {
+                this.options = options;
+
+                //var bsc = new BlobServiceClient(connectionString);
+                //container = bsc.GetBlobContainerClient(options.Container);
+
+                //var r = container.CreateIfNotExists(PublicAccessType.None);
+
+                //if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+                //this.logger.LogInformation($"Created container {options.Container}... ");
+
+            }
+
+            //private readonly BlobContainerClient container;
+
+
+            public async Task Upload(ReadOnlyMemory<byte> chunk, ChunkHash hash)
+            {
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+                var bsc = new BlobContainerClient(connectionString, options.Container);
+                await bsc.UploadBlobAsync(hash.Value.ToString(), new BinaryData(chunk));
+
+                //var x = new Azure.Storage.Blobs.Specialized.BlockBlobClient(connectionString, options.Container,  );
+                //x.stage
+                //var c = container.GetBlobClient();
+                //c.
+
+            }
+        }
+
+
     }
 
 

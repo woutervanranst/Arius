@@ -102,28 +102,46 @@ namespace Arius.Core.Commands.Archive
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
 
+
+
+
+
+            var hahaha = new NewBlock(
+                logger: loggerFactory.CreateLogger<NewBlock>(),
+                sourceFunc: () => binariesToChunk,
+                chunker: services.GetRequiredService<Chunker>(),
+                hvp: services.GetRequiredService<IHashValueProvider>(),
+                repo: repo,
+                options: (IBlobCopier.IOptions)options,
+                done: () => { });
+            var heh = hahaha.GetTask;
+
+
+
+
+
             var chunksToProcess = new BlockingCollection<IChunkFile>();
             var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>();
 
-            var chunkBlock = new ChunkBlock(
-                logger: loggerFactory.CreateLogger<ChunkBlock>(),
-                sourceFunc: () => binariesToChunk,
-                maxDegreeOfParallelism: 1 /*2*/,
-                chunker: services.GetRequiredService<Chunker>(),
-                chunkedBinary: (binaryFile, chunkFiles) =>
-                {
-                    //B501
-                    chunksToProcess.AddFromEnumerable(chunkFiles, false);
+            //var chunkBlock = new ChunkBlock(
+            //    logger: loggerFactory.CreateLogger<ChunkBlock>(),
+            //    sourceFunc: () => binariesToChunk,
+            //    maxDegreeOfParallelism: 1 /*2*/,
+            //    chunker: services.GetRequiredService<Chunker>(),
+            //    chunkedBinary: (binaryFile, chunkFiles) =>
+            //    {
+            //        //B501
+            //        chunksToProcess.AddFromEnumerable(chunkFiles, false);
 
-                    //B502
-                    var chs = chunkFiles.Select(ch => ch.Hash).ToArray();
-                    chunksForManifest.AddOrUpdate(
-                        key: binaryFile.Hash,
-                        addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
-                        updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
-                },
-                done: () => chunksToProcess.CompleteAdding()); //B510
-            var chunkTask = chunkBlock.GetTask;
+            //        //B502
+            //        var chs = chunkFiles.Select(ch => ch.Hash).ToArray();
+            //        chunksForManifest.AddOrUpdate(
+            //            key: binaryFile.Hash,
+            //            addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
+            //            updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
+            //    },
+            //    done: () => chunksToProcess.CompleteAdding()); //B510
+            //var chunkTask = chunkBlock.GetTask;
 
 
             var chunksToEncrypt = new BlockingCollection<IChunkFile>();

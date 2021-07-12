@@ -2,6 +2,7 @@
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Toolkit.HighPerformance;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +26,9 @@ namespace Arius.Core.Services.Chunkers
         private readonly string uploadTempDirFullName;
         private readonly bool useMemory;
 
+        private const int NUMBER_CONSECUTIVE_DELIMITER = 2; // 2 bytes = 16 bits gives chunks of 64 KB
+        private const int DELIMITER = 0;
+
         public override IChunkFile[] Chunk(BinaryFile bf)
         {
             logger.LogInformation($"Chunking '{bf.Name}'... ");
@@ -42,6 +46,37 @@ namespace Arius.Core.Services.Chunkers
             logger.LogInformation($"Chunking '{bf.Name}'... done into {chunks.Length} chunks, {deduped.Count} in-file duplicates, saving {netSavedBytes.GetBytesReadable()}");
 
             return chunks;
+        }
+
+        public IEnumerable<ReadOnlyMemory<byte>> Chunk(Stream stream)
+        {
+            int b; //the byte being read
+            int c = NUMBER_CONSECUTIVE_DELIMITER;
+
+            using var chunkMemoryStream = new MemoryStream();
+
+            while ((b = stream.ReadByte()) != -1) //-1 = end of the stream
+            {
+                chunkMemoryStream.WriteByte((byte)b);
+
+                if (b == DELIMITER)
+                    c--;
+                else
+                    c = NUMBER_CONSECUTIVE_DELIMITER;
+
+                if ((c <= 0 && chunkMemoryStream.Length > 1024) || //at least blocks of 1KB
+                    stream.Position == stream.Length)
+                {
+                    var r = chunkMemoryStream.ToArray().AsMemory();
+
+                    chunkMemoryStream.Flush();
+
+                    yield return r;
+                    
+                    //.Dispose();
+                    //chunkMemoryStream = new MemoryStream();
+                }
+            }
         }
 
         private IEnumerable<IChunkFile> CreateChunks(BinaryFile bf, Func<int, string> chunkFullFileName)
@@ -72,9 +107,6 @@ namespace Arius.Core.Services.Chunkers
 
             try
             {
-                const int NUMBER_CONSECUTIVE_DELIMITER = 2; // 2 bytes = 16 bits gives chunks of 64 KB
-                const int DELIMITER = 0;
-
                 if (useMemory)
                 {
                     //Copy the full file in RAM for faster (x10) speed
@@ -124,8 +156,6 @@ namespace Arius.Core.Services.Chunkers
                         i++;
                         c = NUMBER_CONSECUTIVE_DELIMITER;
                         chunkMemoryStream = new MemoryStream();
-                        
-                        
 
                         yield return new ChunkFile(new FileInfo(filename), hash);
                     }
