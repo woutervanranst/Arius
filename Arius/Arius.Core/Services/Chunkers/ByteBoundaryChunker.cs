@@ -50,32 +50,37 @@ namespace Arius.Core.Services.Chunkers
 
         public IEnumerable<ReadOnlyMemory<byte>> Chunk(Stream stream)
         {
-            int b; //the byte being read
-            int c = NUMBER_CONSECUTIVE_DELIMITER;
+            var chunk = new MemoryStream();
 
-            using var chunkMemoryStream = new MemoryStream();
-
-            while ((b = stream.ReadByte()) != -1) //-1 = end of the stream
+            try
             {
-                chunkMemoryStream.WriteByte((byte)b);
+                int b; //the byte being read
+                int c = NUMBER_CONSECUTIVE_DELIMITER;
 
-                if (b == DELIMITER)
-                    c--;
-                else
-                    c = NUMBER_CONSECUTIVE_DELIMITER;
-
-                if ((c <= 0 && chunkMemoryStream.Length > 1024) || //at least blocks of 1KB
-                    stream.Position == stream.Length)
+                while ((b = stream.ReadByte()) != -1) //-1 = end of the stream
                 {
-                    var r = chunkMemoryStream.ToArray().AsMemory();
+                    chunk.WriteByte((byte)b);
 
-                    chunkMemoryStream.Flush();
+                    if (b == DELIMITER)
+                        c--;
+                    else
+                        c = NUMBER_CONSECUTIVE_DELIMITER;
 
-                    yield return r;
-                    
-                    //.Dispose();
-                    //chunkMemoryStream = new MemoryStream();
+                    if ((c <= 0 && chunk.Length > 1024) || //at least blocks of 1KB
+                        stream.Position == stream.Length)
+                    {
+                        var r = chunk.ToArray().AsMemory();
+
+                        chunk.Dispose();
+                        chunk = new();
+
+                        yield return r;
+                    }
                 }
+            }
+            finally
+            {
+                chunk.Dispose();
             }
         }
 
@@ -155,7 +160,8 @@ namespace Arius.Core.Services.Chunkers
                         //Reset for next iteration
                         i++;
                         c = NUMBER_CONSECUTIVE_DELIMITER;
-                        chunkMemoryStream = new MemoryStream();
+                        chunkMemoryStream.Dispose();
+                        chunkMemoryStream = new();
 
                         yield return new ChunkFile(new FileInfo(filename), hash);
                     }
