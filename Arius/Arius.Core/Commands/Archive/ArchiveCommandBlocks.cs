@@ -257,6 +257,8 @@ namespace Arius.Core.Commands.Archive
             var plainFile = bf.FullName;
             var compFile = bf.FullName + ".gz";
             var uncompFile = compFile + ".ngz";
+            var encFile = bf.FullName + ".aes";
+            var decFile = bf.FullName + ".plain";
 
             using (var plain = File.OpenRead(plainFile))
             {
@@ -265,24 +267,7 @@ namespace Arius.Core.Commands.Archive
                 await plain.CopyToAsync(compressionStream);
             }
 
-            using (var compNotEnc = File.OpenRead(compFile))
-            {
-                using var notCompNotEnc = File.OpenWrite(uncompFile);
-                using var gz2 = new GZipStream(compNotEnc, CompressionMode.Decompress);
-                await gz2.CopyToAsync(notCompNotEnc);
-                notCompNotEnc.Close();
-            }
-
-            var h1 = hvp.GetManifestHash(plainFile);
-            var h2 = hvp.GetManifestHash(uncompFile);
-
-
-
-
-            var encFile = bf.FullName + ".aes";
-            var decFile = bf.FullName + ".plain";
-
-            using (var plain = File.OpenRead(plainFile))
+            using (var comp = File.OpenRead(compFile))
             {
                 using var enc = File.OpenWrite(encFile);
 
@@ -293,30 +278,38 @@ namespace Arius.Core.Commands.Archive
                 using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
                 using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
 
-                await plain.CopyToAsync(cs);
+                await comp.CopyToAsync(cs);
                 cs.FlushFinalBlock();
             }
 
-
             using (var enc = File.OpenRead(encFile))
             {
-                using var notCompNotEnc = File.OpenWrite(decFile);
+                using var dec = File.OpenWrite(decFile);
 
                 using var aes = Aes.Create();
                 DeriveBytes(password, out var key, out var iv);
                 aes.Key = key;
                 aes.IV = iv;
                 using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                using var cs = new CryptoStream(notCompNotEnc, decryptor, CryptoStreamMode.Write);
+                using var cs = new CryptoStream(dec, decryptor, CryptoStreamMode.Write);
 
                 await enc.CopyToAsync(cs);
                 cs.FlushFinalBlock();
             }
 
-            h1 = hvp.GetManifestHash(plainFile);
-            h2 = hvp.GetManifestHash(decFile);
 
+            using (var dec = File.OpenRead(decFile))
+            {
+                using var unComp = File.OpenWrite(uncompFile);
+                using var gz2 = new GZipStream(dec, CompressionMode.Decompress);
+                await gz2.CopyToAsync(unComp);
+                unComp.Close();
+            }
 
+            var h1 = hvp.GetManifestHash(plainFile);
+            var h2 = hvp.GetManifestHash(uncompFile);
+
+            { }
 
 
             //using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
