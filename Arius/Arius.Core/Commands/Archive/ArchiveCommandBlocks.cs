@@ -253,21 +253,23 @@ namespace Arius.Core.Commands.Archive
 
             //var f = await UnprocessAsync(bf.Hash, "woutervr");
 
+            var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
+
             var password = "woutervr";
-            var plainFile = bf.FullName;
-            var compFile = bf.FullName + ".gz";
+            var plainFile = f;
+            var compFile = f + ".gz";
             var uncompFile = compFile + ".ngz";
-            var encFile = bf.FullName + ".aes";
-            var decFile = bf.FullName + ".plain";
+            var encFile = f + ".aes";
+            var decFile = f + ".plain";
+
+            //using (var plain = File.OpenRead(plainFile))
+            //{
+            //    using var compressedFileStream = File.OpenWrite(compFile);
+            //    using var gz1 = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
+            //    await plain.CopyToAsync(gz1);
+            //}
 
             using (var plain = File.OpenRead(plainFile))
-            {
-                using var compressedFileStream = File.OpenWrite(compFile);
-                using var compressionStream = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
-                await plain.CopyToAsync(compressionStream);
-            }
-
-            using (var comp = File.OpenRead(compFile))
             {
                 using var enc = File.OpenWrite(encFile);
 
@@ -278,8 +280,10 @@ namespace Arius.Core.Commands.Archive
                 using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
                 using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
 
-                await comp.CopyToAsync(cs);
-                cs.FlushFinalBlock();
+                using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
+
+                await plain.CopyToAsync(gz1);
+                //cs.FlushFinalBlock();
             }
 
             using (var enc = File.OpenRead(encFile))
