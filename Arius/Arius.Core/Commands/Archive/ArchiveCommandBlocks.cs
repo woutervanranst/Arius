@@ -243,61 +243,247 @@ namespace Arius.Core.Commands.Archive
         }
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            using var fs = File.OpenRead(bf.FullName);
-            var u = new Uploader(options);
+            //using var plainInitial = File.OpenRead(bf.FullName);
+            //var u = new Uploader(options);
 
             Stopwatch x = new();
             x.Start();
 
-            //using (var s = File.OpenRead(f))
-            //{
-            //    await u.UploadChunkAsync(s, new("ehehe"));
-            //}
+            //await ProcessAsync(bf.Hash, fs, "woutervr");
 
+            //var f = await UnprocessAsync(bf.Hash, "woutervr");
 
-            var ch = (ByteBoundaryChunker)chunker;
+            var password = "woutervr";
+            var plainFile = bf.FullName;
+            var compFile = bf.FullName + ".gz";
+            var uncompFile = compFile + ".ngz";
 
-            await ch.Chunk(fs).AsyncParallelForEach(maxDegreeOfParallelism: 8,
-                body: async chunk => 
-                {
-                    var ch = hvp.GetChunkHash(chunk.AsStream());
-
-                    if (await repo.ChunkExists(ch))
-                        return;
-
-                    //var iSegment = chunk.Start;
-                    //chunk.TryGet(ref iSegment, out var memChunk);
-
-
-                    //foreach (var ka in chunk) //https://stackoverflow.com/a/52860038/1582323
-                    //{
-
-                    //}
-
-                    var compressed = Compress(chunk.AsStream(), CompressionLevel.Optimal);
-                    var ratio = compressed.Length / (double)chunk.Length;
-
-                    //var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
-                    var encrypted = await EncryptAsync(compressed, "woutervr");
-
-
-                    var decrypted = await DecryptAsync(encrypted, "woutervr");
-                    var decompressed = Decompress(decrypted);
-
-                    await u.UploadChunkAsync(encrypted, ch);
-
-
-                });
-
+            using (var plain = File.OpenRead(plainFile))
             {
-                
+                using var compressedFileStream = File.OpenWrite(compFile);
+                using var compressionStream = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
+                await plain.CopyToAsync(compressionStream);
             }
+
+            using (var compNotEnc = File.OpenRead(compFile))
+            {
+                using var notCompNotEnc = File.OpenWrite(uncompFile);
+                using var gz2 = new GZipStream(compNotEnc, CompressionMode.Decompress);
+                await gz2.CopyToAsync(notCompNotEnc);
+                notCompNotEnc.Close();
+            }
+
+            var h1 = hvp.GetManifestHash(plainFile);
+            var h2 = hvp.GetManifestHash(uncompFile);
+
+
+
+
+            var encFile = bf.FullName + ".aes";
+            var decFile = bf.FullName + ".plain";
+
+            using (var plain = File.OpenRead(plainFile))
+            {
+                using var enc = File.OpenWrite(encFile);
+
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+
+                await plain.CopyToAsync(cs);
+                cs.FlushFinalBlock();
+            }
+
+
+            using (var enc = File.OpenRead(encFile))
+            {
+                using var notCompNotEnc = File.OpenWrite(decFile);
+
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                using var cs = new CryptoStream(notCompNotEnc, decryptor, CryptoStreamMode.Write);
+
+                await enc.CopyToAsync(cs);
+                cs.FlushFinalBlock();
+            }
+
+            h1 = hvp.GetManifestHash(plainFile);
+            h2 = hvp.GetManifestHash(decFile);
+
+
+
+
+            //using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
+
+
+
+            //using var aes = Aes.Create();
+            //DeriveBytes(password, out var key, out var iv);
+            //aes.Key = key;
+            //aes.IV = iv;
+            //using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+            //using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
+
+            //using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
+
+            //await plainInitial.CopyToAsync(gzipStream);
+            //compressedNotEncrypted.FlushFinalBlock();
+
+            //compressedEncrypted.Position = 0;
+
+            //var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+            //var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+            //await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
+
+
+
+            //await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
+
+            //using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
+
+            //using var aes = Aes.Create();
+            //DeriveBytes(password, out var key, out var iv);
+            //aes.Key = key;
+            //aes.IV = iv;
+            //using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            //using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
+
+            //using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
+
+            //var notCompressedNotEncryptedFile = Path.GetTempFileName();
+            //using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
+
+            ////notCompressedNotEncrypted.Position = 0;
+            //await gzipStream.CopyToAsync(notCompressedNotEncryptedFileStream);
+            //gzipStream.Flush(); //.FlushFinalBlock();
+
+
+
+
+
+
+
+            //var ch = (ByteBoundaryChunker)chunker;
+
+            //await ch.Chunk(fs).AsyncParallelForEach(maxDegreeOfParallelism: 8,
+            //    body: async chunk =>
+            //    {
+            //        var ch = hvp.GetChunkHash(chunk.AsStream());
+
+            //        if (await repo.ChunkExists(ch))
+            //            return;
+
+
+
+            //        //var iSegment = chunk.Start;
+            //        //chunk.TryGet(ref iSegment, out var memChunk);
+
+
+            //        //foreach (var ka in chunk) //https://stackoverflow.com/a/52860038/1582323
+            //        //{
+
+            //        //}
+
+            //        var compressed = Compress(chunk.AsStream(), CompressionLevel.Optimal);
+            //        var ratio = compressed.Length / (double)chunk.Length;
+
+            //        //var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
+            //        var encrypted = await EncryptAsync(compressed, "woutervr");
+
+
+            //        var decrypted = await DecryptAsync(encrypted, "woutervr");
+            //        var decompressed = Decompress(decrypted);
+
+            //        await u.UploadChunkAsync(encrypted, ch);
+
+
+            //    });
+
 
             x.Stop();
 
             //var Mbps = (new FileInfo(f)).Length * 8 / (1024 * 1024 * (double)x.ElapsedMilliseconds / 1000);
         }
 
+        private async Task ProcessAsync(ManifestHash hash, Stream plain, string password)
+        {
+            var tempFile = Path.GetTempFileName();
+
+            //try
+            //{
+                using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
+
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
+
+                using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
+
+                await plain.CopyToAsync(notCompressedNotEncrypted);
+                compressedNotEncrypted.FlushFinalBlock();
+
+                compressedEncrypted.Position = 0;
+
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+                var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+                await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
+            //}
+            //finally
+            //{
+            //    File.Delete(tempFile);
+            //}
+        }
+
+
+        private async Task<string> UnprocessAsync(ManifestHash hash, string password)
+        {
+            var compressedEncryptedFile = Path.GetTempFileName();
+
+            try
+            {
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+                var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+                await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
+
+                using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
+
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
+
+                using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
+
+                var notCompressedNotEncryptedFile = Path.GetTempFileName();
+                using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
+
+                //notCompressedNotEncrypted.Position = 0;
+                await notCompressedNotEncrypted.CopyToAsync(notCompressedNotEncryptedFileStream);
+                notCompressedNotEncrypted.Flush(); //.FlushFinalBlock();
+
+                return notCompressedNotEncryptedFile;
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+            finally
+            {
+                File.Delete(compressedEncryptedFile);
+            }
+
+        }
 
         public static ReadOnlyMemory<byte> Compress(ReadOnlyMemory<byte> decompressed, CompressionLevel compressionLevel = CompressionLevel.Fastest) //https://stackoverflow.com/a/39157149/1582323
         {
@@ -308,14 +494,15 @@ namespace Arius.Core.Commands.Archive
             }
 
             compressed.Seek(0, SeekOrigin.Begin);
-            compressed.GetBuffer().AsSpan()
-            var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
+            //compressed.GetBuffer().AsSpan()
+            //var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
+            return compressed.ToArray().AsMemory();
         }
 
         public static ReadOnlyMemory<byte> Decompress(ReadOnlyMemory<byte> compressed)
         {
             using var decompressed = new MemoryStream();
-            using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true)
+            using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true);
             
             zip.CopyTo(decompressed);
 

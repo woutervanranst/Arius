@@ -39,6 +39,7 @@ namespace Arius.Core.Commands
                 logger.LogTrace("Done");
             };
 
+#pragma warning disable VSTHRD011 // Use AsyncLazy<T>
             this.task = new(() =>
             {
                 var t = TaskImpl();
@@ -53,6 +54,7 @@ namespace Arius.Core.Commands
 
                 return t;
             }, isThreadSafe: false);
+#pragma warning restore VSTHRD011 // Use AsyncLazy<T>
         }
 
         private readonly Func<Task<TSource>> sourceFunc;
