@@ -253,7 +253,8 @@ namespace Arius.Core.Commands.Archive
 
             //var f = await UnprocessAsync(bf.Hash, "woutervr");
 
-            var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
+            //var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
+            var f = bf.FullName;
 
             var password = "woutervr";
             var plainFile = f;
@@ -286,32 +287,70 @@ namespace Arius.Core.Commands.Archive
                 //cs.FlushFinalBlock();
             }
 
-            using (var enc = File.OpenRead(encFile))
+
+
+
+
+            try
             {
-                using var dec = File.OpenWrite(decFile);
+                using (var enc = File.OpenRead(encFile))
+                {
+                    using (var decomp = File.OpenWrite(decFile))
+                    {
 
-                using var aes = Aes.Create();
-                DeriveBytes(password, out var key, out var iv);
-                aes.Key = key;
-                aes.IV = iv;
-                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                using var cs = new CryptoStream(dec, decryptor, CryptoStreamMode.Write);
 
-                await enc.CopyToAsync(cs);
-                cs.FlushFinalBlock();
+                        using var aes = Aes.Create();
+                        DeriveBytes(password, out var key, out var iv);
+                        aes.Key = key;
+                        aes.IV = iv;
+                        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                        using var cs = new CryptoStream(enc, decryptor, CryptoStreamMode.Read);
+
+                        using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
+
+                        await gz2.CopyToAsync(decomp);
+
+
+
+
+                        //await enc.CopyToAsync(cs);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                throw;
             }
 
 
-            using (var dec = File.OpenRead(decFile))
-            {
-                using var unComp = File.OpenWrite(uncompFile);
-                using var gz2 = new GZipStream(dec, CompressionMode.Decompress);
-                await gz2.CopyToAsync(unComp);
-                unComp.Close();
-            }
+
+
+            //using (var enc = File.OpenRead(encFile))
+            //{
+            //    using var dec = File.OpenWrite(decFile);
+
+            //    using var aes = Aes.Create();
+            //    DeriveBytes(password, out var key, out var iv);
+            //    aes.Key = key;
+            //    aes.IV = iv;
+            //    using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            //    using var cs = new CryptoStream(dec, decryptor, CryptoStreamMode.Write);
+
+            //    await enc.CopyToAsync(cs);
+            //    cs.FlushFinalBlock();
+            //}
+
+
+            //using (var dec = File.OpenRead(decFile))
+            //{
+            //    using var unComp = File.OpenWrite(uncompFile);
+            //    using var gz2 = new GZipStream(dec, CompressionMode.Decompress);
+            //    await gz2.CopyToAsync(unComp);
+            //    unComp.Close();
+            //}
 
             var h1 = hvp.GetManifestHash(plainFile);
-            var h2 = hvp.GetManifestHash(uncompFile);
+            var h2 = hvp.GetManifestHash(decFile);
 
             { }
 
