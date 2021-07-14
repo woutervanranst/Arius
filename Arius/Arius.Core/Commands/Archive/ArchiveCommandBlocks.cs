@@ -253,8 +253,8 @@ namespace Arius.Core.Commands.Archive
 
             //var f = await UnprocessAsync(bf.Hash, "woutervr");
 
-            //var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
-            var f = bf.FullName;
+            var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
+            //var f = bf.FullName;
 
             var password = "woutervr";
             var plainFile = f;
@@ -284,70 +284,31 @@ namespace Arius.Core.Commands.Archive
                 using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
 
                 await plain.CopyToAsync(gz1);
-                //cs.FlushFinalBlock();
             }
 
 
 
 
 
-            try
+            using (var enc = File.OpenRead(encFile))
             {
-                using (var enc = File.OpenRead(encFile))
+                using (var decomp = File.OpenWrite(decFile))
                 {
-                    using (var decomp = File.OpenWrite(decFile))
-                    {
 
 
-                        using var aes = Aes.Create();
-                        DeriveBytes(password, out var key, out var iv);
-                        aes.Key = key;
-                        aes.IV = iv;
-                        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                        using var cs = new CryptoStream(enc, decryptor, CryptoStreamMode.Read);
+                    using var aes = Aes.Create();
+                    DeriveBytes(password, out var key, out var iv);
+                    aes.Key = key;
+                    aes.IV = iv;
+                    using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                    using var cs = new CryptoStream(enc, decryptor, CryptoStreamMode.Read);
 
-                        using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
+                    using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
 
-                        await gz2.CopyToAsync(decomp);
-
-
-
-
-                        //await enc.CopyToAsync(cs);
-                    }
+                    await gz2.CopyToAsync(decomp);
                 }
             }
-            catch (Exception e)
-            {
-                throw;
-            }
 
-
-
-
-            //using (var enc = File.OpenRead(encFile))
-            //{
-            //    using var dec = File.OpenWrite(decFile);
-
-            //    using var aes = Aes.Create();
-            //    DeriveBytes(password, out var key, out var iv);
-            //    aes.Key = key;
-            //    aes.IV = iv;
-            //    using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            //    using var cs = new CryptoStream(dec, decryptor, CryptoStreamMode.Write);
-
-            //    await enc.CopyToAsync(cs);
-            //    cs.FlushFinalBlock();
-            //}
-
-
-            //using (var dec = File.OpenRead(decFile))
-            //{
-            //    using var unComp = File.OpenWrite(uncompFile);
-            //    using var gz2 = new GZipStream(dec, CompressionMode.Decompress);
-            //    await gz2.CopyToAsync(unComp);
-            //    unComp.Close();
-            //}
 
             var h1 = hvp.GetManifestHash(plainFile);
             var h2 = hvp.GetManifestHash(decFile);
@@ -355,50 +316,7 @@ namespace Arius.Core.Commands.Archive
             { }
 
 
-            //using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
-
-
-
-            //using var aes = Aes.Create();
-            //DeriveBytes(password, out var key, out var iv);
-            //aes.Key = key;
-            //aes.IV = iv;
-            //using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-            //using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
-
-            //using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
-
-            //await plainInitial.CopyToAsync(gzipStream);
-            //compressedNotEncrypted.FlushFinalBlock();
-
-            //compressedEncrypted.Position = 0;
-
-            //var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-            //var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-            //await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-
-
-
-            //await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
-
-            //using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
-
-            //using var aes = Aes.Create();
-            //DeriveBytes(password, out var key, out var iv);
-            //aes.Key = key;
-            //aes.IV = iv;
-            //using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            //using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
-
-            //using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
-
-            //var notCompressedNotEncryptedFile = Path.GetTempFileName();
-            //using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
-
-            ////notCompressedNotEncrypted.Position = 0;
-            //await gzipStream.CopyToAsync(notCompressedNotEncryptedFileStream);
-            //gzipStream.Flush(); //.FlushFinalBlock();
-
+            
 
 
 
