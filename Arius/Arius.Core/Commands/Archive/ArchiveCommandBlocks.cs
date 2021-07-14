@@ -10,6 +10,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance;
+using Nerdbank.Streams;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace Arius.Core.Commands.Archive
 {
@@ -198,6 +200,23 @@ namespace Arius.Core.Commands.Archive
         //private readonly Dictionary<HashValue, bool> created = new();
     }
 
+    internal static class Extensions
+    {
+        public static async Task AsyncParallelForEach<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
+        {
+            var options = new ExecutionDataflowBlockOptions
+            {
+                MaxDegreeOfParallelism = maxDegreeOfParallelism
+            };
+            if (scheduler != null)
+                options.TaskScheduler = scheduler;
+            var block = new ActionBlock<T>(body, options);
+            await foreach (var item in source)
+                block.Post(item);
+            block.Complete();
+            await block.Completion;
+        }
+    }
 
     internal class NewBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
@@ -224,38 +243,55 @@ namespace Arius.Core.Commands.Archive
         }
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            var f = @"E:\SERIES_TODO\Friends\Friends.S01.720p.BluRay.x264-PSYCHD[rartv]\Friends.S01.720p.BluRay.x264-PSYCHD[rartv].7z";
-            using var fs = File.OpenRead(/*bf.FullName*/f);
+            using var fs = File.OpenRead(bf.FullName);
             var u = new Uploader(options);
 
             Stopwatch x = new();
             x.Start();
 
-            using (var s = File.OpenRead(f))
-            {
-                await u.UploadChunkAsync(s, new("ehehe"));
-            }
-
-
-            //foreach (var chunk in ((ByteBoundaryChunker)chunker).Chunk(fs).AsParallel().WithDegreeOfParallelism(8))
+            //using (var s = File.OpenRead(f))
             //{
-            //    var ch = hvp.GetChunkHash(chunk.AsStream());
-
-            //    if (await repo.ChunkExists(ch))
-            //        continue;
-
-            //    var compressed = Compress(chunk, CompressionLevel.Optimal);
-            //    var ratio = compressed.Length / (double)chunk.Length;
-
-            //    //var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
-            //    var encrypted = await EncryptAsync(compressed, "woutervr");
-
-
-            //    var decrypted = await DecryptAsync(encrypted, "woutervr");
-            //    var decompressed = Decompress(decrypted);
-
-            //    await u.UploadChunkAsync(encrypted, ch);
+            //    await u.UploadChunkAsync(s, new("ehehe"));
             //}
+
+
+            var ch = (ByteBoundaryChunker)chunker;
+
+            await ch.Chunk(fs).AsyncParallelForEach(maxDegreeOfParallelism: 8,
+                body: async chunk => 
+                {
+                    var ch = hvp.GetChunkHash(chunk.AsStream());
+
+                    if (await repo.ChunkExists(ch))
+                        return;
+
+                    //var iSegment = chunk.Start;
+                    //chunk.TryGet(ref iSegment, out var memChunk);
+
+
+                    //foreach (var ka in chunk) //https://stackoverflow.com/a/52860038/1582323
+                    //{
+
+                    //}
+
+                    var compressed = Compress(chunk.AsStream(), CompressionLevel.Optimal);
+                    var ratio = compressed.Length / (double)chunk.Length;
+
+                    //var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
+                    var encrypted = await EncryptAsync(compressed, "woutervr");
+
+
+                    var decrypted = await DecryptAsync(encrypted, "woutervr");
+                    var decompressed = Decompress(decrypted);
+
+                    await u.UploadChunkAsync(encrypted, ch);
+
+
+                });
+
+            {
+                
+            }
 
             x.Stop();
 
@@ -272,16 +308,16 @@ namespace Arius.Core.Commands.Archive
             }
 
             compressed.Seek(0, SeekOrigin.Begin);
-            return compressed.ToArray().AsMemory();
+            compressed.GetBuffer().AsSpan()
+            var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
         }
 
         public static ReadOnlyMemory<byte> Decompress(ReadOnlyMemory<byte> compressed)
         {
-            var decompressed = new MemoryStream();
-            using (var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true))
-            {
-                zip.CopyTo(decompressed);
-            }
+            using var decompressed = new MemoryStream();
+            using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true)
+            
+            zip.CopyTo(decompressed);
 
             decompressed.Seek(0, SeekOrigin.Begin);
             return decompressed.ToArray().AsMemory();
@@ -355,7 +391,7 @@ namespace Arius.Core.Commands.Archive
 
             var salt = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password)); //NOTE for eternity: GuillaumeB sait it will be ok
 
-            using var derivedBytes = new Rfc2898DeriveBytes(password, salt);
+            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, 1000);
             key = derivedBytes.GetBytes(32);
             iv = derivedBytes.GetBytes(16);
         }

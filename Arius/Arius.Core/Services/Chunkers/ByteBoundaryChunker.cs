@@ -4,10 +4,14 @@ using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Pipelines;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Services.Chunkers
@@ -21,6 +25,87 @@ namespace Arius.Core.Services.Chunkers
 
             useMemory = true;
         }
+
+
+
+        public async IAsyncEnumerable<ReadOnlySequence<byte>> Chunk(Stream stream)
+        {
+            var pipe = new Pipe();
+            ConfiguredTaskAwaitable writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
+            ReadOnlyMemory<byte> delimiter = new ReadOnlyMemory<byte>(new byte[] { 0, 0 });
+
+            await foreach (ReadOnlySequence<byte> chunk in ReadPipeAsync(pipe.Reader, delimiter))
+            {
+                // Use "chunk" to retrieve your chunked content.
+                yield return chunk;
+            };
+
+            await writing;
+        }
+
+
+
+        public static async IAsyncEnumerable<ReadOnlySequence<byte>> ReadPipeAsync(PipeReader reader, ReadOnlyMemory<byte> delimiter,
+    [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            while (true)
+            {
+                ReadResult result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                ReadOnlySequence<byte> buffer = result.Buffer;
+
+                while (TryReadChunk(ref buffer, delimiter.Span, out ReadOnlySequence<byte> chunk))
+                    yield return chunk;
+
+                reader.AdvanceTo(buffer.Start, buffer.End);
+                if (result.IsCompleted) break;
+            }
+
+            await reader.CompleteAsync().ConfigureAwait(false);
+        }
+
+        private static bool TryReadChunk(ref ReadOnlySequence<byte> buffer, ReadOnlySpan<byte> delimiter,
+            out ReadOnlySequence<byte> chunk)
+        {
+            SequencePosition? position = buffer.PositionOf(delimiter[0]);
+
+            if (position is null || position.Value.Equals(buffer.End))
+            {
+                chunk = default;
+                return false;
+            }
+
+            ReadOnlySequence<byte> slice = buffer.Slice(position.Value, 1);
+            if (!slice.FirstSpan.StartsWith(delimiter[1..]))
+            {
+                chunk = default;
+                return false;
+            }
+
+            chunk = buffer.Slice(0, position.Value);
+            buffer = buffer.Slice(buffer.GetPosition(delimiter.Length, position.Value));
+            return true;
+        }
+
+
+        public static async Task FillPipeAsync(Stream stream, PipeWriter writer, CancellationToken cancellationToken = default)
+        {
+            const int bufferSize = 4096;
+
+            while (true)
+            {
+                Memory<byte> memory = writer.GetMemory(bufferSize);
+                int bytesRead = await stream.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
+                if (bytesRead == 0) break;
+                writer.Advance(bytesRead);
+
+                FlushResult result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                if (result.IsCompleted) break;
+            }
+
+            await writer.CompleteAsync().ConfigureAwait(false);
+        }
+
+
 
         private readonly ILogger<ByteBoundaryChunker> logger;
         private readonly string uploadTempDirFullName;
@@ -48,41 +133,41 @@ namespace Arius.Core.Services.Chunkers
             return chunks;
         }
 
-        public IEnumerable<ReadOnlyMemory<byte>> Chunk(Stream stream)
-        {
-            var chunk = new MemoryStream();
+        //public IEnumerable<ReadOnlyMemory<byte>> Chunk(Stream stream)
+        //{
+        //    var chunk = new MemoryStream();
 
-            try
-            {
-                int b; //the byte being read
-                int c = NUMBER_CONSECUTIVE_DELIMITER;
+        //    try
+        //    {
+        //        int b; //the byte being read
+        //        int c = NUMBER_CONSECUTIVE_DELIMITER;
 
-                while ((b = stream.ReadByte()) != -1) //-1 = end of the stream
-                {
-                    chunk.WriteByte((byte)b);
+        //        while ((b = stream.ReadByte()) != -1) //-1 = end of the stream
+        //        {
+        //            chunk.WriteByte((byte)b);
 
-                    if (b == DELIMITER)
-                        c--;
-                    else
-                        c = NUMBER_CONSECUTIVE_DELIMITER;
+        //            if (b == DELIMITER)
+        //                c--;
+        //            else
+        //                c = NUMBER_CONSECUTIVE_DELIMITER;
 
-                    if ((c <= 0 && chunk.Length > 1024) || //at least blocks of 1KB
-                        stream.Position == stream.Length)
-                    {
-                        var r = chunk.ToArray().AsMemory();
+        //            if ((c <= 0 && chunk.Length > 1024) || //at least blocks of 1KB
+        //                stream.Position == stream.Length)
+        //            {
+        //                var r = chunk.ToArray().AsMemory();
 
-                        chunk.Dispose();
-                        chunk = new();
+        //                chunk.Dispose();
+        //                chunk = new();
 
-                        yield return r;
-                    }
-                }
-            }
-            finally
-            {
-                chunk.Dispose();
-            }
-        }
+        //                yield return r;
+        //            }
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        chunk.Dispose();
+        //    }
+        //}
 
         private IEnumerable<IChunkFile> CreateChunks(BinaryFile bf, Func<int, string> chunkFullFileName)
         {
