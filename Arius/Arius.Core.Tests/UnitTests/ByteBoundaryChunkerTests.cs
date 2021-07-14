@@ -27,15 +27,24 @@ namespace Arius.Core.Tests.UnitTests
         }
 
         [Test]
-        public void ChunkAndMerge_DedupFile_Match()
+        public async Task ChunkAndMerge_DedupFile_Match()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
 
-            ////Create the HashValueProvider and the Chunker
-            //var s = GetServices();
-            //var hvp = s.GetRequiredService<IHashValueProvider>();
-            //var chunker = s.GetRequiredService<ByteBoundaryChunker>();
+            //Create the HashValueProvider and the Chunker
+            var services = GetServices();
+            var hvp = services.GetRequiredService<IHashValueProvider>();
+            var chunker = services.GetRequiredService<ByteBoundaryChunker>();
 
+
+            var s = new MemoryStream(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3 });
+
+            //var s = new MemoryStream(new byte[] { 1, 2, 3, 0, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3 });
+
+            await foreach (var c in chunker.ChunkAsync(s))
+            {
+
+            }
 
             ////Generate new dedup file
             //var bf = CreateNewBinaryFile(hvp);

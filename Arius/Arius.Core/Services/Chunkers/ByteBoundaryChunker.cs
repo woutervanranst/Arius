@@ -78,24 +78,41 @@ namespace Arius.Core.Services.Chunkers
 
         private static bool TryReadChunk(ref ReadOnlySequence<byte> buffer, ReadOnlySpan<byte> delimiter, out ReadOnlySequence<byte> chunk)
         {
-            SequencePosition? position = buffer.PositionOf(delimiter[0]);
+            SequencePosition offset = buffer.Start;
 
-            if (position is null || position.Value.Equals(buffer.End))
+            while (true)
             {
-                chunk = default;
-                return false;
-            }
+                if (buffer.IsEmpty)
+                {
+                    // we re at the end of the stream / the buffer is empty
+                    chunk = default;
+                    return false;
+                }
 
-            ReadOnlySequence<byte> slice = buffer.Slice(position.Value, 1);
-            if (!slice.FirstSpan.StartsWith(delimiter[1..]))
-            {
-                chunk = default;
-                return false;
-            }
+                var position = buffer.Slice(offset).PositionOf(delimiter[0]);
 
-            chunk = buffer.Slice(0, position.Value);
-            buffer = buffer.Slice(buffer.GetPosition(delimiter.Length, position.Value));
-            return true;
+                if (position is null || position.Value.Equals(buffer.End))
+                {
+                    // there are no more delimiting characters in the remaining bufffer - this is the last chunk
+                    chunk = buffer;
+                    buffer = default;
+                    return true;
+                }
+
+                var delimiterSlice = buffer.Slice(offset).Slice(position.Value, delimiter.Length);
+                var nextChunkposition = buffer.Slice(offset).GetPosition(delimiter.Length, position.Value);
+                if (!delimiterSlice.FirstSpan.StartsWith(delimiter))
+                {
+                    offset = position.Value;
+                    continue;
+                }
+
+                
+                chunk = buffer.Slice(0, nextChunkposition);
+                buffer = buffer.Slice(nextChunkposition);
+                return true;
+
+            }
         }
 
         
