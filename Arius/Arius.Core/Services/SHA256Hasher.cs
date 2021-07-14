@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,7 +22,8 @@ namespace Arius.Core.Services
         ManifestHash GetManifestHash(FileInfo bfi);
         ManifestHash GetManifestHash(string binaryFileFullName);
         ChunkHash GetChunkHash(string fullName);
-        ChunkHash GetChunkHash(Stream stream);
+        //ChunkHash GetChunkHash(Stream stream);
+        ChunkHash GetChunkHash(byte[] buffer);
     }
 
     internal class SHA256Hasher : IHashValueProvider
@@ -38,7 +40,8 @@ namespace Arius.Core.Services
         public ManifestHash GetManifestHash(FileInfo bfi) => GetManifestHash(bfi.FullName);
         public ManifestHash GetManifestHash(string fullName) => new(GetHashValue(fullName, salt));
         public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName, salt));
-        public ChunkHash GetChunkHash(Stream stream) => new(GetHashValue(stream, salt));
+        //public ChunkHash GetChunkHash(Stream stream) => new(GetHashValue(stream, salt));
+        public ChunkHash GetChunkHash(byte[] buffer) => new(GetHashValue(buffer, salt));
         ///// <summary>
         ///// Get the HashValue for the given BinaryFile.
         ///// If the FastHash option is set and a corresponding PointerFile with the same LastWriteTime is found, return the hash from the PointerFile
@@ -94,19 +97,35 @@ namespace Arius.Core.Services
 
         private static string GetHashValue(Stream stream, string salt)
         {
-            var byteArray = Encoding.ASCII.GetBytes(salt);
-            using var ss = new MemoryStream(byteArray);
+            var saltBytes = Encoding.ASCII.GetBytes(salt);
+            using var saltStream = new MemoryStream(saltBytes);
 
-            using var stream2 = new ConcatenatedStream(new Stream[] { ss, stream });
-            using var sha256 = SHA256.Create(); //not thread safe
+            using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
+            using var sha256 = SHA256.Create(); //not thread safe so create a new instance each time
 
-            var hash = sha256.ComputeHash(stream2);
+            var hash = sha256.ComputeHash(saltedStream);
 
-            return ByteArrayToString(hash);
+            return BytesToString(hash);
+        }
+
+        private static string GetHashValue(byte[] buffer, string salt)
+        {
+            var saltBytes = Encoding.ASCII.GetBytes(salt);
+            using var saltStream = new MemoryStream(saltBytes);
+
+            using var stream = new MemoryStream(buffer);
+
+            using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
+
+            using var sha256 = SHA256.Create(); //not thread safe so create a new instance each time
+
+            var hash = sha256.ComputeHash(saltedStream);
+
+            return BytesToString(hash);
         }
 
 
-        private static string ByteArrayToString(byte[] ba) => Convert.ToHexString(ba).ToLower();
+        private static string BytesToString(byte[] ba) => Convert.ToHexString(ba).ToLower();
 
 
 

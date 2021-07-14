@@ -13,10 +13,7 @@ namespace Arius.Core.Extensions
             this.streams = new Queue<Stream>(streams);
         }
 
-        public override bool CanRead
-        {
-            get { return true; }
-        }
+        public override bool CanRead => true;
 
         public override int Read(byte[] buffer, int offset, int count)
         {

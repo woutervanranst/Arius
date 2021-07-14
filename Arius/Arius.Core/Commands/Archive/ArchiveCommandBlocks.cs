@@ -232,18 +232,15 @@ namespace Arius.Core.Commands.Archive
             {
                 using (var plain = File.OpenRead(bf.FullName))
                 {
-                    await chunker.Chunk(plain).AsyncParallelForEachAsync(maxDegreeOfParallelism: 8,
+                    await chunker.ChunkAsync(plain).AsyncParallelForEachAsync(maxDegreeOfParallelism: 1,
                     body: async chunk =>
                     {
-                        var cs = chunk.AsStream();
-
-                        var ch = hvp.GetChunkHash(cs);
+                        var ch = hvp.GetChunkHash(chunk);
 
                         if (await repo.ChunkExists(ch))
                             return;
 
-                        cs.Position = 0;
-
+                        using var cs = new MemoryStream(chunk);
                         var cb = await repo.UploadChunkAsync(ch, options.Tier, cs);
                     });
                 }

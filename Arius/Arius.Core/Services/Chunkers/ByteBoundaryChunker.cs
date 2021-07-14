@@ -26,19 +26,37 @@ namespace Arius.Core.Services.Chunkers
         private readonly ILogger<ByteBoundaryChunker> logger;
 
 
-        public async IAsyncEnumerable<ReadOnlySequence<byte>> Chunk(Stream stream)
+        public async IAsyncEnumerable<byte[]> ChunkAsync(Stream stream)
         {
             var pipe = new Pipe();
-            ConfiguredTaskAwaitable writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
-            ReadOnlyMemory<byte> delimiter = new ReadOnlyMemory<byte>(new byte[] { 0, 0 });
+            var writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
+            var delimiter = new ReadOnlyMemory<byte>(new byte[] { 0, 0 });
 
-            await foreach (ReadOnlySequence<byte> chunk in ReadPipeAsync(pipe.Reader, delimiter))
+            await foreach (var chunk in ReadPipeAsync(pipe.Reader, delimiter))
             {
                 // Use "chunk" to retrieve your chunked content.
-                yield return chunk;
+                yield return chunk.ToArray();
             };
 
             await writing;
+        }
+
+        private static async Task FillPipeAsync(Stream stream, PipeWriter writer, CancellationToken cancellationToken = default)
+        {
+            const int bufferSize = 4096;
+
+            while (true)
+            {
+                Memory<byte> memory = writer.GetMemory(bufferSize);
+                int bytesRead = await stream.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
+                if (bytesRead == 0) break;
+                writer.Advance(bytesRead);
+
+                FlushResult result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                if (result.IsCompleted) break;
+            }
+
+            await writer.CompleteAsync().ConfigureAwait(false);
         }
 
         private static async IAsyncEnumerable<ReadOnlySequence<byte>> ReadPipeAsync(PipeReader reader, ReadOnlyMemory<byte> delimiter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -80,23 +98,7 @@ namespace Arius.Core.Services.Chunkers
             return true;
         }
 
-        public static async Task FillPipeAsync(Stream stream, PipeWriter writer, CancellationToken cancellationToken = default)
-        {
-            const int bufferSize = 4096;
-
-            while (true)
-            {
-                Memory<byte> memory = writer.GetMemory(bufferSize);
-                int bytesRead = await stream.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
-                if (bytesRead == 0) break;
-                writer.Advance(bytesRead);
-
-                FlushResult result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                if (result.IsCompleted) break;
-            }
-
-            await writer.CompleteAsync().ConfigureAwait(false);
-        }
+        
 
 
 
