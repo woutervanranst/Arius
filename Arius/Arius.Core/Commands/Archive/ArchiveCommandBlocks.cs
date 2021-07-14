@@ -7,6 +7,7 @@ using Arius.Core.Services.Chunkers;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance;
@@ -24,7 +25,6 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace Arius.Core.Commands.Archive
 {
@@ -200,24 +200,6 @@ namespace Arius.Core.Commands.Archive
         //private readonly Dictionary<HashValue, bool> created = new();
     }
 
-    internal static class Extensions
-    {
-        public static async Task AsyncParallelForEach<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
-        {
-            var options = new ExecutionDataflowBlockOptions
-            {
-                MaxDegreeOfParallelism = maxDegreeOfParallelism
-            };
-            if (scheduler != null)
-                options.TaskScheduler = scheduler;
-            var block = new ActionBlock<T>(body, options);
-            await foreach (var item in source)
-                block.Post(item);
-            block.Complete();
-            await block.Completion;
-        }
-    }
-
     internal class NewBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         private readonly Chunker chunker;
@@ -253,8 +235,8 @@ namespace Arius.Core.Commands.Archive
 
             //var f = await UnprocessAsync(bf.Hash, "woutervr");
 
-            var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
-            //var f = bf.FullName;
+            //var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
+            var f = bf.FullName;
 
             var password = "woutervr";
             var plainFile = f;
@@ -263,34 +245,46 @@ namespace Arius.Core.Commands.Archive
             var encFile = f + ".aes";
             var decFile = f + ".plain";
 
-            //using (var plain = File.OpenRead(plainFile))
-            //{
-            //    using var compressedFileStream = File.OpenWrite(compFile);
-            //    using var gz1 = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
-            //    await plain.CopyToAsync(gz1);
-            //}
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+            var bcc = new BlobContainerClient(connectionString, options.Container);
+            var bbc = bcc.GetBlockBlobClient(bf.Hash.Value);
 
-            using (var plain = File.OpenRead(plainFile))
+
+            try
             {
-                using var enc = File.OpenWrite(encFile);
+                using (var plain = File.OpenRead(plainFile))
+                {
+                    if (await bbc.ExistsAsync())
+                        throw new InvalidOperationException();
 
-                using var aes = Aes.Create();
-                DeriveBytes(password, out var key, out var iv);
-                aes.Key = key;
-                aes.IV = iv;
-                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-                using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+                    using (var enc = await bbc.OpenWriteAsync(true))
+                    {
+                        using var aes = Aes.Create();
+                        DeriveBytes(password, out var key, out var iv);
+                        aes.Key = key;
+                        aes.IV = iv;
+                        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                        using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
 
-                using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
+                        using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
 
-                await plain.CopyToAsync(gz1);
+                        await plain.CopyToAsync(gz1);
+                    }
+                }
+
+                await bbc.SetAccessTierAsync(AccessTier.Cool);
+
+            }
+            catch (Exception e)
+            {
+                throw;
             }
 
 
 
 
 
-            using (var enc = File.OpenRead(encFile))
+            using (var enc = await bbc.OpenReadAsync())
             {
                 using (var decomp = File.OpenWrite(decFile))
                 {
@@ -365,37 +359,7 @@ namespace Arius.Core.Commands.Archive
             //var Mbps = (new FileInfo(f)).Length * 8 / (1024 * 1024 * (double)x.ElapsedMilliseconds / 1000);
         }
 
-        private async Task ProcessAsync(ManifestHash hash, Stream plain, string password)
-        {
-            var tempFile = Path.GetTempFileName();
-
-            //try
-            //{
-                using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
-
-                using var aes = Aes.Create();
-                DeriveBytes(password, out var key, out var iv);
-                aes.Key = key;
-                aes.IV = iv;
-                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-                using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
-
-                using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
-
-                await plain.CopyToAsync(notCompressedNotEncrypted);
-                compressedNotEncrypted.FlushFinalBlock();
-
-                compressedEncrypted.Position = 0;
-
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-                var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-                await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-            //}
-            //finally
-            //{
-            //    File.Delete(tempFile);
-            //}
-        }
+        
 
 
         private async Task<string> UnprocessAsync(ManifestHash hash, string password)
@@ -540,49 +504,7 @@ namespace Arius.Core.Commands.Archive
 
 
 
-        class Uploader
-        {
-            private readonly IBlobCopier.IOptions options;
 
-            public Uploader(IBlobCopier.IOptions options)
-            {
-                this.options = options;
-
-                //var bsc = new BlobServiceClient(connectionString);
-                //container = bsc.GetBlobContainerClient(options.Container);
-
-                //var r = container.CreateIfNotExists(PublicAccessType.None);
-
-                //if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
-                //this.logger.LogInformation($"Created container {options.Container}... ");
-
-            }
-
-            //private readonly BlobContainerClient container;
-
-
-            public async Task UploadChunkAsync(ReadOnlyMemory<byte> chunk, ChunkHash hash)
-            {
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-                //var bsc = new BlobContainerClient(connectionString, options.Container);
-                //await bsc.UploadBlobAsync(hash.Value.ToString(), new BinaryData(chunk));
-
-
-                var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-                await x.UploadAsync(new BinaryData(chunk), new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-                //x.DownloadTo()
-            }
-            public async Task UploadChunkAsync(Stream s, ManifestHash hash)
-            {
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-                var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-                await x.UploadAsync(s, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-
-                //var bsc = new BlobContainerClient(connectionString, options.Container);
-                //await bsc.UploadBlobAsync(hash.Value.ToString(), s);
-
-            }
-        }
 
 
     }

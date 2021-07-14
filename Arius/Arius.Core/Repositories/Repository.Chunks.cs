@@ -22,9 +22,6 @@ namespace Arius.Core.Repositories
             // 'Partial constructor' for this part of the repo
         }
 
-        private readonly IBlobCopier _blobCopier;
-
-
         // GET
 
         public ChunkBlobBase[] GetAllChunkBlobs()
@@ -168,6 +165,7 @@ namespace Arius.Core.Repositories
 
         // UPLOAD & DOWNLOAD
 
+        public ChunkBlobBase Upload()
         public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
         {
             _blobCopier.Upload(ecfs, tier, ChunkDirectoryName, false);
@@ -205,4 +203,59 @@ namespace Arius.Core.Repositories
             //});
         }
     }
+
+
+
+
+
+
+    //class Uploader
+    //{
+    //    private readonly IBlobCopier.IOptions options;
+
+    //    public Uploader(IBlobCopier.IOptions options)
+    //    {
+    //        this.options = options;
+
+    //        //var bsc = new BlobServiceClient(connectionString);
+    //        //container = bsc.GetBlobContainerClient(options.Container);
+
+    //        //var r = container.CreateIfNotExists(PublicAccessType.None);
+
+    //        //if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+    //        //this.logger.LogInformation($"Created container {options.Container}... ");
+
+    //    }
+
+    //    //private readonly BlobContainerClient container;
+
+
+    //    public async Task UploadChunkAsync(ReadOnlyMemory<byte> chunk, ChunkHash hash)
+    //    {
+    //        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+    //        //var bsc = new BlobContainerClient(connectionString, options.Container);
+    //        //await bsc.UploadBlobAsync(hash.Value.ToString(), new BinaryData(chunk));
+
+
+    //        var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+    //        await x.UploadAsync(new BinaryData(chunk), new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
+    //        //x.DownloadTo()
+    //        public async Task UploadChunkAsync(Stream s, ManifestHash hash)
+    //        {
+    //            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+    //            var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+    //            await x.UploadAsync(s, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
+
+    //            //var bsc = new BlobContainerClient(connectionString, options.Container);
+    //            //await bsc.UploadBlobAsync(hash.Value.ToString(), s);
+
+    //        }
+    //    }
+
+
+    //}
 }
+
+
+
+
