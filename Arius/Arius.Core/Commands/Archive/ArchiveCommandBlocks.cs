@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance;
 using Nerdbank.Streams;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -200,314 +201,81 @@ namespace Arius.Core.Commands.Archive
         //private readonly Dictionary<HashValue, bool> created = new();
     }
 
-    internal class NewBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+    internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        private readonly Chunker chunker;
-        private readonly IHashValueProvider hvp;
-        private readonly Repository repo;
-        private readonly IBlobCopier.IOptions options;
-
-        public NewBlock(ILogger<NewBlock> logger,
-           Func<BlockingCollection<BinaryFile>> sourceFunc,
-           Chunker chunker,
-           IHashValueProvider hvp,
-           Repository repo,
-           IBlobCopier.IOptions options,
-           //Action<BinaryFile> uploadBinaryFile,
-           //Action<BinaryFile> waitForCreatedManifest,
-           //Action<BinaryFile> manifestExists,
-           Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+        public UploadBinaryFileBlock(
+            ILogger<UploadBinaryFileBlock> logger,
+            Func<BlockingCollection<BinaryFile>> sourceFunc,
+            ByteBoundaryChunker chunker,
+            IHashValueProvider hvp,
+            Repository repo,
+            ArchiveCommand.IOptions options,
+            //Action<BinaryFile> uploadBinaryFile,
+            //Action<BinaryFile> waitForCreatedManifest,
+            //Action<BinaryFile> manifestExists,
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.chunker = chunker;
             this.hvp = hvp;
             this.repo = repo;
             this.options = options;
         }
+
+        private readonly ByteBoundaryChunker chunker;
+        private readonly IHashValueProvider hvp;
+        private readonly Repository repo;
+        private readonly ArchiveCommand.IOptions options;
+
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
-            //using var plainInitial = File.OpenRead(bf.FullName);
-            //var u = new Uploader(options);
-
-            Stopwatch x = new();
-            x.Start();
-
-            //await ProcessAsync(bf.Hash, fs, "woutervr");
-
-            //var f = await UnprocessAsync(bf.Hash, "woutervr");
-
-            //var f = @"E:\SERIES_TODO\Casa de Papel\Season 1\Money Heist - S01E01 - Episode 1 WEBDL-480p ION10 x264 AAC.mp4";
-            var f = bf.FullName;
-
-            var password = "woutervr";
-            var plainFile = f;
-            var compFile = f + ".gz";
-            var uncompFile = compFile + ".ngz";
-            var encFile = f + ".aes";
-            var decFile = f + ".plain";
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-            var bcc = new BlobContainerClient(connectionString, options.Container);
-            var bbc = bcc.GetBlockBlobClient(bf.Hash.Value);
-
-
-            try
+            if (options.Dedup)
             {
-                using (var plain = File.OpenRead(plainFile))
+                using (var plain = File.OpenRead(bf.FullName))
                 {
-                    if (await bbc.ExistsAsync())
-                        throw new InvalidOperationException();
-
-                    using (var enc = await bbc.OpenWriteAsync(true))
+                    await chunker.Chunk(plain).AsyncParallelForEachAsync(maxDegreeOfParallelism: 8,
+                    body: async chunk =>
                     {
-                        using var aes = Aes.Create();
-                        DeriveBytes(password, out var key, out var iv);
-                        aes.Key = key;
-                        aes.IV = iv;
-                        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-                        using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+                        var cs = chunk.AsStream();
 
-                        using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
+                        var ch = hvp.GetChunkHash(cs);
 
-                        await plain.CopyToAsync(gz1);
-                    }
+                        if (await repo.ChunkExists(ch))
+                            return;
+
+                        cs.Position = 0;
+
+                        var cb = await repo.UploadChunkAsync(ch, options.Tier, cs);
+                    });
                 }
-
-                await bbc.SetAccessTierAsync(AccessTier.Cool);
-
             }
-            catch (Exception e)
+            else
             {
-                throw;
-            }
+                var ch = new ChunkHash(bf.Hash);
 
-
-
-
-
-            using (var enc = await bbc.OpenReadAsync())
-            {
-                using (var decomp = File.OpenWrite(decFile))
+                using (var plain = File.OpenRead(bf.FullName))
                 {
-
-
-                    using var aes = Aes.Create();
-                    DeriveBytes(password, out var key, out var iv);
-                    aes.Key = key;
-                    aes.IV = iv;
-                    using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                    using var cs = new CryptoStream(enc, decryptor, CryptoStreamMode.Read);
-
-                    using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
-
-                    await gz2.CopyToAsync(decomp);
+                    var cb = await repo.UploadChunkAsync(ch, options.Tier, plain);
                 }
+
             }
 
 
-            var h1 = hvp.GetManifestHash(plainFile);
-            var h2 = hvp.GetManifestHash(decFile);
-
-            { }
-
-
-            
+            //using (var decomp = File.OpenWrite(decFile))
+            //{
+            //    await repo.DownloadChunkAsync(ch, "woutervr", decomp);
+            //}
 
 
+            //var h1 = hvp.GetManifestHash(plainFile);
+            //var h2 = hvp.GetManifestHash(decFile);
 
-
-
-
-            //var ch = (ByteBoundaryChunker)chunker;
-
-            //await ch.Chunk(fs).AsyncParallelForEach(maxDegreeOfParallelism: 8,
-            //    body: async chunk =>
-            //    {
-            //        var ch = hvp.GetChunkHash(chunk.AsStream());
-
-            //        if (await repo.ChunkExists(ch))
-            //            return;
-
-
-
-            //        //var iSegment = chunk.Start;
-            //        //chunk.TryGet(ref iSegment, out var memChunk);
-
-
-            //        //foreach (var ka in chunk) //https://stackoverflow.com/a/52860038/1582323
-            //        //{
-
-            //        //}
-
-            //        var compressed = Compress(chunk.AsStream(), CompressionLevel.Optimal);
-            //        var ratio = compressed.Length / (double)chunk.Length;
-
-            //        //var key = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes("haha"));
-            //        var encrypted = await EncryptAsync(compressed, "woutervr");
-
-
-            //        var decrypted = await DecryptAsync(encrypted, "woutervr");
-            //        var decompressed = Decompress(decrypted);
-
-            //        await u.UploadChunkAsync(encrypted, ch);
-
-
-            //    });
-
-
-            x.Stop();
+            //x.Stop();
 
             //var Mbps = (new FileInfo(f)).Length * 8 / (1024 * 1024 * (double)x.ElapsedMilliseconds / 1000);
         }
 
-        
-
-
-        private async Task<string> UnprocessAsync(ManifestHash hash, string password)
-        {
-            var compressedEncryptedFile = Path.GetTempFileName();
-
-            try
-            {
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-                var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-                await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
-
-                using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
-
-                using var aes = Aes.Create();
-                DeriveBytes(password, out var key, out var iv);
-                aes.Key = key;
-                aes.IV = iv;
-                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-                using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
-
-                using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
-
-                var notCompressedNotEncryptedFile = Path.GetTempFileName();
-                using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
-
-                //notCompressedNotEncrypted.Position = 0;
-                await notCompressedNotEncrypted.CopyToAsync(notCompressedNotEncryptedFileStream);
-                notCompressedNotEncrypted.Flush(); //.FlushFinalBlock();
-
-                return notCompressedNotEncryptedFile;
-            }
-            catch (Exception e)
-            {
-                throw;
-            }
-            finally
-            {
-                File.Delete(compressedEncryptedFile);
-            }
-
-        }
-
-        public static ReadOnlyMemory<byte> Compress(ReadOnlyMemory<byte> decompressed, CompressionLevel compressionLevel = CompressionLevel.Fastest) //https://stackoverflow.com/a/39157149/1582323
-        {
-            var compressed = new MemoryStream();
-            using (var zip = new GZipStream(compressed, compressionLevel, true))
-            {
-                decompressed.AsStream().CopyTo(zip);
-            }
-
-            compressed.Seek(0, SeekOrigin.Begin);
-            //compressed.GetBuffer().AsSpan()
-            //var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
-            return compressed.ToArray().AsMemory();
-        }
-
-        public static ReadOnlyMemory<byte> Decompress(ReadOnlyMemory<byte> compressed)
-        {
-            using var decompressed = new MemoryStream();
-            using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true);
-            
-            zip.CopyTo(decompressed);
-
-            decompressed.Seek(0, SeekOrigin.Begin);
-            return decompressed.ToArray().AsMemory();
-        }
-
-
-
-        // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
-        // https://stackoverflow.com/questions/37689233/encrypt-decrypt-stream-in-c-sharp-using-rijndaelmanaged
-        // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
-
-        static async Task<ReadOnlyMemory<byte>> EncryptAsync(ReadOnlyMemory<byte> plain, string password)
-        {
-            DeriveBytes(password, out var key, out var iv);
-
-            using var aesAlg = Aes.Create();
-            aesAlg.Key = key;
-            aesAlg.IV = iv;
-
-            using var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-
-            using var to = new MemoryStream();
-            using var writer = new CryptoStream(to, encryptor, CryptoStreamMode.Write);
-
-            await writer.WriteAsync(plain);
-            writer.FlushFinalBlock();
-
-            return to.ToArray().AsMemory();
-        }
-
-        static async Task<ReadOnlyMemory<byte>> DecryptAsync(ReadOnlyMemory<byte> cipher, string password)
-        {
-            DeriveBytes(password, out var key, out var iv);
-
-            using var aesAlg = Aes.Create();
-            aesAlg.Key = key;
-            aesAlg.IV = iv;
-
-            using var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-
-            using var to = new MemoryStream();
-            using var writer = new CryptoStream(to, decryptor, CryptoStreamMode.Write);
-
-            await writer.WriteAsync(cipher);
-            writer.FlushFinalBlock();
-
-            return to.ToArray().AsMemory();
-        }
-
-
-        //private static void DeriveBytes(string password, Hash salt, out byte[] key, out byte[] iv)
-        //{
-        //    //https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rfc2898derivebytes?view=net-5.0
-
-        //    //var salt = new byte[8];
-        //    //using var rngCsp = new RNGCryptoServiceProvider();
-        //    //rngCsp.GetBytes(salt);
-
-        //    using var derivedBytes = new Rfc2898DeriveBytes(password, Encoding.UTF8.GetBytes(salt.Value));
-        //    key = derivedBytes.GetBytes(32);
-        //    iv = derivedBytes.GetBytes(16);
-        //}
-
-        private static void DeriveBytes(string password, out byte[] key, out byte[] iv)
-        {
-            //https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rfc2898derivebytes?view=net-5.0
-
-            //var salt = new byte[8];
-            //using var rngCsp = new RNGCryptoServiceProvider();
-            //rngCsp.GetBytes(salt);
-
-            var salt = SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password)); //NOTE for eternity: GuillaumeB sait it will be ok
-
-            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, 1000);
-            key = derivedBytes.GetBytes(32);
-            iv = derivedBytes.GetBytes(16);
-        }
-
-
-
-
-
-
-
     }
+
 
 
     internal class ChunkBlock : BlockingCollectionTaskBlockBase<BinaryFile>
@@ -599,42 +367,7 @@ namespace Arius.Core.Commands.Archive
     }
 
 
-    internal class EncryptChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
-    {
-        public EncryptChunkBlock(ILogger<EncryptChunkBlock> logger,
-            Func<BlockingCollection<IChunkFile>> sourceFunc,
-            int maxDegreeOfParallelism,
-            TempDirectoryAppSettings tempDirAppSettings,
-            IEncrypter encrypter,
-            Action<EncryptedChunkFile> chunkEncrypted,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
-        {
-            this.tempDirAppSettings = tempDirAppSettings;
-            this.encrypter = encrypter;
-            this.chunkEncrypted = chunkEncrypted;
-        }
-
-        private readonly TempDirectoryAppSettings tempDirAppSettings;
-        private readonly IEncrypter encrypter;
-        private readonly Action<EncryptedChunkFile> chunkEncrypted;
-
-        protected override Task ForEachBodyImplAsync(IChunkFile chunkFile)
-        {
-            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}' (source: '{chunkFile.Name}')");
-
-            var targetFile = new FileInfo(Path.Combine(tempDirAppSettings.TempDirectoryFullName, "encryptedchunks", $"{chunkFile.Hash.Value}{EncryptedChunkFile.Extension}"));
-
-            encrypter.Encrypt(chunkFile, targetFile, SevenZipCommandlineEncrypter.Compression.NoCompression, chunkFile is not BinaryFile);
-
-            var ecf = new EncryptedChunkFile(targetFile, chunkFile.Hash);
-
-            logger.LogInformation($"Encrypting chunk '{chunkFile.Hash.ToShortString()}'... done");
-
-            chunkEncrypted(ecf);
-
-            return Task.CompletedTask;
-        }
-    }
+    
 
 
     internal class CreateUploadBatchBlock : TaskBlockBase<BlockingCollection<EncryptedChunkFile>>

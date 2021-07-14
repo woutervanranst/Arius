@@ -1,12 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
 using static Arius.Core.Facade.Facade;
 
@@ -17,10 +21,13 @@ namespace Arius.Core.Repositories
         internal const string ChunkDirectoryName = "chunks";
         internal const string RehydratedChunkDirectoryName = "chunks-rehydrated";
 
-        private void InitChunkRepository()
+        private void InitChunkRepository(IOptions options, out string passphrase)
         {
             // 'Partial constructor' for this part of the repo
+            passphrase = options.Passphrase;
         }
+
+        private readonly string passphrase;
 
         // GET
 
@@ -165,45 +172,180 @@ namespace Arius.Core.Repositories
 
         // UPLOAD & DOWNLOAD
 
-        public ChunkBlobBase Upload()
+        /// <summary>
+        /// Upload a cleartext stream to the Repository
+        /// </summary>
+        /// <returns></returns>
+        public async Task<ChunkBlobBase> UploadChunkAsync(ChunkHash ch, AccessTier tier, Stream clearStream)
+        {
+            try
+            {
+                var bbc = container.GetBlockBlobClient(ch.Value);
+
+                if (await bbc.ExistsAsync())
+                    throw new InvalidOperationException();
+
+                using (var enc = await bbc.OpenWriteAsync(true))
+                {
+                    // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
+                    // https://stackoverflow.com/questions/37689233/encrypt-decrypt-stream-in-c-sharp-using-rijndaelmanaged
+                    // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
+
+                    using var aes = Aes.Create();
+                    DeriveBytes(passphrase, out var key, out var iv);
+                    aes.Key = key;
+                    aes.IV = iv;
+                    using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                    using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+
+                    using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
+
+                    await clearStream.CopyToAsync(gz1);
+                }
+
+                await bbc.SetAccessTierAsync(tier);
+
+                return ChunkBlobBase.GetChunkBlob(bbc);
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+
+        public async Task DownloadChunkAsync(ChunkHash ch, Stream clearStream)
+        {
+            try
+            {
+                var bbc = container.GetBlockBlobClient(ch.Value);
+
+                using (var enc = await bbc.OpenReadAsync())
+                {
+                    using var aes = Aes.Create();
+                    DeriveBytes(passphrase, out var key, out var iv);
+                    aes.Key = key;
+                    aes.IV = iv;
+                    using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                    using var cs = new CryptoStream(enc, decryptor, CryptoStreamMode.Read);
+
+                    using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
+
+                    await gz2.CopyToAsync(clearStream);
+                }
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
+        }
+
+        private static void DeriveBytes(string password, out byte[] key, out byte[] iv)
+        {
+            //https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rfc2898derivebytes?view=net-5.0
+
+            //var salt = new byte[8];
+            //using var rngCsp = new RNGCryptoServiceProvider();
+            //rngCsp.GetBytes(salt);
+
+            var salt = SHA256.Create().ComputeHash(Encoding.ASCII.GetBytes(password)); //NOTE for eternity: GuillaumeB sait it will be ok to not use a random salt
+
+            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, 1000);
+            key = derivedBytes.GetBytes(32);
+            iv = derivedBytes.GetBytes(16);
+        }
+
         public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
         {
-            _blobCopier.Upload(ecfs, tier, ChunkDirectoryName, false);
+            throw new NotImplementedException();
 
-            // Return an IEnumerable - the result may not be needed/materialized by the caller
-            return ecfs.Select(ecf =>
-            {
-                if (GetChunkBlobByName(ChunkDirectoryName, ecf.Name) is var cb)
-                    return cb;
+            //_blobCopier.Upload(ecfs, tier, ChunkDirectoryName, false);
 
-                throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(ChunkBlobItem)} of uploaded chunk {ecf.Hash}");
-            });
+            //// Return an IEnumerable - the result may not be needed/materialized by the caller
+            //return ecfs.Select(ecf =>
+            //{
+            //    if (GetChunkBlobByName(ChunkDirectoryName, ecf.Name) is var cb)
+            //        return cb;
+
+            //    throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(ChunkBlobItem)} of uploaded chunk {ecf.Hash}");
+            //});
         }
 
         public IEnumerable<EncryptedChunkFile> Download(ChunkBlobBase[] chunkBlobs, DirectoryInfo target, bool flatten)
         {
-            var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
+            throw new NotImplementedException();
 
-            //if (chunkBlobs.Count() != downloadedFiles.Count())
+            //var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
+
+            ////if (chunkBlobs.Count() != downloadedFiles.Count())
+            ////    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
+
+            //if (chunkBlobs.Select(cb => cb.Name).Except(downloadedFiles.Select(f => f.Name)).Any())
             //    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
 
-            if (chunkBlobs.Select(cb => cb.Name).Except(downloadedFiles.Select(f => f.Name)).Any())
-                throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
+            //// Return an IEnumerable - the result may not be needed/materialized by the caller
+            //// TODO: eliminate ToArray call()
+            //return downloadedFiles.Select(fi => new EncryptedChunkFile(fi)).ToArray();
 
-            // Return an IEnumerable - the result may not be needed/materialized by the caller
-            // TODO: eliminate ToArray call()
-            return downloadedFiles.Select(fi => new EncryptedChunkFile(fi)).ToArray();
+            ////return downloadedFiles.Select(fi2=>
+            ////{
+            ////    if (new FileInfo(Path.Combine(target.FullName, fi2.Name)) is var fi)
+            ////        return new EncryptedChunkFile(null, fi, fi2.Hash);
 
-            //return downloadedFiles.Select(fi2=>
-            //{
-            //    if (new FileInfo(Path.Combine(target.FullName, fi2.Name)) is var fi)
-            //        return new EncryptedChunkFile(null, fi, fi2.Hash);
-
-            //    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
-            //});
+            ////    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
+            ////});
         }
     }
 
+
+
+
+
+
+    /* APART 1
+     * Zie commits 4608264, d085c83, 0a2523b, 12953c7
+     * 
+            using (var plain = File.OpenRead(plainFile))
+            {
+                using var compressedFileStream = File.OpenWrite(compFile);
+                using var compressionStream = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
+                await plain.CopyToAsync(compressionStream);
+            }
+
+            using (var compNotEnc = File.OpenRead(compFile))
+            {
+                using var notCompNotEnc = File.OpenWrite(uncompFile);
+                using var gz2 = new GZipStream(compNotEnc, CompressionMode.Decompress);
+                await gz2.CopyToAsync(notCompNotEnc);
+                notCompNotEnc.Close();
+            }
+
+            using (var plain = File.OpenRead(plainFile))
+            {
+                using var enc = File.OpenWrite(encFile);
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+                using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+                await plain.CopyToAsync(cs);
+                cs.FlushFinalBlock();
+            }
+
+            using (var enc = File.OpenRead(encFile))
+            {
+                using var notCompNotEnc = File.OpenWrite(decFile);
+                using var aes = Aes.Create();
+                DeriveBytes(password, out var key, out var iv);
+                aes.Key = key;
+                aes.IV = iv;
+                using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+                using var cs = new CryptoStream(notCompNotEnc, decryptor, CryptoStreamMode.Write);
+                await enc.CopyToAsync(cs);
+                cs.FlushFinalBlock();
+            }
+     * */
 
 
 
@@ -251,7 +393,153 @@ namespace Arius.Core.Repositories
 
     //        }
     //    }
+    //}
 
+
+    //static async Task<ReadOnlyMemory<byte>> EncryptAsync(ReadOnlyMemory<byte> plain, string password)
+    //{
+    //    DeriveBytes(password, out var key, out var iv);
+
+    //    using var aesAlg = Aes.Create();
+    //    aesAlg.Key = key;
+    //    aesAlg.IV = iv;
+
+    //    using var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
+
+    //    using var to = new MemoryStream();
+    //    using var writer = new CryptoStream(to, encryptor, CryptoStreamMode.Write);
+
+    //    await writer.WriteAsync(plain);
+    //    writer.FlushFinalBlock();
+
+    //    return to.ToArray().AsMemory();
+    //}
+
+    //static async Task<ReadOnlyMemory<byte>> DecryptAsync(ReadOnlyMemory<byte> cipher, string password)
+    //{
+    //    DeriveBytes(password, out var key, out var iv);
+
+    //    using var aesAlg = Aes.Create();
+    //    aesAlg.Key = key;
+    //    aesAlg.IV = iv;
+
+    //    using var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+    //    using var to = new MemoryStream();
+    //    using var writer = new CryptoStream(to, decryptor, CryptoStreamMode.Write);
+
+    //    await writer.WriteAsync(cipher);
+    //    writer.FlushFinalBlock();
+
+    //    return to.ToArray().AsMemory();
+    //}
+
+
+
+    //public static ReadOnlyMemory<byte> Compress(ReadOnlyMemory<byte> decompressed, CompressionLevel compressionLevel = CompressionLevel.Fastest) //https://stackoverflow.com/a/39157149/1582323
+    //{
+    //    var compressed = new MemoryStream();
+    //    using (var zip = new GZipStream(compressed, compressionLevel, true))
+    //    {
+    //        decompressed.AsStream().CopyTo(zip);
+    //    }
+
+    //    compressed.Seek(0, SeekOrigin.Begin);
+    //    //compressed.GetBuffer().AsSpan()
+    //    //var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
+    //    return compressed.ToArray().AsMemory();
+    //}
+
+
+
+
+    //public static ReadOnlyMemory<byte> Decompress(ReadOnlyMemory<byte> compressed)
+    //{
+    //    using var decompressed = new MemoryStream();
+    //    using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true);
+
+    //    zip.CopyTo(decompressed);
+
+    //    decompressed.Seek(0, SeekOrigin.Begin);
+    //    return decompressed.ToArray().AsMemory();
+    //}
+
+
+
+
+
+
+    //private async Task ProcessAsync(ManifestHash hash, Stream plain, string password)
+    //{
+    //    var tempFile = Path.GetTempFileName();
+
+    //    //try
+    //    //{
+    //    using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
+
+    //    using var aes = Aes.Create();
+    //    DeriveBytes(password, out var key, out var iv);
+    //    aes.Key = key;
+    //    aes.IV = iv;
+    //    using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+    //    using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
+
+    //    using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
+
+    //    await plain.CopyToAsync(notCompressedNotEncrypted);
+    //    compressedNotEncrypted.FlushFinalBlock();
+
+    //    compressedEncrypted.Position = 0;
+
+    //    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+    //    var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+    //    await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
+    //    //}
+    //    //finally
+    //    //{
+    //    //    File.Delete(tempFile);
+    //    //}
+    //}
+
+
+    //private async Task<string> UnprocessAsync(ManifestHash hash, string password)
+    //{
+    //    var compressedEncryptedFile = Path.GetTempFileName();
+
+    //    try
+    //    {
+    //        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+    //        var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
+    //        await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
+
+    //        using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
+
+    //        using var aes = Aes.Create();
+    //        DeriveBytes(password, out var key, out var iv);
+    //        aes.Key = key;
+    //        aes.IV = iv;
+    //        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+    //        using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
+
+    //        using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
+
+    //        var notCompressedNotEncryptedFile = Path.GetTempFileName();
+    //        using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
+
+    //        //notCompressedNotEncrypted.Position = 0;
+    //        await notCompressedNotEncrypted.CopyToAsync(notCompressedNotEncryptedFileStream);
+    //        notCompressedNotEncrypted.Flush(); //.FlushFinalBlock();
+
+    //        return notCompressedNotEncryptedFile;
+    //    }
+    //    catch (Exception e)
+    //    {
+    //        throw;
+    //    }
+    //    finally
+    //    {
+    //        File.Delete(compressedEncryptedFile);
+    //    }
 
     //}
 }

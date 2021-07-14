@@ -25,7 +25,7 @@ namespace Arius.Core.Tests.UnitTests
             var repo = GetRepository();
 
             var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
-            var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobClient;
+            var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
 
             Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 

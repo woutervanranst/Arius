@@ -31,6 +31,11 @@ using System.Threading.Tasks.Dataflow;
  * This is required to test the internals of the Arius.Core assembly
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
+
+/*
+ * This is required for legacy compatibilty
+ */
+[assembly: InternalsVisibleTo("Arius.Core.Legacy")]
 namespace Arius.Core.Facade
 {
     public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
@@ -143,20 +148,17 @@ namespace Arius.Core.Facade
                 //Add Services
                 .AddSingleton<PointerService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<IEncrypter, SevenZipCommandlineEncrypter>()
-                .AddSingleton<IBlobCopier, AzCopier>()
                 .AddSingleton<Repository>()
 
                 // Add Chunkers
                 .AddSingleton<SimpleChunker>()
-                .AddSingleton<RabinKarpChunker>()
                 .AddSingleton<ByteBoundaryChunker>();
 
-            if (options is ArchiveCommandOptions archiveCommandOptions)
-                sc
-                    .AddSingleton<Chunker>((sp) => archiveCommandOptions.Dedup ?
-                        sp.GetRequiredService<ByteBoundaryChunker>() :
-                        sp.GetRequiredService<SimpleChunker>());
+            //if (options is ArchiveCommandOptions archiveCommandOptions)
+            //    sc
+            //        .AddSingleton<Chunker>((sp) => archiveCommandOptions.Dedup ?
+            //            sp.GetRequiredService<ByteBoundaryChunker>() :
+            //            sp.GetRequiredService<SimpleChunker>());
 
             // Add Options
             sc

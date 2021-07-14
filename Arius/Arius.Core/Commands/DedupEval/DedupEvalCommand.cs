@@ -66,21 +66,23 @@ namespace Arius.Core.Commands.DedupEval
 
         private void AddFile(BinaryFile bf)
         {
-            fileCount++;
-            fileSize += bf.Length;
+            throw new NotImplementedException();
 
-            if (!uniqueFiles.ContainsKey(bf.Hash))
-            {
-                uniqueFiles.Add(bf.Hash, bf.Length);
+            //fileCount++;
+            //fileSize += bf.Length;
 
-                foreach (var c in chunker.Chunk(bf))
-                {
-                    if (!uniqueChunks.ContainsKey(c.Hash))
-                        uniqueChunks.Add(c.Hash, c.Length);
+            //if (!uniqueFiles.ContainsKey(bf.Hash))
+            //{
+            //    uniqueFiles.Add(bf.Hash, bf.Length);
 
-                    c.Delete();
-                }
-            }
+            //    await foreach (var c in chunker.Chunk(bf))
+            //    {
+            //        if (!uniqueChunks.ContainsKey(c.Hash))
+            //            uniqueChunks.Add(c.Hash, c.Length);
+
+            //        c.Delete();
+            //    }
+            //}
         }
     }
 }

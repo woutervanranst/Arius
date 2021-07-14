@@ -3,6 +3,7 @@ using System.Linq;
 using Arius.Core.Extensions;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 
 namespace Arius.Core.Models
 {
@@ -56,9 +57,9 @@ namespace Arius.Core.Models
         {
             return new ChunkBlobItem(bi);
         }
-        public static ChunkBlobClient GetChunkBlob(BlobClient bc)
+        public static ChunkBlobBaseClient GetChunkBlob(BlobBaseClient bc)
         {
-            return new ChunkBlobClient(bc);
+            return new ChunkBlobBaseClient(bc);
         }
 
         public abstract AccessTier AccessTier { get; }
@@ -82,9 +83,9 @@ namespace Arius.Core.Models
         public override string FullName => bi.Name;
     }
 
-    internal class ChunkBlobClient : ChunkBlobBase
+    internal class ChunkBlobBaseClient : ChunkBlobBase
     {
-        internal ChunkBlobClient(BlobClient bc)
+        internal ChunkBlobBaseClient(BlobBaseClient bc)
         {
             try
             {

@@ -90,12 +90,6 @@ namespace Arius.Core.Repositories
 
                 var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 
-                //using var ms2 = bc.OpenRead();
-                //using var gzs = new GZipStream(ms2, CompressionMode.Decompress);
-                //var bs = await gzs.ReadAllBytesAsync();
-                //bs.Take(32);
-                    // PutBlockAsync https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
-
                 await bc.DownloadToAsync(ms);
                 var bytes = ms.ToArray();
                 var json = Encoding.UTF8.GetString(bytes);

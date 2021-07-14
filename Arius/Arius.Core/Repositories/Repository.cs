@@ -21,13 +21,12 @@ namespace Arius.Core.Repositories
             string Passphrase { get; }
         }
 
-        public Repository(IOptions options, ILogger<Repository> logger, IBlobCopier blobCopier)
+        public Repository(IOptions options, ILogger<Repository> logger)
         {
             this.logger = logger;
-            _blobCopier = blobCopier;
 
             InitManifestRepository();
-            InitChunkRepository();
+            InitChunkRepository(options, out passphrase);
             InitPointerFileEntryRepository(options, logger, out pfeRepo);
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";

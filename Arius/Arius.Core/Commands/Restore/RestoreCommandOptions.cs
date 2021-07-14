@@ -16,9 +16,7 @@ namespace Arius.Core.Commands.Restore
 
         //IChunker.IOptions, // geen IChunker options
 
-        IBlobCopier.IOptions,
-        IHashValueProvider.IOptions,
-        IEncrypter.IOptions
+        IHashValueProvider.IOptions
     //AzureRepository.IOptions
     {
         public bool FastHash => false; //Do not fasthash on restore to ensure integrity

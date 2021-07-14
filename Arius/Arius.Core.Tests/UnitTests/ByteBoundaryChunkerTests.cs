@@ -29,28 +29,30 @@ namespace Arius.Core.Tests.UnitTests
         [Test]
         public void ChunkAndMerge_DedupFile_Match()
         {
-            //Create the HashValueProvider and the Chunker
-            var s = GetServices();
-            var hvp = s.GetRequiredService<IHashValueProvider>();
-            var chunker = s.GetRequiredService<ByteBoundaryChunker>();
+            throw new NotImplementedException();
+
+            ////Create the HashValueProvider and the Chunker
+            //var s = GetServices();
+            //var hvp = s.GetRequiredService<IHashValueProvider>();
+            //var chunker = s.GetRequiredService<ByteBoundaryChunker>();
 
 
-            //Generate new dedup file
-            var bf = CreateNewBinaryFile(hvp);
+            ////Generate new dedup file
+            //var bf = CreateNewBinaryFile(hvp);
 
-            //Chunk it
-            var chunks = chunker.Chunk(bf);
+            ////Chunk it
+            //var chunks = chunker.Chunk(bf);
 
-            Assert.IsTrue(chunks.Length > 1);
+            //Assert.IsTrue(chunks.Length > 1);
 
-            //Merge it
-            var target = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile2.xyz"));
-            chunker.Merge(chunks, target);
+            ////Merge it
+            //var target = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile2.xyz"));
+            //chunker.Merge(chunks, target);
 
-            //Calculate the hash of the result
-            var hash_target = hvp.GetManifestHash(target);
+            ////Calculate the hash of the result
+            //var hash_target = hvp.GetManifestHash(target);
 
-            Assert.AreEqual(bf.Hash, hash_target);
+            //Assert.AreEqual(bf.Hash, hash_target);
         }
 
 

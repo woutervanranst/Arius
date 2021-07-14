@@ -106,15 +106,15 @@ namespace Arius.Core.Commands.Archive
 
 
 
-            var hahaha = new NewBlock(
-                logger: loggerFactory.CreateLogger<NewBlock>(),
+            var uploadBinaryFileBlock = new UploadBinaryFileBlock(
+                logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
                 sourceFunc: () => binariesToChunk,
-                chunker: services.GetRequiredService<Chunker>(),
+                chunker: services.GetRequiredService<ByteBoundaryChunker>(),
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 repo: repo,
-                options: (IBlobCopier.IOptions)options,
+                options: options,
                 done: () => { });
-            var heh = hahaha.GetTask;
+            var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
 
 
@@ -157,39 +157,39 @@ namespace Arius.Core.Commands.Archive
             var processChunkTask = processChunkBlock.GetTask;
 
 
-            var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();
+            //var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();
 
-            var encryptChunkBlock = new EncryptChunkBlock(
-                logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
-                sourceFunc: () => chunksToEncrypt,
-                maxDegreeOfParallelism: 1 /*2*/,
-                tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
-                encrypter: services.GetRequiredService<IEncrypter>(),
-                chunkEncrypted: (ecf) => chunksToBatchForUpload.Add(ecf), //B701
-                done: () => chunksToBatchForUpload.CompleteAdding()); //B710
-            var encyptChunkBlockTask = encryptChunkBlock.GetTask;
-
-
-            var batchesToUpload = new BlockingCollection<EncryptedChunkFile[]>();
-
-            var createUploadBatchBlock = new CreateUploadBatchBlock(
-                logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
-                sourceFunc: () => chunksToBatchForUpload,
-                azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-                batchForUpload: (b) => batchesToUpload.Add(b), //B804
-                done: () => batchesToUpload.CompleteAdding()); //B810
-            var createUploadBatchTask = createUploadBatchBlock.GetTask;
+            //var encryptChunkBlock = new EncryptChunkBlock(
+            //    logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
+            //    sourceFunc: () => chunksToEncrypt,
+            //    maxDegreeOfParallelism: 1 /*2*/,
+            //    tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
+            //    encrypter: services.GetRequiredService<IEncrypter>(),
+            //    chunkEncrypted: (ecf) => chunksToBatchForUpload.Add(ecf), //B701
+            //    done: () => chunksToBatchForUpload.CompleteAdding()); //B710
+            //var encyptChunkBlockTask = encryptChunkBlock.GetTask;
 
 
-            var uploadBatchBlock = new UploadBatchBlock(
-                logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
-                sourceFunc: () => batchesToUpload,
-                maxDegreeOfParallelism: 1 /*2*/,
-                repo: repo,
-                tier: options.Tier,
-                chunkUploaded: (h) => removeFromPendingUpload(h), //B901
-                done: () => manifestsToCreate.CompleteAdding()); //B910
-            var uploadBatchTask = uploadBatchBlock.GetTask;
+            //var batchesToUpload = new BlockingCollection<EncryptedChunkFile[]>();
+
+            //var createUploadBatchBlock = new CreateUploadBatchBlock(
+            //    logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
+            //    sourceFunc: () => chunksToBatchForUpload,
+            //    azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
+            //    batchForUpload: (b) => batchesToUpload.Add(b), //B804
+            //    done: () => batchesToUpload.CompleteAdding()); //B810
+            //var createUploadBatchTask = createUploadBatchBlock.GetTask;
+
+
+            //var uploadBatchBlock = new UploadBatchBlock(
+            //    logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
+            //    sourceFunc: () => batchesToUpload,
+            //    maxDegreeOfParallelism: 1 /*2*/,
+            //    repo: repo,
+            //    tier: options.Tier,
+            //    chunkUploaded: (h) => removeFromPendingUpload(h), //B901
+            //    done: () => manifestsToCreate.CompleteAdding()); //B910
+            //var uploadBatchTask = uploadBatchBlock.GetTask;
 
 
             void removeFromPendingUpload(params ChunkHash[] chunkHash)

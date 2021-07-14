@@ -398,30 +398,33 @@ namespace Arius.Core.Commands.Restore2
 
     internal class DecryptBlockProvider
     {
-        public DecryptBlockProvider(ILogger<DecryptBlockProvider> logger, IEncrypter encrypter)
+        public DecryptBlockProvider(ILogger<DecryptBlockProvider> logger)
         {
             _logger = logger;
-            _encrypter = encrypter;
         }
 
         private readonly ILogger<DecryptBlockProvider> _logger;
-        private readonly IEncrypter _encrypter;
 
         public TransformBlock<EncryptedChunkFile, ChunkFile> GetBlock()
         {
             return new(ecf =>
             {
-                _logger.LogInformation($"Decrypting chunk {ecf.Hash}...");
+                throw new NotImplementedException();
 
-                var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
+                return default(ChunkFile);
+                
 
-                _encrypter.Decrypt(ecf, targetFile, true);
+                //_logger.LogInformation($"Decrypting chunk {ecf.Hash}...");
 
-                var cf = new ChunkFile(targetFile, ecf.Hash);
+                //var targetFile = new FileInfo($"{ecf.FullName.TrimEnd(EncryptedChunkFile.Extension)}{ChunkFile.Extension}");
 
-                _logger.LogInformation($"Decrypting chunk {ecf.Hash}... done");
+                //_encrypter.Decrypt(ecf, targetFile, true);
 
-                return cf;
+                //var cf = new ChunkFile(targetFile, ecf.Hash);
+
+                //_logger.LogInformation($"Decrypting chunk {ecf.Hash}... done");
+
+                //return cf;
             });
         }
     }
@@ -535,7 +538,7 @@ namespace Arius.Core.Commands.Restore2
             bool KeepPointers { get; }
         }
 
-        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, RabinKarpChunker dedupChunker)
+        public MergeBlockProvider(ILogger<MergeBlockProvider> logger, IOptions options, IHashValueProvider hvp, Chunker dedupChunker)
         {
             _logger = logger;
             _hvp = hvp;
@@ -545,7 +548,7 @@ namespace Arius.Core.Commands.Restore2
         }
 
         private readonly SimpleChunker _chunker;
-        private readonly RabinKarpChunker _dedupChunker;
+        private readonly Chunker _dedupChunker;
         private readonly ILogger<MergeBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
         private readonly bool _keepPointers;

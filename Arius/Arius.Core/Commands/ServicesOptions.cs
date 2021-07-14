@@ -10,9 +10,7 @@ namespace Arius.Core.Commands
         
         Repository.IOptions,
 
-        IHashValueProvider.IOptions,
-        IBlobCopier.IOptions, //TODO remove this? see https://github.com/woutervanranst/Arius/issues/28
-        IEncrypter.IOptions
+        IHashValueProvider.IOptions
     {
         public string AccountName { get; private init; }
         public string AccountKey { get; private init; }
