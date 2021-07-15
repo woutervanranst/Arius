@@ -27,6 +27,7 @@ namespace Arius.Core.Services.Chunkers
 
         // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
 
+        // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
 
         public async IAsyncEnumerable<byte[]> ChunkAsync(Stream stream)
         {
