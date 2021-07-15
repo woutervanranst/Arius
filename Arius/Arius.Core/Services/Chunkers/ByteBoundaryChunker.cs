@@ -25,16 +25,17 @@ namespace Arius.Core.Services.Chunkers
 
         private readonly ILogger<ByteBoundaryChunker> logger;
 
+        // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
+
 
         public async IAsyncEnumerable<byte[]> ChunkAsync(Stream stream)
         {
-            var pipe = new Pipe();
+            var pipe = new Pipe(new PipeOptions(minimumSegmentSize: 120000));
             var writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
             var delimiter = new ReadOnlyMemory<byte>(new byte[] { 0, 0 });
 
             await foreach (var chunk in ReadPipeAsync(pipe.Reader, delimiter))
             {
-                // Use "chunk" to retrieve your chunked content.
                 yield return chunk.ToArray();
             };
 
@@ -43,17 +44,21 @@ namespace Arius.Core.Services.Chunkers
 
         private static async Task FillPipeAsync(Stream stream, PipeWriter writer, CancellationToken cancellationToken = default)
         {
-            const int bufferSize = 4096;
+            const int bufferSize = 4096 * 2;
 
             while (true)
             {
                 Memory<byte> memory = writer.GetMemory(bufferSize);
                 int bytesRead = await stream.ReadAsync(memory, cancellationToken).ConfigureAwait(false);
-                if (bytesRead == 0) break;
+                if (bytesRead == 0) 
+                    break;
+
                 writer.Advance(bytesRead);
 
-                FlushResult result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
-                if (result.IsCompleted) break;
+                var result = await writer.FlushAsync(cancellationToken).ConfigureAwait(false);
+                
+                if (result.IsCompleted) 
+                    break;
             }
 
             await writer.CompleteAsync().ConfigureAwait(false);
@@ -63,8 +68,8 @@ namespace Arius.Core.Services.Chunkers
         {
             while (true)
             {
-                ReadResult result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                ReadOnlySequence<byte> buffer = result.Buffer;
+                var result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                var buffer = result.Buffer;
 
                 while (TryReadChunk(ref buffer, delimiter.Span, out ReadOnlySequence<byte> chunk))
                     yield return chunk;
@@ -89,9 +94,9 @@ namespace Arius.Core.Services.Chunkers
                     return false;
                 }
 
-                var position = buffer.Slice(offset).PositionOf(delimiter[0]);
+                var nextDelimiterPosition = buffer.Slice(offset).PositionOf(delimiter[0]);
 
-                if (position is null || position.Value.Equals(buffer.End))
+                if (nextDelimiterPosition is null || nextDelimiterPosition.Value.Equals(buffer.End))
                 {
                     // there are no more delimiting characters in the remaining bufffer - this is the last chunk
                     chunk = buffer;
@@ -99,19 +104,29 @@ namespace Arius.Core.Services.Chunkers
                     return true;
                 }
 
-                var delimiterSlice = buffer.Slice(offset).Slice(position.Value, delimiter.Length);
-                var nextChunkposition = buffer.Slice(offset).GetPosition(delimiter.Length, position.Value);
+                var delimiterSlice = buffer.Slice(offset).Slice(nextDelimiterPosition.Value, delimiter.Length);
                 if (!delimiterSlice.FirstSpan.StartsWith(delimiter))
                 {
-                    offset = position.Value;
+                    offset = buffer.GetPosition(1, nextDelimiterPosition.Value);
                     continue;
                 }
 
                 
-                chunk = buffer.Slice(0, nextChunkposition);
-                buffer = buffer.Slice(nextChunkposition);
-                return true;
 
+                var nextChunkposition = buffer.GetPosition(delimiter.Length, nextDelimiterPosition.Value);
+                chunk = buffer.Slice(0, nextChunkposition);
+
+                if (chunk.Length < 1024)
+                {
+                    // this chunk is too small
+                    offset = buffer.GetPosition(1, nextChunkposition);
+                    continue;
+                }
+                else
+                { 
+                    buffer = buffer.Slice(nextChunkposition);
+                    return true;
+                }
             }
         }
 

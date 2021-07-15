@@ -11,7 +11,6 @@ using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Toolkit.HighPerformance;
-using Nerdbank.Streams;
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -232,7 +231,7 @@ namespace Arius.Core.Commands.Archive
             {
                 using (var plain = File.OpenRead(bf.FullName))
                 {
-                    await chunker.ChunkAsync(plain).AsyncParallelForEachAsync(maxDegreeOfParallelism: 1,
+                    await chunker.ChunkAsync(plain).ParallelForEachAsync(maxDegreeOfParallelism: 1,
                     body: async chunk =>
                     {
                         var ch = hvp.GetChunkHash(chunk);

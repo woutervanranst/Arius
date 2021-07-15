@@ -185,18 +185,31 @@ namespace Arius.Core.Repositories
                 if (await bbc.ExistsAsync())
                     throw new InvalidOperationException();
 
+                // v11 of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
+                // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
+
                 using (var enc = await bbc.OpenWriteAsync(true))
                 {
-                    // https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
-                    // https://stackoverflow.com/questions/37689233/encrypt-decrypt-stream-in-c-sharp-using-rijndaelmanaged
+                    // 7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
+                    // Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
+                    // on storing the IV/Salt: https://stackoverflow.com/questions/44694994/storing-iv-when-using-aes-asymmetric-encryption-and-decryption
+                    // on storing the IV/Salt: https://stackoverflow.com/a/13915596/1582323
+
+                    // Code derived from: https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
                     // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
 
-                    using var aes = Aes.Create();
+                    using var aes = Aes.Create(); //defaults to CBC Mode
                     DeriveBytes(passphrase, out var key, out var iv);
                     aes.Key = key;
                     aes.IV = iv;
                     using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
                     using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
+
+                    // https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?redirectedfrom=MSDN&view=net-5.0#examples
+                    // https://stackoverflow.com/a/48192297/1582323
+                    // https://stackoverflow.com/questions/3722192/how-do-i-use-gzipstream-with-system-io-memorystream/39157149#39157149
+                    // https://docs.microsoft.com/en-us/dotnet/standard/io/how-to-compress-and-extract-files#example-4-compress-and-decompress-gz-files
+                    // https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
 
                     using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
 
