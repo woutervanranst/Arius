@@ -31,13 +31,13 @@ namespace Arius.Core.Services.Chunkers
 
         public async IAsyncEnumerable<byte[]> ChunkAsync(Stream stream)
         {
-            var pipe = new Pipe(new PipeOptions(minimumSegmentSize: 120000));
+            var pipe = new Pipe(new PipeOptions(/*minimumSegmentSize: 120000*/));
             var writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
             var delimiter = new ReadOnlyMemory<byte>(new byte[] { 0, 0 });
 
             await foreach (var chunk in ReadPipeAsync(pipe.Reader, delimiter))
             {
-                yield return chunk.ToArray();
+                yield return chunk;
             };
 
             await writing;
@@ -45,7 +45,7 @@ namespace Arius.Core.Services.Chunkers
 
         private static async Task FillPipeAsync(Stream stream, PipeWriter writer, CancellationToken cancellationToken = default)
         {
-            const int bufferSize = 4096 * 2;
+            const int bufferSize = 4096;
 
             while (true)
             {
@@ -65,24 +65,87 @@ namespace Arius.Core.Services.Chunkers
             await writer.CompleteAsync().ConfigureAwait(false);
         }
 
-        private static async IAsyncEnumerable<ReadOnlySequence<byte>> ReadPipeAsync(PipeReader reader, ReadOnlyMemory<byte> delimiter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        private static async IAsyncEnumerable<byte[]> ReadPipeAsync(PipeReader reader, ReadOnlyMemory<byte> delimiter, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            var nextChunk = new byte[0];
+
             while (true)
             {
                 var result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
                 var buffer = result.Buffer;
+                var bs = buffer.Start;
+                var be = buffer.End;
 
-                while (TryReadChunk(ref buffer, delimiter.Span, out ReadOnlySequence<byte> chunk))
-                    yield return chunk;
+                while (TryReadChunk(ref buffer, delimiter.Span, out var chunk, out var isChunk))
+                {
+                    nextChunk = Concat(nextChunk, chunk);
+                    if (isChunk)
+                    { 
+                        yield return nextChunk;
+                        nextChunk = new byte[0];
+                    }
 
-                reader.AdvanceTo(buffer.Start, buffer.End);
-                if (result.IsCompleted) break;
+                }
+
+                reader.AdvanceTo(bs, be); //buffer is null after TryReadChunk returns false so buffer.Start and buffer.End need to be cached
+                if (result.IsCompleted)
+                {
+                    yield return nextChunk; // last chunk in the buffer
+                    break;
+                }
             }
 
             await reader.CompleteAsync().ConfigureAwait(false);
         }
 
-        private static bool TryReadChunk(ref ReadOnlySequence<byte> buffer, ReadOnlySpan<byte> delimiter, out ReadOnlySequence<byte> chunk)
+        public static T[] Concat<T>(T[] a1, T[] a2)
+        {
+            // https://stackoverflow.com/a/50956326/1582323
+            // For spans: https://github.com/dotnet/runtime/issues/30140#issuecomment-509375982
+
+            T[] array = new T[a1.Length + a2.Length];
+            Array.Copy(a1, 0, array, 0, a1.Length);
+            Array.Copy(a2, 0, array, a1.Length, a2.Length);
+            return array;
+        }
+
+        //public static ReadOnlySequence<byte> Concat(ReadOnlySequence<byte> s1, ReadOnlySequence<byte> s2)
+        //{
+        //    new ReadOnlySequence(s1.f
+        //        )
+        //    var ss1 = new Segment(new ReadOnlyMemory s1.as);
+
+
+        //    return new ReadOnlySequence<byte>(new ReadOnlySequenceSegment<byte>() s1, 0, s2, 1);
+        //    var array = new byte[s1.Length + s2.Length];
+        //    s1.CopyTo(array);
+        //    s2.CopyTo(array.AsSpan(s1.Length));
+        //    return array;
+        //}
+
+        //class Segment<T> : ReadOnlySequenceSegment<T>
+        //{
+        //    public Segment(ReadOnlyMemory<T> memory) => Memory = memory;
+
+        //    public Segment<T> Add(ReadOnlyMemory<T> mem)
+        //    {
+        //        var segment = new Segment<T>(mem);
+        //        segment.RunningIndex = RunningIndex + Memory.Length;
+
+        //        Next = segment;
+        //        return segment;
+        //    }
+        //}
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="delimiter"></param>
+        /// <param name="chunk"></param>
+        /// <param name="isChunk"></param>
+        /// <returns>True if we still need to read the buffer, false if the buffer is empty</returns>
+        private static bool TryReadChunk(ref ReadOnlySequence<byte> buffer, ReadOnlySpan<byte> delimiter, out byte[] chunk, out bool isChunk)
         {
             SequencePosition offset = buffer.Start;
 
@@ -90,8 +153,9 @@ namespace Arius.Core.Services.Chunkers
             {
                 if (buffer.IsEmpty)
                 {
-                    // we re at the end of the stream / the buffer is empty
+                    // we re at the end of the buffer / the buffer is empty
                     chunk = default;
+                    isChunk = false;
                     return false;
                 }
 
@@ -99,8 +163,9 @@ namespace Arius.Core.Services.Chunkers
 
                 if (nextDelimiterPosition is null || nextDelimiterPosition.Value.Equals(buffer.End))
                 {
-                    // there are no more delimiting characters in the remaining bufffer - this is the last chunk
-                    chunk = buffer;
+                    // there are no more delimiting characters in the remaining buffer - this is the last chunk in the buffer
+                    chunk = buffer.ToArray();
+                    isChunk = false; //this is no chunk unless it is the last one in the STREAM - which we re not reading here
                     buffer = default;
                     return true;
                 }
@@ -115,17 +180,20 @@ namespace Arius.Core.Services.Chunkers
                 
 
                 var nextChunkposition = buffer.GetPosition(delimiter.Length, nextDelimiterPosition.Value);
-                chunk = buffer.Slice(0, nextChunkposition);
+                var c = buffer.Slice(0, nextChunkposition);
 
-                if (chunk.Length < 1024)
+                if (c.Length < 1024)
                 {
                     // this chunk is too small
                     offset = buffer.GetPosition(1, nextChunkposition);
                     continue;
                 }
                 else
-                { 
+                {
+                    // this is a valid chunk
+                    chunk = c.ToArray();
                     buffer = buffer.Slice(nextChunkposition);
+                    isChunk = true;
                     return true;
                 }
             }
