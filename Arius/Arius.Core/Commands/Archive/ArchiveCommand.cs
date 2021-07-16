@@ -80,8 +80,8 @@ namespace Arius.Core.Commands.Archive
             var binaryFilesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
-            var processHashedBinaryBlock = new ProcessHashedBinaryBlock(
-                logger: loggerFactory.CreateLogger<ProcessHashedBinaryBlock>(),
+            var processBinaryFileBlock = new ProcessBinaryFileBlock(
+                logger: loggerFactory.CreateLogger<ProcessBinaryFileBlock>(),
                 sourceFunc: () => binariesToUpload,
                 repo: repo,
 
@@ -99,8 +99,11 @@ namespace Arius.Core.Commands.Archive
                         });
                 },
                 done: () => binariesToChunk.CompleteAdding()); //B410
-            var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
+            var processBinaryFileTask = processBinaryFileBlock.GetTask;
 
+
+            var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
+            //var chunksForManifest = new ConcurrentDictionary<ManifestHash, ChunkHash[]>();
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
@@ -109,7 +112,18 @@ namespace Arius.Core.Commands.Archive
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 repo: repo,
                 options: options,
-                done: () => { });
+                chunksForManifest: (mh, chs) =>
+                {
+                    manifestsToCreate.Add((mh, chs));
+                    //chunksForManifest.AddOrUpdate(
+                    //    key: mh,
+                    //    addValue: chs, //Add the full list of chunks (for writing the manifest later)
+                    //    updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
+                },
+                done: () => 
+                {
+                    manifestsToCreate.CompleteAdding(); //B910
+                });
             var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
 
@@ -117,7 +131,6 @@ namespace Arius.Core.Commands.Archive
 
 
             //var chunksToProcess = new BlockingCollection<IChunkFile>();
-            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>();
 
             //var chunkBlock = new ChunkBlock(
             //    logger: loggerFactory.CreateLogger<ChunkBlock>(),
@@ -140,8 +153,7 @@ namespace Arius.Core.Commands.Archive
             //var chunkTask = chunkBlock.GetTask;
 
 
-            var chunksToEncrypt = new BlockingCollection<IChunkFile>();
-            var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
+            //var chunksToEncrypt = new BlockingCollection<IChunkFile>();
 
             //var processChunkBlock = new ProcessChunkBlock(
             //    logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
@@ -188,26 +200,26 @@ namespace Arius.Core.Commands.Archive
             //var uploadBatchTask = uploadBatchBlock.GetTask;
 
 
-            void removeFromPendingUpload(params ChunkHash[] chunkHash)
-            {
-                // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
+            //void removeFromPendingUpload(params ChunkHash[] chunkHash)
+            //{
+            //    // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
 
-                //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
+            //    //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
 
-                foreach (var (mh, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
-                {
-                    pendingUploadChunkHashes.RemoveAll(h => chunkHash.Contains(h));
+            //    foreach (var (mh, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
+            //    {
+            //        pendingUploadChunkHashes.RemoveAll(h => chunkHash.Contains(h));
 
-                    if (!pendingUploadChunkHashes.Any())
-                    {
-                        //All chunks for this manifest are now uploaded
-                        if (!chunksForManifest.TryRemove(mh, out _))
-                            throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
+            //        if (!pendingUploadChunkHashes.Any())
+            //        {
+            //            //All chunks for this manifest are now uploaded
+            //            if (!chunksForManifest.TryRemove(mh, out _))
+            //                throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
 
-                        manifestsToCreate.Add((ManifestHash: mh, ChunkHashes: allChunkHashes)); //B1001
-                    }
-                }
-            };
+            //            manifestsToCreate.Add((ManifestHash: mh, ChunkHashes: allChunkHashes)); //B1001
+            //        }
+            //    }
+            //};
 
 
             var createManifestBlock = new CreateManifestBlock(
@@ -228,7 +240,7 @@ namespace Arius.Core.Commands.Archive
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             // can be ignored since we'll be awaiting the pointersToCreate
-            Task.WhenAll(processHashedBinaryTask, createManifestTask)
+            Task.WhenAll(processBinaryFileTask, createManifestTask)
                 .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1110 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
@@ -267,7 +279,7 @@ namespace Arius.Core.Commands.Archive
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             // can be ignored since we'll be awaiting the pointersToCreate
-            Task.WhenAll(processHashedBinaryTask, createPointerFileIfNotExistsTask)
+            Task.WhenAll(processBinaryFileTask, createPointerFileIfNotExistsTask)
                 .ContinueWith(_ => binariesToDelete.CompleteAdding()); //B1310
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
@@ -337,7 +349,7 @@ namespace Arius.Core.Commands.Archive
                 var exceptions = ts.Select(t => t.Exception);
                 throw new AggregateException(exceptions);
             }
-            else if (binaryFilesWaitingForManifestCreation.Count > 0 || chunksForManifest.Count > 0)
+            else if (binaryFilesWaitingForManifestCreation.Count > 0 /*|| chunksForManifest.Count > 0*/)
             {
                 //something went wrong
                 throw new InvalidOperationException("Not all queues are emptied");

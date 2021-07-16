@@ -122,9 +122,9 @@ namespace Arius.Core.Commands.Archive
     }
 
 
-    internal class ProcessHashedBinaryBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+    internal class ProcessBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public ProcessHashedBinaryBlock(ILogger<ProcessHashedBinaryBlock> logger,
+        public ProcessBinaryFileBlock(ILogger<ProcessBinaryFileBlock> logger,
            Func<BlockingCollection<BinaryFile>> sourceFunc,
            Repository repo,
            Action<BinaryFile> uploadBinaryFile,
@@ -209,7 +209,7 @@ namespace Arius.Core.Commands.Archive
             IHashValueProvider hvp,
             Repository repo,
             ArchiveCommand.IOptions options,
-            //Action<ManifestHash, ChunkHash[]> chunksForManifest,
+            Action<ManifestHash, ChunkHash[]> chunksForManifest,
             //Action<BinaryFile> uploadBinaryFile,
             //Action<BinaryFile> waitForCreatedManifest,
             //Action<BinaryFile> manifestExists,
@@ -219,14 +219,15 @@ namespace Arius.Core.Commands.Archive
             this.hvp = hvp;
             this.repo = repo;
             this.options = options;
-            //this.chunksForManifest = chunksForManifest;
+            this.chunksForManifest = chunksForManifest;
         }
 
         private readonly ByteBoundaryChunker chunker;
         private readonly IHashValueProvider hvp;
         private readonly Repository repo;
         private readonly ArchiveCommand.IOptions options;
-        //private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
+        private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
+        private readonly Dictionary<ChunkHash, TaskCompletionSource> creating = new();
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
@@ -234,24 +235,63 @@ namespace Arius.Core.Commands.Archive
 
             if (options.Dedup)
             {
-                var tasks = chunker.Chunk(plain).AsParallel().WithDegreeOfParallelism(1).Select(async chunk =>
+                var chunks = chunker.Chunk(plain).GetEnumerator();
+                var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
+
+                while (chunks.MoveNext())
                 {
+                    var chunk = chunks.Current;
+
                     var ch = hvp.GetChunkHash(chunk);
+                    chs.Add(ch);
 
                     if (await repo.ChunkExists(ch))
-                        return;
+                    {
+                        logger.LogInformation($"Chunk with hash '{ch.ToShortString()}' already exists. No need to upload.");
+                        continue;
+                    }
 
-                    using var cs = new MemoryStream(chunk);
-                    var cb = await repo.UploadChunkAsync(ch, options.Tier, cs);
-                });
+                    bool toUpload = false;
 
-                await Task.WhenAll(tasks);
+                    lock (creating)
+                    {
+                        if (creating.ContainsKey(ch))
+                        {
+                            // 2 Does not exist remote but is being created
+                            logger.LogInformation($"Chunk with hash '{ch.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+                            //TODO TES THIS PATH
+                        }
+                        else
+                        {
+                            // 3 Does not yet exist remote and not yet being created --> upload
+                            logger.LogInformation($"Chunk with hash '{ch.ToShortString()}' does not exist remotely. To upload.");
+
+                            toUpload = true;
+                            creating.Add(ch, new TaskCompletionSource());
+                        }
+                    }
+
+                    if (toUpload)
+                    {
+                        using var cs = new MemoryStream(chunk);
+                        var cbb = await repo.UploadChunkAsync(ch, options.Tier, cs); //TODO do we need this result?
+
+                        creating[ch].SetResult();
+                    }
+
+                    await creating[ch].Task;
+                }
+
+                chunksForManifest(bf.Hash, chs.ToArray());
             }
             else
             {
                 var ch = new ChunkHash(bf.Hash);
 
-                var cb = await repo.UploadChunkAsync(ch, options.Tier, plain);
+                var cbb = await repo.UploadChunkAsync(ch, options.Tier, plain);
+
+                chunksForManifest(bf.Hash, new[] { new ChunkHash(bf.Hash) });
             }
 
             //using (var decomp = File.OpenWrite(decFile))
@@ -267,7 +307,6 @@ namespace Arius.Core.Commands.Archive
 
             //var Mbps = (new FileInfo(f)).Length * 8 / (1024 * 1024 * (double)x.ElapsedMilliseconds / 1000);
         }
-
     }
 
 
@@ -302,63 +341,62 @@ namespace Arius.Core.Commands.Archive
     //}
 
 
-    internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
-    {
-        public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
-            Func<BlockingCollection<IChunkFile>> sourceFunc,
-            Repository repo,
-            Action<IChunkFile> chunkToUpload,
-            Action<ChunkHash> chunkAlreadyUploaded,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
-        {
-            this.repo = repo;
-            this.chunkToUpload = chunkToUpload;
-            this.chunkAlreadyUploaded = chunkAlreadyUploaded;
-        }
+    //internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
+    //{
+    //    public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
+    //        Func<BlockingCollection<IChunkFile>> sourceFunc,
+    //        Repository repo,
+    //        Action<IChunkFile> chunkToUpload,
+    //        Action<ChunkHash> chunkAlreadyUploaded,
+    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+    //    {
+    //        this.repo = repo;
+    //        this.chunkToUpload = chunkToUpload;
+    //        this.chunkAlreadyUploaded = chunkAlreadyUploaded;
+    //    }
 
-        private readonly Repository repo;
-        private readonly Action<IChunkFile> chunkToUpload;
-        private readonly Action<ChunkHash> chunkAlreadyUploaded;
+    //    private readonly Repository repo;
+    //    private readonly Action<IChunkFile> chunkToUpload;
+    //    private readonly Action<ChunkHash> chunkAlreadyUploaded;
 
-        protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
-        {
-            if (await ChunkExists(chunk.Hash))
-            {
-                // 1 Exists remote
-                logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
+    //    protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
+    //    {
+    //        if (await ChunkExists(chunk.Hash))
+    //        {
+    //            // 1 Exists remote
+    //            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
 
-                if (chunk is ChunkFile)
-                    chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
+    //            if (chunk is ChunkFile)
+    //                chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
 
-                chunkAlreadyUploaded(chunk.Hash);
+    //            chunkAlreadyUploaded(chunk.Hash);
 
-                return;
-            }
+    //            return;
+    //        }
 
-            lock (creating)
-            {
-                if (!creating.Contains(chunk.Hash))
-                {
-                    // 2 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-                    creating.Add(chunk.Hash);
+    //        lock (creating)
+    //        {
+    //            if (!creating.Contains(chunk.Hash))
+    //            {
+    //                // 2 Does not yet exist remote and not yet being created --> upload
+    //                logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
+    //                creating.Add(chunk.Hash);
 
-                    chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
+    //                chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
 
-                    return;
-                }
-            }
+    //                return;
+    //            }
+    //        }
 
-            // 3 Does not exist remote but is being created
-            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
-        }
-        private readonly List<ChunkHash> creating = new();
+    //        
+    //    }
+    //    private readonly List<ChunkHash> creating = new();
 
-        private async Task<bool> ChunkExists(ChunkHash h)
-        {
-            return await repo.ChunkExists(h); //TODO: CACHE RESULTS
-        }
-    }
+    //    private async Task<bool> ChunkExists(ChunkHash h)
+    //    {
+    //        return await repo.ChunkExists(h); //TODO: CACHE RESULTS
+    //    }
+    //}
 
 
     

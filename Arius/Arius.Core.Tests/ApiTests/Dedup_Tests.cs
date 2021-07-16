@@ -15,5 +15,13 @@ namespace Arius.Core.Tests.ApiTests
             var bfi = EnsureArchiveTestDirectoryFileInfo();
             await ArchiveCommand(dedup: true);
         }
+
+
+        [Test]
+        public async Task Archive_Directory_Dedup_Success()
+        {
+            var bfi = EnsureArchiveTestDirectoryFileInfos();
+            await ArchiveCommand(dedup: true);
+        }
     }
 }

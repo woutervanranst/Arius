@@ -205,6 +205,7 @@ namespace Arius.Core.Repositories
                     using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
                     using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
 
+
                     // https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?redirectedfrom=MSDN&view=net-5.0#examples
                     // https://stackoverflow.com/a/48192297/1582323
                     // https://stackoverflow.com/questions/3722192/how-do-i-use-gzipstream-with-system-io-memorystream/39157149#39157149
