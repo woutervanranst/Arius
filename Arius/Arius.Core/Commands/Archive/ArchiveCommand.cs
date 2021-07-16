@@ -102,10 +102,6 @@ namespace Arius.Core.Commands.Archive
             var processHashedBinaryTask = processHashedBinaryBlock.GetTask;
 
 
-
-
-
-
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
                 sourceFunc: () => binariesToChunk,
@@ -120,7 +116,7 @@ namespace Arius.Core.Commands.Archive
 
 
 
-            var chunksToProcess = new BlockingCollection<IChunkFile>();
+            //var chunksToProcess = new BlockingCollection<IChunkFile>();
             var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingUpload)>();
 
             //var chunkBlock = new ChunkBlock(
@@ -147,14 +143,14 @@ namespace Arius.Core.Commands.Archive
             var chunksToEncrypt = new BlockingCollection<IChunkFile>();
             var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
 
-            var processChunkBlock = new ProcessChunkBlock(
-                logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
-                sourceFunc: () => chunksToProcess,
-                repo: repo,
-                chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
-                chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
-                done: () => chunksToEncrypt.CompleteAdding()); //B610
-            var processChunkTask = processChunkBlock.GetTask;
+            //var processChunkBlock = new ProcessChunkBlock(
+            //    logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
+            //    sourceFunc: () => chunksToProcess,
+            //    repo: repo,
+            //    chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
+            //    chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
+            //    done: () => chunksToEncrypt.CompleteAdding()); //B610
+            //var processChunkTask = processChunkBlock.GetTask;
 
 
             //var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();

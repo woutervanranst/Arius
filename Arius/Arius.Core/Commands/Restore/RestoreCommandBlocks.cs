@@ -297,7 +297,9 @@ namespace Arius.Core.Commands.Restore
                 if (target.Exists)
                     throw new Exception();
 
-                chunker.Merge(item.ChunkFiles, target);
+                throw new NotImplementedException(); 
+
+                //chunker.Merge(null, item.ChunkFiles, target);
 
                 //item.Binary.MoveTo(target.FullName);
 

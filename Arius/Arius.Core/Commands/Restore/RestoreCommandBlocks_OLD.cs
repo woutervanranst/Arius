@@ -542,12 +542,12 @@ namespace Arius.Core.Commands.Restore2
         {
             _logger = logger;
             _hvp = hvp;
-            _chunker = new(hvp);
+            //_chunker = new(hvp);
             _dedupChunker = dedupChunker;
             _keepPointers = options.KeepPointers;
         }
 
-        private readonly SimpleChunker _chunker;
+        //private readonly SimpleChunker _chunker;
         private readonly Chunker _dedupChunker;
         private readonly ILogger<MergeBlockProvider> _logger;
         private readonly IHashValueProvider _hvp;
@@ -602,10 +602,12 @@ namespace Arius.Core.Commands.Restore2
 
         private BinaryFile Merge(IChunkFile[] chunks, FileInfo target)
         {
-            if (chunks.Length == 1)
-                return _chunker.Merge(chunks, target);
-            else
-                return _dedupChunker.Merge(chunks, target);
+            throw new NotImplementedException();
+
+            //if (chunks.Length == 1)
+            //    return _chunker.Merge(chunks, target);
+            //else
+            //    return _dedupChunker.Merge(chunks, target);
         }
 
         private static FileInfo GetBinaryFileInfo(PointerFile pf)

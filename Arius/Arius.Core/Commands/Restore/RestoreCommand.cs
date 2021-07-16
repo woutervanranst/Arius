@@ -178,7 +178,7 @@ namespace Arius.Core.Commands.Restore
                 logger: loggerFactory.CreateLogger<RestorePointerFileBlock>(),
                 sourceFunc: () => pointersToRestore,
                 pointerService: pointerService,
-                chunker: services.GetRequiredService<SimpleChunker>(),
+                chunker: null, //services.GetRequiredService<SimpleChunker>(),
                 done: () => 
                 { 
                 });
