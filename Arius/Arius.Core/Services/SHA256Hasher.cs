@@ -21,6 +21,8 @@ namespace Arius.Core.Services
 
         ManifestHash GetManifestHash(FileInfo bfi);
         ManifestHash GetManifestHash(string binaryFileFullName);
+        //ManifestHash GetManifestHash(Stream stream);
+        //ManifestHash GetManifestHash(byte[] bytes);
         ChunkHash GetChunkHash(string fullName);
         //ChunkHash GetChunkHash(Stream stream);
         ChunkHash GetChunkHash(byte[] buffer);
@@ -38,30 +40,14 @@ namespace Arius.Core.Services
         private readonly ILogger<SHA256Hasher> logger;
 
         public ManifestHash GetManifestHash(FileInfo bfi) => GetManifestHash(bfi.FullName);
-        public ManifestHash GetManifestHash(string fullName) => new(GetHashValue(fullName, salt));
+        public ManifestHash GetManifestHash(string binaryFileFullName) => new(GetHashValue(binaryFileFullName, salt));
+        //public ManifestHash GetManifestHash(Stream stream) => new(GetHashValue(stream, salt));
+        //public ManifestHash GetManifestHash(byte[] bytes) => new(GetHashValue(bytes, salt));
+
         public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName, salt));
         //public ChunkHash GetChunkHash(Stream stream) => new(GetHashValue(stream, salt));
         public ChunkHash GetChunkHash(byte[] buffer) => new(GetHashValue(buffer, salt));
-        ///// <summary>
-        ///// Get the HashValue for the given BinaryFile.
-        ///// If the FastHash option is set and a corresponding PointerFile with the same LastWriteTime is found, return the hash from the PointerFile
-        ///// </summary>
-        ///// <param name="bf"></param>
-        ///// <returns></returns>
-        //public ManifestHash GetManifestHash(BinaryFile bf)
-        //{
-        //    if (fastHash &&
-        //        PointerService.GetPointerFile(bf) is var pf && pf is not null)
-        //    {
-        //        //A corresponding PointerFile exists
-        //        logger.LogDebug($"Using fasthash for {bf.RelativeName}");
-
-        //        return pf.Hash;
-        //    }
-
-        //    return GetManifestHash(bf.FullName);
-
-
+        
         //TODO what with in place update of binary file (hash changed)?
         // TODO what with lastmodifieddate changed but not hash?
 
@@ -87,7 +73,6 @@ namespace Arius.Core.Services
         //    }
         //}
 
-
         internal static string GetHashValue(string fullName, string salt)
         {
             using var fs = File.OpenRead(fullName);
@@ -108,12 +93,12 @@ namespace Arius.Core.Services
             return BytesToString(hash);
         }
 
-        private static string GetHashValue(byte[] buffer, string salt)
+        private static string GetHashValue(byte[] bytes, string salt)
         {
             var saltBytes = Encoding.ASCII.GetBytes(salt);
             using var saltStream = new MemoryStream(saltBytes);
 
-            using var stream = new MemoryStream(buffer);
+            using var stream = new MemoryStream(bytes);
 
             using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
 

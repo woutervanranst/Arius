@@ -37,7 +37,7 @@ namespace Arius.Core.Tests.UnitTests
 
             // SCENARIO 1: the buffer is larger than the stream
             // Chunk a small stream with no minimum chunk size
-            var chunker = new ByteBoundaryChunker(logger, minChunkSize: 0);
+            var chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: 0);
             var smallByteArray = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3, 0, 0, 5, 6, 7, 0, 0, 1, 2, 3 };
             //var smallByteArray = new byte[] { 1, 2, 3, 0, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3 };
             var smallStream = new MemoryStream(smallByteArray);
@@ -49,7 +49,7 @@ namespace Arius.Core.Tests.UnitTests
 
             // SCENARIO 2: the buffer is smaller than the stream
             // Chunk a file
-            chunker = new ByteBoundaryChunker(logger);
+            chunker = new ByteBoundaryChunker(logger, hvp);
 
             //Generate new dedup file
             var bf = CreateNewBinaryFile(hvp);

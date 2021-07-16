@@ -16,33 +16,40 @@ namespace Arius.Core.Services.Chunkers
 
         protected readonly IHashValueProvider hvp;
 
-        public abstract IChunkFile[] Chunk(BinaryFile fileToChunk);
-        public virtual BinaryFile Merge(IChunkFile[] chunksToJoin, FileInfo target)
+        public abstract IEnumerable<byte[]> Chunk(Stream streamToChunk);
+        public virtual BinaryFile Merge(DirectoryInfo root, Stream[] chunks, FileInfo target)
         {
-            if (chunksToJoin.Length == 0)
+            if (chunks.Length == 0)
             {
-                throw new ArgumentException("No chunks to merge", nameof(chunksToJoin));
+                throw new ArgumentException("No chunks to merge", nameof(chunks));
             }
-            else if (chunksToJoin.Length == 1)
+            else if (chunks.Length == 1)
             {
-                var chunk = chunksToJoin.Single();
-                File.Move(chunk.FullName, target.FullName);
+                var stream = chunks.Single();
 
-                return new BinaryFile(null, target, new ManifestHash(chunk.Hash.Value));
+                using (var targetStream = target.OpenWrite())
+                {
+                    stream.CopyTo(targetStream);
+                }
+
+                //chunk.Position = 0;
+                var h = hvp.GetManifestHash(target.FullName);
+
+                return new BinaryFile(root, target, h);
             }
             else
             {
-                var chunkStreams = new List<Stream>();
-                for (int i = 0; i < chunksToJoin.Length; i++)
-                    chunkStreams.Add(new FileStream(chunksToJoin[i].FullName, FileMode.Open, FileAccess.Read));
+                var stream = new ConcatenatedStream(chunks);
 
-                var stream = new ConcatenatedStream(chunkStreams);
+                using (var targetStream = target.Create()) // File.Create(target.FullName); // target.Create();
+                {
+                    stream.CopyTo(targetStream);
+                }
+                //targetStream.Close();
 
-                using var targetStream = File.Create(target.FullName); // target.Create();
-                stream.CopyTo(targetStream);
-                targetStream.Close();
+                var h = hvp.GetManifestHash(target.FullName);
 
-                return new BinaryFile(null, target, hvp.GetManifestHash(target));
+                return new BinaryFile(root, target, h);
             }
         }
     }
