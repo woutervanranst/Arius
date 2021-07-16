@@ -18,76 +18,83 @@ namespace Arius.Core.Services.Chunkers
 {
     internal class ByteBoundaryChunker
     {
-        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger) // : base(hvp)
+        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, int bufferSize = 8192, int minChunkSize = 1024) // : base(hvp)
         {
             this.logger = logger;
-            delimiter = new byte[] { 0, 0 };
+            this.bufferSize = bufferSize;
+            MinChunkSize = minChunkSize;
+            Delimiter = new byte[] { 0, 0 };
         }
 
+        public byte[] Delimiter { get; }
+        public int MinChunkSize { get; }
+
+
         private readonly ILogger<ByteBoundaryChunker> logger;
-        private readonly byte[] delimiter;
+        private readonly int bufferSize;
+
+        // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
+        // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
 
 
 
 
 
 
-
-
-        public IEnumerable<byte[]> Seek(Stream stream)
+        public IEnumerable<byte[]> Chunk(Stream stream)
         {
-            //int bufferSize = 4;
-            int bufferSize = 1024;
-            //if (bufferSize < delimiter.Length * 2)
-            //    bufferSize = delimiter.Length * 2;
+            // https://keestalkstech.com/2010/11/seek-position-of-a-string-in-a-file-or-filestream/
 
             var buffer = new byte[bufferSize];
             var size = bufferSize;
             var offset = 0;
             var position = stream.Position;
+            var nextChunk = Array.Empty<byte>();
 
             while (true)
             {
-                var r = stream.Read(buffer, offset, size);
+                var bytesRead = stream.Read(buffer, offset, size);
 
                 // when no bytes are read -- the string could not be found
-                if (r <= 0)
+                if (bytesRead <= 0)
                     break;
 
-                // when less then size bytes are read, we need to slice
-                // the buffer to prevent reading of "previous" bytes
+                // when less then size bytes are read, we need to slice the buffer to prevent reading of "previous" bytes
                 ReadOnlySpan<byte> ro = buffer;
-                if (r < size)
-                    ro = ro.Slice(0, offset + size);
-
+                if (bytesRead < size)
+                    ro = ro.Slice(0, offset + bytesRead /*size*/);
 
                 // check if we can find our search bytes in the buffer
-                var i = ro.IndexOf(delimiter);
-                if (i > -1 && i < r /*+ offset*/) //i < r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten)
+                var i = ro.IndexOf(Delimiter);
+                if (i > -1 &&  // we found something
+                    i <= bytesRead &&  //i <= r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten). i = r if the delimiter is at the end of the buffer
+                    nextChunk.Length + (i + Delimiter.Length - offset) >= MinChunkSize)  //the size of the chunk that will be made is large enough
                 {
-                    yield return buffer[0..(i + delimiter.Length)]; //ro.Slice(0, i + delimiter.Length).ToArray();
+                    var chunk = buffer[offset..(i + Delimiter.Length)]; //ro.Slice(0, i + delimiter.Length).ToArray();
+                    yield return Concat(nextChunk, chunk);
 
-                    position += i + delimiter.Length;
+                    nextChunk = Array.Empty<byte>();
+
+                    offset = 0;
+                    size = bufferSize;
+                    position += i + Delimiter.Length;
                     stream.Position = position;
                     continue;
                 }
                 else if (stream.Position == stream.Length)
                 {
                     // we re at the end of the stream
-                    yield return buffer[0..r]; //return the bytes read
+                    //var chunk = buffer[offset..(bytesRead + Delimiter.Length)]; //return the bytes read
+                    var chunk = buffer[offset..(bytesRead + offset)]; //return the bytes read
+                    yield return Concat(nextChunk, chunk);
+
+                    break;
                 }
-                //// when less then size was read, we are done and found nothing
-                //if (r < size)
-                //{
-                //    //yield return ro.Slice(0, r).ToArray(); // the last chunk
-                //    break;
-                //}
 
-                // we still have bytes to read, so copy the last search
-                // length to the beginning of the buffer. It might contain
-                // a part of the bytes we need to search for
+                // the stream is not finished. Copy the last 2 bytes to the beginning of the buffer and set the offset to fill the buffer as of byte 3
+                nextChunk = Concat(nextChunk, buffer[offset..buffer.Length]);
 
-                offset = delimiter.Length;
+                offset = Delimiter.Length;
                 size = bufferSize - offset;
                 Array.Copy(buffer, buffer.Length - offset, buffer, 0, offset);
                 position += bufferSize - offset;
@@ -103,9 +110,7 @@ namespace Arius.Core.Services.Chunkers
 
 
 
-        // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
-
-        // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
+        
 
         public async IAsyncEnumerable<byte[]> ChunkAsync(Stream stream)
         {
@@ -263,7 +268,7 @@ namespace Arius.Core.Services.Chunkers
 
             while (true)
             {
-                var nextDelimiterPosition = buffer.Slice(offset).PositionOf(delimiter[0]);
+                var nextDelimiterPosition = buffer.Slice(offset).PositionOf(Delimiter[0]);
 
                 if (nextDelimiterPosition is null || nextDelimiterPosition.Value.Equals(buffer.End))
                 {
@@ -271,15 +276,15 @@ namespace Arius.Core.Services.Chunkers
                     return null;
                 }
 
-                var delimiterSlice = buffer.Slice(offset).Slice(nextDelimiterPosition.Value, delimiter.Length); //TODO quid '0' op t einde? //TODO2 quid 0 op t einde en 0 in t begin van de volgende
-                if (!delimiterSlice.FirstSpan.StartsWith(delimiter))
+                var delimiterSlice = buffer.Slice(offset).Slice(nextDelimiterPosition.Value, Delimiter.Length); //TODO quid '0' op t einde? //TODO2 quid 0 op t einde en 0 in t begin van de volgende
+                if (!delimiterSlice.FirstSpan.StartsWith(Delimiter))
                 {
                     // only the first byte of the delimiter matched, the ones after that not -- continue searching
                     offset = buffer.GetPosition(1, nextDelimiterPosition.Value);
                     continue;
                 }
 
-                var nextChunkPosition = buffer.GetPosition(delimiter.Length, nextDelimiterPosition.Value); //include the delimiter in the next chunk
+                var nextChunkPosition = buffer.GetPosition(Delimiter.Length, nextDelimiterPosition.Value); //include the delimiter in the next chunk
                 var chunk = buffer.Slice(0, nextChunkPosition);
 
                 if (chunk.Length < 1024)
