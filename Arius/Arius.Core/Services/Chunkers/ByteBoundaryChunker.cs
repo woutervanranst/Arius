@@ -27,6 +27,82 @@ namespace Arius.Core.Services.Chunkers
         private readonly ILogger<ByteBoundaryChunker> logger;
         private readonly byte[] delimiter;
 
+
+
+
+
+
+
+
+        public IEnumerable<byte[]> Seek(Stream stream)
+        {
+            //int bufferSize = 4;
+            int bufferSize = 1024;
+            //if (bufferSize < delimiter.Length * 2)
+            //    bufferSize = delimiter.Length * 2;
+
+            var buffer = new byte[bufferSize];
+            var size = bufferSize;
+            var offset = 0;
+            var position = stream.Position;
+
+            while (true)
+            {
+                var r = stream.Read(buffer, offset, size);
+
+                // when no bytes are read -- the string could not be found
+                if (r <= 0)
+                    break;
+
+                // when less then size bytes are read, we need to slice
+                // the buffer to prevent reading of "previous" bytes
+                ReadOnlySpan<byte> ro = buffer;
+                if (r < size)
+                    ro = ro.Slice(0, offset + size);
+
+
+                // check if we can find our search bytes in the buffer
+                var i = ro.IndexOf(delimiter);
+                if (i > -1 && i < r /*+ offset*/) //i < r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten)
+                {
+                    yield return buffer[0..(i + delimiter.Length)]; //ro.Slice(0, i + delimiter.Length).ToArray();
+
+                    position += i + delimiter.Length;
+                    stream.Position = position;
+                    continue;
+                }
+                else if (stream.Position == stream.Length)
+                {
+                    // we re at the end of the stream
+                    yield return buffer[0..r]; //return the bytes read
+                }
+                //// when less then size was read, we are done and found nothing
+                //if (r < size)
+                //{
+                //    //yield return ro.Slice(0, r).ToArray(); // the last chunk
+                //    break;
+                //}
+
+                // we still have bytes to read, so copy the last search
+                // length to the beginning of the buffer. It might contain
+                // a part of the bytes we need to search for
+
+                offset = delimiter.Length;
+                size = bufferSize - offset;
+                Array.Copy(buffer, buffer.Length - offset, buffer, 0, offset);
+                position += bufferSize - offset;
+            }
+        }
+
+
+
+
+
+
+
+
+
+
         // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
 
         // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
@@ -35,7 +111,7 @@ namespace Arius.Core.Services.Chunkers
         {
             var pipe = new Pipe(new PipeOptions(/*minimumSegmentSize: 120000*/));
             var writing = FillPipeAsync(stream, pipe.Writer).ConfigureAwait(false);
-            
+
             await foreach (var chunk in ReadPipeAsync2(pipe.Reader))
             {
                 yield return chunk;
@@ -170,6 +246,9 @@ namespace Arius.Core.Services.Chunkers
         //        return segment;
         //    }
         //}
+
+
+
 
         
         /// <summary>
