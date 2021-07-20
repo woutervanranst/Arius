@@ -205,6 +205,9 @@ namespace Arius.Core.Repositories
 
         internal static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
+            //TODO IMPLEMENT AS OpenSSL Compat --  https://github.com/Nicholi/OpenSSLCompat
+
+
             // 7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
             // Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
             // on storing the IV/Salt: https://stackoverflow.com/questions/44694994/storing-iv-when-using-aes-asymmetric-encryption-and-decryption
