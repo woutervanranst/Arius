@@ -1,8 +1,11 @@
 ﻿using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Arius.Core.Tests;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.UnitTests
 {
@@ -28,6 +31,45 @@ namespace Arius.Core.Tests.UnitTests
             var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
 
             Assert.IsNull(cb);
+        }
+
+        [Test]
+        public async Task EncryptAndDecrypt_File_Equal()
+        {
+            var encFile = Path.GetTempFileName();
+            var decFile = Path.GetTempFileName();
+
+            try
+            {
+                var sourceFile = EnsureArchiveTestDirectoryFileInfo();
+
+                using (var ss = File.OpenRead(sourceFile.FullName))
+                {
+                    using (var es = File.OpenWrite(encFile))
+                    {
+                        await Repository.CompressAndEncrypt(ss, es, "testpw");
+                    }
+                }
+
+                using (var es = File.OpenRead(encFile))
+                {
+                    using (var ts = File.OpenWrite(decFile))
+                    {
+                        await Repository.DecryptAndDecompress(es, ts, "testpw");
+                    }
+                }
+
+                var h1 = SHA256Hasher.GetHashValue(sourceFile.FullName, string.Empty);
+                var h2 = SHA256Hasher.GetHashValue(decFile, string.Empty);
+
+                Assert.AreEqual(h1, h2);
+
+            }
+            finally
+            {
+                File.Delete(encFile);
+                File.Delete(decFile);
+            }
         }
     }
 }
