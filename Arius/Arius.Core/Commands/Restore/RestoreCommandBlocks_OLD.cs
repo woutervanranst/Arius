@@ -67,7 +67,7 @@ namespace Arius.Core.Commands.Restore2
         private IEnumerable<PointerFile> CreateIfNotExists(IEnumerable<PointerFileEntry> pfes)
         {
             var pfs = pfes
-                .AsParallelWithParallelism()
+                .AsParallel()
                 .Select(pfe => _ps.CreatePointerFileIfNotExists(_root, pfe));
 
             return pfs.ToArray();
