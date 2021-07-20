@@ -52,7 +52,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
-            var binariesToUpload = new BlockingCollection<BinaryFile>();
+            var binariesToProcess = new BlockingCollection<BinaryFile>();
             var binariesToDelete = new BlockingCollection<BinaryFile>();
 
             var indexBlock = new IndexBlock(
@@ -62,30 +62,30 @@ namespace Arius.Core.Commands.Archive
                 fastHash: options.FastHash,
                 pointerService: pointerService,
                 repo: repo,
-                indexedPointerFile: (pf) => pointerFileEntriesToCreate.Add(pf), //B301
+                indexedPointerFile: pf => pointerFileEntriesToCreate.Add(pf), //B301
                 indexedBinaryFile: arg =>
                 {
                     var (bf, alreadyBackedUp) = arg;
                     if (alreadyBackedUp)
                         binariesToDelete.Add(bf); //B401
                     else
-                        binariesToUpload.Add(bf); //B302
+                        binariesToProcess.Add(bf); //B302
                 },
                 hvp: services.GetRequiredService<IHashValueProvider>(),
-                done: () => binariesToUpload.CompleteAdding()); //B310
+                done: () => binariesToProcess.CompleteAdding()); //B310
             var indexTask = indexBlock.GetTask;
 
 
-            var binariesToChunk = new BlockingCollection<BinaryFile>();
+            var binariesToUpload = new BlockingCollection<BinaryFile>();
             var binaryFilesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var processBinaryFileBlock = new ProcessBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<ProcessBinaryFileBlock>(),
-                sourceFunc: () => binariesToUpload,
+                sourceFunc: () => binariesToProcess,
                 repo: repo,
 
-                uploadBinaryFile: (bf) => binariesToChunk.Add(bf),  //B402
+                uploadBinaryFile: (bf) => binariesToUpload.Add(bf),  //B402
                 manifestExists: (bf) => pointersToCreate.Add(bf), //B403
                 waitForCreatedManifest: (bf) => //B404
                 {
@@ -98,7 +98,7 @@ namespace Arius.Core.Commands.Archive
                             return bag;
                         });
                 },
-                done: () => binariesToChunk.CompleteAdding()); //B410
+                done: () => binariesToUpload.CompleteAdding()); //B410
             var processBinaryFileTask = processBinaryFileBlock.GetTask;
 
 
@@ -107,7 +107,8 @@ namespace Arius.Core.Commands.Archive
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
-                sourceFunc: () => binariesToChunk,
+                sourceFunc: () => binariesToUpload,
+                maxDegreeOfParallelism: 16 /*16*/,
                 chunker: services.GetRequiredService<ByteBoundaryChunker>(),
                 hvp: services.GetRequiredService<IHashValueProvider>(),
                 repo: repo,
@@ -129,96 +130,11 @@ namespace Arius.Core.Commands.Archive
 
 
 
-
-            //var chunksToProcess = new BlockingCollection<IChunkFile>();
-
-            //var chunkBlock = new ChunkBlock(
-            //    logger: loggerFactory.CreateLogger<ChunkBlock>(),
-            //    sourceFunc: () => binariesToChunk,
-            //    maxDegreeOfParallelism: 1 /*2*/,
-            //    chunker: services.GetRequiredService<Chunker>(),
-            //    chunkedBinary: (binaryFile, chunkFiles) =>
-            //    {
-            //        //B501
-            //        chunksToProcess.AddFromEnumerable(chunkFiles, false);
-
-            //        //B502
-            //        var chs = chunkFiles.Select(ch => ch.Hash).ToArray();
-            //        chunksForManifest.AddOrUpdate(
-            //            key: binaryFile.Hash,
-            //            addValue: (All: chs, PendingUpload: chs.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon upload for triggering manifest creation)
-            //            updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
-            //    },
-            //    done: () => chunksToProcess.CompleteAdding()); //B510
-            //var chunkTask = chunkBlock.GetTask;
-
-
-            //var chunksToEncrypt = new BlockingCollection<IChunkFile>();
-
-            //var processChunkBlock = new ProcessChunkBlock(
-            //    logger: loggerFactory.CreateLogger<ProcessChunkBlock>(),
-            //    sourceFunc: () => chunksToProcess,
-            //    repo: repo,
-            //    chunkToUpload: (cf) => chunksToEncrypt.Add(cf), //B601
-            //    chunkAlreadyUploaded: (h) => removeFromPendingUpload(h), //B602
-            //    done: () => chunksToEncrypt.CompleteAdding()); //B610
-            //var processChunkTask = processChunkBlock.GetTask;
-
-
-            //var chunksToBatchForUpload = new BlockingCollection<EncryptedChunkFile>();
-
-            //var encryptChunkBlock = new EncryptChunkBlock(
-            //    logger: loggerFactory.CreateLogger<EncryptChunkBlock>(),
-            //    sourceFunc: () => chunksToEncrypt,
-            //    maxDegreeOfParallelism: 1 /*2*/,
-            //    tempDirAppSettings: services.GetRequiredService<TempDirectoryAppSettings>(),
-            //    encrypter: services.GetRequiredService<IEncrypter>(),
-            //    chunkEncrypted: (ecf) => chunksToBatchForUpload.Add(ecf), //B701
-            //    done: () => chunksToBatchForUpload.CompleteAdding()); //B710
-            //var encyptChunkBlockTask = encryptChunkBlock.GetTask;
-
-
-            //var batchesToUpload = new BlockingCollection<EncryptedChunkFile[]>();
-
-            //var createUploadBatchBlock = new CreateUploadBatchBlock(
-            //    logger: loggerFactory.CreateLogger<CreateUploadBatchBlock>(),
-            //    sourceFunc: () => chunksToBatchForUpload,
-            //    azCopyAppSettings: services.GetRequiredService<AzCopyAppSettings>(),
-            //    batchForUpload: (b) => batchesToUpload.Add(b), //B804
-            //    done: () => batchesToUpload.CompleteAdding()); //B810
-            //var createUploadBatchTask = createUploadBatchBlock.GetTask;
-
-
-            //var uploadBatchBlock = new UploadBatchBlock(
-            //    logger: loggerFactory.CreateLogger<UploadBatchBlock>(),
-            //    sourceFunc: () => batchesToUpload,
-            //    maxDegreeOfParallelism: 1 /*2*/,
-            //    repo: repo,
-            //    tier: options.Tier,
-            //    chunkUploaded: (h) => removeFromPendingUpload(h), //B901
-            //    done: () => manifestsToCreate.CompleteAdding()); //B910
-            //var uploadBatchTask = uploadBatchBlock.GetTask;
-
-
             //void removeFromPendingUpload(params ChunkHash[] chunkHash)
             //{
             //    // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
 
             //    //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
-
-            //    foreach (var (mh, (allChunkHashes, pendingUploadChunkHashes)) in chunksForManifest.ToArray()) // ToArray() since we're modifying the collection in the for loop. See last paragraph of https://stackoverflow.com/a/65428882/1582323
-            //    {
-            //        pendingUploadChunkHashes.RemoveAll(h => chunkHash.Contains(h));
-
-            //        if (!pendingUploadChunkHashes.Any())
-            //        {
-            //            //All chunks for this manifest are now uploaded
-            //            if (!chunksForManifest.TryRemove(mh, out _))
-            //                throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
-
-            //            manifestsToCreate.Add((ManifestHash: mh, ChunkHashes: allChunkHashes)); //B1001
-            //        }
-            //    }
             //};
 
 

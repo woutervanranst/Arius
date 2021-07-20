@@ -1,29 +1,16 @@
-﻿using Arius.Core.Configuration;
-using Arius.Core.Extensions;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
-using Azure.Storage;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Toolkit.HighPerformance;
 using System;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive
@@ -91,7 +78,7 @@ namespace Arius.Core.Commands.Archive
                         manifestHash = pf.Hash;
                     }
                     else
-                    { 
+                    {
                         manifestHash = hvp.GetManifestHash(fi);
                     }
 
@@ -99,7 +86,7 @@ namespace Arius.Core.Commands.Archive
 
 
                     var bf = new BinaryFile(root, fi, manifestHash);
-                    
+
 
                     if (pf is not null && pf.Hash == manifestHash)
                     {
@@ -205,6 +192,7 @@ namespace Arius.Core.Commands.Archive
         public UploadBinaryFileBlock(
             ILogger<UploadBinaryFileBlock> logger,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
+            int maxDegreeOfParallelism,
             ByteBoundaryChunker chunker,
             IHashValueProvider hvp,
             Repository repo,
@@ -213,7 +201,7 @@ namespace Arius.Core.Commands.Archive
             //Action<BinaryFile> uploadBinaryFile,
             //Action<BinaryFile> waitForCreatedManifest,
             //Action<BinaryFile> manifestExists,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.hvp = hvp;
@@ -247,6 +235,7 @@ namespace Arius.Core.Commands.Archive
 
                     if (await repo.ChunkExists(ch))
                     {
+                        // 1 Exists remote
                         logger.LogInformation($"Chunk with hash '{ch.ToShortString()}' already exists. No need to upload.");
                         continue;
                     }
@@ -308,196 +297,6 @@ namespace Arius.Core.Commands.Archive
             //var Mbps = (new FileInfo(f)).Length * 8 / (1024 * 1024 * (double)x.ElapsedMilliseconds / 1000);
         }
     }
-
-
-
-    //internal class ChunkBlock : BlockingCollectionTaskBlockBase<BinaryFile>
-    //{
-    //    public ChunkBlock(ILogger<ChunkBlock> logger,
-    //        Func<BlockingCollection<BinaryFile>> sourceFunc,
-    //        int maxDegreeOfParallelism,
-    //        Chunker chunker,
-    //        Action<BinaryFile, IChunkFile[]> chunkedBinary,
-    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
-    //    {
-    //        this.chunker = chunker;
-    //        this.chunkedBinary = chunkedBinary;
-    //    }
-
-    //    private readonly Chunker chunker;
-    //    private readonly Action<BinaryFile, IChunkFile[]> chunkedBinary;
-
-    //    protected override Task ForEachBodyImplAsync(BinaryFile bf)
-    //    {
-    //        logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')...");
-    //        var chunks = chunker.Chunk(bf);
-    //        logger.LogInformation($"Chunking '{bf.Hash.ToShortString()}' ('{bf.RelativeName}')... done. Created {chunks.Length} chunk(s)");
-    //        logger.LogDebug($"Chunks for manifest '{bf.Hash.ToShortString()}': '{string.Join("', '", chunks.Select(c => c.Hash.ToShortString()))}'");
-
-    //        chunkedBinary(bf, chunks);
-
-    //        return Task.CompletedTask;
-    //    }
-    //}
-
-
-    //internal class ProcessChunkBlock : BlockingCollectionTaskBlockBase<IChunkFile>
-    //{
-    //    public ProcessChunkBlock(ILogger<ProcessChunkBlock> logger,
-    //        Func<BlockingCollection<IChunkFile>> sourceFunc,
-    //        Repository repo,
-    //        Action<IChunkFile> chunkToUpload,
-    //        Action<ChunkHash> chunkAlreadyUploaded,
-    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
-    //    {
-    //        this.repo = repo;
-    //        this.chunkToUpload = chunkToUpload;
-    //        this.chunkAlreadyUploaded = chunkAlreadyUploaded;
-    //    }
-
-    //    private readonly Repository repo;
-    //    private readonly Action<IChunkFile> chunkToUpload;
-    //    private readonly Action<ChunkHash> chunkAlreadyUploaded;
-
-    //    protected override async Task ForEachBodyImplAsync(IChunkFile chunk)
-    //    {
-    //        if (await ChunkExists(chunk.Hash))
-    //        {
-    //            // 1 Exists remote
-    //            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
-
-    //            if (chunk is ChunkFile)
-    //                chunk.Delete(); //The chunk is already uploaded, delete it. Do not delete a binaryfile at this stage.
-
-    //            chunkAlreadyUploaded(chunk.Hash);
-
-    //            return;
-    //        }
-
-    //        lock (creating)
-    //        {
-    //            if (!creating.Contains(chunk.Hash))
-    //            {
-    //                // 2 Does not yet exist remote and not yet being created --> upload
-    //                logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-    //                creating.Add(chunk.Hash);
-
-    //                chunkToUpload(chunk); //Signal that this chunk needs to be uploaded
-
-    //                return;
-    //            }
-    //        }
-
-    //        
-    //    }
-    //    private readonly List<ChunkHash> creating = new();
-
-    //    private async Task<bool> ChunkExists(ChunkHash h)
-    //    {
-    //        return await repo.ChunkExists(h); //TODO: CACHE RESULTS
-    //    }
-    //}
-
-
-    
-
-
-    //internal class CreateUploadBatchBlock : TaskBlockBase<BlockingCollection<EncryptedChunkFile>>
-    //{
-    //    public CreateUploadBatchBlock(ILogger<CreateUploadBatchBlock> logger,
-    //        Func<BlockingCollection<EncryptedChunkFile>> sourceFunc,
-    //        AzCopyAppSettings azCopyAppSettings,
-    //        Action<EncryptedChunkFile[]> batchForUpload,
-    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
-    //    {
-    //        this.azCopyAppSettings = azCopyAppSettings;
-    //        this.batchForUpload = batchForUpload;
-    //    }
-
-    //    private readonly AzCopyAppSettings azCopyAppSettings;
-    //    private readonly Action<EncryptedChunkFile[]> batchForUpload;
-
-    //    protected override Task TaskBodyImplAsync(BlockingCollection<EncryptedChunkFile> source)
-    //    {
-    //        var uploadBatch = new List<EncryptedChunkFile>();
-
-    //        while (!source.IsCompleted) // loop until the source is empty and no more elements will be added
-    //        {
-    //            string reason = "adding is completed"; //this is the default reason: if source is marked as CompleteAdding and the queue is empty, the for each loop will no longer loop
-    //            long size = default;
-
-    //            foreach (var item in source.GetConsumingEnumerable())
-    //            {
-    //                uploadBatch.Add(item);
-    //                size += item.Length;
-
-    //                if (uploadBatch.Count >= azCopyAppSettings.BatchCount)
-    //                {
-    //                    reason = "of batchcount";
-    //                    break;
-    //                }
-    //                else if (size >= azCopyAppSettings.BatchSize)
-    //                {
-    //                    reason = "of batchsize";
-    //                    break;
-    //                }
-    //                else if (source.IsCompleted) //this will be the final block
-    //                {
-    //                    break;
-    //                }
-    //            }
-
-    //            if (uploadBatch.Any())
-    //            {
-    //                logger.LogInformation($"Creating batch because {reason} with {uploadBatch.Count} element(s), total size: {size.GetBytesReadable()}. Remaining elements in queue: {source.Count}");
-    //                batchForUpload(uploadBatch.ToArray());
-    //                uploadBatch.Clear();
-    //            }
-    //        }
-
-    //        return Task.CompletedTask;
-    //    }
-    //}
-
-
-    //internal class UploadBatchBlock : BlockingCollectionTaskBlockBase<EncryptedChunkFile[]>
-    //{
-    //    public UploadBatchBlock(ILogger<UploadBatchBlock> logger,
-    //        Func<BlockingCollection<EncryptedChunkFile[]>> sourceFunc,
-    //        int maxDegreeOfParallelism,
-    //        Repository repo,
-    //        AccessTier tier,
-    //        Action<ChunkHash[]> chunkUploaded,
-    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
-    //    {
-    //        this.repo = repo;
-    //        this.tier = tier;
-    //        this.chunkUploaded = chunkUploaded;
-    //    }
-
-    //    private readonly Repository repo;
-    //    private readonly AccessTier tier;
-    //    private readonly Action<ChunkHash[]> chunkUploaded;
-
-    //    protected override Task ForEachBodyImplAsync(EncryptedChunkFile[] ecfs)
-    //    {
-    //        logger.LogInformation($"Uploading batch..."); // Remaining Batches queue depth: {_block!.Value.InputCount}");
-
-    //        //Upload the chunks
-    //        repo.Upload(ecfs, tier);
-
-    //        //Delete the (temporary) encrypted chunk files
-    //        foreach (var ecf in ecfs)
-    //            ecf.Delete();
-
-    //        logger.LogInformation($"Uploading batch... done");
-
-    //        //foreach (var chunk in ecfs)
-    //            chunkUploaded(ecfs.Select(c => c.Hash).ToArray());
-
-    //        return Task.CompletedTask;
-    //    }
-    //}
 
 
     internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
@@ -655,7 +454,7 @@ namespace Arius.Core.Commands.Archive
         protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe)
         {
             if (!pfe.IsDeleted &&
-                pointerService.GetPointerFile(root, pfe) is null && 
+                pointerService.GetPointerFile(root, pfe) is null &&
                 pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
@@ -671,7 +470,7 @@ namespace Arius.Core.Commands.Archive
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done) 
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
