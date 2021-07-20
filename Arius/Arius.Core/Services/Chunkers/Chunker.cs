@@ -9,15 +9,15 @@ namespace Arius.Core.Services.Chunkers
 {
     internal abstract class Chunker
     {
-        protected Chunker(IHashValueProvider hvp)
+        protected Chunker(IHashValueProvider hashValueProvider)
         {
-            this.hvp = hvp;
+            this.hashValueProvider = hashValueProvider;
         }
 
-        protected readonly IHashValueProvider hvp;
+        protected readonly IHashValueProvider hashValueProvider;
 
-        public abstract IEnumerable<byte[]> Chunk(Stream streamToChunk);
-        public virtual BinaryFile Merge(DirectoryInfo root, Stream[] chunks, FileInfo target)
+        public abstract IEnumerable<Chunk> Chunk(Stream streamToChunk);
+        public virtual BinaryFile Merge(DirectoryInfo root, Chunk[] chunks, FileInfo target)
         {
             if (chunks.Length == 0)
             {
@@ -25,21 +25,24 @@ namespace Arius.Core.Services.Chunkers
             }
             else if (chunks.Length == 1)
             {
-                var stream = chunks.Single();
+                var chunk = chunks.Single();
 
-                using (var targetStream = target.OpenWrite())
+                using (var sourceStream = ChunkToStream(chunk))
                 {
-                    stream.CopyTo(targetStream);
+                    using (var targetStream = target.OpenWrite())
+                    {
+                        sourceStream.CopyTo(targetStream);
+                    }
                 }
 
                 //chunk.Position = 0;
-                var h = hvp.GetManifestHash(target.FullName);
+                var h = hashValueProvider.GetManifestHash(target.FullName);
 
                 return new BinaryFile(root, target, h);
             }
             else
             {
-                var stream = new ConcatenatedStream(chunks);
+                var stream = new ConcatenatedStream(chunks.Select(chunk => ChunkToStream(chunk)));
 
                 using (var targetStream = target.Create()) // File.Create(target.FullName); // target.Create();
                 {
@@ -47,10 +50,20 @@ namespace Arius.Core.Services.Chunkers
                 }
                 //targetStream.Close();
 
-                var h = hvp.GetManifestHash(target.FullName);
+                var h = hashValueProvider.GetManifestHash(target.FullName);
 
                 return new BinaryFile(root, target, h);
             }
+        }
+
+        private static Stream ChunkToStream(Chunk chunk)
+        {
+            if (chunk is ByteArrayChunk bac)
+                return new MemoryStream(bac.Bytes);
+            else if (chunk is BinaryFileChunk bfc)
+                return File.OpenRead(bfc.BinaryFile.FullName);
+            else
+                throw new ArgumentException();
         }
     }
 }

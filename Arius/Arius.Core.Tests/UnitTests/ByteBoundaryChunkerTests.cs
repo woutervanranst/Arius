@@ -44,7 +44,7 @@ namespace Arius.Core.Tests.UnitTests
             var chunks = chunker.Chunk(smallStream).ToArray();
             
             Assert.IsTrue(chunks.Length == 4);
-            Assert.AreEqual(smallByteArray, chunks.SelectMany(b => b).ToArray());
+            Assert.AreEqual(smallByteArray, chunks.SelectMany(b => b.Bytes).ToArray());
 
 
             // SCENARIO 2: the buffer is smaller than the stream
@@ -64,7 +64,7 @@ namespace Arius.Core.Tests.UnitTests
 
 
                 var original = File.ReadAllBytes(bf.FullName); 
-                var recomposed = chunks.SelectMany(b => b).ToArray();
+                var recomposed = chunks.SelectMany(b => b.Bytes).ToArray();
 
                 // the length of the stream is equal to the length of the sum of the chunks
                 Assert.AreEqual(original.Length, recomposed.Length);
@@ -79,21 +79,22 @@ namespace Arius.Core.Tests.UnitTests
 
                 foreach (var chunk in chunks)
                 {
-                    Assert.IsTrue(chunk.Length >= chunker.MinChunkSize);
+                    var chunkBytes = chunk.Bytes;
+                    Assert.IsTrue(chunkBytes.Length >= chunker.MinChunkSize);
 
                     if (chunk != chunks.Last())
                     {
                         // each chunk (apart from the last one) ends with the delimiter
-                        Assert.IsTrue(chunk[(chunk.Length - 2)..].SequenceEqual(chunker.Delimiter));
+                        Assert.IsTrue(chunkBytes[(chunkBytes.Length - 2)..].SequenceEqual(chunker.Delimiter));
 
                         // the delimiter is the only one in this chunk
-                        var indexOfDelimiter = new ReadOnlySpan<byte>(chunk).IndexOf(chunker.Delimiter);
-                        Assert.AreEqual(chunk.Length - 2, indexOfDelimiter);
+                        var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes).IndexOf(chunker.Delimiter);
+                        Assert.AreEqual(chunkBytes.Length - 2, indexOfDelimiter);
                     }
                     else
                     {
                         //the last chunk does not contain the delimiter
-                        var indexOfDelimiter = new ReadOnlySpan<byte>(chunk).IndexOf(chunker.Delimiter);
+                        var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes).IndexOf(chunker.Delimiter);
                         Assert.AreEqual(-1, indexOfDelimiter);
                     }
                 }

@@ -18,7 +18,7 @@ namespace Arius.Core.Services.Chunkers
 {
     internal class ByteBoundaryChunker : Chunker
     {
-        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, IHashValueProvider hvp, int bufferSize = 8192, int minChunkSize = 1024) : base(hvp)
+        public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, IHashValueProvider hashValueProvider, int bufferSize = 8192, int minChunkSize = 1024) : base(hashValueProvider)
         {
             this.logger = logger;
             this.bufferSize = bufferSize;
@@ -36,7 +36,7 @@ namespace Arius.Core.Services.Chunkers
         // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
         // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
 
-        public override IEnumerable<byte[]> Chunk(Stream stream)
+        public override IEnumerable<ByteArrayChunk> Chunk(Stream stream)
         {
             // https://keestalkstech.com/2010/11/seek-position-of-a-string-in-a-file-or-filestream/
 
@@ -65,8 +65,11 @@ namespace Arius.Core.Services.Chunkers
                     i <= bytesRead &&  //i <= r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten). i = r if the delimiter is at the end of the buffer
                     nextChunk.Length + (i + Delimiter.Length - offset) >= MinChunkSize)  //the size of the chunk that will be made is large enough
                 {
-                    var chunk = buffer[offset..(i + Delimiter.Length)]; //ro.Slice(0, i + delimiter.Length).ToArray();
-                    yield return Concat(nextChunk, chunk);
+                    var chunk = buffer[offset..(i + Delimiter.Length)];
+                    chunk = Concat(nextChunk, chunk);
+                    var ch = hashValueProvider.GetChunkHash(chunk);
+
+                    yield return new ByteArrayChunk(chunk, ch);
 
                     nextChunk = Array.Empty<byte>();
 
@@ -79,9 +82,11 @@ namespace Arius.Core.Services.Chunkers
                 else if (stream.Position == stream.Length)
                 {
                     // we re at the end of the stream
-                    //var chunk = buffer[offset..(bytesRead + Delimiter.Length)]; //return the bytes read
                     var chunk = buffer[offset..(bytesRead + offset)]; //return the bytes read
-                    yield return Concat(nextChunk, chunk);
+                    chunk = Concat(nextChunk, chunk);
+                    var ch = hashValueProvider.GetChunkHash(chunk);
+
+                    yield return new ByteArrayChunk(chunk, ch);
 
                     break;
                 }
