@@ -60,7 +60,7 @@ namespace Arius.Core.Services.Chunkers
                     ro = ro.Slice(0, offset + bytesRead /*size*/);
 
                 // check if we can find our search bytes in the buffer
-                var i = ro.IndexOf(Delimiter);
+                var i = ro.IndexOf(Delimiter); //NOTE: this has very low complexity vs reading byte per byte, ref https://stackoverflow.com/questions/51864673/c-sharp-readonlyspanchar-vs-substring-for-string-dissection
                 if (i > -1 &&  // we found something
                     i <= bytesRead &&  //i <= r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten). i = r if the delimiter is at the end of the buffer
                     nextChunk.Length + (i + Delimiter.Length - offset) >= MinChunkSize)  //the size of the chunk that will be made is large enough
