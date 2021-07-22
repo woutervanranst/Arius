@@ -216,7 +216,7 @@ namespace Arius.Core.Commands.Archive
         private readonly Repository repo;
         private readonly ArchiveCommand.IOptions options;
         private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
-        private readonly static Dictionary<ChunkHash, TaskCompletionSource> creating = new();
+        private readonly static ConcurrentDictionary<ChunkHash, TaskCompletionSource> creating = new();
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
         {
@@ -278,31 +278,22 @@ namespace Arius.Core.Commands.Archive
                         return;
                     }
 
-                    bool toUpload = false;
-                    lock (creating)
-                    {
-                        if (creating.ContainsKey(chunk.Hash))
-                        {
-                            // 2 Does not exist remote but is being created
-                            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
-
-                            //TODO TES THIS PATH
-                        }
-                        else
-                        {
-                            // 3 Does not yet exist remote and not yet being created --> upload
-                            logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-
-                            toUpload = true;
-                            creating.Add(chunk.Hash, new TaskCompletionSource());
-                        }
-                    }
-
+                    bool toUpload = creating.TryAdd(chunk.Hash, new TaskCompletionSource());
                     if (toUpload)
                     {
+                        // 2 Does not yet exist remote and not yet being created --> upload
+                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
+
                         var cbb = await repo.UploadChunkAsync(chunk, options.Tier); //TODO do we need this result?
 
                         creating[chunk.Hash].SetResult();
+                    }
+                    else
+                    {
+                        // 3 Does not exist remote but is being created
+                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+
+                        //TODO TES THIS PATH
                     }
 
                     await creating[chunk.Hash].Task;
