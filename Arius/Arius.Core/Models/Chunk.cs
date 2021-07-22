@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,7 +9,8 @@ namespace Arius.Core.Models
 {
     internal abstract class Chunk
     {
-        public abstract Hash Hash { get; } 
+        public abstract ChunkHash Hash { get; }
+        public abstract Stream GetStream();
     }
 
     internal class BinaryFileChunk : Chunk
@@ -16,11 +18,14 @@ namespace Arius.Core.Models
         public BinaryFileChunk(BinaryFile bf)
         {
             BinaryFile = bf;
+            Hash = new(BinaryFile.Hash);
         }
 
         public BinaryFile BinaryFile { get; }
 
-        public override Hash Hash => BinaryFile.Hash;
+        public override ChunkHash Hash { get; }
+
+        public override Stream GetStream() => File.OpenRead(BinaryFile.FullName);
     }
 
     internal class ByteArrayChunk : Chunk
@@ -33,6 +38,8 @@ namespace Arius.Core.Models
         
         public byte[] Bytes { get; }
 
-        public override Hash Hash { get; }
+        public override ChunkHash Hash { get; }
+
+        public override Stream GetStream() => new MemoryStream(Bytes);
     }
 }

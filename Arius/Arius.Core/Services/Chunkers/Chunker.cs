@@ -27,7 +27,7 @@ namespace Arius.Core.Services.Chunkers
             {
                 var chunk = chunks.Single();
 
-                using (var sourceStream = ChunkToStream(chunk))
+                using (var sourceStream = chunk.GetStream())
                 {
                     using (var targetStream = target.OpenWrite())
                     {
@@ -42,28 +42,17 @@ namespace Arius.Core.Services.Chunkers
             }
             else
             {
-                var stream = new ConcatenatedStream(chunks.Select(chunk => ChunkToStream(chunk)));
+                var stream = new ConcatenatedStream(chunks.Select(chunk => chunk.GetStream()));
 
-                using (var targetStream = target.Create()) // File.Create(target.FullName); // target.Create();
+                using (var targetStream = target.Create())
                 {
                     stream.CopyTo(targetStream);
                 }
-                //targetStream.Close();
 
                 var h = hashValueProvider.GetManifestHash(target.FullName);
 
                 return new BinaryFile(root, target, h);
             }
-        }
-
-        private static Stream ChunkToStream(Chunk chunk)
-        {
-            if (chunk is ByteArrayChunk bac)
-                return new MemoryStream(bac.Bytes);
-            else if (chunk is BinaryFileChunk bfc)
-                return File.OpenRead(bfc.BinaryFile.FullName);
-            else
-                throw new ArgumentException();
         }
     }
 }
