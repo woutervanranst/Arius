@@ -1,4 +1,5 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Commands.Archive;
+using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using System;
@@ -39,7 +40,6 @@ namespace Arius.Core.Commands
                 logger.LogTrace("Done");
             };
 
-#pragma warning disable VSTHRD011 // Use AsyncLazy<T>
             this.task = new(() =>
             {
                 var t = TaskImpl();
@@ -54,7 +54,6 @@ namespace Arius.Core.Commands
 
                 return t;
             }, isThreadSafe: false);
-#pragma warning restore VSTHRD011 // Use AsyncLazy<T>
         }
 
         private readonly Func<Task<TSource>> sourceFunc;
@@ -95,51 +94,20 @@ namespace Arius.Core.Commands
             : this(logger, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
         {
         }
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default) 
+        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
             : base(logger, sourceFunc, done)
         {
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.degreeOfParallelism = degreeOfParallelism;
         }
 
-        private readonly int maxDegreeOfParallelism;
-
-        protected abstract Task ForEachBodyImplAsync(TSource item);
+        private readonly int degreeOfParallelism;
 
         protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
         {
-            // FROM https://stackoverflow.com/a/14678329/1582323
-            var partitions = source.GetConsumingPartitioner().GetPartitions(maxDegreeOfParallelism);
-            var tasks = partitions.Select(async (partition) =>
-            {
-                //await Task.Run(async () => 
-                //{
-                    using (partition)
-                        while (partition.MoveNext())
-                        //{
-                        //    if (ct.IsCancellationRequested)
-                        //        ct.ThrowIfCancellationRequested();
-
-                            await ForEachBodyImplAsync(partition.Current);
-                        //}
-                //}, ct);
-            });
-
-            await Task.WhenAll(tasks);
-
-            // UNTESTED ALTERNATIVE:
-            //var ts = source.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).Select(i => ForEachBodyImplAsync(i));
-            //await Task.WhenAll(ts);
-
-
-            // PARALLEL.FOREACH does not actually await, it takes an Action<> (not a Func<Task, ...>) so it ends up being await async void
-            //do
-            //{
-            //Parallel.ForEach(
-            //        source,
-            //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            //        async (item) => await ForEachBodyImplAsync(item));
-            //}
-            //while (continueWhile());
+            await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
         }
+
+        protected abstract Task ForEachBodyImplAsync(TSource item);
+
     }
 }

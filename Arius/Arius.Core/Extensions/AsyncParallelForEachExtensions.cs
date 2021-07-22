@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -9,7 +11,7 @@ namespace Arius.Core.Commands.Archive
     {
         // https://scatteredcode.net/parallel-foreach-async-in-c/
 
-        public static async Task AsyncParallelForEach<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
+        public static async Task AsyncParallelForEachAsync<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
         {
             var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
 
@@ -25,7 +27,7 @@ namespace Arius.Core.Commands.Archive
             await block.Completion;
         }
 
-        public static Task AsyncParallelForEach<T>(this IEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
+        public static Task AsyncParallelForEachAsync<T>(this IEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
         {
             var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
 
@@ -39,6 +41,22 @@ namespace Arius.Core.Commands.Archive
             block.Complete();
             
             return block.Completion;
+        }
+
+
+        public static async Task AsyncParallelForEachAsync<T>(this BlockingCollection<T> source, Func<T, Task> body, int degreeOfParallelism)
+        {
+            // FROM https://stackoverflow.com/a/14678329/1582323 with GetConsumingPartitioner()
+
+            var partitions = source.GetConsumingPartitioner().GetPartitions(degreeOfParallelism);
+            var tasks = partitions.Select(async (partition) =>
+            {
+                using (partition)
+                    while (partition.MoveNext())
+                        await body(partition.Current);
+            });
+
+            await Task.WhenAll(tasks);
         }
     }
 }
