@@ -115,11 +115,7 @@ namespace Arius.Core.Commands.Archive
                 options: options,
                 chunksForManifest: (mh, chs) =>
                 {
-                    manifestsToCreate.Add((mh, chs));
-                    //chunksForManifest.AddOrUpdate(
-                    //    key: mh,
-                    //    addValue: chs, //Add the full list of chunks (for writing the manifest later)
-                    //    updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once a BinaryFile is emitted for chunking, the chunks should not be updated"));
+                    manifestsToCreate.Add((mh, chs)); //B901
                 },
                 done: () => 
                 {
@@ -265,7 +261,7 @@ namespace Arius.Core.Commands.Archive
                 var exceptions = ts.Select(t => t.Exception);
                 throw new AggregateException(exceptions);
             }
-            else if (binaryFilesWaitingForManifestCreation.Count > 0 /*|| chunksForManifest.Count > 0*/)
+            else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
             {
                 //something went wrong
                 throw new InvalidOperationException("Not all queues are emptied");
