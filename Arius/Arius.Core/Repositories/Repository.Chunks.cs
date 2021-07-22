@@ -173,24 +173,26 @@ namespace Arius.Core.Repositories
         // UPLOAD & DOWNLOAD
 
         /// <summary>
-        /// Upload a cleartext stream to the Repository
+        /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
         /// </summary>
-        /// <returns></returns>
-        public async Task<ChunkBlobBase> UploadChunkAsync(ChunkHash ch, AccessTier tier, Stream clearStream)
+        public async Task<ChunkBlobBase> UploadChunkAsync(Chunk chunk, AccessTier tier)
         {
             try
             {
-                var bbc = container.GetBlockBlobClient(ch.Value);
+                var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
 
                 if (await bbc.ExistsAsync())
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException(); //TODO combine with OpenWriteAsync?
 
-                // v11 of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
+                // v11 [DEPRECATED] of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
-                using (var enc = await bbc.OpenWriteAsync(true))
-                {
-                    await CompressAndEncrypt(clearStream, enc, passphrase);
+                using (var source = chunk.GetStream())
+                { 
+                    using (var target = await bbc.OpenWriteAsync(true))
+                    {
+                        await CompressAndEncrypt(source, target, passphrase);
+                    }
                 }
 
                 await bbc.SetAccessTierAsync(tier);
@@ -205,8 +207,9 @@ namespace Arius.Core.Repositories
 
         internal static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
-            //TODO IMPLEMENT AS OpenSSL Compat --  https://github.com/Nicholi/OpenSSLCompat
-
+            // SET UP ENCRYPTION
+            
+            // TODO IMPLEMENT AS OpenSSL Compat --  https://github.com/Nicholi/OpenSSLCompat
 
             // 7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
             // Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
@@ -224,15 +227,19 @@ namespace Arius.Core.Repositories
             using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
 
+            // SET UP COMPRESSION
+            
             // https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?redirectedfrom=MSDN&view=net-5.0#examples
             // https://stackoverflow.com/a/48192297/1582323
             // https://stackoverflow.com/questions/3722192/how-do-i-use-gzipstream-with-system-io-memorystream/39157149#39157149
             // https://docs.microsoft.com/en-us/dotnet/standard/io/how-to-compress-and-extract-files#example-4-compress-and-decompress-gz-files
             // https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
 
-            using var gz1 = new GZipStream(cs, CompressionLevel.Fastest);
+            using var gzs = new GZipStream(cs, CompressionLevel.Fastest);
 
-            await source.CopyToAsync(gz1);
+
+            // Source through Gzip through AES to target
+            await source.CopyToAsync(gzs);
         }
 
 
@@ -262,9 +269,9 @@ namespace Arius.Core.Repositories
             using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
             using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
 
-            using var gz2 = new GZipStream(cs, CompressionMode.Decompress);
+            using var gzs = new GZipStream(cs, CompressionMode.Decompress);
 
-            await gz2.CopyToAsync(target);
+            await gzs.CopyToAsync(target);
         }
 
         private static void DeriveBytes(string password, out byte[] key, out byte[] iv)
