@@ -143,6 +143,13 @@ namespace Arius.Core.Models
         {
             Hash = new (File.ReadAllText(fi.FullName));
         }
+        /// <summary>
+        /// Create a new PointerFile with the given root and the given ManifestHash
+        /// </summary>
+        public PointerFile(DirectoryInfo root, FileInfo fi, ManifestHash manifestHash) : base(root, fi)
+        {
+            Hash = manifestHash;
+        }
 
         internal IEnumerable<ChunkHash> ChunkHashes { get; set; } //TODO Delete this
 

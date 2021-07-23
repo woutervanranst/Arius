@@ -68,7 +68,7 @@ namespace Arius.Core.Services
                 logger.LogInformation($"Created PointerFile '{target.GetRelativeName(root)}'");
             }
 
-            var pf = new PointerFile(root, target);
+            var pf = new PointerFile(root, target, manifestHash);
 
             //Check whether the contents of the PointerFile are correct / is it a valid POinterFile / does the hash it refer to match the manifestHash (eg. not in the case of 0 bytes or ...)
             if (!pf.Hash.Equals(manifestHash))
