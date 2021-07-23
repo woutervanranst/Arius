@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Models
 {
-    internal abstract class Chunk
+    internal abstract record Chunk
     {
         public abstract ChunkHash Hash { get; }
         public abstract Stream GetStream();
     }
 
-    internal class BinaryFileChunk : Chunk
+    internal record BinaryFileChunk : Chunk
     {
         public BinaryFileChunk(BinaryFile bf)
         {
@@ -28,7 +28,7 @@ namespace Arius.Core.Models
         public override Stream GetStream() => File.OpenRead(BinaryFile.FullName);
     }
 
-    internal class ByteArrayChunk : Chunk
+    internal record ByteArrayChunk : Chunk
     {
         public ByteArrayChunk(byte[] chunk, ChunkHash ch) //TODO quid memory allocation??
         {
