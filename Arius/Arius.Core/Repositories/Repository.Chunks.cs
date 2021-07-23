@@ -208,8 +208,9 @@ namespace Arius.Core.Repositories
         internal static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
             // SET UP ENCRYPTION
-            
+
             // TODO IMPLEMENT AS OpenSSL Compat --  https://github.com/Nicholi/OpenSSLCompat
+            // Salt --> https://www.codegrepper.com/code-examples/csharp/encrypt+file+with+password+c%23 // fsCrypt.Write(salt, 0, salt.Length); // fsCrypt.Read(salt, 0, salt.Length);
 
             // 7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
             // Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
