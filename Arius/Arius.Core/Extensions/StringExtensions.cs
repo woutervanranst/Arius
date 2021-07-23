@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Extensions
 {
-    internal static class StringExtensions
+    public static class StringExtensions
     {
         /// <summary>
         /// Trim the given value from the end of the string
