@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Arius.Core.Extensions;
 
 namespace Arius.Cli.Extensions
 {
@@ -84,24 +85,23 @@ namespace Arius.Cli.Extensions
             int eventId = logEntry.EventId.Id;
             Exception exception = logEntry.Exception;
 
-            // Example:
-            // info: ConsoleApp.Program[10]
-            //       Request received
-
             // category and event id
             textWriter.Write(LoglevelPadding);
-            textWriter.Write(logEntry.Category.Split('.').Last().PadRight(20));
+            textWriter.Write($"{logEntry.Category.Split('.').Last().Left(20),-20}"); // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/interpolated#structure-of-an-interpolated-string
             textWriter.Write('[');
 
-            //textWriter.Write($"{System.Threading.Tasks.Task.CurrentId},{Thread.CurrentThread.ManagedThreadId}");
-            textWriter.Write(Thread.CurrentThread.ManagedThreadId.ToString().PadRight(2));
-//#if NETCOREAPP
-//            Span<char> span = stackalloc char[10];
-//            if (eventId.TryFormat(span, out int charsWritten))
-//                textWriter.Write(span.Slice(0, charsWritten));
-//            else
-//#endif
-//                textWriter.Write(eventId.ToString());
+            if (Program.IsMainThread)
+                textWriter.Write("main");
+            else
+                textWriter.Write($"{Thread.CurrentThread.ManagedThreadId,4}"); //Task.CurrentId is sometimes null, https://blog.stephencleary.com/2013/03/taskcurrentid-in-async-methods.html
+
+            //#if NETCOREAPP
+            //            Span<char> span = stackalloc char[10];
+            //            if (eventId.TryFormat(span, out int charsWritten))
+            //                textWriter.Write(span.Slice(0, charsWritten));
+            //            else
+            //#endif
+            //                textWriter.Write(eventId.ToString());
 
             textWriter.Write(']');
             if (!singleLine)

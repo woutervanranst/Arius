@@ -24,6 +24,10 @@ namespace Arius.Cli
 {
     public class Program
     {
+
+        [ThreadStatic]
+        public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
+
         public enum ExitCode
         {
             SUCCESS = 0,
