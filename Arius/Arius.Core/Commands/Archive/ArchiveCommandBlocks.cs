@@ -141,8 +141,8 @@ namespace Arius.Core.Commands.Archive
         private readonly Action<BinaryFile> manifestExists;
         //private readonly Action<ManifestHash, ChunkHash[]> chunksForManifest;
 
-        private readonly static ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
-        private readonly static ConcurrentDictionary<ManifestHash, TaskCompletionSource> creatingManifests = new();
+        private readonly static ConcurrentDictionary<ManifestHash, Task<bool>> createdOrCreatingManifests = new();
+        private readonly static ConcurrentDictionary<ManifestHash, TaskCompletionSource<bool>> creatingManifests = new();
         private readonly static ConcurrentDictionary<ChunkHash, TaskCompletionSource> creatingChunks = new();
         
 
@@ -151,51 +151,59 @@ namespace Arius.Core.Commands.Archive
             /* 
             * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
             * Three possibilities:
-            *   1. The manifest already exists (ie the binary is already uploaded but this may be a duplicate in another path) --> create the pointer
-            *   2. The manifest does not exist and IS NOT yet being created --> upload the binary and send this BinaryFile to the waiting queue until it is uploaded
-            *   3. The manifest does not exist and IS being created --> send this binaryFile to the waiting queue until it is uploaded
+            *   1.  The manifest already exists (ie the binary is already uploaded but this may be a duplicate in another path) --> create the pointer
+            *   2.1 The manifest does not exist and IS NOT yet being created --> upload the binary and send this BinaryFile to the waiting queue until it is uploaded
+            *   2.2 The manifest does not exist and IS being created --> send this binaryFile to the waiting queue until it is uploaded
             */
 
 
             /* [Concurrently] Build a local cache of the remote manifests -- ensure we call ManifestExistsAsync only once
-             * The result of the GetOrAdd method is wheteher it exist remotely, but we don't need that yet
+             * The result of the GetOrAdd method is wheteher it exist remotely, but we don't need that
              */
-            var _ = await remoteManifests.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
+            var _ = await createdOrCreatingManifests.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
 
             /* [Concurrently] if the remote manifest is not present (value will be Task.FromResult(false))), set it to Task.FromResult(true) ONLY ONCE
              * if the value is updated, TryUpdate returns true, this means we need to upload it
              */
-            var toUpload = remoteManifests.TryUpdate(bf.Hash, Task.FromResult(true), Task.FromResult(false));
-            if (!toUpload)
+            var manifestUploadedTcs = new TaskCompletionSource<bool>();
+            //var toUpload0 = createdOrCreatingManifests.TryUpdate(bf.Hash, manifestUploadedTcs.Task, Task.FromResult(false));
+            var toUpload0 = createdOrCreatingManifests.AddOrUpdate(bf.Hash, _ => throw new InvalidOperationException(), (_, existRemote) => 
+            {
+                if (existRemote.Result)
+                    return existRemote;
+
+                return manifestUploadedTcs.Task;
+            });
+            if (toUpload0.IsCompleted)
             {
                 // 1 Exists remote
                 logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') already exists. No need to upload.");
-
-                manifestExists(bf);
-
-                return;
             }
             else
             {
-                bool toUpload = creatingManifests.TryAdd(bf.Hash, new TaskCompletionSource());
-                if (toUpload)
+                // 2 Does not exit remote -- ensure we start the upload only once
+
+                bool toUpload1 = creatingManifests.TryAdd(bf.Hash, manifestUploadedTcs); //TryAdd returns true if the new value was added
+                if (toUpload1)
                 {
-                    // 2 Does not yet exist remote and not yet being created --> upload
+                    // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
 
                     var chs = await UploadBinaryFile(bf);
                     await repo.CreateManifestAsync(bf.Hash, chs);
 
-                    creatingManifests[bf.Hash].SetResult();
+                    manifestUploadedTcs.SetResult(true);
                 }
                 else
                 {
-                    // 3 Does not exist remote but is being created
+                    // 2.2 Does not exist remote but is being created
                     logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely but is already being uploaded. To wait and create pointer.");
 
-                    await creatingManifests[bf.Hash].Task;
+                    await manifestUploadedTcs.Task;
                 }
-            }  
+            }
+
+            manifestExists(bf);
         }
 
         private async Task<ChunkHash[]> UploadBinaryFile(BinaryFile bf)
@@ -293,32 +301,32 @@ namespace Arius.Core.Commands.Archive
     }
 
 
-    internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
-    {
-        public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
-            Func<BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>> sourceFunc,
-            int maxDegreeOfParallelism,
-            Repository repo,
-            Action<ManifestHash> manifestCreated,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
-        {
-            this.repo = repo;
-            this.manifestCreated = manifestCreated;
-        }
+    //internal class CreateManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
+    //{
+    //    public CreateManifestBlock(ILogger<CreateManifestBlock> logger,
+    //        Func<BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>> sourceFunc,
+    //        int maxDegreeOfParallelism,
+    //        Repository repo,
+    //        Action<ManifestHash> manifestCreated,
+    //        Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+    //    {
+    //        this.repo = repo;
+    //        this.manifestCreated = manifestCreated;
+    //    }
 
-        private readonly Repository repo;
-        private readonly Action<ManifestHash> manifestCreated;
+    //    private readonly Repository repo;
+    //    private readonly Action<ManifestHash> manifestCreated;
 
-        protected override async Task ForEachBodyImplAsync((ManifestHash ManifestHash, ChunkHash[] ChunkHashes) item)
-        {
-            logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'...");
+    //    protected override async Task ForEachBodyImplAsync((ManifestHash ManifestHash, ChunkHash[] ChunkHashes) item)
+    //    {
+    //        logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'...");
 
-            await repo.AddManifestAsync(item.ManifestHash, item.ChunkHashes);
-            manifestCreated(item.ManifestHash);
+    //        await repo.AddManifestAsync(item.ManifestHash, item.ChunkHashes);
+    //        manifestCreated(item.ManifestHash);
 
-            logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'... done");
-        }
-    }
+    //        logger.LogInformation($"Creating manifest '{item.ManifestHash.ToShortString()}'... done");
+    //    }
+    //}
 
 
     internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>

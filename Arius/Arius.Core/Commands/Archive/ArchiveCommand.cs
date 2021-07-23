@@ -83,42 +83,23 @@ namespace Arius.Core.Commands.Archive
 
 
             var pointersToCreate = new BlockingCollection<BinaryFile>();
-            var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
                 sourceFunc: () => binariesToUpload,
-                maxDegreeOfParallelism: 16 /*16*/,
+                maxDegreeOfParallelism: 1 /*16*/,
                 chunker: services.GetRequiredService<ByteBoundaryChunker>(),
                 repo: repo,
                 options: options,
                 manifestExists: bf =>
                 {
                     pointersToCreate.Add(bf); //B403
-                }
+                },
                 done: () => 
                 {
-                    manifestsToCreate.CompleteAdding(); //B910
+                    pointersToCreate.CompleteAdding(); //B410
                 });
             var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
-
-
-
-
-            //void removeFromPendingUpload(params ChunkHash[] chunkHash)
-            //{
-            //    // Remove the given chunkHash from the list of pending-for-upload chunks for every manifest
-
-            //    //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
-            //};
-
-
-
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            // can be ignored since we'll be awaiting the pointersToCreate
-            Task.WhenAll(processBinaryFileTask, createManifestTask)
-                .ContinueWith(_ => pointersToCreate.CompleteAdding()); //B1110 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
@@ -130,6 +111,7 @@ namespace Arius.Core.Commands.Archive
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () =>
                 {
+                    binariesToDelete.CompleteAdding(); //B1310
                 });
             var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
@@ -151,13 +133,6 @@ namespace Arius.Core.Commands.Archive
                 {
                 });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
-
-
-#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
-            // can be ignored since we'll be awaiting the pointersToCreate
-            Task.WhenAll(processBinaryFileTask, createPointerFileIfNotExistsTask)
-                .ContinueWith(_ => binariesToDelete.CompleteAdding()); //B1310
-#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 
             var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
@@ -224,11 +199,11 @@ namespace Arius.Core.Commands.Archive
                 var exceptions = ts.Select(t => t.Exception);
                 throw new AggregateException(exceptions);
             }
-            else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
-            {
-                //something went wrong
-                throw new InvalidOperationException("Not all queues are emptied");
-            }
+            //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
+            //{
+            //    //something went wrong
+            //    throw new InvalidOperationException("Not all queues are emptied");
+            //}
 
             return 0;
         }
