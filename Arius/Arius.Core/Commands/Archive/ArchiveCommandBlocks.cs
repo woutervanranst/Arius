@@ -245,7 +245,7 @@ namespace Arius.Core.Commands.Archive
             await chunksToUpload.AsyncParallelForEachAsync(degreeOfParallelism: options.UploadBinaryFileBlock_ParallelChunkUploads,
                 body: async chunk =>
                 {
-                    if (await repo.ChunkExists(chunk.Hash))
+                    if (await repo.ChunkExists(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
