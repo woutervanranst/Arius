@@ -52,8 +52,11 @@ namespace Arius.Core.Commands.Archive
 
 
             var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
-            var binariesToProcess = new BlockingCollection<BinaryFile>();
+            //var binariesToProcess = new BlockingCollection<BinaryFile>();
             var binariesToDelete = new BlockingCollection<BinaryFile>();
+
+            var binariesToUpload = new BlockingCollection<BinaryFile>();
+
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
@@ -67,56 +70,32 @@ namespace Arius.Core.Commands.Archive
                 {
                     var (bf, alreadyBackedUp) = arg;
                     if (alreadyBackedUp)
-                        binariesToDelete.Add(bf); //B401
+                    { 
+                        if (options.RemoveLocal)
+                            binariesToDelete.Add(bf); //B401
+                    }
                     else
-                        binariesToProcess.Add(bf); //B302
+                        binariesToUpload.Add(bf); //B302
                 },
                 hvp: services.GetRequiredService<IHashValueProvider>(),
-                done: () => binariesToProcess.CompleteAdding()); //B310
+                done: () => binariesToUpload.CompleteAdding()); //B310
             var indexTask = indexBlock.GetTask;
 
 
-            var binariesToUpload = new BlockingCollection<BinaryFile>();
-            var binaryFilesWaitingForManifestCreation = new ConcurrentDictionary<ManifestHash, ConcurrentBag<BinaryFile>>(); //Key: ManifestHash. Values (BinaryFiles) that are waiting for the Keys (Manifests) to be created
             var pointersToCreate = new BlockingCollection<BinaryFile>();
-
-            var processBinaryFileBlock = new ProcessBinaryFileBlock(
-                logger: loggerFactory.CreateLogger<ProcessBinaryFileBlock>(),
-                sourceFunc: () => binariesToProcess,
-                repo: repo,
-
-                uploadBinaryFile: (bf) => binariesToUpload.Add(bf),  //B402
-                manifestExists: (bf) => pointersToCreate.Add(bf), //B403
-                waitForCreatedManifest: (bf) => //B404
-                {
-                    binaryFilesWaitingForManifestCreation.AddOrUpdate(
-                        key: bf.Hash,
-                        addValue: new() { bf },
-                        updateValueFactory: (h, bag) =>
-                        {
-                            bag.Add(bf);
-                            return bag;
-                        });
-                },
-                done: () => binariesToUpload.CompleteAdding()); //B410
-            var processBinaryFileTask = processBinaryFileBlock.GetTask;
-
-
             var manifestsToCreate = new BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>();
-            //var chunksForManifest = new ConcurrentDictionary<ManifestHash, ChunkHash[]>();
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
                 sourceFunc: () => binariesToUpload,
                 maxDegreeOfParallelism: 16 /*16*/,
                 chunker: services.GetRequiredService<ByteBoundaryChunker>(),
-                hvp: services.GetRequiredService<IHashValueProvider>(),
                 repo: repo,
                 options: options,
-                chunksForManifest: (mh, chs) =>
+                manifestExists: bf =>
                 {
-                    manifestsToCreate.Add((mh, chs)); //B901
-                },
+                    pointersToCreate.Add(bf); //B403
+                }
                 done: () => 
                 {
                     manifestsToCreate.CompleteAdding(); //B910
@@ -133,21 +112,6 @@ namespace Arius.Core.Commands.Archive
             //    //TODO kan het zijn dat nadat deze hash is verwijderd van de chunks in de chunksForManifest, er nadien nog een manifest wordt toegevoegd dat OOK wacht op die chunk en dus deadlocked?
             //};
 
-
-            var createManifestBlock = new CreateManifestBlock(
-                logger: loggerFactory.CreateLogger<CreateManifestBlock>(),
-                sourceFunc: () => manifestsToCreate,
-                maxDegreeOfParallelism: 1 /*2*/,
-                repo: repo,
-                manifestCreated: (manifestHash) =>
-                {
-                    if (!binaryFilesWaitingForManifestCreation.Remove(manifestHash, out var binaryFiles))
-                        throw new InvalidOperationException($"Manifest '{manifestHash.ToShortString()}' should have been present in the {nameof(binaryFilesWaitingForManifestCreation)} list but isn't");
-
-                    pointersToCreate.AddFromEnumerable(binaryFiles.AsEnumerable(), false); //B1101
-                },
-                done: () => { });
-            var createManifestTask = createManifestBlock.GetTask;
 
 
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
@@ -200,7 +164,6 @@ namespace Arius.Core.Commands.Archive
                 logger: loggerFactory.CreateLogger<DeleteBinaryFilesBlock>(),
                 sourceFunc: () => binariesToDelete,
                 maxDegreeOfParallelism: 1 /*2*/,
-                removeLocal: options.RemoveLocal,
                 done: () =>
                 {
                 });
