@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace Arius.Core.Commands.Archive
 {
+    [DebuggerStepThrough]
     internal static class AsyncParallelForEachExtensions
     {
         // https://scatteredcode.net/parallel-foreach-async-in-c/
