@@ -9,7 +9,7 @@
     },
     "arius archive Test": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --fasthash --tier cool C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --dedup --fasthash --tier cool C:\\Users\\Wouter\\Documents\\Test"
     },
     "arius restore Test2": {
       "commandName": "Project",
