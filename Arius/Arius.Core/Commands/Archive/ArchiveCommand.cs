@@ -17,16 +17,7 @@ namespace Arius.Core.Commands.Archive
 {
     internal class ArchiveCommand : ICommand
     {
-        internal interface IOptions
-        {
-            bool FastHash { get; }
-            bool Dedup { get; }
-            bool RemoveLocal { get; }
-            AccessTier Tier { get; }
-            string Path { get; }
-        }
-
-        public ArchiveCommand(IOptions options,
+        public ArchiveCommand(ArchiveCommandOptions options,
             ILogger<ArchiveCommand> logger,
             IServiceProvider serviceProvider)
         {
@@ -35,7 +26,7 @@ namespace Arius.Core.Commands.Archive
             services = serviceProvider;
         }
 
-        private readonly IOptions options;
+        private readonly ArchiveCommandOptions options;
         private readonly ILogger<ArchiveCommand> logger;
         private readonly IServiceProvider services;
 
@@ -59,7 +50,7 @@ namespace Arius.Core.Commands.Archive
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
                 sourceFunc: () => root,
-                maxDegreeOfParallelism: 1 /*2*/ /*Environment.ProcessorCount */,
+                maxDegreeOfParallelism: options.IndexBlock_Parallelism,
                 fastHash: options.FastHash,
                 pointerService: pointerService,
                 repo: repo,
@@ -86,7 +77,7 @@ namespace Arius.Core.Commands.Archive
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
                 logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
                 sourceFunc: () => binariesToUpload,
-                maxDegreeOfParallelism: 1 /*16*/,
+                degreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
                 chunker: services.GetRequiredService<ByteBoundaryChunker>(),
                 repo: repo,
                 options: options,
@@ -105,7 +96,7 @@ namespace Arius.Core.Commands.Archive
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 sourceFunc: () => pointersToCreate,
-                maxDegreeOfParallelism: 1 /*2*/,
+                degreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
                 pointerService: pointerService,
                 succesfullyBackedUp: bf => 
                 {
@@ -132,7 +123,7 @@ namespace Arius.Core.Commands.Archive
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
                 sourceFunc: () => pointerFileEntriesToCreate,
-                maxDegreeOfParallelism: 1 /*2*/,
+                degreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
                 repo: repo,
                 versionUtc: versionUtc,
                 done: () =>
@@ -145,7 +136,7 @@ namespace Arius.Core.Commands.Archive
             var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
                 logger: loggerFactory.CreateLogger<DeleteBinaryFilesBlock>(),
                 sourceFunc: () => binariesToDelete,
-                maxDegreeOfParallelism: 1 /*2*/,
+                maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
                 done: () =>
                 {
                 });
@@ -163,7 +154,7 @@ namespace Arius.Core.Commands.Archive
                     pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
                     return pointerFileEntriesToCheckForDeletedPointers;
                 },
-                maxDegreeOfParallelism: 1 /*2*/,
+                degreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
                 repo: repo,
                 root: root,
                 pointerService: pointerService,

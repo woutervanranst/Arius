@@ -130,7 +130,7 @@ namespace Arius.Core.Facade
         }
 
 
-        private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options)
+        private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, T options) where T : class, Facade.IOptions
         {
             var sc = new ServiceCollection();
 
@@ -162,6 +162,8 @@ namespace Arius.Core.Facade
             //Add the options for the Services & Repositories
             foreach (var type in options.GetType().GetInterfaces())
                 sc.AddSingleton(type, options);
+
+            sc.AddSingleton<T>(options);
 
             //ArchiveCommand.AddBlockProviders(sc);
             //RestoreCommand.AddBlockProviders(sc);

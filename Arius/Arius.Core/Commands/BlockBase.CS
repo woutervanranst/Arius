@@ -90,8 +90,8 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
-            : this(logger, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
+        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
+            : this(logger, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
         {
         }
         protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 

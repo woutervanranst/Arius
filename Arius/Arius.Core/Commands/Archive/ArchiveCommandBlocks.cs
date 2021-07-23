@@ -115,13 +115,13 @@ namespace Arius.Core.Commands.Archive
         public UploadBinaryFileBlock(
             ILogger<UploadBinaryFileBlock> logger,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
-            int maxDegreeOfParallelism,
+            int degreeOfParallelism,
             ByteBoundaryChunker chunker,
             Repository repo,
-            ArchiveCommand.IOptions options,
+            ArchiveCommandOptions options,
             
             Action<BinaryFile> manifestExists,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.repo = repo;
@@ -131,7 +131,7 @@ namespace Arius.Core.Commands.Archive
 
         private readonly ByteBoundaryChunker chunker;
         private readonly Repository repo;
-        private readonly ArchiveCommand.IOptions options;
+        private readonly ArchiveCommandOptions options;
         
         private readonly Action<BinaryFile> manifestExists;
 
@@ -220,7 +220,7 @@ namespace Arius.Core.Commands.Archive
 
         private async Task<ChunkHash[]> UploadChunkedAsync(BinaryFileChunk bfc)
         {
-            var chunksToUpload = new BlockingCollection<Chunk>(10);
+            var chunksToUpload = new BlockingCollection<Chunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
 
             // Design choice: deliberaely splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
@@ -242,7 +242,7 @@ namespace Arius.Core.Commands.Archive
              * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
              * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              */
-            await chunksToUpload.AsyncParallelForEachAsync(degreeOfParallelism: 16 /*3*/,
+            await chunksToUpload.AsyncParallelForEachAsync(degreeOfParallelism: options.UploadBinaryFileBlock_ParallelChunkUploads,
                 body: async chunk =>
                 {
                     if (await repo.ChunkExists(chunk.Hash))
@@ -289,11 +289,11 @@ namespace Arius.Core.Commands.Archive
     {
         public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
-            int maxDegreeOfParallelism,
+            int degreeOfParallelism,
             PointerService pointerService,
             Action<BinaryFile> succesfullyBackedUp,
             Action<PointerFile> pointerFileCreated,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
             this.succesfullyBackedUp = succesfullyBackedUp;
@@ -324,10 +324,10 @@ namespace Arius.Core.Commands.Archive
     {
         public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
             Func<BlockingCollection<PointerFile>> sourceFunc,
-            int maxDegreeOfParallelism,
+            int degreeOfParallelism,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
@@ -365,7 +365,7 @@ namespace Arius.Core.Commands.Archive
         public DeleteBinaryFilesBlock(ILogger<DeleteBinaryFilesBlock> logger,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
         }
 
@@ -384,12 +384,12 @@ namespace Arius.Core.Commands.Archive
     {
         public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
-            int maxDegreeOfParallelism,
+            int degreeOfParallelism,
             Repository repo,
             DirectoryInfo root,
             PointerService pointerService,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.root = root;
