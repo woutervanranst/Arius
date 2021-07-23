@@ -110,15 +110,15 @@ namespace Arius.Core.Repositories
 
         // ADD
 
-        public async Task AddManifestAsync(BinaryFile binaryFile, IChunkFile[] chunkFiles)
-        {
-            logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}");
+        //public async Task AddManifestAsync(BinaryFile binaryFile, IChunkFile[] chunkFiles)
+        //{
+        //    logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}");
 
-            await AddManifestAsync(binaryFile.Hash, chunkFiles.Select(cf => cf.Hash).ToArray());
+        //    await AddManifestAsync(binaryFile.Hash, chunkFiles.Select(cf => cf.Hash).ToArray());
 
-            logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}... done");
-        }
-        public async Task AddManifestAsync(ManifestHash manifestHash, ChunkHash[] chunkHashes)
+        //    logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}... done");
+        //}
+        public async Task CreateManifestAsync(ManifestHash manifestHash, ChunkHash[] chunkHashes)
         {
             var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
 
