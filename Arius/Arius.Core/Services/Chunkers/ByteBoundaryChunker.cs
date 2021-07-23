@@ -44,7 +44,7 @@ namespace Arius.Core.Services.Chunkers
             var size = bufferSize;
             var offset = 0;
             var position = stream.Position;
-            var nextChunk = Array.Empty<byte>();
+            var subChunks = new List<byte[]>(); //moving away from the Array.Empty<byte>() + Concat algo because, on average, every byte[] gets copied 5 times resulting in a lot of garbage collection
 
             while (true)
             {
@@ -63,15 +63,15 @@ namespace Arius.Core.Services.Chunkers
                 var i = ro.IndexOf(Delimiter); //NOTE: this has very low complexity vs reading byte per byte, ref https://stackoverflow.com/questions/51864673/c-sharp-readonlyspanchar-vs-substring-for-string-dissection
                 if (i > -1 &&  // we found something
                     i <= bytesRead &&  //i <= r  -- we found something in the area that was read (at the end of the buffer, the last values are not overwritten). i = r if the delimiter is at the end of the buffer
-                    nextChunk.Length + (i + Delimiter.Length - offset) >= MinChunkSize)  //the size of the chunk that will be made is large enough
+                    subChunks.Sum(sc => sc.Length) + (i + Delimiter.Length - offset) >= MinChunkSize)  //the size of the chunk that will be made is large enough
                 {
-                    var chunk = buffer[offset..(i + Delimiter.Length)];
-                    chunk = Concat(nextChunk, chunk);
+                    subChunks.Add(buffer[offset..(i + Delimiter.Length)]);
+                    var chunk = GetChunk(subChunks);
                     var ch = hashValueProvider.GetChunkHash(chunk);
 
                     yield return new ByteArrayChunk(chunk, ch);
 
-                    nextChunk = Array.Empty<byte>();
+                    subChunks.Clear();
 
                     offset = 0;
                     size = bufferSize;
@@ -82,8 +82,8 @@ namespace Arius.Core.Services.Chunkers
                 else if (stream.Position == stream.Length)
                 {
                     // we re at the end of the stream
-                    var chunk = buffer[offset..(bytesRead + offset)]; //return the bytes read
-                    chunk = Concat(nextChunk, chunk);
+                    subChunks.Add(buffer[offset..(bytesRead + offset)]); //return the bytes read
+                    var chunk = GetChunk(subChunks);
                     var ch = hashValueProvider.GetChunkHash(chunk);
 
                     yield return new ByteArrayChunk(chunk, ch);
@@ -92,7 +92,7 @@ namespace Arius.Core.Services.Chunkers
                 }
 
                 // the stream is not finished. Copy the last 2 bytes to the beginning of the buffer and set the offset to fill the buffer as of byte 3
-                nextChunk = Concat(nextChunk, buffer[offset..buffer.Length]);
+                subChunks.Add(buffer[offset..buffer.Length]);
 
                 offset = Delimiter.Length;
                 size = bufferSize - offset;
@@ -101,61 +101,19 @@ namespace Arius.Core.Services.Chunkers
             }
         }
 
-        private static T[] Concat<T>(T[] a1, T[] a2)
+        private static byte[] GetChunk(List<byte[]> subChunks)
         {
-            // https://stackoverflow.com/a/50956326/1582323
-            // For spans: https://github.com/dotnet/runtime/issues/30140#issuecomment-509375982
+            byte[] chunk = new byte[subChunks.Sum(sc => sc.Length)];
 
-            T[] array = new T[a1.Length + a2.Length];
-            Array.Copy(a1, 0, array, 0, a1.Length);
-            Array.Copy(a2, 0, array, a1.Length, a2.Length);
-            return array;
+            int destinationIndex = 0;
+
+            foreach (var subChunk in subChunks)
+            {
+                Array.Copy(subChunk, 0, chunk, destinationIndex, subChunk.Length);
+                destinationIndex += subChunk.Length;
+            }
+
+            return chunk;
         }
-
-        
-        ///// <summary>
-        ///// Returns NULL if there are no chunks in this buffer
-        ///// returns the position of the next chunk
-        ///// </summary>
-        ///// <param name="buffer"></param>
-        ///// <returns></returns>
-        //private SequencePosition? NextChunk(ref ReadOnlySequence<byte> buffer)
-        //{
-        //    SequencePosition offset = buffer.Start;
-
-        //    while (true)
-        //    {
-        //        var nextDelimiterPosition = buffer.Slice(offset).PositionOf(Delimiter[0]);
-
-        //        if (nextDelimiterPosition is null || nextDelimiterPosition.Value.Equals(buffer.End))
-        //        {
-        //            // no delimiting chars anymore in this buffer
-        //            return null;
-        //        }
-
-        //        var delimiterSlice = buffer.Slice(offset).Slice(nextDelimiterPosition.Value, Delimiter.Length); //TODO quid '0' op t einde? //TODO2 quid 0 op t einde en 0 in t begin van de volgende
-        //        if (!delimiterSlice.FirstSpan.StartsWith(Delimiter))
-        //        {
-        //            // only the first byte of the delimiter matched, the ones after that not -- continue searching
-        //            offset = buffer.GetPosition(1, nextDelimiterPosition.Value);
-        //            continue;
-        //        }
-
-        //        var nextChunkPosition = buffer.GetPosition(Delimiter.Length, nextDelimiterPosition.Value); //include the delimiter in the next chunk
-        //        var chunk = buffer.Slice(0, nextChunkPosition);
-
-        //        if (chunk.Length < 1024)
-        //        {
-        //            // this chunk is too small
-        //            offset = buffer.GetPosition(1, nextChunkPosition);
-        //            continue;
-        //        }
-        //        else
-        //        {
-        //            // this is a good chunk
-        //            return nextChunkPosition;
-        //        }
-        //    }
-        //}
     }
 }
