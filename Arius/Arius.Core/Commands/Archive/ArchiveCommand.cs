@@ -51,12 +51,10 @@ namespace Arius.Core.Commands.Archive
             var root = new DirectoryInfo(options.Path);
 
 
+
             var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
-            //var binariesToProcess = new BlockingCollection<BinaryFile>();
             var binariesToDelete = new BlockingCollection<BinaryFile>();
-
             var binariesToUpload = new BlockingCollection<BinaryFile>();
-
 
             var indexBlock = new IndexBlock(
                 logger: loggerFactory.CreateLogger<IndexBlock>(),
@@ -82,6 +80,7 @@ namespace Arius.Core.Commands.Archive
             var indexTask = indexBlock.GetTask;
 
 
+
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
@@ -102,12 +101,17 @@ namespace Arius.Core.Commands.Archive
             var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
 
+
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
                 logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
                 sourceFunc: () => pointersToCreate,
                 maxDegreeOfParallelism: 1 /*2*/,
                 pointerService: pointerService,
-                succesfullyBackedUp: bf => binariesToDelete.Add(bf), //B1202
+                succesfullyBackedUp: bf => 
+                {
+                    if (options.RemoveLocal)
+                        binariesToDelete.Add(bf); //B1202
+                },
                 pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
                 done: () =>
                 {
@@ -116,11 +120,13 @@ namespace Arius.Core.Commands.Archive
             var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
 
+
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
             // can be ignored since we'll be awaiting the pointersToCreate
             Task.WhenAll(indexTask, createPointerFileIfNotExistsTask)
                 .ContinueWith(_ => pointerFileEntriesToCreate.CompleteAdding()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
 
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
@@ -133,6 +139,7 @@ namespace Arius.Core.Commands.Archive
                 {
                 });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
+
 
 
             var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
