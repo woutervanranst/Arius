@@ -291,7 +291,7 @@ namespace Arius.Core.Commands.Archive
                     else
                     {
                         // 3 Does not exist remote but is being created
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. To wait and create pointer.");
+                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
 
                         //TODO TES THIS PATH
                     }
