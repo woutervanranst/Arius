@@ -74,22 +74,18 @@ namespace Arius.Core.Facade
         }
 
         public Facade(ILoggerFactory loggerFactory,
-            IOptions<AzCopyAppSettings> azCopyAppSettings, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+            IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
         {
             if (loggerFactory is null)
                 throw new ArgumentNullException(nameof(loggerFactory));
-            if (azCopyAppSettings is null)
-                throw new ArgumentNullException(nameof(azCopyAppSettings));
             if (tempDirectoryAppSettings is null)
                 throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
 
             this.loggerFactory = loggerFactory;
-            this.azCopyAppSettings = azCopyAppSettings.Value;
             this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
         }
 
         private readonly ILoggerFactory loggerFactory;
-        private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
 
@@ -97,7 +93,7 @@ namespace Arius.Core.Facade
         {
             var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
             var dec = sp.GetRequiredService<DedupEvalCommand>();
 
@@ -108,7 +104,7 @@ namespace Arius.Core.Facade
         {
             var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
             var ac = sp.GetRequiredService<ArchiveCommand>();
 
@@ -119,7 +115,7 @@ namespace Arius.Core.Facade
         {
             var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
 
-            var sp = CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
             var rc = sp.GetRequiredService<RestoreCommand>();
 
@@ -130,12 +126,11 @@ namespace Arius.Core.Facade
         {
             var options = new ServicesOptions(accountName, accountKey, container, passphrase);
             
-            return CreateServiceProvider(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings, options);
+            return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
         }
 
 
-        private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory,
-            AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options)
+        private static ServiceProvider CreateServiceProvider(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, Facade.IOptions options)
         {
             var sc = new ServiceCollection();
 
@@ -162,7 +157,6 @@ namespace Arius.Core.Facade
 
             // Add Options
             sc
-                .AddSingleton(azCopyAppSettings)
                 .AddSingleton(tempDirectoryAppSettings);
 
             //Add the options for the Services & Repositories

@@ -279,16 +279,14 @@ namespace Arius.Core.Commands.Restore2
             string Path { get; }
         }
 
-        public DownloadBlockProvider(IOptions options, AzCopyAppSettings azCopyAppSettings, TempDirectoryAppSettings tempDirAppSettings, Repository repo)
+        public DownloadBlockProvider(IOptions options, TempDirectoryAppSettings tempDirAppSettings, Repository repo)
         {
-            this.azCopyAppSettings = azCopyAppSettings;
             this.repo = repo;
 
             var root = new DirectoryInfo(options.Path);
             downloadTempDir = tempDirAppSettings.GetRestoreTempDirectory(root);
         }
 
-        private readonly AzCopyAppSettings azCopyAppSettings;
         private readonly Repository repo;
         private readonly DirectoryInfo downloadTempDir;
 
@@ -351,10 +349,10 @@ namespace Arius.Core.Commands.Restore2
                             batch.Add(kvp.Value);
                             size += kvp.Value.Length;
 
-                            if (size >= azCopyAppSettings.BatchSize ||
-                                batch.Count >= azCopyAppSettings.BatchCount ||
-                                _downloadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
-                                break;
+                            //if (size >= azCopyAppSettings.BatchSize ||
+                            //    batch.Count >= azCopyAppSettings.BatchCount ||
+                            //    _downloadQueue.IsCompleted) //if we re at the end of the queue, upload the remainder
+                            //    break;
                         }
 
                         // TODO // IF SOURCE COMPLETED + THIS EMPTY SET TO COMPLETE ?

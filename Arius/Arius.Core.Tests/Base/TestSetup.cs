@@ -79,18 +79,13 @@ namespace Arius.Core.Tests
             // Initialize Facade
             var loggerFactory = new NullLoggerFactory();
 
-            var azCopyAppSettings = Options.Create(new AzCopyAppSettings()
-            {
-                BatchSize = 256 * 1024 * 1024, //256 MB
-                BatchCount = 128
-            });
             var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
             {
                 TempDirectoryName = ".ariustemp",
                 RestoreTempDirectoryName = ".ariusrestore"
             });
 
-            Facade = new Facade.Facade(loggerFactory, azCopyAppSettings, tempDirectoryAppSettings);
+            Facade = new Facade.Facade(loggerFactory, tempDirectoryAppSettings);
         }
 
 
