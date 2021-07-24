@@ -163,7 +163,10 @@ namespace Arius.Core.Commands.Archive
             {
                 // 2 Did not exist remote before the run -- ensure we start the upload only once
 
-                var manifestToUpload = creatingManifests.TryAdd(bf.Hash, new TaskCompletionSource()); //TryAdd returns true if the new value was added
+                /* TryAdd returns true if the new value was added
+                 * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
+                 */
+                var manifestToUpload = creatingManifests.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
                 if (manifestToUpload)
                 {
                     // 2.1 Does not yet exist remote and not yet being created --> upload
@@ -252,7 +255,7 @@ namespace Arius.Core.Commands.Archive
                         return;
                     }
 
-                    bool toUpload = creatingChunks.TryAdd(chunk.Hash, new TaskCompletionSource());
+                    bool toUpload = creatingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                     if (toUpload)
                     {
                         // 2 Does not yet exist remote and not yet being created --> upload
