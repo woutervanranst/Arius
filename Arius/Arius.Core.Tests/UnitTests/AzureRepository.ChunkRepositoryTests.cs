@@ -63,7 +63,6 @@ namespace Arius.Core.Tests.UnitTests
                 var h2 = SHA256Hasher.GetHashValue(decFile, string.Empty);
 
                 Assert.AreEqual(h1, h2);
-
             }
             finally
             {

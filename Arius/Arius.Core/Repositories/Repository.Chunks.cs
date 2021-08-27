@@ -220,10 +220,13 @@ namespace Arius.Core.Repositories
             // Code derived from: https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
             // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
 
-            using var aes = Aes.Create(); //defaults to CBC Mode
-            DeriveBytes(passphrase, out var key, out var iv);
+            using var aes = Aes.Create();
+            aes.Mode = CipherMode.CBC;
+
+            DeriveBytes(passphrase, out var salt, out var key, out var iv);
             aes.Key = key;
             aes.IV = iv;
+
             using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
             using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
@@ -238,6 +241,8 @@ namespace Arius.Core.Repositories
 
             using var gzs = new GZipStream(cs, CompressionLevel.Fastest);
 
+            // Write salt to the begining of the TARGET stream -- not the gz stream
+            target.Write(salt, 0, salt.Length);
 
             // Source through Gzip through AES to target
             await source.CopyToAsync(gzs);
@@ -264,9 +269,16 @@ namespace Arius.Core.Repositories
         internal static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
         {
             using var aes = Aes.Create();
-            DeriveBytes(passphrase, out var key, out var iv);
+            aes.Mode = CipherMode.CBC;
+
+            // Read the salt from the beginning of the source stream
+            var salt = new byte[8];
+            source.Read(salt, 0, 8);
+
+            DeriveBytes(passphrase, salt, out var key, out var iv);
             aes.Key = key;
             aes.IV = iv;
+
             using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
             using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
 
@@ -275,17 +287,39 @@ namespace Arius.Core.Repositories
             await gzs.CopyToAsync(target);
         }
 
-        private static void DeriveBytes(string password, out byte[] key, out byte[] iv)
+
+
+        /// <summary>
+        /// Get the bytes for AES
+        /// Generate a random salt and calculate the key and iv with that salt
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="salt"></param>
+        /// <param name="key"></param>
+        /// <param name="iv"></param>
+        private static void DeriveBytes(string password, out byte[] salt, out byte[] key, out byte[] iv)
         {
             //https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rfc2898derivebytes?view=net-5.0
 
-            //var salt = new byte[8];
-            //using var rngCsp = new RNGCryptoServiceProvider();
-            //rngCsp.GetBytes(salt);
+            salt = new byte[8];
+            using var rngCsp = new RNGCryptoServiceProvider();
+            rngCsp.GetBytes(salt);
 
-            var salt = SHA256.Create().ComputeHash(Encoding.ASCII.GetBytes(password)); //NOTE for eternity: GuillaumeB sait it will be ok to not use a random salt
+            DeriveBytes(password, salt, out key, out iv);
+        }
 
-            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, 1000);
+        /// <summary>
+        /// Get the key and iv for AES based on the given password and salt
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="salt"></param>
+        /// <param name="key"></param>
+        /// <param name="iv"></param>
+        private static void DeriveBytes(string password, byte[] salt, out byte[] key, out byte[] iv)
+        {
+            const int Rfc2898DeriveBytes_Interations = 1000;
+
+            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, Rfc2898DeriveBytes_Interations);
             key = derivedBytes.GetBytes(32);
             iv = derivedBytes.GetBytes(16);
         }
