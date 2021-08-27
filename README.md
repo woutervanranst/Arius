@@ -314,7 +314,13 @@ NOTE: since this file consists of only one chunk, the hash of the chunk and the 
 
 ### Restore with common tools
 
-Arius relies on the 7zip command line and Azure blob storage cli.
+(DEPRECATED) Arius relies on the 7zip command line and Azure blob storage cli.
+
+```
+openssl enc -d -aes-256-cbc -in $ENCRYPTED_FILE -out original.file.gz -pass pass:$PASSPHRASE -pbkdf2
+gzip -d original.file.gz -f
+# at this point 'original.file' will be the original binary
+```
 
 ### Deduplication
 
