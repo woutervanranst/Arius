@@ -29,6 +29,7 @@ namespace Arius.Core.Services
              *      Then 8 bytes of salt (random)
              *      The Key and IV are derived from the passphrase
              *      Also: https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
+             *      On OpenSSL options and the kdf: https://crypto.stackexchange.com/a/35614
              *  
              *  Additional references
              *      https://github.com/Nicholi/OpenSSLCompat -- but this uses a deprecated Key Derivation Function
