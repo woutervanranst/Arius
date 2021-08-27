@@ -120,10 +120,48 @@ namespace Arius.Core.Tests.ApiTests
 
 
             RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
-            // No additional chunks were uploaded (ie just 1)
-            Assert.AreEqual(chunkBlobItemCount1, 1);
-            // No additional ManifestHash is created (ie just 1)
-            Assert.AreEqual(manifestCount1, 1);
+            // No additional chunks were uploaded
+            Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0);
+            // No additional ManifestHash is created
+            Assert.AreEqual(manifestCount1, manifestCount0);
+            // 1 addtl PointerFileEntry is created
+            Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+
+
+            GetPointerInfo(repo, bfi2, out var pf2, out var pfe2);
+            // A new PointerFile is created
+            Assert.IsTrue(File.Exists(pf2.FullName));
+            // A PointerFileEntry with the matching relativeName exists
+            Assert.IsNotNull(pfe2);
+            // The PointerFileEntry is not marked as deleted
+            Assert.IsFalse(pfe2.IsDeleted);
+            // The Creation- and LastWriteTimeUtc match
+            Assert.AreEqual(bfi2.CreationTimeUtc, pfe2.CreationTimeUtc);
+            Assert.AreEqual(bfi2.LastWriteTimeUtc, pfe2.LastWriteTimeUtc);
+        }
+
+        [Test]
+        public async Task Archive_TwoDuplicateBinaryFiles_Success()
+        {
+            var bfi1 = EnsureArchiveTestDirectoryFileInfo();
+            //await ArchiveCommand(); <-- the only difference
+
+            RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+
+            // Add a duplicate of the BinaryFile
+            var bfi2 = bfi1.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi1.Name}");
+            // With slightly modified datetime
+            bfi2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            bfi2.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+
+            await ArchiveCommand();
+
+
+            RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+            // No additional chunks were uploaded
+            Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0);
+            // No additional ManifestHash is created
+            Assert.AreEqual(manifestCount1, manifestCount0);
             // 1 addtl PointerFileEntry is created
             Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
