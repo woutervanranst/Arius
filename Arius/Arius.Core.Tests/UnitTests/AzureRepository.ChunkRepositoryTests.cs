@@ -75,7 +75,7 @@ namespace Arius.Core.Tests.UnitTests
         }
 
         [Test]
-        public async Task OpenSslCompat()
+        public async Task DecryptWithOpenSsl_File_Equal()
         {
             var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl");
             var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip");
@@ -97,10 +97,8 @@ namespace Arius.Core.Tests.UnitTests
                     }
                 }
 
-                ExternalProcess.RunSimpleProcess(openssl, $"enc -d -aes-256-cbc -in {encFile} -out {decFile}.gz -pass pass:\"{passphrase}\"");
-
+                ExternalProcess.RunSimpleProcess(openssl, $"enc -d -aes-256-cbc -in {encFile} -out {decFile}.gz -pass pass:\"{passphrase}\" -pbkdf2");
                 ExternalProcess.RunSimpleProcess(gzip, $"-d \"{decFile}.gz\" -f"); //-f for overwrite
-                
 
                 var h1 = SHA256Hasher.GetHashValue(sourceFile.FullName, string.Empty);
                 var h2 = SHA256Hasher.GetHashValue(decFile, string.Empty);

@@ -188,7 +188,7 @@ namespace Arius.Core.Repositories
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
                 using (var source = chunk.GetStream())
-                { 
+                {
                     using (var target = await bbc.OpenWriteAsync(true))
                     {
                         await CompressAndEncrypt(source, target, passphrase);
@@ -207,25 +207,32 @@ namespace Arius.Core.Repositories
 
         internal static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
-            // SET UP ENCRYPTION
-
-            // TODO IMPLEMENT AS OpenSSL Compat --  https://github.com/Nicholi/OpenSSLCompat
-            // Salt --> https://www.codegrepper.com/code-examples/csharp/encrypt+file+with+password+c%23 // fsCrypt.Write(salt, 0, salt.Length); // fsCrypt.Read(salt, 0, salt.Length);
-
-            // 7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
-            // Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
-            // on storing the IV/Salt: https://stackoverflow.com/questions/44694994/storing-iv-when-using-aes-asymmetric-encryption-and-decryption
-            // on storing the IV/Salt: https://stackoverflow.com/a/13915596/1582323
-
-            // Code derived from: https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
-            // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
+            /* SET UP ENCRYPTION
+             * 
+             * On 7z and the encryption
+             *      7z lacks an encryption salt -- https://crypto.stackexchange.com/a/90140
+             *      Good read on 7z, salt and the IV: https://security.stackexchange.com/a/202226
+             *      
+             * Code derived from: https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.aes?view=net-5.0
+             * 
+             * OpenSSL Compatible encryption, see https://stackoverflow.com/questions/68391070/decrypt-aes-256-cbc-with-pbkdf2-from-openssl-in-c-sharp
+             *      Stream starts with 'Salted__' in ASCII
+             *      Then 8 bytes of salt (random)
+             *      The Key and IV are derived from the passphrase
+             *      Also: https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
+             *  
+             *  Additional references
+             *      https://github.com/Nicholi/OpenSSLCompat -- but this uses a deprecated Key Derivation Function
+             *      on storing the IV/Salt: https://stackoverflow.com/questions/44694994/storing-iv-when-using-aes-asymmetric-encryption-and-decryption
+             *      on storing the IV/Salt: https://stackoverflow.com/a/13915596/1582323
+             */
 
             using var aes = Aes.Create();
             DeriveBytes(passphrase, out var salt, out var key, out var iv);
             aes.Mode = CipherMode.CBC;
             aes.KeySize = 256;
             aes.BlockSize = 128;
-            aes.Padding = PaddingMode.PKCS7;
+            aes.Padding = PaddingMode.PKCS7; // identical to PKCS5 which is what OpenSSL uses by default https://crypto.stackexchange.com/a/10523
             aes.Key = key;
             aes.IV = iv;
 
@@ -233,13 +240,14 @@ namespace Arius.Core.Repositories
             using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
 
-            // SET UP COMPRESSION
-            
-            // https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?redirectedfrom=MSDN&view=net-5.0#examples
-            // https://stackoverflow.com/a/48192297/1582323
-            // https://stackoverflow.com/questions/3722192/how-do-i-use-gzipstream-with-system-io-memorystream/39157149#39157149
-            // https://docs.microsoft.com/en-us/dotnet/standard/io/how-to-compress-and-extract-files#example-4-compress-and-decompress-gz-files
-            // https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
+            /* SET UP COMPRESSION
+             * 
+             * https://docs.microsoft.com/en-us/dotnet/api/system.io.compression.gzipstream?redirectedfrom=MSDN&view=net-5.0#examples
+             * https://stackoverflow.com/a/48192297/1582323
+             * https://stackoverflow.com/questions/3722192/how-do-i-use-gzipstream-with-system-io-memorystream/39157149#39157149
+             * https://docs.microsoft.com/en-us/dotnet/standard/io/how-to-compress-and-extract-files#example-4-compress-and-decompress-gz-files
+             * https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
+             */
 
             using var gzs = new GZipStream(cs, CompressionLevel.Fastest);
 
@@ -274,17 +282,20 @@ namespace Arius.Core.Repositories
 
         internal static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
         {
-            using var aes = Aes.Create();
-            aes.Mode = CipherMode.CBC;
-            aes.KeySize = 256;
-            //aes.Padding = PaddingMode.PKCS7
+            
 
 
             // Read the salt from the beginning of the source stream
             var salt = new byte[8];
+            source.Seek(OPENSSL_SALT_PREFIX_BYTES.Length, SeekOrigin.Begin);
             source.Read(salt, 0, 8);
 
+            using var aes = Aes.Create();
             DeriveBytes(passphrase, salt, out var key, out var iv);
+            aes.Mode = CipherMode.CBC;
+            aes.KeySize = 256;
+            aes.BlockSize = 128;
+            aes.Padding = PaddingMode.PKCS7;
             aes.Key = key;
             aes.IV = iv;
 
@@ -320,29 +331,17 @@ namespace Arius.Core.Repositories
         /// <summary>
         /// Get the key and iv for AES based on the given password and salt
         /// </summary>
-        /// <param name="password"></param>
+        /// <param name="passphrase"></param>
         /// <param name="salt"></param>
         /// <param name="key"></param>
         /// <param name="iv"></param>
-        private static void DeriveBytes(string password, byte[] salt, out byte[] key, out byte[] iv)
+        private static void DeriveBytes(string passphrase, byte[] salt, out byte[] key, out byte[] iv)
         {
-            var passwordBytes = Encoding.UTF8.GetBytes(password);
+            const int iterations = 10_000; //the default openssl implementation is for 10k iterations
 
-            using (var deriveBytes = new OpenSslCompatDeriveBytes(passwordBytes, salt, "SHA256", 1))
-            {
-                var bytes = deriveBytes.GetBytes(48);
-
-                key = new byte[32];
-                iv = new byte[16];
-                Buffer.BlockCopy(bytes, 0, key, 0, key.Length);
-                Buffer.BlockCopy(bytes, key.Length, iv, 0, iv.Length);
-            }
-
-            //const int Rfc2898DeriveBytes_Interations = 10000;
-
-            //using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Rfc2898DeriveBytes_Interations, HashAlgorithmName.SHA256);
-            //key = pbkdf2.GetBytes(32);
-            //iv = pbkdf2.GetBytes(16);
+            using var pbkdf2 = new Rfc2898DeriveBytes(passphrase, salt, iterations, HashAlgorithmName.SHA256);
+            key = pbkdf2.GetBytes(32);
+            iv = pbkdf2.GetBytes(16);
         }
 
         public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
@@ -385,134 +384,7 @@ namespace Arius.Core.Repositories
             ////    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
             ////});
         }
-
-
-
-
-
-
-        /// <summary>
-        /// Derives a key from a password using an OpenSSL-compatible version of the PBKDF1 algorithm.
-        /// Source: https://gist.github.com/caspencer/1339719
-        /// </summary>
-        /// <remarks>
-        /// based on the OpenSSL EVP_BytesToKey method for generating key and iv
-        /// http://www.openssl.org/docs/crypto/EVP_BytesToKey.html
-        /// </remarks>
-        public class OpenSslCompatDeriveBytes : DeriveBytes
-        {
-            private readonly byte[] _data;
-            private readonly HashAlgorithm _hash;
-            private readonly int _iterations;
-            private readonly byte[] _salt;
-            private byte[] _currentHash;
-            private int _hashListReadIndex;
-            private List<byte> _hashList;
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="OpenSslCompatDeriveBytes"/> class specifying the password, key salt, hash name, and iterations to use to derive the key.
-            /// </summary>
-            /// <param name="password">The password for which to derive the key.</param>
-            /// <param name="salt">The key salt to use to derive the key.</param>
-            /// <param name="hashName">The name of the hash algorithm for the operation. (e.g. MD5 or SHA1)</param>
-            /// <param name="iterations">The number of iterations for the operation.</param>
-            public OpenSslCompatDeriveBytes(string password, byte[] salt, string hashName, int iterations)
-                : this(new UTF8Encoding(false, true).GetBytes(password), salt, hashName, iterations)
-            {
-            }
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="OpenSslCompatDeriveBytes"/> class specifying the password, key salt, hash name, and iterations to use to derive the key.
-            /// </summary>
-            /// <param name="password">The password for which to derive the key.</param>
-            /// <param name="salt">The key salt to use to derive the key.</param>
-            /// <param name="hashName">The name of the hash algorithm for the operation. (e.g. MD5 or SHA1)</param>
-            /// <param name="iterations">The number of iterations for the operation.</param>
-            public OpenSslCompatDeriveBytes(byte[] password, byte[] salt, string hashName, int iterations)
-            {
-                if (iterations <= 0)
-                    throw new ArgumentOutOfRangeException("iterations", iterations, "iterations is out of range. Positive number required");
-
-                _data = password;
-                _salt = salt;
-                _hash = HashAlgorithm.Create(hashName);
-                _iterations = iterations;
-            }
-
-            /// <summary>
-            /// Returns a pseudo-random key from a password, salt and iteration count.
-            /// </summary>
-            /// <param name="cb">The number of pseudo-random key bytes to generate.</param>
-            /// <returns>A byte array filled with pseudo-random key bytes.</returns>
-            public override byte[] GetBytes(int cb)
-            {
-                if (cb <= 0)
-                    throw new ArgumentOutOfRangeException("cb", cb, "cb is out of range. Positive number required.");
-
-                if (_currentHash == null)
-                {
-                    _hashList = new List<byte>();
-                    _currentHash = new byte[0];
-                    _hashListReadIndex = 0;
-
-                    int preHashLength = _data.Length + ((_salt != null) ? _salt.Length : 0);
-                    var preHash = new byte[preHashLength];
-
-                    Buffer.BlockCopy(_data, 0, preHash, 0, _data.Length);
-                    if (_salt != null)
-                        Buffer.BlockCopy(_salt, 0, preHash, _data.Length, _salt.Length);
-
-                    _currentHash = _hash.ComputeHash(preHash);
-
-                    for (int i = 1; i < _iterations; i++)
-                    {
-                        _currentHash = _hash.ComputeHash(_currentHash);
-                    }
-
-                    _hashList.AddRange(_currentHash);
-                }
-
-                while (_hashList.Count < (cb + _hashListReadIndex))
-                {
-                    int preHashLength = _currentHash.Length + _data.Length + ((_salt != null) ? _salt.Length : 0);
-                    var preHash = new byte[preHashLength];
-
-                    Buffer.BlockCopy(_currentHash, 0, preHash, 0, _currentHash.Length);
-                    Buffer.BlockCopy(_data, 0, preHash, _currentHash.Length, _data.Length);
-                    if (_salt != null)
-                        Buffer.BlockCopy(_salt, 0, preHash, _currentHash.Length + _data.Length, _salt.Length);
-
-                    _currentHash = _hash.ComputeHash(preHash);
-
-                    for (int i = 1; i < _iterations; i++)
-                    {
-                        _currentHash = _hash.ComputeHash(_currentHash);
-                    }
-
-                    _hashList.AddRange(_currentHash);
-                }
-
-                byte[] dst = new byte[cb];
-                _hashList.CopyTo(_hashListReadIndex, dst, 0, cb);
-                _hashListReadIndex += cb;
-
-                return dst;
-            }
-
-            /// <summary>
-            /// Resets the state of the operation.
-            /// </summary>
-            public override void Reset()
-            {
-                _hashListReadIndex = 0;
-                _currentHash = null;
-                _hashList = null;
-            }
-        }
     }
-
-
-
 
 
 
