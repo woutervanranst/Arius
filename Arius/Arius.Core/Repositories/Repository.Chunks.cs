@@ -221,9 +221,11 @@ namespace Arius.Core.Repositories
             // https://asecuritysite.com/encryption/open_aes?val1=hello&val2=qwerty&val3=241fa86763b85341
 
             using var aes = Aes.Create();
-            aes.Mode = CipherMode.CBC;
-
             DeriveBytes(passphrase, out var salt, out var key, out var iv);
+            aes.Mode = CipherMode.CBC;
+            aes.KeySize = 256;
+            aes.BlockSize = 128;
+            aes.Padding = PaddingMode.PKCS7;
             aes.Key = key;
             aes.IV = iv;
 
@@ -242,6 +244,7 @@ namespace Arius.Core.Repositories
             using var gzs = new GZipStream(cs, CompressionLevel.Fastest);
 
             // Write salt to the begining of the TARGET stream -- not the gz stream
+            target.Write(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
             target.Write(salt, 0, salt.Length);
 
             // Source through Gzip through AES to target
@@ -266,10 +269,16 @@ namespace Arius.Core.Repositories
             }
         }
 
+        private const String OPENSSL_SALT_PREFIX = "Salted__";
+        private static readonly byte[] OPENSSL_SALT_PREFIX_BYTES = Encoding.ASCII.GetBytes(OPENSSL_SALT_PREFIX);
+
         internal static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
         {
             using var aes = Aes.Create();
             aes.Mode = CipherMode.CBC;
+            aes.KeySize = 256;
+            //aes.Padding = PaddingMode.PKCS7
+
 
             // Read the salt from the beginning of the source stream
             var salt = new byte[8];
@@ -303,7 +312,7 @@ namespace Arius.Core.Repositories
 
             salt = new byte[8];
             using var rngCsp = new RNGCryptoServiceProvider();
-            rngCsp.GetBytes(salt);
+            rngCsp.GetNonZeroBytes(salt);
 
             DeriveBytes(password, salt, out key, out iv);
         }
@@ -317,11 +326,23 @@ namespace Arius.Core.Repositories
         /// <param name="iv"></param>
         private static void DeriveBytes(string password, byte[] salt, out byte[] key, out byte[] iv)
         {
-            const int Rfc2898DeriveBytes_Interations = 1000;
+            var passwordBytes = Encoding.UTF8.GetBytes(password);
 
-            using var derivedBytes = new Rfc2898DeriveBytes(password, salt, Rfc2898DeriveBytes_Interations);
-            key = derivedBytes.GetBytes(32);
-            iv = derivedBytes.GetBytes(16);
+            using (var deriveBytes = new OpenSslCompatDeriveBytes(passwordBytes, salt, "SHA256", 1))
+            {
+                var bytes = deriveBytes.GetBytes(48);
+
+                key = new byte[32];
+                iv = new byte[16];
+                Buffer.BlockCopy(bytes, 0, key, 0, key.Length);
+                Buffer.BlockCopy(bytes, key.Length, iv, 0, iv.Length);
+            }
+
+            //const int Rfc2898DeriveBytes_Interations = 10000;
+
+            //using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Rfc2898DeriveBytes_Interations, HashAlgorithmName.SHA256);
+            //key = pbkdf2.GetBytes(32);
+            //iv = pbkdf2.GetBytes(16);
         }
 
         public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
@@ -363,6 +384,130 @@ namespace Arius.Core.Repositories
 
             ////    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
             ////});
+        }
+
+
+
+
+
+
+        /// <summary>
+        /// Derives a key from a password using an OpenSSL-compatible version of the PBKDF1 algorithm.
+        /// Source: https://gist.github.com/caspencer/1339719
+        /// </summary>
+        /// <remarks>
+        /// based on the OpenSSL EVP_BytesToKey method for generating key and iv
+        /// http://www.openssl.org/docs/crypto/EVP_BytesToKey.html
+        /// </remarks>
+        public class OpenSslCompatDeriveBytes : DeriveBytes
+        {
+            private readonly byte[] _data;
+            private readonly HashAlgorithm _hash;
+            private readonly int _iterations;
+            private readonly byte[] _salt;
+            private byte[] _currentHash;
+            private int _hashListReadIndex;
+            private List<byte> _hashList;
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="OpenSslCompatDeriveBytes"/> class specifying the password, key salt, hash name, and iterations to use to derive the key.
+            /// </summary>
+            /// <param name="password">The password for which to derive the key.</param>
+            /// <param name="salt">The key salt to use to derive the key.</param>
+            /// <param name="hashName">The name of the hash algorithm for the operation. (e.g. MD5 or SHA1)</param>
+            /// <param name="iterations">The number of iterations for the operation.</param>
+            public OpenSslCompatDeriveBytes(string password, byte[] salt, string hashName, int iterations)
+                : this(new UTF8Encoding(false, true).GetBytes(password), salt, hashName, iterations)
+            {
+            }
+
+            /// <summary>
+            /// Initializes a new instance of the <see cref="OpenSslCompatDeriveBytes"/> class specifying the password, key salt, hash name, and iterations to use to derive the key.
+            /// </summary>
+            /// <param name="password">The password for which to derive the key.</param>
+            /// <param name="salt">The key salt to use to derive the key.</param>
+            /// <param name="hashName">The name of the hash algorithm for the operation. (e.g. MD5 or SHA1)</param>
+            /// <param name="iterations">The number of iterations for the operation.</param>
+            public OpenSslCompatDeriveBytes(byte[] password, byte[] salt, string hashName, int iterations)
+            {
+                if (iterations <= 0)
+                    throw new ArgumentOutOfRangeException("iterations", iterations, "iterations is out of range. Positive number required");
+
+                _data = password;
+                _salt = salt;
+                _hash = HashAlgorithm.Create(hashName);
+                _iterations = iterations;
+            }
+
+            /// <summary>
+            /// Returns a pseudo-random key from a password, salt and iteration count.
+            /// </summary>
+            /// <param name="cb">The number of pseudo-random key bytes to generate.</param>
+            /// <returns>A byte array filled with pseudo-random key bytes.</returns>
+            public override byte[] GetBytes(int cb)
+            {
+                if (cb <= 0)
+                    throw new ArgumentOutOfRangeException("cb", cb, "cb is out of range. Positive number required.");
+
+                if (_currentHash == null)
+                {
+                    _hashList = new List<byte>();
+                    _currentHash = new byte[0];
+                    _hashListReadIndex = 0;
+
+                    int preHashLength = _data.Length + ((_salt != null) ? _salt.Length : 0);
+                    var preHash = new byte[preHashLength];
+
+                    Buffer.BlockCopy(_data, 0, preHash, 0, _data.Length);
+                    if (_salt != null)
+                        Buffer.BlockCopy(_salt, 0, preHash, _data.Length, _salt.Length);
+
+                    _currentHash = _hash.ComputeHash(preHash);
+
+                    for (int i = 1; i < _iterations; i++)
+                    {
+                        _currentHash = _hash.ComputeHash(_currentHash);
+                    }
+
+                    _hashList.AddRange(_currentHash);
+                }
+
+                while (_hashList.Count < (cb + _hashListReadIndex))
+                {
+                    int preHashLength = _currentHash.Length + _data.Length + ((_salt != null) ? _salt.Length : 0);
+                    var preHash = new byte[preHashLength];
+
+                    Buffer.BlockCopy(_currentHash, 0, preHash, 0, _currentHash.Length);
+                    Buffer.BlockCopy(_data, 0, preHash, _currentHash.Length, _data.Length);
+                    if (_salt != null)
+                        Buffer.BlockCopy(_salt, 0, preHash, _currentHash.Length + _data.Length, _salt.Length);
+
+                    _currentHash = _hash.ComputeHash(preHash);
+
+                    for (int i = 1; i < _iterations; i++)
+                    {
+                        _currentHash = _hash.ComputeHash(_currentHash);
+                    }
+
+                    _hashList.AddRange(_currentHash);
+                }
+
+                byte[] dst = new byte[cb];
+                _hashList.CopyTo(_hashListReadIndex, dst, 0, cb);
+                _hashListReadIndex += cb;
+
+                return dst;
+            }
+
+            /// <summary>
+            /// Resets the state of the operation.
+            /// </summary>
+            public override void Reset()
+            {
+                _hashListReadIndex = 0;
+                _currentHash = null;
+                _hashList = null;
+            }
         }
     }
 
