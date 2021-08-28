@@ -6,7 +6,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Azure.Cosmos.Table;
@@ -21,7 +20,7 @@ namespace Arius.Core.Repositories
 
         private class CachedEncryptedPointerFileEntryRepository
         {
-            public CachedEncryptedPointerFileEntryRepository(IOptions options, ILogger logger)
+            public CachedEncryptedPointerFileEntryRepository(ILogger logger, IOptions options)
             {
                 this.logger = logger;
 

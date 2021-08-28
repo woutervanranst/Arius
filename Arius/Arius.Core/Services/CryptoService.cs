@@ -9,12 +9,12 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Services
 {
-    internal static class Crypto
+    internal class CryptoService
     {
         private const string OPENSSL_SALT_PREFIX = "Salted__";
         private static readonly byte[] OPENSSL_SALT_PREFIX_BYTES = Encoding.ASCII.GetBytes(OPENSSL_SALT_PREFIX);
 
-        public static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
+        public async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
             /* SET UP ENCRYPTION
              * 
@@ -71,7 +71,7 @@ namespace Arius.Core.Services
         }
 
 
-        public static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
+        public async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
         {
             // Read the salt from the beginning of the source stream
             var salt = new byte[8];

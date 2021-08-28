@@ -17,15 +17,7 @@ namespace Arius.Core.Repositories
             NoChange
         }
 
-        private void InitPointerFileEntryRepository(IOptions options, ILogger logger, out CachedEncryptedPointerFileEntryRepository repo)
-        {
-            // 'Partial constructor' for this part of the repo
-            repo = new CachedEncryptedPointerFileEntryRepository(options, logger);
-        }
-
-        private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
-
-
+        
         /// <summary>
         /// Create a PointerFileEntry for the given PointerFile and the given version
         /// </summary>

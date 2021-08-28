@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Arius.Core.Models;
-using Arius.Core.Services;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
-using static Arius.Core.Facade.Facade;
 
 namespace Arius.Core.Repositories
 {
@@ -21,14 +15,7 @@ namespace Arius.Core.Repositories
         internal const string ChunkDirectoryName = "chunks";
         internal const string RehydratedChunkDirectoryName = "chunks-rehydrated";
 
-        private void InitChunkRepository(IOptions options, out string passphrase)
-        {
-            // 'Partial constructor' for this part of the repo
-            passphrase = options.Passphrase;
-        }
-
-        private readonly string passphrase;
-
+        
         // GET
 
         public ChunkBlobBase[] GetAllChunkBlobs()
@@ -191,7 +178,7 @@ namespace Arius.Core.Repositories
                 {
                     using (var target = await bbc.OpenWriteAsync(true))
                     {
-                        await Crypto.CompressAndEncrypt(source, target, passphrase);
+                        await cryptoService.CompressAndEncrypt(source, target, passphrase);
                     }
                 }
 
@@ -213,7 +200,7 @@ namespace Arius.Core.Repositories
 
                 using (var enc = await bbc.OpenReadAsync())
                 {
-                    await Crypto.DecryptAndDecompress(enc, clearStream, passphrase);
+                    await cryptoService.DecryptAndDecompress(enc, clearStream, passphrase);
                 }
             }
             catch (Exception e)

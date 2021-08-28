@@ -18,14 +18,6 @@ namespace Arius.Core.Repositories
     {
         internal const string ManifestDirectoryName = "manifests";
 
-        private void InitManifestRepository()
-        {
-            // 'Partial constructor' for this part of the repo
-        }
-
-        //private ConcurrentDictionary<HashValue, IEnumerable<HashValue>> manifestCache = new();
-
-
         // GET
 
         /// <summary>

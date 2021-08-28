@@ -44,13 +44,15 @@ namespace Arius.Core.Tests.UnitTests
 
             try
             {
+                var cs = GetServices().GetRequiredService<CryptoService>();
+
                 var sourceFile = EnsureArchiveTestDirectoryFileInfo();
 
                 using (var ss = File.OpenRead(sourceFile.FullName))
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await Crypto.CompressAndEncrypt(ss, es, passphrase);
+                        await cs.CompressAndEncrypt(ss, es, passphrase);
                     }
                 }
 
@@ -58,7 +60,7 @@ namespace Arius.Core.Tests.UnitTests
                 {
                     using (var ts = File.OpenWrite(decFile))
                     {
-                        await Crypto.DecryptAndDecompress(es, ts, passphrase);
+                        await cs.DecryptAndDecompress(es, ts, passphrase);
                     }
                 }
 
@@ -77,6 +79,8 @@ namespace Arius.Core.Tests.UnitTests
         [Test]
         public async Task DecryptWithOpenSsl_File_Equal()
         {
+            // Ensure compatibility with openssl
+
             var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl");
             var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip");
 
@@ -87,13 +91,15 @@ namespace Arius.Core.Tests.UnitTests
 
             try
             {
+                var cs = GetServices().GetRequiredService<CryptoService>();
+
                 var sourceFile = EnsureArchiveTestDirectoryFileInfo();
 
                 using (var ss = File.OpenRead(sourceFile.FullName))
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await Crypto.CompressAndEncrypt(ss, es, passphrase);
+                        await cs.CompressAndEncrypt(ss, es, passphrase);
                     }
                 }
 
