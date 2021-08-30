@@ -24,7 +24,8 @@ namespace Arius.Core.Repositories
             this.passphrase = options.Passphrase;
             this.cryptoService = cryptoService;
 
-            pfeRepo = new CachedEncryptedPointerFileEntryRepository(logger, options);
+            pfeRepo = new(logger, options);
+            mpRepo = new(logger, options);
 
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
@@ -41,6 +42,8 @@ namespace Arius.Core.Repositories
         private readonly CryptoService cryptoService;
 
         private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
+        private readonly CachedManifestPropertiesRepository mpRepo;
+
 
         private readonly BlobContainerClient container;
     }

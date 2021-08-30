@@ -127,7 +127,7 @@ namespace Arius.Core.Repositories
         /// Get All PointerFileEntries
         /// </summary>
         /// <returns></returns>
-        internal async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntries()
+        internal async Task<IReadOnlyCollection<PointerFileEntry>> GetPointerFileEntries()
         {
             return await pfeRepo.GetEntriesAsync();
         }

@@ -162,7 +162,7 @@ namespace Arius.Core.Repositories
         /// <summary>
         /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
         /// </summary>
-        public async Task<ChunkBlobBase> UploadChunkAsync(Chunk chunk, AccessTier tier)
+        public async Task<ChunkBlobBase> UploadChunkAsync(IChunk chunk, AccessTier tier)
         {
             try
             {

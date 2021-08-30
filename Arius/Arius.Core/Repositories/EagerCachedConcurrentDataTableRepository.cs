@@ -40,15 +40,15 @@ namespace Arius.Core.Repositories
                 //Asynchronously download all PointerFileEntryDtos
                 allRowsTask = Task.Run(() =>
                 {
-                    logger.LogDebug($"Getting all rows in {tableName}...");
+                    logger.LogDebug($"Getting all rows for {typeof(TDto).Name} in {tableName}...");
 
                     // get all rows - we're getting them anyway as GroupBy is not natively supported
                     var ts = table
                         .CreateQuery<TDto>()
                         .AsEnumerable()
-                        .Select(r => new KeyValuePair<(string, string), T>((r.PartitionKey, r.RowKey), fromDto(r)));
+                        .Select(r => fromDto(r));
 
-                    var r = new ConcurrentDictionary<(string, string), T>(ts);
+                    var r = new ConcurrentHashSet<T>(ts);
 
                     logger.LogDebug($"Getting all rows in {tableName}... Done. Fetched {r.Count} rows");
 
@@ -66,22 +66,18 @@ namespace Arius.Core.Repositories
         private readonly Func<T, TDto> toDto;
         private readonly Func<TDto, T> fromDto;
         private readonly CloudTable table;
-        private readonly Task<ConcurrentDictionary<(string, string), T>> allRowsTask;
+        private readonly Task<ConcurrentHashSet<T>> allRowsTask;
 
         public async Task<IReadOnlyCollection<T>> GetAllAsync() => (IReadOnlyCollection<T>)(await allRowsTask).Values;
 
-        public async Task EnsureAdded(T item)
+        public async Task Add(T item)
         {
+            var allRows = await allRowsTask;
+            allRows.Add(item);
+
             var dto = toDto(item);
-
-            
-            var toAdd = (await allRowsTask).TryAdd((dto.PartitionKey, dto.RowKey), item);
-
-            if (toAdd)
-            {
-                var op = TableOperation.Insert(dto);
-                await table.ExecuteAsync(op);
-            }
+            var op = TableOperation.Insert(dto);
+            await table.ExecuteAsync(op);
         }
     }
 }

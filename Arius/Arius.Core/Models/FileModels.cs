@@ -119,12 +119,13 @@ namespace Arius.Core.Models
 
     internal interface IChunkFile : IFile //, IWithHashValue
     {
+        // TODO: can we remove this interface?
         ChunkHash Hash { get; }
     }
 
-    internal interface IEncryptedFile : IFile
-    {
-    }
+    //internal interface IEncryptedFile : IFile
+    //{
+    //}
 
 
     internal class PointerFile : RelativeFileBase //, IAriusEntryWithHash
@@ -158,26 +159,20 @@ namespace Arius.Core.Models
         public override ManifestHash Hash { get; } //{ get => (ManifestHash)INTERNALHASH; set => INTERNALHASH = value; }
     }
 
-    internal class BinaryFile : RelativeFileBase /*, IAriusEntryWithHash*/, IChunkFile
+    internal class BinaryFile : RelativeFileBase /*, IAriusEntryWithHash*/, IChunkFile, IChunk
     {
         public BinaryFile(DirectoryInfo root, FileInfo fi, ManifestHash hash) : base(root, fi) 
         {
             Hash = hash;
         }
-        
-        //public override string ContentName => Name;
 
         public override ManifestHash Hash { get; }
-        //{
-        //    get => hash;
-        //    set
-        //    {
-        //        hash = value;
-        //    }
-        //}
-        //private ManifestHash hash;
 
         ChunkHash IChunkFile.Hash => new ChunkHash(Hash);
+
+        ChunkHash IChunk.Hash => new ChunkHash(Hash);
+
+        public Stream GetStream() => base.fi.OpenRead();
     }
 
 
@@ -193,7 +188,7 @@ namespace Arius.Core.Models
         public override ChunkHash Hash { get; }
     }
 
-    internal class EncryptedChunkFile : FileBase, IEncryptedFile, IChunkFile
+    internal class EncryptedChunkFile : FileBase, /*IEncryptedFile,*/ IChunkFile
     {
         public static readonly string Extension = ".7z.arius";
 

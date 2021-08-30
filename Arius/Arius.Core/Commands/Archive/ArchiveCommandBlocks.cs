@@ -172,8 +172,7 @@ namespace Arius.Core.Commands.Archive
                     // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
 
-                    var chs = await UploadAsync(bf);
-                    await repo.CreateManifestAsync(bf.Hash, chs);
+                    await UploadBinaryAsync(bf);
 
                     creatingManifests[bf.Hash].SetResult();
                 }
@@ -198,38 +197,48 @@ namespace Arius.Core.Commands.Archive
             manifestExists(bf);
         }
 
-        private async Task<ChunkHash[]> UploadAsync(BinaryFile bf)
+        private async Task UploadBinaryAsync(BinaryFile bf)
         {
-            var bfc = new BinaryFileChunk(bf);
-
+            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
+            // Upload the Binary
             var sw = new Stopwatch();
             sw.Start();
 
             ChunkHash[] chs;
             if (options.Dedup)
-                chs = await UploadChunkedAsync(bfc);
+                chs = await UploadChunkedBinaryAsync(bf);
             else
-                chs = await UploadAsync(bfc);
+                chs = await UploadBinaryChunkAsync(bf);
 
             sw.Stop();
 
             var megabytepersecond = Math.Round(bf.Length / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
             var megabitpersecond = Math.Round(bf.Length * 8 / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
 
-            logger.LogInformation($"Completed {bf.Name}, {bf.Length.GetBytesReadable()} in {sw.ElapsedMilliseconds / 1000}s ({megabytepersecond} MBps / {megabitpersecond} Mbps)");
+            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')... Completed in {sw.ElapsedMilliseconds / 1000}s ({megabytepersecond} MBps / {megabitpersecond} Mbps)");
 
-            return chs;
+            // Create the Manifest
+            await repo.CreateManifestAsync(bf.Hash, chs);
+
+            // Create the ManifestPropertyEntry
+            await repo.CreateManifestPropertyAsync(bf);
         }
 
-        private async Task<ChunkHash[]> UploadChunkedAsync(BinaryFileChunk bfc)
+        
+        /// <summary>
+        /// Chunk the BinaryFile then upload all the chunks in parallel
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <returns></returns>
+        private async Task<ChunkHash[]> UploadChunkedBinaryAsync(BinaryFile bf)
         {
-            var chunksToUpload = new BlockingCollection<Chunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
+            var chunksToUpload = new BlockingCollection<IChunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
 
-            // Design choice: deliberaely splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
+            // Design choice: deliberately splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
             var t = Task.Run(() =>
             {
-                using var binaryFileStream = bfc.GetStream();
+                using var binaryFileStream = bf.GetStream();
 
                 foreach (var chunk in chunker.Chunk(binaryFileStream))
                 {
@@ -279,11 +288,16 @@ namespace Arius.Core.Commands.Archive
             return chs.ToArray();
         }
 
-        private async Task<ChunkHash[]> UploadAsync(BinaryFileChunk chunk)
+        /// <summary>
+        /// Upload one single BinaryFile
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <returns></returns>
+        private async Task<ChunkHash[]> UploadBinaryChunkAsync(BinaryFile bf)
         {
-            var cbb = await repo.UploadChunkAsync(chunk, options.Tier); //TODO do we need this result?
+            var cbb = await repo.UploadChunkAsync(bf, options.Tier); //TODO do we need this result?
 
-            return chunk.Hash.SingleToArray();
+            return ((IChunk)bf).Hash.SingleToArray();
         }
     }
 

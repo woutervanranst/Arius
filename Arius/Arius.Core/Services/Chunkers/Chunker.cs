@@ -16,8 +16,8 @@ namespace Arius.Core.Services.Chunkers
 
         protected readonly IHashValueProvider hashValueProvider;
 
-        public abstract IEnumerable<Chunk> Chunk(Stream streamToChunk);
-        public virtual BinaryFile Merge(DirectoryInfo root, Chunk[] chunks, FileInfo target)
+        public abstract IEnumerable<IChunk> Chunk(Stream streamToChunk);
+        public virtual BinaryFile Merge(DirectoryInfo root, IChunk[] chunks, FileInfo target)
         {
             if (chunks.Length == 0)
             {
