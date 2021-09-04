@@ -162,29 +162,33 @@ namespace Arius.Core.Repositories
         /// <summary>
         /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
         /// </summary>
-        public async Task<ChunkBlobBase> UploadChunkAsync(IChunk chunk, AccessTier tier)
+        /// <returns>Returns the length of the uploaded stream.</returns>
+        public async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
         {
             try
             {
                 var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
 
                 if (await bbc.ExistsAsync())
-                    throw new InvalidOperationException(); //TODO combine with OpenWriteAsync?
+                    throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
 
                 // v11 [DEPRECATED] of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
+                long length;
                 using (var source = chunk.GetStream())
                 {
                     using (var target = await bbc.OpenWriteAsync(true))
                     {
                         await cryptoService.CompressAndEncrypt(source, target, passphrase);
+                        length = target.Position;
                     }
                 }
 
                 await bbc.SetAccessTierAsync(tier);
 
-                return ChunkBlobBase.GetChunkBlob(bbc);
+                //return ChunkBlobBase.GetChunkBlob(bbc); //commented - we do not need this
+                return length;
             }
             catch (Exception e)
             {

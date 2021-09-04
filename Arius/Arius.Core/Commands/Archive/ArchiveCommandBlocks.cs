@@ -205,10 +205,11 @@ namespace Arius.Core.Commands.Archive
             sw.Start();
 
             ChunkHash[] chs;
+            long length;
             if (options.Dedup)
-                chs = await UploadChunkedBinaryAsync(bf);
+                (chs, length) = await UploadChunkedBinaryAsync(bf);
             else
-                chs = await UploadBinaryChunkAsync(bf);
+                (chs, length) = await UploadBinaryChunkAsync(bf);
 
             sw.Stop();
 
@@ -221,7 +222,7 @@ namespace Arius.Core.Commands.Archive
             await repo.CreateManifestAsync(bf.Hash, chs);
 
             // Create the ManifestPropertyEntry
-            await repo.CreateManifestPropertyAsync(bf);
+            await repo.CreateManifestPropertyAsync(bf, length, chs.Length);
         }
 
         
@@ -230,10 +231,11 @@ namespace Arius.Core.Commands.Archive
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<ChunkHash[]> UploadChunkedBinaryAsync(BinaryFile bf)
+        private async Task<(ChunkHash[], long length)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
             var chunksToUpload = new BlockingCollection<IChunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
+            var totalLength = 0L;
 
             // Design choice: deliberately splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
             var t = Task.Run(() =>
@@ -270,7 +272,8 @@ namespace Arius.Core.Commands.Archive
                         // 2 Does not yet exist remote and not yet being created --> upload
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
-                        var cbb = await repo.UploadChunkAsync(chunk, options.Tier); //TODO do we need this result?
+                        var length = await repo.UploadChunkAsync(chunk, options.Tier);
+                        totalLength += length;
 
                         creatingChunks[chunk.Hash].SetResult();
                     }
@@ -285,7 +288,7 @@ namespace Arius.Core.Commands.Archive
                     await creatingChunks[chunk.Hash].Task;
                 });
 
-            return chs.ToArray();
+            return (chs.ToArray(), totalLength);
         }
 
         /// <summary>
@@ -293,11 +296,11 @@ namespace Arius.Core.Commands.Archive
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<ChunkHash[]> UploadBinaryChunkAsync(BinaryFile bf)
+        private async Task<(ChunkHash[], long length)> UploadBinaryChunkAsync(BinaryFile bf)
         {
-            var cbb = await repo.UploadChunkAsync(bf, options.Tier); //TODO do we need this result?
+            var length = await repo.UploadChunkAsync(bf, options.Tier);
 
-            return ((IChunk)bf).Hash.SingleToArray();
+            return (((IChunk)bf).Hash.SingleToArray(), length);
         }
     }
 

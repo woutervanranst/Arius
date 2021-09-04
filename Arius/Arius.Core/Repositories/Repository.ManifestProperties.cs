@@ -11,14 +11,14 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        public async Task CreateManifestPropertyAsync(BinaryFile bf)
+        public async Task CreateManifestPropertyAsync(BinaryFile bf, long archivedLength, int chunkCount)
         {
             var mp = new ManifestProperties()
             {
                 Hash = bf.Hash,
                 OriginalLength = bf.Length,
-                ArchivedLength = 0,
-                ChunkCount = 0
+                ArchivedLength = archivedLength,
+                ChunkCount = chunkCount
             };
 
             await mpRepo.Add(mp);
