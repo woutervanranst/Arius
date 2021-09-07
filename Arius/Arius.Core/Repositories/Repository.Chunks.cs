@@ -101,7 +101,7 @@ namespace Arius.Core.Repositories
             }
         }
 
-        public async Task<bool> ChunkExists(ChunkHash chunkHash)
+        public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
         {
             return await container.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
         }
@@ -180,7 +180,7 @@ namespace Arius.Core.Repositories
                 {
                     using (var target = await bbc.OpenWriteAsync(true))
                     {
-                        await cryptoService.CompressAndEncrypt(source, target, passphrase);
+                        await Services.CryptoService.CompressAndEncrypt(source, target, passphrase);
                         length = target.Position;
                     }
                 }
@@ -204,7 +204,7 @@ namespace Arius.Core.Repositories
 
                 using (var enc = await bbc.OpenReadAsync())
                 {
-                    await cryptoService.DecryptAndDecompress(enc, clearStream, passphrase);
+                    await Services.CryptoService.DecryptAndDecompress(enc, clearStream, passphrase);
                 }
             }
             catch (Exception e)

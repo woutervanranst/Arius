@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive
@@ -204,13 +205,10 @@ namespace Arius.Core.Commands.Archive
             var sw = new Stopwatch();
             sw.Start();
 
-            ChunkHash[] chs;
-            long length;
-            if (options.Dedup)
-                (chs, length) = await UploadChunkedBinaryAsync(bf);
-            else
-                (chs, length) = await UploadBinaryChunkAsync(bf);
-
+            var (chs, length) = options.Dedup ?
+                await UploadChunkedBinaryAsync(bf) :
+                await UploadBinaryChunkAsync(bf);
+            
             sw.Stop();
 
             var megabytepersecond = Math.Round(bf.Length / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
@@ -233,22 +231,22 @@ namespace Arius.Core.Commands.Archive
         /// <returns></returns>
         private async Task<(ChunkHash[], long length)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
-            var chunksToUpload = new BlockingCollection<IChunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
+            var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
             var totalLength = 0L;
 
-            // Design choice: deliberately splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
-            var t = Task.Run(() =>
+            // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
+            var t = Task.Run(async () =>
             {
                 using var binaryFileStream = bf.GetStream();
 
                 foreach (var chunk in chunker.Chunk(binaryFileStream))
                 {
-                    chunksToUpload.Add(chunk);
+                    await chunksToUpload.Writer.WriteAsync(chunk);
                     chs.Add(chunk.Hash);
                 }
 
-                chunksToUpload.CompleteAdding();
+                chunksToUpload.Writer.Complete();
             });
 
             /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
@@ -256,10 +254,12 @@ namespace Arius.Core.Commands.Archive
              * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
              * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              */
-            await chunksToUpload.AsyncParallelForEachAsync(degreeOfParallelism: options.UploadBinaryFileBlock_ParallelChunkUploads,
-                body: async chunk =>
+
+            await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(), 
+                new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
+                async (chunk, cancellationToken) => 
                 {
-                    if (await repo.ChunkExists(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
@@ -273,7 +273,7 @@ namespace Arius.Core.Commands.Archive
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
                         var length = await repo.UploadChunkAsync(chunk, options.Tier);
-                        totalLength += length;
+                        Interlocked.Add(ref totalLength, length);
 
                         creatingChunks[chunk.Hash].SetResult();
                     }
