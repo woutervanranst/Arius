@@ -44,7 +44,6 @@ namespace Arius.Core.Repositories
         private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
         private readonly CachedManifestPropertiesRepository mpRepo;
 
-
         private readonly BlobContainerClient container;
     }
 }
