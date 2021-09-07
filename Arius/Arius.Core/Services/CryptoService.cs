@@ -108,20 +108,21 @@ namespace Arius.Core.Services
             return r;
         }
 
-        public static async Task<string> Decrypt(string cipherText, string passphrase)
+        public static string Decrypt(string cipherText, string passphrase)
         {
-            var cypherTextBytes = Convert.FromBase64String(cipherText);
+            var cipherTextBytes = Convert.FromBase64String(cipherText);
 
-            DeriveBytes(passphrase, cypherTextBytes[0..7], out var key, out var iv);
+            DeriveBytes(passphrase, cipherTextBytes[0..8], out var key, out var iv);
 
             using var aes = CreateAes(key, iv);
             using var decryptor = aes.CreateDecryptor();
-            using var target = new MemoryStream(cypherTextBytes[8..]);
-            using var cs = new CryptoStream(target, decryptor, CryptoStreamMode.Read);
+            using var source = new MemoryStream(cipherTextBytes[8..]);
+            using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
+            using var target = new MemoryStream();
 
-            var plainTextBytes = await cs.ReadAllBytesAsync();
+            cs.CopyTo(target);
 
-            var plainText = Encoding.UTF8.GetString(plainTextBytes);
+            var plainText = Encoding.UTF8.GetString(target.ToArray());
 
             return plainText;
         }
