@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Services;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 using Murmur;
@@ -78,7 +79,7 @@ namespace Arius.Core.Repositories
             /// <returns>Returns true if an entry was actually added / the collection was modified</returns>
             public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
-                //Asynchronously wait to enter the Semaphore. If no-one has been granted access to the Semaphore, code execution will proceed, otherwise this thread waits here until the semaphore is released 
+                //Asynchronously wait to enter the Semaphore
                 await semaphoreSlim.WaitAsync();
                 try
                 {
@@ -118,7 +119,7 @@ namespace Arius.Core.Repositories
 
             private PointerFileEntry ConvertFromDto(PointerFileEntryDto dto)
             {
-                var rn = StringCipher.Decrypt(dto.EncryptedRelativeName, passphrase);
+                var rn = CryptoService.Decrypt(dto.EncryptedRelativeName, passphrase);
                 rn = ToPlatformSpecificPath(rn);
 
                 return new()
@@ -134,7 +135,7 @@ namespace Arius.Core.Repositories
             private PointerFileEntryDto ConvertToDto(PointerFileEntry pfe)
             {
                 var rn = ToPlatformNeutralPath(pfe.RelativeName);
-                rn = StringCipher.Encrypt(rn, passphrase);
+                rn = CryptoService.Encrypt(rn, passphrase);
 
                 return new()
                 {
