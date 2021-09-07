@@ -119,10 +119,9 @@ namespace Arius.Core.Services
             using var source = new MemoryStream(cipherTextBytes[8..]);
             using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
             using var target = new MemoryStream();
+            using var sr = new StreamReader(cs, Encoding.UTF8);
 
-            cs.CopyTo(target);
-
-            var plainText = Encoding.UTF8.GetString(target.ToArray());
+            var plainText = sr.ReadToEnd();
 
             return plainText;
         }
