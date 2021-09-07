@@ -110,8 +110,17 @@ namespace Arius.Core.Tests
 
             await c.Execute();
 
+            archiveHasRun = true;
+
             return c.Services;
         }
+
+        protected static async Task EnsureArchiveCommandHasRun()
+        {
+            if (!archiveHasRun)
+                await ArchiveCommand();
+        }
+        private static bool archiveHasRun = false;
 
 
         /// <summary>
@@ -185,7 +194,7 @@ namespace Arius.Core.Tests
             pf = ps.GetPointerFile(fi);
 
             var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
-            pfe = repo.GetCurrentEntries(true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+            pfe = repo.GetCurrentEntries(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
         }
 
 
