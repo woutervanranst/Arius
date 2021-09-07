@@ -52,7 +52,7 @@ namespace Arius.Core.Tests
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5),
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1)
             };
-        });
+        }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
         protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
         {
             var sfi = sourceFiles.Value.First();
