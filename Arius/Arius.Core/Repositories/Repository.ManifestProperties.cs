@@ -22,19 +22,6 @@ namespace Arius.Core.Repositories
             };
 
             await mpRepo.Add(mp);
-            
-            //public void Add(BinaryFile bf, long archivedLength, int chunkCount)
-            //{
-            //    var mp = new ManifestProperties()
-            //    {
-            //        Hash = bf.Hash,
-            //        OriginalLength = bf.Length,
-            //        ArchivedLength = archivedLength,
-            //        ChunkCount = chunkCount
-            //    };
-
-            //    Add(mp);
-            //}
         }
 
         private class CachedManifestPropertiesRepository

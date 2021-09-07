@@ -64,7 +64,7 @@ namespace Arius.Core.Models
 
         public abstract AccessTier AccessTier { get; }
 
-        public static readonly string Extension = ".7z.arius";
+        public static readonly string Extension = ".ariuschunk.gz.aes";
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
         public override ChunkHash Hash => new(Name.TrimEnd(Extension));
     }
