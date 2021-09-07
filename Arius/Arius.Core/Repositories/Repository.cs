@@ -18,11 +18,10 @@ namespace Arius.Core.Repositories
             string Passphrase { get; }
         }
 
-        public Repository(ILogger<Repository> logger, IOptions options, CryptoService cryptoService)
+        public Repository(ILogger<Repository> logger, IOptions options)
         {
             this.logger = logger;
             this.passphrase = options.Passphrase;
-            this.cryptoService = cryptoService;
 
             pfeRepo = new(logger, options);
             mpRepo = new(logger, options);
@@ -39,7 +38,6 @@ namespace Arius.Core.Repositories
 
         private readonly ILogger<Repository> logger;
         private readonly string passphrase;
-        private readonly CryptoService cryptoService;
 
         private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
         private readonly CachedManifestPropertiesRepository mpRepo;

@@ -9,12 +9,18 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Services
 {
-    internal class CryptoService
+    internal static class CryptoService
     {
         private const string OPENSSL_SALT_PREFIX = "Salted__";
         private static readonly byte[] OPENSSL_SALT_PREFIX_BYTES = Encoding.ASCII.GetBytes(OPENSSL_SALT_PREFIX);
 
-        public async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
+        private const CipherMode mode = CipherMode.CBC;
+        private const PaddingMode padding = PaddingMode.PKCS7; // identical to PKCS5 which is what OpenSSL uses by default https://crypto.stackexchange.com/a/10523
+        private const int keySize = 256;
+        private const int blockSize = 128;
+        private const int saltSize = 8;
+
+        public static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
         {
             /* SET UP ENCRYPTION
              * 
@@ -37,16 +43,9 @@ namespace Arius.Core.Services
              *      on storing the IV/Salt: https://stackoverflow.com/a/13915596/1582323
              */
 
-            using var aes = Aes.Create();
             DeriveBytes(passphrase, out var salt, out var key, out var iv);
-            aes.Mode = CipherMode.CBC;
-            aes.KeySize = 256;
-            aes.BlockSize = 128;
-            aes.Padding = PaddingMode.PKCS7; // identical to PKCS5 which is what OpenSSL uses by default https://crypto.stackexchange.com/a/10523
-            aes.Key = key;
-            aes.IV = iv;
-
-            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+            using var aes = CreateAes(key, iv);
+            using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
             using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
 
@@ -66,29 +65,21 @@ namespace Arius.Core.Services
             target.Write(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
             target.Write(salt, 0, salt.Length);
 
-            // Source through Gzip through AES to target
+            // Source through GZip through AES to target
             await source.CopyToAsync(gzs);
         }
 
-
-        public async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
+        public static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
         {
             // Read the salt from the beginning of the source stream
-            var salt = new byte[8];
+            var salt = new byte[saltSize];
             source.Seek(OPENSSL_SALT_PREFIX_BYTES.Length, SeekOrigin.Begin);
             source.Read(salt, 0, salt.Length);
 
-
-            using var aes = Aes.Create();
             DeriveBytes(passphrase, salt, out var key, out var iv);
-            aes.Mode = CipherMode.CBC;
-            aes.KeySize = 256;
-            aes.BlockSize = 128;
-            aes.Padding = PaddingMode.PKCS7;
-            aes.Key = key;
-            aes.IV = iv;
 
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            using var aes = CreateAes(key, iv);
+            using var decryptor = aes.CreateDecryptor(/*aes.Key, aes.IV*/);
             using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
 
             using var gzs = new GZipStream(cs, CompressionMode.Decompress);
@@ -96,6 +87,56 @@ namespace Arius.Core.Services
             await gzs.CopyToAsync(target);
         }
 
+
+        public static string Encrypt(string plainText, string passphrase)
+        {
+            DeriveBytes(passphrase, out var salt, out var key, out var iv);
+
+            using var aes = CreateAes(key, iv);
+            using var encryptor = aes.CreateEncryptor();
+            using var target = new MemoryStream();
+            using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+
+            var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+
+            cs.Write(plainTextBytes, 0, plainTextBytes.Length);
+            cs.FlushFinalBlock();
+
+            var cipherTextBytes = salt.Concat(target.ToArray()).ToArray();
+            var r = Convert.ToBase64String(cipherTextBytes);
+
+            return r;
+        }
+
+        public static async Task<string> Decrypt(string cipherText, string passphrase)
+        {
+            var cypherTextBytes = Convert.FromBase64String(cipherText);
+
+            DeriveBytes(passphrase, cypherTextBytes[0..7], out var key, out var iv);
+
+            using var aes = CreateAes(key, iv);
+            using var decryptor = aes.CreateDecryptor();
+            using var target = new MemoryStream(cypherTextBytes[8..]);
+            using var cs = new CryptoStream(target, decryptor, CryptoStreamMode.Read);
+
+            var plainTextBytes = await cs.ReadAllBytesAsync();
+
+            var plainText = Encoding.UTF8.GetString(plainTextBytes);
+
+            return plainText;
+        }
+
+        private static Aes CreateAes(byte[] key, byte[] iv)
+        {
+            var aes = Aes.Create();
+            aes.Mode = mode;
+            aes.Padding = padding;
+            aes.KeySize = keySize;
+            aes.BlockSize = blockSize;
+            aes.Key = key;
+            aes.IV = iv;
+            return aes;
+        }
 
         /// <summary>
         /// Get the bytes for AES
@@ -109,9 +150,9 @@ namespace Arius.Core.Services
         {
             //https://docs.microsoft.com/en-us/dotnet/api/system.security.cryptography.rfc2898derivebytes?view=net-5.0
 
-            salt = new byte[8];
-            using var rngCsp = new RNGCryptoServiceProvider();
-            rngCsp.GetNonZeroBytes(salt);
+            salt = new byte[saltSize];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetNonZeroBytes(salt);
 
             DeriveBytes(password, salt, out key, out iv);
         }

@@ -142,7 +142,6 @@ namespace Arius.Core.Facade
 
                 //Add Services
                 .AddSingleton<PointerService>()
-                .AddSingleton<CryptoService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<Repository>()
 
