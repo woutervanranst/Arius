@@ -13,8 +13,11 @@ namespace Arius.Core.Tests.UnitTests
     class ChunkRepositoryTests : TestBase
     {
         [Test]
-        public void GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
+        public async Task GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
         {
+            EnsureArchiveTestDirectoryFileInfo();
+            await EnsureArchiveCommandHasRun();
+
             var repo = GetRepository();
 
             var cb1 = repo.GetAllChunkBlobs().First();
@@ -44,15 +47,13 @@ namespace Arius.Core.Tests.UnitTests
 
             try
             {
-                var cs = GetServices().GetRequiredService<CryptoService>();
-
                 var sourceFile = EnsureArchiveTestDirectoryFileInfo();
 
                 using (var ss = File.OpenRead(sourceFile.FullName))
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await cs.CompressAndEncrypt(ss, es, passphrase);
+                        await CryptoService.CompressAndEncrypt(ss, es, passphrase);
                     }
                 }
 
@@ -60,7 +61,7 @@ namespace Arius.Core.Tests.UnitTests
                 {
                     using (var ts = File.OpenWrite(decFile))
                     {
-                        await cs.DecryptAndDecompress(es, ts, passphrase);
+                        await CryptoService.DecryptAndDecompress(es, ts, passphrase);
                     }
                 }
 
@@ -91,15 +92,13 @@ namespace Arius.Core.Tests.UnitTests
 
             try
             {
-                var cs = GetServices().GetRequiredService<CryptoService>();
-
                 var sourceFile = EnsureArchiveTestDirectoryFileInfo();
 
                 using (var ss = File.OpenRead(sourceFile.FullName))
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await cs.CompressAndEncrypt(ss, es, passphrase);
+                        await CryptoService.CompressAndEncrypt(ss, es, passphrase);
                     }
                 }
 
@@ -117,6 +116,13 @@ namespace Arius.Core.Tests.UnitTests
                 File.Delete(decFile);
                 File.Delete($"{decFile}.gz");
             }
+        }
+
+
+        [Test]
+        public void ha()
+        {
+
         }
     }
 }
