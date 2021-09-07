@@ -104,6 +104,7 @@ namespace Arius.Core.Commands
 
         protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
         {
+            //TODO quid CancellationToken?
             await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
         }
 
