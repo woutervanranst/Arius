@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
@@ -110,5 +111,30 @@ namespace Arius.Core.Commands
 
         protected abstract Task ForEachBodyImplAsync(TSource item);
 
+    }
+
+    internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<Channel<TSource>>
+    {
+        protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Channel<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+            : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
+        {
+        }
+        protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<Channel<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+            : base(loggerFactory, sourceFunc, done)
+        {
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+        }
+
+        private readonly int maxDegreeOfParallelism;
+
+        protected override async Task TaskBodyImplAsync(Channel<TSource> source)
+        {
+            //TODO quid CancellationToken?
+            await Parallel.ForEachAsync(source.Reader.ReadAllAsync(),
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (item, cancellationToken) => await ForEachBodyImplAsync(item));
+        }
+
+        protected abstract Task ForEachBodyImplAsync(TSource item);
     }
 }
