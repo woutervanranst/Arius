@@ -77,7 +77,7 @@ namespace Arius.Core.Tests
 
 
             // Initialize Facade
-            var loggerFactory = new NullLoggerFactory();
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
             var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
             {
@@ -89,7 +89,7 @@ namespace Arius.Core.Tests
         }
 
 
-        public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB) => CreateRandomFile(fileFullName, sizeInMB * 1024 * 1024);
+        public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB) => CreateRandomFile(fileFullName, (int)sizeInMB * 1024 * 1024);
         public static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
         {
             // shttps://stackoverflow.com/q/4432178/1582323
