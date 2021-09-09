@@ -146,8 +146,7 @@ namespace Arius.Core.Facade
                 .AddSingleton<Repository>()
 
                 // Add Chunkers
-                //.AddSingleton<SimpleChunker>()
-                .AddSingleton<ByteBoundaryChunker>();
+                .AddSingleton<Chunker, ByteBoundaryChunker>();
 
             //if (options is ArchiveCommandOptions archiveCommandOptions)
             //    sc

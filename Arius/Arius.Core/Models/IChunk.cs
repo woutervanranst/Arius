@@ -13,24 +13,13 @@ namespace Arius.Core.Models
         Stream GetStream();
     }
 
-    //internal record BinaryFileChunk : IChunk
-    //{
-    //    public BinaryFileChunk(BinaryFile bf)
-    //    {
-    //        BinaryFile = bf;
-    //        Hash = new(BinaryFile.Hash);
-    //    }
-
-    //    public BinaryFile BinaryFile { get; }
-
-    //    public ChunkHash Hash { get; }
-
-    //    public Stream GetStream() => File.OpenRead(BinaryFile.FullName);
-    //}
-
-    internal record ByteArrayChunk : IChunk
+    internal interface IChunkFile : IFile, IChunk
     {
-        public ByteArrayChunk(byte[] chunk, ChunkHash ch) //TODO quid memory allocation??
+    }
+
+    internal record MemoryChunk : IChunk
+    {
+        public MemoryChunk(byte[] chunk, ChunkHash ch) //TODO quid memory allocation??
         {
             Bytes = chunk;
             Hash = ch;
@@ -41,5 +30,19 @@ namespace Arius.Core.Models
         public ChunkHash Hash { get; }
 
         public Stream GetStream() => new MemoryStream(Bytes);
+    }
+
+    internal class ChunkFile : FileBase, IChunkFile
+    {
+        public static readonly string Extension = ".chunk.arius";
+
+        public ChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
+        {
+            Hash = hash;
+        }
+
+        public override ChunkHash Hash { get; }
+
+        public Stream GetStream() => File.OpenRead(fi.FullName);
     }
 }

@@ -219,47 +219,5 @@ namespace Arius.Core.Repositories
 
 
 
-        
-
-        public IEnumerable<ChunkBlobBase> Upload(EncryptedChunkFile[] ecfs, AccessTier tier)
-        {
-            throw new NotImplementedException();
-
-            //_blobCopier.Upload(ecfs, tier, ChunkDirectoryName, false);
-
-            //// Return an IEnumerable - the result may not be needed/materialized by the caller
-            //return ecfs.Select(ecf =>
-            //{
-            //    if (GetChunkBlobByName(ChunkDirectoryName, ecf.Name) is var cb)
-            //        return cb;
-
-            //    throw new InvalidOperationException($"Sequence contains no elements - could not create {nameof(ChunkBlobItem)} of uploaded chunk {ecf.Hash}");
-            //});
-        }
-
-        public IEnumerable<EncryptedChunkFile> Download(ChunkBlobBase[] chunkBlobs, DirectoryInfo target, bool flatten)
-        {
-            throw new NotImplementedException();
-
-            //var downloadedFiles = _blobCopier.Download(chunkBlobs, target, flatten);
-
-            ////if (chunkBlobs.Count() != downloadedFiles.Count())
-            ////    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
-
-            //if (chunkBlobs.Select(cb => cb.Name).Except(downloadedFiles.Select(f => f.Name)).Any())
-            //    throw new InvalidOperationException("Amount of downloaded files does not match"); //TODO
-
-            //// Return an IEnumerable - the result may not be needed/materialized by the caller
-            //// TODO: eliminate ToArray call()
-            //return downloadedFiles.Select(fi => new EncryptedChunkFile(fi)).ToArray();
-
-            ////return downloadedFiles.Select(fi2=>
-            ////{
-            ////    if (new FileInfo(Path.Combine(target.FullName, fi2.Name)) is var fi)
-            ////        return new EncryptedChunkFile(null, fi, fi2.Hash);
-
-            ////    throw new InvalidOperationException($"Sequence contains no element - {fi.FullName} should have been downloaded but isn't found on disk");
-            ////});
-        }
     }
 }

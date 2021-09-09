@@ -117,7 +117,7 @@ namespace Arius.Core.Commands.Archive
             ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
-            ByteBoundaryChunker chunker,
+            Chunker chunker,
             Repository repo,
             ArchiveCommandOptions options,
             
@@ -130,7 +130,7 @@ namespace Arius.Core.Commands.Archive
             this.manifestExists = manifestExists;
         }
 
-        private readonly ByteBoundaryChunker chunker;
+        private readonly Chunker chunker;
         private readonly Repository repo;
         private readonly ArchiveCommandOptions options;
         
@@ -138,7 +138,7 @@ namespace Arius.Core.Commands.Archive
 
         private readonly ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
         private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> creatingManifests = new();
-        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> creatingChunks = new();
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
@@ -257,7 +257,8 @@ namespace Arius.Core.Commands.Archive
              * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              */
 
-            await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(), 
+            var cs = chunksToUpload.Reader.ReadAllAsync();
+            await Parallel.ForEachAsync(cs, 
                 new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
                 async (chunk, cancellationToken) => 
                 {
@@ -268,7 +269,7 @@ namespace Arius.Core.Commands.Archive
                         return;
                     }
 
-                    bool toUpload = creatingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                    bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                     if (toUpload)
                     {
                         // 2 Does not yet exist remote and not yet being created --> upload
@@ -277,7 +278,7 @@ namespace Arius.Core.Commands.Archive
                         var length = await repo.UploadChunkAsync(chunk, options.Tier);
                         Interlocked.Add(ref totalLength, length);
 
-                        creatingChunks[chunk.Hash].SetResult();
+                        uploadingChunks[chunk.Hash].SetResult();
                     }
                     else
                     {
@@ -287,7 +288,7 @@ namespace Arius.Core.Commands.Archive
                         //TODO TES THIS PATH
                     }
 
-                    await creatingChunks[chunk.Hash].Task;
+                    await uploadingChunks[chunk.Hash].Task;
                 });
 
             return (chs.ToArray(), totalLength);

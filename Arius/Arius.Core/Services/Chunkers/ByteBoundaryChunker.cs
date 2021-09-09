@@ -36,7 +36,7 @@ namespace Arius.Core.Services.Chunkers
         // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
         // Good intro on Buffers: https://docs.microsoft.com/en-us/dotnet/standard/io/buffers#readonlysequencet
 
-        public override IEnumerable<ByteArrayChunk> Chunk(Stream stream)
+        public override IEnumerable<MemoryChunk> Chunk(Stream stream)
         {
             // https://keestalkstech.com/2010/11/seek-position-of-a-string-in-a-file-or-filestream/
 
@@ -69,7 +69,7 @@ namespace Arius.Core.Services.Chunkers
                     var chunk = GetChunk(subChunks);
                     var ch = hashValueProvider.GetChunkHash(chunk);
 
-                    yield return new ByteArrayChunk(chunk, ch);
+                    yield return new MemoryChunk(chunk, ch);
 
                     subChunks.Clear();
 
@@ -86,7 +86,7 @@ namespace Arius.Core.Services.Chunkers
                     var chunk = GetChunk(subChunks);
                     var ch = hashValueProvider.GetChunkHash(chunk);
 
-                    yield return new ByteArrayChunk(chunk, ch);
+                    yield return new MemoryChunk(chunk, ch);
 
                     break;
                 }

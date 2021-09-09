@@ -128,16 +128,16 @@ namespace Arius.Core.Commands.Restore
         }
     }
 
-    internal class ProcessManifestBlock : ChannelTaskBlockBase<ManifestHash>
+    internal class DownloadManifestBlock : ChannelTaskBlockBase<ManifestHash>
     {
-        public ProcessManifestBlock(ILoggerFactory loggerFactory,
+        public DownloadManifestBlock(ILoggerFactory loggerFactory,
             Func<Channel<ManifestHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
             ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests,
-            Action<ManifestHash> manifestRestored,
-            Action<ManifestHash, ChunkHash[]> setChunksForManifest,
-            Action<ChunkFile> chunkRestored,
+            Action<ManifestHash, IChunk[]> manifestRestored,
+            //Action<ManifestHash, ChunkHash[]> setChunksForManifest,
+            //Action<ChunkFile> chunkRestored,
             Action done)
             : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
@@ -145,81 +145,104 @@ namespace Arius.Core.Commands.Restore
             this.repo = repo;
             this.restoredManifests = restoredManifests;
             this.manifestRestored = manifestRestored;
-            this.setChunksForManifest = setChunksForManifest;
-            this.chunkRestored = chunkRestored;
+            //this.setChunksForManifest = setChunksForManifest;
+            //this.chunkRestored = chunkRestored;
         }
 
         private readonly DirectoryInfo restoreTempDir;
         private readonly Repository repo;
-        private readonly Action<ManifestHash> manifestRestored;
-        private readonly Action<ManifestHash, ChunkHash[]> setChunksForManifest;
-        private readonly Action<ChunkFile> chunkRestored;
+        private readonly Action<ManifestHash, IChunk[]> manifestRestored;
+        //private readonly Action<ManifestHash, ChunkHash[]> setChunksForManifest;
+        //private readonly Action<ChunkFile> chunkRestored;
 
         private readonly ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests;
 
         private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
-        private readonly ConcurrentHashSet<ChunkHash> restoringChunks = new();
-
-
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource<IChunk>> downloadingChunks = new();
 
         protected override async Task ForEachBodyImplAsync(ManifestHash mh)
         {
             if (restoredManifests.ContainsKey(mh))
             {
                 // the Manifest for this PointerFile is already restored
-                manifestRestored(mh);
+                throw new NotImplementedException();
+                manifestRestored(mh, null);
                 return;
             }
 
             if (!restoringManifests.TryAdd(mh))
-                // the Manifest for this PointerFile is already being processed
+                // the Manifest for this PointerFile is already being processed.
+                // this method can be called multiple times by S11
+                // the waiting PointerFiles will be notified when the first call completes
                 return;
-
+            
             var chs = await repo.GetChunkHashesForManifestAsync(mh);
-            setChunksForManifest(mh, chs);
+            await Parallel.ForEachAsync(chs,
+                new ParallelOptions { MaxDegreeOfParallelism = 1 },
+                async (ch, cancellationToken) =>
+                {
+                    bool toDownload = downloadingChunks.TryAdd(ch, new TaskCompletionSource<IChunk>(TaskCreationOptions.RunContinuationsAsynchronously));
+                    if (toDownload)
+                    {
+                        // this Chunk is not yet downloaded
+                        var c = await DownloadChunkAsync(ch);
+                        downloadingChunks[ch].SetResult(c);
 
-            foreach (var ch in chs)
-            {
-                if (!restoringChunks.TryAdd(ch))
-                    // the Chunk for this Manifest is already being processed
-                    continue;
+                        // LOG
+                    }
+                    else
+                    {
+                        var t = downloadingChunks[ch].Task;
+                        if (!t.IsCompleted)
+                        {
+                            // the Chunk is being downloaded but not yet completed
 
-                ProcessChunk(ch);
-            }
+                            // LOG
+
+                            await t;
+                        }
+                        else
+                        {
+                            // the Chunk is already downloaded
+
+                            // LOG
+                        }
+                    }
+                });
+
+            var cs = chs.Select(ch => downloadingChunks[ch].Task.Result).ToArray();
+
+            manifestRestored(mh, cs);
         }
+
 
         // For unit testing purposes
         internal static bool ChunkRestoredFromLocal { get; set; } = false;
-        internal static bool Flow2Executed { get; set; } = false;
         internal static bool Flow3Executed { get; set; } = false;
         internal static bool Flow4Executed { get; set; } = false;
 
-        private void ProcessChunk(ChunkHash ch)
+        private async Task<IChunkFile> DownloadChunkAsync(ChunkHash ch)
         {
             if (GetLocalChunkFileInfo(ch) is var cfi && cfi.Exists)
             {
                 // Downloaded and Decrypted Chunk
                 ChunkRestoredFromLocal = true;
 
-                var cf = new ChunkFile(cfi, ch);
-
-                chunkRestored(cf);
-            }
-            else if (GetLocalEncryptedChunkFileInfo(ch) is var ecfi && ecfi.Exists)
-            {
-                // Downloaded but not yet decrypted chunk
-                Flow2Executed = true;
-
+                return new ChunkFile(cfi, ch);
             }
             else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var hcb && hcb is not null)
             {
                 // Hydrated chunk (in cold/hot storage) but not yet downloaded
                 Flow3Executed = true;
+
+                throw new NotImplementedException();
             }
             else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var cb && cb is not null)
             {
                 // Archived chunk (in archive storage) not yet hydrated
                 Flow4Executed = true;
+
+                throw new NotImplementedException();
 
             }
             else
@@ -227,64 +250,30 @@ namespace Arius.Core.Commands.Restore
         }
 
         private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
-        private FileInfo GetLocalEncryptedChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{EncryptedChunkFile.Extension}"));
     }
 
 
 
-
-
-
-    //internal class RestoreManifestBlock : BlockingCollectionTaskBlockBase<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>
-    //{
-    //    public RestoreManifestBlock(ILogger<RestoreManifestBlock> logger,
-    //        Func<BlockingCollection<(ManifestHash ManifestHash, ChunkHash[] ChunkHashes)>> sourceFunc,
-    //        DirectoryInfo restoreTempDir,
-    //        //Repository repo,
-    //        //ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests,
-    //        //Action<ManifestHash> manifestRestored,
-    //        //Action<ManifestHash, ChunkHash[]> chunksForManifest,
-    //        Action<FileInfo> manifestRestored,
-    //        Action done)
-    //        : base(logger: logger, sourceFunc: sourceFunc, done: done)
-    //    {
-    //        this.restoreTempDir = restoreTempDir;
-    //        this.manifestRestored = manifestRestored;
-    //    }
-
-    //    private readonly DirectoryInfo restoreTempDir;
-    //    private readonly Action<FileInfo> manifestRestored;
-
-    //    protected override Task ForEachBodyImplAsync((ManifestHash ManifestHash, ChunkHash[] ChunkHashes) item)
-    //    {
-    //        throw new NotImplementedException();
-    //    }
-    //}
-
-    internal class RestorePointerFileBlock : BlockingCollectionTaskBlockBase<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>
+    internal class RestoreBinaryFileBlock : BlockingCollectionTaskBlockBase<(IChunk[] Chunks, PointerFile[] PointerFiles)>
     {
-        private readonly PointerService pointerService;
-        private readonly Chunker chunker;
-
-        public RestorePointerFileBlock(ILoggerFactory loggerFactory,
-            Func<BlockingCollection<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>> sourceFunc,
-            //ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests,
-            //Action<PointerFile, BinaryFile> manifestRestored,
-            //Action<ManifestHash, ChunkHash[]> chunksForManifest,
+        public RestoreBinaryFileBlock(ILoggerFactory loggerFactory,
+            Func<BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>> sourceFunc,
             PointerService pointerService,
             Chunker chunker,
+            DirectoryInfo root,
             Action done)
             : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.pointerService = pointerService;
             this.chunker = chunker;
-            //this.restoredManifests = restoredManifests;
+            this.root = root;
         }
 
-        //private readonly ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests;
+        private readonly PointerService pointerService;
+        private readonly Chunker chunker;
+        private readonly DirectoryInfo root;
 
-
-        protected override Task ForEachBodyImplAsync((IChunkFile[] ChunkFiles, PointerFile[] PointerFiles) item)
+        protected override Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item)
         {
             // Restore 
 
@@ -293,14 +282,10 @@ namespace Arius.Core.Commands.Restore
                 var pf = item.PointerFiles.Single();
                 var target = pointerService.GetBinaryFileInfo(pf);
 
-                
-
                 if (target.Exists)
                     throw new Exception();
 
-                throw new NotImplementedException(); 
-
-                //chunker.Merge(null, item.ChunkFiles, target);
+                chunker.Merge(root, item.Chunks, target);
 
                 //item.Binary.MoveTo(target.FullName);
 

@@ -78,7 +78,7 @@ namespace Arius.Core.Commands.Archive
                 loggerFactory: loggerFactory,
                 sourceFunc: () => binariesToUpload,
                 degreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
-                chunker: services.GetRequiredService<ByteBoundaryChunker>(),
+                chunker: services.GetRequiredService<Chunker>(),
                 repo: repo,
                 options: options,
                 manifestExists: bf =>

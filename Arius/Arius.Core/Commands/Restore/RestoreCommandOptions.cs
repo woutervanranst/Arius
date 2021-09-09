@@ -1,5 +1,4 @@
-﻿using Arius.Core.Commands.Restore2;
-using Arius.Core.Services;
+﻿using Arius.Core.Services;
 using FluentValidation;
 using System.IO;
 
@@ -8,18 +7,9 @@ namespace Arius.Core.Commands.Restore
     internal class RestoreCommandOptions : ServicesOptions,
         Facade.Facade.IOptions,
         RestoreCommand.IOptions,
-
-        SynchronizeBlockProvider.IOptions,
-        DownloadBlockProvider.IOptions,
-        ProcessPointerChunksBlockProvider.IOptions,
-        MergeBlockProvider.IOptions,
-
-        //IChunker.IOptions, // geen IChunker options
-
         IHashValueProvider.IOptions
-    //AzureRepository.IOptions
     {
-        public bool FastHash => false; //Do not fasthash on restore to ensure integrity
+        //public bool FastHash => false; //Do not fasthash on restore to ensure integrity
         public bool Synchronize { get; private init; }
         public bool Download { get; private init; }
         public bool KeepPointers { get; private init; }

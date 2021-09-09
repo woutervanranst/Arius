@@ -171,13 +171,12 @@ namespace Arius.Core.Tests.ApiTests
         }
 
         [Test]
-        public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
+        public async Task Restore_OneFileWithChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
         {
             //reset 
-            Commands.Restore.ProcessManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.ProcessManifestBlock.Flow2Executed = false;
-            Commands.Restore.ProcessManifestBlock.Flow3Executed = false;
-            Commands.Restore.ProcessManifestBlock.Flow4Executed = false;
+            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadManifestBlock.Flow3Executed = false;
+            Commands.Restore.DownloadManifestBlock.Flow4Executed = false;
 
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
 
@@ -199,10 +198,9 @@ namespace Arius.Core.Tests.ApiTests
             await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
 
             // for the restore operation we only restored it fron the local chunk cache
-            Assert.IsTrue(Commands.Restore.ProcessManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow2Executed);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow3Executed);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow4Executed);
+            Assert.IsTrue(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow3Executed);
+            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow4Executed);
 
             // the binaryfile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
