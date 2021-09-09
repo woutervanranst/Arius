@@ -25,13 +25,13 @@ namespace Arius.Core.Commands
 
     internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected TaskBlockBase(ILogger logger, Func<TSource> sourceFunc, Action done = default)
-            : this(logger, () => Task.FromResult(sourceFunc()), done)
+        protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action done = default)
+                   : this(loggerFactory, () => Task.FromResult(sourceFunc()), done)
         {
         }
-        protected TaskBlockBase(ILogger logger, Func<Task<TSource>> sourceFunc, Action done = default)
+        protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action done = default)
         {
-            this.logger = logger;
+            this.logger = loggerFactory.CreateLogger(this.GetType());
             this.sourceFunc = sourceFunc;
 
             this.done = () =>
@@ -90,12 +90,12 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
-            : this(logger, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
+        protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
+            : this(loggerFactory, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
         {
         }
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
-            : base(logger, sourceFunc, done)
+        protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
+            : base(loggerFactory, sourceFunc, done)
         {
             this.degreeOfParallelism = degreeOfParallelism;
         }

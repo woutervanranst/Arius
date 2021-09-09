@@ -19,7 +19,7 @@ namespace Arius.Core.Commands.Archive
 {
     internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
-        public IndexBlock(ILogger<IndexBlock> logger,
+        public IndexBlock(ILoggerFactory loggerFactory,
             Func<DirectoryInfo> sourceFunc,
             int maxDegreeOfParallelism,
             bool fastHash,
@@ -29,7 +29,7 @@ namespace Arius.Core.Commands.Archive
             Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile,
             IHashValueProvider hvp,
             Action done)
-            : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
@@ -114,7 +114,7 @@ namespace Arius.Core.Commands.Archive
     internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public UploadBinaryFileBlock(
-            ILogger<UploadBinaryFileBlock> logger,
+            ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
             ByteBoundaryChunker chunker,
@@ -122,7 +122,7 @@ namespace Arius.Core.Commands.Archive
             ArchiveCommandOptions options,
             
             Action<BinaryFile> manifestExists,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.repo = repo;
@@ -307,13 +307,13 @@ namespace Arius.Core.Commands.Archive
 
     internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
+        public CreatePointerFileIfNotExistsBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
             PointerService pointerService,
             Action<BinaryFile> succesfullyBackedUp,
             Action<PointerFile> pointerFileCreated,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
             this.succesfullyBackedUp = succesfullyBackedUp;
@@ -342,12 +342,12 @@ namespace Arius.Core.Commands.Archive
 
     internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
-        public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
+        public CreatePointerFileEntryIfNotExistsBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<PointerFile>> sourceFunc,
             int degreeOfParallelism,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
@@ -382,10 +382,10 @@ namespace Arius.Core.Commands.Archive
 
     internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public DeleteBinaryFilesBlock(ILogger<DeleteBinaryFilesBlock> logger,
+        public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
         }
 
@@ -402,14 +402,14 @@ namespace Arius.Core.Commands.Archive
 
     internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
     {
-        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
+        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILoggerFactory loggerFactory,
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             int degreeOfParallelism,
             Repository repo,
             DirectoryInfo root,
             PointerService pointerService,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.root = root;
@@ -437,11 +437,11 @@ namespace Arius.Core.Commands.Archive
 
     internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
     {
-        public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
+        public ExportToJsonBlock(ILoggerFactory loggerFactory,
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;

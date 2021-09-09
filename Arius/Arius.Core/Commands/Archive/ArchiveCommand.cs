@@ -48,7 +48,7 @@ namespace Arius.Core.Commands.Archive
             var binariesToUpload = new BlockingCollection<BinaryFile>();
 
             var indexBlock = new IndexBlock(
-                logger: loggerFactory.CreateLogger<IndexBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => root,
                 maxDegreeOfParallelism: options.IndexBlock_Parallelism,
                 fastHash: options.FastHash,
@@ -75,7 +75,7 @@ namespace Arius.Core.Commands.Archive
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
             var uploadBinaryFileBlock = new UploadBinaryFileBlock(
-                logger: loggerFactory.CreateLogger<UploadBinaryFileBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => binariesToUpload,
                 degreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
                 chunker: services.GetRequiredService<ByteBoundaryChunker>(),
@@ -94,7 +94,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
-                logger: loggerFactory.CreateLogger<CreatePointerFileIfNotExistsBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pointersToCreate,
                 degreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
                 pointerService: pointerService,
@@ -121,7 +121,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
-                logger: loggerFactory.CreateLogger<CreatePointerFileEntryIfNotExistsBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pointerFileEntriesToCreate,
                 degreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
                 repo: repo,
@@ -134,7 +134,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
-                logger: loggerFactory.CreateLogger<DeleteBinaryFilesBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => binariesToDelete,
                 maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
                 done: () =>
@@ -145,7 +145,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
-                logger: loggerFactory.CreateLogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: async () =>
                 {
                     var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
@@ -165,7 +165,7 @@ namespace Arius.Core.Commands.Archive
 
 
             var exportJsonBlock = new ExportToJsonBlock(
-                logger: loggerFactory.CreateLogger<ExportToJsonBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: async () =>
                 {
                     var pfes = await repo.GetCurrentEntries(includeDeleted: false);

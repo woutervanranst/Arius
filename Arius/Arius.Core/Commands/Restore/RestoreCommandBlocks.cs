@@ -18,7 +18,7 @@ namespace Arius.Core.Commands.Restore
 {
     internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     {
-        public IndexBlock(ILogger<IndexBlock> logger,
+        public IndexBlock(ILoggerFactory loggerFactory,
             Func<FileSystemInfo> sourceFunc,
             int maxDegreeOfParallelism,
             bool synchronize,
@@ -26,7 +26,7 @@ namespace Arius.Core.Commands.Restore
             PointerService pointerService,
             Action<(PointerFile PointerFile, BinaryFile RestoredBinaryFile)> indexedPointerFile,
             Action done)
-            : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.synchronize = synchronize;
             this.repo = repo;
@@ -129,7 +129,7 @@ namespace Arius.Core.Commands.Restore
 
     internal class ProcessManifestBlock : BlockingCollectionTaskBlockBase<ManifestHash>
     {
-        public ProcessManifestBlock(ILogger<ProcessManifestBlock> logger,
+        public ProcessManifestBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<ManifestHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
@@ -138,7 +138,7 @@ namespace Arius.Core.Commands.Restore
             Action<ManifestHash, ChunkHash[]> setChunksForManifest,
             Action<ChunkFile> chunkRestored,
             Action done)
-            : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.restoreTempDir = restoreTempDir;
             this.repo = repo;
@@ -265,7 +265,7 @@ namespace Arius.Core.Commands.Restore
         private readonly PointerService pointerService;
         private readonly Chunker chunker;
 
-        public RestorePointerFileBlock(ILogger<RestorePointerFileBlock> logger,
+        public RestorePointerFileBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>> sourceFunc,
             //ConcurrentDictionary<ManifestHash, FileInfo> restoredManifests,
             //Action<PointerFile, BinaryFile> manifestRestored,
@@ -273,7 +273,7 @@ namespace Arius.Core.Commands.Restore
             PointerService pointerService,
             Chunker chunker,
             Action done)
-            : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.pointerService = pointerService;
             this.chunker = chunker;

@@ -70,7 +70,7 @@ namespace Arius.Core.Commands.Restore
             var pointerFilesWaitingForManifestRestoration = new ConcurrentDictionary<ManifestHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
 
             var indexBlock = new IndexBlock(
-                logger: loggerFactory.CreateLogger<IndexBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pathToRestore, //S10
                 maxDegreeOfParallelism: 2,
                 synchronize: options.Synchronize,
@@ -118,7 +118,7 @@ namespace Arius.Core.Commands.Restore
 
 
             var processManifestBlock = new ProcessManifestBlock(
-                logger: loggerFactory.CreateLogger<ProcessManifestBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => manifestsToDownload,
                 restoreTempDir: restoreTempDir,
                 repo: repo,
@@ -175,7 +175,7 @@ namespace Arius.Core.Commands.Restore
 
 
             var restorePointerFileBlock = new RestorePointerFileBlock(
-                logger: loggerFactory.CreateLogger<RestorePointerFileBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pointersToRestore,
                 pointerService: pointerService,
                 chunker: null, //services.GetRequiredService<SimpleChunker>(),
