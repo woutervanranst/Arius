@@ -205,9 +205,11 @@ namespace Arius.Core.Commands.Archive
             var sw = new Stopwatch();
             sw.Start();
 
-            var (chs, length) = options.Dedup ?
-                await UploadChunkedBinaryAsync(bf) :
-                await UploadBinaryChunkAsync(bf);
+            var (chs, length) = options.Dedup switch
+            {
+                true => await UploadChunkedBinaryAsync(bf),
+                false => await UploadBinaryChunkAsync(bf)
+            };
             
             sw.Stop();
 
