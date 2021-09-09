@@ -279,27 +279,32 @@ namespace Arius.Core.Commands.Restore
 
         protected override async Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item)
         {
-            // Restore 
+            FileInfo bfi = null;
 
-            if (item.PointerFiles.Length == 1)
+            for (int i = 0; i < item.PointerFiles.Length; i++)
             {
-                var pf = item.PointerFiles.Single();
-                var target = pointerService.GetBinaryFileInfo(pf);
+                var pf = item.PointerFiles[i];
+                FileInfo target;
 
-                if (target.Exists)
-                    throw new Exception();
+                if (i == 0)
+                {
+                    bfi = pointerService.GetBinaryFileInfo(pf);
+                    target = bfi;
 
-                await chunker.MergeAsync(root, item.Chunks, target);
+                    if (bfi.Exists)
+                        throw new Exception();
 
-                //item.Binary.MoveTo(target.FullName);
+                    await chunker.MergeAsync(root, item.Chunks, bfi);
+                }
+                else
+                {
+                    target = pointerService.GetBinaryFileInfo(pf);
+
+                    bfi.CopyTo(target.FullName);
+                }
 
                 target.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
                 target.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
-            }
-            else
-            {
-                //More than one to restore
-                throw new NotImplementedException();
             }
 
 
