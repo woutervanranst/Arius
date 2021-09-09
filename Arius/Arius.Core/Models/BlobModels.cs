@@ -51,7 +51,7 @@ namespace Arius.Core.Models
 
 
 
-    internal abstract class ChunkBlobBase : BlobBase
+    internal abstract class ChunkBlobBase : BlobBase, IChunk
     {
         public static ChunkBlobItem GetChunkBlob(BlobItem bi)
         {
@@ -62,11 +62,14 @@ namespace Arius.Core.Models
             return new ChunkBlobBaseClient(bc);
         }
 
-        public abstract AccessTier AccessTier { get; }
 
         public static readonly string Extension = ".ariuschunk.gz.aes";
         public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
         public override ChunkHash Hash => new(Name.TrimEnd(Extension));
+
+        public abstract AccessTier AccessTier { get; }
+        public abstract Task<Stream> OpenReadAsync();
+        public abstract Task<Stream> OpenWriteAsync();
     }
 
     internal class ChunkBlobItem : ChunkBlobBase
@@ -81,24 +84,28 @@ namespace Arius.Core.Models
         public override long Length => bi.Properties.ContentLength!.Value;
         public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
         public override string FullName => bi.Name;
+        
+        public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
+        public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
     }
 
     internal class ChunkBlobBaseClient : ChunkBlobBase
     {
-        internal ChunkBlobBaseClient(BlobBaseClient bc)
+        internal ChunkBlobBaseClient(BlobBaseClient bbc)
         {
             try
             {
-                props = bc.GetProperties().Value;
-                FullName = bc.Name;
+                props = bbc.GetProperties().Value;
+                this.bbc = bbc;
             }
             catch (Azure.RequestFailedException)
             {
-                throw new ArgumentException($"Blob {bc.Uri} not found. Either this is expected (no hydrated blob found) or the archive integrity is compromised?");
+                throw new ArgumentException($"Blob {bbc.Uri} not found. Either this is expected (no hydrated blob found) or the archive integrity is compromised?");
             }
+
         }
         private readonly BlobProperties props;
-
+        private readonly BlobBaseClient bbc;
 
         public override long Length => props.ContentLength;
 
@@ -110,6 +117,9 @@ namespace Arius.Core.Models
             _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
         };
 
-        public override string FullName { get; }
+        public override string FullName => bbc.Name;
+
+        public override Task<Stream> OpenReadAsync() => bbc.OpenReadAsync();
+        public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
     }
 }

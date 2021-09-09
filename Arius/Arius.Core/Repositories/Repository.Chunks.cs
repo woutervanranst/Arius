@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Models;
+using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
@@ -176,12 +177,12 @@ namespace Arius.Core.Repositories
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
                 long length;
-                using (var source = chunk.GetStream())
+                using (var ss = await chunk.OpenReadAsync())
                 {
-                    using (var target = await bbc.OpenWriteAsync(true))
+                    using (var ts = await bbc.OpenWriteAsync(true))
                     {
-                        await Services.CryptoService.CompressAndEncrypt(source, target, passphrase);
-                        length = target.Position;
+                        await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+                        length = ts.Position;
                     }
                 }
 
@@ -196,15 +197,16 @@ namespace Arius.Core.Repositories
             }
         }
 
-        public async Task DownloadChunkAsync(ChunkHash ch, Stream clearStream)
+        public async Task DownloadChunkAsync(ChunkBlobBase cbb, FileInfo target)
         {
             try
             {
-                var bbc = container.GetBlockBlobClient(ch.Value);
-
-                using (var enc = await bbc.OpenReadAsync())
+                using (var ts = target.Create())
                 {
-                    await Services.CryptoService.DecryptAndDecompress(enc, clearStream, passphrase);
+                    using (var ss = await cbb.OpenReadAsync())
+                    {
+                        await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                    }
                 }
             }
             catch (Exception e)
@@ -212,12 +214,5 @@ namespace Arius.Core.Repositories
                 throw;
             }
         }
-
-        
-
-        
-
-
-
     }
 }

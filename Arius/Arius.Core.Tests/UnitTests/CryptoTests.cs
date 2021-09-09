@@ -40,7 +40,7 @@ namespace Arius.Core.Tests.UnitTests
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await CryptoService.CompressAndEncrypt(ss, es, passphrase);
+                        await CryptoService.CompressAndEncryptAsync(ss, es, passphrase);
                     }
                 }
 
@@ -48,7 +48,7 @@ namespace Arius.Core.Tests.UnitTests
                 {
                     using (var ts = File.OpenWrite(decFile))
                     {
-                        await CryptoService.DecryptAndDecompress(es, ts, passphrase);
+                        await CryptoService.DecryptAndDecompressAsync(es, ts, passphrase);
                     }
                 }
 
@@ -85,7 +85,7 @@ namespace Arius.Core.Tests.UnitTests
                 {
                     using (var es = File.OpenWrite(encFile))
                     {
-                        await CryptoService.CompressAndEncrypt(ss, es, passphrase);
+                        await CryptoService.CompressAndEncryptAsync(ss, es, passphrase);
                     }
                 }
 

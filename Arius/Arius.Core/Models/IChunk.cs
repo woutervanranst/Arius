@@ -10,7 +10,8 @@ namespace Arius.Core.Models
     internal interface IChunk
     {
         ChunkHash Hash { get; }
-        Stream GetStream();
+        Task<Stream> OpenReadAsync();
+        Task<Stream> OpenWriteAsync();
     }
 
     internal interface IChunkFile : IFile, IChunk
@@ -29,7 +30,8 @@ namespace Arius.Core.Models
 
         public ChunkHash Hash { get; }
 
-        public Stream GetStream() => new MemoryStream(Bytes);
+        public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new MemoryStream(Bytes, writable: false));
+        public Task<Stream> OpenWriteAsync() => throw new InvalidOperationException(); // not supposed to write to this
     }
 
     internal class ChunkFile : FileBase, IChunkFile
@@ -43,6 +45,7 @@ namespace Arius.Core.Models
 
         public override ChunkHash Hash { get; }
 
-        public Stream GetStream() => File.OpenRead(fi.FullName);
+        public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)File.OpenRead(fi.FullName));
+        public Task<Stream> OpenWriteAsync() => Task.FromResult((Stream)File.Create(fi.FullName));
     }
 }

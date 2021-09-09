@@ -132,6 +132,7 @@ namespace Arius.Core.Models
 
         ChunkHash IChunk.Hash => new ChunkHash(Hash);
 
-        public Stream GetStream() => base.fi.OpenRead();
+        public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
+        public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
     }
 }

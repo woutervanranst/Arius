@@ -171,18 +171,21 @@ namespace Arius.Core.Tests.ApiTests
         }
 
         [Test]
-        public async Task Restore_OneFileWithChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
+        public async Task Restore_OneFileWithChunkAlreadyDownloaded_BinaryFileRestoredFromLocal()
         {
-            //reset 
+            // Reset params
             Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadManifestBlock.Flow3Executed = false;
+            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier = false;
             Commands.Restore.DownloadManifestBlock.Flow4Executed = false;
 
+
+            // Ensure stuff is archived
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
 
+            // Copy the pointer and the chunk to the restore directory
             var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
             var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
-
+            
             var ps = GetServices().GetRequiredService<PointerService>();
             var a_pf = ps.GetPointerFile(a_pfi);
             var a_bf = ps.GetBinaryFile(a_pf, false);
@@ -192,19 +195,54 @@ namespace Arius.Core.Tests.ApiTests
             var a_bfi = new FileInfo(a_bf.FullName);
             a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
 
-            //var enc = GetServices().GetRequiredService<IEncrypter>();
-            //enc.Encrypt(bf)
 
+            // Restore
             await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
 
-            // for the restore operation we only restored it fron the local chunk cache
+
+            // Assert
+            // for the restore operation we only restored it from the local chunk cache
             Assert.IsTrue(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow3Executed);
+            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier);
             Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow4Executed);
 
-            // the binaryfile is restored
+            // the BinaryFile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
-            var r_bfi = ps.GetBinaryFile(r_pf, true);
+            var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
+            Assert.IsNotNull(r_bfi);
+        }
+
+        [Test]
+        public async Task Restore_OneFileWithChunkToDownload_BinaryFileRestored()
+        {
+            // Reset params
+            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadManifestBlock.Flow4Executed = false;
+
+
+            // Ensure stuff is archived
+            await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
+
+            // Copy the pointer to the restore directory
+            var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
+
+
+            // Restore
+            await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
+
+
+            // Assert
+            // for the restore operation we only restored it from the online tier
+            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal);
+            Assert.IsTrue(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow4Executed);
+
+            // the BinaryFile is restored
+            var ps = GetServices().GetRequiredService<PointerService>();
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
             Assert.IsNotNull(r_bfi);
         }
 

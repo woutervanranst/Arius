@@ -240,7 +240,7 @@ namespace Arius.Core.Commands.Archive
             // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
             var t = Task.Run(async () =>
             {
-                using var binaryFileStream = bf.GetStream();
+                using var binaryFileStream = await bf.OpenReadAsync();
 
                 foreach (var chunk in chunker.Chunk(binaryFileStream))
                 {

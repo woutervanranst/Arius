@@ -20,7 +20,7 @@ namespace Arius.Core.Services
         private const int blockSize = 128;
         private const int saltSize = 8;
 
-        public static async Task CompressAndEncrypt(Stream source, Stream target, string passphrase)
+        public static async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
         {
             /* SET UP ENCRYPTION
              * 
@@ -69,7 +69,7 @@ namespace Arius.Core.Services
             await source.CopyToAsync(gzs);
         }
 
-        public static async Task DecryptAndDecompress(Stream source, Stream target, string passphrase)
+        public static async Task DecryptAndDecompressAsync(Stream source, Stream target, string passphrase)
         {
             // Read the salt from the beginning of the source stream
             var salt = new byte[saltSize];

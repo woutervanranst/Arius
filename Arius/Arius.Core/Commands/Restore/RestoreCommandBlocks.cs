@@ -210,7 +210,7 @@ namespace Arius.Core.Commands.Restore
                     }
                 });
 
-            var cs = chs.Select(ch => downloadingChunks[ch].Task.Result).ToArray();
+            var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
 
             manifestRestored(mh, cs);
         }
@@ -218,24 +218,28 @@ namespace Arius.Core.Commands.Restore
 
         // For unit testing purposes
         internal static bool ChunkRestoredFromLocal { get; set; } = false;
-        internal static bool Flow3Executed { get; set; } = false;
+        internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
         internal static bool Flow4Executed { get; set; } = false;
 
         private async Task<IChunkFile> DownloadChunkAsync(ChunkHash ch)
         {
-            if (GetLocalChunkFileInfo(ch) is var cfi && cfi.Exists)
+            var cfi = GetLocalChunkFileInfo(ch);
+
+            if (cfi.Exists)
             {
                 // Downloaded and Decrypted Chunk
                 ChunkRestoredFromLocal = true;
 
                 return new ChunkFile(cfi, ch);
             }
-            else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var hcb && hcb is not null)
+            else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var cbb && cbb is not null)
             {
                 // Hydrated chunk (in cold/hot storage) but not yet downloaded
-                Flow3Executed = true;
+                ChunkRestoredFromOnlineTier = true;
 
-                throw new NotImplementedException();
+                await repo.DownloadChunkAsync(cbb, cfi);
+
+                return new ChunkFile(cfi, ch);
             }
             else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var cb && cb is not null)
             {
@@ -273,7 +277,7 @@ namespace Arius.Core.Commands.Restore
         private readonly Chunker chunker;
         private readonly DirectoryInfo root;
 
-        protected override Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item)
+        protected override async Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item)
         {
             // Restore 
 
@@ -285,7 +289,7 @@ namespace Arius.Core.Commands.Restore
                 if (target.Exists)
                     throw new Exception();
 
-                chunker.Merge(root, item.Chunks, target);
+                await chunker.MergeAsync(root, item.Chunks, target);
 
                 //item.Binary.MoveTo(target.FullName);
 
@@ -300,10 +304,6 @@ namespace Arius.Core.Commands.Restore
 
 
             //TODO QUID DELET ECHUNKS
-
-
-
-            return Task.CompletedTask;
 
 
         }
