@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
@@ -65,7 +66,7 @@ namespace Arius.Core.Commands.Restore
             logger.LogInformation("Determining PointerFiles to restore...");
 
 
-            var manifestsToDownload = new BlockingCollection<ManifestHash>();
+            var manifestsToDownload = Channel.CreateUnbounded<ManifestHash>();
             var restoredManifests = new ConcurrentDictionary<ManifestHash, IChunkFile>();
             var pointerFilesWaitingForManifestRestoration = new ConcurrentDictionary<ManifestHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
 
@@ -76,7 +77,7 @@ namespace Arius.Core.Commands.Restore
                 synchronize: options.Synchronize,
                 repo: repo,
                 pointerService: pointerService,
-                indexedPointerFile: arg =>
+                indexedPointerFile: async arg =>
                 {
                     if (!options.Download)
                         return; //no need to download
@@ -85,7 +86,7 @@ namespace Arius.Core.Commands.Restore
                     if (bf is null)
                     {
                         // need to download the manifest for this pointer
-                        manifestsToDownload.Add(pf.Hash); //S11
+                        await manifestsToDownload.Writer.WriteAsync(pf.Hash); //S11
                         pointerFilesWaitingForManifestRestoration.AddOrUpdate( //S14
                             key: pf.Hash,
                             addValue: new() { pf },
@@ -103,13 +104,13 @@ namespace Arius.Core.Commands.Restore
                 },
                 done: () => 
                 {
-                    manifestsToDownload.CompleteAdding(); //S13
+                    manifestsToDownload.Writer.Complete(); //S13
                 });
             var indexTask = indexBlock.GetTask;
 
             await indexTask; //S19
 
-            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Count} PointerFiles to restore.");
+            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Reader.Count} PointerFiles to restore.");
 
 
             var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();

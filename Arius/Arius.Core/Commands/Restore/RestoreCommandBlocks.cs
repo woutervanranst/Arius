@@ -24,7 +24,7 @@ namespace Arius.Core.Commands.Restore
             bool synchronize,
             Repository repo,
             PointerService pointerService,
-            Action<(PointerFile PointerFile, BinaryFile RestoredBinaryFile)> indexedPointerFile,
+            Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> indexedPointerFile,
             Action done)
             : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
@@ -39,7 +39,7 @@ namespace Arius.Core.Commands.Restore
         private readonly Repository repo;
         private readonly int maxDegreeOfParallelism;
         private readonly PointerService pointerService;
-        private readonly Action<(PointerFile PointerFile, BinaryFile RestoredBinaryFile)> indexedPointerFile;
+        private readonly Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> indexedPointerFile;
 
         protected override async Task TaskBodyImplAsync(FileSystemInfo fsi)
         {
@@ -52,7 +52,7 @@ namespace Arius.Core.Commands.Restore
 
                     logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
-                    var t1 = Task.Run(() => CreatePointerFilesIfNotExist(root, currentPfes));
+                    var t1 = Task.Run(async () => await CreatePointerFilesIfNotExist(root, currentPfes));
                     var t2 = Task.Run(() => DeletePointerFilesIfShouldNotExist(root, currentPfes));
 
                     await Task.WhenAll(t1, t2);
@@ -65,9 +65,9 @@ namespace Arius.Core.Commands.Restore
             else
             {
                 if (fsi is DirectoryInfo root)
-                    ProcessPointersInDirectory(root);
+                    await ProcessPointersInDirectory(root);
                 else if (fsi is FileInfo fi && fi.IsPointerFile())
-                    IndexedPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
+                    await IndexedPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
                 else
                     throw new InvalidOperationException($"Argument {fsi} is not valid");
             }
@@ -77,13 +77,13 @@ namespace Arius.Core.Commands.Restore
         /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
         /// </summary>
         /// <returns></returns>
-        private void CreatePointerFilesIfNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
+        private async Task CreatePointerFilesIfNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
         {
             foreach (var pfe in pfes.AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);
-                IndexedPointerFile(pf);
+                await IndexedPointerFile(pf);
             }
         }
 
@@ -111,19 +111,19 @@ namespace Arius.Core.Commands.Restore
             root.DeleteEmptySubdirectories();
         }
 
-        private void ProcessPointersInDirectory(DirectoryInfo root)
+        private async Task ProcessPointersInDirectory(DirectoryInfo root)
         {
             var pfs = root.GetPointerFileInfos().Select(fi => new PointerFile(root, fi));
 
             foreach (var pf in pfs)
-                IndexedPointerFile(pf);
+                await IndexedPointerFile(pf);
         }
 
-        private void IndexedPointerFile(PointerFile pf)
+        private async Task IndexedPointerFile(PointerFile pf)
         {
             var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
 
-            indexedPointerFile((pf, bf)); //bf can be null if it is not yet restored
+            await indexedPointerFile((pf, bf)); //bf can be null if it is not yet restored
         }
     }
 
