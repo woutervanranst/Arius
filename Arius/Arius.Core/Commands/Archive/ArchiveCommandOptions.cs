@@ -28,8 +28,8 @@ namespace Arius.Core.Commands.Archive
         public string Path { get; private init; }
 
 
-        public int IndexBlock_Parallelism => 1; /*Environment.ProcessorCount */ //index AND hash options
-        public int UploadBinaryFileBlock_BinaryFileParallelism => 1; /*16*/
+        public int IndexBlock_Parallelism => Environment.ProcessorCount; //index AND hash options
+        public int UploadBinaryFileBlock_BinaryFileParallelism => 16;
         public int UploadBinaryFileBlock_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
         public int UploadBinaryFileBlock_ParallelChunkUploads => 16;
         public int CreatePointerFileIfNotExistsBlock_Parallelism => 1;
