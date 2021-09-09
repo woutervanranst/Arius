@@ -174,10 +174,10 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_ChunkAlreadyDownloadedAndDecrypted_PointerRestoredFromLocal()
         {
             //reset 
-            Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal = false;
-            Commands.Restore.ProcessManifestBlock.flow2Executed = false;
-            Commands.Restore.ProcessManifestBlock.flow3Executed = false;
-            Commands.Restore.ProcessManifestBlock.flow4Executed = false;
+            Commands.Restore.ProcessManifestBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.ProcessManifestBlock.Flow2Executed = false;
+            Commands.Restore.ProcessManifestBlock.Flow3Executed = false;
+            Commands.Restore.ProcessManifestBlock.Flow4Executed = false;
 
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
 
@@ -199,10 +199,10 @@ namespace Arius.Core.Tests.ApiTests
             await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
 
             // for the restore operation we only restored it fron the local chunk cache
-            Assert.IsTrue(Commands.Restore.ProcessManifestBlock.chunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow2Executed);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow3Executed);
-            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.flow4Executed);
+            Assert.IsTrue(Commands.Restore.ProcessManifestBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow2Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow3Executed);
+            Assert.IsFalse(Commands.Restore.ProcessManifestBlock.Flow4Executed);
 
             // the binaryfile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
@@ -212,7 +212,7 @@ namespace Arius.Core.Tests.ApiTests
 
 
         [Test]
-        public async Task Restore_Chunked()
+        public async Task Restore_Directory_Chunked()
         {
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Arius.Core.Configuration;
@@ -127,10 +128,10 @@ namespace Arius.Core.Commands.Restore
         }
     }
 
-    internal class ProcessManifestBlock : BlockingCollectionTaskBlockBase<ManifestHash>
+    internal class ProcessManifestBlock : ChannelTaskBlockBase<ManifestHash>
     {
         public ProcessManifestBlock(ILoggerFactory loggerFactory,
-            Func<BlockingCollection<ManifestHash>> sourceFunc,
+            Func<Channel<ManifestHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
             ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests,
@@ -188,17 +189,17 @@ namespace Arius.Core.Commands.Restore
         }
 
         // For unit testing purposes
-        internal static bool chunkRestoredFromLocal = false;
-        internal static bool flow2Executed = false;
-        internal static bool flow3Executed = false;
-        internal static bool flow4Executed = false;
+        internal static bool ChunkRestoredFromLocal { get; set; } = false;
+        internal static bool Flow2Executed { get; set; } = false;
+        internal static bool Flow3Executed { get; set; } = false;
+        internal static bool Flow4Executed { get; set; } = false;
 
         private void ProcessChunk(ChunkHash ch)
         {
             if (GetLocalChunkFileInfo(ch) is var cfi && cfi.Exists)
             {
                 // Downloaded and Decrypted Chunk
-                chunkRestoredFromLocal = true;
+                ChunkRestoredFromLocal = true;
 
                 var cf = new ChunkFile(cfi, ch);
 
@@ -207,18 +208,18 @@ namespace Arius.Core.Commands.Restore
             else if (GetLocalEncryptedChunkFileInfo(ch) is var ecfi && ecfi.Exists)
             {
                 // Downloaded but not yet decrypted chunk
-                flow2Executed = true;
+                Flow2Executed = true;
 
             }
             else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var hcb && hcb is not null)
             {
                 // Hydrated chunk (in cold/hot storage) but not yet downloaded
-                flow3Executed = true;
+                Flow3Executed = true;
             }
             else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var cb && cb is not null)
             {
                 // Archived chunk (in archive storage) not yet hydrated
-                flow4Executed = true;
+                Flow4Executed = true;
 
             }
             else
