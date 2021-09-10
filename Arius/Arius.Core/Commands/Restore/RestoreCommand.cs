@@ -119,22 +119,26 @@ namespace Arius.Core.Commands.Restore
             var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
             var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
 
-            var processManifestBlock = new DownloadManifestBlock(
+            var downloadChunksForManifestBlock = new DownloadChunksForManifestBlock(
                 loggerFactory: loggerFactory,
                 sourceFunc: () => manifestsToDownload,
                 restoreTempDir: restoreTempDir,
                 repo: repo,
                 restoredManifests: restoredManifests,
-                manifestRestored: (mh, cs) =>
+                chunksRestored: (mh, cs) =>
                 {
                     pointerFilesWaitingForManifestRestoration.Remove(mh, out var pointerFiles);
                     pointersToRestore.Add((cs, pointerFiles.ToArray())); //S21
+                },
+                chunksHydrating: (mh) =>
+                {
+
                 },
                 done: () => 
                 {
                     pointersToRestore.CompleteAdding(); //S29
                 });
-            var processManifestTask = processManifestBlock.GetTask;
+            var processManifestTask = downloadChunksForManifestBlock.GetTask;
 
 
 
@@ -176,6 +180,9 @@ namespace Arius.Core.Commands.Restore
                 { 
                 });
             var restorePointerFileTask = restorePointerFileBlock.GetTask;
+
+            // TODO DELETE ALL TEMP HYDRATED IN STORAGE ACCOUNT
+            // repo.DeleteHydrateFolder();
 
 
             await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);

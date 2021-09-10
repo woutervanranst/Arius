@@ -29,14 +29,15 @@ namespace Arius.Core.Models
         /// </summary>
         public abstract long Length { get; }
 
+        /// <summary>
+        /// The Hash of this blob
+        /// </summary>
         public abstract Hash Hash { get; }
 
         private const char BlobFolderSeparatorChar = '/';
     }
 
-
-
-    internal class ManifestBlob : BlobBase
+    internal class ManifestBlob : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
     {
         public ManifestBlob(BlobItem bi)
         {
@@ -68,8 +69,14 @@ namespace Arius.Core.Models
         public override ChunkHash Hash => new(Name.TrimEnd(Extension));
 
         public abstract AccessTier AccessTier { get; }
+        
         public abstract Task<Stream> OpenReadAsync();
         public abstract Task<Stream> OpenWriteAsync();
+        
+        /// <summary>
+        ///  The URI to this blob
+        /// </summary>
+        public abstract Uri Uri { get; }
     }
 
     internal class ChunkBlobItem : ChunkBlobBase
@@ -84,9 +91,11 @@ namespace Arius.Core.Models
         public override long Length => bi.Properties.ContentLength!.Value;
         public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
         public override string FullName => bi.Name;
-        
+
         public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
         public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+
+        public override Uri Uri => throw new NotImplementedException();
     }
 
     internal class ChunkBlobBaseClient : ChunkBlobBase
@@ -121,5 +130,7 @@ namespace Arius.Core.Models
 
         public override Task<Stream> OpenReadAsync() => bbc.OpenReadAsync();
         public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+
+        public override Uri Uri => bbc.Uri;
     }
 }

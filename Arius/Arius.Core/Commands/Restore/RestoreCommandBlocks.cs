@@ -128,33 +128,29 @@ namespace Arius.Core.Commands.Restore
         }
     }
 
-    internal class DownloadManifestBlock : ChannelTaskBlockBase<ManifestHash>
+    internal class DownloadChunksForManifestBlock : ChannelTaskBlockBase<ManifestHash>
     {
-        public DownloadManifestBlock(ILoggerFactory loggerFactory,
+        public DownloadChunksForManifestBlock(ILoggerFactory loggerFactory,
             Func<Channel<ManifestHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
             ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests,
-            Action<ManifestHash, IChunk[]> manifestRestored,
-            //Action<ManifestHash, ChunkHash[]> setChunksForManifest,
-            //Action<ChunkFile> chunkRestored,
+            Action<ManifestHash, IChunk[]> chunksRestored,
+            Action<ManifestHash> chunksHydrating,
             Action done)
             : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.restoreTempDir = restoreTempDir;
             this.repo = repo;
             this.restoredManifests = restoredManifests;
-            this.manifestRestored = manifestRestored;
-            //this.setChunksForManifest = setChunksForManifest;
-            //this.chunkRestored = chunkRestored;
+            this.chunksRestored = chunksRestored;
+            this.chunksHydrating = chunksHydrating;
         }
 
         private readonly DirectoryInfo restoreTempDir;
         private readonly Repository repo;
-        private readonly Action<ManifestHash, IChunk[]> manifestRestored;
-        //private readonly Action<ManifestHash, ChunkHash[]> setChunksForManifest;
-        //private readonly Action<ChunkFile> chunkRestored;
-
+        private readonly Action<ManifestHash, IChunk[]> chunksRestored;
+        private readonly Action<ManifestHash> chunksHydrating;
         private readonly ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests;
 
         private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
@@ -166,7 +162,7 @@ namespace Arius.Core.Commands.Restore
             {
                 // the Manifest for this PointerFile is already restored
                 throw new NotImplementedException();
-                manifestRestored(mh, null);
+                chunksRestored(mh, null);
                 return;
             }
 
@@ -185,10 +181,8 @@ namespace Arius.Core.Commands.Restore
                     if (toDownload)
                     {
                         // this Chunk is not yet downloaded
-                        var c = await DownloadChunkAsync(ch);
+                        var c = await GetChunkFileAsync(ch);
                         downloadingChunks[ch].SetResult(c);
-
-                        // LOG
                     }
                     else
                     {
@@ -211,46 +205,65 @@ namespace Arius.Core.Commands.Restore
                 });
 
             var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
-
-            manifestRestored(mh, cs);
+            if (cs.Any(c => c is null))
+            {
+                logger.LogInformation($"At least one Chunk is still hydrating for manifest {mh}... cannot yet restore");
+                chunksHydrating(mh);
+            }
+            else
+            {
+                logger.LogInformation($"All chunks downloaded for manifest {mh}... ready to restore BinaryFile");
+                chunksRestored(mh, cs);
+            }
         }
 
 
         // For unit testing purposes
         internal static bool ChunkRestoredFromLocal { get; set; } = false;
         internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
-        internal static bool Flow4Executed { get; set; } = false;
+        internal static bool ChunkStartedHydration { get; set; } = false;
 
-        private async Task<IChunkFile> DownloadChunkAsync(ChunkHash ch)
+        /// <summary>
+        /// Get a local ChunkFile for the given ChunkHash
+        /// Returns null if it cannot be downloaded because it is not yet hydrated
+        /// Throws InvalidOperationException if the cunk cannot be found 
+        /// </summary>
+        /// <param name="ch"></param>
+        /// <returns></returns>
+        private async Task<IChunkFile> GetChunkFileAsync(ChunkHash ch)
         {
             var cfi = GetLocalChunkFileInfo(ch);
 
             if (cfi.Exists)
             {
-                // Downloaded and Decrypted Chunk
+                // Chunk already downloaded
                 ChunkRestoredFromLocal = true;
+                logger.LogInformation($"Chunk {ch.ToShortString()} already downloaded");
 
                 return new ChunkFile(cfi, ch);
             }
-            else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var cbb && cbb is not null)
+            else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var onlineChunk && onlineChunk is not null)
             {
                 // Hydrated chunk (in cold/hot storage) but not yet downloaded
+                await repo.DownloadChunkAsync(onlineChunk, cfi);
+                
                 ChunkRestoredFromOnlineTier = true;
-
-                await repo.DownloadChunkAsync(cbb, cfi);
+                logger.LogInformation($"Chunk {ch.ToShortString()} downloaded from online tier");
 
                 return new ChunkFile(cfi, ch);
             }
-            else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var cb && cb is not null)
+            else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var archivedChunk && archivedChunk is not null)
             {
                 // Archived chunk (in archive storage) not yet hydrated
-                Flow4Executed = true;
+                await repo.HydrateChunkAsync(archivedChunk);
 
-                throw new NotImplementedException();
+                ChunkStartedHydration = true;
+                logger.LogInformation($"Chunk {ch.ToShortString()} started hydration... cannot yet download");
 
+                return null;
             }
             else
-                throw new InvalidOperationException($"Unable to find a chunk '{ch}'");
+                throw new InvalidOperationException($"Unable to find Chunk '{ch}'");
         }
 
         private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
@@ -298,6 +311,8 @@ namespace Arius.Core.Commands.Restore
                 }
                 else
                 {
+                    throw new NotImplementedException(); // todo write unit tests
+
                     target = pointerService.GetBinaryFileInfo(pf);
 
                     bfi.CopyTo(target.FullName);
