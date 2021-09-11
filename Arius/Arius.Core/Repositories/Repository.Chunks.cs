@@ -212,7 +212,7 @@ namespace Arius.Core.Repositories
             }
             catch (Exception e)
             {
-                throw;
+                throw; //TODO
             }
         }
     }
