@@ -48,20 +48,17 @@ namespace Arius.Core.Commands.Restore
 
             DirectoryInfo root;
             FileSystemInfo pathToRestore;
-            DirectoryInfo restoreTempDir;
-            
+
             if (File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory))
             {
                 root = new DirectoryInfo(options.Path);
                 pathToRestore = root;
-                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
             }
             else
             {
                 var file = new FileInfo(options.Path);
                 root = file.Directory;
                 pathToRestore = file;
-                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(file.Directory);
             }
 
             
@@ -118,6 +115,7 @@ namespace Arius.Core.Commands.Restore
             var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
             var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
             var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
+            var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
 
             var downloadChunksForManifestBlock = new DownloadChunksForManifestBlock(
                 loggerFactory: loggerFactory,
