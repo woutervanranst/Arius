@@ -207,12 +207,12 @@ namespace Arius.Core.Commands.Restore
             var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
             if (cs.Any(c => c is null))
             {
-                logger.LogInformation($"At least one Chunk is still hydrating for manifest {mh}... cannot yet restore");
+                logger.LogInformation($"At least one Chunk is still hydrating for manifest {mh.ToShortString()}... cannot yet restore");
                 chunksHydrating(mh);
             }
             else
             {
-                logger.LogInformation($"All chunks downloaded for manifest {mh}... ready to restore BinaryFile");
+                logger.LogInformation($"All chunks downloaded for manifest {mh.ToShortString()}... ready to restore BinaryFile");
                 chunksRestored(mh, cs);
             }
         }
@@ -266,7 +266,7 @@ namespace Arius.Core.Commands.Restore
                 throw new InvalidOperationException($"Unable to find Chunk '{ch}'");
         }
 
-        private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new FileInfo(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
+        private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
     }
 
 
