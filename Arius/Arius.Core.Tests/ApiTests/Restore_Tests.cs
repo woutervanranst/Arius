@@ -295,7 +295,6 @@ namespace Arius.Core.Tests.ApiTests
 
             await RestoreCommand(RestoreTestDirectory.FullName, true, true, true);
 
-
             // the BinaryFile is restored
             var ps = GetServices().GetRequiredService<PointerService>();
             var r_pfi = RestoreTestDirectory.GetPointerFileInfos().Single();
@@ -305,7 +304,7 @@ namespace Arius.Core.Tests.ApiTests
         }
 
         [Test]
-        public async Task Restore_DirectoryDeduped_Success()
+        public async Task Restore_DedupedDirectory_Success()
         {
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
 
