@@ -287,9 +287,25 @@ namespace Arius.Core.Tests.ApiTests
             throw new NotImplementedException();
         }
 
+        [Test]
+        public async Task Restore_DedupedFile_Success()
+        {
+            EnsureArchiveTestDirectoryFileInfo();
+            await ArchiveCommand(dedup: true);
+
+            await RestoreCommand(RestoreTestDirectory.FullName, true, true, true);
+
+
+            // the BinaryFile is restored
+            var ps = GetServices().GetRequiredService<PointerService>();
+            var r_pfi = RestoreTestDirectory.GetPointerFileInfos().Single();
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
+            Assert.IsNotNull(r_bfi);
+        }
 
         [Test]
-        public async Task Restore_Directory_Chunked()
+        public async Task Restore_DirectoryDeduped_Success()
         {
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
 
