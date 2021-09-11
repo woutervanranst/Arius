@@ -242,11 +242,19 @@ namespace Arius.Core.Commands.Archive
             {
                 using var binaryFileStream = await bf.OpenReadAsync();
 
+                var sw = new Stopwatch();
+                sw.Start();
+
                 foreach (var chunk in chunker.Chunk(binaryFileStream))
                 {
                     await chunksToUpload.Writer.WriteAsync(chunk);
                     chs.Add(chunk.Hash);
                 }
+
+                sw.Stop();
+
+                var mbps = Math.Round(bf.Length / (1024 * 1024 * (double)sw.Elapsed.TotalSeconds), 3);
+                logger.LogInformation($"Completed chuning of {bf.Name} in {sw.Elapsed.TotalSeconds} at {mbps} MBps");
 
                 chunksToUpload.Writer.Complete();
             });
@@ -257,11 +265,17 @@ namespace Arius.Core.Commands.Archive
              * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              */
 
+            int i = 0;
+
             var cs = chunksToUpload.Reader.ReadAllAsync();
             await Parallel.ForEachAsync(cs, 
                 new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
                 async (chunk, cancellationToken) => 
                 {
+                    Interlocked.Add(ref i, 1);
+                    logger.LogInformation($"{i} - queue depth: {chunksToUpload.Reader.Count}");
+
+
                     if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
@@ -289,6 +303,8 @@ namespace Arius.Core.Commands.Archive
                     }
 
                     await uploadingChunks[chunk.Hash].Task;
+
+                    Interlocked.Add(ref i, -1);
                 });
 
             return (chs.ToArray(), totalLength);
