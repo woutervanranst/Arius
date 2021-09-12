@@ -156,7 +156,7 @@ namespace Arius.Core.Commands.Restore
         private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource<IChunk>> downloadingChunks = new();
 
-        protected override async Task ForEachBodyImplAsync(ManifestHash mh, CancellationToken ct)
+        protected override async Task ForEachBodyImplAsync(ManifestHash mh)
         {
             if (restoredManifests.ContainsKey(mh))
             {
