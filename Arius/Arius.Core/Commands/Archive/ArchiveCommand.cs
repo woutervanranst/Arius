@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
+using System.Threading.Channels;
 
 namespace Arius.Core.Commands.Archive
 {
@@ -71,26 +72,48 @@ namespace Arius.Core.Commands.Archive
             var indexTask = indexBlock.GetTask;
 
 
-
+            var chunkUploadChannel = Channel.CreateBounded<(IChunk, TaskCompletionSource<long>)>(new BoundedChannelOptions
+                (capacity: options.UploadBinaryFileBlock_ChunkBufferSize)
+            {
+                SingleWriter = false,
+                SingleReader = false
+            });
             var pointersToCreate = new BlockingCollection<BinaryFile>();
 
-            var uploadBinaryFileBlock = new UploadBinaryFileBlock(
+            var chunkBinaryFileBlock = new ChunkBinaryFileBlock(
                 loggerFactory: loggerFactory,
                 sourceFunc: () => binariesToUpload,
                 degreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
                 chunker: services.GetRequiredService<Chunker>(),
                 repo: repo,
                 options: options,
-                manifestExists: bf =>
+                enqueueChunkForUpload: async item =>
+                {
+                    await chunkUploadChannel.Writer.WriteAsync(item);
+                },
+                binaryExists: bf =>
                 {
                     pointersToCreate.Add(bf); //B403
                 },
                 done: () => 
                 {
+                    chunkUploadChannel.Writer.Complete();
                     pointersToCreate.CompleteAdding(); //B410
                 });
-            var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
+            var uploadBinaryFileTask = chunkBinaryFileBlock.GetTask;
 
+
+            var uploadBlock = new UploadBlock(
+                loggerFactory,
+                sourceFunc: () => chunkUploadChannel,
+                degreeOfParallelism: options.UploadBinaryFileBlock_ParallelChunkUploads,
+                repo: repo,
+                options: options,
+                done: () =>
+                {
+
+                });
+            var uploadBlockTask = uploadBlock.GetTask;
 
 
             var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(

@@ -111,9 +111,9 @@ namespace Arius.Core.Commands.Archive
     }
 
 
-    internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+    internal class ChunkBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public UploadBinaryFileBlock(
+        public ChunkBinaryFileBlock(
             ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
@@ -121,24 +121,25 @@ namespace Arius.Core.Commands.Archive
             Repository repo,
             ArchiveCommandOptions options,
             
-            Action<BinaryFile> manifestExists,
-            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Func<(IChunk, TaskCompletionSource<long>), Task> enqueueChunkForUpload,
+            Action<BinaryFile> binaryExists,
+            Action done) : base(loggerFactory, sourceFunc, degreeOfParallelism, done)
         {
             this.chunker = chunker;
             this.repo = repo;
             this.options = options;
-            this.manifestExists = manifestExists;
+            this.enqueueChunkForUpload = enqueueChunkForUpload;
+            this.binaryExists = binaryExists;
         }
 
         private readonly Chunker chunker;
         private readonly Repository repo;
         private readonly ArchiveCommandOptions options;
-        
-        private readonly Action<BinaryFile> manifestExists;
+        private readonly Func<(IChunk, TaskCompletionSource<long>), Task> enqueueChunkForUpload;
+        private readonly Action<BinaryFile> binaryExists;
 
         private readonly ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
-        private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> creatingManifests = new();
-        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
+        private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> uploadingBinaries = new();
         
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
@@ -146,19 +147,18 @@ namespace Arius.Core.Commands.Archive
             /* 
             * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
             * Four possibilities:
-            *   1.  [At the start of the run] the manifest (and chunks) already exist remotely
-            *   2.1. [At the start of the run] the manifest did not yet exist remotely, and upload has not started --> upload it 
-            *   2.2. [At the start of the run] the manifest did not yet exist remotely, and upload has started but not completed --> wait for it to complete
-            *   2.3. [At the start of the run] the manifest did not yet exist remotely, and upload has completed --> continue
+            *   1.  [At the start of the run] the Binary already exist remotely
+            *   2.1. [At the start of the run] the Binary did not yet exist remotely, and upload has not started --> upload it 
+            *   2.2. [At the start of the run] the Binary did not yet exist remotely, and upload has started but not completed --> wait for it to complete
+            *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-
             // [Concurrently] Build a local cache of the remote manifests -- ensure we call ManifestExistsAsync only once
-            var manifestExistsRemote = await remoteManifests.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
+            var manifestExistsRemote = await remoteManifests.GetOrAdd(bf.Hash, async (_) => await repo.ManifestExistsAsync(bf.Hash));
             if (manifestExistsRemote)
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') already exists. No need to upload.");
+                logger.LogInformation($"Binary for '{bf.Name}' ('{bf.Hash.ToShortString()}') already exists. No need to upload.");
             }
             else
             {
@@ -167,41 +167,41 @@ namespace Arius.Core.Commands.Archive
                 /* TryAdd returns true if the new value was added
                  * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
                  */
-                var manifestToUpload = creatingManifests.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
-                if (manifestToUpload)
+                var toUpload = uploadingBinaries.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
+                if (toUpload)
                 {
                     // 2.1 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Binary for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
 
                     await UploadBinaryAsync(bf);
 
-                    creatingManifests[bf.Hash].SetResult();
+                    uploadingBinaries[bf.Hash].SetResult();
                 }
                 else
                 {
-                    var t = creatingManifests[bf.Hash].Task;
+                    // upload already ongoing
+                    var t = uploadingBinaries[bf.Hash].Task;
                     if (!t.IsCompleted)
                     {
                         // 2.2 Did not exist remote but is being created
-                        logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely but is being uploaded. Wait for upload to finish.");
+                        logger.LogInformation($"Binary for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely but is being uploaded. Wait for upload to finish.");
 
                         await t;
                     }
                     else
                     {
                         // 2.3  Did not exist remote but is created in the mean time
-                        logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') did not exist remotely but was uploaded in the mean time.");
+                        logger.LogInformation($"Binary for '{bf.Name}' ('{bf.Hash.ToShortString()}') did not exist remotely but was uploaded in the mean time.");
                     }
                 }
             }
             
-            manifestExists(bf);
+            binaryExists(bf);
         }
 
         private async Task UploadBinaryAsync(BinaryFile bf)
         {
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
-            // Upload the Binary
             var sw = new Stopwatch();
             sw.Start();
 
@@ -233,81 +233,28 @@ namespace Arius.Core.Commands.Archive
         /// <returns></returns>
         private async Task<(ChunkHash[], long length)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
-            var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
-            var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
-            var totalLength = 0L;
+            var chs = new Dictionary<ChunkHash, Task<long>>(); //ChunkHashes for this BinaryFile
 
-            // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
-            var t = Task.Run(async () =>
+            var sw = new Stopwatch();
+            sw.Start();
+
+            using (var bfs = await bf.OpenReadAsync())
             {
-                using var binaryFileStream = await bf.OpenReadAsync();
-
-                var sw = new Stopwatch();
-                sw.Start();
-
-                foreach (var chunk in chunker.Chunk(binaryFileStream))
+                foreach (var chunk in chunker.Chunk(bfs))
                 {
-                    await chunksToUpload.Writer.WriteAsync(chunk);
-                    chs.Add(chunk.Hash);
+                    var tcs = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    await enqueueChunkForUpload((chunk, tcs));
+                    chs.Add(chunk.Hash, tcs.Task);
                 }
+            }
 
-                sw.Stop();
+            sw.Stop();
+            var mbps = Math.Round(bf.Length / (1024 * 1024 * (double)sw.Elapsed.TotalSeconds), 3);
+            logger.LogInformation($"Completed chunking of '{bf.Name}' in {chs.Count} chunks in {sw.ElapsedMilliseconds / 1000}s at {mbps} MBps");
 
-                var mbps = Math.Round(bf.Length / (1024 * 1024 * (double)sw.Elapsed.TotalSeconds), 3);
-                logger.LogInformation($"Completed chuning of {bf.Name} in {sw.Elapsed.TotalSeconds} at {mbps} MBps");
+            var totalLength = (await Task.WhenAll(chs.Values)).Sum();
 
-                chunksToUpload.Writer.Complete();
-            });
-
-            /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
-             * 1. to effectively limit the number of concurrent files 'in flight' 
-             * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
-             * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
-             */
-
-            int i = 0;
-
-            var cs = chunksToUpload.Reader.ReadAllAsync();
-            await Parallel.ForEachAsync(cs, 
-                new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
-                async (chunk, cancellationToken) => 
-                {
-                    Interlocked.Add(ref i, 1);
-                    logger.LogInformation($"{i} - queue depth: {chunksToUpload.Reader.Count}");
-
-
-                    if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
-                    {
-                        // 1 Exists remote
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
-                        return;
-                    }
-
-                    bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
-                    if (toUpload)
-                    {
-                        // 2 Does not yet exist remote and not yet being created --> upload
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-
-                        var length = await repo.UploadChunkAsync(chunk, options.Tier);
-                        Interlocked.Add(ref totalLength, length);
-
-                        uploadingChunks[chunk.Hash].SetResult();
-                    }
-                    else
-                    {
-                        // 3 Does not exist remote but is being created
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
-
-                        //TODO TES THIS PATH
-                    }
-
-                    await uploadingChunks[chunk.Hash].Task;
-
-                    Interlocked.Add(ref i, -1);
-                });
-
-            return (chs.ToArray(), totalLength);
+            return (chs.Keys.ToArray(), totalLength);
         }
 
         /// <summary>
@@ -317,9 +264,82 @@ namespace Arius.Core.Commands.Archive
         /// <returns></returns>
         private async Task<(ChunkHash[], long length)> UploadBinaryChunkAsync(BinaryFile bf)
         {
-            var length = await repo.UploadChunkAsync(bf, options.Tier);
+            var tcs = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            await enqueueChunkForUpload((bf, tcs));
+
+            var length = await tcs.Task;
 
             return (((IChunk)bf).Hash.SingleToArray(), length);
+
+            //var length = await repo.UploadChunkAsync(bf, options.Tier);
+
+            //return (((IChunk)bf).Hash.SingleToArray(), length);
+        }
+    }
+
+
+    internal class UploadBlock : ChannelTaskBlockBase<(IChunk, TaskCompletionSource<long>)>
+    {
+        public UploadBlock(
+            ILoggerFactory loggerFactory,
+            Func<Channel<(IChunk, TaskCompletionSource<long>)>> sourceFunc,
+            int degreeOfParallelism,
+            Repository repo,
+            ArchiveCommandOptions options,
+            Action done) : base(loggerFactory, sourceFunc, degreeOfParallelism, done )
+        {
+            this.repo = repo;
+            this.options = options;
+        }
+
+        private readonly Repository repo;
+        private readonly ArchiveCommandOptions options;
+
+        private int parallelism = 0;
+        private readonly ConcurrentDictionary<ChunkHash, Task<bool>> remoteChunks = new();
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource<long>> uploadingChunks = new();
+
+        protected override async Task ForEachBodyImplAsync((IChunk, TaskCompletionSource<long>) item, CancellationToken ct)
+        {
+            Interlocked.Add(ref parallelism, 1);
+            logger.LogInformation($"{parallelism}"); // - queue depth: {source.Reader.Count}");
+
+            var (chunk, tcs) = item;
+
+            var chunkExistsRemote = await remoteChunks.GetOrAdd(chunk.Hash, async (_) => await repo.ChunkExistsAsync(chunk.Hash));
+            if (chunkExistsRemote)
+            {
+                // 1 Exists remote
+                logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
+
+                throw new NotImplementedException();
+                tcs.SetResult(0);
+            }
+            else
+            { 
+                bool toUpload = uploadingChunks.TryAdd(chunk.Hash, tcs);
+                if (toUpload)
+                {
+                    // 2 Does not yet exist remote and not yet being created --> upload
+                    logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
+
+                    var length = await repo.UploadChunkAsync(chunk, options.Tier);
+
+                    uploadingChunks[chunk.Hash].SetResult(length);
+                }
+                else
+                {
+                    // 3 Does not exist remote but is being created
+                    logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
+
+                    //TODO TES THIS PATH
+
+                    await uploadingChunks[chunk.Hash].Task;
+                }
+            }
+
+            Interlocked.Add(ref parallelism, -1);
         }
     }
 

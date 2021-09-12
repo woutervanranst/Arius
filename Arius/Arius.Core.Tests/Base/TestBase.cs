@@ -49,7 +49,7 @@ namespace Arius.Core.Tests
             {
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1 /*0.5*/), //make it an odd size to test buffer edge cases
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2D),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5D),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 100D),
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1D)
             };
         }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
