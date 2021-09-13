@@ -91,7 +91,7 @@ namespace Arius.Core.Repositories
             }
             catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
-                throw new InvalidOperationException("Manifest does not exist");
+                throw new InvalidOperationException($"Manifest '{manifestHash}' does not exist");
             }
             finally
             {
