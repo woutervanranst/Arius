@@ -134,5 +134,10 @@ namespace Arius.Core.Models
 
         public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
         public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+
+        public override string ToString()
+        {
+            return $"'{Name}' ('{Hash.ToShortString()}')";
+        }
     }
 }
