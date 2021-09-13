@@ -40,7 +40,7 @@ namespace Arius.Core.Repositories
         private readonly string passphrase;
 
         private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
-        private readonly CachedManifestPropertiesRepository mpRepo;
+        private readonly CachedManifestMetadataRepository mpRepo;
 
         private readonly BlobContainerClient container;
     }

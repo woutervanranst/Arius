@@ -11,23 +11,24 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        public async Task CreateManifestPropertyAsync(BinaryFile bf, long archivedLength, int chunkCount)
+        public async Task CreateManifestMetadataAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
-            var mp = new ManifestProperties()
+            var mp = new ManifestMetadata()
             {
                 Hash = bf.Hash,
                 OriginalLength = bf.Length,
                 ArchivedLength = archivedLength,
+                IncrementalLength = incrementalLength,
                 ChunkCount = chunkCount
             };
 
             await mpRepo.Add(mp);
         }
 
-        private class CachedManifestPropertiesRepository
+        private class CachedManifestMetadataRepository
         {
 
-            public CachedManifestPropertiesRepository(ILogger logger, IOptions options)
+            public CachedManifestMetadataRepository(ILogger logger, IOptions options)
             {
                 this.logger = logger;
 
@@ -36,30 +37,31 @@ namespace Arius.Core.Repositories
                     ConvertToDto, ConvertFromDto);
             }
 
-            internal const string TableNameSuffix = "manifestproperties";
+            internal const string TableNameSuffix = "manifestmetadata";
 
             private readonly ILogger logger;
 
-            private readonly EagerCachedConcurrentDataTableRepository<ManifestPropertiesDto, ManifestProperties> entries;
+            private readonly EagerCachedConcurrentDataTableRepository<ManifestMetadataDto, ManifestMetadata> entries;
 
     
-            public async Task Add(ManifestProperties item)
+            public async Task Add(ManifestMetadata item)
             {
                 await entries.Add(item);
             }
 
-
-            private ManifestProperties ConvertFromDto(ManifestPropertiesDto dto)
+            private ManifestMetadata ConvertFromDto(ManifestMetadataDto dto)
             {
                 return new()
                 {
                     Hash = new(dto.PartitionKey),
                     OriginalLength = dto.OriginalLength,
                     ArchivedLength = dto.ArchivedLength,
+                    IncrementalLength = dto.IncrementalLength,
                     ChunkCount = dto.ChunkCount
                 };
             }
-            private ManifestPropertiesDto ConvertToDto(ManifestProperties mp)
+            
+            private ManifestMetadataDto ConvertToDto(ManifestMetadata mp)
             {
                 return new()
                 {
@@ -68,14 +70,16 @@ namespace Arius.Core.Repositories
 
                     OriginalLength = mp.OriginalLength,
                     ArchivedLength = mp.ArchivedLength,
+                    IncrementalLength = mp.IncrementalLength,
                     ChunkCount = mp.ChunkCount
                 };
             }
 
-            private class ManifestPropertiesDto : TableEntity
+            private class ManifestMetadataDto : TableEntity
             {
                 public long OriginalLength { get; init; }
                 public long ArchivedLength { get; init; }
+                public long IncrementalLength { get; init; }
                 public int ChunkCount { get; init; }
             }
         }

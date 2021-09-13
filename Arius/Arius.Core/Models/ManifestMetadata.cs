@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Models
 {
-    internal record ManifestProperties
+    internal record ManifestMetadata
     {
         public ManifestHash Hash { get; init; }
         public long OriginalLength { get; init; }
         public long ArchivedLength { get; init; }
+        public long IncrementalLength { get; init; }
         public int ChunkCount { get; init; }
     }
 }
