@@ -121,11 +121,15 @@ namespace Arius.Core.Tests
         [OneTimeTearDown]
         public static async Task OneTimeTearDown()
         {
-            unitTestRoot.Delete(true);
+            // Delete local temp
+            foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TestContainerNamePrefix}*"))
+                d.Delete(true);
 
+            // delete blobs
             foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                 await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
 
+            // delete tables
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 await t.DeleteAsync();
         }
