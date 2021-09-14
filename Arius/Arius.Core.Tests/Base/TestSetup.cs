@@ -77,7 +77,7 @@ namespace Arius.Core.Tests
 
 
             // Initialize Facade
-            var loggerFactory = new NullLoggerFactory();
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
             var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
             {
@@ -89,23 +89,31 @@ namespace Arius.Core.Tests
         }
 
 
-        public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB)
+        public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB) => CreateRandomFile(fileFullName, (int)sizeInMB * 1024 * 1024);
+        public static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
         {
+            // shttps://stackoverflow.com/q/4432178/1582323
+
             var f = new FileInfo(fileFullName);
             if (!f.Directory.Exists)
                 f.Directory.Create();
 
-            byte[] data = new byte[8192];
+            byte[] data = new byte[sizeInBytes];
             var rng = new Random();
+            rng.NextBytes(data);
+            File.WriteAllBytes(fileFullName, data);
 
-            using (FileStream stream = File.OpenWrite(fileFullName))
-            {
-                for (int i = 0; i < sizeInMB * 128; i++)
-                {
-                    rng.NextBytes(data);
-                    stream.Write(data, 0, data.Length);
-                }
-            }
+            //byte[] data = new byte[8192];
+            //var rng = new Random();
+
+            //using (FileStream stream = File.OpenWrite(fileFullName))
+            //{
+            //    for (int i = 0; i < sizeInMB * 128; i++)
+            //    {
+            //        rng.NextBytes(data);
+            //        stream.Write(data, 0, data.Length);
+            //    }
+            //}
 
             return f;
         }

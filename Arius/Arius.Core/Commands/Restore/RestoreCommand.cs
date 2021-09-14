@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
@@ -45,18 +46,20 @@ namespace Arius.Core.Commands.Restore
             var repo = services.GetRequiredService<Repository>();
             var pointerService = services.GetRequiredService<PointerService>();
 
+            DirectoryInfo root;
             FileSystemInfo pathToRestore;
             DirectoryInfo restoreTempDir;
             
             if (File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory))
             {
-                var root = new DirectoryInfo(options.Path);
+                root = new DirectoryInfo(options.Path);
                 pathToRestore = root;
                 restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
             }
             else
             {
                 var file = new FileInfo(options.Path);
+                root = file.Directory;
                 pathToRestore = file;
                 restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(file.Directory);
             }
@@ -65,18 +68,18 @@ namespace Arius.Core.Commands.Restore
             logger.LogInformation("Determining PointerFiles to restore...");
 
 
-            var manifestsToDownload = new BlockingCollection<ManifestHash>();
+            var manifestsToDownload = Channel.CreateUnbounded<ManifestHash>();
             var restoredManifests = new ConcurrentDictionary<ManifestHash, IChunkFile>();
             var pointerFilesWaitingForManifestRestoration = new ConcurrentDictionary<ManifestHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
 
             var indexBlock = new IndexBlock(
-                logger: loggerFactory.CreateLogger<IndexBlock>(),
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pathToRestore, //S10
                 maxDegreeOfParallelism: 2,
                 synchronize: options.Synchronize,
                 repo: repo,
                 pointerService: pointerService,
-                indexedPointerFile: arg =>
+                indexedPointerFile: async arg =>
                 {
                     if (!options.Download)
                         return; //no need to download
@@ -85,7 +88,7 @@ namespace Arius.Core.Commands.Restore
                     if (bf is null)
                     {
                         // need to download the manifest for this pointer
-                        manifestsToDownload.Add(pf.Hash); //S11
+                        await manifestsToDownload.Writer.WriteAsync(pf.Hash); //S11
                         pointerFilesWaitingForManifestRestoration.AddOrUpdate( //S14
                             key: pf.Hash,
                             addValue: new() { pf },
@@ -103,82 +106,72 @@ namespace Arius.Core.Commands.Restore
                 },
                 done: () => 
                 {
-                    manifestsToDownload.CompleteAdding(); //S13
+                    manifestsToDownload.Writer.Complete(); //S13
                 });
             var indexTask = indexBlock.GetTask;
 
             await indexTask; //S19
 
-            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Count} PointerFiles to restore.");
+            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Reader.Count} PointerFile(s) to restore.");
 
 
             var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
-            var pointersToRestore = new BlockingCollection<(IChunkFile[] ChunkFiles, PointerFile[] PointerFiles)>();
+            var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
             var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
 
-
-            var processManifestBlock = new ProcessManifestBlock(
-                logger: loggerFactory.CreateLogger<ProcessManifestBlock>(),
+            var processManifestBlock = new DownloadManifestBlock(
+                loggerFactory: loggerFactory,
                 sourceFunc: () => manifestsToDownload,
                 restoreTempDir: restoreTempDir,
                 repo: repo,
                 restoredManifests: restoredManifests,
-                manifestRestored: mh =>
+                manifestRestored: (mh, cs) =>
                 {
-                    var chunks = new[] { restoredManifests[mh] };
                     pointerFilesWaitingForManifestRestoration.Remove(mh, out var pointerFiles);
-                    pointersToRestore.Add((chunks, pointerFiles.ToArray())); //S21
+                    pointersToRestore.Add((cs, pointerFiles.ToArray())); //S21
                 },
-                setChunksForManifest: (manifestHash, chunkHashes) =>
-                {
-                    chunksForManifest.AddOrUpdate( //S22
-                        key: manifestHash,
-                        addValue: (All: chunkHashes, PendingDownload: chunkHashes.ToList()), //Add the full list of chunks (for writing the manifest later) and a modifyable list of chunks (for reconciliation upon download for triggering manifest creation)
-                        updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. Once the chunks for a manifest are set, the chunks should not be updated"));
-                },
-                chunkRestored: cf => removeFromPendingDownload(cf), //S23
                 done: () => 
                 {
                     pointersToRestore.CompleteAdding(); //S29
-                }
-                );
+                });
             var processManifestTask = processManifestBlock.GetTask;
 
 
 
 
 
-            void removeFromPendingDownload(IChunkFile cf)
-            {
-                downloadedChunks.AddOrUpdate(
-                    key: cf.Hash, 
-                    addValue: cf, 
-                    updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. A chunk should be downloaded only once."));
+            //void removeFromPendingDownload(IChunkFile cf)
+            //{
+            //    downloadedChunks.AddOrUpdate(
+            //        key: cf.Hash, 
+            //        addValue: cf, 
+            //        updateValueFactory: (_, _) => throw new InvalidOperationException("This should not happen. A chunk should be downloaded only once."));
 
-                foreach (var (mh, (allChunkHashes, pendingDownloadChunkHashes)) in chunksForManifest.ToArray())
-                {
-                    pendingDownloadChunkHashes.RemoveAll(h => h == cf.Hash);
+            //    foreach (var (mh, (allChunkHashes, pendingDownloadChunkHashes)) in chunksForManifest.ToArray())
+            //    {
+            //        pendingDownloadChunkHashes.RemoveAll(h => h == cf.Hash);
 
-                    if (!pendingDownloadChunkHashes.Any())
-                    {
-                        //All chunks for this manifest are now downloaded
-                        if (!chunksForManifest.TryRemove(mh, out _))
-                            throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
+            //        if (!pendingDownloadChunkHashes.Any())
+            //        {
+            //            //All chunks for this manifest are now downloaded
+            //            if (!chunksForManifest.TryRemove(mh, out _))
+            //                throw new InvalidOperationException($"Manifest '{mh}' should have been present in the {nameof(chunksForManifest)} list but isn't");
 
-                        var cfs = allChunkHashes.Select(ch => downloadedChunks[ch]).ToArray();
-                        var pfs = pointerFilesWaitingForManifestRestoration[mh].ToArray();
-                        pointersToRestore.Add((cfs, pfs));
-                    }
-                }
-            }
+            //            var cfs = allChunkHashes.Select(ch => downloadedChunks[ch]).ToArray();
+            //            var pfs = pointerFilesWaitingForManifestRestoration[mh].ToArray();
+            //            pointersToRestore.Add((cfs, pfs));
+            //        }
+            //    }
+            //}
 
 
 
-            var restorePointerFileBlock = new RestorePointerFileBlock(
-                logger: loggerFactory.CreateLogger<RestorePointerFileBlock>(),
+            var restorePointerFileBlock = new RestoreBinaryFileBlock(
+                loggerFactory: loggerFactory,
                 sourceFunc: () => pointersToRestore,
                 pointerService: pointerService,
-                chunker: null, //services.GetRequiredService<SimpleChunker>(),
+                chunker: services.GetRequiredService<Chunker>(),
+                root: root,
                 done: () => 
                 { 
                 });

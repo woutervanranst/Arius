@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands
@@ -25,13 +26,13 @@ namespace Arius.Core.Commands
 
     internal abstract class TaskBlockBase<TSource> : BlockBase
     {
-        protected TaskBlockBase(ILogger logger, Func<TSource> sourceFunc, Action done = default)
-            : this(logger, () => Task.FromResult(sourceFunc()), done)
+        protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action done = default)
+                   : this(loggerFactory, () => Task.FromResult(sourceFunc()), done)
         {
         }
-        protected TaskBlockBase(ILogger logger, Func<Task<TSource>> sourceFunc, Action done = default)
+        protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action done = default)
         {
-            this.logger = logger;
+            this.logger = loggerFactory.CreateLogger(this.GetType());
             this.sourceFunc = sourceFunc;
 
             this.done = () =>
@@ -90,12 +91,12 @@ namespace Arius.Core.Commands
     
     internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
     {
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
-            : this(logger, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
+        protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
+            : this(loggerFactory, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
         {
         }
-        protected BlockingCollectionTaskBlockBase(ILogger logger, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
-            : base(logger, sourceFunc, done)
+        protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
+            : base(loggerFactory, sourceFunc, done)
         {
             this.degreeOfParallelism = degreeOfParallelism;
         }
@@ -104,10 +105,36 @@ namespace Arius.Core.Commands
 
         protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
         {
+            //TODO quid CancellationToken?
             await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
         }
 
         protected abstract Task ForEachBodyImplAsync(TSource item);
 
+    }
+
+    internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<Channel<TSource>>
+    {
+        protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Channel<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+            : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
+        {
+        }
+        protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<Channel<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+            : base(loggerFactory, sourceFunc, done)
+        {
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+        }
+
+        private readonly int maxDegreeOfParallelism;
+
+        protected override async Task TaskBodyImplAsync(Channel<TSource> source)
+        {
+            //TODO quid CancellationToken?
+            await Parallel.ForEachAsync(source.Reader.ReadAllAsync(),
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (item, cancellationToken) => await ForEachBodyImplAsync(item));
+        }
+
+        protected abstract Task ForEachBodyImplAsync(TSource item);
     }
 }

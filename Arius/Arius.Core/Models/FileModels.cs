@@ -59,7 +59,7 @@ namespace Arius.Core.Models
     }
 
 
-    internal abstract class FileBase : IFile //, IWithHashValue
+    internal abstract class FileBase : IFile
     {
         protected FileBase(FileInfo fi)
         {
@@ -70,26 +70,9 @@ namespace Arius.Core.Models
         public string FullName => fi.FullName;
         public string Name => fi.Name;
         public DirectoryInfo Directory => fi.Directory;
-
         public long Length => fi.Length;
+        public void Delete() => fi.Delete();
 
-        public void Delete()
-        {
-            fi.Delete();
-        }
-
-        //protected Hash INTERNALHASH
-        //{
-        //    get => hash;
-        //    set
-        //    {
-        //        if (hash is not null)
-        //            throw new InvalidOperationException("CAN ONLY BE SET ONCE");
-
-        //        hash = value;
-        //    }
-        //}
-        //private Hash hash;
         public abstract Hash Hash { get; }
     }
 
@@ -106,28 +89,8 @@ namespace Arius.Core.Models
         public override string ToString() => RelativeName;
     }
 
-    //public abstract class RelativeAriusFileBase : RelativeFileBase, IAriusEntryWithHash
-    //{
-    //    protected RelativeAriusFileBase(DirectoryInfo root, FileInfo fi) : base(root, fi)
-    //    {
-    //    }
-
-    //    public abstract string ContentName { get; }
-    //}
-
-
-
-    internal interface IChunkFile : IFile //, IWithHashValue
-    {
-        ChunkHash Hash { get; }
-    }
-
-    internal interface IEncryptedFile : IFile
-    {
-    }
-
-
-    internal class PointerFile : RelativeFileBase //, IAriusEntryWithHash
+    
+    internal class PointerFile : RelativeFileBase
     {
         public static readonly string Extension = ".pointer.arius";
 
@@ -158,61 +121,18 @@ namespace Arius.Core.Models
         public override ManifestHash Hash { get; } //{ get => (ManifestHash)INTERNALHASH; set => INTERNALHASH = value; }
     }
 
-    internal class BinaryFile : RelativeFileBase /*, IAriusEntryWithHash*/, IChunkFile
+    internal class BinaryFile : RelativeFileBase, IChunkFile, IChunk
     {
         public BinaryFile(DirectoryInfo root, FileInfo fi, ManifestHash hash) : base(root, fi) 
         {
             Hash = hash;
         }
-        
-        //public override string ContentName => Name;
 
         public override ManifestHash Hash { get; }
-        //{
-        //    get => hash;
-        //    set
-        //    {
-        //        hash = value;
-        //    }
-        //}
-        //private ManifestHash hash;
 
-        ChunkHash IChunkFile.Hash => new ChunkHash(Hash);
-    }
+        ChunkHash IChunk.Hash => new ChunkHash(Hash);
 
-
-    internal class ChunkFile : FileBase, IChunkFile
-    {
-        public static readonly string Extension = ".chunk.arius";
-
-        public ChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
-        {
-            Hash = hash;
-        }
-
-        public override ChunkHash Hash { get; }
-    }
-
-    internal class EncryptedChunkFile : FileBase, IEncryptedFile, IChunkFile
-    {
-        public static readonly string Extension = ".7z.arius";
-
-        /// <summary>
-        /// Create a new EncryptedChunkFile with the hash derived from the name
-        /// </summary>
-        public EncryptedChunkFile(FileInfo fi) : base(fi)
-        {
-            Hash = new ChunkHash(fi.Name.TrimEnd(Extension));
-        }
-
-        /// <summary>
-        /// Create a new EncryptedChunkFile with the given hash
-        /// </summary>
-        public EncryptedChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
-        {
-            Hash = hash;
-        }
-
-        public override ChunkHash Hash { get; }
+        public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
+        public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
     }
 }

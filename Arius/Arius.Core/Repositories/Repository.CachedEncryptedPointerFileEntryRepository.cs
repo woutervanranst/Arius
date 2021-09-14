@@ -6,9 +6,9 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Services;
 using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Logging;
 using Murmur;
@@ -17,64 +17,46 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        internal const string TableNameSuffix = "pointers";
-
         private class CachedEncryptedPointerFileEntryRepository
         {
-            public CachedEncryptedPointerFileEntryRepository(IOptions options, ILogger logger)
+            public CachedEncryptedPointerFileEntryRepository(ILogger logger, IOptions options)
             {
                 this.logger = logger;
+                this.passphrase = options.Passphrase;
 
-                passphrase = options.Passphrase;
+                entries = new(logger, 
+                    options.AccountName, options.AccountKey, $"{options.Container}{TableNameSuffix}",
+                    ConvertToDto, ConvertFromDto);
 
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-
-                var csa = CloudStorageAccount.Parse(connectionString);
-                var tc = csa.CreateCloudTableClient();
-                table = tc.GetTableReference($"{options.Container}{TableNameSuffix}");
-
-                var r = table.CreateIfNotExists();
-                if (r)
-                    logger.LogInformation($"Created tables for {options.Container}... ");
-
-                //Asynchronously download all PointerFileEntryDtos
-                pointerFileEntries = Task.Run(() =>
+                versionsTask = Task.Run(async () =>
                 {
-                    // get all rows - we're getting them anyway as GroupBy is not natively supported
-                    var r = table
-                        .CreateQuery<PointerFileEntryDto>()
-                        .AsEnumerable()
-                        .Select(dto => ConvertFromDto(dto))
-                        .ToList();
-
-                    return r;
-                });
-
-                versions = new(async () =>
-                {
-                    var pfes = await pointerFileEntries;
+                    var pfes = await entries.GetAllAsync();
 
                     var r = pfes
                         .Select(a => a.VersionUtc)
                         .Distinct()
-                        .OrderBy(a => a)
+                        .OrderBy(x => x)
+                        .AsParallel()
                         .ToList();
 
                     return r;
                 });
             }
 
+            internal const string TableNameSuffix = "pointerfileentries";
+
             private readonly ILogger logger;
-            private readonly CloudTable table;
-            private readonly Task<List<PointerFileEntry>> pointerFileEntries;
-            private readonly AsyncLazy<List<DateTime>> versions;
             private readonly string passphrase;
+
+            private readonly EagerCachedConcurrentDataTableRepository<PointerFileEntryDto, PointerFileEntry> entries;
+            private readonly Task<List<DateTime>> versionsTask;
+
             private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
 
 
-            public async Task<IReadOnlyList<PointerFileEntry>> GetEntriesAsync()
+            public async Task<IReadOnlyCollection<PointerFileEntry>> GetEntriesAsync()
             {
-                return await pointerFileEntries;
+                return await entries.GetAllAsync();
             }
 
             /// <summary>
@@ -83,9 +65,13 @@ namespace Arius.Core.Repositories
             /// <returns></returns>
             public async Task<IReadOnlyList<DateTime>> GetVersionsAsync()
             {
-                return await versions;
+                return await versionsTask;
             }
 
+
+
+
+            private readonly SemaphoreSlim semaphoreSlim = new(1, 1);
 
             /// <summary>
             /// Insert the PointerFileEntry into the table storage, if a similar entry (according to the PointerFileEntryEqualityComparer) does not yet exist
@@ -94,62 +80,47 @@ namespace Arius.Core.Repositories
             /// <returns>Returns true if an entry was actually added / the collection was modified</returns>
             public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
+                //Asynchronously wait to enter the Semaphore
+                await semaphoreSlim.WaitAsync();
                 try
                 {
-                    //Upsert into Cache
-                    var pfes = await pointerFileEntries;
+                    var pfes = await entries.GetAllAsync();
 
-                    bool toAdd = false;
+                    var lastVersion = pfes.AsParallel()
+                        .Where(p => pfe.RelativeName.Equals(p.RelativeName))
+                        .OrderBy(p => p.VersionUtc)
+                        .LastOrDefault();
 
-                    lock (pfes)
-                    {
-                        var lastVersion = pfes.AsParallel()
-                            .Where(p => pfe.RelativeName.Equals(p.RelativeName))
-                            .OrderBy(p => p.VersionUtc)
-                            .LastOrDefault();
-
-                        if (!equalityComparer.Equals(pfe, lastVersion))
-                        //if (!pfes.Contains(pfe, equalityComparer))
-                        {
-                            //Remove the old value, if present
-                            //var pfeToRemove = pfes.SingleOrDefault(pfe2 => pfe.ManifestHash.Equals(pfe2.ManifestHash) && pfe.RelativeName.Equals(pfe2.RelativeName));
-                            //pfes.Remove(pfeToRemove);
-
-                            //Add the new value to the cache
-                            pfes.Add(pfe);
-                            toAdd = true;
-                        }
-                    }
+                    var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
 
                     if (toAdd)
                     {
-                        //Insert into Table Storage
-                        var dto = ConvertToDto(pfe);
-                        var op = TableOperation.Insert(dto);
-                        await table.ExecuteAsync(op);
+                        //Insert the new PointerFileEntry
+                        await entries.Add(pfe);
 
-                        //Insert into the versions
-                        var vs = await versions;
-                        lock (vs)
-                        {
-                            if (!vs.Contains(pfe.VersionUtc))
-                                vs.Add(pfe.VersionUtc); //TODO: aan het einde?
-                        }
+                        //Insert the version
+                        var versions = await versionsTask;
+                        if (!versions.Contains(pfe.VersionUtc))
+                            versions.Add(pfe.VersionUtc); //TODO: aan het einde?
                     }
 
                     return toAdd;
                 }
-                catch (StorageException e)
+                catch (Exception e)
                 {
-                    logger.LogError(e, "Error", pfe); //TODO
+                    logger.LogError(e, "Error", pfe);
                     throw;
+                }
+                finally
+                {
+                    semaphoreSlim.Release();
                 }
             }
 
 
             private PointerFileEntry ConvertFromDto(PointerFileEntryDto dto)
             {
-                var rn = StringCipher.Decrypt(dto.EncryptedRelativeName, passphrase);
+                var rn = CryptoService.Decrypt(dto.EncryptedRelativeName, passphrase);
                 rn = ToPlatformSpecificPath(rn);
 
                 return new()
@@ -162,13 +133,12 @@ namespace Arius.Core.Repositories
                     LastWriteTimeUtc = dto.LastWriteTimeUtc
                 };
             }
-
             private PointerFileEntryDto ConvertToDto(PointerFileEntry pfe)
             {
                 var rn = ToPlatformNeutralPath(pfe.RelativeName);
-                rn = StringCipher.Encrypt(rn, passphrase);
+                rn = CryptoService.Encrypt(rn, passphrase);
 
-                return new PointerFileEntryDto()
+                return new()
                 {
                     PartitionKey = pfe.ManifestHash.Value,
                     RowKey = $"{GetRelativeNameHash(pfe.RelativeName)}-{pfe.VersionUtc.Ticks * -1:x8}", //Make ticks negative so when lexicographically sorting the RowKey the most recent version is on top
@@ -180,6 +150,7 @@ namespace Arius.Core.Repositories
                     LastWriteTimeUtc = pfe.LastWriteTimeUtc,
                 };
             }
+
 
             private static string GetRelativeNameHash(string relativeName)
             {

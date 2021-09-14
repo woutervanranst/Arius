@@ -7,9 +7,22 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions
 {
-    class ConcurrentHashSet<T> where T : notnull
+    internal class ConcurrentHashSet<T> where T : notnull
     {
-        private readonly ConcurrentDictionary<T, byte> dict = new();
+        // https://github.com/dotnet/runtime/blob/main/src/libraries/System.Collections.Concurrent/src/System/Collections/Concurrent/ConcurrentDictionary.cs
+
+
+        public ConcurrentHashSet()
+        {
+            dict = new();
+        }
+        public ConcurrentHashSet(IEnumerable<T> collection)
+        {
+            dict = new(collection.Select(item => new KeyValuePair<T, byte>(item, default)));
+        }
+
+
+        private readonly ConcurrentDictionary<T, byte> dict;
 
         ///
         /// Summary:
@@ -33,5 +46,20 @@ namespace Arius.Core.Extensions
         {
             return dict.TryAdd(item, default);
         }
+
+        public void Add(T item)
+        {
+            var r = TryAdd(item);
+
+            if (!r)
+                throw new ArgumentException("An element with the same key already exists");
+        }
+
+        /// <summary>
+        /// Gets the number of element pairs contained in the ConcurrentHashSet
+        /// </summary>
+        public int Count => dict.Count;
+
+        public ICollection<T> Values => dict.Keys;
     }
 }

@@ -20,7 +20,8 @@ namespace Arius.Core.Tests.UnitTests
         [Test]
         public async Task Properties_ChunkBlobBase_Valid()
         {
-            //await EnsureArchiveTestDirectoryFileInfo();
+            EnsureArchiveTestDirectoryFileInfo();
+            await EnsureArchiveCommandHasRun();
 
             var repo = GetRepository();
 
@@ -52,6 +53,9 @@ namespace Arius.Core.Tests.UnitTests
         [Test]
         public async Task Properties_ManifestBlob_Valid()
         {
+            EnsureArchiveTestDirectoryFileInfo();
+            await EnsureArchiveCommandHasRun();
+
             var repo = GetRepository();
 
             //var manifestBlob = repo.GetAllManifestBlobs().First();

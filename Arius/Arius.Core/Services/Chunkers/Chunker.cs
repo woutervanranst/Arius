@@ -16,43 +16,24 @@ namespace Arius.Core.Services.Chunkers
 
         protected readonly IHashValueProvider hashValueProvider;
 
-        public abstract IEnumerable<Chunk> Chunk(Stream streamToChunk);
-        public virtual BinaryFile Merge(DirectoryInfo root, Chunk[] chunks, FileInfo target)
+        public abstract IEnumerable<IChunk> Chunk(Stream streamToChunk);
+
+        public async Task<BinaryFile> MergeAsync(DirectoryInfo root, IChunk[] chunks, FileInfo target)
         {
             if (chunks.Length == 0)
-            {
                 throw new ArgumentException("No chunks to merge", nameof(chunks));
-            }
-            else if (chunks.Length == 1)
+
+            var chs = await Task.WhenAll(chunks.Select(async chunk => await chunk.OpenReadAsync()));
+            var stream = new ConcatenatedStream(chs);
+
+            using (var targetStream = target.Create())
             {
-                var chunk = chunks.Single();
-
-                using (var sourceStream = chunk.GetStream())
-                {
-                    using (var targetStream = target.OpenWrite())
-                    {
-                        sourceStream.CopyTo(targetStream);
-                    }
-                }
-
-                //chunk.Position = 0;
-                var h = hashValueProvider.GetManifestHash(target.FullName);
-
-                return new BinaryFile(root, target, h);
+                await stream.CopyToAsync(targetStream);
             }
-            else
-            {
-                var stream = new ConcatenatedStream(chunks.Select(chunk => chunk.GetStream()));
 
-                using (var targetStream = target.Create())
-                {
-                    stream.CopyTo(targetStream);
-                }
+            var h = hashValueProvider.GetManifestHash(target.FullName);
 
-                var h = hashValueProvider.GetManifestHash(target.FullName);
-
-                return new BinaryFile(root, target, h);
-            }
+            return new BinaryFile(root, target, h);
         }
     }
 }

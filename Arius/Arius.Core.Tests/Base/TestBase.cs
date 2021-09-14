@@ -47,12 +47,12 @@ namespace Arius.Core.Tests
         {
             return new[]
             {
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 0.5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1)
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1 /*0.5*/), //make it an odd size to test buffer edge cases
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2D),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5D),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1D)
             };
-        });
+        }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
         protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
         {
             var sfi = sourceFiles.Value.First();
@@ -110,8 +110,17 @@ namespace Arius.Core.Tests
 
             await c.Execute();
 
+            archiveHasRun = true;
+
             return c.Services;
         }
+
+        protected static async Task EnsureArchiveCommandHasRun()
+        {
+            if (!archiveHasRun)
+                await ArchiveCommand();
+        }
+        private static bool archiveHasRun = false;
 
 
         /// <summary>
@@ -185,7 +194,7 @@ namespace Arius.Core.Tests
             pf = ps.GetPointerFile(fi);
 
             var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
-            pfe = repo.GetCurrentEntries(true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+            pfe = repo.GetCurrentEntries(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
         }
 
 

@@ -12,13 +12,14 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive
 {
     internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
-        public IndexBlock(ILogger<IndexBlock> logger,
+        public IndexBlock(ILoggerFactory loggerFactory,
             Func<DirectoryInfo> sourceFunc,
             int maxDegreeOfParallelism,
             bool fastHash,
@@ -28,7 +29,7 @@ namespace Arius.Core.Commands.Archive
             Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile,
             IHashValueProvider hvp,
             Action done)
-            : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.fastHash = fastHash;
@@ -113,15 +114,15 @@ namespace Arius.Core.Commands.Archive
     internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
         public UploadBinaryFileBlock(
-            ILogger<UploadBinaryFileBlock> logger,
+            ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
-            ByteBoundaryChunker chunker,
+            Chunker chunker,
             Repository repo,
             ArchiveCommandOptions options,
             
             Action<BinaryFile> manifestExists,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.repo = repo;
@@ -129,7 +130,7 @@ namespace Arius.Core.Commands.Archive
             this.manifestExists = manifestExists;
         }
 
-        private readonly ByteBoundaryChunker chunker;
+        private readonly Chunker chunker;
         private readonly Repository repo;
         private readonly ArchiveCommandOptions options;
         
@@ -137,7 +138,7 @@ namespace Arius.Core.Commands.Archive
 
         private readonly ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
         private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> creatingManifests = new();
-        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> creatingChunks = new();
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf)
@@ -172,8 +173,7 @@ namespace Arius.Core.Commands.Archive
                     // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
 
-                    var chs = await UploadAsync(bf);
-                    await repo.CreateManifestAsync(bf.Hash, chs);
+                    await UploadBinaryAsync(bf);
 
                     creatingManifests[bf.Hash].SetResult();
                 }
@@ -198,46 +198,57 @@ namespace Arius.Core.Commands.Archive
             manifestExists(bf);
         }
 
-        private async Task<ChunkHash[]> UploadAsync(BinaryFile bf)
+        private async Task UploadBinaryAsync(BinaryFile bf)
         {
-            var bfc = new BinaryFileChunk(bf);
-
+            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
+            // Upload the Binary
             var sw = new Stopwatch();
             sw.Start();
 
-            ChunkHash[] chs;
-            if (options.Dedup)
-                chs = await UploadChunkedAsync(bfc);
-            else
-                chs = await UploadAsync(bfc);
-
+            var (chs, length) = options.Dedup switch
+            {
+                true => await UploadChunkedBinaryAsync(bf),
+                false => await UploadBinaryChunkAsync(bf)
+            };
+            
             sw.Stop();
 
             var megabytepersecond = Math.Round(bf.Length / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
             var megabitpersecond = Math.Round(bf.Length * 8 / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
 
-            logger.LogInformation($"Completed {bf.Name}, {bf.Length.GetBytesReadable()} in {sw.ElapsedMilliseconds / 1000}s ({megabytepersecond} MBps / {megabitpersecond} Mbps)");
+            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')... Completed in {sw.ElapsedMilliseconds / 1000}s ({megabytepersecond} MBps / {megabitpersecond} Mbps)");
 
-            return chs;
+            // Create the Manifest
+            await repo.CreateManifestAsync(bf.Hash, chs);
+
+            // Create the ManifestPropertyEntry
+            await repo.CreateManifestPropertyAsync(bf, length, chs.Length);
         }
 
-        private async Task<ChunkHash[]> UploadChunkedAsync(BinaryFileChunk bfc)
+        
+        /// <summary>
+        /// Chunk the BinaryFile then upload all the chunks in parallel
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <returns></returns>
+        private async Task<(ChunkHash[], long length)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
-            var chunksToUpload = new BlockingCollection<Chunk>(options.UploadBinaryFileBlock_ChunkBufferSize); //limit the capacity of the collection -- backpressure
+            var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
+            var totalLength = 0L;
 
-            // Design choice: deliberaely splitting the chunking section (which cannot be paralellelized since we need the chunks in order) and the upload section (which can be paralellelized)
-            var t = Task.Run(() =>
+            // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
+            var t = Task.Run(async () =>
             {
-                using var binaryFileStream = bfc.GetStream();
+                using var binaryFileStream = await bf.OpenReadAsync();
 
                 foreach (var chunk in chunker.Chunk(binaryFileStream))
                 {
-                    chunksToUpload.Add(chunk);
+                    await chunksToUpload.Writer.WriteAsync(chunk);
                     chs.Add(chunk.Hash);
                 }
 
-                chunksToUpload.CompleteAdding();
+                chunksToUpload.Writer.Complete();
             });
 
             /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
@@ -245,25 +256,29 @@ namespace Arius.Core.Commands.Archive
              * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
              * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              */
-            await chunksToUpload.AsyncParallelForEachAsync(degreeOfParallelism: options.UploadBinaryFileBlock_ParallelChunkUploads,
-                body: async chunk =>
+
+            var cs = chunksToUpload.Reader.ReadAllAsync();
+            await Parallel.ForEachAsync(cs, 
+                new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
+                async (chunk, cancellationToken) => 
                 {
-                    if (await repo.ChunkExists(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
                         return;
                     }
 
-                    bool toUpload = creatingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                    bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                     if (toUpload)
                     {
                         // 2 Does not yet exist remote and not yet being created --> upload
                         logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
-                        var cbb = await repo.UploadChunkAsync(chunk, options.Tier); //TODO do we need this result?
+                        var length = await repo.UploadChunkAsync(chunk, options.Tier);
+                        Interlocked.Add(ref totalLength, length);
 
-                        creatingChunks[chunk.Hash].SetResult();
+                        uploadingChunks[chunk.Hash].SetResult();
                     }
                     else
                     {
@@ -273,30 +288,35 @@ namespace Arius.Core.Commands.Archive
                         //TODO TES THIS PATH
                     }
 
-                    await creatingChunks[chunk.Hash].Task;
+                    await uploadingChunks[chunk.Hash].Task;
                 });
 
-            return chs.ToArray();
+            return (chs.ToArray(), totalLength);
         }
 
-        private async Task<ChunkHash[]> UploadAsync(BinaryFileChunk chunk)
+        /// <summary>
+        /// Upload one single BinaryFile
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <returns></returns>
+        private async Task<(ChunkHash[], long length)> UploadBinaryChunkAsync(BinaryFile bf)
         {
-            var cbb = await repo.UploadChunkAsync(chunk, options.Tier); //TODO do we need this result?
+            var length = await repo.UploadChunkAsync(bf, options.Tier);
 
-            return chunk.Hash.SingleToArray();
+            return (((IChunk)bf).Hash.SingleToArray(), length);
         }
     }
 
 
     internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public CreatePointerFileIfNotExistsBlock(ILogger<CreatePointerFileIfNotExistsBlock> logger,
+        public CreatePointerFileIfNotExistsBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int degreeOfParallelism,
             PointerService pointerService,
             Action<BinaryFile> succesfullyBackedUp,
             Action<PointerFile> pointerFileCreated,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.pointerService = pointerService;
             this.succesfullyBackedUp = succesfullyBackedUp;
@@ -325,12 +345,12 @@ namespace Arius.Core.Commands.Archive
 
     internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
     {
-        public CreatePointerFileEntryIfNotExistsBlock(ILogger<CreatePointerFileEntryIfNotExistsBlock> logger,
+        public CreatePointerFileEntryIfNotExistsBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<PointerFile>> sourceFunc,
             int degreeOfParallelism,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;
@@ -365,10 +385,10 @@ namespace Arius.Core.Commands.Archive
 
     internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFile>
     {
-        public DeleteBinaryFilesBlock(ILogger<DeleteBinaryFilesBlock> logger,
+        public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
             Func<BlockingCollection<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
         {
         }
 
@@ -385,14 +405,14 @@ namespace Arius.Core.Commands.Archive
 
     internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
     {
-        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILogger<CreateDeletedPointerFileEntryForDeletedPointerFilesBlock> logger,
+        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILoggerFactory loggerFactory,
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             int degreeOfParallelism,
             Repository repo,
             DirectoryInfo root,
             PointerService pointerService,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.repo = repo;
             this.root = root;
@@ -420,11 +440,11 @@ namespace Arius.Core.Commands.Archive
 
     internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
     {
-        public ExportToJsonBlock(ILogger<ExportToJsonBlock> logger,
+        public ExportToJsonBlock(ILoggerFactory loggerFactory,
             Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
             Repository repo,
             DateTime versionUtc,
-            Action done) : base(logger: logger, sourceFunc: sourceFunc, done: done)
+            Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.repo = repo;
             this.versionUtc = versionUtc;

@@ -8,32 +8,32 @@ on:
 jobs:
   job1:
     name: Run Test Suite
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: ./Arius
-
-    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v1
 
-      - name: Setup Prereqs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            wget \
-            tar \
-            p7zip-full
-          wget https://aka.ms/downloadazcopy-v10-linux
-          tar -xvf downloadazcopy-v10-linux
-          sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
+      #- name: Setup Prereqs
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y \
+      #      wget \
+      #      tar \
+      #      p7zip-full
+      #    wget https://aka.ms/downloadazcopy-v10-linux
+      #    tar -xvf downloadazcopy-v10-linux
+      #    sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
       
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: 5.0.x
+          dotnet-version: 6.0.x
+          include-prerelease: true
 
       - name: Test
         run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner

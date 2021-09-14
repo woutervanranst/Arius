@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Net;
-using System.Threading.Tasks;
-using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -21,26 +18,30 @@ namespace Arius.Core.Repositories
             string Passphrase { get; }
         }
 
-        public Repository(IOptions options, ILogger<Repository> logger)
+        public Repository(ILogger<Repository> logger, IOptions options)
         {
             this.logger = logger;
+            this.passphrase = options.Passphrase;
 
-            InitManifestRepository();
-            InitChunkRepository(options, out passphrase);
-            InitPointerFileEntryRepository(options, logger, out pfeRepo);
+            pfeRepo = new(logger, options);
+            mpRepo = new(logger, options);
+
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-
             var bsc = new BlobServiceClient(connectionString);
             container = bsc.GetBlobContainerClient(options.Container);
 
             var r = container.CreateIfNotExists(PublicAccessType.None);
-
             if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
                 this.logger.LogInformation($"Created container {options.Container}... ");
         }
 
         private readonly ILogger<Repository> logger;
+        private readonly string passphrase;
+
+        private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
+        private readonly CachedManifestPropertiesRepository mpRepo;
+
         private readonly BlobContainerClient container;
     }
 }
