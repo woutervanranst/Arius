@@ -23,5 +23,14 @@ namespace Arius.Core.Tests.ApiTests
             var bfis = EnsureArchiveTestDirectoryFileInfos();
             await ArchiveCommand(dedup: true);
         }
+
+
+        [Test]
+        public void TESTINCREMENTALLENGTH()
+        {
+            throw new NotImplementedException();
+        }
     }
+
+
 }

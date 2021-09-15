@@ -380,5 +380,11 @@ namespace Arius.Core.Tests.ApiTests
             // A new PointerFileEntry exists that is not marked as deleted
             Assert.IsFalse(movedPfe.IsDeleted);
         }
+
+        [Test]
+        public void CORRUPTPOINTERFILE()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
