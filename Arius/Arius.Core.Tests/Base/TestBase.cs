@@ -45,13 +45,21 @@ namespace Arius.Core.Tests
 
         private static readonly Lazy<FileInfo[]> sourceFiles = new(() =>
         {
-            return new[]
+            var fis = new List<FileInfo>
             {
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1 /*0.5*/), //make it an odd size to test buffer edge cases
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1), //make it an odd size to test buffer edge cases
                 TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2D),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 5D),
-                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1D)
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 10D),
+                TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1D),
             };
+
+            var f = Path.Combine(SourceFolder.FullName, "dir 2", "deduplicated file.txt");
+            var concatenatedBytes = File.ReadAllBytes(fis[0].FullName).Concat(File.ReadAllBytes(fis[1].FullName));
+            File.WriteAllBytes(f, concatenatedBytes.ToArray());
+            fis.Add(new FileInfo(f));
+
+            return fis.ToArray();
+
         }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
         protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
         {
