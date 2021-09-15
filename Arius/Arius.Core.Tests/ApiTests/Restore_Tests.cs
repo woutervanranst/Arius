@@ -175,9 +175,9 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_OneFileWithChunkAlreadyDownloaded_BinaryFileRestoredFromLocal()
         {
             // Reset params
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
 
 
             // Ensure stuff is archived
@@ -203,9 +203,9 @@ namespace Arius.Core.Tests.ApiTests
 
             // Assert
             // for the restore operation we only restored it from the local chunk cache
-            Assert.IsTrue(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier);
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
             // the BinaryFile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
@@ -217,9 +217,9 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_OneFileWithChunkToDownload_BinaryFileRestored()
         {
             // Reset params
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
 
 
             // Ensure stuff is archived
@@ -236,9 +236,9 @@ namespace Arius.Core.Tests.ApiTests
 
             // Assert
             // for the restore operation we only restored it from the online tier
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsTrue(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier);
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
             // the BinaryFile is restored
             var ps = GetServices().GetRequiredService<PointerService>();
@@ -251,9 +251,9 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_OneFileWithArchivedChunk_CannotYetBeRestored()
         {
             // Reset params
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier = false;
-            Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
 
 
             // Ensure stuff is archived
@@ -270,9 +270,9 @@ namespace Arius.Core.Tests.ApiTests
 
             // Assert
             // for the restore operation we only started a hydration
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.DownloadChunksForManifestBlock.ChunkRestoredFromOnlineTier);
-            Assert.IsTrue(Commands.Restore.DownloadChunksForManifestBlock.ChunkStartedHydration);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
             // the BinaryFile is NOT restored
             var ps = GetServices().GetRequiredService<PointerService>();

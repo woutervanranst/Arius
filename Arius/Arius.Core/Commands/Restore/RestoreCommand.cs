@@ -65,9 +65,9 @@ namespace Arius.Core.Commands.Restore
             logger.LogInformation("Determining PointerFiles to restore...");
 
 
-            var manifestsToDownload = Channel.CreateUnbounded<ManifestHash>();
-            var restoredManifests = new ConcurrentDictionary<ManifestHash, IChunkFile>();
-            var pointerFilesWaitingForManifestRestoration = new ConcurrentDictionary<ManifestHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
+            var binariesToDownload = Channel.CreateUnbounded<BinaryHash>();
+            var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
+            var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
 
             var indexBlock = new IndexBlock(
                 loggerFactory: loggerFactory,
@@ -85,8 +85,8 @@ namespace Arius.Core.Commands.Restore
                     if (bf is null)
                     {
                         // need to download the manifest for this pointer
-                        await manifestsToDownload.Writer.WriteAsync(pf.Hash); //S11
-                        pointerFilesWaitingForManifestRestoration.AddOrUpdate( //S14
+                        await binariesToDownload.Writer.WriteAsync(pf.Hash); //S11
+                        pointerFilesWaitingForBinaryRestoration.AddOrUpdate( //S14
                             key: pf.Hash,
                             addValue: new() { pf },
                             updateValueFactory: (h, bag) =>
@@ -98,34 +98,34 @@ namespace Arius.Core.Commands.Restore
                     if (bf is not null)
                     { 
                         // this binaryfile / manifest is already restored
-                        restoredManifests.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
+                        restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                     }
                 },
                 done: () => 
                 {
-                    manifestsToDownload.Writer.Complete(); //S13
+                    binariesToDownload.Writer.Complete(); //S13
                 });
             var indexTask = indexBlock.GetTask;
 
             await indexTask; //S19
 
-            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Reader.Count} PointerFile(s) to restore.");
+            logger.LogInformation($"Determining PointerFiles to restore... done. {binariesToDownload.Reader.Count} PointerFile(s) to restore.");
 
 
-            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
+            var chunksForBinary = new ConcurrentDictionary<BinaryHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
             var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
             var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
             var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
 
-            var downloadChunksForManifestBlock = new DownloadChunksForManifestBlock(
+            var downloadChunksForBinaryBlock = new DownloadChunksForBinaryBlock(
                 loggerFactory: loggerFactory,
-                sourceFunc: () => manifestsToDownload,
+                sourceFunc: () => binariesToDownload,
                 restoreTempDir: restoreTempDir,
                 repo: repo,
-                restoredManifests: restoredManifests,
+                restoredBinaries: restoredBinaries,
                 chunksRestored: (mh, cs) =>
                 {
-                    pointerFilesWaitingForManifestRestoration.Remove(mh, out var pointerFiles);
+                    pointerFilesWaitingForBinaryRestoration.Remove(mh, out var pointerFiles);
                     pointersToRestore.Add((cs, pointerFiles.ToArray())); //S21
                 },
                 chunksHydrating: (mh) =>
@@ -136,7 +136,7 @@ namespace Arius.Core.Commands.Restore
                 {
                     pointersToRestore.CompleteAdding(); //S29
                 });
-            var processManifestTask = downloadChunksForManifestBlock.GetTask;
+            var processManifestTask = downloadChunksForBinaryBlock.GetTask;
 
 
 

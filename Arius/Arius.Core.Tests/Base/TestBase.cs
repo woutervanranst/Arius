@@ -177,7 +177,7 @@ namespace Arius.Core.Tests
             repo = GetRepository();
 
             chunkBlobItemCount = repo.GetAllChunkBlobs().Length;
-            manifestCount = repo.GetManifestCount().Result;
+            manifestCount = repo.GetManifestCountAsync().Result;
 
             currentPfeWithDeleted = repo.GetCurrentEntries(true).Result.ToArray();
             currentPfeWithoutDeleted = repo.GetCurrentEntries(false).Result.ToArray();

@@ -44,7 +44,7 @@ namespace Arius.Core.Tests.ApiTests
             //PointerFile is created
             Assert.IsNotNull(pf);
             //The chunk is in the appropriate tier
-            var ch = (await repo.GetChunkHashesForManifestAsync(pf.Hash)).Single();
+            var ch = (await repo.GetChunksForBinaryAsync(pf.Hash)).Single();
             var c = repo.GetChunkBlobByHash(ch, requireHydrated: false);
             Assert.AreEqual(tier, c.AccessTier);
             //There is a matching PointerFileEntry

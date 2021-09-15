@@ -109,26 +109,22 @@ namespace Arius.Core.Models
         /// <summary>
         /// Create a new PointerFile with the given root and the given ManifestHash
         /// </summary>
-        public PointerFile(DirectoryInfo root, FileInfo fi, ManifestHash manifestHash) : base(root, fi)
+        public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
         {
-            Hash = manifestHash;
+            Hash = binaryHash;
         }
 
-        internal IEnumerable<ChunkHash> ChunkHashes { get; set; } //TODO Delete this
-
-        //public override string ContentName => Name.TrimEnd(Extension);
-
-        public override ManifestHash Hash { get; } //{ get => (ManifestHash)INTERNALHASH; set => INTERNALHASH = value; }
+        public override BinaryHash Hash { get; }
     }
 
     internal class BinaryFile : RelativeFileBase, IChunkFile, IChunk
     {
-        public BinaryFile(DirectoryInfo root, FileInfo fi, ManifestHash hash) : base(root, fi) 
+        public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
         {
             Hash = hash;
         }
 
-        public override ManifestHash Hash { get; }
+        public override BinaryHash Hash { get; }
 
         ChunkHash IChunk.Hash => new ChunkHash(Hash);
 

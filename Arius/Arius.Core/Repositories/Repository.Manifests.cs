@@ -21,48 +21,48 @@ namespace Arius.Core.Repositories
         // GET
 
         /// <summary>
-        /// Get the count of (distinct) ManifestHashes
+        /// Get the count of (distinct) BinaryHashes
         /// </summary>
         /// <returns></returns>
-        public async Task<int> GetManifestCount()
+        public async Task<int> GetManifestCountAsync()
         {
-            var hs = await GetAllManifestHashes();
+            var hs = await GetAllBinaryHashesAsync();
 
             return hs.Count();
         }
 
         /// <summary>
-        /// Get all the (distinct) ManifestHashes
+        /// Get all the (distinct) BinaryHashes
         /// </summary>
         /// <returns></returns>
-        public async Task<IEnumerable<ManifestHash>> GetAllManifestHashes()
+        public async Task<IEnumerable<BinaryHash>> GetAllBinaryHashesAsync()
         {
             var pfes = await GetPointerFileEntriesAsync();
 
-            return pfes.Select(pfe => pfe.ManifestHash).Distinct();
+            return pfes.Select(pfe => pfe.BinaryHash).Distinct();
         }
 
-        public async Task<bool> ManifestExistsAsync(ManifestHash manifestHash)
+        public async Task<bool> ManifestExistsAsync(BinaryHash binaryHash)
         {
-            var hs = await GetAllManifestHashes();
+            var hs = await GetAllBinaryHashesAsync();
 
-            return hs.Any(h => h == manifestHash);
+            return hs.Any(h => h == binaryHash);
 
             //return await container.GetBlobClient(GetManifestBlobName(manifestHash)).ExistsAsync();
         }
 
-        private string GetManifestBlobName(ManifestHash manifestHash) => $"{ManifestDirectoryName}/{manifestHash.Value}";
+        private string GetManifestBlobName(BinaryHash binaryHash) => $"{ManifestDirectoryName}/{binaryHash.Value}";
 
-        public async Task<ChunkHash[]> GetChunkHashesForManifestAsync(ManifestHash manifestHash)
+        public async Task<ChunkHash[]> GetChunksForBinaryAsync(BinaryHash binaryHash)
         {
-            logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}");
+            logger.LogInformation($"Getting chunks for binary {binaryHash.Value}");
             var chunkHashes = Array.Empty<ChunkHash>();
 
             try
             {
                 var ms = new MemoryStream();
 
-                var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
+                var bc = container.GetBlobClient(GetManifestBlobName(binaryHash));
 
                 await bc.DownloadToAsync(ms);
                 var bytes = ms.ToArray();
@@ -73,11 +73,11 @@ namespace Arius.Core.Repositories
             }
             catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
-                throw new InvalidOperationException($"Manifest '{manifestHash}' does not exist");
+                throw new InvalidOperationException($"Manifest '{binaryHash}' does not exist");
             }
             finally
             {
-                logger.LogInformation($"Getting chunks for manifest {manifestHash.Value}... found {chunkHashes.Length} chunk(s)");
+                logger.LogInformation($"Getting chunks for manifest {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
             }
         }
 
@@ -92,9 +92,9 @@ namespace Arius.Core.Repositories
 
         //    logger.LogInformation($"Creating manifest for {binaryFile.RelativeName}... done");
         //}
-        public async Task CreateManifestAsync(ManifestHash manifestHash, ChunkHash[] chunkHashes)
+        public async Task CreateManifestAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
         {
-            var bc = container.GetBlobClient(GetManifestBlobName(manifestHash));
+            var bc = container.GetBlobClient(GetManifestBlobName(binaryHash));
 
             if (bc.Exists())
                 throw new InvalidOperationException("Manifest Already Exists");

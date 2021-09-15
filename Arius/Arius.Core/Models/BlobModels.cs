@@ -45,7 +45,7 @@ namespace Arius.Core.Models
         }
         protected readonly BlobItem bi;
 
-        public override ManifestHash Hash => new(Name);
+        public override BinaryHash Hash => new(Name);
         public override string FullName => bi.Name;
         public override long Length => bi.Properties.ContentLength!.Value;
     }

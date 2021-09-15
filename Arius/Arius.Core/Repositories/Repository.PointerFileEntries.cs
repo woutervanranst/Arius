@@ -25,7 +25,7 @@ namespace Arius.Core.Repositories
         {
             var pfe = new PointerFileEntry()
             {
-                ManifestHash = pf.Hash,
+                BinaryHash = pf.Hash,
                 RelativeName = pf.RelativeName,
                 VersionUtc = versionUtc,
                 IsDeleted = false,

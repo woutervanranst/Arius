@@ -43,15 +43,15 @@ namespace Arius.Core.Commands.DedupEval
         {
             foreach (var bfi in options.Root.GetBinaryFileInfos())
             {
-                var manifestHash = hvp.GetManifestHash(bfi);
+                var manifestHash = hvp.GetBinaryHash(bfi);
                 AddFile(new BinaryFile(options.Root, bfi, manifestHash));
             }
 
             logger.LogInformation($"{fileCount} total files");
-            logger.LogInformation($"{uniqueFiles.Count} unique files");
+            logger.LogInformation($"{uniqueBinaries.Count} unique files");
 
             logger.LogInformation($"{fileSize.GetBytesReadable()} total size");
-            logger.LogInformation($"{uniqueFiles.Values.Sum().GetBytesReadable()} size with file deduplication");
+            logger.LogInformation($"{uniqueBinaries.Values.Sum().GetBytesReadable()} size with file deduplication");
             logger.LogInformation($"{uniqueChunks.Values.Sum().GetBytesReadable()} size with chunk deduplication");
 
             return 0;
@@ -61,7 +61,7 @@ namespace Arius.Core.Commands.DedupEval
 
         private int fileCount;
         private long fileSize;
-        private readonly Dictionary<ManifestHash, long> uniqueFiles = new();
+        private readonly Dictionary<BinaryHash, long> uniqueBinaries = new();
         private readonly Dictionary<ChunkHash, long> uniqueChunks = new();
 
         private void AddFile(BinaryFile bf)

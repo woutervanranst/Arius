@@ -60,7 +60,7 @@ namespace Arius.Core.Tests.UnitTests
 
             //var manifestBlob = repo.GetAllManifestBlobs().First();
 
-            var h = (await repo.GetAllManifestHashes()).First();
+            var h = (await repo.GetAllBinaryHashesAsync()).First();
             var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.ManifestDirectoryName}/{h.Value}").Single();
             var manifestBlob = new ManifestBlob(bi);
 
@@ -78,7 +78,7 @@ namespace Arius.Core.Tests.UnitTests
             Assert.IsFalse(manifestBlob.Name.Contains('.')); //the Name does not have an extension
 
 
-            var mm = await repo.GetChunkHashesForManifestAsync(manifestBlob.Hash);
+            var mm = await repo.GetChunksForBinaryAsync(manifestBlob.Hash);
         }
     }
 }

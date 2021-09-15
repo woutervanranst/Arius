@@ -118,7 +118,7 @@ namespace Arius.Core.Tests.UnitTests
             int sizeInKB = 1024 * 5;
             CreateRandomDedupableFile(original, sizeInKB / 10 * 1024, 10);
             var fi_original = new FileInfo(original);
-            var h = hvp.GetManifestHash(fi_original);
+            var h = hvp.GetBinaryHash(fi_original);
             var bf = new BinaryFile(fi_original.Directory, fi_original, h);
             return bf;
         }

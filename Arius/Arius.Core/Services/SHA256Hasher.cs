@@ -19,12 +19,10 @@ namespace Arius.Core.Services
             string Passphrase { get; }
         }
 
-        ManifestHash GetManifestHash(FileInfo bfi);
-        ManifestHash GetManifestHash(string binaryFileFullName);
-        //ManifestHash GetManifestHash(Stream stream);
-        //ManifestHash GetManifestHash(byte[] bytes);
+        BinaryHash GetBinaryHash(FileInfo bfi);
+        BinaryHash GetBinaryHash(string binaryFileFullName);
+        
         ChunkHash GetChunkHash(string fullName);
-        //ChunkHash GetChunkHash(Stream stream);
         ChunkHash GetChunkHash(byte[] buffer);
     }
 
@@ -39,13 +37,10 @@ namespace Arius.Core.Services
         private readonly string salt;
         private readonly ILogger<SHA256Hasher> logger;
 
-        public ManifestHash GetManifestHash(FileInfo bfi) => GetManifestHash(bfi.FullName);
-        public ManifestHash GetManifestHash(string binaryFileFullName) => new(GetHashValue(binaryFileFullName, salt));
-        //public ManifestHash GetManifestHash(Stream stream) => new(GetHashValue(stream, salt));
-        //public ManifestHash GetManifestHash(byte[] bytes) => new(GetHashValue(bytes, salt));
+        public BinaryHash GetBinaryHash(FileInfo bfi) => GetBinaryHash(bfi.FullName);
+        public BinaryHash GetBinaryHash(string binaryFileFullName) => new(GetHashValue(binaryFileFullName, salt));
 
         public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName, salt));
-        //public ChunkHash GetChunkHash(Stream stream) => new(GetHashValue(stream, salt));
         public ChunkHash GetChunkHash(byte[] buffer) => new(GetHashValue(buffer, salt));
         
         //TODO what with in place update of binary file (hash changed)?
@@ -109,38 +104,6 @@ namespace Arius.Core.Services
             return BytesToString(hash);
         }
 
-
         private static string BytesToString(byte[] ba) => Convert.ToHexString(ba).ToLower();
-
-
-
-        //public async Task<ManifestHash> GetManifestHash(FileInfo bfi) => await GetManifestHash(bfi.FullName);
-        //public async Task<ManifestHash> GetManifestHash(string binaryFileFullName) => new(await GetHashValue(binaryFileFullName, salt));
-        //public async Task<ChunkHash> GetChunkHash(string fullName) => new(await GetHashValue(fullName, salt));
-        //public async Task<ChunkHash> GetChunkHash(Stream stream) => new(await GetHashValue(stream, salt));
-
-        //internal static async Task<string> GetHashValue(string fullName, string salt)
-        //{
-        //    using var fs = File.OpenRead(fullName);
-
-        //    return await GetHashValue(fs, salt);
-        //}
-
-        //private static async Task<string> GetHashValue(Stream stream, string salt)
-        //{
-        //    var byteArray = Encoding.ASCII.GetBytes(salt);
-        //    using var ss = new MemoryStream(byteArray);
-
-        //    using var stream2 = new ConcatenatedStream(new Stream[] { ss, stream });
-        //    using var sha256 = SHA256.Create(); //not thread safe
-
-        //    var hash = await sha256.ComputeHashAsync(stream2);
-
-        //    return ByteArrayToString(hash);
-        //}
-
     }
 }
-
-
-

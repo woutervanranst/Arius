@@ -128,51 +128,51 @@ namespace Arius.Core.Commands.Restore
         }
     }
 
-    internal class DownloadChunksForManifestBlock : ChannelTaskBlockBase<ManifestHash>
+    internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
     {
-        public DownloadChunksForManifestBlock(ILoggerFactory loggerFactory,
-            Func<Channel<ManifestHash>> sourceFunc,
+        public DownloadChunksForBinaryBlock(ILoggerFactory loggerFactory,
+            Func<Channel<BinaryHash>> sourceFunc,
             DirectoryInfo restoreTempDir,
             Repository repo,
-            ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests,
-            Action<ManifestHash, IChunk[]> chunksRestored,
-            Action<ManifestHash> chunksHydrating,
+            ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries,
+            Action<BinaryHash, IChunk[]> chunksRestored,
+            Action<BinaryHash> chunksHydrating,
             Action done)
             : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
         {
             this.restoreTempDir = restoreTempDir;
             this.repo = repo;
-            this.restoredManifests = restoredManifests;
+            this.restoredBinaries = restoredBinaries;
             this.chunksRestored = chunksRestored;
             this.chunksHydrating = chunksHydrating;
         }
 
         private readonly DirectoryInfo restoreTempDir;
         private readonly Repository repo;
-        private readonly Action<ManifestHash, IChunk[]> chunksRestored;
-        private readonly Action<ManifestHash> chunksHydrating;
-        private readonly ConcurrentDictionary<ManifestHash, IChunkFile> restoredManifests;
+        private readonly Action<BinaryHash, IChunk[]> chunksRestored;
+        private readonly Action<BinaryHash> chunksHydrating;
+        private readonly ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries;
 
-        private readonly ConcurrentHashSet<ManifestHash> restoringManifests = new();
+        private readonly ConcurrentHashSet<BinaryHash> restoringBinaries = new();
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource<IChunk>> downloadingChunks = new();
 
-        protected override async Task ForEachBodyImplAsync(ManifestHash mh, CancellationToken ct)
+        protected override async Task ForEachBodyImplAsync(BinaryHash bh, CancellationToken ct)
         {
-            if (restoredManifests.ContainsKey(mh))
+            if (restoredBinaries.ContainsKey(bh))
             {
                 // the Manifest for this PointerFile is already restored
                 throw new NotImplementedException();
-                chunksRestored(mh, null);
+                chunksRestored(bh, null);
                 return;
             }
 
-            if (!restoringManifests.TryAdd(mh))
+            if (!restoringBinaries.TryAdd(bh))
                 // the Manifest for this PointerFile is already being processed.
                 // this method can be called multiple times by S11
                 // the waiting PointerFiles will be notified when the first call completes
                 return;
             
-            var chs = await repo.GetChunkHashesForManifestAsync(mh);
+            var chs = await repo.GetChunksForBinaryAsync(bh);
             await Parallel.ForEachAsync(chs,
                 new ParallelOptions { MaxDegreeOfParallelism = 1 },
                 async (ch, cancellationToken) =>
@@ -207,13 +207,13 @@ namespace Arius.Core.Commands.Restore
             var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
             if (cs.Any(c => c is null))
             {
-                logger.LogInformation($"At least one Chunk is still hydrating for manifest {mh.ToShortString()}... cannot yet restore");
-                chunksHydrating(mh);
+                logger.LogInformation($"At least one Chunk is still hydrating for manifest {bh.ToShortString()}... cannot yet restore");
+                chunksHydrating(bh);
             }
             else
             {
-                logger.LogInformation($"All chunks downloaded for manifest {mh.ToShortString()}... ready to restore BinaryFile");
-                chunksRestored(mh, cs);
+                logger.LogInformation($"All chunks downloaded for manifest {bh.ToShortString()}... ready to restore BinaryFile");
+                chunksRestored(bh, cs);
             }
         }
 

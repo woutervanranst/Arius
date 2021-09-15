@@ -8,7 +8,7 @@ namespace Arius.Core.Models
 {
     internal record ManifestMetadata
     {
-        public ManifestHash Hash { get; init; }
+        public BinaryHash Hash { get; init; }
         public long OriginalLength { get; init; }
         public long ArchivedLength { get; init; }
         public long IncrementalLength { get; init; }

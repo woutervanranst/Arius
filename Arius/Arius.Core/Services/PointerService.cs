@@ -44,19 +44,19 @@ namespace Arius.Core.Services
             return CreatePointerFileIfNotExists(
                 target,
                 root,
-                pfe.ManifestHash,
+                pfe.BinaryHash,
                 pfe.CreationTimeUtc!.Value,
                 pfe.LastWriteTimeUtc!.Value);
         }
 
-        private PointerFile CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, ManifestHash manifestHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+        private PointerFile CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, BinaryHash binaryHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
         {
             if (!target.Exists)
             {
                 if (!target.Directory!.Exists)
                     target.Directory.Create();
 
-                File.WriteAllText(target.FullName, manifestHash.Value);
+                File.WriteAllText(target.FullName, binaryHash.Value);
 
                 //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
                 //pointerFileInfo.CreationTimeUtc = creationTimeUtc;
@@ -68,10 +68,10 @@ namespace Arius.Core.Services
                 logger.LogInformation($"Created PointerFile '{target.GetRelativeName(root)}'");
             }
 
-            var pf = new PointerFile(root, target, manifestHash);
+            var pf = new PointerFile(root, target, binaryHash);
 
             //Check whether the contents of the PointerFile are correct / is it a valid POinterFile / does the hash it refer to match the manifestHash (eg. not in the case of 0 bytes or ...)
-            if (!pf.Hash.Equals(manifestHash))
+            if (!pf.Hash.Equals(binaryHash))
             {
                 //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
 
@@ -79,7 +79,7 @@ namespace Arius.Core.Services
 
                 //Recreate the pointer
                 target.Delete();
-                pf = CreatePointerFileIfNotExists(target, root, manifestHash, creationTimeUtc, lastWriteTimeUtc);
+                pf = CreatePointerFileIfNotExists(target, root, binaryHash, creationTimeUtc, lastWriteTimeUtc);
             }
 
             return pf;
@@ -208,21 +208,21 @@ namespace Arius.Core.Services
         {
             var bfi = new FileInfo(GetBinaryFileFullname(root, pfe));
 
-            return GetBinaryFile(root, bfi, pfe.ManifestHash, ensureCorrectHash);
+            return GetBinaryFile(root, bfi, pfe.BinaryHash, ensureCorrectHash);
         }
 
-        private BinaryFile GetBinaryFile(DirectoryInfo root, FileInfo bfi, ManifestHash manifestHash, bool ensureCorrectHash)
+        private BinaryFile GetBinaryFile(DirectoryInfo root, FileInfo bfi, BinaryHash binaryHash, bool ensureCorrectHash)
         {
             if (!bfi.Exists)
                 return null;
 
             if (ensureCorrectHash)
             {
-                if (manifestHash != hvp.GetManifestHash(bfi.FullName))
+                if (binaryHash != hvp.GetBinaryHash(bfi.FullName))
                     throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again.");
             }
 
-            return new BinaryFile(root, bfi, manifestHash);
+            return new BinaryFile(root, bfi, binaryHash);
         }
 
         private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));

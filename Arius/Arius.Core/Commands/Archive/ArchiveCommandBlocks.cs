@@ -71,33 +71,33 @@ namespace Arius.Core.Commands.Archive
                     logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
 
                     //Get the Hash for this file
-                    ManifestHash manifestHash = default;
+                    BinaryHash binaryHash = default;
                     var pf = pointerService.GetPointerFile(root, fi);
                     if (fastHash && pf is not null)
                     {
                         //A corresponding PointerFile exists
-                        manifestHash = pf.Hash;
+                        binaryHash = pf.Hash;
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{manifestHash.ToShortString()}'");
+                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{binaryHash.ToShortString()}'");
                     }
                     else
                     {
                         var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
                         {
-                            manifestHash = hvp.GetManifestHash(fi);
+                            binaryHash = hvp.GetBinaryHash(fi);
                         });
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{manifestHash.ToShortString()}'");
+                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
                     }
 
-                    var bf = new BinaryFile(root, fi, manifestHash);
+                    var bf = new BinaryFile(root, fi, binaryHash);
                     if (pf is not null)
                     {
-                        if (pf.Hash == manifestHash)
+                        if (pf.Hash == binaryHash)
                         {
-                            if (!await repo.ManifestExistsAsync(manifestHash))
+                            if (!await repo.ManifestExistsAsync(binaryHash))
                             {
-                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{manifestHash.ToShortString()}') does not exist. Backing up again.");
+                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{binaryHash.ToShortString()}') does not exist. Backing up again.");
                                 indexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
                             else
@@ -149,8 +149,8 @@ namespace Arius.Core.Commands.Archive
         
         private readonly Action<BinaryFile> binaryExists;
 
-        private readonly ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
-        private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> uploadingBinaries = new();
+        private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
+        private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
@@ -165,8 +165,8 @@ namespace Arius.Core.Commands.Archive
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-            // [Concurrently] Build a local cache of the remote manifests -- ensure we call ManifestExistsAsync only once
-            var manifestExistsRemote = await remoteManifests.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
+            // [Concurrently] Build a local cache of the remote binaries -- ensure we call ManifestExistsAsync only once
+            var manifestExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
             if (manifestExistsRemote)
             {
                 // 1 Exists remote
@@ -501,7 +501,7 @@ namespace Arius.Core.Commands.Archive
                     //.AsEnumerable()) 
                     .GetConsumingEnumerable())
             {
-                var chs = await repo.GetChunkHashesForManifestAsync(pfe.ManifestHash);
+                var chs = await repo.GetChunksForBinaryAsync(pfe.BinaryHash);
                 var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
 
                 JsonSerializer.Serialize(writer, entry , new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
@@ -524,7 +524,7 @@ namespace Arius.Core.Commands.Archive
             private readonly PointerFileEntry pfe;
             private readonly ChunkHash[] chs;
 
-            public string ManifestHash => pfe.ManifestHash.Value;
+            public string ManifestHash => pfe.BinaryHash.Value;
             public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
             public string RelativeName => pfe.RelativeName;
             public DateTime VersionUtc => pfe.VersionUtc;
