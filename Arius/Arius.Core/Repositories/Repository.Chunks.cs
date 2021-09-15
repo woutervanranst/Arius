@@ -147,14 +147,14 @@ namespace Arius.Core.Repositories
 
         // DELETE
 
-        public void DeleteHydrateFolder()
+        public async Task DeleteHydrateFolderAsync()
         {
             logger.LogInformation("Deleting temporary hydration folder");
 
-            foreach (var bi in container.GetBlobs(prefix: RehydratedChunkDirectoryName))
+            await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunkDirectoryName))
             {
                 var bc = container.GetBlobClient(bi.Name);
-                bc.Delete();
+                await bc.DeleteAsync();
             }
         }
 
@@ -167,13 +167,13 @@ namespace Arius.Core.Repositories
         /// <returns>Returns the length of the uploaded stream.</returns>
         public async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
         {
+            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
+
+            if (await bbc.ExistsAsync())
+                throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
+
             try
             {
-                var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
-
-                if (await bbc.ExistsAsync())
-                    throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
-
                 // v11 [DEPRECATED] of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
@@ -189,11 +189,15 @@ namespace Arius.Core.Repositories
 
                 await bbc.SetAccessTierAsync(tier);
 
-                //return ChunkBlobBase.GetChunkBlob(bbc); //commented - we do not need this
                 return length;
             }
             catch (Exception e)
             {
+                logger.LogError(e, "Error while uploading chunk. Deleting potentially corrupt chunk...", chunk, tier); //TODO test this in a unit test
+                
+                await bbc.DeleteAsync();
+
+                logger.LogInformation("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
                 throw;
             }
         }
