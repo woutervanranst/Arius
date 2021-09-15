@@ -66,7 +66,7 @@ namespace Arius.Core.Repositories
                 return new()
                 {
                     PartitionKey = mp.Hash.Value,
-                    RowKey = "ManifestProperties",
+                    RowKey = "ManifestMetadata",
 
                     OriginalLength = mp.OriginalLength,
                     ArchivedLength = mp.ArchivedLength,
