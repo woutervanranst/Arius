@@ -328,10 +328,28 @@ A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (
 
 ((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
 
+#### Deduplication benchmark for large binary files 
 
+| Min. Chunk Size (B) | Original (KB) | Total Chunks | Deduped KB |  Incremental Length | Time  | MBps  | Avg Chunk Size (KB) |
+|-|-|-|-|-|-|-|-|
+| N/A  | 2.410.419.052  |      12  |      0  | 2.333.672 (99,14%) |  0:45 | 51,08 |   N/A |
+| 1024 | 2.410.419.052  | 262.666  | 125,19  | 2.346.100 (99,67%) | 36:00 | 1,06  |  8,93 |
+| 4096 | 2.410.419.052  | 174.589  | 112,33  | 2.341.994 (99,49%) | 24:00 | 1,60  | 13,41 |
+| 8192 | 2.410.419.052  | 165.619  | 111,63  | 2.341.567 (99,48%) | 23:00 | 1,67  | 14,14 |
 
+Context: 
+- 12 mp4 files of on average 192 MB, totalling 2,24 GB.
+- Benchmark performed on an Azure D8s_v3 VM in the same region as the storage account
 
-#### Debugging Docker in Visual Studio
+Conclusions:
+- While the chunking algorithm finds duplicate chunks in mp4 files, it is not more effective in achieving a better end result than plain gzip compression (99,48% vs 99,14%)
+- A minimum chunk size of 4096 KB achieves the best characteristics while keeping the flexibility of chunking:
+  - A significant reduction in number of chunks and runtime (-33%) 
+  - A significant increase in speed (+50%)
+  - A comparable number of usable deduped chunks (only 11% less)
+- A minimum chunk size of 8192 KB achieves further improvements across these dimensions but only marginally so, while (probably?) significantly reducing the potential on bigger datasets
+
+### Debugging Docker in Visual Studio
 
 | Argument | Visual Studio Debug |
 | - | - |
