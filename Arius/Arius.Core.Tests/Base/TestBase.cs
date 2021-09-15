@@ -182,7 +182,7 @@ namespace Arius.Core.Tests
             currentPfeWithDeleted = repo.GetCurrentEntries(true).Result.ToArray();
             currentPfeWithoutDeleted = repo.GetCurrentEntries(false).Result.ToArray();
 
-            allPfes = repo.GetPointerFileEntries().Result.ToArray();
+            allPfes = repo.GetPointerFileEntriesAsync().Result.ToArray();
         }
 
 

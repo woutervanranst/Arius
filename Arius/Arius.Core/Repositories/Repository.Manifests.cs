@@ -37,28 +37,10 @@ namespace Arius.Core.Repositories
         /// <returns></returns>
         public async Task<IEnumerable<ManifestHash>> GetAllManifestHashes()
         {
-            var pfes = await GetPointerFileEntries();
+            var pfes = await GetPointerFileEntriesAsync();
 
             return pfes.Select(pfe => pfe.ManifestHash).Distinct();
         }
-
-        //public ManifestBlob[] GetAllManifestBlobs()
-        //{
-        //    logger.LogInformation($"Getting all manifests...");
-        //    var r = Array.Empty<ManifestBlob>();
-
-        //    try
-        //    {
-        //        return r = container.GetBlobs(prefix: $"{ManifestDirectoryName}/")
-        //            .Where(bi => !bi.Name.EndsWith(".manifest.7z.arius")) //back compat for v4 archives
-        //            .Select(bi => new ManifestBlob(bi))
-        //            .ToArray();
-        //    }
-        //    finally
-        //    {
-        //        logger.LogInformation($"Getting all manifests... got {r.Length}");
-        //    }
-        //}
 
         public async Task<bool> ManifestExistsAsync(ManifestHash manifestHash)
         {
