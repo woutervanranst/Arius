@@ -81,7 +81,7 @@ namespace Arius.Core.Commands.Archive
                 chunker: services.GetRequiredService<Chunker>(),
                 repo: repo,
                 options: options,
-                manifestExists: bf =>
+                binaryExists: bf =>
                 {
                     pointersToCreate.Add(bf); //B403
                 },
