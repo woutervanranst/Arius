@@ -103,18 +103,6 @@ namespace Arius.Core.Tests
             rng.NextBytes(data);
             File.WriteAllBytes(fileFullName, data);
 
-            //byte[] data = new byte[8192];
-            //var rng = new Random();
-
-            //using (FileStream stream = File.OpenWrite(fileFullName))
-            //{
-            //    for (int i = 0; i < sizeInMB * 128; i++)
-            //    {
-            //        rng.NextBytes(data);
-            //        stream.Write(data, 0, data.Length);
-            //    }
-            //}
-
             return f;
         }
 
@@ -125,11 +113,11 @@ namespace Arius.Core.Tests
             foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TestContainerNamePrefix}*"))
                 d.Delete(true);
 
-            // delete blobs
+            // Delete blobs
             foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                 await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
 
-            // delete tables
+            // Delete tables
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 await t.DeleteAsync();
         }
