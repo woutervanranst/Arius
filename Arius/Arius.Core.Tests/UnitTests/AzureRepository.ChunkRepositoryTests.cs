@@ -22,7 +22,7 @@ namespace Arius.Core.Tests.UnitTests
 
             var cb1 = repo.GetAllChunkBlobs().First();
 
-            var cb2 = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, cb1.Name);
+            var cb2 = repo.GetChunkBlobByName(Repository.ChunkFolderName, cb1.Name);
 
             Assert.AreEqual(cb1.FullName, cb2.FullName);
         }
@@ -32,7 +32,7 @@ namespace Arius.Core.Tests.UnitTests
         {
             var repo = GetRepository();
 
-            var cb = repo.GetChunkBlobByName(Repository.ChunkDirectoryName, "idonotexist");
+            var cb = repo.GetChunkBlobByName(Repository.ChunkFolderName, "idonotexist");
 
             Assert.IsNull(cb);
         }

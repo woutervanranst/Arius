@@ -33,7 +33,7 @@ namespace Arius.Core.Tests.UnitTests
             Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
             Assert.AreEqual(cb1.Folder, cb2.Folder);
-            Assert.AreEqual(cb1.Folder, Repository.ChunkDirectoryName);
+            Assert.AreEqual(cb1.Folder, Repository.ChunkFolderName);
 
             Assert.AreEqual(cb1.FullName, cb2.FullName);
             Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
@@ -61,11 +61,11 @@ namespace Arius.Core.Tests.UnitTests
             //var manifestBlob = repo.GetAllManifestBlobs().First();
 
             var h = (await repo.GetAllBinaryHashesAsync()).First();
-            var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.ManifestDirectoryName}/{h.Value}").Single();
-            var manifestBlob = new ManifestBlob(bi);
+            var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryManifestFolderName}/{h.Value}").Single();
+            var manifestBlob = new BinaryManifest(bi);
 
 
-            Assert.AreEqual(manifestBlob.Folder, Repository.ManifestDirectoryName);
+            Assert.AreEqual(manifestBlob.Folder, Repository.BinaryManifestFolderName);
 
             Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
             Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension

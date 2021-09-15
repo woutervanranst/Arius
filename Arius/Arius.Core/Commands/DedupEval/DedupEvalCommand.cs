@@ -43,8 +43,8 @@ namespace Arius.Core.Commands.DedupEval
         {
             foreach (var bfi in options.Root.GetBinaryFileInfos())
             {
-                var manifestHash = hvp.GetBinaryHash(bfi);
-                AddFile(new BinaryFile(options.Root, bfi, manifestHash));
+                var binaryHash = hvp.GetBinaryHash(bfi);
+                AddFile(new BinaryFile(options.Root, bfi, binaryHash));
             }
 
             logger.LogInformation($"{fileCount} total files");

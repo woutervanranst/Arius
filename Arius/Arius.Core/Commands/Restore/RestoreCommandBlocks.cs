@@ -160,14 +160,14 @@ namespace Arius.Core.Commands.Restore
         {
             if (restoredBinaries.ContainsKey(bh))
             {
-                // the Manifest for this PointerFile is already restored
+                // the Binary for this PointerFile is already restored
                 throw new NotImplementedException();
                 chunksRestored(bh, null);
                 return;
             }
 
             if (!restoringBinaries.TryAdd(bh))
-                // the Manifest for this PointerFile is already being processed.
+                // the Binary for this PointerFile is already being processed.
                 // this method can be called multiple times by S11
                 // the waiting PointerFiles will be notified when the first call completes
                 return;
@@ -207,12 +207,12 @@ namespace Arius.Core.Commands.Restore
             var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
             if (cs.Any(c => c is null))
             {
-                logger.LogInformation($"At least one Chunk is still hydrating for manifest {bh.ToShortString()}... cannot yet restore");
+                logger.LogInformation($"At least one Chunk is still hydrating for binary {bh.ToShortString()}... cannot yet restore");
                 chunksHydrating(bh);
             }
             else
             {
-                logger.LogInformation($"All chunks downloaded for manifest {bh.ToShortString()}... ready to restore BinaryFile");
+                logger.LogInformation($"All chunks downloaded for binary {bh.ToShortString()}... ready to restore BinaryFile");
                 chunksRestored(bh, cs);
             }
         }

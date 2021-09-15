@@ -67,7 +67,7 @@ namespace Arius.Core.Commands.Restore
 
             var binariesToDownload = Channel.CreateUnbounded<BinaryHash>();
             var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
-            var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
+            var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: BinaryHash. Values (PointerFiles) that are waiting for the Keys (Binaries) to be created
 
             var indexBlock = new IndexBlock(
                 loggerFactory: loggerFactory,
@@ -84,7 +84,7 @@ namespace Arius.Core.Commands.Restore
                     var (pf, bf) = arg;
                     if (bf is null)
                     {
-                        // need to download the manifest for this pointer
+                        // need to download the binary for this pointer
                         await binariesToDownload.Writer.WriteAsync(pf.Hash); //S11
                         pointerFilesWaitingForBinaryRestoration.AddOrUpdate( //S14
                             key: pf.Hash,
@@ -97,7 +97,7 @@ namespace Arius.Core.Commands.Restore
                     }
                     if (bf is not null)
                     { 
-                        // this binaryfile / manifest is already restored
+                        // this binary / binaryfile is already restored
                         restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                     }
                 },
@@ -136,7 +136,7 @@ namespace Arius.Core.Commands.Restore
                 {
                     pointersToRestore.CompleteAdding(); //S29
                 });
-            var processManifestTask = downloadChunksForBinaryBlock.GetTask;
+            var downloadChunksForBinaryTask = downloadChunksForBinaryBlock.GetTask;
 
 
 

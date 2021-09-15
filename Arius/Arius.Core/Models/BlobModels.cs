@@ -37,9 +37,9 @@ namespace Arius.Core.Models
         private const char BlobFolderSeparatorChar = '/';
     }
 
-    internal class ManifestBlob : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
+    internal class BinaryManifest : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
     {
-        public ManifestBlob(BlobItem bi)
+        public BinaryManifest(BlobItem bi)
         {
             this.bi = bi;
         }

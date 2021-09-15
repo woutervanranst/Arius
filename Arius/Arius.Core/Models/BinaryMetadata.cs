@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Models
 {
-    internal record ManifestMetadata
+    internal record BinaryMetadata
     {
         public BinaryHash Hash { get; init; }
         public long OriginalLength { get; init; }

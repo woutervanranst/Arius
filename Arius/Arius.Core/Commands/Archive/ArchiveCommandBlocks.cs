@@ -95,9 +95,9 @@ namespace Arius.Core.Commands.Archive
                     {
                         if (pf.Hash == binaryHash)
                         {
-                            if (!await repo.ManifestExistsAsync(binaryHash))
+                            if (!await repo.BinaryExistsAsync(binaryHash))
                             {
-                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{binaryHash.ToShortString()}') does not exist. Backing up again.");
+                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
                                 indexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
                             else
@@ -165,9 +165,9 @@ namespace Arius.Core.Commands.Archive
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-            // [Concurrently] Build a local cache of the remote binaries -- ensure we call ManifestExistsAsync only once
-            var manifestExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
-            if (manifestExistsRemote)
+            // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (a) => await repo.BinaryExistsAsync(bf.Hash));
+            if (binaryExistsRemote)
             {
                 // 1 Exists remote
                 logger.LogInformation($"Binary for {bf} already exists. No need to upload.");
@@ -226,11 +226,11 @@ namespace Arius.Core.Commands.Archive
             
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of {bf}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
-            // Create the Manifest
-            await repo.CreateManifestAsync(bf.Hash, chs);
+            // Create the BinaryManifest
+            await repo.CreateBinaryManifestAsync(bf.Hash, chs);
 
-            // Create the ManifestMetadata
-            await repo.CreateManifestMetadataAsync(bf, totalLength, incrementalLength, chs.Length);
+            // Create the BinaryMetadata
+            await repo.CreateBinaryMetadataAsync(bf, totalLength, incrementalLength, chs.Length);
         }
 
         
@@ -268,7 +268,7 @@ namespace Arius.Core.Commands.Archive
             /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
              * 1. to effectively limit the number of concurrent files 'in flight' 
              * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
-             * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
+             * 3. this code has a nice 'await for binary upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
              * 4. with a centralized pipe, setting the degree of concurrency is not trivial since, for chunks (~64 KB), it is higher than for full binary files (we dont want to be uploading 128 2GB files in parallel)
              */
 
@@ -524,7 +524,7 @@ namespace Arius.Core.Commands.Archive
             private readonly PointerFileEntry pfe;
             private readonly ChunkHash[] chs;
 
-            public string ManifestHash => pfe.BinaryHash.Value;
+            public string BinaryHash => pfe.BinaryHash.Value;
             public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
             public string RelativeName => pfe.RelativeName;
             public DateTime VersionUtc => pfe.VersionUtc;

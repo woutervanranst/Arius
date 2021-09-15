@@ -13,8 +13,8 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        internal const string ChunkDirectoryName = "chunks";
-        internal const string RehydratedChunkDirectoryName = "chunks-rehydrated";
+        internal const string ChunkFolderName = "chunks";
+        internal const string RehydratedChunkFolderName = "chunks-rehydrated";
 
         
         // GET
@@ -26,7 +26,7 @@ namespace Arius.Core.Repositories
 
             try
             {
-                return r = container.GetBlobs(prefix: $"{ChunkDirectoryName}/")
+                return r = container.GetBlobs(prefix: $"{ChunkFolderName}/")
                     .Select(bi => new ChunkBlobItem(bi))
                     .ToArray();
             }
@@ -44,7 +44,7 @@ namespace Arius.Core.Repositories
         /// </summary>
         public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
         {
-            var blobName = GetChunkBlobName(ChunkDirectoryName, chunkHash);
+            var blobName = GetChunkBlobName(ChunkFolderName, chunkHash);
             var cb1 = GetChunkBlobByName(blobName);
 
             if (cb1 is null)
@@ -58,7 +58,7 @@ namespace Arius.Core.Repositories
             if (requireHydrated && cb1.Downloadable)
                 return cb1;
 
-            blobName = GetChunkBlobName(RehydratedChunkDirectoryName, chunkHash);
+            blobName = GetChunkBlobName(RehydratedChunkFolderName, chunkHash);
             var cb2 = GetChunkBlobByName(blobName);
 
             if (cb2 is null || !cb2.Downloadable)
@@ -104,7 +104,7 @@ namespace Arius.Core.Repositories
 
         public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
         {
-            return await container.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
+            return await container.GetBlobClient(GetChunkBlobName(ChunkFolderName, chunkHash)).ExistsAsync();
         }
 
 
@@ -118,7 +118,7 @@ namespace Arius.Core.Repositories
                 blobToHydrate.AccessTier == AccessTier.Cool)
                 throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-            var hydratedItem = container.GetBlobClient($"{RehydratedChunkDirectoryName}/{blobToHydrate.Name}");
+            var hydratedItem = container.GetBlobClient($"{RehydratedChunkFolderName}/{blobToHydrate.Name}");
 
             if (!await hydratedItem.ExistsAsync())
             {
@@ -151,7 +151,7 @@ namespace Arius.Core.Repositories
         {
             logger.LogInformation("Deleting temporary hydration folder");
 
-            await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunkDirectoryName))
+            await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunkFolderName))
             {
                 var bc = container.GetBlobClient(bi.Name);
                 await bc.DeleteAsync();
@@ -167,7 +167,7 @@ namespace Arius.Core.Repositories
         /// <returns>Returns the length of the uploaded stream.</returns>
         public async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
         {
-            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
+            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
             if (await bbc.ExistsAsync())
                 throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?

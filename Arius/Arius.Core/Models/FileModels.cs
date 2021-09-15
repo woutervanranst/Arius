@@ -107,7 +107,7 @@ namespace Arius.Core.Models
             Hash = new (File.ReadAllText(fi.FullName));
         }
         /// <summary>
-        /// Create a new PointerFile with the given root and the given ManifestHash
+        /// Create a new PointerFile with the given root and the given BinaryHash
         /// </summary>
         public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
         {
