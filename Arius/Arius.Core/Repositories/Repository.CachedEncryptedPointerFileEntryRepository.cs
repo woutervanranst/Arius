@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
@@ -67,8 +68,6 @@ namespace Arius.Core.Repositories
             {
                 return await versionsTask;
             }
-
-
 
 
             private readonly SemaphoreSlim semaphoreSlim = new(1, 1);
