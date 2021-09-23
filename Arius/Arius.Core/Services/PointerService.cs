@@ -87,15 +87,6 @@ namespace Arius.Core.Services
 
 
         
-
-
-
-
-
-
-
-
-
         /// <summary>
         /// Get the PointerFile for the given FileInfo with the given root.
         /// If the FileInfo is for a PointerFile, return the PointerFile.
@@ -145,30 +136,6 @@ namespace Arius.Core.Services
             return new PointerFile(bf.Root, pfi);
         }
 
-
-
-
-
-
-
-
-
-
-        //public static PointerFile GetPointerFile(string binaryFileFullName)
-        //{
-        //    var pfi = new FileInfo(GetPointerFileFullName(binaryFileFullName));
-
-        //    return GetPointerFile(pfi);
-        //}
-
-        //private static PointerFile GetPointerFile(FileInfo pfi)
-        //{
-        //    if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
-        //        return null;
-
-        //    return new PointerFile(bf.Root, pfi);
-        //}
-
         /// <summary>
         /// Get the PointerFile corresponding to the PointerFileEntry, if it exists.
         /// If it does not, return null
@@ -188,6 +155,7 @@ namespace Arius.Core.Services
         private static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
         private static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
         private static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
+
 
 
         /// <summary>
@@ -231,13 +199,9 @@ namespace Arius.Core.Services
 
 
 
-
-
-
         public FileInfo GetBinaryFileInfo(PointerFile pf)
         {
             return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
         }
-
     }
 }
