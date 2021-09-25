@@ -68,7 +68,7 @@ namespace Arius.Core.Commands.Restore
                 if (fsi is DirectoryInfo root)
                     await ProcessPointersInDirectory(root);
                 else if (fsi is FileInfo fi && fi.IsPointerFile())
-                    await IndexedPointerFile(new PointerFile(fi.Directory, fi)); //TODO test dit in non root
+                    await IndexedPointerFile(pointerService.GetPointerFile(fi.Directory, fi)); //TODO test dit in non root
                 else
                     throw new InvalidOperationException($"Argument {fsi} is not valid");
             }
@@ -114,7 +114,7 @@ namespace Arius.Core.Commands.Restore
 
         private async Task ProcessPointersInDirectory(DirectoryInfo root)
         {
-            var pfs = root.GetPointerFileInfos().Select(fi => new PointerFile(root, fi));
+            var pfs = root.GetPointerFileInfos().Select(fi => pointerService.GetPointerFile(root, fi));
 
             foreach (var pf in pfs)
                 await IndexedPointerFile(pf);

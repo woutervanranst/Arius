@@ -62,7 +62,7 @@ namespace Arius.Core.Commands.Archive
                     //fi is a PointerFile
                     logger.LogInformation($"Found PointerFile '{rn}'");
 
-                    var pf = new PointerFile(root, fi);
+                    var pf = pointerService.GetPointerFile(root, fi);
 
                     indexedPointerFile(pf);
                 }

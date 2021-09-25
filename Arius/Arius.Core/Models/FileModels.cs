@@ -101,13 +101,13 @@ namespace Arius.Core.Models
         //  DO NOT IMPLEMENT THIS, IT WILL CAUSE CONFUSION & BUGS & INVALID ARCHIVES
         //}
 
-        /// <summary>
-        /// Create a new PointerFile with the given root and read the Hash from the file
-        /// </summary>
-        public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
-        {
-            Hash = new (File.ReadAllText(fi.FullName));
-        }
+        ///// <summary>
+        ///// Create a new PointerFile with the given root and read the Hash from the file
+        ///// </summary>
+        //public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
+        //{
+        //    Hash = new (File.ReadAllText(fi.FullName));
+        //}
         /// <summary>
         /// Create a new PointerFile with the given root and the given BinaryHash
         /// </summary>

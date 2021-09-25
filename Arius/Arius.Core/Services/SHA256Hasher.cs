@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
@@ -24,6 +25,8 @@ namespace Arius.Core.Services
         
         ChunkHash GetChunkHash(string fullName);
         ChunkHash GetChunkHash(byte[] buffer);
+
+        bool IsValid(Hash h);
     }
 
     internal class SHA256Hasher : IHashValueProvider
@@ -67,6 +70,20 @@ namespace Arius.Core.Services
         //        }
         //    }
         //}
+
+        public bool IsValid(Hash h)
+        {
+            if (h == null)
+                return false;
+
+            if (h.Value.Length != 64)
+                return false;
+
+            return Regex.Match(h.Value, SHA265WORDPATTERN).Success;
+        }
+
+        private const string SHA265WORDPATTERN = "^[a-f0-9]{64}$"; //https://stackoverflow.com/a/6630280/1582323 with A-F removed since we do .ToLower() in BytesToString
+
 
         internal static string GetHashValue(string fullName, string salt)
         {
