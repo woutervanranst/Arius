@@ -64,8 +64,7 @@ namespace Arius.Core.Repositories
                 var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
 
                 await bc.DownloadToAsync(ms);
-                //var bytes = ms.ToArray();
-                //var json = Encoding.UTF8.GetString(bytes);
+                ms.Position = 0;
                 chunkHashes = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(ms))!.Select(hv => new ChunkHash(hv)).ToArray();
 
                 return chunkHashes;
