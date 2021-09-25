@@ -491,7 +491,7 @@ namespace Arius.Core.Commands.Archive
         {
             logger.LogInformation($"Writing state to JSON...");
 
-            using Stream file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
+            using var file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
             var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
             writer.WriteStartArray();
 
@@ -505,7 +505,7 @@ namespace Arius.Core.Commands.Archive
                 var chs = await repo.GetChunksForBinaryAsync(pfe.BinaryHash);
                 var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
 
-                JsonSerializer.Serialize(writer, entry , new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+                JsonSerializer.Serialize(writer, entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
             }
 
             writer.WriteEndArray();
