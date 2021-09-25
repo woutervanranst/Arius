@@ -84,9 +84,10 @@ namespace Arius.Core.Models
             Root = root;
         }
 
+        public DirectoryInfo Root { get; }
+
         public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
         public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
-        public DirectoryInfo Root { get; }
         public override string ToString() => RelativeName;
     }
 
@@ -127,7 +128,7 @@ namespace Arius.Core.Models
 
         public override BinaryHash Hash { get; }
 
-        ChunkHash IChunk.Hash => new ChunkHash(Hash);
+        ChunkHash IChunk.Hash => new (Hash);
 
         public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
         public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
