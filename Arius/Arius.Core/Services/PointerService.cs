@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Text;
+using System.Text.Json;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
@@ -56,12 +58,13 @@ namespace Arius.Core.Services
                 if (!target.Directory!.Exists)
                     target.Directory.Create();
 
-                File.WriteAllText(target.FullName, binaryHash.Value);
+                var pfc = new PointerFileContents { BinaryHashValue = binaryHash.Value };
+                var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
+                File.WriteAllBytes(target.FullName, json);
 
                 //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
                 //pointerFileInfo.CreationTimeUtc = creationTimeUtc;
                 //pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
-
                 File.SetCreationTimeUtc(target.FullName, creationTimeUtc);
                 File.SetLastWriteTimeUtc(target.FullName, lastWriteTimeUtc);
 
@@ -85,8 +88,13 @@ namespace Arius.Core.Services
             return pf;
         }
 
+        private struct PointerFileContents
+        {
+            public string BinaryHashValue { get; init; }
+        }
 
-        
+
+
         /// <summary>
         /// Get the PointerFile for the given FileInfo with the given root.
         /// If the FileInfo is for a PointerFile, return the PointerFile.
