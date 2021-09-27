@@ -37,7 +37,6 @@ namespace Arius.Core.Repositories
                         .Select(a => a.VersionUtc)
                         .Distinct()
                         .OrderBy(x => x)
-                        .AsParallel()
                         .ToList();
 
                     return r;
