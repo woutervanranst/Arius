@@ -172,8 +172,10 @@ namespace Arius.Core.Services
                 {
                     // Upgrade v1
                     logger.LogInformation($"Upgrading v1 PointerFile '{pointerFileInfo.FullName}'");
+                    var cr = pointerFileInfo.CreationTimeUtc;
+                    var lw = pointerFileInfo.LastWriteTimeUtc;
                     pointerFileInfo.Delete();
-                    CreatePointerFileIfNotExists(pointerFileInfo, root, bh2, pointerFileInfo.CreationTimeUtc, pointerFileInfo.LastWriteTimeUtc);
+                    CreatePointerFileIfNotExists(pointerFileInfo, root, bh2, cr, lw);
                     return new PointerFile(root, pointerFileInfo, bh2);
                 }
                 else
