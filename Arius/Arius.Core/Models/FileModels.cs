@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Repositories;
 
@@ -107,32 +108,33 @@ namespace Arius.Core.Models
             Hash = new (File.ReadAllText(fi.FullName));
         }
         /// <summary>
-        /// Create a new PointerFile with the given root and the given ManifestHash
+        /// Create a new PointerFile with the given root and the given BinaryHash
         /// </summary>
-        public PointerFile(DirectoryInfo root, FileInfo fi, ManifestHash manifestHash) : base(root, fi)
+        public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
         {
-            Hash = manifestHash;
+            Hash = binaryHash;
         }
 
-        internal IEnumerable<ChunkHash> ChunkHashes { get; set; } //TODO Delete this
-
-        //public override string ContentName => Name.TrimEnd(Extension);
-
-        public override ManifestHash Hash { get; } //{ get => (ManifestHash)INTERNALHASH; set => INTERNALHASH = value; }
+        public override BinaryHash Hash { get; }
     }
 
     internal class BinaryFile : RelativeFileBase, IChunkFile, IChunk
     {
-        public BinaryFile(DirectoryInfo root, FileInfo fi, ManifestHash hash) : base(root, fi) 
+        public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
         {
             Hash = hash;
         }
 
-        public override ManifestHash Hash { get; }
+        public override BinaryHash Hash { get; }
 
         ChunkHash IChunk.Hash => new ChunkHash(Hash);
 
         public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
         public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+
+        public override string ToString()
+        {
+            return $"'{Name}' ('{Hash.ToShortString()}')";
+        }
     }
 }

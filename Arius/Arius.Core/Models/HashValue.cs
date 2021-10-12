@@ -57,9 +57,9 @@ namespace Arius.Core.Models
         //}
     }
 
-    internal record ManifestHash : Hash
+    internal record BinaryHash : Hash
     {
-        public ManifestHash(string value) : base(value)
+        public BinaryHash(string value) : base(value)
         { 
         }
 #pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
@@ -72,7 +72,7 @@ namespace Arius.Core.Models
         public ChunkHash(string value) : base(value)
         {
         }
-        public ChunkHash(ManifestHash manifestHash) : base(manifestHash.Value)
+        public ChunkHash(BinaryHash binaryHash) : base(binaryHash.Value)
         { 
         }
 #pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class

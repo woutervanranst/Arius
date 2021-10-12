@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
@@ -69,8 +70,6 @@ namespace Arius.Core.Repositories
             }
 
 
-
-
             private readonly SemaphoreSlim semaphoreSlim = new(1, 1);
 
             /// <summary>
@@ -125,7 +124,7 @@ namespace Arius.Core.Repositories
 
                 return new()
                 {
-                    ManifestHash = new ManifestHash(dto.PartitionKey),
+                    BinaryHash = new BinaryHash(dto.PartitionKey),
                     RelativeName = rn,
                     VersionUtc = dto.Version,
                     IsDeleted = dto.IsDeleted,
@@ -140,7 +139,7 @@ namespace Arius.Core.Repositories
 
                 return new()
                 {
-                    PartitionKey = pfe.ManifestHash.Value,
+                    PartitionKey = pfe.BinaryHash.Value,
                     RowKey = $"{GetRelativeNameHash(pfe.RelativeName)}-{pfe.VersionUtc.Ticks * -1:x8}", //Make ticks negative so when lexicographically sorting the RowKey the most recent version is on top
 
                     EncryptedRelativeName = rn,

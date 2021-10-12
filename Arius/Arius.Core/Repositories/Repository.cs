@@ -24,7 +24,7 @@ namespace Arius.Core.Repositories
             this.passphrase = options.Passphrase;
 
             pfeRepo = new(logger, options);
-            mpRepo = new(logger, options);
+            bmRepo = new(logger, options);
 
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
@@ -40,7 +40,7 @@ namespace Arius.Core.Repositories
         private readonly string passphrase;
 
         private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
-        private readonly CachedManifestPropertiesRepository mpRepo;
+        private readonly CachedBinaryMetadataRepository bmRepo;
 
         private readonly BlobContainerClient container;
     }

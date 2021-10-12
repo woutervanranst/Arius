@@ -13,7 +13,7 @@ namespace Arius.Core.Tests.UnitTests
         {
             var manifestRepo = GetRepository();
 
-            Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunkHashesForManifestAsync(new ManifestHash("idonotexist")));
+            Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunksForBinaryAsync(new BinaryHash("idonotexist")));
         }
     }
 }

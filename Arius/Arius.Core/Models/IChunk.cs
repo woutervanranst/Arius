@@ -14,7 +14,7 @@ namespace Arius.Core.Models
         Task<Stream> OpenWriteAsync();
     }
 
-    internal interface IChunkFile : IFile, IChunk
+    internal interface IChunkFile : IFile, IChunk //TODO REMOVE?
     {
     }
 
@@ -36,7 +36,7 @@ namespace Arius.Core.Models
 
     internal class ChunkFile : FileBase, IChunkFile
     {
-        public static readonly string Extension = ".chunk.arius";
+        public static readonly string Extension = ".ariuschunk";
 
         public ChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
         {

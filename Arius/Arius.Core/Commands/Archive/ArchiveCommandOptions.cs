@@ -1,5 +1,6 @@
 ﻿using Azure.Storage.Blobs.Models;
 using FluentValidation;
+using System;
 using System.IO;
 
 namespace Arius.Core.Commands.Archive
@@ -31,7 +32,7 @@ namespace Arius.Core.Commands.Archive
         public int IndexBlock_Parallelism => Environment.ProcessorCount; //index AND hash options
         public int UploadBinaryFileBlock_BinaryFileParallelism => 16;
         public int UploadBinaryFileBlock_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-        public int UploadBinaryFileBlock_ParallelChunkUploads => 16;
+        public int UploadBinaryFileBlock_ParallelChunkUploads => 128;
         public int CreatePointerFileIfNotExistsBlock_Parallelism => 1;
         public int CreatePointerFileEntryIfNotExistsBlock_Parallelism => 1;
         public int DeleteBinaryFilesBlock_Parallelism => 1;

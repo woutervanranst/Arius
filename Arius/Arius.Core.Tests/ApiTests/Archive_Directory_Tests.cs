@@ -21,13 +21,16 @@ namespace Arius.Core.Tests.ApiTests
             ArchiveTestDirectory.Clear();
         }
 
-        public static async Task<FileInfo[]> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false)
+        public static async Task<FileInfo[]> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false, AccessTier tier = default)
         {
             if (purgeRemote)
                 await TestSetup.PurgeRemote();
 
+            if (tier == default)
+                tier = AccessTier.Cool;
+
             var bfis = EnsureArchiveTestDirectoryFileInfos();
-            await ArchiveCommand(AccessTier.Cool, removeLocal: removeLocal, dedup: dedup);
+            await ArchiveCommand(tier, removeLocal: removeLocal, dedup: dedup);
 
             return bfis;
         }

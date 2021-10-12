@@ -92,7 +92,7 @@ namespace Arius.Core.Tests
         public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB) => CreateRandomFile(fileFullName, (int)sizeInMB * 1024 * 1024);
         public static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
         {
-            // shttps://stackoverflow.com/q/4432178/1582323
+            // https://stackoverflow.com/q/4432178/1582323
 
             var f = new FileInfo(fileFullName);
             if (!f.Directory.Exists)
@@ -103,29 +103,21 @@ namespace Arius.Core.Tests
             rng.NextBytes(data);
             File.WriteAllBytes(fileFullName, data);
 
-            //byte[] data = new byte[8192];
-            //var rng = new Random();
-
-            //using (FileStream stream = File.OpenWrite(fileFullName))
-            //{
-            //    for (int i = 0; i < sizeInMB * 128; i++)
-            //    {
-            //        rng.NextBytes(data);
-            //        stream.Write(data, 0, data.Length);
-            //    }
-            //}
-
             return f;
         }
 
         [OneTimeTearDown]
         public static async Task OneTimeTearDown()
         {
-            unitTestRoot.Delete(true);
+            // Delete local temp
+            foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TestContainerNamePrefix}*"))
+                d.Delete(true);
 
+            // Delete blobs
             foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                 await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
 
+            // Delete tables
             foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
                 await t.DeleteAsync();
         }

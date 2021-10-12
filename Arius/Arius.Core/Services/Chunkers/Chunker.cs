@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 
@@ -31,7 +32,7 @@ namespace Arius.Core.Services.Chunkers
                 await stream.CopyToAsync(targetStream);
             }
 
-            var h = hashValueProvider.GetManifestHash(target.FullName);
+            var h = hashValueProvider.GetBinaryHash(target.FullName);
 
             return new BinaryFile(root, target, h);
         }

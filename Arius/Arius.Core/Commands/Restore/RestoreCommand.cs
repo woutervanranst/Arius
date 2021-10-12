@@ -48,29 +48,26 @@ namespace Arius.Core.Commands.Restore
 
             DirectoryInfo root;
             FileSystemInfo pathToRestore;
-            DirectoryInfo restoreTempDir;
-            
+
             if (File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory))
             {
                 root = new DirectoryInfo(options.Path);
                 pathToRestore = root;
-                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
             }
             else
             {
                 var file = new FileInfo(options.Path);
                 root = file.Directory;
                 pathToRestore = file;
-                restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(file.Directory);
             }
 
             
             logger.LogInformation("Determining PointerFiles to restore...");
 
 
-            var manifestsToDownload = Channel.CreateUnbounded<ManifestHash>();
-            var restoredManifests = new ConcurrentDictionary<ManifestHash, IChunkFile>();
-            var pointerFilesWaitingForManifestRestoration = new ConcurrentDictionary<ManifestHash, ConcurrentBag<PointerFile>>(); //Key: ManifestHash. Values (PointerFiles) that are waiting for the Keys (Manifests) to be created
+            var binariesToDownload = Channel.CreateUnbounded<BinaryHash>();
+            var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
+            var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: BinaryHash. Values (PointerFiles) that are waiting for the Keys (Binaries) to be created
 
             var indexBlock = new IndexBlock(
                 loggerFactory: loggerFactory,
@@ -87,9 +84,9 @@ namespace Arius.Core.Commands.Restore
                     var (pf, bf) = arg;
                     if (bf is null)
                     {
-                        // need to download the manifest for this pointer
-                        await manifestsToDownload.Writer.WriteAsync(pf.Hash); //S11
-                        pointerFilesWaitingForManifestRestoration.AddOrUpdate( //S14
+                        // need to download the binary for this pointer
+                        await binariesToDownload.Writer.WriteAsync(pf.Hash); //S11
+                        pointerFilesWaitingForBinaryRestoration.AddOrUpdate( //S14
                             key: pf.Hash,
                             addValue: new() { pf },
                             updateValueFactory: (h, bag) =>
@@ -100,41 +97,46 @@ namespace Arius.Core.Commands.Restore
                     }
                     if (bf is not null)
                     { 
-                        // this binaryfile / manifest is already restored
-                        restoredManifests.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
+                        // this binary / binaryfile is already restored
+                        restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                     }
                 },
                 done: () => 
                 {
-                    manifestsToDownload.Writer.Complete(); //S13
+                    binariesToDownload.Writer.Complete(); //S13
                 });
             var indexTask = indexBlock.GetTask;
 
             await indexTask; //S19
 
-            logger.LogInformation($"Determining PointerFiles to restore... done. {manifestsToDownload.Reader.Count} PointerFile(s) to restore.");
+            logger.LogInformation($"Determining PointerFiles to restore... done. {binariesToDownload.Reader.Count} PointerFile(s) to restore.");
 
 
-            var chunksForManifest = new ConcurrentDictionary<ManifestHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
+            var chunksForBinary = new ConcurrentDictionary<BinaryHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
             var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
             var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
+            var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
 
-            var processManifestBlock = new DownloadManifestBlock(
+            var downloadChunksForBinaryBlock = new DownloadChunksForBinaryBlock(
                 loggerFactory: loggerFactory,
-                sourceFunc: () => manifestsToDownload,
+                sourceFunc: () => binariesToDownload,
                 restoreTempDir: restoreTempDir,
                 repo: repo,
-                restoredManifests: restoredManifests,
-                manifestRestored: (mh, cs) =>
+                restoredBinaries: restoredBinaries,
+                chunksRestored: (mh, cs) =>
                 {
-                    pointerFilesWaitingForManifestRestoration.Remove(mh, out var pointerFiles);
+                    pointerFilesWaitingForBinaryRestoration.Remove(mh, out var pointerFiles);
                     pointersToRestore.Add((cs, pointerFiles.ToArray())); //S21
+                },
+                chunksHydrating: (mh) =>
+                {
+
                 },
                 done: () => 
                 {
                     pointersToRestore.CompleteAdding(); //S29
                 });
-            var processManifestTask = processManifestBlock.GetTask;
+            var downloadChunksForBinaryTask = downloadChunksForBinaryBlock.GetTask;
 
 
 
@@ -176,6 +178,9 @@ namespace Arius.Core.Commands.Restore
                 { 
                 });
             var restorePointerFileTask = restorePointerFileBlock.GetTask;
+
+            // TODO DELETE ALL TEMP HYDRATED IN STORAGE ACCOUNT
+            // repo.DeleteHydrateFolder();
 
 
             await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);

@@ -13,8 +13,8 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        internal const string ChunkDirectoryName = "chunks";
-        internal const string RehydratedChunkDirectoryName = "chunks-rehydrated";
+        internal const string ChunkFolderName = "chunks";
+        internal const string RehydratedChunkFolderName = "chunks-rehydrated";
 
         
         // GET
@@ -26,7 +26,7 @@ namespace Arius.Core.Repositories
 
             try
             {
-                return r = container.GetBlobs(prefix: $"{ChunkDirectoryName}/")
+                return r = container.GetBlobs(prefix: $"{ChunkFolderName}/")
                     .Select(bi => new ChunkBlobItem(bi))
                     .ToArray();
             }
@@ -44,7 +44,7 @@ namespace Arius.Core.Repositories
         /// </summary>
         public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
         {
-            var blobName = GetChunkBlobName(ChunkDirectoryName, chunkHash);
+            var blobName = GetChunkBlobName(ChunkFolderName, chunkHash);
             var cb1 = GetChunkBlobByName(blobName);
 
             if (cb1 is null)
@@ -58,7 +58,7 @@ namespace Arius.Core.Repositories
             if (requireHydrated && cb1.Downloadable)
                 return cb1;
 
-            blobName = GetChunkBlobName(RehydratedChunkDirectoryName, chunkHash);
+            blobName = GetChunkBlobName(RehydratedChunkFolderName, chunkHash);
             var cb2 = GetChunkBlobByName(blobName);
 
             if (cb2 is null || !cb2.Downloadable)
@@ -104,29 +104,30 @@ namespace Arius.Core.Repositories
 
         public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
         {
-            return await container.GetBlobClient(GetChunkBlobName(ChunkDirectoryName, chunkHash)).ExistsAsync();
+            return await container.GetBlobClient(GetChunkBlobName(ChunkFolderName, chunkHash)).ExistsAsync();
         }
 
 
         // HYDRATE
 
-        public void HydrateChunk(ChunkBlobBase blobToHydrate)
+        public async Task HydrateChunkAsync(ChunkBlobBase blobToHydrate)
         {
-            logger.LogInformation($"Hydrating chunk {blobToHydrate.Name}");
+            logger.LogInformation($"Checking hydration for chunk {blobToHydrate.Hash.ToShortString()}");
 
             if (blobToHydrate.AccessTier == AccessTier.Hot ||
                 blobToHydrate.AccessTier == AccessTier.Cool)
                 throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-            var hydratedItem = container.GetBlobClient($"{RehydratedChunkDirectoryName}/{blobToHydrate.Name}");
+            var hydratedItem = container.GetBlobClient($"{RehydratedChunkFolderName}/{blobToHydrate.Name}");
 
-            if (!hydratedItem.Exists())
+            if (!await hydratedItem.ExistsAsync())
             {
                 //Start hydration
-                var archiveItem = container.GetBlobClient(blobToHydrate.FullName);
-                hydratedItem.StartCopyFromUri(archiveItem.Uri, new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
+                await hydratedItem.StartCopyFromUriAsync(
+                    blobToHydrate.Uri, 
+                    new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
-                logger.LogInformation($"Hydration started for {blobToHydrate.Name}");
+                logger.LogInformation($"Hydration started for {blobToHydrate.Hash.ToShortString()}");
             }
             else
             {
@@ -135,9 +136,9 @@ namespace Arius.Core.Repositories
 
                 var status = hydratedItem.GetProperties().Value.ArchiveStatus;
                 if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
-                    logger.LogInformation($"Hydration pending for {blobToHydrate.Name}");
+                    logger.LogInformation($"Hydration pending for {blobToHydrate.Hash.ToShortString()}");
                 else if (status == null)
-                    logger.LogInformation($"Hydration done for {blobToHydrate.Name}");
+                    logger.LogInformation($"Hydration done for {blobToHydrate.Hash.ToShortString()}");
                 else
                     throw new ArgumentException("TODO");
             }
@@ -146,14 +147,14 @@ namespace Arius.Core.Repositories
 
         // DELETE
 
-        public void DeleteHydrateFolder()
+        public async Task DeleteHydrateFolderAsync()
         {
             logger.LogInformation("Deleting temporary hydration folder");
 
-            foreach (var bi in container.GetBlobs(prefix: RehydratedChunkDirectoryName))
+            await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunkFolderName))
             {
                 var bc = container.GetBlobClient(bi.Name);
-                bc.Delete();
+                await bc.DeleteAsync();
             }
         }
 
@@ -166,13 +167,13 @@ namespace Arius.Core.Repositories
         /// <returns>Returns the length of the uploaded stream.</returns>
         public async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
         {
+            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
+
+            if (await bbc.ExistsAsync())
+                throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
+
             try
             {
-                var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkDirectoryName, chunk.Hash));
-
-                if (await bbc.ExistsAsync())
-                    throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
-
                 // v11 [DEPRECATED] of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
@@ -188,11 +189,15 @@ namespace Arius.Core.Repositories
 
                 await bbc.SetAccessTierAsync(tier);
 
-                //return ChunkBlobBase.GetChunkBlob(bbc); //commented - we do not need this
                 return length;
             }
             catch (Exception e)
             {
+                logger.LogError(e, "Error while uploading chunk. Deleting potentially corrupt chunk...", chunk, tier); //TODO test this in a unit test
+                
+                await bbc.DeleteAsync();
+
+                logger.LogInformation("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
                 throw;
             }
         }
@@ -211,7 +216,7 @@ namespace Arius.Core.Repositories
             }
             catch (Exception e)
             {
-                throw;
+                throw; //TODO
             }
         }
     }

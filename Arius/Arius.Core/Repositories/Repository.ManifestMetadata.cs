@@ -11,23 +11,24 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        public async Task CreateManifestPropertyAsync(BinaryFile bf, long archivedLength, int chunkCount)
+        public async Task CreateBinaryMetadataAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
-            var mp = new ManifestProperties()
+            var mp = new BinaryMetadata()
             {
                 Hash = bf.Hash,
                 OriginalLength = bf.Length,
                 ArchivedLength = archivedLength,
+                IncrementalLength = incrementalLength,
                 ChunkCount = chunkCount
             };
 
-            await mpRepo.Add(mp);
+            await bmRepo.Add(mp);
         }
 
-        private class CachedManifestPropertiesRepository
-        {
 
-            public CachedManifestPropertiesRepository(ILogger logger, IOptions options)
+        private class CachedBinaryMetadataRepository
+        {
+            public CachedBinaryMetadataRepository(ILogger logger, IOptions options)
             {
                 this.logger = logger;
 
@@ -36,46 +37,49 @@ namespace Arius.Core.Repositories
                     ConvertToDto, ConvertFromDto);
             }
 
-            internal const string TableNameSuffix = "manifestproperties";
+            internal const string TableNameSuffix = "binarymetadata";
 
             private readonly ILogger logger;
 
-            private readonly EagerCachedConcurrentDataTableRepository<ManifestPropertiesDto, ManifestProperties> entries;
+            private readonly EagerCachedConcurrentDataTableRepository<BinaryMetadataDto, BinaryMetadata> entries;
 
     
-            public async Task Add(ManifestProperties item)
+            public async Task Add(BinaryMetadata item)
             {
                 await entries.Add(item);
             }
 
-
-            private ManifestProperties ConvertFromDto(ManifestPropertiesDto dto)
+            private BinaryMetadata ConvertFromDto(BinaryMetadataDto dto)
             {
                 return new()
                 {
                     Hash = new(dto.PartitionKey),
                     OriginalLength = dto.OriginalLength,
                     ArchivedLength = dto.ArchivedLength,
+                    IncrementalLength = dto.IncrementalLength,
                     ChunkCount = dto.ChunkCount
                 };
             }
-            private ManifestPropertiesDto ConvertToDto(ManifestProperties mp)
+            
+            private BinaryMetadataDto ConvertToDto(BinaryMetadata bm)
             {
                 return new()
                 {
-                    PartitionKey = mp.Hash.Value,
-                    RowKey = "ManifestProperties",
+                    PartitionKey = bm.Hash.Value,
+                    RowKey = "BinaryMetadata",
 
-                    OriginalLength = mp.OriginalLength,
-                    ArchivedLength = mp.ArchivedLength,
-                    ChunkCount = mp.ChunkCount
+                    OriginalLength = bm.OriginalLength,
+                    ArchivedLength = bm.ArchivedLength,
+                    IncrementalLength = bm.IncrementalLength,
+                    ChunkCount = bm.ChunkCount
                 };
             }
 
-            private class ManifestPropertiesDto : TableEntity
+            private class BinaryMetadataDto : TableEntity
             {
                 public long OriginalLength { get; init; }
                 public long ArchivedLength { get; init; }
+                public long IncrementalLength { get; init; }
                 public int ChunkCount { get; init; }
             }
         }

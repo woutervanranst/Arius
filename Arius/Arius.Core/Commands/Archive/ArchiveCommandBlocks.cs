@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -58,7 +59,7 @@ namespace Arius.Core.Commands.Archive
 
                 if (fi.IsPointerFile())
                 {
-                    //PointerFile
+                    //fi is a PointerFile
                     logger.LogInformation($"Found PointerFile '{rn}'");
 
                     var pf = new PointerFile(root, fi);
@@ -67,42 +68,55 @@ namespace Arius.Core.Commands.Archive
                 }
                 else
                 {
-                    //BinaryFile
-                    logger.LogInformation($"Found BinaryFile '{rn}'");
+                    //fi is a BinaryFile
+                    logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
 
                     //Get the Hash for this file
-                    ManifestHash manifestHash;
+                    BinaryHash binaryHash = default;
                     var pf = pointerService.GetPointerFile(root, fi);
                     if (fastHash && pf is not null)
                     {
                         //A corresponding PointerFile exists
-                        logger.LogDebug($"Using fasthash for '{rn}'");
-                        manifestHash = pf.Hash;
+                        binaryHash = pf.Hash;
+
+                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{binaryHash.ToShortString()}'");
                     }
                     else
                     {
-                        manifestHash = hvp.GetManifestHash(fi);
+                        var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
+                        {
+                            binaryHash = hvp.GetBinaryHash(fi);
+                        });
+
+                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
                     }
 
-                    logger.LogInformation($"Hashing BinaryFile '{rn}'... done. Hash: '{manifestHash.ToShortString()}'");
-
-
-                    var bf = new BinaryFile(root, fi, manifestHash);
-
-
-                    if (pf is not null && pf.Hash == manifestHash)
+                    var bf = new BinaryFile(root, fi, binaryHash);
+                    if (pf is not null)
                     {
-                        //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
+                        if (pf.Hash == binaryHash)
+                        {
+                            if (!await repo.BinaryExistsAsync(binaryHash))
+                            {
+                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
+                                indexedBinaryFile((bf, AlreadyBackedUp: false));
+                            }
+                            else
+                            {
+                                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
-                        if (!await repo.ManifestExistsAsync(manifestHash))
-                            throw new InvalidOperationException($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a manifest ('{manifestHash.ToShortString()}') that no longer exists.");
-
-                        logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                        indexedBinaryFile((bf, AlreadyBackedUp: true));
+                                logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                                indexedBinaryFile((bf, AlreadyBackedUp: true));
+                            }
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"The PointerFile {pf.FullName} is not valid for the BinaryFile {bf.FullName}. Has the BinaryFile been updated? Delete the PointerFile and try again.");
+                        }
                     }
                     else
                     {
-                        // To process
+                        // No PointerFile -- to process
                         indexedBinaryFile((bf, AlreadyBackedUp: false));
                     }
                 }
@@ -121,23 +135,23 @@ namespace Arius.Core.Commands.Archive
             Repository repo,
             ArchiveCommandOptions options,
             
-            Action<BinaryFile> manifestExists,
+            Action<BinaryFile> binaryExists,
             Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
         {
             this.chunker = chunker;
             this.repo = repo;
             this.options = options;
-            this.manifestExists = manifestExists;
+            this.binaryExists = binaryExists;
         }
 
         private readonly Chunker chunker;
         private readonly Repository repo;
         private readonly ArchiveCommandOptions options;
         
-        private readonly Action<BinaryFile> manifestExists;
+        private readonly Action<BinaryFile> binaryExists;
 
-        private readonly ConcurrentDictionary<ManifestHash, Task<bool>> remoteManifests = new();
-        private readonly ConcurrentDictionary<ManifestHash, TaskCompletionSource> creatingManifests = new();
+        private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
+        private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
@@ -146,19 +160,18 @@ namespace Arius.Core.Commands.Archive
             /* 
             * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
             * Four possibilities:
-            *   1.  [At the start of the run] the manifest (and chunks) already exist remotely
-            *   2.1. [At the start of the run] the manifest did not yet exist remotely, and upload has not started --> upload it 
-            *   2.2. [At the start of the run] the manifest did not yet exist remotely, and upload has started but not completed --> wait for it to complete
-            *   2.3. [At the start of the run] the manifest did not yet exist remotely, and upload has completed --> continue
+            *   1.  [At the start of the run] the Binary already exist remotely
+            *   2.1. [At the start of the run] the Binary did not yet exist remotely, and upload has not started --> upload it 
+            *   2.2. [At the start of the run] the Binary did not yet exist remotely, and upload has started but not completed --> wait for it to complete
+            *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-
-            // [Concurrently] Build a local cache of the remote manifests -- ensure we call ManifestExistsAsync only once
-            var manifestExistsRemote = await remoteManifests.GetOrAdd(bf.Hash, async (a) => await repo.ManifestExistsAsync(bf.Hash));
-            if (manifestExistsRemote)
+            // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (a) => await repo.BinaryExistsAsync(bf.Hash));
+            if (binaryExistsRemote)
             {
                 // 1 Exists remote
-                logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') already exists. No need to upload.");
+                logger.LogInformation($"Binary for {bf} already exists. No need to upload.");
             }
             else
             {
@@ -167,62 +180,58 @@ namespace Arius.Core.Commands.Archive
                 /* TryAdd returns true if the new value was added
                  * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
                  */
-                var manifestToUpload = creatingManifests.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
-                if (manifestToUpload)
+                var binaryToUpload = uploadingBinaries.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
+                if (binaryToUpload)
                 {
                     // 2.1 Does not yet exist remote and not yet being created --> upload
-                    logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely. To upload and create pointer.");
+                    logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
 
                     await UploadBinaryAsync(bf);
 
-                    creatingManifests[bf.Hash].SetResult();
+                    uploadingBinaries[bf.Hash].SetResult();
                 }
                 else
                 {
-                    var t = creatingManifests[bf.Hash].Task;
+                    var t = uploadingBinaries[bf.Hash].Task;
                     if (!t.IsCompleted)
                     {
                         // 2.2 Did not exist remote but is being created
-                        logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') does not exist remotely but is being uploaded. Wait for upload to finish.");
+                        logger.LogInformation($"Binary for {bf} does not exist remotely but is being uploaded. Wait for upload to finish.");
 
                         await t;
                     }
                     else
                     {
                         // 2.3  Did not exist remote but is created in the mean time
-                        logger.LogInformation($"Manifest for '{bf.Name}' ('{bf.Hash.ToShortString()}') did not exist remotely but was uploaded in the mean time.");
+                        logger.LogInformation($"Binary for {bf} did not exist remotely but was uploaded in the mean time.");
                     }
                 }
             }
             
-            manifestExists(bf);
+            binaryExists(bf);
         }
 
         private async Task UploadBinaryAsync(BinaryFile bf)
         {
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
+
             // Upload the Binary
-            var sw = new Stopwatch();
-            sw.Start();
-
-            var (chs, length) = options.Dedup switch
+            var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () => 
             {
-                true => await UploadChunkedBinaryAsync(bf),
-                false => await UploadBinaryChunkAsync(bf)
-            };
+                return options.Dedup switch
+                {
+                    true => await UploadChunkedBinaryAsync(bf),
+                    false => await UploadBinaryChunkAsync(bf)
+                };
+            });
             
-            sw.Stop();
+            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of {bf}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
-            var megabytepersecond = Math.Round(bf.Length / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
-            var megabitpersecond = Math.Round(bf.Length * 8 / (1024 * 1024 * (double)sw.ElapsedMilliseconds / 1000), 3);
+            // Create the BinaryManifest
+            await repo.CreateBinaryManifestAsync(bf.Hash, chs);
 
-            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')... Completed in {sw.ElapsedMilliseconds / 1000}s ({megabytepersecond} MBps / {megabitpersecond} Mbps)");
-
-            // Create the Manifest
-            await repo.CreateManifestAsync(bf.Hash, chs);
-
-            // Create the ManifestPropertyEntry
-            await repo.CreateManifestPropertyAsync(bf, length, chs.Length);
+            // Create the BinaryMetadata
+            await repo.CreateBinaryMetadataAsync(bf, totalLength, incrementalLength, chs.Length);
         }
 
         
@@ -231,22 +240,28 @@ namespace Arius.Core.Commands.Archive
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<(ChunkHash[], long length)> UploadChunkedBinaryAsync(BinaryFile bf)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
             var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
             var totalLength = 0L;
+            var incrementalLength = 0L;
 
             // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
             var t = Task.Run(async () =>
             {
                 using var binaryFileStream = await bf.OpenReadAsync();
 
-                foreach (var chunk in chunker.Chunk(binaryFileStream))
+                var (MBps, _, seconds) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
                 {
-                    await chunksToUpload.Writer.WriteAsync(chunk);
-                    chs.Add(chunk.Hash);
-                }
+                    foreach (var chunk in chunker.Chunk(binaryFileStream))
+                    {
+                        await chunksToUpload.Writer.WriteAsync(chunk);
+                        chs.Add(chunk.Hash);
+                    }
+                });
+
+                logger.LogInformation($"Completed chunking of {bf.Name} in {seconds}s at {MBps} MBps");
 
                 chunksToUpload.Writer.Complete();
             });
@@ -254,44 +269,62 @@ namespace Arius.Core.Commands.Archive
             /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
              * 1. to effectively limit the number of concurrent files 'in flight' 
              * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
-             * 3. this code has a nice 'await for manifest upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
+             * 3. this code has a nice 'await for binary upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
+             * 4. with a centralized pipe, setting the degree of concurrency is not trivial since, for chunks (~64 KB), it is higher than for full binary files (we dont want to be uploading 128 2GB files in parallel)
              */
 
-            var cs = chunksToUpload.Reader.ReadAllAsync();
-            await Parallel.ForEachAsync(cs, 
+            int degreeOfParallelism = 0;
+
+            await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(), 
                 new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
                 async (chunk, cancellationToken) => 
                 {
+                    var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
+                    logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
+
+
                     if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
-                        return;
-                    }
+                        logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
 
-                    bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
-                    if (toUpload)
-                    {
-                        // 2 Does not yet exist remote and not yet being created --> upload
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-
-                        var length = await repo.UploadChunkAsync(chunk, options.Tier);
+                        var length = repo.GetChunkBlobByHash(chunk.Hash, false).Length;
                         Interlocked.Add(ref totalLength, length);
-
-                        uploadingChunks[chunk.Hash].SetResult();
+                        Interlocked.Add(ref incrementalLength, 0);
                     }
                     else
                     {
-                        // 3 Does not exist remote but is being created
-                        logger.LogInformation($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
+                        bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                        if (toUpload)
+                        {
+                            // 2 Does not yet exist remote and not yet being created --> upload
+                            logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
-                        //TODO TES THIS PATH
+                            var length = await repo.UploadChunkAsync(chunk, options.Tier);
+                            Interlocked.Add(ref totalLength, length);
+                            Interlocked.Add(ref incrementalLength, length);
+
+                            uploadingChunks[chunk.Hash].SetResult();
+                        }
+                        else
+                        {
+                            // 3 Does not exist remote but is being created by another thread
+                            logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
+
+                            await uploadingChunks[chunk.Hash].Task;
+
+                            var length = repo.GetChunkBlobByHash(chunk.Hash, false).Length;
+                            Interlocked.Add(ref totalLength, length);
+                            Interlocked.Add(ref incrementalLength, 0);
+
+                            //TODO TES THIS PATH
+                        }
                     }
 
-                    await uploadingChunks[chunk.Hash].Task;
+                    Interlocked.Add(ref degreeOfParallelism, -1);
                 });
 
-            return (chs.ToArray(), totalLength);
+            return (chs.ToArray(), totalLength, incrementalLength);
         }
 
         /// <summary>
@@ -299,11 +332,11 @@ namespace Arius.Core.Commands.Archive
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<(ChunkHash[], long length)> UploadBinaryChunkAsync(BinaryFile bf)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryChunkAsync(BinaryFile bf)
         {
             var length = await repo.UploadChunkAsync(bf, options.Tier);
 
-            return (((IChunk)bf).Hash.SingleToArray(), length);
+            return (((IChunk)bf).Hash.SingleToArray(), length, length);
         }
     }
 
@@ -469,13 +502,10 @@ namespace Arius.Core.Commands.Archive
                     //.AsEnumerable()) 
                     .GetConsumingEnumerable())
             {
-                var chs = await repo.GetChunkHashesForManifestAsync(pfe.ManifestHash);
+                var chs = await repo.GetChunksForBinaryAsync(pfe.BinaryHash);
                 var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
 
-                //lock (writer)
-                //{ 
-                JsonSerializer.Serialize(writer, entry /*entry*/, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
-                //}
+                JsonSerializer.Serialize(writer, entry , new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
             }
 
             writer.WriteEndArray();
@@ -495,7 +525,7 @@ namespace Arius.Core.Commands.Archive
             private readonly PointerFileEntry pfe;
             private readonly ChunkHash[] chs;
 
-            public string ManifestHash => pfe.ManifestHash.Value;
+            public string BinaryHash => pfe.BinaryHash.Value;
             public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
             public string RelativeName => pfe.RelativeName;
             public DateTime VersionUtc => pfe.VersionUtc;

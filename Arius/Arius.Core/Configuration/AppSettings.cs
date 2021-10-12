@@ -7,7 +7,7 @@ namespace Arius.Core.Configuration
     {
         public string TempDirectoryName { get; init; }
         public string TempDirectoryFullName => Path.Combine(Path.GetTempPath(), TempDirectoryName);
-        public DirectoryInfo TempDirectory => new DirectoryInfo(TempDirectoryFullName);
+        public DirectoryInfo TempDirectory => new (TempDirectoryFullName);
 
 
         public string RestoreTempDirectoryName { get; init; }

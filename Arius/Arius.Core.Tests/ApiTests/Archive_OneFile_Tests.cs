@@ -44,7 +44,7 @@ namespace Arius.Core.Tests.ApiTests
             //PointerFile is created
             Assert.IsNotNull(pf);
             //The chunk is in the appropriate tier
-            var ch = (await repo.GetChunkHashesForManifestAsync(pf.Hash)).Single();
+            var ch = (await repo.GetChunksForBinaryAsync(pf.Hash)).Single();
             var c = repo.GetChunkBlobByHash(ch, requireHydrated: false);
             Assert.AreEqual(tier, c.AccessTier);
             //There is a matching PointerFileEntry
@@ -379,6 +379,12 @@ namespace Arius.Core.Tests.ApiTests
             var movedPfe = currentPfeWithoutDeleted1.SingleOrDefault(lcf => lcf.RelativeName == pfi_Relativename_AfterMove);
             // A new PointerFileEntry exists that is not marked as deleted
             Assert.IsFalse(movedPfe.IsDeleted);
+        }
+
+        [Test]
+        public void CORRUPTPOINTERFILE()
+        {
+            throw new NotImplementedException();
         }
     }
 }

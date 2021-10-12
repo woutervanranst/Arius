@@ -4,6 +4,7 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Tests;
 using Arius.Core.Tests.Extensions;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
@@ -174,9 +175,9 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_OneFileWithChunkAlreadyDownloaded_BinaryFileRestoredFromLocal()
         {
             // Reset params
-            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier = false;
-            Commands.Restore.DownloadManifestBlock.Flow4Executed = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
 
 
             // Ensure stuff is archived
@@ -202,9 +203,9 @@ namespace Arius.Core.Tests.ApiTests
 
             // Assert
             // for the restore operation we only restored it from the local chunk cache
-            Assert.IsTrue(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier);
-            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow4Executed);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
             // the BinaryFile is restored
             var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
@@ -216,9 +217,9 @@ namespace Arius.Core.Tests.ApiTests
         public async Task Restore_OneFileWithChunkToDownload_BinaryFileRestored()
         {
             // Reset params
-            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal = false;
-            Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier = false;
-            Commands.Restore.DownloadManifestBlock.Flow4Executed = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
 
 
             // Ensure stuff is archived
@@ -235,9 +236,9 @@ namespace Arius.Core.Tests.ApiTests
 
             // Assert
             // for the restore operation we only restored it from the online tier
-            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromLocal);
-            Assert.IsTrue(Commands.Restore.DownloadManifestBlock.ChunkRestoredFromOnlineTier);
-            Assert.IsFalse(Commands.Restore.DownloadManifestBlock.Flow4Executed);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
             // the BinaryFile is restored
             var ps = GetServices().GetRequiredService<PointerService>();
@@ -246,9 +247,64 @@ namespace Arius.Core.Tests.ApiTests
             Assert.IsNotNull(r_bfi);
         }
 
+        [Test]
+        public async Task Restore_OneFileWithArchivedChunk_CannotYetBeRestored()
+        {
+            // Reset params
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
+            Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration = false;
+
+
+            // Ensure stuff is archived
+            await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, removeLocal: false, tier: AccessTier.Archive);
+
+            // Copy the pointer to the restore directory
+            var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
+            var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
+
+
+            // Restore
+            await RestoreCommand(RestoreTestDirectory.FullName, synchronize: false, download: true);
+
+
+            // Assert
+            // for the restore operation we only started a hydration
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal);
+            Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier);
+            Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
+
+            // the BinaryFile is NOT restored
+            var ps = GetServices().GetRequiredService<PointerService>();
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
+            Assert.IsNull(r_bfi);
+        }
 
         [Test]
-        public async Task Restore_Directory_Chunked()
+        public async Task Restore_OneFileWithTEMPHYDRATEDChunk_BinaryFileRestoredTempDeleted()
+        {
+            throw new NotImplementedException();
+        }
+
+        [Test]
+        public async Task Restore_DedupedFile_Success()
+        {
+            EnsureArchiveTestDirectoryFileInfo();
+            await ArchiveCommand(dedup: true);
+
+            await RestoreCommand(RestoreTestDirectory.FullName, true, true, true);
+
+            // the BinaryFile is restored
+            var ps = GetServices().GetRequiredService<PointerService>();
+            var r_pfi = RestoreTestDirectory.GetPointerFileInfos().Single();
+            var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
+            var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
+            Assert.IsNotNull(r_bfi);
+        }
+
+        [Test]
+        public async Task Restore_DedupedDirectory_Success()
         {
             await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
 

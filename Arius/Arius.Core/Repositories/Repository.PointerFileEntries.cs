@@ -25,7 +25,7 @@ namespace Arius.Core.Repositories
         {
             var pfe = new PointerFileEntry()
             {
-                ManifestHash = pf.Hash,
+                BinaryHash = pf.Hash,
                 RelativeName = pf.RelativeName,
                 VersionUtc = versionUtc,
                 IsDeleted = false,
@@ -111,7 +111,7 @@ namespace Arius.Core.Repositories
 
         private async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
         {
-            var pfes = await GetPointerFileEntries();
+            var pfes = await GetPointerFileEntriesAsync();
 
             //TODO an exception here is swallowed
 
@@ -127,7 +127,7 @@ namespace Arius.Core.Repositories
         /// Get All PointerFileEntries
         /// </summary>
         /// <returns></returns>
-        internal async Task<IReadOnlyCollection<PointerFileEntry>> GetPointerFileEntries()
+        internal async Task<IReadOnlyCollection<PointerFileEntry>> GetPointerFileEntriesAsync()
         {
             return await pfeRepo.GetEntriesAsync();
         }

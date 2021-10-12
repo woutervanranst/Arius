@@ -132,9 +132,9 @@ namespace Arius.Core.Commands
             //TODO quid CancellationToken?
             await Parallel.ForEachAsync(source.Reader.ReadAllAsync(),
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                async (item, cancellationToken) => await ForEachBodyImplAsync(item));
+                async (item, cancellationToken) => await ForEachBodyImplAsync(item, cancellationToken));
         }
 
-        protected abstract Task ForEachBodyImplAsync(TSource item);
+        protected abstract Task ForEachBodyImplAsync(TSource item, CancellationToken cancellationToken);
     }
 }
