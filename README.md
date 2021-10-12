@@ -344,7 +344,7 @@ gzip -d original.file.gz -f
 
 #### In detail
 
-![](docs/overview2.png)
+![](docs/overview2.svg)
 
 1. The filesystem is indexed. Arius finds `report v1.doc` and calculates the SHA256 hash to be `binaryhash1`. This binaryhash does not yet exist in blob storage, so this binary needs to be uploaded.
 2. Arius breaks ("chunks") the file into variable sized chunks: `chunkhash1`, `chunkhash2` and `chunkhash3`. These chunkhashes do not yet exist in blob storage, so these chunks need to be uploaded.
