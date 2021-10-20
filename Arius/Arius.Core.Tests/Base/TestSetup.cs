@@ -4,9 +4,9 @@ using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Configuration;
 using Arius.Core.Repositories;
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Azure.Cosmos.Table;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -35,7 +35,7 @@ namespace Arius.Core.Tests
 
         private static BlobServiceClient blobService;
         public static BlobContainerClient Container { get; private set; }
-        private static CloudTableClient table;
+        private static TableServiceClient tableService;
 
 
         [OneTimeSetUp]
@@ -72,8 +72,7 @@ namespace Arius.Core.Tests
 
 
             // Create reference to the storage tables
-            var csa = CloudStorageAccount.Parse(connectionString);
-            table = csa.CreateCloudTableClient();
+            tableService = new TableServiceClient(connectionString);
 
 
             // Initialize Facade
@@ -114,22 +113,32 @@ namespace Arius.Core.Tests
                 d.Delete(true);
 
             // Delete blobs
-            foreach (var c in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
-                await blobService.GetBlobContainerClient(c.Name).DeleteAsync();
+            foreach (var bci in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
+                await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
 
             // Delete tables
-            foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
-                await t.DeleteAsync();
+            foreach (var ti in tableService.Query())
+                if (ti.Name.StartsWith(TestContainerNamePrefix))
+                    await tableService.GetTableClient(ti.Name).DeleteAsync();
         }
 
         public static async Task PurgeRemote()
         {
-            foreach (var b in Container.GetBlobs())
-                Container.DeleteBlob(b.Name);
+            // delete all blobs in the container but leave the container
+            foreach (var bi in Container.GetBlobs())
+                Container.DeleteBlob(bi.Name);
 
-            foreach (var t in table.ListTables(prefix: TestContainerNamePrefix))
-                foreach (var item in t.CreateQuery<TableEntity>())
-                    await t.ExecuteAsync(TableOperation.Delete(item));
+            // delete all rows but leave the container
+            foreach (var ti in tableService.Query())
+            {
+                if (ti.Name.StartsWith(TestContainerNamePrefix))
+                { 
+                    var tc = tableService.GetTableClient(ti.Name);
+                    foreach (var te in tc.Query<TableEntity>())
+                        await tc.DeleteEntityAsync(te.PartitionKey, te.RowKey);
+                }
+            }
+                
         }
     }
 }

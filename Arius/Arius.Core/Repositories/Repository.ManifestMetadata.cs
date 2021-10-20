@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Models;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -75,8 +76,13 @@ namespace Arius.Core.Repositories
                 };
             }
 
-            private class BinaryMetadataDto : TableEntity
+            private class BinaryMetadataDto : ITableEntity
             {
+                public string PartitionKey { get; set; }
+                public string RowKey { get; set; }
+                public DateTimeOffset? Timestamp { get; set; }
+                public ETag ETag { get; set; }
+
                 public long OriginalLength { get; init; }
                 public long ArchivedLength { get; init; }
                 public long IncrementalLength { get; init; }

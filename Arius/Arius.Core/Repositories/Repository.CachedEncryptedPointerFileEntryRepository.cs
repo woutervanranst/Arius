@@ -10,7 +10,8 @@ using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
-using Microsoft.Azure.Cosmos.Table;
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Extensions.Logging;
 using Murmur;
 
@@ -170,8 +171,13 @@ namespace Arius.Core.Repositories
 
 
 
-            private class PointerFileEntryDto : TableEntity
+            private class PointerFileEntryDto : ITableEntity
             {
+                public string PartitionKey { get; set; }
+                public string RowKey { get; set; }
+                public DateTimeOffset? Timestamp { get; set; }
+                public ETag ETag { get; set; }
+
                 public string EncryptedRelativeName { get; init; }
                 public DateTime Version { get; init; }
                 public bool IsDeleted { get; init; }

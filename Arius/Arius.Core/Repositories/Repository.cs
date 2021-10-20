@@ -28,8 +28,7 @@ namespace Arius.Core.Repositories
 
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-            var bsc = new BlobServiceClient(connectionString);
-            container = bsc.GetBlobContainerClient(options.Container);
+            container = new BlobContainerClient(connectionString, options.Container);
 
             var r = container.CreateIfNotExists(PublicAccessType.None);
             if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
