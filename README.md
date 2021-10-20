@@ -324,6 +324,46 @@ gzip -d original.file.gz -f
 
 ### Deduplication
 
+#### How it works
+
+1. Scan the file system for files meeting the optimization policy.
+
+![](https://docs.microsoft.com/en-us/windows-server/storage/data-deduplication/media/understanding-dedup-how-dedup-works-1.gif)
+
+2. Break files into variable-size chunks.
+
+![alt](https://docs.microsoft.com/en-us/windows-server/storage/data-deduplication/media/understanding-dedup-how-dedup-works-2.gif)
+
+3. Identify unique chunks.
+
+![alt](https://docs.microsoft.com/en-us/windows-server/storage/data-deduplication/media/understanding-dedup-how-dedup-works-3.gif)
+
+4. Place chunks in the chunk store and optionally compress.
+
+![alt](https://docs.microsoft.com/en-us/windows-server/storage/data-deduplication/media/understanding-dedup-how-dedup-works-4.gif)
+
+#### In detail
+
+![](docs/overview2.svg)
+
+1. The filesystem is indexed. Arius finds `report v1.doc` and calculates the SHA256 hash to be `binaryhash1`. This binaryhash does not yet exist in blob storage, so this binary needs to be uploaded.
+2. Arius breaks ("chunks") the file into variable sized chunks: `chunkhash1`, `chunkhash2` and `chunkhash3`. These chunkhashes do not yet exist in blob storage, so these chunks need to be uploaded.
+3. `chunkhash1`, `chunkhash2` and `chunkhash3` are compressed (using gzip) and encrypted (using AES256) and then uploaded to the `chunks` container in blob storage. This is the bulk of the storage size and the use of the archive tier is highly advised, as the chunks are not needed until restore.
+4. A `manifest` is created describing the chunks that make up the binary.
+5. A `metadata entry` is created describing the original length, archived length and the number of chunks. While not strictly required (easier to consult size etc)
+6. A pointer is created on the local file system (`report v1.doc.pointer.arius`), containing just the 64 hex characters of the SHA256 hash of the original binary (`binaryhash1`). Optionally, the original binary can be deleted since it is not succesfully archived.
+7. A `pointerfile entry` is created linking the `binaryhash` with the path on the local filesystem and the point-in-time version. This is used when restoring the full archive onto an empty local disk.<br><br>
+8. The filesystem is further indexed. Arius finds `report v1 (copy).doc` and calculates the SHA256 hash to be `binaryhash1`. This binaryhash *already* exists in blob storage so this binary does *not* need to be uploaded.
+9. A pointer is created on the local file system (`report v1 (copy).doc.pointer.arius`), containing just the 64 hex characters of the SHA256 hash of the original binary (`binaryhash1`). Optionally, the original binary can be deleted since it is not succesfully archived.
+10.  A `pointerfile entry` is created linking the `binaryhash` with the path on the local filesystem and the point-in-time version. This is used when restoring the full archive onto an empty local disk.<br><br>
+11. The filesystem is further indexed. Arius finds `report v2.doc` and calculates the SHA256 hash to be `binaryhash2`. This binaryhash does not yet exist in blob storage, so this binary needs to be uploaded.
+12. Arius breaks ("chunks") the file into variable sized chunks: `chunkhash1`, `chunkhash2` and `chunkhash4`. Only the last chunk does not exist in blob storage, so only that one needs to be uploaded.
+13. `chunkhash4` is compressed, encrypted and uploaded to the `chunks` container in blob storage.
+14. A `manifest` is created describing the chunks that make up the binary.
+15. A pointer is created on the local file system (`report v2.doc.pointer.arius`), containing just the 64 hex characters of the SHA256 hash of the original binary (`binaryhash2`). Optionally, the original binary can be deleted since it is not succesfully archived.
+16. 
+
+
 A 1 GB file chunked into chunks of 64 KB, with each chunk having a SHA256 hash (32 bytes = 64 hex characters) * 4 bytes/UTF8 character = 4 MB of manifest
 
 ((1 GB) / (64 KB)) * (64 * 4 bytes) = 4 megabytes
