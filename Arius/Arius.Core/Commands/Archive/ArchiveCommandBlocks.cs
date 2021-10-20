@@ -55,70 +55,77 @@ namespace Arius.Core.Commands.Archive
                                     .AsParallel()
                                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
             {
-                var rn = fi.GetRelativeName(root);
-
-                if (fi.IsPointerFile())
+                try
                 {
-                    //fi is a PointerFile
-                    logger.LogInformation($"Found PointerFile '{rn}'");
+                    var rn = fi.GetRelativeName(root);
 
-                    var pf = pointerService.GetPointerFile(root, fi);
-
-                    indexedPointerFile(pf);
-                }
-                else
-                {
-                    //fi is a BinaryFile
-                    logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
-
-                    //Get the Hash for this file
-                    BinaryHash binaryHash = default;
-                    var pf = pointerService.GetPointerFile(root, fi);
-                    if (fastHash && pf is not null)
+                    if (fi.IsPointerFile())
                     {
-                        //A corresponding PointerFile exists
-                        binaryHash = pf.Hash;
+                        //fi is a PointerFile
+                        logger.LogInformation($"Found PointerFile '{rn}'");
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{binaryHash.ToShortString()}'");
+                        var pf = pointerService.GetPointerFile(root, fi);
+
+                        indexedPointerFile(pf);
                     }
                     else
                     {
-                        var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
-                        {
-                            binaryHash = hvp.GetBinaryHash(fi);
-                        });
+                        //fi is a BinaryFile
+                        logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
-                    }
-
-                    var bf = new BinaryFile(root, fi, binaryHash);
-                    if (pf is not null)
-                    {
-                        if (pf.Hash == binaryHash)
+                        //Get the Hash for this file
+                        BinaryHash binaryHash = default;
+                        var pf = pointerService.GetPointerFile(root, fi);
+                        if (fastHash && pf is not null)
                         {
-                            if (!await repo.BinaryExistsAsync(binaryHash))
+                            //A corresponding PointerFile exists
+                            binaryHash = pf.Hash;
+
+                            logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{binaryHash.ToShortString()}'");
+                        }
+                        else
+                        {
+                            var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
                             {
-                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
-                                indexedBinaryFile((bf, AlreadyBackedUp: false));
+                                binaryHash = hvp.GetBinaryHash(fi);
+                            });
+
+                            logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
+                        }
+
+                        var bf = new BinaryFile(root, fi, binaryHash);
+                        if (pf is not null)
+                        {
+                            if (pf.Hash == binaryHash)
+                            {
+                                if (!await repo.BinaryExistsAsync(binaryHash))
+                                {
+                                    logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
+                                    indexedBinaryFile((bf, AlreadyBackedUp: false));
+                                }
+                                else
+                                {
+                                    //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
+
+                                    logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                                    indexedBinaryFile((bf, AlreadyBackedUp: true));
+                                }
                             }
                             else
                             {
-                                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
-
-                                logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                                indexedBinaryFile((bf, AlreadyBackedUp: true));
+                                throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
                             }
                         }
                         else
                         {
-                            throw new InvalidOperationException($"The PointerFile {pf.FullName} is not valid for the BinaryFile {bf.FullName}. Has the BinaryFile been updated? Delete the PointerFile and try again.");
+                            // No PointerFile -- to process
+                            indexedBinaryFile((bf, AlreadyBackedUp: false));
                         }
                     }
-                    else
-                    {
-                        // No PointerFile -- to process
-                        indexedBinaryFile((bf, AlreadyBackedUp: false));
-                    }
+                }
+                catch (IOException e) when (e.Message.Contains("virus"))
+                {
+                    logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
                 }
             }
         }

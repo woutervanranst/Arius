@@ -44,6 +44,7 @@ namespace Arius.Core.Repositories
                     var ts = table
                         .CreateQuery<TDto>()
                         .AsEnumerable()
+                        .AsParallel()
                         .Select(r => fromDto(r));
 
                     var r = new ConcurrentHashSet<T>(ts);
