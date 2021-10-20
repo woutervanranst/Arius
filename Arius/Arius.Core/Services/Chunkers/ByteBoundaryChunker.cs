@@ -2,7 +2,6 @@
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Toolkit.HighPerformance;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
