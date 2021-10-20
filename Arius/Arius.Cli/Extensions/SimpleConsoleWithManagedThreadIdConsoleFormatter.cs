@@ -87,7 +87,7 @@ namespace Arius.Cli.Extensions
 
             // category and event id
             textWriter.Write(LoglevelPadding);
-            textWriter.Write($"{logEntry.Category.Split('.').Last().Left(20),-20}"); // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/interpolated#structure-of-an-interpolated-string
+            textWriter.Write($"{logEntry.Category.Split('.').Last().Left(20),-20}"); // string.format: https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/interpolated#structure-of-an-interpolated-string
             textWriter.Write('[');
 
             if (Program.IsMainThread)
