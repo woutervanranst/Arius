@@ -18,14 +18,10 @@ namespace Arius.Core.Repositories
             string Passphrase { get; }
         }
 
-        public Repository(ILogger<Repository> logger, IOptions options)
+        public Repository(ILoggerFactory loggerFactory, IOptions options)
         {
-            this.logger = logger;
+            this.logger = loggerFactory.CreateLogger<Repository>();
             this.passphrase = options.Passphrase;
-
-            pfeRepo = new(logger, options);
-            bmRepo = new(logger, options);
-
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
             container = new BlobContainerClient(connectionString, options.Container);
@@ -33,12 +29,15 @@ namespace Arius.Core.Repositories
             var r = container.CreateIfNotExists(PublicAccessType.None);
             if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
                 this.logger.LogInformation($"Created container {options.Container}... ");
+
+            pfeRepo = new(loggerFactory.CreateLogger<CachedEncryptedPointerFileEntryRepository2>(), options, container);
+            bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
         }
 
         private readonly ILogger<Repository> logger;
         private readonly string passphrase;
 
-        private readonly CachedEncryptedPointerFileEntryRepository pfeRepo;
+        private readonly CachedEncryptedPointerFileEntryRepository2 pfeRepo;
         private readonly CachedBinaryMetadataRepository bmRepo;
 
         private readonly BlobContainerClient container;

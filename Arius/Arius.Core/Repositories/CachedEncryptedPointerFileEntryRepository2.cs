@@ -4,6 +4,7 @@ using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,9 +16,9 @@ namespace Arius.Core.Repositories
 {
     internal partial class Repository
     {
-        internal class Bla
+        internal class CachedEncryptedPointerFileEntryRepository2
         {
-            public Bla(ILogger<Bla> logger, IOptions options, BlobContainerClient container)
+            public CachedEncryptedPointerFileEntryRepository2(ILogger<CachedEncryptedPointerFileEntryRepository2> logger, IOptions options, BlobContainerClient container)
             {
                 this.logger = logger;
                 this.passphrase = options.Passphrase;
@@ -28,10 +29,6 @@ namespace Arius.Core.Repositories
 
                 versionsTask = Task.Run(async () =>
                 {
-
-
-                    var versions = new ConcurrentHashSet<PointerFileEntry>();
-
                     //var x = container
                     //    .GetBlobs(prefix: $"{PointerFileEntriesFolderName}/")
                     //    .AsParallel()
@@ -56,6 +53,8 @@ namespace Arius.Core.Repositories
 
                     //var z = (await Task.WhenAll(x)).SelectMany(x => x).ToList();
 
+                    var versions = new ConcurrentBag<PointerFileEntry>();
+
                     await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
                     {
                         var bc = container.GetBlobClient(bi.Name);
@@ -66,7 +65,7 @@ namespace Arius.Core.Repositories
                         await CryptoService.DecryptAndDecompressAsync(encryptedVersionBlobStream, versionMemoryStream, passphrase);
                         var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(versionMemoryStream, cancellationToken: ct);
 
-                        versions.AddRange(pfes);
+                        versions.AddFromEnumerable(pfes);
 
                         //var version = DateTime.Parse(bi.Name, System.Globalization.DateTimeStyles.RoundtripKind);
                     });
@@ -79,7 +78,9 @@ namespace Arius.Core.Repositories
             private readonly string passphrase;
             private readonly BlobContainerClient container;
             private const string PointerFileEntriesFolderName = "pointerfileentries";
-            private readonly Task<ConcurrentHashSet<PointerFileEntry>> versionsTask;
+            private readonly Task<ConcurrentBag<PointerFileEntry>> versionsTask;
+
+            
 
 
             public async Task StartNewVersion(DateTime version)
