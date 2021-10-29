@@ -87,22 +87,6 @@ namespace Arius.Core.Repositories
             private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
             private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
 
-
-
-            //private void EnsureVersionOpen(/*DateTime newVersionUtc*/)
-            //{
-            //    //if (currentVersion is not null)
-            //    //    throw new InvalidOperationException("A version is already open");
-
-            //    //currentVersion = newVersionUtc;
-
-            //    if (currentVersionFile is null)
-            //        currentVersionFile = Path.GetTempFileName();
-            //}
-
-            //private DateTime? currentVersion;
-            //private string currentVersionFile;
-
             public async Task CommitPointerFileVersion()
             {
                 if (newEntries.IsEmpty)
@@ -118,33 +102,23 @@ namespace Arius.Core.Repositories
 
                         ms.Seek(0, SeekOrigin.Begin);
 
-                        using (var temp = File.OpenWrite(Path.GetTempFileName()))
-                        {
-                            ms.CopyTo(temp);
-                            ms.Seek(0, SeekOrigin.Begin);
-                        }
+                        //using (var temp = File.OpenWrite(Path.GetTempFileName()))
+                        //{
+                        //    ms.CopyTo(temp);
+                        //    ms.Seek(0, SeekOrigin.Begin);
+                        //}
 
                         await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
                     }
                 }
 
                 await bbc.SetAccessTierAsync(AccessTier.Cool);
-
-                //if (this.version is null)
-                //    throw new InvalidOperationException()
-                //var blobName = version.
-                //var bc = container.GetBlobClient(bi.Name);
-
             }
 
 
 
             public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
             {
-                //if (this.currentVersionFile is null)
-                //    throw new InvalidOperationException("No version is open");
-                //EnsureVersionOpen();
-
                 var existingEntries = await existingEntriesTask;
 
                 var lastVersion = existingEntries.Union(newEntries).AsParallel()
@@ -156,13 +130,8 @@ namespace Arius.Core.Repositories
 
                 if (toAdd)
                 {
-                    // Commit to disk
-                    //var json = JsonSerializer.Serialize(pfe);
-                    //await File.AppendAllLinesAsync(currentVersionFile, json.SingleToArray()); // alternates: https://stackoverflow.com/a/19691606/1582323
-
-                    // Commit to memory (Insert the new PointerFileEntry)
+                    //Insert the new PointerFileEntry
                     newEntries.Add(pfe);
-                    //entries.Add(pfe);
 
                     //Ensure the version is in the master list
                     var versions = await this.versions.Task;
@@ -172,11 +141,11 @@ namespace Arius.Core.Repositories
                 return toAdd;
             }
 
-            public async Task<IReadOnlyCollection<PointerFileEntry>> GetEntriesAsync()
+            public async Task<IEnumerable<PointerFileEntry>> GetEntriesAsync()
             {
-                var entries = await existingEntriesTask;
+                var existingEntries = await existingEntriesTask;
 
-                return entries;
+                return existingEntries.Union(newEntries);
             }
 
             public async Task<IEnumerable<DateTime>> GetVersionsAsync()
