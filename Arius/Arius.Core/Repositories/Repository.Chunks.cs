@@ -180,7 +180,7 @@ namespace Arius.Core.Repositories
                 long length;
                 using (var ss = await chunk.OpenReadAsync())
                 {
-                    using (var ts = await bbc.OpenWriteAsync(true))
+                    using (var ts = await bbc.OpenWriteAsync(overwrite: true))
                     {
                         await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
                         length = ts.Position;

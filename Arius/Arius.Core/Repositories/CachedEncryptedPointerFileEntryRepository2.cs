@@ -2,6 +2,9 @@
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
+using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -98,8 +101,20 @@ namespace Arius.Core.Repositories
             //private DateTime? currentVersion;
             private string currentVersionFile;
 
-            public async Task CommitCurrentVersion()
+            public async Task CommitPointerFileVersion()
             {
+                var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow.Ticks}");
+
+                using (var ss = File.Open(currentVersionFile, FileMode.Open, FileAccess.Read, FileShare.None)) //exclusively open the file for reading
+                {
+                    using (var ts = await bbc.OpenWriteAsync(overwrite: true))
+                    {
+                        await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+                    }
+                }
+
+                await bbc.SetAccessTierAsync(AccessTier.Cool);
+
                 //if (this.version is null)
                 //    throw new InvalidOperationException()
                 //var blobName = version.
@@ -135,7 +150,7 @@ namespace Arius.Core.Repositories
 
                     //Ensure the version is in the master list
                     var versions = await this.versions.Task;
-                    versions.TryAdd(pfe.VersionUtc); //TODO: aan het einde?
+                    versions.Add(pfe.VersionUtc); //TODO: aan het einde?
                 }
 
                 return toAdd;
@@ -154,7 +169,7 @@ namespace Arius.Core.Repositories
 
                 //return versions.Select(pfe => pfe.VersionUtc).Distinct(); //TODO optimize?
 
-                return (await versions.Task).Values;
+                return await versions.Task;
             }
 
 

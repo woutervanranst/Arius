@@ -171,5 +171,11 @@ namespace Arius.Core.Repositories
         {
             return await pfeRepo.GetVersionsAsync();
         }
+
+
+        public async Task CommitPointerFileVersion()
+        {
+            await pfeRepo.CommitPointerFileVersion();
+        }
     }
 }
