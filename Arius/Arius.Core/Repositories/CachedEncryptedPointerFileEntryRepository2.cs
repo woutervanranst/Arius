@@ -13,117 +13,154 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Repositories
+namespace Arius.Core.Repositories;
+
+internal partial class Repository
 {
-    internal partial class Repository
+    internal class CachedEncryptedPointerFileEntryRepository2
     {
-        internal class CachedEncryptedPointerFileEntryRepository2
+        public CachedEncryptedPointerFileEntryRepository2(ILogger<CachedEncryptedPointerFileEntryRepository2> logger, IOptions options, BlobContainerClient container)
         {
-            public CachedEncryptedPointerFileEntryRepository2(ILogger<CachedEncryptedPointerFileEntryRepository2> logger, IOptions options, BlobContainerClient container)
+            this.logger = logger;
+            this.passphrase = options.Passphrase;
+            this.container = container;
+
+            //Start loading all entries
+            entriesTask = Task.Run(async () =>
             {
-                this.logger = logger;
-                this.passphrase = options.Passphrase;
-                this.container = container;
+                var r = new ConcurrentHashSet<PointerFileEntry>();
 
-                //Start loading all entries
-                existingEntriesTask = Task.Run(async () =>
+                await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
                 {
-                    var chs = new ConcurrentHashSet<PointerFileEntry>();
+                    var bc = container.GetBlobClient(bi.Name);
 
-                    await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
-                    {
-                        var bc = container.GetBlobClient(bi.Name);
+                    using var ss = await bc.OpenReadAsync(cancellationToken: ct);
+                    using var ts = new MemoryStream();
 
-                        using var ss = await bc.OpenReadAsync(cancellationToken: ct);
-                        using var ts = new MemoryStream();
-                        
-                        await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
-                        ts.Seek(0, SeekOrigin.Begin);
+                    await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                    ts.Seek(0, SeekOrigin.Begin);
 
-                        var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(ts, cancellationToken: ct);
+                    var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(ts, cancellationToken: ct);
 
-                        foreach (var pfe in pfes)
-                            chs.Add(pfe);
-                    });
-
-                    versions.SetResult(new ConcurrentHashSet<DateTime>(chs.Select(pfe => pfe.VersionUtc).Distinct()));
-
-                    return chs;
+                    foreach (var pfe in pfes)
+                        r.Add(pfe);
                 });
-            }
 
-            private readonly ILogger logger;
-            private readonly string passphrase;
-            private readonly BlobContainerClient container;
-            private const string PointerFileEntriesFolderName = "pointerfileentries";
-            private readonly Task<ConcurrentHashSet<PointerFileEntry>> existingEntriesTask;
-            private readonly ConcurrentBag<PointerFileEntry> newEntries = new();
-            private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
-            private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
+                versions.SetResult(new ConcurrentHashSet<DateTime>(r.Select(pfe => pfe.VersionUtc).Distinct()));
 
-            public async Task CommitPointerFileVersion()
+                return r;
+            });
+
+            entriesToCommit = Channel.CreateBounded<PointerFileEntry>(new BoundedChannelOptions(ENTRIES_PER_FILE * 2) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false, SingleReader = true });
+
+            t = Task.Run(Start);
+        }
+
+        private readonly ILogger logger;
+        private readonly string passphrase;
+        private readonly BlobContainerClient container;
+        private const string PointerFileEntriesFolderName = "pointerfileentries";
+        private readonly Task<ConcurrentHashSet<PointerFileEntry>> entriesTask;
+        private readonly Channel<PointerFileEntry> entriesToCommit;
+        private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
+        private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
+        private const int ENTRIES_PER_FILE = 3; //1_000;
+        private readonly Task t;
+
+
+        private async Task Start()
+        {
+            var pfes = new List<PointerFileEntry>();
+
+            await foreach (var pfe in entriesToCommit.Reader.ReadAllAsync())
             {
-                if (newEntries.IsEmpty)
-                    return;
+                pfes.Add(pfe);
 
-                var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow.Ticks}");
-
-                using var ts = await bbc.OpenWriteAsync(overwrite: true);
-                using var ms = new MemoryStream();
-
-                await JsonSerializer.SerializeAsync(ms, newEntries);
-                ms.Seek(0, SeekOrigin.Begin);
-
-                //using (var temp = File.OpenWrite(Path.GetTempFileName()))
-                //{
-                //    ms.CopyTo(temp);
-                //    ms.Seek(0, SeekOrigin.Begin);
-                //}
-
-                await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
-
-                await bbc.SetAccessTierAsync(AccessTier.Cool);
-            }
-
-
-
-            public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
-            {
-                var existingEntries = await existingEntriesTask;
-
-                var lastVersion = existingEntries.Union(newEntries).AsParallel()
-                    .Where(p => pfe.RelativeName.Equals(p.RelativeName))
-                    .OrderBy(p => p.VersionUtc)
-                    .LastOrDefault();
-
-                var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
-
-                if (toAdd)
-                {
-                    //Insert the new PointerFileEntry
-                    newEntries.Add(pfe);
-
-                    //Ensure the version is in the master list
-                    var versions = await this.versions.Task;
-                    versions.Add(pfe.VersionUtc); //TODO: aan het einde?
+                if (pfes.Count >= ENTRIES_PER_FILE)
+                { 
+                    //Commit this block
+                    await Emit(pfes);
+                    pfes.Clear();
                 }
-
-                return toAdd;
             }
 
-            public async Task<IEnumerable<PointerFileEntry>> GetEntriesAsync()
+            // Commit the last block
+            await Emit(pfes);
+        }
+
+        private async Task Emit(IEnumerable<PointerFileEntry> pfes)
+        {
+            if (!pfes.Any())
+                return;
+
+            //var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow.Ticks}");
+            var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow:s}-{Guid.NewGuid().GetHashCode()}"); //get a unique blob name
+
+            using var ts = await bbc.OpenWriteAsync(overwrite: true);
+            using var ms = new MemoryStream();
+
+            await JsonSerializer.SerializeAsync(ms, pfes);
+            ms.Seek(0, SeekOrigin.Begin);
+
+            //using (var temp = File.OpenWrite(Path.GetTempFileName()))
+            //{
+            //    ms.CopyTo(temp);
+            //    ms.Seek(0, SeekOrigin.Begin);
+            //}
+
+            await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
+
+            await bbc.SetAccessTierAsync(AccessTier.Cool);
+        }
+
+        public async Task CommitPointerFileVersion()
+        {
+            entriesToCommit.Writer.Complete();
+
+            await t;
+        }
+
+
+
+        public async Task<bool> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
+        {
+            var entries = await entriesTask;
+
+            var lastVersion = entries.AsParallel()
+                .Where(p => pfe.RelativeName.Equals(p.RelativeName))
+                .OrderBy(p => p.VersionUtc)
+                .LastOrDefault();
+
+            var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
+
+            if (toAdd)
             {
-                var existingEntries = await existingEntriesTask;
+                await entriesToCommit.Writer.WriteAsync(pfe);
 
-                return existingEntries.Union(newEntries);
+                //Insert the new PointerFileEntry
+                entries.Add(pfe);
+
+                //Ensure the version is in the master list
+                var versions = await this.versions.Task;
+                versions.Add(pfe.VersionUtc); //TODO: aan het einde?
             }
 
-            public async Task<IEnumerable<DateTime>> GetVersionsAsync()
-            {
-                return await versions.Task;
-            }
+            return toAdd;
+        }
+
+        public async Task<IEnumerable<PointerFileEntry>> GetEntriesAsync()
+        {
+            var existingEntries = await entriesTask;
+
+            return existingEntries;
+        }
+
+        public async Task<IEnumerable<DateTime>> GetVersionsAsync()
+        {
+            return await versions.Task;
         }
     }
 }
