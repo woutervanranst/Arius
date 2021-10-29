@@ -150,32 +150,8 @@ namespace Arius.Core.Repositories
 
             public async Task<IEnumerable<DateTime>> GetVersionsAsync()
             {
-                //var versions = await entriesTask;
-
-                //return versions.Select(pfe => pfe.VersionUtc).Distinct(); //TODO optimize?
-
                 return await versions.Task;
             }
-
-
-
-
-
-            
-
-
-            
-
-
-            
-
-            
-
-            //private readonly struct kakak
-            //{
-            //    public DateTime VersionUtc { get; init; }
-            //    public List<PointerFileEntry> PointerFileEntries  { get; init; }
-            //}
         }
     }
 }
