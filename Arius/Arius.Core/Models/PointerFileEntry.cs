@@ -4,7 +4,7 @@ namespace Arius.Core.Models
 {
     internal record PointerFileEntry
     {
-        internal BinaryHash BinaryHash { get; init; }
+        public BinaryHash BinaryHash { get; init; }
         public string RelativeName { get; init; }
 
         /// <summary>

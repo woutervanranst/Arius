@@ -128,7 +128,7 @@ namespace Arius.Core.Commands.Archive
                 versionUtc: versionUtc,
                 done: () =>
                 {
-                    repo.CommitPointerFileVersion().Wait();
+                    repo.CommitPointerFileVersion().Wait(); //TODO async
                 });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 

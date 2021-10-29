@@ -28,7 +28,7 @@ namespace Arius.Core.Repositories
                 this.container = container;
 
                 //Start loading all entries
-                entriesTask = Task.Run(async () =>
+                existingEntriesTask = Task.Run(async () =>
                 {
                     //var x = container
                     //    .GetBlobs(prefix: $"{PointerFileEntriesFolderName}/")
@@ -54,7 +54,7 @@ namespace Arius.Core.Repositories
 
                     //var z = (await Task.WhenAll(x)).SelectMany(x => x).ToList();
 
-                    var entries = new ConcurrentBag<PointerFileEntry>();
+                    var pfeBag = new ConcurrentBag<PointerFileEntry>();
 
                     await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
                     {
@@ -64,16 +64,17 @@ namespace Arius.Core.Repositories
                         using var versionMemoryStream = new MemoryStream();
                         
                         await CryptoService.DecryptAndDecompressAsync(encryptedVersionBlobStream, versionMemoryStream, passphrase);
+                        versionMemoryStream.Seek(0, SeekOrigin.Begin);
                         var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(versionMemoryStream, cancellationToken: ct);
 
-                        entries.AddFromEnumerable(pfes);
+                        pfeBag.AddFromEnumerable(pfes);
 
                         //var version = DateTime.Parse(bi.Name, System.Globalization.DateTimeStyles.RoundtripKind);
                     });
 
-                    versions.SetResult(new ConcurrentHashSet<DateTime>(entries.Select(pfe => pfe.VersionUtc).Distinct()));
+                    versions.SetResult(new ConcurrentHashSet<DateTime>(pfeBag.Select(pfe => pfe.VersionUtc).Distinct()));
 
-                    return entries;
+                    return pfeBag;
                 });
             }
 
@@ -81,35 +82,49 @@ namespace Arius.Core.Repositories
             private readonly string passphrase;
             private readonly BlobContainerClient container;
             private const string PointerFileEntriesFolderName = "pointerfileentries";
-            private readonly Task<ConcurrentBag<PointerFileEntry>> entriesTask;
+            private readonly Task<ConcurrentBag<PointerFileEntry>> existingEntriesTask;
+            private readonly ConcurrentBag<PointerFileEntry> newEntries = new();
             private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
             private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
 
 
 
-            private void EnsureVersionOpen(/*DateTime newVersionUtc*/)
-            {
-                //if (currentVersion is not null)
-                //    throw new InvalidOperationException("A version is already open");
+            //private void EnsureVersionOpen(/*DateTime newVersionUtc*/)
+            //{
+            //    //if (currentVersion is not null)
+            //    //    throw new InvalidOperationException("A version is already open");
 
-                //currentVersion = newVersionUtc;
+            //    //currentVersion = newVersionUtc;
 
-                if (currentVersionFile is null)
-                    currentVersionFile = Path.GetTempFileName();
-            }
+            //    if (currentVersionFile is null)
+            //        currentVersionFile = Path.GetTempFileName();
+            //}
 
             //private DateTime? currentVersion;
-            private string currentVersionFile;
+            //private string currentVersionFile;
 
             public async Task CommitPointerFileVersion()
             {
+                if (newEntries.IsEmpty)
+                    return;
+
                 var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow.Ticks}");
 
-                using (var ss = File.Open(currentVersionFile, FileMode.Open, FileAccess.Read, FileShare.None)) //exclusively open the file for reading
+                using (var ms = new MemoryStream())
                 {
                     using (var ts = await bbc.OpenWriteAsync(overwrite: true))
                     {
-                        await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+                        await JsonSerializer.SerializeAsync(ms, newEntries);
+
+                        ms.Seek(0, SeekOrigin.Begin);
+
+                        using (var temp = File.OpenWrite(Path.GetTempFileName()))
+                        {
+                            ms.CopyTo(temp);
+                            ms.Seek(0, SeekOrigin.Begin);
+                        }
+
+                        await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
                     }
                 }
 
@@ -128,11 +143,11 @@ namespace Arius.Core.Repositories
             {
                 //if (this.currentVersionFile is null)
                 //    throw new InvalidOperationException("No version is open");
-                EnsureVersionOpen();
+                //EnsureVersionOpen();
 
-                var entries = await entriesTask;
+                var existingEntries = await existingEntriesTask;
 
-                var lastVersion = entries.AsParallel()
+                var lastVersion = existingEntries.Union(newEntries).AsParallel()
                     .Where(p => pfe.RelativeName.Equals(p.RelativeName))
                     .OrderBy(p => p.VersionUtc)
                     .LastOrDefault();
@@ -142,11 +157,12 @@ namespace Arius.Core.Repositories
                 if (toAdd)
                 {
                     // Commit to disk
-                    var json = JsonSerializer.Serialize(pfe);
-                    await File.AppendAllLinesAsync(currentVersionFile, json.SingleToArray()); // alternates: https://stackoverflow.com/a/19691606/1582323
+                    //var json = JsonSerializer.Serialize(pfe);
+                    //await File.AppendAllLinesAsync(currentVersionFile, json.SingleToArray()); // alternates: https://stackoverflow.com/a/19691606/1582323
 
                     // Commit to memory (Insert the new PointerFileEntry)
-                    entries.Add(pfe);
+                    newEntries.Add(pfe);
+                    //entries.Add(pfe);
 
                     //Ensure the version is in the master list
                     var versions = await this.versions.Task;
@@ -158,7 +174,7 @@ namespace Arius.Core.Repositories
 
             public async Task<IReadOnlyCollection<PointerFileEntry>> GetEntriesAsync()
             {
-                var entries = await entriesTask;
+                var entries = await existingEntriesTask;
 
                 return entries;
             }
