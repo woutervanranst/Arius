@@ -68,8 +68,6 @@ namespace Arius.Core.Repositories
                         var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(versionMemoryStream, cancellationToken: ct);
 
                         pfeBag.AddFromEnumerable(pfes);
-
-                        //var version = DateTime.Parse(bi.Name, System.Globalization.DateTimeStyles.RoundtripKind);
                     });
 
                     versions.SetResult(new ConcurrentHashSet<DateTime>(pfeBag.Select(pfe => pfe.VersionUtc).Distinct()));
