@@ -30,7 +30,7 @@ namespace Arius.Core.Repositories
                 //Start loading all entries
                 existingEntriesTask = Task.Run(async () =>
                 {
-                    var pfeBag = new ConcurrentBag<PointerFileEntry>();
+                    var chs = new ConcurrentHashSet<PointerFileEntry>();
 
                     await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
                     {
@@ -44,12 +44,13 @@ namespace Arius.Core.Repositories
 
                         var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(ts, cancellationToken: ct);
 
-                        pfeBag.AddFromEnumerable(pfes);
+                        foreach (var pfe in pfes)
+                            chs.Add(pfe);
                     });
 
-                    versions.SetResult(new ConcurrentHashSet<DateTime>(pfeBag.Select(pfe => pfe.VersionUtc).Distinct()));
+                    versions.SetResult(new ConcurrentHashSet<DateTime>(chs.Select(pfe => pfe.VersionUtc).Distinct()));
 
-                    return pfeBag;
+                    return chs;
                 });
             }
 
@@ -57,7 +58,7 @@ namespace Arius.Core.Repositories
             private readonly string passphrase;
             private readonly BlobContainerClient container;
             private const string PointerFileEntriesFolderName = "pointerfileentries";
-            private readonly Task<ConcurrentBag<PointerFileEntry>> existingEntriesTask;
+            private readonly Task<ConcurrentHashSet<PointerFileEntry>> existingEntriesTask;
             private readonly ConcurrentBag<PointerFileEntry> newEntries = new();
             private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
             private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
