@@ -30,42 +30,19 @@ namespace Arius.Core.Repositories
                 //Start loading all entries
                 existingEntriesTask = Task.Run(async () =>
                 {
-                    //var x = container
-                    //    .GetBlobs(prefix: $"{PointerFileEntriesFolderName}/")
-                    //    .AsParallel()
-                    //    .Select(async (bi) =>
-                    //    {
-                    //        var bc = container.GetBlobClient(bi.Name);
-
-                    //        using var encryptedVersionBlobStream = await bc.OpenReadAsync();
-                    //        using var versionMemoryStream = new MemoryStream();
-
-                    //        await CryptoService.DecryptAndDecompressAsync(encryptedVersionBlobStream, versionMemoryStream, passphrase);
-                    //        var version = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(versionMemoryStream);
-
-                    //        return version;
-
-                    //        //versions.AddRange(version.PointerFileEntries);
-
-                    //        //return Task.FromResult(5);
-
-                    //        //var version = DateTime.Parse(bi.Name, System.Globalization.DateTimeStyles.RoundtripKind);
-                    //    });
-
-                    //var z = (await Task.WhenAll(x)).SelectMany(x => x).ToList();
-
                     var pfeBag = new ConcurrentBag<PointerFileEntry>();
 
                     await Parallel.ForEachAsync(container.GetBlobsAsync(prefix: $"{PointerFileEntriesFolderName}/"), async (bi, ct) =>
                     {
                         var bc = container.GetBlobClient(bi.Name);
 
-                        using var encryptedVersionBlobStream = await bc.OpenReadAsync(cancellationToken: ct);
-                        using var versionMemoryStream = new MemoryStream();
+                        using var ss = await bc.OpenReadAsync(cancellationToken: ct);
+                        using var ts = new MemoryStream();
                         
-                        await CryptoService.DecryptAndDecompressAsync(encryptedVersionBlobStream, versionMemoryStream, passphrase);
-                        versionMemoryStream.Seek(0, SeekOrigin.Begin);
-                        var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(versionMemoryStream, cancellationToken: ct);
+                        await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                        ts.Seek(0, SeekOrigin.Begin);
+
+                        var pfes = await JsonSerializer.DeserializeAsync<IEnumerable<PointerFileEntry>>(ts, cancellationToken: ct);
 
                         pfeBag.AddFromEnumerable(pfes);
                     });
@@ -92,23 +69,19 @@ namespace Arius.Core.Repositories
 
                 var bbc = container.GetBlockBlobClient($"{PointerFileEntriesFolderName}/{DateTime.UtcNow.Ticks}");
 
-                using (var ms = new MemoryStream())
-                {
-                    using (var ts = await bbc.OpenWriteAsync(overwrite: true))
-                    {
-                        await JsonSerializer.SerializeAsync(ms, newEntries);
+                using var ts = await bbc.OpenWriteAsync(overwrite: true);
+                using var ms = new MemoryStream();
 
-                        ms.Seek(0, SeekOrigin.Begin);
+                await JsonSerializer.SerializeAsync(ms, newEntries);
+                ms.Seek(0, SeekOrigin.Begin);
 
-                        //using (var temp = File.OpenWrite(Path.GetTempFileName()))
-                        //{
-                        //    ms.CopyTo(temp);
-                        //    ms.Seek(0, SeekOrigin.Begin);
-                        //}
+                //using (var temp = File.OpenWrite(Path.GetTempFileName()))
+                //{
+                //    ms.CopyTo(temp);
+                //    ms.Seek(0, SeekOrigin.Begin);
+                //}
 
-                        await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
-                    }
-                }
+                await CryptoService.CompressAndEncryptAsync(ms, ts, passphrase);
 
                 await bbc.SetAccessTierAsync(AccessTier.Cool);
             }
