@@ -13,6 +13,7 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore
@@ -166,7 +167,7 @@ namespace Arius.Core.Commands.Restore
                 return;
             }
 
-            if (!restoringBinaries.TryAdd(bh))
+            if (!restoringBinaries.Add(bh))
                 // the Binary for this PointerFile is already being processed.
                 // this method can be called multiple times by S11
                 // the waiting PointerFiles will be notified when the first call completes

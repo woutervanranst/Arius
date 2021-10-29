@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Azure.Data.Tables;
+using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories
@@ -65,7 +66,7 @@ namespace Arius.Core.Repositories
         private readonly TableClient table;
         private readonly Task<ConcurrentHashSet<T>> allRowsTask;
 
-        public async Task<IReadOnlyCollection<T>> GetAllAsync() => (IReadOnlyCollection<T>)(await allRowsTask).Values;
+        public async Task<IReadOnlyCollection<T>> GetAllAsync() => await allRowsTask;
 
         public async Task Add(T item)
         {
