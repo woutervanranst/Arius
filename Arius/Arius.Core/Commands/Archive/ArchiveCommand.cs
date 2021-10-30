@@ -126,10 +126,7 @@ namespace Arius.Core.Commands.Archive
                 degreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
                 repo: repo,
                 versionUtc: versionUtc,
-                done: () =>
-                {
-                    repo.CommitPointerFileVersion().Wait(); //TODO async
-                });
+                done: () => { });
             var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
 
@@ -160,8 +157,16 @@ namespace Arius.Core.Commands.Archive
                 root: root,
                 pointerService: pointerService,
                 versionUtc: versionUtc,
-                done: () => { });
+                done: () => 
+                {
+                    
+                });
             var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
+
+            var commitPointerFileEntryRepositoryTask = await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask).ContinueWith(async (_) =>
+            {
+                await repo.CommitPointerFileVersion(); //TODO Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            });
 
 
 
@@ -182,6 +187,8 @@ namespace Arius.Core.Commands.Archive
                 await exportJsonBlock.GetTask; //B1502
             });
 
+            
+
 
             //while (true)
             //{
@@ -190,7 +197,7 @@ namespace Arius.Core.Commands.Archive
 
 
             // Await the current stage of the pipeline
-            await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks.Append(exportJsonTask)), BlockBase.CancellationTask);
+            await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks.Append(exportJsonTask).Append(commitPointerFileEntryRepositoryTask)), BlockBase.CancellationTask);
 
             if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
                 && ts.Any())
