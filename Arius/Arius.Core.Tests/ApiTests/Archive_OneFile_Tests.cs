@@ -159,7 +159,7 @@ namespace Arius.Core.Tests.ApiTests
 
             RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
             // No additional chunks were uploaded
-            Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0);
+            Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0); //NOTE: This fails here when run only this test, when run in the suite it passes
             // No additional ManifestHash is created
             Assert.AreEqual(manifestCount1, manifestCount0);
             // 1 addtl PointerFileEntry is created
