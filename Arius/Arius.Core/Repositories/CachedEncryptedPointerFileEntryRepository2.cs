@@ -49,7 +49,7 @@ internal partial class Repository
                         r.Add(pfe);
                 });
 
-                versions.SetResult(new ConcurrentHashSet<DateTime>(r.Select(pfe => pfe.VersionUtc).Distinct()));
+                versionsTask.SetResult(new SortedSet<DateTime>(r.Select(pfe => pfe.VersionUtc).Distinct()));
 
                 return r;
             });
@@ -65,7 +65,7 @@ internal partial class Repository
         private const string PointerFileEntriesFolderName = "pointerfileentries";
         private readonly Task<ConcurrentHashSet<PointerFileEntry>> entriesTask;
         private readonly Channel<PointerFileEntry> entriesToCommit;
-        private readonly TaskCompletionSource<ConcurrentHashSet<DateTime>> versions = new();
+        private readonly TaskCompletionSource<SortedSet<DateTime>> versionsTask = new();
         private readonly static PointerFileEntryEqualityComparer equalityComparer = new();
         private const int ENTRIES_PER_FILE = 3; //1_000;
         private readonly Task t;
@@ -143,9 +143,12 @@ internal partial class Repository
                 //Insert the new PointerFileEntry
                 entries.Add(pfe);
 
-                //Ensure the version is in the master list
-                var versions = await this.versions.Task;
-                versions.Add(pfe.VersionUtc); //TODO: aan het einde?
+                //Ensure the version is in the SORTED master list
+                var versions = await versionsTask.Task;
+                lock (versions)
+                {
+                    versions.Add(pfe.VersionUtc);
+                }
             }
 
             return toAdd;
@@ -160,7 +163,7 @@ internal partial class Repository
 
         public async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            return await versions.Task;
+            return await versionsTask.Task;
         }
     }
 }

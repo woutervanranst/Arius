@@ -74,16 +74,16 @@ namespace Arius.Core.Repositories
 
         internal async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
         {
-            return await GetPointerFileEntries(DateTime.Now, includeDeleted);
+            return await GetPointerFileEntries(DateTime.UtcNow, includeDeleted);
         }
 
         /// <summary>
         /// Get the PointerFileEntries at the given version.
         /// If no version is specified, the current (most recent) will be returned
         /// </summary>
-        public async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntries(DateTime pointInTime, bool includeDeleted)
+        public async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntries(DateTime pointInTimeUtc, bool includeDeleted)
         {
-            var pfes = await GetPointerFileEntriesAtPointInTimeAsync(pointInTime);
+            var pfes = await GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc);
 
             if (includeDeleted)
                 return pfes;
@@ -91,13 +91,13 @@ namespace Arius.Core.Repositories
                 return pfes.Where(pfe => !pfe.IsDeleted);
         }
 
-        private async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTime)
+        private async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc)
         {
             try
             {
-                var version = await GetVersionAsync(pointInTime);
+                var versionUtc = await GetVersionAsync(pointInTimeUtc);
 
-                var r = await GetPointerFileEntriesAtVersionAsync(version);
+                var r = await GetPointerFileEntriesAtVersionAsync(versionUtc);
 
                 return r;
             }
@@ -109,7 +109,7 @@ namespace Arius.Core.Repositories
             }
         }
 
-        private async Task<IReadOnlyList<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
+        private async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
         {
             var pfes = await GetPointerFileEntriesAsync();
 
@@ -118,7 +118,8 @@ namespace Arius.Core.Repositories
             var r = pfes
                 .GroupBy(pfe => pfe.RelativeName)
                 .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc)).Where(c => c.Any())
-                .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last()).ToList();
+                .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last())
+                .ToArray();
 
             return r;
         }
@@ -136,21 +137,21 @@ namespace Arius.Core.Repositories
         /// <summary>
         /// Get the version that corresponds to the state of the archive at pointInTime
         /// </summary>
-        /// <param name="pointInTime"></param>
+        /// <param name="pointInTimeUtc"></param>
         /// <returns></returns>
-        private async Task<DateTime> GetVersionAsync(DateTime pointInTime)
+        private async Task<DateTime> GetVersionAsync(DateTime pointInTimeUtc)
         {
             var versions = (await GetVersionsAsync()).Reverse();
 
-            // if the pointInTime is a version - return the pointInTime
-            if (versions.Contains(pointInTime))
-                return pointInTime;
+            // if the pointInTime is a version - return the pointInTime (optimization in case of the GUI dropdown)
+            if (versions.Contains(pointInTimeUtc))
+                return pointInTimeUtc;
 
             // else, search for the version that exactly precedes the pointInTime
             DateTime? version = null;
             foreach (var v in versions)
             {
-                if (pointInTime >= v)
+                if (pointInTimeUtc >= v)
                 {
                     version = v;
                     break;
@@ -158,7 +159,7 @@ namespace Arius.Core.Repositories
             }
 
             if (version is null)
-                throw new ArgumentException($"{nameof(GetVersionAsync)}: No version found for {nameof(pointInTime)} {pointInTime}.");
+                throw new ArgumentException($"{nameof(GetVersionAsync)}: No version found for {nameof(pointInTimeUtc)} {pointInTimeUtc}.");
 
             return version.Value;
         }
