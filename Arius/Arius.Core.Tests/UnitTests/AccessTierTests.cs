@@ -7,16 +7,15 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Tests.UnitTests
+namespace Arius.Core.Tests.UnitTests;
+
+class AccessTierTests
 {
-    class AccessTierTests
+    [Test]
+    public void StringToAccessTierOperator_AccessTier_Equals()
     {
-        [Test]
-        public void StringToAccessTierOperator_AccessTier_Equals()
-        {
-            Assert.AreEqual((AccessTier)"hot", AccessTier.Hot); //testing for a bug that appeared in Azure.Storage.Blobs v12.8.4, this was no longer true
-            Assert.AreEqual((AccessTier)"cool", AccessTier.Cool);
-            Assert.AreEqual((AccessTier)"archive", AccessTier.Archive);
-        }
+        Assert.AreEqual((AccessTier)"hot", AccessTier.Hot); //testing for a bug that appeared in Azure.Storage.Blobs v12.8.4, this was no longer true
+        Assert.AreEqual((AccessTier)"cool", AccessTier.Cool);
+        Assert.AreEqual((AccessTier)"archive", AccessTier.Archive);
     }
 }

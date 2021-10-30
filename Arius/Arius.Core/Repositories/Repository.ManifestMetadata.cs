@@ -8,86 +8,85 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Repositories
-{
-    internal partial class Repository
-    {
-        public async Task CreateBinaryMetadataAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
-        {
-            var mp = new BinaryMetadata()
-            {
-                Hash = bf.Hash,
-                OriginalLength = bf.Length,
-                ArchivedLength = archivedLength,
-                IncrementalLength = incrementalLength,
-                ChunkCount = chunkCount
-            };
+namespace Arius.Core.Repositories;
 
-            await bmRepo.Add(mp);
+internal partial class Repository
+{
+    public async Task CreateBinaryMetadataAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
+    {
+        var mp = new BinaryMetadata()
+        {
+            Hash = bf.Hash,
+            OriginalLength = bf.Length,
+            ArchivedLength = archivedLength,
+            IncrementalLength = incrementalLength,
+            ChunkCount = chunkCount
+        };
+
+        await bmRepo.Add(mp);
+    }
+
+
+    private class CachedBinaryMetadataRepository
+    {
+        public CachedBinaryMetadataRepository(ILogger logger, IOptions options)
+        {
+            this.logger = logger;
+
+            entries = new(logger, 
+                options.AccountName, options.AccountKey, $"{options.Container}{TableNameSuffix}", 
+                ConvertToDto, ConvertFromDto);
         }
 
+        internal const string TableNameSuffix = "binarymetadata";
 
-        private class CachedBinaryMetadataRepository
-        {
-            public CachedBinaryMetadataRepository(ILogger logger, IOptions options)
-            {
-                this.logger = logger;
+        private readonly ILogger logger;
 
-                entries = new(logger, 
-                    options.AccountName, options.AccountKey, $"{options.Container}{TableNameSuffix}", 
-                    ConvertToDto, ConvertFromDto);
-            }
-
-            internal const string TableNameSuffix = "binarymetadata";
-
-            private readonly ILogger logger;
-
-            private readonly EagerCachedConcurrentDataTableRepository<BinaryMetadataDto, BinaryMetadata> entries;
+        private readonly EagerCachedConcurrentDataTableRepository<BinaryMetadataDto, BinaryMetadata> entries;
 
     
-            public async Task Add(BinaryMetadata item)
-            {
-                await entries.Add(item);
-            }
+        public async Task Add(BinaryMetadata item)
+        {
+            await entries.Add(item);
+        }
 
-            private BinaryMetadata ConvertFromDto(BinaryMetadataDto dto)
+        private BinaryMetadata ConvertFromDto(BinaryMetadataDto dto)
+        {
+            return new()
             {
-                return new()
-                {
-                    Hash = new(dto.PartitionKey),
-                    OriginalLength = dto.OriginalLength,
-                    ArchivedLength = dto.ArchivedLength,
-                    IncrementalLength = dto.IncrementalLength,
-                    ChunkCount = dto.ChunkCount
-                };
-            }
+                Hash = new(dto.PartitionKey),
+                OriginalLength = dto.OriginalLength,
+                ArchivedLength = dto.ArchivedLength,
+                IncrementalLength = dto.IncrementalLength,
+                ChunkCount = dto.ChunkCount
+            };
+        }
             
-            private BinaryMetadataDto ConvertToDto(BinaryMetadata bm)
+        private BinaryMetadataDto ConvertToDto(BinaryMetadata bm)
+        {
+            return new()
             {
-                return new()
-                {
-                    PartitionKey = bm.Hash.Value,
-                    RowKey = "BinaryMetadata",
+                PartitionKey = bm.Hash.Value,
+                RowKey = "BinaryMetadata",
 
-                    OriginalLength = bm.OriginalLength,
-                    ArchivedLength = bm.ArchivedLength,
-                    IncrementalLength = bm.IncrementalLength,
-                    ChunkCount = bm.ChunkCount
-                };
-            }
+                OriginalLength = bm.OriginalLength,
+                ArchivedLength = bm.ArchivedLength,
+                IncrementalLength = bm.IncrementalLength,
+                ChunkCount = bm.ChunkCount
+            };
+        }
 
-            private class BinaryMetadataDto : ITableEntity
-            {
-                public string PartitionKey { get; set; }
-                public string RowKey { get; set; }
-                public DateTimeOffset? Timestamp { get; set; }
-                public ETag ETag { get; set; }
+        private class BinaryMetadataDto : ITableEntity
+        {
+            public string PartitionKey { get; set; }
+            public string RowKey { get; set; }
+            public DateTimeOffset? Timestamp { get; set; }
+            public ETag ETag { get; set; }
 
-                public long OriginalLength { get; init; }
-                public long ArchivedLength { get; init; }
-                public long IncrementalLength { get; init; }
-                public int ChunkCount { get; init; }
-            }
+            public long OriginalLength { get; init; }
+            public long ArchivedLength { get; init; }
+            public long IncrementalLength { get; init; }
+            public int ChunkCount { get; init; }
         }
     }
 }

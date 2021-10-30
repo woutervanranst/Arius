@@ -6,40 +6,39 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Repositories
+namespace Arius.Core.Repositories;
+
+internal partial class Repository
 {
-    internal partial class Repository
+    internal interface IOptions
     {
-        internal interface IOptions
-        {
-            string AccountName { get; }
-            string AccountKey { get; }
-            string Container { get; }
-            string Passphrase { get; }
-        }
-
-        public Repository(ILoggerFactory loggerFactory, IOptions options)
-        {
-            this.logger = loggerFactory.CreateLogger<Repository>();
-            this.passphrase = options.Passphrase;
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-            container = new BlobContainerClient(connectionString, options.Container);
-
-            var r = container.CreateIfNotExists(PublicAccessType.None);
-            if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
-                this.logger.LogInformation($"Created container {options.Container}... ");
-
-            pfeRepo = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), options, container);
-            bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
-        }
-
-        private readonly ILogger<Repository> logger;
-        private readonly string passphrase;
-
-        private readonly PointerFileEntryRepository pfeRepo;
-        private readonly CachedBinaryMetadataRepository bmRepo;
-
-        private readonly BlobContainerClient container;
+        string AccountName { get; }
+        string AccountKey { get; }
+        string Container { get; }
+        string Passphrase { get; }
     }
+
+    public Repository(ILoggerFactory loggerFactory, IOptions options)
+    {
+        this.logger = loggerFactory.CreateLogger<Repository>();
+        this.passphrase = options.Passphrase;
+
+        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+        container = new BlobContainerClient(connectionString, options.Container);
+
+        var r = container.CreateIfNotExists(PublicAccessType.None);
+        if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+            this.logger.LogInformation($"Created container {options.Container}... ");
+
+        pfeRepo = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), options, container);
+        bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
+    }
+
+    private readonly ILogger<Repository> logger;
+    private readonly string passphrase;
+
+    private readonly PointerFileEntryRepository pfeRepo;
+    private readonly CachedBinaryMetadataRepository bmRepo;
+
+    private readonly BlobContainerClient container;
 }

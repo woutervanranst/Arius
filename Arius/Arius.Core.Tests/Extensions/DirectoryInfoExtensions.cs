@@ -1,17 +1,16 @@
 ﻿using System.IO;
 
-namespace Arius.Core.Tests.Extensions
+namespace Arius.Core.Tests.Extensions;
+
+static class DirectoryInfoExtensions
 {
-    static class DirectoryInfoExtensions
+    /// <summary>
+    /// Empty the directory
+    /// </summary>
+    /// <param name="dir"></param>
+    public static void Clear(this DirectoryInfo dir)
     {
-        /// <summary>
-        /// Empty the directory
-        /// </summary>
-        /// <param name="dir"></param>
-        public static void Clear(this DirectoryInfo dir)
-        {
-            if (dir.Exists) dir.Delete(true);
-            dir.Create();
-        }
+        if (dir.Exists) dir.Delete(true);
+        dir.Create();
     }
 }

@@ -11,78 +11,77 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Commands.DedupEval
+namespace Arius.Core.Commands.DedupEval;
+
+internal class DedupEvalCommand : ICommand //This class is internal but the interface is public for use in the Facade
 {
-    internal class DedupEvalCommand : ICommand //This class is internal but the interface is public for use in the Facade
+    internal interface IOptions
     {
-        internal interface IOptions
+        DirectoryInfo Root { get; }
+    }
+
+    public DedupEvalCommand(IOptions options,
+        ILogger<DedupEvalCommand> logger,
+        IServiceProvider serviceProvider,
+        IHashValueProvider hvp,
+        ByteBoundaryChunker chunker)
+    {
+        this.options = options;
+        this.logger = logger;
+        services = serviceProvider;
+        this.hvp = hvp;
+        this.chunker = chunker;
+    }
+
+    private readonly IOptions options;
+    private readonly ILogger<DedupEvalCommand> logger;
+    private readonly IServiceProvider services;
+    private readonly IHashValueProvider hvp;
+    private readonly ByteBoundaryChunker chunker;
+
+    public async Task<int> Execute()
+    {
+        foreach (var bfi in options.Root.GetBinaryFileInfos())
         {
-            DirectoryInfo Root { get; }
+            var binaryHash = hvp.GetBinaryHash(bfi);
+            AddFile(new BinaryFile(options.Root, bfi, binaryHash));
         }
 
-        public DedupEvalCommand(IOptions options,
-            ILogger<DedupEvalCommand> logger,
-            IServiceProvider serviceProvider,
-            IHashValueProvider hvp,
-            ByteBoundaryChunker chunker)
-        {
-            this.options = options;
-            this.logger = logger;
-            services = serviceProvider;
-            this.hvp = hvp;
-            this.chunker = chunker;
-        }
+        logger.LogInformation($"{fileCount} total files");
+        logger.LogInformation($"{uniqueBinaries.Count} unique files");
 
-        private readonly IOptions options;
-        private readonly ILogger<DedupEvalCommand> logger;
-        private readonly IServiceProvider services;
-        private readonly IHashValueProvider hvp;
-        private readonly ByteBoundaryChunker chunker;
+        logger.LogInformation($"{fileSize.GetBytesReadable()} total size");
+        logger.LogInformation($"{uniqueBinaries.Values.Sum().GetBytesReadable()} size with file deduplication");
+        logger.LogInformation($"{uniqueChunks.Values.Sum().GetBytesReadable()} size with chunk deduplication");
 
-        public async Task<int> Execute()
-        {
-            foreach (var bfi in options.Root.GetBinaryFileInfos())
-            {
-                var binaryHash = hvp.GetBinaryHash(bfi);
-                AddFile(new BinaryFile(options.Root, bfi, binaryHash));
-            }
+        return 0;
+    }
 
-            logger.LogInformation($"{fileCount} total files");
-            logger.LogInformation($"{uniqueBinaries.Count} unique files");
+    IServiceProvider ICommand.Services => throw new NotImplementedException();
 
-            logger.LogInformation($"{fileSize.GetBytesReadable()} total size");
-            logger.LogInformation($"{uniqueBinaries.Values.Sum().GetBytesReadable()} size with file deduplication");
-            logger.LogInformation($"{uniqueChunks.Values.Sum().GetBytesReadable()} size with chunk deduplication");
+    private int fileCount;
+    private long fileSize;
+    private readonly Dictionary<BinaryHash, long> uniqueBinaries = new();
+    private readonly Dictionary<ChunkHash, long> uniqueChunks = new();
 
-            return 0;
-        }
+    private void AddFile(BinaryFile bf)
+    {
+        throw new NotImplementedException();
 
-        IServiceProvider ICommand.Services => throw new NotImplementedException();
+        //fileCount++;
+        //fileSize += bf.Length;
 
-        private int fileCount;
-        private long fileSize;
-        private readonly Dictionary<BinaryHash, long> uniqueBinaries = new();
-        private readonly Dictionary<ChunkHash, long> uniqueChunks = new();
+        //if (!uniqueFiles.ContainsKey(bf.Hash))
+        //{
+        //    uniqueFiles.Add(bf.Hash, bf.Length);
 
-        private void AddFile(BinaryFile bf)
-        {
-            throw new NotImplementedException();
+        //    await foreach (var c in chunker.Chunk(bf))
+        //    {
+        //        if (!uniqueChunks.ContainsKey(c.Hash))
+        //            uniqueChunks.Add(c.Hash, c.Length);
 
-            //fileCount++;
-            //fileSize += bf.Length;
-
-            //if (!uniqueFiles.ContainsKey(bf.Hash))
-            //{
-            //    uniqueFiles.Add(bf.Hash, bf.Length);
-
-            //    await foreach (var c in chunker.Chunk(bf))
-            //    {
-            //        if (!uniqueChunks.ContainsKey(c.Hash))
-            //            uniqueChunks.Add(c.Hash, c.Length);
-
-            //        c.Delete();
-            //    }
-            //}
-        }
+        //        c.Delete();
+        //    }
+        //}
     }
 }

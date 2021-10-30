@@ -12,93 +12,92 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.Core.Repositories
+namespace Arius.Core.Repositories;
+
+internal partial class Repository
 {
-    internal partial class Repository
+    internal const string BinaryManifestFolderName = "binarymanifests";
+
+    // GET
+
+    /// <summary>
+    /// Get the count of (distinct) BinaryHashes
+    /// </summary>
+    /// <returns></returns>
+    public async Task<int> GetBinaryCountAsync() //TODO move to test?
     {
-        internal const string BinaryManifestFolderName = "binarymanifests";
+        var hs = await GetAllBinaryHashesAsync();
 
-        // GET
-
-        /// <summary>
-        /// Get the count of (distinct) BinaryHashes
-        /// </summary>
-        /// <returns></returns>
-        public async Task<int> GetBinaryCountAsync() //TODO move to test?
-        {
-            var hs = await GetAllBinaryHashesAsync();
-
-            return hs.Count();
-        }
+        return hs.Count();
+    }
         
-        public async Task<bool> BinaryExistsAsync(BinaryHash binaryHash)
-        {
-            // Optimiztion but potentially split brain -- for large archives, decrypting all the PointerFileEntries takes a long time, so go with a direct call in the mean time
-            if (GetAllBinaryHashesAsync() is var t0 && t0.IsCompleted)
-            { 
-                var hs = await t0;
-                return hs.Any(h => h == binaryHash);
-            }
-            else
-            {
-                return await container.GetBlobClient(GetBinaryManifestBlobName(binaryHash)).ExistsAsync();
-            }
+    public async Task<bool> BinaryExistsAsync(BinaryHash binaryHash)
+    {
+        // Optimiztion but potentially split brain -- for large archives, decrypting all the PointerFileEntries takes a long time, so go with a direct call in the mean time
+        if (GetAllBinaryHashesAsync() is var t0 && t0.IsCompleted)
+        { 
+            var hs = await t0;
+            return hs.Any(h => h == binaryHash);
         }
-
-        /// <summary>
-        /// Get all the (distinct) BinaryHashes
-        /// </summary>
-        /// <returns></returns>
-        public async Task<IEnumerable<BinaryHash>> GetAllBinaryHashesAsync()
+        else
         {
-            var pfes = await GetPointerFileEntriesAsync();
-
-            return pfes.Select(pfe => pfe.BinaryHash).Distinct();
+            return await container.GetBlobClient(GetBinaryManifestBlobName(binaryHash)).ExistsAsync();
         }
+    }
+
+    /// <summary>
+    /// Get all the (distinct) BinaryHashes
+    /// </summary>
+    /// <returns></returns>
+    public async Task<IEnumerable<BinaryHash>> GetAllBinaryHashesAsync()
+    {
+        var pfes = await GetPointerFileEntriesAsync();
+
+        return pfes.Select(pfe => pfe.BinaryHash).Distinct();
+    }
 
 
-        public async Task<ChunkHash[]> GetChunksForBinaryAsync(BinaryHash binaryHash)
+    public async Task<ChunkHash[]> GetChunksForBinaryAsync(BinaryHash binaryHash)
+    {
+        logger.LogInformation($"Getting chunks for binary {binaryHash.Value}");
+        var chunkHashes = Array.Empty<ChunkHash>();
+
+        try
         {
-            logger.LogInformation($"Getting chunks for binary {binaryHash.Value}");
-            var chunkHashes = Array.Empty<ChunkHash>();
+            var ms = new MemoryStream();
 
-            try
-            {
-                var ms = new MemoryStream();
-
-                var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
-
-                await bc.DownloadToAsync(ms);
-                ms.Position = 0;
-                chunkHashes = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(ms))!.Select(hv => new ChunkHash(hv)).ToArray();
-
-                return chunkHashes;
-            }
-            catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
-            {
-                throw new InvalidOperationException($"BinaryManifest '{binaryHash}' does not exist");
-            }
-            finally
-            {
-                logger.LogInformation($"Getting chunks for manifest {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
-            }
-        }
-
-        public async Task CreateBinaryManifestAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
-        {
             var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
 
-            if (bc.Exists())
-                throw new InvalidOperationException("BinaryManifest Already Exists");
+            await bc.DownloadToAsync(ms);
+            ms.Position = 0;
+            chunkHashes = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(ms))!.Select(hv => new ChunkHash(hv)).ToArray();
 
-            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
-            var bytes = Encoding.UTF8.GetBytes(json);
-            var ms = new MemoryStream(bytes);
-
-            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+            return chunkHashes;
         }
-
-        private string GetBinaryManifestBlobName(BinaryHash binaryHash) => $"{BinaryManifestFolderName}/{binaryHash.Value}";
-
+        catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+        {
+            throw new InvalidOperationException($"BinaryManifest '{binaryHash}' does not exist");
+        }
+        finally
+        {
+            logger.LogInformation($"Getting chunks for manifest {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
+        }
     }
+
+    public async Task CreateBinaryManifestAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
+    {
+        var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
+
+        if (bc.Exists())
+            throw new InvalidOperationException("BinaryManifest Already Exists");
+
+        var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
+        var bytes = Encoding.UTF8.GetBytes(json);
+        var ms = new MemoryStream(bytes);
+
+        await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+    }
+
+    private string GetBinaryManifestBlobName(BinaryHash binaryHash) => $"{BinaryManifestFolderName}/{binaryHash.Value}";
+
 }

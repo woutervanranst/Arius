@@ -1,10 +1,9 @@
 ﻿using System;
 using System.CommandLine;
 
-namespace Arius.Cli.CommandLine
+namespace Arius.Cli.CommandLine;
+
+internal interface ICliCommand
 {
-    internal interface ICliCommand
-    {
-        Command GetCommand();
-    }
+    Command GetCommand();
 }

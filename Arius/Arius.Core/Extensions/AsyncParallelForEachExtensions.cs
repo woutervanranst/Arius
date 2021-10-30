@@ -6,59 +6,58 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
-namespace Arius.Core.Commands.Archive
+namespace Arius.Core.Commands.Archive;
+
+[DebuggerStepThrough]
+internal static class AsyncParallelForEachExtensions
 {
-    [DebuggerStepThrough]
-    internal static class AsyncParallelForEachExtensions
+    // https://scatteredcode.net/parallel-foreach-async-in-c/
+
+    public static async Task AsyncParallelForEachAsync<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
     {
-        // https://scatteredcode.net/parallel-foreach-async-in-c/
+        var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
 
-        public static async Task AsyncParallelForEachAsync<T>(this IAsyncEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
-        {
-            var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
+        if (scheduler != null)
+            options.TaskScheduler = scheduler;
 
-            if (scheduler != null)
-                options.TaskScheduler = scheduler;
+        var block = new ActionBlock<T>(body, options);
+        await foreach (var item in source)
+            block.Post(item);
 
-            var block = new ActionBlock<T>(body, options);
-            await foreach (var item in source)
-                block.Post(item);
+        block.Complete();
 
-            block.Complete();
+        await block.Completion;
+    }
 
-            await block.Completion;
-        }
+    public static Task AsyncParallelForEachAsync<T>(this IEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
+    {
+        var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
 
-        public static Task AsyncParallelForEachAsync<T>(this IEnumerable<T> source, Func<T, Task> body, int maxDegreeOfParallelism = DataflowBlockOptions.Unbounded, TaskScheduler scheduler = null)
-        {
-            var options = new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism };
+        if (scheduler != null)
+            options.TaskScheduler = scheduler;
 
-            if (scheduler != null)
-                options.TaskScheduler = scheduler;
-
-            var block = new ActionBlock<T>(body, options);
-            foreach (var item in source)
-                block.Post(item);
+        var block = new ActionBlock<T>(body, options);
+        foreach (var item in source)
+            block.Post(item);
             
-            block.Complete();
+        block.Complete();
             
-            return block.Completion;
-        }
+        return block.Completion;
+    }
 
 
-        public static async Task AsyncParallelForEachAsync<T>(this BlockingCollection<T> source, Func<T, Task> body, int degreeOfParallelism)
+    public static async Task AsyncParallelForEachAsync<T>(this BlockingCollection<T> source, Func<T, Task> body, int degreeOfParallelism)
+    {
+        // FROM https://stackoverflow.com/a/14678329/1582323 with GetConsumingPartitioner()
+
+        var partitions = source.GetConsumingPartitioner().GetPartitions(degreeOfParallelism);
+        var tasks = partitions.Select(async (partition) =>
         {
-            // FROM https://stackoverflow.com/a/14678329/1582323 with GetConsumingPartitioner()
+            using (partition)
+                while (partition.MoveNext())
+                    await body(partition.Current);
+        });
 
-            var partitions = source.GetConsumingPartitioner().GetPartitions(degreeOfParallelism);
-            var tasks = partitions.Select(async (partition) =>
-            {
-                using (partition)
-                    while (partition.MoveNext())
-                        await body(partition.Current);
-            });
-
-            await Task.WhenAll(tasks);
-        }
+        await Task.WhenAll(tasks);
     }
 }

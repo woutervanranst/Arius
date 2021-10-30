@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace Arius.Core.Commands
+namespace Arius.Core.Commands;
+
+public interface ICommand
 {
-    public interface ICommand
-    {
-        internal IServiceProvider Services { get; }
-        public Task<int> Execute();
-    }
+    internal IServiceProvider Services { get; }
+    public Task<int> Execute();
 }
