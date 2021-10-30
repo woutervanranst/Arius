@@ -145,10 +145,9 @@ internal partial class Repository
 
                 //Ensure the version is in the SORTED master list
                 var versions = await versionsTask.Task;
-                lock (versions)
-                {
-                    versions.Add(pfe.VersionUtc);
-                }
+                if (!versions.Contains(pfe.VersionUtc))
+                    lock (versions)
+                        versions.Add(pfe.VersionUtc);
             }
 
             return toAdd;
