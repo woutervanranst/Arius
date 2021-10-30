@@ -30,14 +30,14 @@ namespace Arius.Core.Repositories
             if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
                 this.logger.LogInformation($"Created container {options.Container}... ");
 
-            pfeRepo = new(loggerFactory.CreateLogger<CachedEncryptedPointerFileEntryRepository2>(), options, container);
+            pfeRepo = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), options, container);
             bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
         }
 
         private readonly ILogger<Repository> logger;
         private readonly string passphrase;
 
-        private readonly CachedEncryptedPointerFileEntryRepository2 pfeRepo;
+        private readonly PointerFileEntryRepository pfeRepo;
         private readonly CachedBinaryMetadataRepository bmRepo;
 
         private readonly BlobContainerClient container;
