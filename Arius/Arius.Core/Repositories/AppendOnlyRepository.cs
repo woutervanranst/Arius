@@ -20,9 +20,9 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal abstract class AppendOnlyRepository<T>
+    internal class AppendOnlyRepository<T>
     {
-        protected AppendOnlyRepository(ILogger logger, IOptions options, BlobContainerClient container, string folderName)
+        public AppendOnlyRepository(ILogger logger, IOptions options, BlobContainerClient container, string folderName)
         {
             this.logger = logger;
             this.passphrase = options.Passphrase;
@@ -50,7 +50,7 @@ internal partial class Repository
         private const int ENTRIES_PER_FILE = 3; //1_000;
 
 
-        protected virtual async Task<ConcurrentHashSet<T>> LoadEntriesAsync(BlobContainerClient container)
+        private async Task<ConcurrentHashSet<T>> LoadEntriesAsync(BlobContainerClient container)
         {
             var r = new ConcurrentHashSet<T>();
 
@@ -58,8 +58,8 @@ internal partial class Repository
             {
                 var bc = container.GetBlobClient(bi.Name);
 
-                using var ss = await bc.OpenReadAsync(cancellationToken: ct);
-                using var ts = new MemoryStream();
+                await using var ss = await bc.OpenReadAsync(cancellationToken: ct);
+                await using var ts = new MemoryStream();
 
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
                 ts.Seek(0, SeekOrigin.Begin);
@@ -75,7 +75,7 @@ internal partial class Repository
 
         public async Task<IEnumerable<T>> GetEntriesAsync() => await entriesTask;
 
-        protected async Task AppendAsync(T item)
+        public async Task AppendAsync(T item)
         {
             // Insert the item into the memory list
             var entries = await entriesTask;

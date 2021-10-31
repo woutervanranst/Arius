@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -30,15 +33,25 @@ internal partial class Repository
         if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
             this.logger.LogInformation($"Created container {options.Container}... ");
 
-        pfeRepo = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), options, container);
+        pfeRepo = new(loggerFactory.CreateLogger("PointerFileEntryRepository"), options, container, PointerFileEntriesFolderName);
+        versionsTask = Task.Run(async () =>
+        {
+            var entries = await pfeRepo.GetEntriesAsync();
+            return new SortedSet<DateTime>(entries.Select(pfe => pfe.VersionUtc).Distinct());
+        });
+
         bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
     }
 
     private readonly ILogger<Repository> logger;
     private readonly string passphrase;
 
-    private readonly PointerFileEntryRepository pfeRepo;
-    private readonly CachedBinaryMetadataRepository bmRepo;
-
     private readonly BlobContainerClient container;
+
+
+    private readonly AppendOnlyRepository<PointerFileEntry> pfeRepo;
+    private const string PointerFileEntriesFolderName = "pointerfileentries";
+    private readonly Task<SortedSet<DateTime>> versionsTask;
+
+    private readonly CachedBinaryMetadataRepository bmRepo;
 }

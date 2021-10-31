@@ -407,8 +407,8 @@ internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBl
 
         switch (r)
         {
-            case Repository.CreatePointerFileEntryResult.Upserted:
-                logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Upserted entry.");
+            case Repository.CreatePointerFileEntryResult.Inserted:
+                logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted entry.");
                 break;
             case Repository.CreatePointerFileEntryResult.InsertedDeleted:
                 logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
