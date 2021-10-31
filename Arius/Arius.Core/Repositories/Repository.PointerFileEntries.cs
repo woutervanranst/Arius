@@ -68,7 +68,7 @@ internal partial class Repository
         var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
         if (toAdd)
         {
-            await pfeRepo.AppendAsync(pfe);
+            await pfeRepo.AddAsync(pfe);
 
             //Ensure the version is in the SORTED master list
             var versions = await versionsTask;

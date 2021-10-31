@@ -33,14 +33,16 @@ internal partial class Repository
         if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
             this.logger.LogInformation($"Created container {options.Container}... ");
 
-        pfeRepo = new(loggerFactory.CreateLogger("PointerFileEntryRepository"), options, container, PointerFileEntriesFolderName);
+        
+        pfeRepo = new(loggerFactory.CreateLogger<AppendOnlyRepository<PointerFileEntry>>(), options, container, PointerFileEntriesFolderName);
         versionsTask = Task.Run(async () =>
         {
             var entries = await pfeRepo.GetEntriesAsync();
             return new SortedSet<DateTime>(entries.Select(pfe => pfe.VersionUtc).Distinct());
         });
 
-        bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
+
+        bmRepo = new(loggerFactory.CreateLogger<AppendOnlyRepository<BinaryMetadata>>(), options, container, BinaryMetadataFolderName);
     }
 
     private readonly ILogger<Repository> logger;
@@ -53,5 +55,6 @@ internal partial class Repository
     private const string PointerFileEntriesFolderName = "pointerfileentries";
     private readonly Task<SortedSet<DateTime>> versionsTask;
 
-    private readonly CachedBinaryMetadataRepository bmRepo;
+    private readonly AppendOnlyRepository<BinaryMetadata> bmRepo;
+    private const string BinaryMetadataFolderName = "binarymetadata";
 }
