@@ -37,7 +37,7 @@ internal partial class Repository
         pfeRepo = new(loggerFactory.CreateLogger<AppendOnlyRepository<PointerFileEntry>>(), options, container, POINTER_FILE_ENTRIES_FOLDER_NAME);
         versionsTask = Task.Run(async () =>
         {
-            var entries = await pfeRepo.GetEntriesAsync();
+            var entries = await pfeRepo.GetAllItemsAsync();
             return new SortedSet<DateTime>(entries.Select(pfe => pfe.VersionUtc).Distinct());
         });
 

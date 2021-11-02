@@ -58,7 +58,7 @@ internal partial class Repository
     /// </summary>
     private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
     {
-        var entries = await pfeRepo.GetEntriesAsync();
+        var entries = await pfeRepo.GetAllItemsAsync();
 
         var lastVersion = entries.AsParallel()
             .Where(p => pfe.RelativeName.Equals(p.RelativeName))
@@ -92,6 +92,12 @@ internal partial class Repository
     }
 
     private static readonly PointerFileEntryEqualityComparer equalityComparer = new();
+
+
+    public async Task CommitPointerFileEntries()
+    {
+        await pfeRepo.Commit();
+    }
 
 
 
@@ -153,7 +159,7 @@ internal partial class Repository
     /// <returns></returns>
     internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
     {
-        return await pfeRepo.GetEntriesAsync();
+        return await pfeRepo.GetAllItemsAsync();
     }
 
 
@@ -193,15 +199,4 @@ internal partial class Repository
     /// </summary>
     /// <returns></returns>
     public async Task<IEnumerable<DateTime>> GetVersionsAsync() => await versionsTask;
-
-
-
-
-
-
-
-    public async Task CommitPointerFileVersion()
-    {
-        await pfeRepo.CommitPointerFileVersion();
-    }
 }

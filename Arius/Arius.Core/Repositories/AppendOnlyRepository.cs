@@ -30,11 +30,11 @@ internal partial class Repository
             this.folderName = folderName;
 
             //Start loading all entries
-            entriesTask = Task.Run(LoadEntriesAsync);
+            itemsTask = Task.Run(LoadItemsAsync);
 
             // Initialize commit queue
-            entriesToCommit = Channel.CreateBounded<T>(new BoundedChannelOptions(ENTRIES_PER_FILE * 2) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false, SingleReader = true });
-            processEntriesToCommitTask = Task.Run(CommitEntriesTask);
+            itemsToCommit = Channel.CreateBounded<T>(new BoundedChannelOptions(ENTRIES_PER_BATCH * 2) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false, SingleReader = true });
+            commitItemsTask = Task.Run(CommitAllItems);
         }
 
         private readonly ILogger<AppendOnlyRepository<T>> logger;
@@ -42,14 +42,14 @@ internal partial class Repository
         private readonly BlobContainerClient container;
         private readonly string folderName;
 
-        private readonly Task<ConcurrentHashSet<T>> entriesTask;
-        private readonly Channel<T> entriesToCommit;
-        private readonly Task processEntriesToCommitTask;
+        private readonly Task<ConcurrentHashSet<T>> itemsTask;
+        private readonly Channel<T> itemsToCommit;
+        private readonly Task commitItemsTask;
 
-        private const int ENTRIES_PER_FILE = 1_000;
+        private const int ENTRIES_PER_BATCH = 1_000;
 
 
-        private async Task<ConcurrentHashSet<T>> LoadEntriesAsync()
+        private async Task<ConcurrentHashSet<T>> LoadItemsAsync()
         {
             var r = new ConcurrentHashSet<T>();
 
@@ -63,59 +63,64 @@ internal partial class Repository
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
                 ts.Seek(0, SeekOrigin.Begin);
 
-                var items = await JsonSerializer.DeserializeAsync<IEnumerable<T>>(ts, cancellationToken: ct);
+                var items = (await JsonSerializer.DeserializeAsync<IEnumerable<T>>(ts, cancellationToken: ct)).ToArray();
 
                 foreach (var item in items)
                     r.Add(item);
+
+                logger.LogInformation($"Read {items.Length} items from {bi.Name}");
             });
+
+            logger.LogInformation($"Read {r.Count()} items in total");
 
             return r;
         }
 
-        public async Task<IEnumerable<T>> GetEntriesAsync() => await entriesTask;
+        public async Task<IEnumerable<T>> GetAllItemsAsync() => await itemsTask;
 
         public async Task AddAsync(T item)
         {
             // Insert the item into the memory list
-            var entries = await entriesTask;
+            var entries = await itemsTask;
             entries.Add(item);
 
             // Queue to commit to write to blob storage
-            await entriesToCommit.Writer.WriteAsync(item);
+            await itemsToCommit.Writer.WriteAsync(item);
         }
 
 
-        private async Task CommitEntriesTask()
+        private async Task CommitAllItems()
         {
-            var items = new List<T>();
+            var batch = new List<T>();
 
-            await foreach (var item in entriesToCommit.Reader.ReadAllAsync())
+            await foreach (var item in itemsToCommit.Reader.ReadAllAsync())
             {
-                items.Add(item);
+                batch.Add(item);
 
-                if (items.Count >= ENTRIES_PER_FILE)
+                if (batch.Count >= ENTRIES_PER_BATCH ||
+                    (itemsToCommit.Reader.Completion.IsCompleted && itemsToCommit.Reader.Count == 0))
                 { 
                     //Commit this block
-                    await Emit(items);
-                    items.Clear();
+                    await CommitBatch(batch.ToArray());
+                    batch.Clear();
                 }
             }
 
             // Commit the last block
-            await Emit(items);
+            await CommitBatch(batch.ToArray());
         }
 
-        private async Task Emit(IEnumerable<T> items)
+        private async Task CommitBatch(T[] batch)
         {
-            if (!items.Any())
+            if (!batch.Any()) //in case the last batch does not contain any elements
                 return;
 
-            var bbc = container.GetBlockBlobClient($"{folderName}/{DateTime.UtcNow:s}-{Guid.NewGuid().GetHashCode()}"); //get a unique blob name
+            var bbc = container.GetBlockBlobClient($"{folderName}/{DateTime.UtcNow:s}-{Guid.NewGuid()}"); //get a unique blob name
 
-            using var ts = await bbc.OpenWriteAsync(overwrite: true);
-            using var ms = new MemoryStream();
+            await using var ts = await bbc.OpenWriteAsync(overwrite: true);
+            await using var ms = new MemoryStream();
 
-            await JsonSerializer.SerializeAsync(ms, items);
+            await JsonSerializer.SerializeAsync(ms, batch);
             ms.Seek(0, SeekOrigin.Begin);
 
             //using (var temp = File.OpenWrite(Path.GetTempFileName()))
@@ -129,11 +134,15 @@ internal partial class Repository
             await bbc.SetAccessTierAsync(AccessTier.Cool);
         }
 
-        public async Task CommitPointerFileVersion()
+        /// <summary>
+        /// Mark the repository as closed and write the remaining entries to storage
+        /// </summary>
+        /// <returns></returns>
+        public async Task Commit()
         {
-            entriesToCommit.Writer.Complete();
+            itemsToCommit.Writer.Complete();
 
-            await processEntriesToCommitTask;
+            await commitItemsTask;
         }
     }
 }
