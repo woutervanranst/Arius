@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Configuration;
 using Arius.Core.Repositories;
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
@@ -16,7 +17,7 @@ using NUnit.Framework;
 namespace Arius.Core.Tests;
 
 [SetUpFixture]
-internal static class TestSetup
+static class TestSetup
 {
     public const string Passphrase = "myPassphrase";
     private const string TestContainerNamePrefix = "unittest";
@@ -34,6 +35,7 @@ internal static class TestSetup
 
     private static BlobServiceClient blobService;
     public static BlobContainerClient Container { get; private set; }
+    private static TableServiceClient tableService;
 
 
     [OneTimeSetUp]
@@ -68,6 +70,9 @@ internal static class TestSetup
         blobService = new BlobServiceClient(connectionString);
         Container = blobService.CreateBlobContainer(containerName);
 
+
+        // Create reference to the storage tables
+        tableService = new TableServiceClient(connectionString);
 
 
         // Initialize Facade
@@ -110,12 +115,29 @@ internal static class TestSetup
         // Delete blobs
         foreach (var bci in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
             await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
+
+        // Delete tables
+        foreach (var ti in tableService.Query())
+            if (ti.Name.StartsWith(TestContainerNamePrefix))
+                await tableService.GetTableClient(ti.Name).DeleteAsync();
     }
 
     public static async Task PurgeRemote()
     {
         // delete all blobs in the container but leave the container
         foreach (var bi in Container.GetBlobs())
-            await Container.DeleteBlobAsync(bi.Name);
+            Container.DeleteBlob(bi.Name);
+
+        // delete all rows but leave the container
+        foreach (var ti in tableService.Query())
+        {
+            if (ti.Name.StartsWith(TestContainerNamePrefix))
+            { 
+                var tc = tableService.GetTableClient(ti.Name);
+                foreach (var te in tc.Query<TableEntity>())
+                    await tc.DeleteEntityAsync(te.PartitionKey, te.RowKey);
+            }
+        }
+                
     }
 }

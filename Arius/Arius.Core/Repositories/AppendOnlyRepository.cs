@@ -22,7 +22,7 @@ internal partial class Repository
 {
     internal class AppendOnlyRepository<T>
     {
-        public AppendOnlyRepository(ILogger<AppendOnlyRepository<T>> logger, IOptions options, BlobContainerClient container, string folderName)
+        public AppendOnlyRepository(ILogger logger, IOptions options, BlobContainerClient container, string folderName)
         {
             this.logger = logger;
             this.passphrase = options.Passphrase;
@@ -75,7 +75,7 @@ internal partial class Repository
 
         public async Task<IEnumerable<T>> GetEntriesAsync() => await entriesTask;
 
-        public async Task AddAsync(T item)
+        public async Task AppendAsync(T item)
         {
             // Insert the item into the memory list
             var entries = await entriesTask;
