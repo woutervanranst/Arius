@@ -26,8 +26,8 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
         bool fastHash,
         PointerService pointerService,
         Repository repo,
-        Action<PointerFile> indexedPointerFile,
-        Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile,
+        Func<PointerFile, Task> indexedPointerFile,
+        Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile,
         IHashValueProvider hvp,
         Action done)
         : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
@@ -45,8 +45,8 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     private readonly bool fastHash;
     private readonly PointerService pointerService;
     private readonly Repository repo;
-    private readonly Action<PointerFile> indexedPointerFile;
-    private readonly Action<(BinaryFile BinaryFile, bool AlreadyBackedUp)> indexedBinaryFile;
+    private readonly Func<PointerFile, Task> indexedPointerFile;
+    private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile;
     private readonly IHashValueProvider hvp;
 
     protected override async Task TaskBodyImplAsync(DirectoryInfo root)
@@ -66,7 +66,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
 
                     var pf = pointerService.GetPointerFile(root, fi);
 
-                    indexedPointerFile(pf);
+                    await indexedPointerFile(pf);
                 }
                 else
                 {
@@ -101,14 +101,14 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                             if (!await repo.BinaryExistsAsync(binaryHash))
                             {
                                 logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
-                                indexedBinaryFile((bf, AlreadyBackedUp: false));
+                                await indexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
                             else
                             {
                                 //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
 
                                 logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                                indexedBinaryFile((bf, AlreadyBackedUp: true));
+                                await indexedBinaryFile((bf, AlreadyBackedUp: true));
                             }
                         }
                         else
@@ -119,7 +119,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                     else
                     {
                         // No PointerFile -- to process
-                        indexedBinaryFile((bf, AlreadyBackedUp: false));
+                        await indexedBinaryFile((bf, AlreadyBackedUp: false));
                     }
                 }
             }
@@ -132,18 +132,18 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
 }
 
 
-internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public UploadBinaryFileBlock(
         ILoggerFactory loggerFactory,
-        Func<BlockingCollection<BinaryFile>> sourceFunc,
-        int degreeOfParallelism,
+        Func<Channel<BinaryFile>> sourceFunc,
+        int maxDegreeOfParallelism,
         Chunker chunker,
         Repository repo,
         ArchiveCommandOptions options,
             
-        Action<BinaryFile> binaryExists,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+        Func<BinaryFile, Task> binaryExists,
+        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
         this.chunker = chunker;
         this.repo = repo;
@@ -155,14 +155,14 @@ internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFil
     private readonly Repository repo;
     private readonly ArchiveCommandOptions options;
         
-    private readonly Action<BinaryFile> binaryExists;
+    private readonly Func<BinaryFile, Task> binaryExists;
 
     private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
     private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
-    protected override async Task ForEachBodyImplAsync(BinaryFile bf)
+    protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
     {
         /* 
         * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
@@ -215,7 +215,7 @@ internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFil
             }
         }
             
-        binaryExists(bf);
+        await binaryExists(bf);
     }
 
     private async Task UploadBinaryAsync(BinaryFile bf)
@@ -249,7 +249,7 @@ internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFil
     /// <returns></returns>
     private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf)
     {
-        var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
+        var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
         var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
         var totalLength = 0L;
         var incrementalLength = 0L;
@@ -348,15 +348,15 @@ internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFil
 }
 
 
-internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public CreatePointerFileIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<BlockingCollection<BinaryFile>> sourceFunc,
-        int degreeOfParallelism,
+        Func<Channel<BinaryFile>> sourceFunc,
+        int maxDegreeOfParallelism,
         PointerService pointerService,
-        Action<BinaryFile> succesfullyBackedUp,
-        Action<PointerFile> pointerFileCreated,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+        Func<BinaryFile, Task> succesfullyBackedUp,
+        Func<PointerFile, Task> pointerFileCreated,
+        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
         this.pointerService = pointerService;
         this.succesfullyBackedUp = succesfullyBackedUp;
@@ -364,10 +364,10 @@ internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBa
     }
 
     private readonly PointerService pointerService;
-    private readonly Action<BinaryFile> succesfullyBackedUp;
-    private readonly Action<PointerFile> pointerFileCreated;
+    private readonly Func<BinaryFile, Task> succesfullyBackedUp;
+    private readonly Func<PointerFile, Task> pointerFileCreated;
 
-    protected override Task ForEachBodyImplAsync(BinaryFile bf)
+    protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
     {
         logger.LogInformation($"Creating pointer for '{bf.RelativeName}'...");
 
@@ -375,22 +375,20 @@ internal class CreatePointerFileIfNotExistsBlock : BlockingCollectionTaskBlockBa
 
         logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
 
-        succesfullyBackedUp(bf);
-        pointerFileCreated(pf);
-
-        return Task.CompletedTask;
+        await succesfullyBackedUp(bf);
+        await pointerFileCreated(pf);
     }
 }
 
 
-internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBlockBase<PointerFile>
+internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
 {
     public CreatePointerFileEntryIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<BlockingCollection<PointerFile>> sourceFunc,
-        int degreeOfParallelism,
+        Func<Channel<PointerFile>> sourceFunc,
+        int maxDegreeOfParallelism,
         Repository repo,
         DateTime versionUtc,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
         this.repo = repo;
         this.versionUtc = versionUtc;
@@ -399,7 +397,7 @@ internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBl
     private readonly Repository repo;
     private readonly DateTime versionUtc;
 
-    protected override async Task ForEachBodyImplAsync(PointerFile pointerFile)
+    protected override async Task ForEachBodyImplAsync(PointerFile pointerFile, CancellationToken ct)
     {
         logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
 
@@ -423,16 +421,16 @@ internal class CreatePointerFileEntryIfNotExistsBlock : BlockingCollectionTaskBl
 }
 
 
-internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFile>
+internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
-        Func<BlockingCollection<BinaryFile>> sourceFunc,
+        Func<Channel<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
     }
 
-    protected override Task ForEachBodyImplAsync(BinaryFile bf)
+    protected override Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
     {
         logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
         bf.Delete();
@@ -443,16 +441,16 @@ internal class DeleteBinaryFilesBlock : BlockingCollectionTaskBlockBase<BinaryFi
 }
 
 
-internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : BlockingCollectionTaskBlockBase<PointerFileEntry>
+internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
 {
     public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILoggerFactory loggerFactory,
-        Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
-        int degreeOfParallelism,
+        Func<Task<Channel<PointerFileEntry>>> sourceFunc,
+        int maxDegreeOfParallelism,
         Repository repo,
         DirectoryInfo root,
         PointerService pointerService,
         DateTime versionUtc,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, degreeOfParallelism: degreeOfParallelism, done: done)
+        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
         this.repo = repo;
         this.root = root;
@@ -465,7 +463,7 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Blocki
     private readonly PointerService pointerService;
     private readonly DateTime versionUtc;
 
-    protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe)
+    protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe, CancellationToken ct)
     {
         if (!pfe.IsDeleted &&
             pointerService.GetPointerFile(root, pfe) is null &&

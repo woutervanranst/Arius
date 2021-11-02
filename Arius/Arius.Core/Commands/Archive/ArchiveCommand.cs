@@ -12,6 +12,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
+using System.Threading.Channels;
+using Arius.Core.Extensions;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -42,10 +44,9 @@ internal class ArchiveCommand : ICommand
         var root = new DirectoryInfo(options.Path);
 
 
-
-        var pointerFileEntriesToCreate = new BlockingCollection<PointerFile>();
-        var binariesToDelete = new BlockingCollection<BinaryFile>();
-        var binariesToUpload = new BlockingCollection<BinaryFile>();
+        var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
@@ -54,41 +55,37 @@ internal class ArchiveCommand : ICommand
             fastHash: options.FastHash,
             pointerService: pointerService,
             repo: repo,
-            indexedPointerFile: pf => pointerFileEntriesToCreate.Add(pf), //B301
-            indexedBinaryFile: arg =>
+            indexedPointerFile: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B301
+            indexedBinaryFile: async arg =>
             {
                 var (bf, alreadyBackedUp) = arg;
                 if (alreadyBackedUp)
                 {
                     if (options.RemoveLocal)
-                        binariesToDelete.Add(bf); //B401
+                        await binariesToDelete.Writer.WriteAsync(bf); //B401
+                    //else - discard //B304
                 }
                 else
-                    binariesToUpload.Add(bf); //B302
+                    await binariesToUpload.Writer.WriteAsync(bf); //B302
             },
             hvp: services.GetRequiredService<IHashValueProvider>(),
-            done: () => binariesToUpload.CompleteAdding()); //B310
+            done: () => binariesToUpload.Writer.Complete()); //B310
         var indexTask = indexBlock.GetTask;
 
 
 
-        var pointersToCreate = new BlockingCollection<BinaryFile>();
+        var pointersToCreate = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.PointersToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
 
         var uploadBinaryFileBlock = new UploadBinaryFileBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => binariesToUpload,
-            degreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
+            maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
             chunker: services.GetRequiredService<Chunker>(),
             repo: repo,
             options: options,
-            binaryExists: bf =>
-            {
-                pointersToCreate.Add(bf); //B403
-            },
-            done: () =>
-            {
-                pointersToCreate.CompleteAdding(); //B410
-            });
+            binaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
+            done: () => pointersToCreate.Writer.Complete() //B410
+        );
         var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
 
@@ -96,18 +93,16 @@ internal class ArchiveCommand : ICommand
         var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => pointersToCreate,
-            degreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
+            maxDegreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
             pointerService: pointerService,
-            succesfullyBackedUp: bf =>
+            succesfullyBackedUp: async bf =>
             {
                 if (options.RemoveLocal)
-                    binariesToDelete.Add(bf); //B1202
+                    await binariesToDelete.Writer.WriteAsync(bf); //B1202
             },
-            pointerFileCreated: (pf) => pointerFileEntriesToCreate.Add(pf), //B1201
-            done: () =>
-            {
-                binariesToDelete.CompleteAdding(); //B1310
-            });
+            pointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B1201
+            done: () => binariesToDelete.Writer.Complete() //B1310
+            );
         var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
 
@@ -115,7 +110,7 @@ internal class ArchiveCommand : ICommand
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
         // can be ignored since we'll be awaiting the pointersToCreate
         Task.WhenAll(indexTask, createPointerFileIfNotExistsTask)
-            .ContinueWith(_ => pointerFileEntriesToCreate.CompleteAdding()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
+            .ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 
@@ -123,7 +118,7 @@ internal class ArchiveCommand : ICommand
         var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => pointerFileEntriesToCreate,
-            degreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
+            maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
             repo: repo,
             versionUtc: versionUtc,
             done: () => { });
@@ -144,13 +139,13 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: async () =>
             {
-                var pointerFileEntriesToCheckForDeletedPointers = new BlockingCollection<PointerFileEntry>();
+                var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
                 var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
-                    .Where(e => e.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
-                pointerFileEntriesToCheckForDeletedPointers.AddFromEnumerable(pfes, true); //B1401
+                    .Where(pfe => pfe.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
+                await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
                 return pointerFileEntriesToCheckForDeletedPointers;
             },
-            degreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
+            maxDegreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
             repo: repo,
             root: root,
             pointerService: pointerService,
