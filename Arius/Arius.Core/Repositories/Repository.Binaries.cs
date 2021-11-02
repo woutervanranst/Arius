@@ -33,16 +33,20 @@ internal partial class Repository
         
     public async Task<bool> BinaryExistsAsync(BinaryHash binaryHash)
     {
-        // Optimiztion but potentially split brain -- for large archives, decrypting all the PointerFileEntries takes a long time, so go with a direct call in the mean time
-        if (GetAllBinaryHashesAsync() is var t0 && t0.IsCompleted)
-        { 
-            var hs = await t0;
-            return hs.Any(h => h == binaryHash);
-        }
-        else
-        {
-            return await container.GetBlobClient(GetBinaryManifestBlobName(binaryHash)).ExistsAsync();
-        }
+        var hs = await GetAllBinaryHashesAsync();
+
+        return hs.Contains(binaryHash);
+
+        //// Optimiztion but potentially split brain -- for large archives, decrypting all the PointerFileEntries takes a long time, so go with a direct call in the mean time
+        //if (GetAllBinaryHashesAsync() is var t0 && t0.IsCompleted)
+        //{ 
+        //    var hs = await t0;
+        //    return hs.Any(h => h == binaryHash);
+        //}
+        //else
+        //{
+        //    return await container.GetBlobClient(GetBinaryManifestBlobName(binaryHash)).ExistsAsync();
+        //}
     }
 
     /// <summary>
