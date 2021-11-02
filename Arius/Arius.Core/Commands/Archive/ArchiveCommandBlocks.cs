@@ -136,7 +136,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public UploadBinaryFileBlock(
         ILoggerFactory loggerFactory,
-        Func<Channel<BinaryFile>> sourceFunc,
+        Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
         Chunker chunker,
         Repository repo,
@@ -351,7 +351,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
 internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public CreatePointerFileIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<Channel<BinaryFile>> sourceFunc,
+        Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
         PointerService pointerService,
         Func<BinaryFile, Task> succesfullyBackedUp,
@@ -384,7 +384,7 @@ internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFi
 internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
 {
     public CreatePointerFileEntryIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<Channel<PointerFile>> sourceFunc,
+        Func<ChannelReader<PointerFile>> sourceFunc,
         int maxDegreeOfParallelism,
         Repository repo,
         DateTime versionUtc,
@@ -424,7 +424,7 @@ internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<Poi
 internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
 {
     public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
-        Func<Channel<BinaryFile>> sourceFunc,
+        Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
         Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
@@ -444,7 +444,7 @@ internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
 internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
 {
     public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILoggerFactory loggerFactory,
-        Func<Task<Channel<PointerFileEntry>>> sourceFunc,
+        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
         int maxDegreeOfParallelism,
         Repository repo,
         DirectoryInfo root,
@@ -476,10 +476,10 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Channe
 }
 
 
-internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
+internal class ExportToJsonBlock : TaskBlockBase<ChannelReader<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
 {
     public ExportToJsonBlock(ILoggerFactory loggerFactory,
-        Func<Task<BlockingCollection<PointerFileEntry>>> sourceFunc,
+        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
         Repository repo,
         DateTime versionUtc,
         Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
@@ -492,7 +492,7 @@ internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileE
     private readonly DateTime versionUtc;
 
 
-    protected override async Task TaskBodyImplAsync(BlockingCollection<PointerFileEntry> source)
+    protected override async Task TaskBodyImplAsync(ChannelReader<PointerFileEntry> source)
     {
         logger.LogInformation($"Writing state to JSON...");
 
@@ -502,10 +502,9 @@ internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileE
 
         // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
 
-        foreach (var pfe in source
-                     //.AsParallel().WithDegreeOfParallelism(8)
-                     //.AsEnumerable()) 
-                     .GetConsumingEnumerable())
+        await foreach (var pfe in source.ReadAllAsync()
+                     //.AsParallel().WithDegreeOfParallelism(8) // ! Cannot write to file concurrently
+                 )
         {
             var chs = await repo.GetChunksForBinaryAsync(pfe.BinaryHash);
             var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
@@ -519,7 +518,7 @@ internal class ExportToJsonBlock : TaskBlockBase<BlockingCollection<PointerFileE
         logger.LogInformation($"Writing state to JSON... done");
     }
 
-    private struct PointerFileEntryWithChunkHashes
+    private readonly struct PointerFileEntryWithChunkHashes
     {
         public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, ChunkHash[] chs)
         {

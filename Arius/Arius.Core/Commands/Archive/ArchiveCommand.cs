@@ -140,7 +140,7 @@ internal class ArchiveCommand : ICommand
             sourceFunc: async () =>
             {
                 var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
-                var pfes = (await repo.GetCurrentEntries(includeDeleted: true))
+                var pfes = (await repo.GetCurrentEntries(includeDeleted: false))
                     .Where(pfe => pfe.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
                 await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
                 return pointerFileEntriesToCheckForDeletedPointers;
@@ -156,7 +156,7 @@ internal class ArchiveCommand : ICommand
 
 
         var commitPointerFileEntryRepositoryTask = Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask)
-            .ContinueWith(async _ => await repo.CommitPointerFileVersion()); //TODO Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            .ContinueWith(async _ => await repo.CommitPointerFileEntries()); //B1502 //TODO also Commit in a finally clause?
 
 
 
@@ -164,9 +164,11 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: async () =>
             {
+                await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask); //B1503 -- wait for the PointerFileEntries to be up to date
+
+                var pointerFileEntriesToExport = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
                 var pfes = await repo.GetCurrentEntries(includeDeleted: false);
-                var pointerFileEntriesToExport = new BlockingCollection<PointerFileEntry>();
-                pointerFileEntriesToExport.AddFromEnumerable(pfes, true); //B1501
+                await pointerFileEntriesToExport.Writer.AddFromEnumerable(pfes, true); //B1501
                 return pointerFileEntriesToExport;
             },
             repo: repo,
