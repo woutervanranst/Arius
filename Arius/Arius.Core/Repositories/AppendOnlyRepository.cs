@@ -22,7 +22,7 @@ internal partial class Repository
 {
     internal class AppendOnlyRepository<T>
     {
-        public AppendOnlyRepository(ILogger logger, IOptions options, BlobContainerClient container, string folderName)
+        public AppendOnlyRepository(ILogger<AppendOnlyRepository<T>> logger, IOptions options, BlobContainerClient container, string folderName)
         {
             this.logger = logger;
             this.passphrase = options.Passphrase;
@@ -30,14 +30,14 @@ internal partial class Repository
             this.folderName = folderName;
 
             //Start loading all entries
-            entriesTask = Task.Run(() => LoadEntriesAsync(container));
+            entriesTask = Task.Run(LoadEntriesAsync);
 
             // Initialize commit queue
             entriesToCommit = Channel.CreateBounded<T>(new BoundedChannelOptions(ENTRIES_PER_FILE * 2) { FullMode = BoundedChannelFullMode.Wait, SingleWriter = false, SingleReader = true });
-            processEntriesToCommitTask = Task.Run(() => CommitEntriesTask());
+            processEntriesToCommitTask = Task.Run(CommitEntriesTask);
         }
 
-        private readonly ILogger logger;
+        private readonly ILogger<AppendOnlyRepository<T>> logger;
         private readonly string passphrase;
         private readonly BlobContainerClient container;
         private readonly string folderName;
@@ -46,11 +46,10 @@ internal partial class Repository
         private readonly Channel<T> entriesToCommit;
         private readonly Task processEntriesToCommitTask;
 
-        
-        private const int ENTRIES_PER_FILE = 3; //1_000;
+        private const int ENTRIES_PER_FILE = 1_000;
 
 
-        private async Task<ConcurrentHashSet<T>> LoadEntriesAsync(BlobContainerClient container)
+        private async Task<ConcurrentHashSet<T>> LoadEntriesAsync()
         {
             var r = new ConcurrentHashSet<T>();
 
@@ -75,7 +74,7 @@ internal partial class Repository
 
         public async Task<IEnumerable<T>> GetEntriesAsync() => await entriesTask;
 
-        public async Task AppendAsync(T item)
+        public async Task AddAsync(T item)
         {
             // Insert the item into the memory list
             var entries = await entriesTask;

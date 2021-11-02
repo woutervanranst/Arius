@@ -174,7 +174,7 @@ internal class UploadBinaryFileBlock : BlockingCollectionTaskBlockBase<BinaryFil
         */
 
         // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (a) => await repo.BinaryExistsAsync(bf.Hash));
+        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.BinaryExistsAsync(bf.Hash));
         if (binaryExistsRemote)
         {
             // 1 Exists remote

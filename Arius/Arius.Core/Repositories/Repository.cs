@@ -5,6 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Models;
 using Arius.Core.Services;
+using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -29,18 +30,24 @@ internal partial class Repository
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
         container = new BlobContainerClient(connectionString, options.Container);
 
-        var r = container.CreateIfNotExists(PublicAccessType.None);
-        if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+        var r0 = container.CreateIfNotExists(PublicAccessType.None);
+        if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
             this.logger.LogInformation($"Created container {options.Container}... ");
 
-        pfeRepo = new(loggerFactory.CreateLogger("PointerFileEntryRepository"), options, container, PointerFileEntriesFolderName);
+        pfeRepo = new(loggerFactory.CreateLogger<AppendOnlyRepository<PointerFileEntry>>(), options, container, POINTER_FILE_ENTRIES_FOLDER_NAME);
         versionsTask = Task.Run(async () =>
         {
             var entries = await pfeRepo.GetEntriesAsync();
             return new SortedSet<DateTime>(entries.Select(pfe => pfe.VersionUtc).Distinct());
         });
 
-        bmRepo = new(loggerFactory.CreateLogger<CachedBinaryMetadataRepository>(), options);
+
+        var tsc = new TableServiceClient(connectionString);
+        bmTable = tsc.GetTableClient($"{options.Container}{BINARY_METADATA_TABLE_NAME_SUFFIX}");
+
+        var r1 = bmTable.CreateIfNotExists();
+        if (r1 is not null)
+            logger.LogInformation($"Created {bmTable.Name} table");
     }
 
     private readonly ILogger<Repository> logger;
@@ -50,8 +57,9 @@ internal partial class Repository
 
 
     private readonly AppendOnlyRepository<PointerFileEntry> pfeRepo;
-    private const string PointerFileEntriesFolderName = "pointerfileentries";
+    private const string POINTER_FILE_ENTRIES_FOLDER_NAME = "pointerfileentries";
     private readonly Task<SortedSet<DateTime>> versionsTask;
 
-    private readonly CachedBinaryMetadataRepository bmRepo;
+    private readonly TableClient bmTable;
+    private const string BINARY_METADATA_TABLE_NAME_SUFFIX = "binarymetadata";
 }

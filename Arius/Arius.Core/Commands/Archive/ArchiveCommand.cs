@@ -163,6 +163,8 @@ internal class ArchiveCommand : ICommand
             });
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
+
+
         var commitPointerFileEntryRepositoryTask = await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask).ContinueWith(async (_) =>
         {
             await repo.CommitPointerFileVersion(); //TODO Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

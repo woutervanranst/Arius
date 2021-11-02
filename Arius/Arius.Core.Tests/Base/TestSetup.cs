@@ -17,7 +17,7 @@ using NUnit.Framework;
 namespace Arius.Core.Tests;
 
 [SetUpFixture]
-static class TestSetup
+internal static class TestSetup
 {
     public const string Passphrase = "myPassphrase";
     private const string TestContainerNamePrefix = "unittest";
@@ -126,7 +126,7 @@ static class TestSetup
     {
         // delete all blobs in the container but leave the container
         foreach (var bi in Container.GetBlobs())
-            Container.DeleteBlob(bi.Name);
+            await Container.DeleteBlobAsync(bi.Name);
 
         // delete all rows but leave the container
         foreach (var ti in tableService.Query())
