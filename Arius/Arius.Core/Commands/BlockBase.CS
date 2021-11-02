@@ -89,37 +89,37 @@ internal abstract class TaskBlockBase<TSource> : BlockBase
     protected abstract Task TaskBodyImplAsync(TSource source);
 }
     
-internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
+//internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
+//{
+//    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
+//        : this(loggerFactory, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
+//    {
+//    }
+//    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
+//        : base(loggerFactory, sourceFunc, done)
+//    {
+//        this.degreeOfParallelism = degreeOfParallelism;
+//    }
+
+//    private readonly int degreeOfParallelism;
+
+//    protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
+//    {
+//        //TODO quid CancellationToken?
+//        await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
+//    }
+
+//    protected abstract Task ForEachBodyImplAsync(TSource item);
+
+//}
+
+internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelReader<TSource>>
 {
-    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
-        : this(loggerFactory, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
-    {
-    }
-    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
-        : base(loggerFactory, sourceFunc, done)
-    {
-        this.degreeOfParallelism = degreeOfParallelism;
-    }
-
-    private readonly int degreeOfParallelism;
-
-    protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
-    {
-        //TODO quid CancellationToken?
-        await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
-    }
-
-    protected abstract Task ForEachBodyImplAsync(TSource item);
-
-}
-
-internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<Channel<TSource>>
-{
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Channel<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
         : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
     {
     }
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<Channel<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<ChannelReader<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
         : base(loggerFactory, sourceFunc, done)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;
@@ -127,10 +127,10 @@ internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<Channel<TS
 
     private readonly int maxDegreeOfParallelism;
 
-    protected override async Task TaskBodyImplAsync(Channel<TSource> source)
+    protected override async Task TaskBodyImplAsync(ChannelReader<TSource> source)
     {
         //TODO quid CancellationToken?
-        await Parallel.ForEachAsync(source.Reader.ReadAllAsync(),
+        await Parallel.ForEachAsync(source.ReadAllAsync(),
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (item, cancellationToken) => await ForEachBodyImplAsync(item, cancellationToken));
     }
