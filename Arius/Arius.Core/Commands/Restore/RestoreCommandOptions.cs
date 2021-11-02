@@ -6,7 +6,6 @@ namespace Arius.Core.Commands.Restore;
 
 internal class RestoreCommandOptions : ServicesOptions,
     Facade.Facade.IOptions,
-    RestoreCommand.IOptions,
     IHashValueProvider.IOptions
 {
     //public bool FastHash => false; //Do not fasthash on restore to ensure integrity
@@ -14,6 +13,9 @@ internal class RestoreCommandOptions : ServicesOptions,
     public bool Download { get; private init; }
     public bool KeepPointers { get; private init; }
     public string Path { get; private init; }
+
+
+    public int PARALLELISLD => 100;
 
     internal RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path)
         : base(accountName, accountKey, container, passphrase)

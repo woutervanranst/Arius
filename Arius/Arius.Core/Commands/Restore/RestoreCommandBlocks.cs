@@ -132,11 +132,11 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
 internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
 {
     public DownloadChunksForBinaryBlock(ILoggerFactory loggerFactory,
-        Func<Channel<BinaryHash>> sourceFunc,
+        Func<ChannelReader<BinaryHash>> sourceFunc,
         DirectoryInfo restoreTempDir,
         Repository repo,
         ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries,
-        Action<BinaryHash, IChunk[]> chunksRestored,
+        Func<BinaryHash, IChunk[], Task> chunksRestored,
         Action<BinaryHash> chunksHydrating,
         Action done)
         : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
@@ -150,7 +150,7 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
 
     private readonly DirectoryInfo restoreTempDir;
     private readonly Repository repo;
-    private readonly Action<BinaryHash, IChunk[]> chunksRestored;
+    private readonly Func<BinaryHash, IChunk[], Task> chunksRestored;
     private readonly Action<BinaryHash> chunksHydrating;
     private readonly ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries;
 
@@ -163,7 +163,7 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
         {
             // the Binary for this PointerFile is already restored
             throw new NotImplementedException();
-            chunksRestored(bh, null);
+            await chunksRestored(bh, null);
             return;
         }
 
@@ -272,10 +272,10 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
 
 
 
-internal class RestoreBinaryFileBlock : BlockingCollectionTaskBlockBase<(IChunk[] Chunks, PointerFile[] PointerFiles)>
+internal class RestoreBinaryFileBlock : ChannelTaskBlockBase<(IChunk[] Chunks, PointerFile[] PointerFiles)>
 {
     public RestoreBinaryFileBlock(ILoggerFactory loggerFactory,
-        Func<BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>> sourceFunc,
+        Func<ChannelReader<(IChunk[] Chunks, PointerFile[] PointerFiles)>> sourceFunc,
         PointerService pointerService,
         Chunker chunker,
         DirectoryInfo root,
@@ -291,7 +291,7 @@ internal class RestoreBinaryFileBlock : BlockingCollectionTaskBlockBase<(IChunk[
     private readonly Chunker chunker;
     private readonly DirectoryInfo root;
 
-    protected override async Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item)
+    protected override async Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item, CancellationToken ct)
     {
         FileInfo bfi = null;
 

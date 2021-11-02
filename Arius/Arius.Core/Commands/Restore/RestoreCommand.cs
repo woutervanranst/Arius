@@ -18,14 +18,7 @@ namespace Arius.Core.Commands.Restore;
 
 internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
 {
-    internal interface IOptions
-    {
-        string Path { get; }
-        bool Download { get; }
-        bool Synchronize { get; }
-    }
-
-    public RestoreCommand(IOptions options,
+    public RestoreCommand(RestoreCommandOptions options,
         ILogger<RestoreCommand> logger,
         IServiceProvider serviceProvider)
     {
@@ -34,7 +27,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
         services = serviceProvider;
     }
 
-    private readonly IOptions options;
+    private readonly RestoreCommandOptions options;
     private readonly ILogger<RestoreCommand> logger;
     private readonly IServiceProvider services;
 
@@ -113,7 +106,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
 
 
         var chunksForBinary = new ConcurrentDictionary<BinaryHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
-        var pointersToRestore = new BlockingCollection<(IChunk[] Chunks, PointerFile[] PointerFiles)>();
+        var pointersToRestore = Channel.CreateBounded<(IChunk[] Chunks, PointerFile[] PointerFiles)>(new BoundedChannelOptions(options.PARALLELISLD) { AllowSynchronousContinuations = false, FullMode = BoundedChannelFullMode.Wait, SingleReader = false, SingleWriter = false});
         var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
         var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
 
@@ -123,10 +116,10 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
             restoreTempDir: restoreTempDir,
             repo: repo,
             restoredBinaries: restoredBinaries,
-            chunksRestored: (mh, cs) =>
+            chunksRestored: async (mh, cs) =>
             {
                 pointerFilesWaitingForBinaryRestoration.Remove(mh, out var pointerFiles);
-                pointersToRestore.Add((cs, pointerFiles.ToArray())); //S21
+                await pointersToRestore.Writer.WriteAsync((cs, pointerFiles.ToArray())); //S21
             },
             chunksHydrating: (mh) =>
             {
@@ -134,7 +127,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
             },
             done: () => 
             {
-                pointersToRestore.CompleteAdding(); //S29
+                pointersToRestore.Writer.Complete(); //S29
             });
         var downloadChunksForBinaryTask = downloadChunksForBinaryBlock.GetTask;
 
