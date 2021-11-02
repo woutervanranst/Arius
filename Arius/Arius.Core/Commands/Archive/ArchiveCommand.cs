@@ -59,7 +59,7 @@ internal class ArchiveCommand : ICommand
             {
                 var (bf, alreadyBackedUp) = arg;
                 if (alreadyBackedUp)
-                { 
+                {
                     if (options.RemoveLocal)
                         binariesToDelete.Add(bf); //B401
                 }
@@ -85,7 +85,7 @@ internal class ArchiveCommand : ICommand
             {
                 pointersToCreate.Add(bf); //B403
             },
-            done: () => 
+            done: () =>
             {
                 pointersToCreate.CompleteAdding(); //B410
             });
@@ -98,7 +98,7 @@ internal class ArchiveCommand : ICommand
             sourceFunc: () => pointersToCreate,
             degreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
             pointerService: pointerService,
-            succesfullyBackedUp: bf => 
+            succesfullyBackedUp: bf =>
             {
                 if (options.RemoveLocal)
                     binariesToDelete.Add(bf); //B1202
@@ -135,9 +135,7 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: () => binariesToDelete,
             maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
-            done: () =>
-            {
-            });
+            done: () => { });
         var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
@@ -157,18 +155,13 @@ internal class ArchiveCommand : ICommand
             root: root,
             pointerService: pointerService,
             versionUtc: versionUtc,
-            done: () => 
-            {
-                    
-            });
+            done: () => { });
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
 
 
-        var commitPointerFileEntryRepositoryTask = await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask).ContinueWith(async (_) =>
-        {
-            await repo.CommitPointerFileVersion(); //TODO Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-        });
+        var commitPointerFileEntryRepositoryTask = Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask)
+            .ContinueWith(async _ => await repo.CommitPointerFileVersion()); //TODO Bxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 
 
@@ -184,18 +177,16 @@ internal class ArchiveCommand : ICommand
             repo: repo,
             versionUtc: versionUtc,
             done: () => { });
-        var exportJsonTask = await createPointerFileEntryIfNotExistsTask.ContinueWith(async _ =>
-        {
-            await exportJsonBlock.GetTask; //B1502
-        });
+        var exportJsonTask = createPointerFileEntryIfNotExistsTask
+            .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
 
             
-
 
         //while (true)
         //{
         //    await Task.Yield();
         //}
+
 
 
         // Await the current stage of the pipeline
