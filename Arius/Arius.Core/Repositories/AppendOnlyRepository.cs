@@ -71,7 +71,7 @@ internal partial class Repository
                 logger.LogInformation($"Read {items.Length} items from {bi.Name}");
             });
 
-            logger.LogInformation($"Read {r.Count()} items in total");
+            logger.LogInformation($"Read {r.Count} items in total");
 
             return r;
         }
