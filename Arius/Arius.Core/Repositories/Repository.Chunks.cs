@@ -195,8 +195,6 @@ internal partial class Repository
                 }
             }
 
-            throw new ArgumentException();
-
             await bbc.SetAccessTierAsync(tier);
 
             return length;
