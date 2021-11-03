@@ -84,7 +84,7 @@ internal partial class Repository
         }
         finally
         {
-            logger.LogInformation($"Getting chunks for manifest {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
+            logger.LogInformation($"Getting chunks for binary {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
         }
     }
 
