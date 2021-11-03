@@ -170,7 +170,15 @@ internal partial class Repository
         var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
         if (await bbc.ExistsAsync())
-            throw new InvalidOperationException(); //TODO combine with OpenWriteAsync? //TODO gracefully?
+        {
+            if ((await bbc.GetPropertiesAsync()).Value.ContentLength == 0)
+            {
+                logger.LogWarning($"Corrupt chunk {chunk.Hash} with size 0 exists. Deleting and uploading again");
+                await bbc.DeleteAsync();
+            }
+            else
+                throw new InvalidOperationException($"Chunk {chunk.Hash} with nonzero length already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+        }
 
         try
         {
@@ -186,6 +194,8 @@ internal partial class Repository
                     length = ts.Position;
                 }
             }
+
+            throw new ArgumentException();
 
             await bbc.SetAccessTierAsync(tier);
 
