@@ -129,10 +129,66 @@ internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelRea
 
     protected override async Task TaskBodyImplAsync(ChannelReader<TSource> source)
     {
-        //TODO quid CancellationToken?
+        //try
+        //{
+        //TODO quid CancellationToken? See https://stackoverflow.com/a/40149914/1582323
         await Parallel.ForEachAsync(source.ReadAllAsync(),
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (item, cancellationToken) => await ForEachBodyImplAsync(item, cancellationToken));
+        //}
+        //catch (Exception e)
+        //{
+        //    Console.WriteLine(e);
+        //    throw;
+        //}
+
+
+        //await Parallel.ForEachAsync(source.ReadAllAsync(),
+        //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+        //        async (item, cancellationToken) =>
+        //        {
+        //            try
+        //            {
+        //                await ForEachBodyImplAsync(item, cancellationToken);
+        //            }
+        //            catch (Exception e)
+        //            {
+        //                logger.LogError(e, "FAIL");
+        //                throw;
+        //            }
+        //        });
+
+
+        //try
+        //{
+        //    var cts2 = new CancellationTokenSource();
+        //    var excepions = new ConcurrentQueue<Exception>();
+
+        //    //TODO quid CancellationToken?
+        //    await Parallel.ForEachAsync(source.ReadAllAsync(), //pass the cancellation token for the loop or the reader will not complete when cancellation is requested
+        //        new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+        //        async (item, cancellationToken) =>
+        //        {
+        //            try
+        //            {
+        //                await ForEachBodyImplAsync(item, cancellationToken);
+        //            }
+        //            catch (Exception e)
+        //            {
+        //                cts2.Cancel();
+        //                excepions.Enqueue(e);
+        //                //cts.CancelAndThrow();
+        //                //cancellationToken.ThrowIfCancellationRequested();
+        //                //Console.WriteLine(e);
+        //                throw;
+        //            }
+        //        });
+        //}
+        //catch (Exception e)
+        //{
+        //    Console.WriteLine(e);
+        //    throw;
+        //}
     }
 
     protected abstract Task ForEachBodyImplAsync(TSource item, CancellationToken cancellationToken);
