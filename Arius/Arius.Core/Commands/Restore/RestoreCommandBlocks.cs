@@ -50,7 +50,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
             if (fsi is DirectoryInfo root)
             {
                 // Synchronize a Directory
-                var currentPfes = (await repo.GetCurrentEntries(includeDeleted: false)).ToArray();
+                var currentPfes = (await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false)).ToArray();
 
                 logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 

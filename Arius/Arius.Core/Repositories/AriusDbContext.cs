@@ -11,46 +11,31 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-
-    //public class MyValueConverter : ValueConverter<BinaryHash, string>
-    //{
-    //    public MyValueConverter(ConverterMappingHints mappingHints = null)
-    //        : base(
-    //            bh => bh.Value,
-    //            value => new BinaryHash(value),
-    //            mappingHints
-    //        )
-    //    { }
-    //}
-
     private class AriusDbContext : DbContext
     {
-        //public DbSet<PointerFileEntry> PointerFileEntries { get; set; }
+        public DbSet<PointerFileEntry> PointerFileEntries { get; set; }
         public DbSet<BinaryMetadata> BinaryMetadata { get; set; }
 
-
-
-        
 
         public static async Task<AriusDbContext> GetAriusDbContext()
         {
             var path = await DbPathTask.Task;
             var db = new AriusDbContext(path);
-            await db.Database.EnsureCreatedAsync();
 
             return db;
         }
-
+        public static async Task EnsureCreated(string path)
+        {
+            var db = new AriusDbContext(path);
+            await db.Database.EnsureCreatedAsync();
+        }
         public static TaskCompletionSource<string> DbPathTask { get; } = new();
 
         private AriusDbContext(string dbPath)
         {
             // thread safe? https://www.sqlite.org/threadsafe.html
-
-
             this.dbPath = dbPath;
         }
-
         private readonly string dbPath;
 
 
@@ -82,11 +67,16 @@ internal partial class Repository
 
             });
 
-            //bme
-                //.HasKey(bm => bm.Hash);
+            var pfee = modelBuilder.Entity<PointerFileEntry>(builder =>
+            {
+                builder.Property(pfe => pfe.BinaryHash)
+                    .HasColumnName("BinaryHash")
+                    .HasConversion(bh => bh.Value, value => new BinaryHash(value));
 
-            //bme
-                //.Property(bm => bm.Hash).HasConversion(bh => bh.Value, h => new BinaryHash(h));
+                builder.HasIndex(pfe => pfe.VersionUtc);
+
+                builder.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
+            });
         }
 
         // BinaryManifest --> in blob (potentially too big)

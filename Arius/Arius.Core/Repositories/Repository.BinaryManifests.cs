@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Arius.Core.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
@@ -55,9 +56,11 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<IEnumerable<BinaryHash>> GetAllBinaryHashesAsync()
         {
-            var pfes = await parent.GetPointerFileEntriesAsync();
-
-            return pfes.Select(pfe => pfe.BinaryHash).Distinct();
+            await using var db = await AriusDbContext.GetAriusDbContext();
+            var bhs = await db.PointerFileEntries
+                .Select(pfe => pfe.BinaryHash)
+                .Distinct().ToArrayAsync();
+            return bhs;
         }
 
         public async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash binaryHash)

@@ -433,17 +433,17 @@ internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<Poi
     {
         logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
 
-        var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
+        var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
 
         switch (r)
         {
-            case Repository.CreatePointerFileEntryResult.Inserted:
+            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.Inserted:
                 logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted entry.");
                 break;
-            case Repository.CreatePointerFileEntryResult.InsertedDeleted:
+            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
                 logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
                 break;
-            case Repository.CreatePointerFileEntryResult.NoChange:
+            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
                 logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
                 break;
             default:
@@ -502,7 +502,7 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Channe
             pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
         {
             logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
-            await repo.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
+            await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
         }
     }
 }
