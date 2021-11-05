@@ -97,7 +97,7 @@ internal class ArchiveCommand : ICommand
         var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
 
-
+        
         var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => pointersToCreate,

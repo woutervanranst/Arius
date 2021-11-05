@@ -11,7 +11,7 @@ internal abstract record Hash
     }
     // TODO implement like https://github.com/Azure/azure-sdk-for-net/blob/master/sdk/storage/Azure.Storage.Blobs/src/Generated/Models/AccessTier.cs
 
-    public string Value { get; }
+    public string Value { get; private set; } // private setter is needed for EF Core https://stackoverflow.com/a/57473609/1582323
 
     public override string ToString() => Value;
 
@@ -60,7 +60,7 @@ internal abstract record Hash
 internal record BinaryHash : Hash
 {
     public BinaryHash(string value) : base(value)
-    { 
+    {
     }
 #pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
     // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323

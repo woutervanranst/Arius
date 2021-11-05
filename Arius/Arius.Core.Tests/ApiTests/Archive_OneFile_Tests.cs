@@ -45,7 +45,7 @@ class Archive_OneFile_Tests : TestBase
         //PointerFile is created
         Assert.IsNotNull(pf);
         //The chunk is in the appropriate tier
-        var ch = (await repo.GetChunksForBinaryAsync(pf.Hash)).Single();
+        var ch = (await repo.BinaryManifests.GetChunkHashesAsync(pf.Hash)).Single();
         var c = repo.GetChunkBlobByHash(ch, requireHydrated: false);
         Assert.AreEqual(tier, c.AccessTier);
         //There is a matching PointerFileEntry
