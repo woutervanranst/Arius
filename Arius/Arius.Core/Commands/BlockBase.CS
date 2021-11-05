@@ -129,7 +129,7 @@ internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelRea
 
     protected override async Task TaskBodyImplAsync(ChannelReader<TSource> source)
     {
-        //TODO quid CancellationToken?
+        //TODO quid CancellationToken? -- for errors it s OK as it is, perhaps if other tasks are cancelled?
         await Parallel.ForEachAsync(source.ReadAllAsync(),
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (item, cancellationToken) => await ForEachBodyImplAsync(item, cancellationToken));
