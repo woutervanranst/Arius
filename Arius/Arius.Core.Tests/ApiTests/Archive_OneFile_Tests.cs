@@ -11,6 +11,7 @@ using Arius.Core.Tests.Extensions;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+using Assert = NUnit.Framework.Assert;
 
 namespace Arius.Core.Tests.ApiTests;
 
@@ -382,8 +383,56 @@ class Archive_OneFile_Tests : TestBase
     }
 
     [Test]
-    public void CORRUPTPOINTERFILE()
+    public async Task Archive_CorruptPointer_Exception()
+    { 
+        // garbage in the pointerfile (not a v1 pointer, not a sha hash)
+        var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
+        await File.WriteAllTextAsync(fn, "kaka");
+
+        var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+        var e = ae!.InnerExceptions.Single().InnerException;
+        Assert.IsInstanceOf<ArgumentException>(e);
+        Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
+
+        File.Delete(fn);
+    }
+
+    [Test]
+    public async Task Archive_NonMatchingPointer_Exception()
     {
+        //// Scenario 1 - garbage in the pointerfile (not a v1 pointer, not a sha hash)
+        //var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
+        //await File.WriteAllTextAsync(fn, "kaka");
+
+        //var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+        //var e = ae!.InnerExceptions.Single().InnerException;
+        //Assert.IsInstanceOf<ArgumentException>(e);
+        //Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
+
+        //File.Delete(fn);
+
+
+
         throw new NotImplementedException();
+
+        // expected throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+    }
+
+    [Test]
+    public async Task Archive_StalePointer_Exception()
+    {
+        //Create a 'stale' PointerFile that does not have a corresponding binary in the local or remote repository
+        var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
+        await File.WriteAllTextAsync(fn, "{\"BinaryHash\":\"467bb39560918cea81c42dd922bb9aa71f20642fdff4f40ee83e3fade36f02be\"}");
+
+        var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+        var e = ae!.InnerExceptions.Single().InnerException;
+        Assert.IsInstanceOf<InvalidOperationException>(e);
+        Assert.IsTrue(e.Message.Contains("no corresponding binary exists either locally or remotely"));
+
+        File.Delete(fn);
     }
 }
+
+
+
