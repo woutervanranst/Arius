@@ -82,36 +82,23 @@ static class DirectoryInfoExtensions
 
     public static IEnumerable<FileInfo> GetAllFileInfos(this DirectoryInfo di, ILogger logger = default)
     {
-        //return di.GetFiles("*", SearchOption.AllDirectories);
-
         foreach (var file in di.GetFiles())
         {
             if (IsHiddenOrSystem(file))
-            {
                 logger?.LogDebug($"Skipping file {file.FullName} as it is SYSTEM or HIDDEN");
-                continue;
-            }
             else if (IsIgnoreFile(file))
-            {
                 logger?.LogDebug($"Ignoring file {file.FullName}");
-                continue;
-            }
             else
-            {
                 yield return file;
-            }
         }
 
         foreach (var dir in di.GetDirectories())
         {
             if (IsHiddenOrSystem(dir))
-            {
                 logger?.LogDebug($"Skipping directory {dir.FullName} as it is SYSTEM or HIDDEN");
-                continue;
-            }
-
-            foreach (var f in GetAllFileInfos(dir, logger))
-                yield return f;
+            else
+                foreach (var f in GetAllFileInfos(dir, logger))
+                    yield return f;
         }
     }
 
