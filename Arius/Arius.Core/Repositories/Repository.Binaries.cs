@@ -31,11 +31,17 @@ internal partial class Repository
         return hs.Count();
     }
         
-    public async Task<bool> BinaryExistsAsync(BinaryHash binaryHash)
+    public async Task<bool> BinaryExistsAsync(BinaryHash bh)
     {
-        var hs = await GetAllBinaryHashesAsync();
+        return await BinaryMetadataExistsAsync(bh);
 
-        return hs.Contains(binaryHash);
+        //var pfes = await GetPointerFileEntriesAsync();
+        //return pfes.Any(pfe => pfe.BinaryHash == binaryHash);
+
+
+        //var hs = await GetAllBinaryHashesAsync();
+        //return hs.Contains(binaryHash);
+
 
         //// Optimiztion but potentially split brain -- for large archives, decrypting all the PointerFileEntries takes a long time, so go with a direct call in the mean time
         //if (GetAllBinaryHashesAsync() is var t0 && t0.IsCompleted)
