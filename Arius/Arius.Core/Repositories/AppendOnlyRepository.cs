@@ -57,18 +57,32 @@ internal partial class Repository
             {
                 var bc = container.GetBlobClient(bi.Name);
 
-                await using var ss = await bc.OpenReadAsync(cancellationToken: ct);
-                await using var ts = new MemoryStream();
+                try
+                {
+                    await using var ss = await bc.OpenReadAsync(cancellationToken: ct);
+                    await using var ts = new MemoryStream();
 
-                await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
-                ts.Seek(0, SeekOrigin.Begin);
+                    await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                    ts.Seek(0, SeekOrigin.Begin);
 
-                var items = (await JsonSerializer.DeserializeAsync<IEnumerable<T>>(ts, cancellationToken: ct)).ToArray();
+                    var items = (await JsonSerializer.DeserializeAsync<IEnumerable<T>>(ts, cancellationToken: ct)).ToArray();
 
-                foreach (var item in items)
-                    r.Add(item);
+                    foreach (var item in items)
+                        r.Add(item);
 
-                logger.LogInformation($"Read {items.Length} items from {bi.Name}");
+                    logger.LogInformation($"Read {items.Length} items from {bi.Name}");
+                }
+                catch (ArgumentException e)
+                {
+                    if ((await bc.GetPropertiesAsync()).Value.ContentLength == 0)
+                    {
+                        logger.LogWarning($"Deleting empty ItemSet {bi.Name}");
+                        await bc.DeleteAsync();
+                    }
+                    else
+                        throw;
+                }
+                
             });
 
             logger.LogInformation($"Read {r.Count} items in total");
