@@ -47,6 +47,7 @@ internal class ArchiveCommand : ICommand
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binaryFileUploadCompleted = new TaskCompletionSource();
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
@@ -62,14 +63,17 @@ internal class ArchiveCommand : ICommand
                 if (alreadyBackedUp)
                 {
                     if (options.RemoveLocal)
-                        await binariesToDelete.Writer.WriteAsync(bf); //B401
+                        throw new NotImplementedException(); //todo redundant with b1202?
+                        //await binariesToDelete.Writer.WriteAsync(bf); //B401
                     //else - discard //B304
                 }
                 else
                     await binariesToUpload.Writer.WriteAsync(bf); //B302
             },
             hvp: services.GetRequiredService<IHashValueProvider>(),
-            done: () => binariesToUpload.Writer.Complete()); //B310
+            binaryFileIndexCompleted: () => binariesToUpload.Writer.Complete(), //B310 
+            binaryFileUploadCompleted: binaryFileUploadCompleted,
+            done: () => { });
         var indexTask = indexBlock.GetTask;
 
 
@@ -84,7 +88,11 @@ internal class ArchiveCommand : ICommand
             repo: repo,
             options: options,
             binaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
-            done: () => pointersToCreate.Writer.Complete() //B410
+            done: () =>
+            {
+                pointersToCreate.Writer.Complete(); //B410
+                binaryFileUploadCompleted.SetResult(); //B411
+            }
         );
         var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
 
@@ -113,8 +121,7 @@ internal class ArchiveCommand : ICommand
             .ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
-
-
+        
         var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => pointerFileEntriesToCreate,
@@ -174,8 +181,9 @@ internal class ArchiveCommand : ICommand
             repo: repo,
             versionUtc: versionUtc,
             done: () => { });
-        var exportJsonTask = createPointerFileEntryIfNotExistsTask
-            .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
+        var exportJsonTask = exportJsonBlock.GetTask; //B1502
+        //var exportJsonTask = createPointerFileEntryIfNotExistsTask
+        //    .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
 
             
 
@@ -193,6 +201,10 @@ internal class ArchiveCommand : ICommand
             && ts.Any())
         {
             var exceptions = ts.Select(t => t.Exception);
+
+            foreach (var e in exceptions)
+                logger.LogError(e, "Error");
+
             throw new AggregateException(exceptions);
         }
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)

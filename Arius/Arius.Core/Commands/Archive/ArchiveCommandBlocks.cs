@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using ConcurrentCollections;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -29,6 +30,8 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
         Func<PointerFile, Task> indexedPointerFile,
         Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile,
         IHashValueProvider hvp,
+        Action binaryFileIndexCompleted,
+        TaskCompletionSource binaryFileUploadCompleted,
         Action done)
         : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
     {
@@ -39,6 +42,8 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
         this.indexedPointerFile = indexedPointerFile;
         this.indexedBinaryFile = indexedBinaryFile;
         this.hvp = hvp;
+        this.binaryFileIndexCompleted = binaryFileIndexCompleted;
+        this.binaryFileUploadCompleted = binaryFileUploadCompleted;
     }
 
     private readonly int maxDegreeOfParallelism;
@@ -48,64 +53,54 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
     private readonly Func<PointerFile, Task> indexedPointerFile;
     private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile;
     private readonly IHashValueProvider hvp;
+    private readonly Action binaryFileIndexCompleted;
+    private readonly TaskCompletionSource binaryFileUploadCompleted;
 
     protected override async Task TaskBodyImplAsync(DirectoryInfo root)
     {
-        foreach (var fi in root.GetAllFileInfos(logger)
-                     .AsParallel()
-                     .WithDegreeOfParallelism(maxDegreeOfParallelism))
-        {
-            try
+        //var ka = new ConcurrentDictionary<BinaryHash, (bool exists, ConcurrentBag<PointerFile> ka)>();
+        var latentPointers = new ConcurrentQueue<PointerFile>();
+        var binariesThatWillBeUploaded = new ConcurrentHashSet<BinaryHash>();
+
+        await Parallel.ForEachAsync(root.GetAllFileInfos(logger),
+            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+            async (fi, ct) =>
             {
-                var rn = fi.GetRelativeName(root);
-
-                if (fi.IsPointerFile())
+                try
                 {
-                    //fi is a PointerFile
-                    logger.LogInformation($"Found PointerFile '{rn}'");
-
                     var pf = pointerService.GetPointerFile(root, fi);
 
-                    await indexedPointerFile(pf);
-                }
-                else
-                {
-                    //fi is a BinaryFile
-                    logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
-
-                    //Get the Hash for this file
-                    BinaryHash binaryHash = default;
-                    var pf = pointerService.GetPointerFile(root, fi);
-                    if (fastHash && pf is not null)
+                    if (fi.IsPointerFile())
                     {
-                        //A corresponding PointerFile exists
-                        binaryHash = pf.Hash;
+                        // PointerFile
+                        logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done with fasthash. Hash: '{binaryHash.ToShortString()}'");
+                        if (await repo.BinaryExistsAsync(pf.Hash))
+                            // The pointer points to an existing binary
+                            await indexedPointerFile(pf);
+                        else
+                            // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
+                            latentPointers.Enqueue(pf);
                     }
                     else
                     {
-                        var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
-                        {
-                            binaryHash = hvp.GetBinaryHash(fi);
-                        });
+                        // BinaryFile
+                        var bh = GetBinaryHash(root, fi, pf);
+                        var bf = new BinaryFile(root, fi, bh);
 
-                        logger.LogInformation($"Hashing BinaryFile '{rn}'... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
-                    }
-
-                    var bf = new BinaryFile(root, fi, binaryHash);
-                    if (pf is not null)
-                    {
-                        if (pf.Hash == binaryHash)
+                        if (pf is not null)
                         {
-                            if (!await repo.BinaryExistsAsync(binaryHash))
+                            if (pf.Hash != bh)
+                                throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+
+                            if (!await repo.BinaryExistsAsync(bh))
                             {
-                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{binaryHash.ToShortString()}'). Uploading binary again.");
+                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
                                 await indexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
                             else
                             {
-                                //An equivalent PointerFile already exists and is already being sent through the pipe - skip.
+                                //An equivalent PointerFile already exists and is already being sent through the pipe to have a PointerFileEntry be created - skip.
 
                                 logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
                                 await indexedBinaryFile((bf, AlreadyBackedUp: true));
@@ -113,21 +108,58 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                         }
                         else
                         {
-                            throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+                            // No PointerFile -- to process
+                            await indexedBinaryFile((bf, AlreadyBackedUp: false));
                         }
-                    }
-                    else
-                    {
-                        // No PointerFile -- to process
-                        await indexedBinaryFile((bf, AlreadyBackedUp: false));
+
+                        binariesThatWillBeUploaded.Add(bh);
                     }
                 }
-            }
-            catch (IOException e) when (e.Message.Contains("virus"))
+                catch (IOException e) when (e.Message.Contains("virus"))
+                {
+                    logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
+                }
+            });
+
+        //Wait until all binaries 
+        binaryFileIndexCompleted();
+        await binaryFileUploadCompleted.Task;
+
+        //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
+        await Parallel.ForEachAsync(latentPointers.GetConsumingEnumerable(),
+            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+            async (pf, ct) =>
             {
-                logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
-            }
+                if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
+                    throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
+
+                await indexedPointerFile(pf);
+            });
+    }
+    private BinaryHash GetBinaryHash(DirectoryInfo root, FileInfo fi, PointerFile pf)
+    {
+        BinaryHash binaryHash = default;
+        if (fastHash && pf is not null)
+        {
+            //A corresponding PointerFile exists and FastHash is TRUE
+            binaryHash = pf.Hash; //use the hash from the pointerfile
+
+            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}' with hash '{binaryHash.ToShortString()}' (fasthash)");
         }
+        else
+        {
+            var rn = fi.GetRelativeName(root);
+
+            logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
+
+            var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
+                binaryHash = hvp.GetBinaryHash(fi));
+
+            logger.LogInformation($"Found BinaryFile '{rn}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
+        }
+
+        return binaryHash;
+        // 
     }
 }
 
