@@ -134,7 +134,7 @@ internal partial class Repository
             // Get hydration status
             // https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-rehydration
 
-            var status = hydratedItem.GetProperties().Value.ArchiveStatus;
+            var status = (await hydratedItem.GetPropertiesAsync()).Value.ArchiveStatus;
             if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
                 logger.LogInformation($"Hydration pending for {blobToHydrate.Hash.ToShortString()}");
             else if (status == null)
