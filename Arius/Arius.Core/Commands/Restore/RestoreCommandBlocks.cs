@@ -243,20 +243,20 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
 
             return new ChunkFile(cfi, ch);
         }
-        else if (repo.GetChunkBlobByHash(ch, requireHydrated: true) is var onlineChunk && onlineChunk is not null)
+        else if (repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true) is var onlineChunk && onlineChunk is not null)
         {
             // Hydrated chunk (in cold/hot storage) but not yet downloaded
-            await repo.DownloadChunkAsync(onlineChunk, cfi);
+            await repo.Chunks.DownloadAsync(onlineChunk, cfi);
 
             ChunkRestoredFromOnlineTier = true;
             logger.LogInformation($"Chunk {ch.ToShortString()} downloaded from online tier");
 
             return new ChunkFile(cfi, ch);
         }
-        else if (repo.GetChunkBlobByHash(ch, requireHydrated: false) is var archivedChunk && archivedChunk is not null)
+        else if (repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: false) is var archivedChunk && archivedChunk is not null)
         {
             // Archived chunk (in archive storage) not yet hydrated
-            await repo.HydrateChunkAsync(archivedChunk);
+            await repo.Chunks.HydrateAsync(archivedChunk);
 
             ChunkStartedHydration = true;
             logger.LogInformation($"Chunk {ch.ToShortString()} started hydration... cannot yet download");

@@ -42,6 +42,7 @@ internal partial class Repository
 
         BinaryMetadata = new BinaryMetadataRepository(loggerFactory.CreateLogger<BinaryMetadataRepository>());
         BinaryManifests = new BinaryManifestRepository(loggerFactory.CreateLogger<BinaryManifestRepository>(), this, container);
+        Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, passphrase);
 
 
 

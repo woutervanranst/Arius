@@ -322,12 +322,12 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
                 logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
 
-                if (await repo.ChunkExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                if (await repo.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                 {
                     // 1 Exists remote
                     logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
 
-                    var length = repo.GetChunkBlobByHash(chunk.Hash, false).Length;
+                    var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
                     Interlocked.Add(ref totalLength, length);
                     Interlocked.Add(ref incrementalLength, 0);
                 }
@@ -339,7 +339,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
                         // 2 Does not yet exist remote and not yet being created --> upload
                         logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
-                        var length = await repo.UploadChunkAsync(chunk, options.Tier);
+                        var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, length);
 
@@ -352,7 +352,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
 
                         await uploadingChunks[chunk.Hash].Task;
 
-                        var length = repo.GetChunkBlobByHash(chunk.Hash, false).Length;
+                        var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, 0);
 
@@ -373,7 +373,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
     /// <returns></returns>
     private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryChunkAsync(BinaryFile bf)
     {
-        var length = await repo.UploadChunkAsync(bf, options.Tier);
+        var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 
         return (((IChunk)bf).Hash.SingleToArray(), length, length);
     }

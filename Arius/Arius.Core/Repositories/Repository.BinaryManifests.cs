@@ -20,10 +20,7 @@ internal partial class Repository
 
     internal class BinaryManifestRepository
     {
-        private readonly ILogger<BinaryManifestRepository> logger;
-        private readonly Repository parent;
-        private readonly BlobContainerClient container;
-        internal const string BinaryManifestFolderName = "binarymanifests";
+        private const string BinaryManifestFolderName = "binarymanifests";
 
         internal BinaryManifestRepository(ILogger<BinaryManifestRepository> logger, Repository parent, BlobContainerClient container)
         {
@@ -31,6 +28,10 @@ internal partial class Repository
             this.parent = parent;
             this.container = container;
         }
+
+        private readonly ILogger<BinaryManifestRepository> logger;
+        private readonly Repository parent;
+        private readonly BlobContainerClient container;
 
         /// <summary>
         /// Get the count of (distinct) BinaryHashes
