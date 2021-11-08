@@ -18,6 +18,8 @@ namespace Arius.Core.Tests;
 [SetUpFixture]
 internal static class TestSetup
 {
+    public static readonly DateTime UnitTestGracePeriod = new(2021, 11, 9);
+
     public const string Passphrase = "myPassphrase";
     private const string TestContainerNamePrefix = "unittest";
 

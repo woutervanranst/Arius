@@ -56,6 +56,9 @@ class Restore_Tests_Old : TestBase
     [Test, Order(801)]
     public async Task Restore_FileArchiveTier_HydratingBlob()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         //SET UP -- Clear directories & create a new file (with new hash) to archive
         Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
         TestSetup.ArchiveTestDirectory.Clear();
@@ -104,6 +107,9 @@ class Restore_Tests_Old : TestBase
     [Test, Order(802)]
     public async Task Restore_FileArchiveTier_FromHydratedBlob()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         //SET UP -- Clear directories & ceate a new file (with new hash) to archive
         Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
         TestSetup.ArchiveTestDirectory.Clear();

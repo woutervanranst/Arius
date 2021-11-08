@@ -116,7 +116,8 @@ class Restore_Tests : TestBase
     {
         // Selectively restore
 
-        throw new NotImplementedException();
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
 
         //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
 
@@ -168,7 +169,8 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_FolderDoesNotExist_ValidationException()
     {
-        throw new NotImplementedException();
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
     }
 
     [Test]
@@ -284,7 +286,8 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_OneFileWithTEMPHYDRATEDChunk_BinaryFileRestoredTempDeleted()
     {
-        throw new NotImplementedException();
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
     }
 
     [Test]

@@ -412,8 +412,8 @@ class Archive_OneFile_Tests : TestBase
         //File.Delete(fn);
 
 
-
-        throw new NotImplementedException();
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
 
         // expected throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
     }

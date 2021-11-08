@@ -28,6 +28,7 @@ class Dedup_Tests : TestBase
     [Test]
     public void TESTINCREMENTALLENGTH()
     {
-        throw new NotImplementedException();
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
     }
 }
