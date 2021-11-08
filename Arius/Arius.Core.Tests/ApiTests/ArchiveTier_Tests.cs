@@ -44,11 +44,11 @@ class ArchiveTier_Tests : TestBase
         //PointerFile is created
         Assert.IsNotNull(pf);
         //The chunk is in the appropriate tier
-        var ch = (await repo.GetChunksForBinaryAsync(pf.Hash)).Single();
-        var c = repo.GetChunkBlobByHash(ch, requireHydrated: false);
+        var ch = (await repo.ChunkLists.GetChunkHashesAsync(pf.Hash)).Single();
+        var c = repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: false);
         Assert.AreEqual(tier, c.AccessTier);
         //There is no hydrated chunk
-        c = repo.GetChunkBlobByHash(c.Hash, requireHydrated: true);
+        c = repo.Chunks.GetChunkBlobByHash(c.Hash, requireHydrated: true);
         Assert.IsNull(c);
         //There is a matching PointerFileEntry
         Assert.IsNotNull(pfe);

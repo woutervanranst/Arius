@@ -75,12 +75,12 @@ class Restore_Tests_Old : TestBase
         //10 The chunk is in the Archive tier
         var ps = GetPointerService();
         var pf = ps.GetPointerFile(bfi);
-        var chunkHashes = await repo.GetChunksForBinaryAsync(pf.Hash);
-        var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+        var chunkHashes = await repo.ChunkLists.GetChunkHashesAsync(pf.Hash);
+        var cb = repo.Chunks.GetChunkBlobByHash(chunkHashes.Single(), false);
         Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
         //11 A hydrated blob does not yet exist
-        var bc_Hydrating = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkFolderName}/{cb.Name}");
+        var bc_Hydrating = TestSetup.Container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{cb.Name}");
         Assert.IsFalse(bc_Hydrating.Exists());
 
         //12 Obtaining properties results in an exception
@@ -122,8 +122,8 @@ class Restore_Tests_Old : TestBase
         //10 - The chunk is in the cool tier
         var ps = GetPointerService();
         var pf = ps.GetPointerFile(bfi);
-        var chunkHashes = await repo.GetChunksForBinaryAsync(pf.Hash);
-        var cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+        var chunkHashes = await repo.ChunkLists.GetChunkHashesAsync(pf.Hash);
+        var cb = repo.Chunks.GetChunkBlobByHash(chunkHashes.Single(), false);
         Assert.AreEqual(AccessTier.Cool, cb.AccessTier);
 
 
@@ -133,7 +133,7 @@ class Restore_Tests_Old : TestBase
         Assert.IsTrue(bc_Original.Exists());
 
         //22 The hydrated blob does not yet exist
-        var bc_Hydrated = TestSetup.Container.GetBlobClient($"{Repository.RehydratedChunkFolderName}/{cb.Name}");
+        var bc_Hydrated = TestSetup.Container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{cb.Name}");
         Assert.IsFalse(bc_Hydrated.Exists());
 
         //23 Copy the original to the hydrated folder
@@ -143,7 +143,7 @@ class Restore_Tests_Old : TestBase
 
         //24 Move the original blob to the archive tier
         bc_Original.SetAccessTier(AccessTier.Archive);
-        cb = repo.GetChunkBlobByHash(chunkHashes.Single(), false);
+        cb = repo.Chunks.GetChunkBlobByHash(chunkHashes.Single(), false);
         Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
 

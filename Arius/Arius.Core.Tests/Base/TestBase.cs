@@ -176,13 +176,13 @@ abstract class TestBase
     {
         repo = GetRepository();
 
-        chunkBlobItemCount = repo.GetAllChunkBlobs().Length;
-        manifestCount = repo.GetBinaryCountAsync().Result;
+        chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().Length;
+        manifestCount = repo.ChunkLists.CountAsync().Result;
 
-        currentPfeWithDeleted = repo.GetCurrentEntries(true).Result.ToArray();
-        currentPfeWithoutDeleted = repo.GetCurrentEntries(false).Result.ToArray();
+        currentPfeWithDeleted = repo.PointerFileEntries.GetCurrentEntries(true).Result.ToArray();
+        currentPfeWithoutDeleted = repo.PointerFileEntries.GetCurrentEntries(false).Result.ToArray();
 
-        allPfes = repo.GetPointerFileEntriesAsync().Result.ToArray();
+        allPfes = repo.PointerFileEntries.GetPointerFileEntriesAsync().Result.ToArray();
     }
 
 
@@ -202,7 +202,7 @@ abstract class TestBase
         pf = ps.GetPointerFile(fi);
 
         var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
-        pfe = repo.GetCurrentEntries(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+        pfe = repo.PointerFileEntries.GetCurrentEntries(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
     }
 
 

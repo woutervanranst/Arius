@@ -13,6 +13,6 @@ class ManifestRepositoryTests : TestBase
     {
         var manifestRepo = GetRepository();
 
-        Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.GetChunksForBinaryAsync(new BinaryHash("idonotexist")));
+        Assert.CatchAsync<InvalidOperationException>(async () => await manifestRepo.ChunkLists.GetChunkHashesAsync(new BinaryHash("idonotexist")));
     }
 }

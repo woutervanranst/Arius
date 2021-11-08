@@ -25,15 +25,15 @@ class BlobModelTests : TestBase
 
         var repo = GetRepository();
 
-        var cb1 = repo.GetAllChunkBlobs().First() as ChunkBlobItem;
-        var cb2 = repo.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
+        var cb1 = repo.Chunks.GetAllChunkBlobs().First() as ChunkBlobItem;
+        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 
         Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
         Assert.AreEqual(cb1.Folder, cb2.Folder);
-        Assert.AreEqual(cb1.Folder, Repository.ChunkFolderName);
+        Assert.AreEqual(cb1.Folder, Repository.ChunkRepository.ChunkFolderName);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
@@ -60,12 +60,12 @@ class BlobModelTests : TestBase
 
         //var manifestBlob = repo.GetAllManifestBlobs().First();
 
-        var h = (await repo.GetAllBinaryHashesAsync()).First();
-        var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryManifestFolderName}/{h.Value}").Single();
-        var manifestBlob = new BinaryManifest(bi);
+        var h = (await repo.ChunkLists.GetAllBinaryHashesAsync()).First();
+        var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryChunkListRepository.ChunkListsFolderName}/{h.Value}").Single();
+        var manifestBlob = new ChunkList(bi);
 
 
-        Assert.AreEqual(manifestBlob.Folder, Repository.BinaryManifestFolderName);
+        Assert.AreEqual(manifestBlob.Folder, Repository.BinaryChunkListRepository.ChunkListsFolderName);
 
         Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
         Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension
@@ -78,6 +78,7 @@ class BlobModelTests : TestBase
         Assert.IsFalse(manifestBlob.Name.Contains('.')); //the Name does not have an extension
 
 
-        var mm = await repo.GetChunksForBinaryAsync(manifestBlob.Hash);
+        var mm = await repo.ChunkLists.GetChunkHashesAsync(manifestBlob.Hash);
+        throw new NotImplementedException(); // quid assertion
     }
 }

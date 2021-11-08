@@ -20,9 +20,9 @@ class ChunkRepositoryTests : TestBase
 
         var repo = GetRepository();
 
-        var cb1 = repo.GetAllChunkBlobs().First();
+        var cb1 = repo.Chunks.GetAllChunkBlobs().First();
 
-        var cb2 = repo.GetChunkBlobByName(Repository.ChunkFolderName, cb1.Name);
+        var cb2 = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, cb1.Name);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
     }
@@ -32,7 +32,7 @@ class ChunkRepositoryTests : TestBase
     {
         var repo = GetRepository();
 
-        var cb = repo.GetChunkBlobByName(Repository.ChunkFolderName, "idonotexist");
+        var cb = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
 
         Assert.IsNull(cb);
     }
