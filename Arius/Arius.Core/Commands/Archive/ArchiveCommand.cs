@@ -10,6 +10,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
 using System.Threading.Channels;
@@ -167,23 +168,31 @@ internal class ArchiveCommand : ICommand
 
 
 
-        var exportJsonBlock = new ExportToJsonBlock(
-            loggerFactory: loggerFactory,
-            sourceFunc: async () =>
-            {
-                await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask); //B1503 -- wait for the PointerFileEntries to be up to date
+        //var exportJsonBlock = new ExportToJsonBlock(
+        //    loggerFactory: loggerFactory,
+        //    sourceFunc: async () =>
+        //    {
+        //        await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask); //B1503 -- wait for the PointerFileEntries to be up to date
 
-                var pointerFileEntriesToExport = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
-                var pfes = await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false);
-                await pointerFileEntriesToExport.Writer.AddFromEnumerable(pfes, true); //B1501
-                return pointerFileEntriesToExport;
-            },
+        //        var pointerFileEntriesToExport = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
+        //        var pfes = await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false);
+        //        await pointerFileEntriesToExport.Writer.AddFromEnumerable(pfes, true); //B1501
+        //        return pointerFileEntriesToExport;
+        //    },
+        //    repo: repo,
+        //    versionUtc: versionUtc,
+        //    done: () => { });
+        //var exportJsonTask = exportJsonBlock.GetTask; //B1502
+        //var exportJsonTask = createPointerFileEntryIfNotExistsTask
+        //    .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
+
+        var validateBlock = new ValidateBlock(
+            loggerFactory: loggerFactory,
+            sourceFunc: null,
             repo: repo,
             versionUtc: versionUtc,
             done: () => { });
-        var exportJsonTask = exportJsonBlock.GetTask; //B1502
-        //var exportJsonTask = createPointerFileEntryIfNotExistsTask
-        //    .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
+
 
             
 
@@ -195,7 +204,7 @@ internal class ArchiveCommand : ICommand
 
 
         // Await the current stage of the pipeline
-        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks.Append(exportJsonTask).Append(commitPointerFileEntryRepositoryTask)), BlockBase.CancellationTask);
+        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*/.Append(commitPointerFileEntryRepositoryTask)), BlockBase.CancellationTask);
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
             && ts.Any())

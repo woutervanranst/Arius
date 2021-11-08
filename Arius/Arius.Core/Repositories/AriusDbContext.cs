@@ -73,9 +73,13 @@ internal partial class Repository
                     .HasColumnName("BinaryHash")
                     .HasConversion(bh => bh.Value, value => new BinaryHash(value));
 
-                builder.HasIndex(pfe => pfe.VersionUtc);
+                builder.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
+
+                builder.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
                 builder.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
+
+                //builder.HasOne<BinaryMetadata>(pfe => pfe.)
             });
         }
 

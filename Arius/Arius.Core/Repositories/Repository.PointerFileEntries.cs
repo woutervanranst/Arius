@@ -216,13 +216,11 @@ internal partial class Repository
 
         internal Task CommitPointerFileEntries()
         {
-            throw new NotImplementedException();
+            if (DateTime.Now.Day > 8)
+                throw new NotImplementedException(); // do a VACUUM https://stackoverflow.com/a/31127720/1582323
+
+            return Task.CompletedTask;  
         }
     }
-
-
-    
-
-        
     
 }

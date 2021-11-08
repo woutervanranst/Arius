@@ -508,77 +508,76 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Channe
 }
 
 
-internal class ExportToJsonBlock : TaskBlockBase<ChannelReader<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
-{
-    public ExportToJsonBlock(ILoggerFactory loggerFactory,
-        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
-        Repository repo,
-        DateTime versionUtc,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
-    {
-        this.repo = repo;
-        this.versionUtc = versionUtc;
-    }
+//internal class ExportToJsonBlock : TaskBlockBase<ChannelReader<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
+//{
+//    public ExportToJsonBlock(ILoggerFactory loggerFactory,
+//        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
+//        Repository repo,
+//        DateTime versionUtc,
+//        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
+//    {
+//        this.repo = repo;
+//        this.versionUtc = versionUtc;
+//    }
 
-    private readonly Repository repo;
-    private readonly DateTime versionUtc;
+//    private readonly Repository repo;
+//    private readonly DateTime versionUtc;
 
 
-    protected override async Task TaskBodyImplAsync(ChannelReader<PointerFileEntry> source)
-    {
-        logger.LogInformation($"Writing state to JSON...");
+//    protected override async Task TaskBodyImplAsync(ChannelReader<PointerFileEntry> source)
+//    {
+//        logger.LogInformation($"Writing state to JSON...");
 
-        using var file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
-        var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
-        writer.WriteStartArray();
+//        using var file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
+//        var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
+//        writer.WriteStartArray();
 
-        // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
+//        // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
 
-        await foreach (var pfe in source.ReadAllAsync()
-                     //.AsParallel().WithDegreeOfParallelism(8) // ! Cannot write to file concurrently
-                 )
-        {
-            var chs = await repo.BinaryManifests.GetChunkHashesAsync(pfe.BinaryHash);
-            var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
+//        await foreach (var pfe in source.ReadAllAsync()
+//                     //.AsParallel().WithDegreeOfParallelism(8) // ! Cannot write to file concurrently
+//                 )
+//        {
+//            var chs = await repo.BinaryManifests.GetChunkHashesAsync(pfe.BinaryHash);
+//            var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
 
-            JsonSerializer.Serialize(writer, entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
-        }
+//            JsonSerializer.Serialize(writer, entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
+//        }
 
-        writer.WriteEndArray();
-        await writer.FlushAsync();
+//        writer.WriteEndArray();
+//        await writer.FlushAsync();
 
-        logger.LogInformation($"Writing state to JSON... done");
-    }
+//        logger.LogInformation($"Writing state to JSON... done");
+//    }
 
-    private readonly struct PointerFileEntryWithChunkHashes
-    {
-        public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, ChunkHash[] chs)
-        {
-            this.pfe = pfe;
-            this.chs = chs;
-        }
+//    private readonly struct PointerFileEntryWithChunkHashes
+//    {
+//        public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, ChunkHash[] chs)
+//        {
+//            this.pfe = pfe;
+//            this.chs = chs;
+//        }
 
-        private readonly PointerFileEntry pfe;
-        private readonly ChunkHash[] chs;
+//        private readonly PointerFileEntry pfe;
+//        private readonly ChunkHash[] chs;
 
-        public string BinaryHash => pfe.BinaryHash.Value;
-        public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
-        public string RelativeName => pfe.RelativeName;
-        public DateTime VersionUtc => pfe.VersionUtc;
-        public bool IsDeleted => pfe.IsDeleted;
-        public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
-        public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;
-    }
-}
+//        public string BinaryHash => pfe.BinaryHash.Value;
+//        public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
+//        public string RelativeName => pfe.RelativeName;
+//        public DateTime VersionUtc => pfe.VersionUtc;
+//        public bool IsDeleted => pfe.IsDeleted;
+//        public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
+//        public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;
+//    }
+//}
 
 
 internal class ValidateBlock
 {
-    public ValidateBlock(ILogger<ExportToJsonBlock> logger,
+    public ValidateBlock(ILoggerFactory loggerFactory,
         Func<BlockingCollection<PointerFileEntry>> sourceFunc,
         Repository repo,
         DateTime versionUtc,
-        Action start,
         Action done)
     {
         //logger.LogInformation($"Validating {pointerFile.FullName}...");
