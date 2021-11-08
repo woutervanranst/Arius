@@ -6,14 +6,17 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Arius.Core.Services.Chunkers;
+using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,18 +29,29 @@ internal partial class Repository
     {
         internal BinaryRepository(ILogger<BinaryRepository> logger, 
             Repository parent,
-            Chunker chunker)
+            Chunker chunker,
+            BlobContainerClient container)
         {
             this.logger = logger;
             this.parent = parent;
             this.chunker = chunker;
+            this.container = container;
         }
 
         private readonly ILogger<BinaryRepository> logger;
         private readonly Repository parent;
         private readonly Chunker chunker;
+        private readonly BlobContainerClient container;
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
 
+        // --- BINARY ------------------------
+
+        /// <summary>
+        /// Upload the given BinaryFile with the specified options
+        /// </summary>
+        /// <param name="bf"></param>
+        /// <param name="options"></param>
+        /// <returns></returns>
         public async Task UploadAsync(BinaryFile bf, ArchiveCommandOptions options)
         {
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
@@ -54,10 +68,10 @@ internal partial class Repository
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of {bf}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
             // Create the ChunkList
-            await parent.ChunkLists.CreateAsync(bf.Hash, chs);
+            await CreateChunkHashListAsync(bf.Hash, chs);
 
             // Create the BinaryMetadata
-            await parent.Binaries.CreateAsync(bf, totalLength, incrementalLength, chs.Length);
+            await CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
 
         }
 
@@ -168,9 +182,9 @@ internal partial class Repository
         }
 
 
-        internal async Task CreateAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
+        private async Task CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
-            var bm = new BinaryMetadata()
+            var bm = new BinaryProperties()
             {
                 Hash = bf.Hash,
                 OriginalLength = bf.Length,
@@ -180,9 +194,8 @@ internal partial class Repository
             };
 
             await using var db = await AriusDbContext.GetAriusDbContext();
-            await db.BinaryMetadata.AddAsync(bm);
+            await db.BinaryProperties.AddAsync(bm);
             await db.SaveChangesAsync();
-
         }
 
         //public async Task<BinaryMetadata> GetBinaryMetadataAsync(BinaryHash bh)
@@ -195,8 +208,77 @@ internal partial class Repository
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
             await using var db = await AriusDbContext.GetAriusDbContext();
-            return await db.BinaryMetadata.AnyAsync(bm => bm.Hash == bh);
+            return await db.BinaryProperties.AnyAsync(bm => bm.Hash == bh);
         }
+
+        /// <summary>
+        /// Get the count of (distinct) BinaryHashes
+        /// </summary>
+        /// <returns></returns>
+        public async Task<int> CountAsync() => await (await GetDistinctBinaryHashesQueryableAsync()).Distinct().CountAsync();
+
+        /// <summary>
+        /// Get all the (distinct) BinaryHashes
+        /// </summary>
+        /// <returns></returns>
+        public async Task<BinaryHash[]> GetAllBinaryHashesAsync() => await (await GetDistinctBinaryHashesQueryableAsync()).Distinct().ToArrayAsync();
+
+        private static async Task<IQueryable<BinaryHash>> GetDistinctBinaryHashesQueryableAsync()
+        {
+            await using var db = await AriusDbContext.GetAriusDbContext();
+            return db.PointerFileEntries
+                .Select(pfe => pfe.BinaryHash);
+        }
+
+
+
+
+
+        internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash binaryHash)
+        {
+            logger.LogInformation($"Getting chunks for binary {binaryHash.Value}");
+            var chunkHashes = Array.Empty<ChunkHash>();
+
+            try
+            {
+                var ms = new MemoryStream();
+
+                var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
+
+                await bc.DownloadToAsync(ms);
+                ms.Position = 0;
+                chunkHashes = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(ms))!.Select(hv => new ChunkHash(hv)).ToArray();
+
+                return chunkHashes;
+            }
+            catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+            {
+                throw new InvalidOperationException($"ChunkList for '{binaryHash}' does not exist");
+            }
+            finally
+            {
+                logger.LogInformation($"Getting chunks for binary {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
+            }
+        }
+
+        internal async Task CreateChunkHashListAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
+        {
+            var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
+
+            if (await bc.ExistsAsync())
+                throw new InvalidOperationException($"ChunkList for '{binaryHash}' already Exists");
+
+            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var ms = new MemoryStream(bytes);
+
+            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+        }
+
+        private string GetChunkListBlobName(BinaryHash binaryHash) => $"{ChunkListsFolderName}/{binaryHash.Value}";
+
+        internal const string ChunkListsFolderName = "chunklists";
+
+
     }
-    
 }

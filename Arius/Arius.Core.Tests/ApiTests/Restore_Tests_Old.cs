@@ -75,7 +75,7 @@ class Restore_Tests_Old : TestBase
         //10 The chunk is in the Archive tier
         var ps = GetPointerService();
         var pf = ps.GetPointerFile(bfi);
-        var chunkHashes = await repo.ChunkLists.GetChunkHashesAsync(pf.Hash);
+        var chunkHashes = await repo.Binaries.GetChunkHashesAsync(pf.Hash);
         var cb = repo.Chunks.GetChunkBlobByHash(chunkHashes.Single(), false);
         Assert.AreEqual(AccessTier.Archive, cb.AccessTier);
 
@@ -122,7 +122,7 @@ class Restore_Tests_Old : TestBase
         //10 - The chunk is in the cool tier
         var ps = GetPointerService();
         var pf = ps.GetPointerFile(bfi);
-        var chunkHashes = await repo.ChunkLists.GetChunkHashesAsync(pf.Hash);
+        var chunkHashes = await repo.Binaries.GetChunkHashesAsync(pf.Hash);
         var cb = repo.Chunks.GetChunkBlobByHash(chunkHashes.Single(), false);
         Assert.AreEqual(AccessTier.Cool, cb.AccessTier);
 

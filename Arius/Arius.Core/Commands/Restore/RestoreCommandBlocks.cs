@@ -173,7 +173,7 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
             // the waiting PointerFiles will be notified when the first call completes
             return;
 
-        var chs = await repo.ChunkLists.GetChunkHashesAsync(bh);
+        var chs = await repo.Binaries.GetChunkHashesAsync(bh);
         await Parallel.ForEachAsync(chs,
             new ParallelOptions { MaxDegreeOfParallelism = 1 },
             async (ch, cancellationToken) =>

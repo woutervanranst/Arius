@@ -75,7 +75,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                         // PointerFile
                         logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
 
-                        if (await repo.ChunkLists.ExistsAsync(pf.Hash))
+                        if (await repo.Binaries.ExistsAsync(pf.Hash))
                             // The pointer points to an existing binary
                             await indexedPointerFile(pf);
                         else
@@ -93,7 +93,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                             if (pf.Hash != bh)
                                 throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-                            if (!await repo.ChunkLists.ExistsAsync(bh))
+                            if (!await repo.Binaries.ExistsAsync(bh))
                             {
                                 logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
                                 await indexedBinaryFile((bf, AlreadyBackedUp: false));
@@ -202,7 +202,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         */
 
         // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.ChunkLists.ExistsAsync(bf.Hash));
+        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash));
         if (binaryExistsRemote)
         {
             // 1 Exists remote

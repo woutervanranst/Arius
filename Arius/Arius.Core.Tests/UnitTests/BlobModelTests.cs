@@ -60,12 +60,12 @@ class BlobModelTests : TestBase
 
         //var manifestBlob = repo.GetAllManifestBlobs().First();
 
-        var h = (await repo.ChunkLists.GetAllBinaryHashesAsync()).First();
-        var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryChunkListRepository.ChunkListsFolderName}/{h.Value}").Single();
+        var h = (await repo.Binaries.GetAllBinaryHashesAsync()).First();
+        var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryRepository.ChunkListsFolderName}/{h.Value}").Single();
         var manifestBlob = new ChunkList(bi);
 
 
-        Assert.AreEqual(manifestBlob.Folder, Repository.BinaryChunkListRepository.ChunkListsFolderName);
+        Assert.AreEqual(manifestBlob.Folder, Repository.BinaryRepository.ChunkListsFolderName);
 
         Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
         Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension
@@ -78,7 +78,7 @@ class BlobModelTests : TestBase
         Assert.IsFalse(manifestBlob.Name.Contains('.')); //the Name does not have an extension
 
 
-        var mm = await repo.ChunkLists.GetChunkHashesAsync(manifestBlob.Hash);
+        var mm = await repo.Binaries.GetChunkHashesAsync(manifestBlob.Hash);
         throw new NotImplementedException(); // quid assertion
     }
 }

@@ -43,8 +43,7 @@ internal partial class Repository
             AriusDbContext.DbPathTask.SetResult(path);
         });
 
-        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, chunker);
-        ChunkLists = new(loggerFactory.CreateLogger<BinaryChunkListRepository>(), this, container);
+        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, chunker, container);
         Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, passphrase);
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
     }
