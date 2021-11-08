@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 
 namespace Arius.Core.Tests;
 
@@ -27,6 +28,7 @@ abstract class TestBase
     protected virtual void BeforeEachTest()
     {
         // Runs before each test. (Optional)
+        BlockBase.Reset();
     }
 
     [TearDown]

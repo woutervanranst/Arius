@@ -19,8 +19,15 @@ internal abstract class BlockBase
     public static IEnumerable<Task> AllTasks => tasks.AsEnumerable(); //Put this on the nongeneric base class to have access to it via BlockBase.AllTasks. Cannot access static members on generic classes.
     protected static readonly ConcurrentBag<Task> tasks = new();
 
-    protected static readonly CancellationTokenSource cts = new(); //put this here since static fields are not shared in generic classes with different T
-    private static readonly CancellationToken ct = cts.Token;
+    internal static void Reset()
+    {
+        //for unit testing purposes as the static survives the lifetime of the unit test
+        tasks.Clear(); 
+        cts = new();
+    }
+
+    protected static CancellationTokenSource cts = new(); //put this here since static fields are not shared in generic classes with different T
+    private static CancellationToken ct => cts.Token;
     public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
 }
 

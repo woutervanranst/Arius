@@ -19,6 +19,8 @@ class Archive_OneFile_Tests : TestBase
 {
     protected override void BeforeEachTest()
     {
+        base.BeforeEachTest();
+
         ArchiveTestDirectory.Clear();
     }
 
