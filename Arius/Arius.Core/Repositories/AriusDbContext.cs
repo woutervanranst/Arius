@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Arius.Core.Models;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,9 @@ internal partial class Repository
 
                 builder.HasKey(bm => bm.Hash);
 
+                builder.HasIndex(bm => bm.Hash)
+                    .IsUnique();
+
             });
 
             var pfee = modelBuilder.Entity<PointerFileEntry>(builder =>
@@ -82,6 +86,16 @@ internal partial class Repository
                 //builder.HasOne<BinaryMetadata>(pfe => pfe.)
             });
         }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+        {
+            HasChanges = true;
+
+            return base.SaveChangesAsync(cancellationToken);    
+        }
+
+        internal static bool HasChanges { get; set; } //with unit tests, the static remains across unit tests so overriding the default behavior manually in the setters
+
 
         // BinaryManifest --> in blob (potentially too big)
         // BinaryMetadata

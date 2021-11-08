@@ -162,8 +162,8 @@ internal class ArchiveCommand : ICommand
 
 
 
-        var commitPointerFileEntryRepositoryTask = Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask)
-            .ContinueWith(async _ => await repo.PointerFileEntries.CommitPointerFileEntries()); //B1502 //TODO also Commit in a finally clause?
+        //var commitPointerFileEntryRepositoryTask = Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask)
+        //    .ContinueWith(async _ => await repo.PointerFileEntries.CommitPointerFileEntries()); //B1502 //TODO also Commit in a finally clause?
 
 
 
@@ -203,7 +203,7 @@ internal class ArchiveCommand : ICommand
 
 
         // Await the current stage of the pipeline
-        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*/.Append(commitPointerFileEntryRepositoryTask)), BlockBase.CancellationTask);
+        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*//*.Append(commitPointerFileEntryRepositoryTask)*/), BlockBase.CancellationTask);
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
             && ts.Any())
@@ -215,6 +215,8 @@ internal class ArchiveCommand : ICommand
 
             throw new AggregateException(exceptions);
         }
+
+        await repo.SaveStateDb(versionUtc, options.Passphrase);
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
         //{
         //    //something went wrong

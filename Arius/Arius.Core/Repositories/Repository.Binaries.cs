@@ -285,7 +285,5 @@ internal partial class Repository
         private string GetChunkListBlobName(BinaryHash binaryHash) => $"{ChunkListsFolderName}/{binaryHash.Value}";
 
         internal const string ChunkListsFolderName = "chunklists";
-
-
     }
 }
