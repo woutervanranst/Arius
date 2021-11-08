@@ -87,7 +87,7 @@ internal partial class Repository
                 return cb2;
         }
 
-        private string GetChunkBlobName(string folder, ChunkHash chunkHash) => GetChunkBlobFullName(folder, $"{chunkHash.Value}{ChunkBlobBase.Extension}");
+        private string GetChunkBlobName(string folder, ChunkHash chunkHash) => GetChunkBlobFullName(folder, chunkHash.Value);
         private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
 
         /// <summary>

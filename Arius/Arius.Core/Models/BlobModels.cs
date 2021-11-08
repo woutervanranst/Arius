@@ -66,9 +66,8 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     }
 
 
-    public static readonly string Extension = ".ariuschunk.gz.aes";
     public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-    public override ChunkHash Hash => new(Name.TrimEnd(Extension));
+    public override ChunkHash Hash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
         

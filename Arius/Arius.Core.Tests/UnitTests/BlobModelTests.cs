@@ -37,17 +37,14 @@ class BlobModelTests : TestBase
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
-        Assert.IsTrue(cb1.FullName.EndsWith(ChunkBlobBase.Extension)); //the FullName contains the extension
 
         Assert.AreEqual(cb1.Hash, cb2.Hash);
-        Assert.IsFalse(cb1.Hash.Value.EndsWith(ChunkBlobBase.Extension)); //the Hash does NOT contain the extension
 
         Assert.AreEqual(cb1.Length, cb2.Length);
         Assert.IsTrue(cb1.Length > 0);
 
         Assert.AreEqual(cb1.Name, cb2.Name);
         Assert.IsFalse(cb1.Name.Contains('/')); //the Name does NOT contain the directory
-        Assert.IsTrue(cb1.Name.EndsWith(ChunkBlobBase.Extension)); //the Name contains the extension
     }
 
     [Test]
