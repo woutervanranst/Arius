@@ -41,11 +41,11 @@ class Archive_Directory_Tests : TestBase
     {
         var bfis = await EnsureFullDirectoryArchived();
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
         //Chunks for each file
         Assert.AreEqual(bfis.Length, chunkBlobItemCount1);
         //Manifests for each file
-        Assert.AreEqual(bfis.Length, manifestCount1);
+        Assert.AreEqual(bfis.Length, binaryCount1);
         //PointerFileEntries for each file
         Assert.AreEqual(bfis.Length, currentPfeWithoutDeleted1.Count());
     }

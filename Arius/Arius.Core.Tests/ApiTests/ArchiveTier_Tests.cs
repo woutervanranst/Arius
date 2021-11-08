@@ -24,7 +24,7 @@ class ArchiveTier_Tests : TestBase
     [Test]
     public async Task Archive_OneFileArchiveTier_Success()
     {
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
         var bfi = EnsureArchiveTestDirectoryFileInfo();
         AccessTier tier = AccessTier.Archive;
@@ -32,11 +32,11 @@ class ArchiveTier_Tests : TestBase
 
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
         //1 additional chunk was uploaded
         Assert.AreEqual(chunkBlobItemCount0 + 1, chunkBlobItemCount1);
         //1 additional Manifest exists
-        Assert.AreEqual(manifestCount0 + 1, manifestCount1);
+        Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 

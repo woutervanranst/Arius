@@ -170,14 +170,14 @@ abstract class TestBase
 
     protected void RepoStats(out Repository repo,
         out int chunkBlobItemCount,
-        out int manifestCount,
+        out int binaryCount,
         out IEnumerable<PointerFileEntry> currentPfeWithDeleted, out IEnumerable<PointerFileEntry> currentPfeWithoutDeleted,
         out IEnumerable<PointerFileEntry> allPfes)
     {
         repo = GetRepository();
 
         chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().Length;
-        manifestCount = repo.ChunkLists.CountAsync().Result;
+        binaryCount = repo.Binaries.CountAsync().Result;
 
         currentPfeWithDeleted = repo.PointerFileEntries.GetCurrentEntries(true).Result.ToArray();
         currentPfeWithoutDeleted = repo.PointerFileEntries.GetCurrentEntries(false).Result.ToArray();

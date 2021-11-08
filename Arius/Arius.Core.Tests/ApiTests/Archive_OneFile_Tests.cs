@@ -26,17 +26,17 @@ class Archive_OneFile_Tests : TestBase
     [Test, Order(1)]
     public async Task Archive_OneFileCoolTier_Success()
     {
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
         var bfi = EnsureArchiveTestDirectoryFileInfo();
         AccessTier tier = AccessTier.Cool;
         await ArchiveCommand(tier);
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
         //1 additional chunk was uploaded
         Assert.AreEqual(chunkBlobItemCount0 + 1, chunkBlobItemCount1);
         //1 additional Manifest exists
-        Assert.AreEqual(manifestCount0 + 1, manifestCount1);
+        Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
         Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
@@ -64,7 +64,7 @@ class Archive_OneFile_Tests : TestBase
         var bfi = EnsureArchiveTestDirectoryFileInfo();
         await ArchiveCommand();
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
 
         // DELETE
@@ -72,7 +72,7 @@ class Archive_OneFile_Tests : TestBase
         ArchiveTestDirectory.Clear();
         await ArchiveCommand();
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // The current archive is cleared
         Assert.AreEqual(currentPfeWithoutDeleted1.Count(), 0);
         // One additional PointerFileEntry marking it as deleted
@@ -80,7 +80,7 @@ class Archive_OneFile_Tests : TestBase
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // Manifests have not changed
-        Assert.AreEqual(manifestCount0, manifestCount1);
+        Assert.AreEqual(binaryCount0, binaryCount1);
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         Assert.IsNull(pf);
@@ -91,7 +91,7 @@ class Archive_OneFile_Tests : TestBase
         _ = EnsureArchiveTestDirectoryFileInfo();
         await ArchiveCommand();
 
-        RepoStats(out _, out var chunkBlobItemCount2, out var manifestCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
+        RepoStats(out _, out var chunkBlobItemCount2, out var binaryCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
         // The current archive again has one file
         Assert.AreEqual(currentPfeWithoutDeleted2.Count(), 1);
         // One additinoal PointerFileEntry marking it as existing
@@ -99,7 +99,7 @@ class Archive_OneFile_Tests : TestBase
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount2);
         // Manifests have not changed
-        Assert.AreEqual(manifestCount0, manifestCount2);
+        Assert.AreEqual(binaryCount0, binaryCount2);
     }
 
 
@@ -109,7 +109,7 @@ class Archive_OneFile_Tests : TestBase
         var bfi1 = EnsureArchiveTestDirectoryFileInfo();
         await ArchiveCommand();
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         // Add a duplicate of the BinaryFile
         var bfi2 = bfi1.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi1.Name}");
@@ -120,11 +120,11 @@ class Archive_OneFile_Tests : TestBase
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded
         Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0);
         // No additional ManifestHash is created
-        Assert.AreEqual(manifestCount1, manifestCount0);
+        Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
@@ -147,7 +147,7 @@ class Archive_OneFile_Tests : TestBase
         var bfi1 = EnsureArchiveTestDirectoryFileInfo();
         //await ArchiveCommand(); <-- the only difference
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         // Add a duplicate of the BinaryFile
         var bfi2 = bfi1.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi1.Name}");
@@ -158,11 +158,11 @@ class Archive_OneFile_Tests : TestBase
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded
         Assert.AreEqual(chunkBlobItemCount1, chunkBlobItemCount0); //NOTE: This fails here when run only this test, when run in the suite it passes
         // No additional ManifestHash is created
-        Assert.AreEqual(manifestCount1, manifestCount0);
+        Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
@@ -186,7 +186,7 @@ class Archive_OneFile_Tests : TestBase
         await ArchiveCommand();
 
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         GetPointerInfo(bfi1, out var pf1, out _);
 
@@ -200,11 +200,11 @@ class Archive_OneFile_Tests : TestBase
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded (ie just 1)
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // No additional ManifestHash is created (ie just 1)
-        Assert.AreEqual(manifestCount0, manifestCount1);
+        Assert.AreEqual(binaryCount0, binaryCount1);
         // 1 addtl PointerFileEntry is created
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
@@ -238,16 +238,16 @@ class Archive_OneFile_Tests : TestBase
         bfi.Rename($"Renamed {bfi.Name}");
         pfi.Rename($"Renamed {pfi.Name}");
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded (ie just 1)
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // No additional ManifestHash is created (ie just 1)
-        Assert.AreEqual(manifestCount0, manifestCount1);
+        Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
         Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
         // No net increase in current PointerFileEntries
@@ -284,16 +284,16 @@ class Archive_OneFile_Tests : TestBase
         bfi.Rename($"Renamed2 {bfi.Name}");
         //pfi.Rename($"Renamed {pfi1.Name}"); // <-- dit doen we hier NIET vs de vorige
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded (ie just 1)
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // No additional ManifestHash is created (ie just 1)
-        Assert.AreEqual(manifestCount0, manifestCount1);
+        Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
         Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
         // One additional PointerFileEntry
@@ -352,16 +352,16 @@ class Archive_OneFile_Tests : TestBase
         //bfi.Rename($"Renamed {bfi.Name}"); // <-- dit doen we hier NIET vs de vorige
         pfi.Rename($"Renamed3 {pfi.Name}");
 
-        RepoStats(out _, out var chunkBlobItemCount0, out var manifestCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
         await ArchiveCommand();
 
 
-        RepoStats(out var repo, out var chunkBlobItemCount1, out var manifestCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded (ie just 1)
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // No additional ManifestHash is created (ie just 1)
-        Assert.AreEqual(manifestCount0, manifestCount1);
+        Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
         Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
         // No net increase in current PointerFileEntries
