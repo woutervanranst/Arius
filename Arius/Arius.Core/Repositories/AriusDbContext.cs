@@ -12,46 +12,23 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    private class AriusDbContext : DbContext
+    internal class AriusDbContext : DbContext
     {
         public DbSet<PointerFileEntry> PointerFileEntries { get; set; }
         public DbSet<BinaryProperties> BinaryProperties { get; set; }
 
 
-        public static async Task<AriusDbContext> GetAriusDbContext()
+        internal AriusDbContext(string dbPath, Action<int> hasChanges)
         {
-            var path = await DbPathTask.Task;
-            var db = new AriusDbContext(path);
-
-            return db;
-        }
-        public static async Task EnsureCreated(string path)
-        {
-            var db = new AriusDbContext(path);
-            await db.Database.EnsureCreatedAsync();
-        }
-        public static TaskCompletionSource<string> DbPathTask { get; } = new();
-
-        private AriusDbContext(string dbPath)
-        {
-            // thread safe? https://www.sqlite.org/threadsafe.html
             this.dbPath = dbPath;
+            this.hasChanges = hasChanges;
         }
         private readonly string dbPath;
+        private readonly Action<int> hasChanges;
 
 
-        // The following configures EF to create a Sqlite database file in the
-        // special "local" folder for your platform.
         protected override void OnConfiguring(DbContextOptionsBuilder options)
-            => options.UseSqlite($"Data Source={dbPath}",
-                builder =>
-                {
-                });
-
-        //protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-        //{
-        //    configurationBuilder.Properties<BinaryHash>().HaveConversion<string>();
-        //}
+            => options.UseSqlite($"Data Source={dbPath}");
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -87,29 +64,11 @@ internal partial class Repository
             });
         }
 
-        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
-        {
-            HasChanges = true;
-
-            return base.SaveChangesAsync(cancellationToken);    
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+        { 
+            var numChanges = await base.SaveChangesAsync(cancellationToken);
+            hasChanges(numChanges);
+            return numChanges;
         }
-
-        internal static bool HasChanges { get; set; } //with unit tests, the static remains across unit tests so overriding the default behavior manually in the setters
-
-
-        // BinaryManifest --> in blob (potentially too big)
-        // BinaryMetadata
-        // PointerFileEntries
-
-        //public async static Task GetLatestDb()
-        //{
-        //    var folder = Environment.SpecialFolder.LocalApplicationData;
-        //    var path = Environment.GetFolderPath(folder);
-        //    DbPath = $"{path}{System.IO.Path.DirectorySeparatorChar}blogging.db";
-
-        //}
-
     }
-
 }
-

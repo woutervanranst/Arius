@@ -193,7 +193,7 @@ internal partial class Repository
                 ChunkCount = chunkCount
             };
 
-            await using var db = await AriusDbContext.GetAriusDbContext();
+            await using var db = await parent.States.GetCurrentStateDbContext();
             await db.BinaryProperties.AddAsync(bm);
             await db.SaveChangesAsync();
         }
@@ -207,7 +207,7 @@ internal partial class Repository
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
-            await using var db = await AriusDbContext.GetAriusDbContext();
+            await using var db = await parent.States.GetCurrentStateDbContext();
             return await db.BinaryProperties.AnyAsync(bm => bm.Hash == bh);
         }
 
@@ -217,7 +217,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<int> CountAsync()
         {
-            await using var db = await AriusDbContext.GetAriusDbContext();
+            await using var db = await parent.States.GetCurrentStateDbContext();
             return await db.PointerFileEntries
                 .Select(pfe => pfe.BinaryHash)
                 .Distinct()
@@ -230,7 +230,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<BinaryHash[]> GetAllBinaryHashesAsync()
         {
-            await using var db = await AriusDbContext.GetAriusDbContext();
+            await using var db = await parent.States.GetCurrentStateDbContext();
             return await db.PointerFileEntries
                 .Select(pfe => pfe.BinaryHash)
                 .Distinct()

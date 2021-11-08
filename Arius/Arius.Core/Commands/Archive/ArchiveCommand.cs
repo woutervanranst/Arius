@@ -216,7 +216,7 @@ internal class ArchiveCommand : ICommand
             throw new AggregateException(exceptions);
         }
 
-        await repo.SaveStateDb(versionUtc, options.Passphrase);
+        await repo.States.SaveToBlobStorage(versionUtc);
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
         //{
         //    //something went wrong
