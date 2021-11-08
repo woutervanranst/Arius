@@ -14,7 +14,7 @@ internal partial class Repository
     private class AriusDbContext : DbContext
     {
         public DbSet<PointerFileEntry> PointerFileEntries { get; set; }
-        public DbSet<BinaryMetadata> BinaryMetadata { get; set; }
+        public DbSet<BinaryProperties> BinaryProperties { get; set; }
 
 
         public static async Task<AriusDbContext> GetAriusDbContext()
@@ -56,7 +56,7 @@ internal partial class Repository
         {
             base.OnModelCreating(modelBuilder);
 
-            var bme = modelBuilder.Entity<BinaryMetadata>(builder =>
+            var bme = modelBuilder.Entity<BinaryProperties>(builder =>
             {
                 builder.Property(bm => bm.Hash)
                     .HasColumnName("BinaryHash")
