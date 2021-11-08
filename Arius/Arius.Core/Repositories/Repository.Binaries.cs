@@ -215,19 +215,26 @@ internal partial class Repository
         /// Get the count of (distinct) BinaryHashes
         /// </summary>
         /// <returns></returns>
-        public async Task<int> CountAsync() => await (await GetDistinctBinaryHashesQueryableAsync()).Distinct().CountAsync();
+        public async Task<int> CountAsync()
+        {
+            await using var db = await AriusDbContext.GetAriusDbContext();
+            return await db.PointerFileEntries
+                .Select(pfe => pfe.BinaryHash)
+                .Distinct()
+                .CountAsync();
+        }
 
         /// <summary>
         /// Get all the (distinct) BinaryHashes
         /// </summary>
         /// <returns></returns>
-        public async Task<BinaryHash[]> GetAllBinaryHashesAsync() => await (await GetDistinctBinaryHashesQueryableAsync()).Distinct().ToArrayAsync();
-
-        private static async Task<IQueryable<BinaryHash>> GetDistinctBinaryHashesQueryableAsync()
+        public async Task<BinaryHash[]> GetAllBinaryHashesAsync()
         {
             await using var db = await AriusDbContext.GetAriusDbContext();
-            return db.PointerFileEntries
-                .Select(pfe => pfe.BinaryHash);
+            return await db.PointerFileEntries
+                .Select(pfe => pfe.BinaryHash)
+                .Distinct()
+                .ToArrayAsync();
         }
 
 
