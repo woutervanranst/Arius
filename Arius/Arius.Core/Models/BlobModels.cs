@@ -39,9 +39,9 @@ internal abstract class BlobBase //: IWithHashValue
     private const char BlobFolderSeparatorChar = '/';
 }
 
-internal class BinaryManifest : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
+internal class ChunkList : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
 {
-    public BinaryManifest(BlobItem bi)
+    public ChunkList(BlobItem bi)
     {
         this.bi = bi;
     }

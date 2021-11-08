@@ -6,6 +6,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Models;
 using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
@@ -22,7 +23,7 @@ internal partial class Repository
         string Passphrase { get; }
     }
 
-    public Repository(ILoggerFactory loggerFactory, IOptions options)
+    public Repository(ILoggerFactory loggerFactory, IOptions options, Chunker chunker)
     {
         var logger = loggerFactory.CreateLogger<Repository>();
         var passphrase = options.Passphrase;
@@ -42,8 +43,8 @@ internal partial class Repository
             AriusDbContext.DbPathTask.SetResult(path);
         });
 
-        BinaryMetadata = new(loggerFactory.CreateLogger<BinaryMetadataRepository>());
-        BinaryManifests = new(loggerFactory.CreateLogger<BinaryManifestRepository>(), this, container);
+        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, chunker);
+        ChunkLists = new(loggerFactory.CreateLogger<BinaryChunkListRepository>(), this, container);
         Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, passphrase);
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
     }

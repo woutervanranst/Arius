@@ -34,8 +34,8 @@ internal class ArchiveCommandOptions :
     public int BinariesToUpload_BufferSize => 1000;
 
     public int UploadBinaryFileBlock_BinaryFileParallelism => 16;
-    public int UploadBinaryFileBlock_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    public int UploadBinaryFileBlock_ParallelChunkUploads => 128;
+    public int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
+    public int TransferChunked_ParallelChunkTransfers => 128;
 
     public int PointersToCreate_BufferSize => 1000;
     

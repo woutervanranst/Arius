@@ -158,15 +158,15 @@ internal partial class Repository
             return r;
         }
 
-        ///// <summary>
-        ///// Get All PointerFileEntries
-        ///// </summary>
-        ///// <returns></returns>
-        //internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
-        //{
-        //    await using var db = await AriusDbContext.GetAriusDbContext();
-        //    return db.PointerFileEntries; //disposed?
-        //}
+        /// <summary>
+        /// Get All PointerFileEntries
+        /// </summary>
+        /// <returns></returns>
+        internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
+        {
+            await using var db = await AriusDbContext.GetAriusDbContext();
+            return await db.PointerFileEntries.ToArrayAsync(); //disposed? //TODO to TEST suite?
+        }
 
 
 

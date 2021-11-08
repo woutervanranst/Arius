@@ -75,7 +75,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                         // PointerFile
                         logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
 
-                        if (await repo.BinaryManifests.ExistsAsync(pf.Hash))
+                        if (await repo.ChunkLists.ExistsAsync(pf.Hash))
                             // The pointer points to an existing binary
                             await indexedPointerFile(pf);
                         else
@@ -93,7 +93,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                             if (pf.Hash != bh)
                                 throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-                            if (!await repo.BinaryManifests.ExistsAsync(bh))
+                            if (!await repo.ChunkLists.ExistsAsync(bh))
                             {
                                 logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
                                 await indexedBinaryFile((bf, AlreadyBackedUp: false));
@@ -170,20 +170,17 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         ILoggerFactory loggerFactory,
         Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
-        Chunker chunker,
         Repository repo,
         ArchiveCommandOptions options,
             
         Func<BinaryFile, Task> binaryExists,
         Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
     {
-        this.chunker = chunker;
         this.repo = repo;
         this.options = options;
         this.binaryExists = binaryExists;
     }
 
-    private readonly Chunker chunker;
     private readonly Repository repo;
     private readonly ArchiveCommandOptions options;
         
@@ -191,7 +188,6 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
 
     private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
-    private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
         
 
     protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
@@ -206,7 +202,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         */
 
         // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.BinaryManifests.ExistsAsync(bf.Hash));
+        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.ChunkLists.ExistsAsync(bf.Hash));
         if (binaryExistsRemote)
         {
             // 1 Exists remote
@@ -225,7 +221,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
                 // 2.1 Does not yet exist remote and not yet being created --> upload
                 logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
 
-                await UploadBinaryAsync(bf);
+                await repo.Binaries.UploadAsync(bf, options);
 
                 uploadingBinaries[bf.Hash].SetResult();
             }
@@ -248,134 +244,6 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         }
             
         await binaryExists(bf);
-    }
-
-    private async Task UploadBinaryAsync(BinaryFile bf)
-    {
-        logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
-
-        // Upload the Binary
-        var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () => 
-        {
-            return options.Dedup switch
-            {
-                true => await UploadChunkedBinaryAsync(bf),
-                false => await UploadBinaryChunkAsync(bf)
-            };
-        });
-            
-        logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of {bf}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
-
-        // Create the BinaryManifest
-        await repo.BinaryManifests.CreateAsync(bf.Hash, chs);
-
-        // Create the BinaryMetadata
-        await repo.BinaryMetadata.CreateAsync(bf, totalLength, incrementalLength, chs.Length);
-    }
-
-        
-    /// <summary>
-    /// Chunk the BinaryFile then upload all the chunks in parallel
-    /// </summary>
-    /// <param name="bf"></param>
-    /// <returns></returns>
-    private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf)
-    {
-        var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.UploadBinaryFileBlock_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
-        var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
-        var totalLength = 0L;
-        var incrementalLength = 0L;
-
-        // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
-        var t = Task.Run(async () =>
-        {
-            using var binaryFileStream = await bf.OpenReadAsync();
-
-            var (MBps, _, seconds) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
-            {
-                foreach (var chunk in chunker.Chunk(binaryFileStream))
-                {
-                    await chunksToUpload.Writer.WriteAsync(chunk);
-                    chs.Add(chunk.Hash);
-                }
-            });
-
-            logger.LogInformation($"Completed chunking of {bf.Name} in {seconds}s at {MBps} MBps");
-
-            chunksToUpload.Writer.Complete();
-        });
-
-        /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
-         * 1. to effectively limit the number of concurrent files 'in flight' 
-         * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
-         * 3. this code has a nice 'await for binary upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
-         * 4. with a centralized pipe, setting the degree of concurrency is not trivial since, for chunks (~64 KB), it is higher than for full binary files (we dont want to be uploading 128 2GB files in parallel)
-         */
-
-        int degreeOfParallelism = 0;
-
-        await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(), 
-            new ParallelOptions { MaxDegreeOfParallelism = options.UploadBinaryFileBlock_ParallelChunkUploads }, 
-            async (chunk, cancellationToken) => 
-            {
-                var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
-                logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
-
-
-                if (await repo.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
-                {
-                    // 1 Exists remote
-                    logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
-
-                    var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
-                    Interlocked.Add(ref totalLength, length);
-                    Interlocked.Add(ref incrementalLength, 0);
-                }
-                else
-                {
-                    bool toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
-                    if (toUpload)
-                    {
-                        // 2 Does not yet exist remote and not yet being created --> upload
-                        logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
-
-                        var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
-                        Interlocked.Add(ref totalLength, length);
-                        Interlocked.Add(ref incrementalLength, length);
-
-                        uploadingChunks[chunk.Hash].SetResult();
-                    }
-                    else
-                    {
-                        // 3 Does not exist remote but is being created by another thread
-                        logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
-
-                        await uploadingChunks[chunk.Hash].Task;
-
-                        var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
-                        Interlocked.Add(ref totalLength, length);
-                        Interlocked.Add(ref incrementalLength, 0);
-
-                        //TODO TES THIS PATH
-                    }
-                }
-
-                Interlocked.Add(ref degreeOfParallelism, -1);
-            });
-
-        return (chs.ToArray(), totalLength, incrementalLength);
-    }
-
-    /// <summary>
-    /// Upload one single BinaryFile
-    /// </summary>
-    /// <param name="bf"></param>
-    /// <returns></returns>
-    private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryChunkAsync(BinaryFile bf)
-    {
-        var length = await repo.Chunks.UploadAsync(bf, options.Tier);
-
-        return (((IChunk)bf).Hash.SingleToArray(), length, length);
     }
 }
 

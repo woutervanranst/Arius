@@ -85,7 +85,6 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: () => binariesToUpload,
             maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
-            chunker: services.GetRequiredService<Chunker>(),
             repo: repo,
             options: options,
             binaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403

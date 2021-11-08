@@ -17,20 +17,20 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    public BinaryManifestRepository BinaryManifests { get; init; }
+    public BinaryChunkListRepository ChunkLists { get; init; }
 
-    internal class BinaryManifestRepository
+    internal class BinaryChunkListRepository
     {
-        private const string BinaryManifestFolderName = "binarymanifests";
+        internal const string ChunkListsFolderName = "chunklists";
 
-        internal BinaryManifestRepository(ILogger<BinaryManifestRepository> logger, Repository parent, BlobContainerClient container)
+        internal BinaryChunkListRepository(ILogger<BinaryChunkListRepository> logger, Repository parent, BlobContainerClient container)
         {
             this.logger = logger;
             this.parent = parent;
             this.container = container;
         }
 
-        private readonly ILogger<BinaryManifestRepository> logger;
+        private readonly ILogger<BinaryChunkListRepository> logger;
         private readonly Repository parent;
         private readonly BlobContainerClient container;
 
@@ -47,7 +47,7 @@ internal partial class Repository
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
-            return await parent.BinaryMetadata.ExistsAsync(bh);
+            return await parent.Binaries.ExistsAsync(bh);
         }
 
         /// <summary>
@@ -72,7 +72,7 @@ internal partial class Repository
             {
                 var ms = new MemoryStream();
 
-                var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
+                var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
 
                 await bc.DownloadToAsync(ms);
                 ms.Position = 0;
@@ -82,7 +82,7 @@ internal partial class Repository
             }
             catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
-                throw new InvalidOperationException($"BinaryManifest '{binaryHash}' does not exist");
+                throw new InvalidOperationException($"ChunkList for '{binaryHash}' does not exist");
             }
             finally
             {
@@ -90,12 +90,12 @@ internal partial class Repository
             }
         }
 
-        public async Task CreateAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
+        internal async Task CreateAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
         {
-            var bc = container.GetBlobClient(GetBinaryManifestBlobName(binaryHash));
+            var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
 
-            if (bc.Exists())
-                throw new InvalidOperationException("BinaryManifest Already Exists");
+            if (await bc.ExistsAsync())
+                throw new InvalidOperationException($"ChunkList for '{binaryHash}' already Exists");
 
             var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
             var bytes = Encoding.UTF8.GetBytes(json);
@@ -104,6 +104,6 @@ internal partial class Repository
             await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
         }
 
-        private string GetBinaryManifestBlobName(BinaryHash binaryHash) => $"{BinaryManifestFolderName}/{binaryHash.Value}";
+        private string GetChunkListBlobName(BinaryHash binaryHash) => $"{ChunkListsFolderName}/{binaryHash.Value}";
     }
 }
