@@ -27,34 +27,34 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
         bool fastHash,
         PointerService pointerService,
         Repository repo,
-        Func<PointerFile, Task> indexedPointerFile,
-        Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile,
         IHashValueProvider hvp,
-        Action binaryFileIndexCompleted,
-        TaskCompletionSource binaryFileUploadCompleted,
-        Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
+        TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource,
+        Func<PointerFile, Task> onIndexedPointerFile,
+        Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile,
+        Action onBinaryFileIndexCompleted,
+        Action onCompleted)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: onCompleted)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;
         this.fastHash = fastHash;
         this.pointerService = pointerService;
         this.repo = repo;
-        this.indexedPointerFile = indexedPointerFile;
-        this.indexedBinaryFile = indexedBinaryFile;
         this.hvp = hvp;
-        this.binaryFileIndexCompleted = binaryFileIndexCompleted;
-        this.binaryFileUploadCompleted = binaryFileUploadCompleted;
+        this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
+        this.onIndexedPointerFile = onIndexedPointerFile;
+        this.onIndexedBinaryFile = onIndexedBinaryFile;
+        this.onBinaryFileIndexCompleted = onBinaryFileIndexCompleted;
     }
 
     private readonly int maxDegreeOfParallelism;
     private readonly bool fastHash;
     private readonly PointerService pointerService;
     private readonly Repository repo;
-    private readonly Func<PointerFile, Task> indexedPointerFile;
-    private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> indexedBinaryFile;
+    private readonly Func<PointerFile, Task> onIndexedPointerFile;
+    private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
     private readonly IHashValueProvider hvp;
-    private readonly Action binaryFileIndexCompleted;
-    private readonly TaskCompletionSource binaryFileUploadCompleted;
+    private readonly Action onBinaryFileIndexCompleted;
+    private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
 
     protected override async Task TaskBodyImplAsync(DirectoryInfo root)
     {
@@ -77,7 +77,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
 
                         if (await repo.Binaries.ExistsAsync(pf.Hash))
                             // The pointer points to an existing binary
-                            await indexedPointerFile(pf);
+                            await onIndexedPointerFile(pf);
                         else
                             // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
                             latentPointers.Enqueue(pf);
@@ -96,20 +96,20 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                             if (!await repo.Binaries.ExistsAsync(bh))
                             {
                                 logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
-                                await indexedBinaryFile((bf, AlreadyBackedUp: false));
+                                await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
                             else
                             {
                                 //An equivalent PointerFile already exists and is already being sent through the pipe to have a PointerFileEntry be created - skip.
 
                                 logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                                await indexedBinaryFile((bf, AlreadyBackedUp: true));
+                                await onIndexedBinaryFile((bf, AlreadyBackedUp: true));
                             }
                         }
                         else
                         {
                             // No PointerFile -- to process
-                            await indexedBinaryFile((bf, AlreadyBackedUp: false));
+                            await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                         }
 
                         binariesThatWillBeUploaded.Add(bh);
@@ -122,8 +122,8 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
             });
 
         //Wait until all binaries 
-        binaryFileIndexCompleted();
-        await binaryFileUploadCompleted.Task;
+        onBinaryFileIndexCompleted();
+        await binaryFileUploadCompletedTaskCompletionSource.Task;
 
         //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
         await Parallel.ForEachAsync(latentPointers.GetConsumingEnumerable(),
@@ -133,7 +133,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                 if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
                     throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
 
-                await indexedPointerFile(pf);
+                await onIndexedPointerFile(pf);
             });
     }
     private BinaryHash GetBinaryHash(DirectoryInfo root, FileInfo fi, PointerFile pf)
@@ -174,7 +174,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         ArchiveCommandOptions options,
             
         Func<BinaryFile, Task> binaryExists,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.repo = repo;
         this.options = options;
@@ -256,7 +256,7 @@ internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFi
         PointerService pointerService,
         Func<BinaryFile, Task> succesfullyBackedUp,
         Func<PointerFile, Task> pointerFileCreated,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.pointerService = pointerService;
         this.succesfullyBackedUp = succesfullyBackedUp;
@@ -288,7 +288,7 @@ internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<Poi
         int maxDegreeOfParallelism,
         Repository repo,
         DateTime versionUtc,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.repo = repo;
         this.versionUtc = versionUtc;
@@ -326,7 +326,7 @@ internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
     public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
         Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
     }
 
@@ -350,7 +350,7 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Channe
         DirectoryInfo root,
         PointerService pointerService,
         DateTime versionUtc,
-        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, done: done)
+        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.repo = repo;
         this.root = root;

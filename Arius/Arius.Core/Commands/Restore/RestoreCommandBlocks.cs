@@ -28,7 +28,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         PointerService pointerService,
         Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> indexedPointerFile,
         Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
     {
         this.synchronize = synchronize;
         this.repo = repo;
@@ -139,7 +139,7 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
         Func<BinaryHash, IChunk[], Task> chunksRestored,
         Action<BinaryHash> chunksHydrating,
         Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
     {
         this.restoreTempDir = restoreTempDir;
         this.repo = repo;
@@ -280,7 +280,7 @@ internal class RestoreBinaryFileBlock : ChannelTaskBlockBase<(IChunk[] Chunks, P
         Chunker chunker,
         DirectoryInfo root,
         Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
     {
         this.pointerService = pointerService;
         this.chunker = chunker;

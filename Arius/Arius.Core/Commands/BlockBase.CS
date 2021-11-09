@@ -33,18 +33,18 @@ internal abstract class BlockBase
 
 internal abstract class TaskBlockBase<TSource> : BlockBase
 {
-    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action done = default)
-        : this(loggerFactory, () => Task.FromResult(sourceFunc()), done)
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action onCompleted = default)
+        : this(loggerFactory, () => Task.FromResult(sourceFunc()), onCompleted)
     {
     }
-    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action done = default)
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action onCompleted = default)
     {
         this.logger = loggerFactory.CreateLogger(this.GetType());
         this.sourceFunc = sourceFunc;
 
-        this.done = () =>
+        this.onCompleted = () =>
         {
-            done?.Invoke();
+            onCompleted?.Invoke();
             logger.LogTrace("Done");
         };
 
@@ -67,7 +67,7 @@ internal abstract class TaskBlockBase<TSource> : BlockBase
     private readonly Func<Task<TSource>> sourceFunc;
     protected readonly ILogger logger;
     private readonly Lazy<Task> task;
-    private readonly Action done;
+    private readonly Action onCompleted;
 
     public Task GetTask => task.Value;
 
@@ -82,7 +82,8 @@ internal abstract class TaskBlockBase<TSource> : BlockBase
                 var source = await sourceFunc();
                 await TaskBodyImplAsync(source);
 
-                done();
+                logger.LogDebug($"Completed {this.GetType().Name}");
+                onCompleted();
             }
             catch (Exception e)
             {
@@ -122,12 +123,12 @@ internal abstract class TaskBlockBase<TSource> : BlockBase
 
 internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelReader<TSource>>
 {
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
-        : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, done)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action onCompleted = default)
+        : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, onCompleted)
     {
     }
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<ChannelReader<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action done = default)
-        : base(loggerFactory, sourceFunc, done)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<ChannelReader<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action onCompleted = default)
+        : base(loggerFactory, sourceFunc, onCompleted)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;
     }

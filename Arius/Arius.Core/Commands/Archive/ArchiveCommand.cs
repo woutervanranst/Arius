@@ -57,8 +57,9 @@ internal class ArchiveCommand : ICommand
             fastHash: options.FastHash,
             pointerService: pointerService,
             repo: repo,
-            indexedPointerFile: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B301
-            indexedBinaryFile: async arg =>
+            hvp: services.GetRequiredService<IHashValueProvider>(),
+            onIndexedPointerFile: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B301
+            onIndexedBinaryFile: async arg =>
             {
                 var (bf, alreadyBackedUp) = arg;
                 if (alreadyBackedUp)
@@ -71,10 +72,9 @@ internal class ArchiveCommand : ICommand
                 else
                     await binariesToUpload.Writer.WriteAsync(bf); //B302
             },
-            hvp: services.GetRequiredService<IHashValueProvider>(),
-            binaryFileIndexCompleted: () => binariesToUpload.Writer.Complete(), //B310 
-            binaryFileUploadCompleted: binaryFileUploadCompleted,
-            done: () => { });
+            onBinaryFileIndexCompleted: () => binariesToUpload.Writer.Complete(), //B310 
+            binaryFileUploadCompletedTaskCompletionSource: binaryFileUploadCompleted,
+            onCompleted: () => { });
         var indexTask = indexBlock.GetTask;
 
 
@@ -88,7 +88,7 @@ internal class ArchiveCommand : ICommand
             repo: repo,
             options: options,
             binaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
-            done: () =>
+            onCompleted: () =>
             {
                 pointersToCreate.Writer.Complete(); //B410
                 binaryFileUploadCompleted.SetResult(); //B411
@@ -109,7 +109,7 @@ internal class ArchiveCommand : ICommand
                     await binariesToDelete.Writer.WriteAsync(bf); //B1202
             },
             pointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B1201
-            done: () => binariesToDelete.Writer.Complete() //B1310
+            onCompleted: () => binariesToDelete.Writer.Complete() //B1310
             );
         var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
@@ -128,7 +128,7 @@ internal class ArchiveCommand : ICommand
             maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
             repo: repo,
             versionUtc: versionUtc,
-            done: () => { });
+            onCompleted: () => { });
         var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
 
@@ -137,7 +137,7 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: () => binariesToDelete,
             maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
-            done: () => { });
+            onCompleted: () => { });
         var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
 
 
@@ -157,7 +157,7 @@ internal class ArchiveCommand : ICommand
             root: root,
             pointerService: pointerService,
             versionUtc: versionUtc,
-            done: () => { });
+            onCompleted: () => { });
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
 
@@ -216,7 +216,7 @@ internal class ArchiveCommand : ICommand
             throw new AggregateException(exceptions);
         }
 
-        await repo.States.SaveToBlobStorage(versionUtc);
+        await repo.States.CommitToBlobStorage(versionUtc);
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
         //{
         //    //something went wrong
