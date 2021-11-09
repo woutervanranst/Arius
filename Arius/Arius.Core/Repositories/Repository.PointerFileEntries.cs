@@ -150,7 +150,7 @@ internal partial class Repository
             var r = await db.PointerFileEntries.AsParallel()
                 .GroupBy(pfe => pfe.RelativeName)
                 .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc))
-                .ToAsyncEnumerable() //TODO ParallelEnumerable?
+                .ToAsyncEnumerable() //TODO ParallelEnumerable? //remove this and the dependency on Linq.Async?
                 .Where(c => c.Any())
                 .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last())
                 .ToArrayAsync();
