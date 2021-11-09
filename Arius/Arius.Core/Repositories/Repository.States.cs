@@ -118,7 +118,7 @@ internal partial class Repository
             await db.Database.EnsureDeletedAsync();
             File.Delete(vacuumedDbPath);
 
-            logger.LogInformation($"State upload succesful into {blobName}");
+            logger.LogInformation($"State upload succesful into '{blobName}'");
         }
     }
 }
