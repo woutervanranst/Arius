@@ -31,6 +31,65 @@ internal abstract class BlockBase
     public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
 }
 
+internal abstract class TaskBlockBase : BlockBase
+{
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Action onCompleted = default)
+    {
+        this.logger = loggerFactory.CreateLogger(this.GetType());
+
+        this.onCompleted = () =>
+        {
+            onCompleted?.Invoke();
+            logger.LogTrace("Done");
+        };
+
+        this.task = new(() =>
+        {
+            var t = TaskImpl();
+
+            // When one task has an exception, set the CancellationToken to all other Tasks
+            //NOTE do not put this on one line, ContinueWith returns another task that will not be faulted
+            var t2 = t.ContinueWith(t => cts.Cancel(), TaskContinuationOptions.OnlyOnFaulted);
+
+            tasks.Add(t);
+
+            logger.LogTrace($"Created {t.Id}");
+
+            return t;
+        }, isThreadSafe: false);
+    }
+
+    protected readonly ILogger logger;
+    private readonly Lazy<Task> task;
+    private readonly Action onCompleted;
+
+    public Task GetTask => task.Value;
+
+    private Task TaskImpl()
+    {
+        return Task.Run(async () =>
+        {
+            try
+            {
+                logger.LogTrace("Started");
+
+                await TaskBodyImplAsync();
+
+                logger.LogDebug($"Completed {this.GetType().Name}");
+                onCompleted();
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Exception");
+
+                throw; //Set this task to Faulted
+            }
+        });
+    }
+
+    protected abstract Task TaskBodyImplAsync();
+}
+
 internal abstract class TaskBlockBase<TSource> : BlockBase
 {
     protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action onCompleted = default)
