@@ -46,38 +46,4 @@ class BlobModelTests : TestBase
         Assert.AreEqual(cb1.Name, cb2.Name);
         Assert.IsFalse(cb1.Name.Contains('/')); //the Name does NOT contain the directory
     }
-
-    [Test]
-    public async Task Properties_ManifestBlob_Valid()
-    {
-        EnsureArchiveTestDirectoryFileInfo();
-        await EnsureArchiveCommandHasRun();
-
-        var repo = GetRepository();
-
-        //var manifestBlob = repo.GetAllManifestBlobs().First();
-
-        var h = (await repo.Binaries.GetAllBinaryHashesAsync()).First();
-        var bi = TestSetup.Container.GetBlobs(prefix: $"{Repository.BinaryRepository.ChunkListsFolderName}/{h.Value}").Single();
-        var manifestBlob = new ChunkList(bi);
-
-
-        Assert.AreEqual(manifestBlob.Folder, Repository.BinaryRepository.ChunkListsFolderName);
-
-        Assert.IsTrue(manifestBlob.FullName.Contains('/')); //the FullName contains the directory
-        Assert.IsFalse(manifestBlob.FullName.Contains('.')); //the FullName does not have an extension
-
-        Assert.NotNull(manifestBlob.Hash.Value);
-
-        Assert.IsTrue(manifestBlob.Length > 0);
-
-        Assert.IsFalse(manifestBlob.Name.Contains('/')); //the Name does NOT contain the directory
-        Assert.IsFalse(manifestBlob.Name.Contains('.')); //the Name does not have an extension
-
-
-        var mm = await repo.Binaries.GetChunkHashesAsync(manifestBlob.Hash);
-
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException(); // quid assertion
-    }
 }

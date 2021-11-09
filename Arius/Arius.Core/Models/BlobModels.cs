@@ -39,20 +39,6 @@ internal abstract class BlobBase //: IWithHashValue
     private const char BlobFolderSeparatorChar = '/';
 }
 
-internal class ChunkList : BlobBase //TODO THIS CLASS IS NOT USED A LOT?
-{
-    public ChunkList(BlobItem bi)
-    {
-        this.bi = bi;
-    }
-    protected readonly BlobItem bi;
-
-    public override BinaryHash Hash => new(Name);
-    public override string FullName => bi.Name;
-    public override long Length => bi.Properties.ContentLength!.Value;
-}
-
-
 
 internal abstract class ChunkBlobBase : BlobBase, IChunk
 {
