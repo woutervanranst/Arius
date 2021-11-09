@@ -193,6 +193,14 @@ internal class ArchiveCommand : ICommand
             done: () => { });
 
 
+        var updateTierBlock = new UpdateTierBlock(
+            loggerFactory: loggerFactory,
+            sourceFunc: () => repo,
+            maxDegreeOfParallelism: 10,
+            repo: repo,
+            targetAccessTier: options.Tier,
+            onCompleted: () => { });
+        var updateTierTask = updateTierBlock.GetTask;
             
 
         //while (true)

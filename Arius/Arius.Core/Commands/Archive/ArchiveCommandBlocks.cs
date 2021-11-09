@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using ConcurrentCollections;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -480,5 +481,31 @@ internal class ValidateBlock
 
         //logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
     }
+}
 
+internal class UpdateTierBlock : TaskBlockBase
+{
+    public UpdateTierBlock(ILoggerFactory loggerFactory,
+        Func<Repository> sourceFunc,
+        int maxDegreeOfParallelism,
+        Repository repo,
+        AccessTier targetAccessTier,
+        Action onCompleted) : base(loggerFactory: loggerFactory, onCompleted: onCompleted)
+    {
+        this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+        this.repo = repo;
+        this.targetAccessTier = targetAccessTier;
+    }
+
+    private readonly int maxDegreeOfParallelism;
+    private readonly Repository repo;
+    private readonly AccessTier targetAccessTier;
+
+    protected override async Task TaskBodyImplAsync()
+    {
+        if (targetAccessTier != AccessTier.Archive)
+            return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
+
+        await repo.Chunks.SetAllAccessTierAsync(targetAccessTier, maxDegreeOfParallelism);
+    }
 }
