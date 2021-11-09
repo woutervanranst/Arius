@@ -178,7 +178,7 @@ abstract class TestBase
     {
         repo = GetRepository();
 
-        chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().Length;
+        chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().CountAsync().Result;
         binaryCount = repo.Binaries.CountAsync().Result;
 
         currentPfeWithDeleted = repo.PointerFileEntries.GetCurrentEntries(true).Result.ToArray();

@@ -25,7 +25,7 @@ class BlobModelTests : TestBase
 
         var repo = GetRepository();
 
-        var cb1 = repo.Chunks.GetAllChunkBlobs().First() as ChunkBlobItem;
+        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
         var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);

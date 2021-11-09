@@ -36,21 +36,26 @@ internal partial class Repository
 
         // GET
 
-        public ChunkBlobBase[] GetAllChunkBlobs() //TODO move to test
+        public IAsyncEnumerable<ChunkBlobBase> GetAllChunkBlobs()
         {
-            logger.LogInformation($"Getting all ChunkBlobs...");
-            var r = Array.Empty<ChunkBlobBase>();
+            return container.GetBlobsAsync(prefix: $"{ChunkFolderName}/")
+                .Select(bi => ChunkBlobBase.GetChunkBlob(container, bi));
+        }
 
-            try
-            {
-                return r = container.GetBlobs(prefix: $"{ChunkFolderName}/")
-                    .Select(bi => new ChunkBlobItem(bi))
-                    .ToArray();
-            }
-            finally
-            {
-                logger.LogInformation($"Getting all ChunkBlobs... got {r.Length}");
-            }
+        public async Task SetAllAccessTierAsync(AccessTier tier, int maxDegreeOfParallelism = 8)
+        {
+            if (tier != AccessTier.Archive)
+                throw new InvalidOperationException($"Cannot move all chunks to {tier} (costs may explode). Please do this manually.");
+
+            await Parallel.ForEachAsync(GetAllChunkBlobs().Where(cbb => cbb.AccessTier != tier),
+                //container.GetBlobsAsync(prefix: $"{ChunkFolderName}/")
+                //                            .Where(bi => bi.Properties.AccessTier != tier)
+                //                            .Select(bi => container.GetBlobClient(bi.Name)),
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (cbb, ct) =>
+                {
+                    await cbb.SetAccessTierAsync(tier);
+                });
         }
 
         /// <summary>
@@ -99,6 +104,7 @@ internal partial class Repository
         /// <returns></returns>
         internal ChunkBlobBase GetChunkBlobByName(string folder, string name) => GetChunkBlobByName(GetChunkBlobFullName(folder, name));
 
+        internal ChunkBlobBase GetChunkBlobByName(BlobItem bi) => GetChunkBlobByName(bi.Name);
         /// <summary>
         /// Get a ChunkBlobBase by FullName.
         /// Return null if it doesn't exist.

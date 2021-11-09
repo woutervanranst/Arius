@@ -20,7 +20,7 @@ class ChunkRepositoryTests : TestBase
 
         var repo = GetRepository();
 
-        var cb1 = repo.Chunks.GetAllChunkBlobs().First();
+        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync();
 
         var cb2 = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, cb1.Name);
 
