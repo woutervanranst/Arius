@@ -42,9 +42,9 @@ internal abstract class BlobBase //: IWithHashValue
 
 internal abstract class ChunkBlobBase : BlobBase, IChunk
 {
-    public static ChunkBlobItem GetChunkBlob(BlobItem bi)
+    public static ChunkBlobItem GetChunkBlob(BlobContainerClient bcc, BlobItem bi)
     {
-        return new ChunkBlobItem(bi);
+        return new ChunkBlobItem(bcc, bi);
     }
     public static ChunkBlobBaseClient GetChunkBlob(BlobBaseClient bc)
     {
@@ -56,6 +56,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     public override ChunkHash Hash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
+    public abstract Task SetAccessTierAsync(AccessTier tier);
         
     public abstract Task<Stream> OpenReadAsync();
     public abstract Task<Stream> OpenWriteAsync();
@@ -68,15 +69,22 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
 
 internal class ChunkBlobItem : ChunkBlobBase
 {
-    internal ChunkBlobItem(BlobItem bi)
+    /// <summary>
+    /// DO NOT CALL THIS DIRECTLY, USE ChunkBlobBase.GetChunkBlob
+    /// </summary>
+    internal ChunkBlobItem(BlobContainerClient bcc, BlobItem bi)
     {
+        this.bcc = bcc;
         this.bi = bi;
     }
+
+    private readonly BlobContainerClient bcc;
     private readonly BlobItem bi;
 
 
     public override long Length => bi.Properties.ContentLength!.Value;
     public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
+    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bcc.GetBlobClient(bi.Name).SetAccessTierAsync(accessTier);
     public override string FullName => bi.Name;
 
     public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
@@ -87,6 +95,9 @@ internal class ChunkBlobItem : ChunkBlobBase
 
 internal class ChunkBlobBaseClient : ChunkBlobBase
 {
+    /// <summary>
+    /// DO NOT CALL THIS DIRECTLY, USE ChunkBlobBase.GetChunkBlob
+    /// </summary>
     internal ChunkBlobBaseClient(BlobBaseClient bbc)
     {
         try
@@ -112,6 +123,8 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
         "Archive" => AccessTier.Archive,
         _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
     };
+
+    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bbc.SetAccessTierAsync(accessTier);
 
     public override string FullName => bbc.Name;
 
