@@ -89,7 +89,6 @@ internal static class TestSetup
     }
 
 
-    public static FileInfo CreateRandomFile(string fileFullName, double sizeInMB) => CreateRandomFile(fileFullName, (int)sizeInMB * 1024 * 1024);
     public static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
     {
         // https://stackoverflow.com/q/4432178/1582323

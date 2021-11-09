@@ -50,9 +50,9 @@ abstract class TestBase
         var fis = new List<FileInfo>
         {
             TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1), //make it an odd size to test buffer edge cases
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2D),
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 10D),
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1D),
+            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2 * 1024 * 1024),
+            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 10 * 1024 * 1024),
+            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1 * 1024 * 1024),
         };
 
         var f = Path.Combine(SourceFolder.FullName, "dir 2", "deduplicated file.txt");
@@ -173,8 +173,8 @@ abstract class TestBase
     protected void RepoStats(out Repository repo,
         out int chunkBlobItemCount,
         out int binaryCount,
-        out IEnumerable<PointerFileEntry> currentPfeWithDeleted, out IEnumerable<PointerFileEntry> currentPfeWithoutDeleted,
-        out IEnumerable<PointerFileEntry> allPfes)
+        out PointerFileEntry[] currentPfeWithDeleted, out PointerFileEntry[] currentPfeWithoutDeleted,
+        out PointerFileEntry[] allPfes)
     {
         repo = GetRepository();
 

@@ -64,7 +64,7 @@ class Restore_Tests_Old : TestBase
         TestSetup.ArchiveTestDirectory.Clear();
         var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile2.txt"));
         Assert.IsFalse(bfi.Exists);
-        TestSetup.CreateRandomFile(bfi.FullName, 0.1);
+        TestSetup.CreateRandomFile(bfi.FullName, 100 * 1024);
 
 
         //EXECUTE -- Archive to cool tier
@@ -115,7 +115,7 @@ class Restore_Tests_Old : TestBase
         TestSetup.ArchiveTestDirectory.Clear();
         var bfi = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "archivefile3.txt"));
         Assert.IsFalse(bfi.Exists);
-        TestSetup.CreateRandomFile(bfi.FullName, 0.1);
+        TestSetup.CreateRandomFile(bfi.FullName, 100 * 1024);
 
 
         //EXECUTE -- Archive to cool tier
