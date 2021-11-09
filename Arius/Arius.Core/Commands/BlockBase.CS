@@ -31,6 +31,7 @@ internal abstract class BlockBase
     public static Task CancellationTask => new CancellationTokenTaskSource<object>(ct).Task;
 }
 
+
 internal abstract class TaskBlockBase : BlockBase
 {
     protected TaskBlockBase(ILoggerFactory loggerFactory, Action onCompleted = default)
@@ -61,11 +62,11 @@ internal abstract class TaskBlockBase : BlockBase
 
     protected readonly ILogger logger;
     private readonly Lazy<Task> task;
-    private readonly Action onCompleted;
+    protected readonly Action onCompleted;
 
     public Task GetTask => task.Value;
 
-    private Task TaskImpl()
+    protected virtual Task TaskImpl()
     {
         return Task.Run(async () =>
         {
@@ -90,47 +91,22 @@ internal abstract class TaskBlockBase : BlockBase
     protected abstract Task TaskBodyImplAsync();
 }
 
-internal abstract class TaskBlockBase<TSource> : BlockBase
+
+internal abstract class TaskBlockBase<TSource> : TaskBlockBase
 {
     protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action onCompleted = default)
         : this(loggerFactory, () => Task.FromResult(sourceFunc()), onCompleted)
     {
     }
     protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action onCompleted = default)
+        : base(loggerFactory, onCompleted)
     {
-        this.logger = loggerFactory.CreateLogger(this.GetType());
         this.sourceFunc = sourceFunc;
-
-        this.onCompleted = () =>
-        {
-            onCompleted?.Invoke();
-            logger.LogTrace("Done");
-        };
-
-        this.task = new(() =>
-        {
-            var t = TaskImpl();
-
-            // When one task has an exception, set the CancellationToken to all other Tasks
-            //NOTE do not put this on one line, ContinueWith returns another task that will not be faulted
-            var t2 = t.ContinueWith(t => cts.Cancel(), TaskContinuationOptions.OnlyOnFaulted); 
-                
-            tasks.Add(t);
-
-            logger.LogTrace($"Created {t.Id}");
-
-            return t;
-        }, isThreadSafe: false);
     }
 
     private readonly Func<Task<TSource>> sourceFunc;
-    protected readonly ILogger logger;
-    private readonly Lazy<Task> task;
-    private readonly Action onCompleted;
 
-    public Task GetTask => task.Value;
-
-    private Task TaskImpl()
+    protected override Task TaskImpl()
     {
         return Task.Run(async () =>
         {
@@ -153,33 +129,11 @@ internal abstract class TaskBlockBase<TSource> : BlockBase
         });
     }
 
+    protected override sealed Task TaskBodyImplAsync() => throw new NotImplementedException();
     protected abstract Task TaskBodyImplAsync(TSource source);
 }
+
     
-//internal abstract class BlockingCollectionTaskBlockBase<TSource> : TaskBlockBase<BlockingCollection<TSource>>
-//{
-//    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<BlockingCollection<TSource>> sourceFunc, int degreeOfParallelism = 1, Action done = default)
-//        : this(loggerFactory, () => Task.FromResult(sourceFunc()), degreeOfParallelism, done)
-//    {
-//    }
-//    protected BlockingCollectionTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<BlockingCollection<TSource>>> sourceFunc, int degreeOfParallelism = 1, Action done = default) 
-//        : base(loggerFactory, sourceFunc, done)
-//    {
-//        this.degreeOfParallelism = degreeOfParallelism;
-//    }
-
-//    private readonly int degreeOfParallelism;
-
-//    protected override async Task TaskBodyImplAsync(BlockingCollection<TSource> source)
-//    {
-//        //TODO quid CancellationToken?
-//        await source.AsyncParallelForEachAsync(ForEachBodyImplAsync, degreeOfParallelism);
-//    }
-
-//    protected abstract Task ForEachBodyImplAsync(TSource item);
-
-//}
-
 internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelReader<TSource>>
 {
     protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action onCompleted = default)
