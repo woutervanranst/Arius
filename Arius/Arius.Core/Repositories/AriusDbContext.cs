@@ -28,7 +28,7 @@ internal partial class Repository
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
-            => options.UseSqlite($"Data Source={dbPath}");
+            => options.UseSqlite($"Data Source={dbPath};Cache=Shared"); //Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
