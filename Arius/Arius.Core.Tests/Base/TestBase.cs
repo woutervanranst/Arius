@@ -55,7 +55,7 @@ abstract class TestBase
             TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1 * 1024 * 1024),
         };
 
-        var f = Path.Combine(SourceFolder.FullName, "dir 2", "deduplicated file.txt");
+        var f = Path.Combine(SourceFolder.FullName, "dir 2", "deduplicated file.txt"); //special file created out of two other files
         var concatenatedBytes = File.ReadAllBytes(fis[0].FullName).Concat(File.ReadAllBytes(fis[1].FullName));
         File.WriteAllBytes(f, concatenatedBytes.ToArray());
         fis.Add(new FileInfo(f));
