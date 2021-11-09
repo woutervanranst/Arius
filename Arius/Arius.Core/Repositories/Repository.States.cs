@@ -86,7 +86,7 @@ internal partial class Repository
             logger.LogDebug($"{numChanges} state entries written to the database");
         }
 
-        internal async Task SaveToBlobStorage(DateTime versionUtc)
+        internal async Task CommitToBlobStorage(DateTime versionUtc)
         {
             if (!hasChanges)
             {
@@ -116,7 +116,7 @@ internal partial class Repository
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
-            File.Delete(vacuumedDbPath);
+            File.Move(vacuumedDbPath, $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.sqlite"); //todo gzip
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
         }
