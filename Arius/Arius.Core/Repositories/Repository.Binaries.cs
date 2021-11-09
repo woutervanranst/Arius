@@ -49,9 +49,6 @@ internal partial class Repository
         /// <summary>
         /// Upload the given BinaryFile with the specified options
         /// </summary>
-        /// <param name="bf"></param>
-        /// <param name="options"></param>
-        /// <returns></returns>
         public async Task UploadAsync(BinaryFile bf, ArchiveCommandOptions options)
         {
             logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
@@ -198,12 +195,11 @@ internal partial class Repository
             await db.SaveChangesAsync();
         }
 
-        //public async Task<BinaryMetadata> GetBinaryMetadataAsync(BinaryHash bh)
-        //{
-        //    var dto = await bmTable.GetEntityAsync<BinaryMetadataDto>(bh.Value, BinaryMetadataDto.ROW_KEY);
-        //    var bm = ConvertFromDto(dto);
-        //    return bm;
-        //}
+        public async Task<BinaryProperties> GetPropertiesAsync(BinaryHash bh)
+        {
+            await using var db = await parent.States.GetCurrentStateDbContext();
+            return db.BinaryProperties.Single(bp => bp.Hash == bh);
+        }
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
@@ -239,12 +235,15 @@ internal partial class Repository
 
 
 
-        internal async Task CreateChunkHashListAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
+        internal async Task CreateChunkHashListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
         {
-            var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
+            if (chunkHashes.Length == 1)
+                return; //do not create a ChunkList for only one ChunkHash
+
+            var bc = container.GetBlobClient(GetChunkListBlobName(bh));
 
             if (await bc.ExistsAsync())
-                throw new InvalidOperationException($"ChunkList for '{binaryHash}' already Exists");
+                throw new InvalidOperationException($"ChunkList for '{bh}' already Exists");
 
             var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
             var bytes = Encoding.UTF8.GetBytes(json);
@@ -253,16 +252,19 @@ internal partial class Repository
             await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
         }
 
-        internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash binaryHash)
+        internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash bh)
         {
-            logger.LogInformation($"Getting chunks for binary {binaryHash.Value}");
+            logger.LogInformation($"Getting chunks for binary {bh.Value}");
             var chunkHashes = Array.Empty<ChunkHash>();
+
+            if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
+                return (new ChunkHash(bh)).SingleToArray();
 
             try
             {
                 var ms = new MemoryStream();
 
-                var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
+                var bc = container.GetBlobClient(GetChunkListBlobName(bh));
 
                 await bc.DownloadToAsync(ms);
                 ms.Position = 0;
@@ -272,17 +274,17 @@ internal partial class Repository
             }
             catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
-                throw new InvalidOperationException($"ChunkList for '{binaryHash}' does not exist");
+                throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
             }
             finally
             {
-                logger.LogInformation($"Getting chunks for binary {binaryHash.Value}... found {chunkHashes.Length} chunk(s)");
+                logger.LogInformation($"Getting chunks for binary {bh.Value}... found {chunkHashes.Length} chunk(s)");
             }
         }
 
         
 
-        private string GetChunkListBlobName(BinaryHash binaryHash) => $"{ChunkListsFolderName}/{binaryHash.Value}";
+        private string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
 
         internal const string ChunkListsFolderName = "chunklists";
     }
