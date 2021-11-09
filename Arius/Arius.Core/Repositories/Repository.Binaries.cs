@@ -239,7 +239,19 @@ internal partial class Repository
 
 
 
+        internal async Task CreateChunkHashListAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
+        {
+            var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
 
+            if (await bc.ExistsAsync())
+                throw new InvalidOperationException($"ChunkList for '{binaryHash}' already Exists");
+
+            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
+            var bytes = Encoding.UTF8.GetBytes(json);
+            var ms = new MemoryStream(bytes);
+
+            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+        }
 
         internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash binaryHash)
         {
@@ -268,19 +280,7 @@ internal partial class Repository
             }
         }
 
-        internal async Task CreateChunkHashListAsync(BinaryHash binaryHash, ChunkHash[] chunkHashes)
-        {
-            var bc = container.GetBlobClient(GetChunkListBlobName(binaryHash));
-
-            if (await bc.ExistsAsync())
-                throw new InvalidOperationException($"ChunkList for '{binaryHash}' already Exists");
-
-            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
-            var bytes = Encoding.UTF8.GetBytes(json);
-            var ms = new MemoryStream(bytes);
-
-            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
-        }
+        
 
         private string GetChunkListBlobName(BinaryHash binaryHash) => $"{ChunkListsFolderName}/{binaryHash.Value}";
 

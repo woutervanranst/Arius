@@ -97,10 +97,9 @@ internal partial class Repository
             var vacuumedDbPath = Path.GetTempFileName();
 
             await using var db = await GetCurrentStateDbContext();
-            await db.Database.ExecuteSqlRawAsync($"VACUUM main INTO '{vacuumedDbPath}';");
-            //.ExecuteSqlCommand(TransactionalBehavior.DoNotEnsureTransaction, "VACUUM;");
+            await db.Database.ExecuteSqlRawAsync($"VACUUM main INTO '{vacuumedDbPath}';"); //https://www.sqlitetutorial.net/sqlite-vacuum/
 
-            var originalLength = new FileInfo((await dbPathTask)).Length;
+            var originalLength = new FileInfo(await dbPathTask).Length;
             var vacuumedlength = new FileInfo(vacuumedDbPath).Length;
 
             if (originalLength != vacuumedlength)
