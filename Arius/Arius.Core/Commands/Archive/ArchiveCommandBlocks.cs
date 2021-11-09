@@ -172,19 +172,18 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         int maxDegreeOfParallelism,
         Repository repo,
         ArchiveCommandOptions options,
-            
-        Func<BinaryFile, Task> binaryExists,
+        Func<BinaryFile, Task> onBinaryExists,
         Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.repo = repo;
         this.options = options;
-        this.binaryExists = binaryExists;
+        this.onBinaryExists = onBinaryExists;
     }
 
     private readonly Repository repo;
     private readonly ArchiveCommandOptions options;
         
-    private readonly Func<BinaryFile, Task> binaryExists;
+    private readonly Func<BinaryFile, Task> onBinaryExists;
 
     private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
@@ -243,7 +242,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
             }
         }
             
-        await binaryExists(bf);
+        await onBinaryExists(bf);
     }
 }
 
@@ -254,18 +253,18 @@ internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFi
         Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
         PointerService pointerService,
-        Func<BinaryFile, Task> succesfullyBackedUp,
-        Func<PointerFile, Task> pointerFileCreated,
+        Func<BinaryFile, Task> onSuccesfullyBackedUp,
+        Func<PointerFile, Task> onPointerFileCreated,
         Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.pointerService = pointerService;
-        this.succesfullyBackedUp = succesfullyBackedUp;
-        this.pointerFileCreated = pointerFileCreated;
+        this.onSuccesfullyBackedUp = onSuccesfullyBackedUp;
+        this.onPointerFileCreated = onPointerFileCreated;
     }
 
     private readonly PointerService pointerService;
-    private readonly Func<BinaryFile, Task> succesfullyBackedUp;
-    private readonly Func<PointerFile, Task> pointerFileCreated;
+    private readonly Func<BinaryFile, Task> onSuccesfullyBackedUp;
+    private readonly Func<PointerFile, Task> onPointerFileCreated;
 
     protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
     {
@@ -275,8 +274,8 @@ internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFi
 
         logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
 
-        await succesfullyBackedUp(bf);
-        await pointerFileCreated(pf);
+        await onSuccesfullyBackedUp(bf);
+        await onPointerFileCreated(pf);
     }
 }
 

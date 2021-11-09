@@ -87,7 +87,7 @@ internal class ArchiveCommand : ICommand
             maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
             repo: repo,
             options: options,
-            binaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
+            onBinaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
             onCompleted: () =>
             {
                 pointersToCreate.Writer.Complete(); //B410
@@ -103,12 +103,12 @@ internal class ArchiveCommand : ICommand
             sourceFunc: () => pointersToCreate,
             maxDegreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
             pointerService: pointerService,
-            succesfullyBackedUp: async bf =>
+            onSuccesfullyBackedUp: async bf =>
             {
                 if (options.RemoveLocal)
                     await binariesToDelete.Writer.WriteAsync(bf); //B1202
             },
-            pointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B1201
+            onPointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B1201
             onCompleted: () => binariesToDelete.Writer.Complete() //B1310
             );
         var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
