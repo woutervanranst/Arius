@@ -116,9 +116,19 @@ internal partial class Repository
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.sqlite"); //todo gzip
+            File.Move(vacuumedDbPath, $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.sqlite", true); //todo gzip //overwrite for unit tests -- multiple dbs in the same second
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
+
+            // Move the previous states to Archive storage
+            await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
+                                        .OrderBy(bi => bi.Name)
+                                        .SkipLast(2)
+                                        .Where(bi => bi.Properties.AccessTier != AccessTier.Archive))
+            {
+                var bc = container.GetBlobClient(bi.Name);
+                await bc.SetAccessTierAsync(AccessTier.Archive);
+            }
         }
     }
 }
