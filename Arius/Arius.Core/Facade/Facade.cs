@@ -148,12 +148,6 @@ public class Facade : IFacade
             // Add Chunkers
             .AddSingleton<Chunker, ByteBoundaryChunker>();
 
-        //if (options is ArchiveCommandOptions archiveCommandOptions)
-        //    sc
-        //        .AddSingleton<Chunker>((sp) => archiveCommandOptions.Dedup ?
-        //            sp.GetRequiredService<ByteBoundaryChunker>() :
-        //            sp.GetRequiredService<SimpleChunker>());
-
         // Add Options
         sc
             .AddSingleton(tempDirectoryAppSettings);
@@ -163,9 +157,6 @@ public class Facade : IFacade
             sc.AddSingleton(type, options);
 
         sc.AddSingleton<T>(options);
-
-        //ArchiveCommand.AddBlockProviders(sc);
-        //RestoreCommand.AddBlockProviders(sc);
 
         sc
             .AddSingleton<ILoggerFactory>(loggerFactory)
