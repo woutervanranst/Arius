@@ -248,6 +248,8 @@ internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
             // Hydrated chunk (in cold/hot storage) but not yet downloaded
             await repo.Chunks.DownloadAsync(onlineChunk, cfi);
 
+            throw new NotImplementedException("check downloaded chunk size with the db");
+
             ChunkRestoredFromOnlineTier = true;
             logger.LogInformation($"Chunk {ch.ToShortString()} downloaded from online tier");
 
