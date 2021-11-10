@@ -69,8 +69,15 @@ internal partial class Repository
             return localDbPath;
         }
 
+        internal void SetMockedDbContext(AriusDbContext mockedContext) => this.mockedContext = mockedContext;
+        private AriusDbContext mockedContext;
+
+
         internal async Task<AriusDbContext> GetCurrentStateDbContext()
         {
+            if (mockedContext is not null)
+                return mockedContext;
+
             var dbPath = await dbPathTask;
             if (!File.Exists(dbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
@@ -116,7 +123,7 @@ internal partial class Repository
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.sqlite", true); //todo gzip //overwrite for unit tests -- multiple dbs in the same second
+            File.Move(vacuumedDbPath, $"arius-{DateTime.Now.ToUniversalTime().ToString("o").Replace(":", "-")}.sqlite"); //todo gzip
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
 

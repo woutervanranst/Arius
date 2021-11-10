@@ -85,7 +85,7 @@ public class Program
                                     else
                                         options.RootPath = AppContext.BaseDirectory;
 
-                                    options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+                                    options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now.ToUniversalTime().ToString("o").Replace(":", "-")}.log" } };
 
                                     options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
                                 });
