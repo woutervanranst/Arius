@@ -4,6 +4,7 @@ using Arius.Core.Tests;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
+using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -35,5 +36,11 @@ class ChunkRepositoryTests : TestBase
         var cb = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
 
         Assert.IsNull(cb);
+    }
+
+    [Test]
+    public void CopyUnitTestsFromBinaryRepositoryTests()
+    {
+        throw new NotImplementedException();
     }
 }
