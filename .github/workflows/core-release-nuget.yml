@@ -27,13 +27,12 @@ jobs:
       uses: actions/setup-dotnet@v1
       with:
         dotnet-version: 6.0.x
-        include-prerelease: true
 
     - name: Build
       run: dotnet build Arius.Core -c Release
     
-    - name: Test
-      run: dotnet test Arius.Core.Tests -c Release --no-build
+    #- name: Test
+    #  run: dotnet test Arius.Core.Tests -c Release --no-build
     
     - name: Pack
       run: dotnet pack Arius.Core -c Release --no-build --output .
