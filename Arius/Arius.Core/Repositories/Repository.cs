@@ -40,4 +40,6 @@ internal partial class Repository
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
         States = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
     }
+
+    private const string SUCCESSFUL_UPLOAD_METADATA_TAG = "UploadOK";
 }

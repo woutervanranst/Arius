@@ -19,6 +19,8 @@ using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
+using Azure.Storage.Blobs.Specialized;
+using System.IO.Compression;
 
 namespace Arius.Core.Repositories;
 
@@ -237,55 +239,87 @@ internal partial class Repository
 
         internal async Task CreateChunkHashListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
         {
+            /* When writing to blob
+             * Logging
+             * Check if exists
+             * Check tag
+             * error handling around write / delete on fail
+             * log
+             */
+
+            logger.LogDebug($"Creating ChunkList for '{bh.ToShortString()}'");
+
             if (chunkHashes.Length == 1)
                 return; //do not create a ChunkList for only one ChunkHash
 
-            var bc = container.GetBlobClient(GetChunkListBlobName(bh));
+            var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
 
-            if (await bc.ExistsAsync())
-                throw new InvalidOperationException($"ChunkList for '{bh}' already Exists");
+            // Check if the blob exists in an invalid state
+            if (await bbc.ExistsAsync())
+            {
+                var p = await bbc.GetPropertiesAsync();
+                if (!p.Value.Metadata.ContainsKey(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.Value.ContentLength == 0)
+                    await bbc.DeleteAsync();
+                else
+                    throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
+            }
 
-            var json = JsonSerializer.Serialize(chunkHashes.Select(cf => cf.Value)); //TODO as async?
-            var bytes = Encoding.UTF8.GetBytes(json);
-            var ms = new MemoryStream(bytes);
+            try
+            {
+                using (var ts = await bbc.OpenWriteAsync(overwrite: true))
+                {
+                    using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+                    await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));
+                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Error when creating ChunkList {bh.ToShortString()}");
+                await bbc.DeleteAsync();
 
-            await bc.UploadAsync(ms, new BlobUploadOptions { AccessTier = AccessTier.Cool });
+                throw;
+            }
+            
+            await bbc.SetMetadataAsync(new Dictionary<string, string> { { SUCCESSFUL_UPLOAD_METADATA_TAG, null } });
+            await bbc.SetAccessTierAsync(AccessTier.Cool);
+
+            logger.LogInformation($"ChunkList created for '{bh.ToShortString()}' with {chunkHashes.Length} chunks");
         }
 
         internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash bh)
         {
-            logger.LogInformation($"Getting chunks for binary {bh.Value}");
-            var chunkHashes = Array.Empty<ChunkHash>();
+            logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'");
 
             if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
-                return (new ChunkHash(bh)).SingleToArray();
+                return new ChunkHash(bh).SingleToArray();
+
+            var chs = default(ChunkHash[]);
 
             try
             {
-                var ms = new MemoryStream();
+                using (var ss = await container.GetBlockBlobClient(GetChunkListBlobName(bh)).OpenReadAsync())
+                {
+                    using var gzs = new GZipStream(ss, CompressionMode.Decompress);
+                    chs = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(gzs))
+                        !.Select(chv => new ChunkHash(chv))
+                        .ToArray();
 
-                var bc = container.GetBlobClient(GetChunkListBlobName(bh));
-
-                await bc.DownloadToAsync(ms);
-                ms.Position = 0;
-                chunkHashes = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(ms))!.Select(hv => new ChunkHash(hv)).ToArray();
-
-                return chunkHashes;
+                    return chs;
+                }
             }
-            catch (Azure.RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+            catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
-                throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
+                throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' does not exist");
             }
             finally
             {
-                logger.LogInformation($"Getting chunks for binary {bh.Value}... found {chunkHashes.Length} chunk(s)");
+                logger.LogInformation($"Getting chunks for binary '{bh.ToShortString()}'... found {chs.Length} chunk(s)");
             }
         }
-
         
 
-        private string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
+        internal string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
 
-        internal const string ChunkListsFolderName = "chunklists";
+        private const string ChunkListsFolderName = "chunklists";
     }
 }
