@@ -14,10 +14,17 @@ internal partial class Repository
 {
     internal class AriusDbContext : DbContext
     {
-        public DbSet<PointerFileEntry> PointerFileEntries { get; set; }
-        public DbSet<BinaryProperties> BinaryProperties { get; set; }
+        public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
+        public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
 
-
+#if DEBUG
+        /// <summary>
+        /// ONLY FOR MOCKING/UNIT TESTING PURPOSES
+        /// </summary>
+        internal AriusDbContext()
+        { 
+        }
+#endif
         internal AriusDbContext(string dbPath, Action<int> hasChanges)
         {
             this.dbPath = dbPath;

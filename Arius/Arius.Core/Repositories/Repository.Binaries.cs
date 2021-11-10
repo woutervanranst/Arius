@@ -199,8 +199,15 @@ internal partial class Repository
 
         public async Task<BinaryProperties> GetPropertiesAsync(BinaryHash bh)
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
-            return db.BinaryProperties.Single(bp => bp.Hash == bh);
+            try
+            {
+                await using var db = await parent.States.GetCurrentStateDbContext();
+                return db.BinaryProperties.Single(bp => bp.Hash == bh);
+            }
+            catch (InvalidOperationException e) when (e.Message == "Sequence contains no elements")
+            {
+                throw new InvalidOperationException($"Could not find BinaryProperties for '{bh}'", e);
+            }
         }
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
@@ -247,7 +254,7 @@ internal partial class Repository
              * log
              */
 
-            logger.LogDebug($"Creating ChunkList for '{bh.ToShortString()}'");
+            logger.LogDebug($"Creating ChunkList for '{bh.ToShortString()}'...");
 
             if (chunkHashes.Length == 1)
                 return; //do not create a ChunkList for only one ChunkHash
@@ -257,9 +264,12 @@ internal partial class Repository
             // Check if the blob exists in an invalid state
             if (await bbc.ExistsAsync())
             {
-                var p = await bbc.GetPropertiesAsync();
-                if (!p.Value.Metadata.ContainsKey(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.Value.ContentLength == 0)
+                var p = (await bbc.GetPropertiesAsync()).Value;
+                if (!p.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.ContentLength == 0)
+                {
+                    logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                     await bbc.DeleteAsync();
+                }
                 else
                     throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
             }
@@ -274,21 +284,23 @@ internal partial class Repository
             }
             catch (Exception e)
             {
-                logger.LogError(e, $"Error when creating ChunkList {bh.ToShortString()}");
+                var e2 = new InvalidOperationException($"Error when creating ChunkList {bh.ToShortString()}. Deleting...", e);
+                logger.LogError(e2);
                 await bbc.DeleteAsync();
+                logger.LogDebug("Succesfully deleted");
 
-                throw;
+                throw e2;
             }
-            
-            await bbc.SetMetadataAsync(new Dictionary<string, string> { { SUCCESSFUL_UPLOAD_METADATA_TAG, null } });
+
+            await bbc.SetMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG);
             await bbc.SetAccessTierAsync(AccessTier.Cool);
 
-            logger.LogInformation($"ChunkList created for '{bh.ToShortString()}' with {chunkHashes.Length} chunks");
+            logger.LogInformation($"Creating ChunkList for '{bh.ToShortString()}'... done with {chunkHashes.Length} chunks");
         }
 
         internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash bh)
         {
-            logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'");
+            logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
 
             if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
                 return new ChunkHash(bh).SingleToArray();
@@ -297,12 +309,19 @@ internal partial class Repository
 
             try
             {
-                using (var ss = await container.GetBlockBlobClient(GetChunkListBlobName(bh)).OpenReadAsync())
+                var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+
+                if (!await bbc.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG))
+                    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{SUCCESSFUL_UPLOAD_METADATA_TAG}' tag and is potentially corrupt");
+
+                using (var ss = await bbc.OpenReadAsync())
                 {
                     using var gzs = new GZipStream(ss, CompressionMode.Decompress);
                     chs = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(gzs))
                         !.Select(chv => new ChunkHash(chv))
                         .ToArray();
+
+                    logger.LogInformation($"Getting chunks for binary '{bh.ToShortString()}'... found {chs.Length} chunk(s)");
 
                     return chs;
                 }
@@ -310,10 +329,6 @@ internal partial class Repository
             catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
             {
                 throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' does not exist");
-            }
-            finally
-            {
-                logger.LogInformation($"Getting chunks for binary '{bh.ToShortString()}'... found {chs.Length} chunk(s)");
             }
         }
         

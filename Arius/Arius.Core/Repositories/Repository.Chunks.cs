@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
@@ -189,13 +190,16 @@ internal partial class Repository
         /// <returns>Returns the length of the uploaded stream.</returns>
         public async Task<long> UploadAsync(IChunk chunk, AccessTier tier)
         {
+            logger.LogDebug($"Uploading Chunk {chunk.Hash.ToShortString()}...");
+
             var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
             if (await bbc.ExistsAsync())
             {
-                if ((await bbc.GetPropertiesAsync()).Value.ContentLength == 0)
+                var p = (await bbc.GetPropertiesAsync()).Value;
+                if (!p.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.ContentLength == 0)
                 {
-                    logger.LogWarning($"Corrupt chunk {chunk.Hash} with size 0 exists. Deleting and uploading again");
+                    logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
                     await bbc.DeleteAsync();
                 }
                 else
@@ -204,31 +208,31 @@ internal partial class Repository
 
             try
             {
-                // v11 [DEPRECATED] of storage SDK with PutBlock: https://www.andrewhoefling.com/Blog/Post/uploading-large-files-to-azure-blob-storage-in-c-sharp
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
                 long length;
-                using (var ss = await chunk.OpenReadAsync())
+                using (var ts = await bbc.OpenWriteAsync(overwrite: true))
                 {
-                    using (var ts = await bbc.OpenWriteAsync(overwrite: true))
-                    {
-                        await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
-                        length = ts.Position;
-                    }
+                    using var ss = await chunk.OpenReadAsync();
+                    await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+                    length = ts.Position;
                 }
 
+                await bbc.SetMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG);
                 await bbc.SetAccessTierAsync(tier);
+
+                logger.LogInformation($"Uploading Chunk {chunk.Hash.ToShortString()}... done");
 
                 return length;
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Error while uploading chunk. Deleting potentially corrupt chunk...", chunk, tier); //TODO test this in a unit test
-
+                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.Hash}. Deleting...", e);
+                logger.LogError(e2); //TODO test this in a unit test
                 await bbc.DeleteAsync();
-
-                logger.LogInformation("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
-                throw;
+                logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
+                
+                throw e2;
             }
         }
 
@@ -238,6 +242,10 @@ internal partial class Repository
             {
                 using (var ts = target.Create())
                 {
+                    throw new NotImplementedException();
+                    //if (!await bbc.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG))
+                    //    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{SUCCESSFUL_UPLOAD_METADATA_TAG}' tag and is potentially corrupt");
+
                     using (var ss = await cbb.OpenReadAsync())
                     {
                         await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
