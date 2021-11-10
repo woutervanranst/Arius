@@ -219,7 +219,7 @@ internal class ArchiveCommand : ICommand
             var exceptions = ts.Select(t => t.Exception);
 
             foreach (var e in exceptions)
-                logger.LogError(e, "Error");
+                logger.LogError(e);
 
             throw new AggregateException(exceptions);
         }

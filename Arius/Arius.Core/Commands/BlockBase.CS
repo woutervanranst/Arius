@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Commands.Archive;
 using Arius.Core.Models;
+using Arius.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using System;
@@ -81,7 +82,7 @@ internal abstract class TaskBlockBase : BlockBase
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Exception");
+                logger.LogError(e);
 
                 throw; //Set this task to Faulted
             }
@@ -122,7 +123,7 @@ internal abstract class TaskBlockBase<TSource> : TaskBlockBase
             }
             catch (Exception e)
             {
-                logger.LogError(e, "Exception");
+                logger.LogError(e);
 
                 throw; //Set this task to Faulted
             }

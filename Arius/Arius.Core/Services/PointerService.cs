@@ -179,9 +179,11 @@ internal class PointerService
                 return new PointerFile(root, pointerFileInfo, bh2);
             }
             else
-            { 
-                logger.LogError(e, $"'{pointerFileInfo.FullName}' is not a valid PointerFile", pointerFileInfo);
-                throw new ArgumentException($"'{pointerFileInfo.FullName}' is not a valid PointerFile");
+            {
+                var e2 = new ArgumentException($"'{pointerFileInfo.FullName}' is not a valid PointerFile", e);
+                logger.LogError(e2);
+                
+                throw e2;
             }
         }
 
