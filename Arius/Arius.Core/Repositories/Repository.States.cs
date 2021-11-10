@@ -119,11 +119,13 @@ internal partial class Repository
                 await using var ts = await bbc.OpenWriteAsync(overwrite: true);
                 await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
             }
+
             await bbc.SetAccessTierAsync(AccessTier.Cool);
+            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes-256-cbc+gzip" });
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{DateTime.Now.ToUniversalTime().ToString("o").Replace(":", "-")}.sqlite"); //todo gzip
+            File.Move(vacuumedDbPath, $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite"); //todo gzip
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
 

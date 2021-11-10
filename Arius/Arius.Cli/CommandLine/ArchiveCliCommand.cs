@@ -16,6 +16,13 @@ namespace Arius.Cli.CommandLine;
 
 internal class ArchiveCliCommand : ICliCommand
 {
+    public ArchiveCliCommand(DateTime versionUtc)
+    {
+        this.versionUtc = versionUtc;
+    }
+
+    private readonly DateTime versionUtc;
+
     public Command GetCommand()
     {
         var archiveCommand = new Command(
@@ -130,7 +137,7 @@ internal class ArchiveCliCommand : ICliCommand
                         var facade = host.Services.GetRequiredService<IFacade>();
 
                         logger.LogInformation($@"Creating ArchiveCommand: archiving '{path}' to '{accountName}\{container}'...");
-                        var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+                        var c = facade.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
 
                         logger.LogInformation("Executing Command...");
                         var r = await c.Execute();

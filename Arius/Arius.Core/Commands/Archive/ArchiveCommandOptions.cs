@@ -9,7 +9,7 @@ internal class ArchiveCommandOptions :
     ServicesOptions,
     Facade.Facade.IOptions
 {
-    internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+    internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
         : base(accountName, accountKey, container, passphrase)
     {
         FastHash = fastHash;
@@ -17,7 +17,7 @@ internal class ArchiveCommandOptions :
         Tier = tier;
         Dedup = dedup;
         Path = path;
-
+        VersionUtc = versionUtc;
         var validator = new Validator();
         validator.ValidateAndThrow(this);
     }
@@ -27,15 +27,15 @@ internal class ArchiveCommandOptions :
     public AccessTier Tier { get; private init; }
     public bool Dedup { get; private init; }
     public string Path { get; private init; }
+    public DateTime VersionUtc { get; private init; }
 
-
-    public int IndexBlock_Parallelism => 8; // Environment.ProcessorCount; //index AND hash options
+    public int IndexBlock_Parallelism => 8 * 2; // Environment.ProcessorCount; //index AND hash options
 
     public int BinariesToUpload_BufferSize => 1000;
 
-    public int UploadBinaryFileBlock_BinaryFileParallelism => 16;
+    public int UploadBinaryFileBlock_BinaryFileParallelism => 16 * 2;
     public int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    public int TransferChunked_ParallelChunkTransfers => 128;
+    public int TransferChunked_ParallelChunkTransfers => 128 * 2;
 
     public int PointersToCreate_BufferSize => 1000;
     

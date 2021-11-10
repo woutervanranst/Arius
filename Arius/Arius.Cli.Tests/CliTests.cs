@@ -75,7 +75,7 @@ class CliTests
     {
         CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd);
 
-        Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+        Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, DateTime.UtcNow);
 
         var r = await ExecuteMainWithMockedFacade(cmd, expr);
 

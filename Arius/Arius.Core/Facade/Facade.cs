@@ -40,7 +40,7 @@ namespace Arius.Core.Facade;
 
 public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
 {
-    ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path);
+    ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc);
     ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path);
     ICommand CreateDedupEvalCommand(string path);
 }
@@ -100,9 +100,9 @@ public class Facade : IFacade
         return dec;
 
     }
-    public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path)
+    public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
     {
-        var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path);
+        var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
 
         var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 

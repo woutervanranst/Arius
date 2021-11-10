@@ -40,7 +40,6 @@ internal class ArchiveCommand : ICommand
     {
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var repo = services.GetRequiredService<Repository>();
-        var versionUtc = DateTime.Now.ToUniversalTime(); //  !! Table Storage bewaart alles in universal time TODO nadenken over andere impact TODO test dit
         var pointerService = services.GetRequiredService<PointerService>();
         var root = new DirectoryInfo(options.Path);
 
@@ -127,7 +126,7 @@ internal class ArchiveCommand : ICommand
             sourceFunc: () => pointerFileEntriesToCreate,
             maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
             repo: repo,
-            versionUtc: versionUtc,
+            versionUtc: options.VersionUtc,
             onCompleted: () => { });
         var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
@@ -148,7 +147,7 @@ internal class ArchiveCommand : ICommand
             {
                 var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
                 var pfes = (await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false))
-                    .Where(pfe => pfe.VersionUtc < versionUtc); // that were not created in the current run (those are assumed to be up to date)
+                    .Where(pfe => pfe.VersionUtc < options.VersionUtc); // that were not created in the current run (those are assumed to be up to date)
                 await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
                 return pointerFileEntriesToCheckForDeletedPointers;
             },
@@ -156,7 +155,7 @@ internal class ArchiveCommand : ICommand
             repo: repo,
             root: root,
             pointerService: pointerService,
-            versionUtc: versionUtc,
+            versionUtc: options.VersionUtc,
             onCompleted: () => { });
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
@@ -189,7 +188,7 @@ internal class ArchiveCommand : ICommand
             loggerFactory: loggerFactory,
             sourceFunc: null,
             repo: repo,
-            versionUtc: versionUtc,
+            versionUtc: options.VersionUtc,
             done: () => { });
 
 
@@ -224,7 +223,7 @@ internal class ArchiveCommand : ICommand
             throw new AggregateException(exceptions);
         }
 
-        await repo.States.CommitToBlobStorage(versionUtc);
+        await repo.States.CommitToBlobStorage(options.VersionUtc);
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
         //{
         //    //something went wrong

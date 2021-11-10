@@ -15,6 +15,8 @@ using Arius.Core.Facade;
 using System.IO;
 using System.CommandLine.Parsing;
 using Arius.Cli.CommandLine;
+using System.IO.Compression;
+using Arius.Core.Extensions;
 
 /*
  * This is required to test the internals of the Arius.Cli assembly
@@ -24,7 +26,6 @@ namespace Arius.Cli;
 
 public class Program
 {
-
     [ThreadStatic]
     public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
 
@@ -47,13 +48,16 @@ public class Program
         //{
         //};
 
+        var versionUtc = DateTime.UtcNow;
+        var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+
         Console.WriteLine("Arius started.");
 
         int? r = default;
             
         try
         {
-            var cliParser = GetCommandLineBuilder()
+            var cliParser = GetCommandLineBuilder(versionUtc)
                 .UseHost(_ => Host.CreateDefaultBuilder(), host =>
                 {
                     InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow? see https://github.com/dotnet/command-line-api/issues/1025 ? https://github.com/dotnet/command-line-api/issues/1312 ? By design https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine.Hosting.Tests/HostingTests.cs#L357 ?
@@ -85,7 +89,7 @@ public class Program
                                     else
                                         options.RootPath = AppContext.BaseDirectory;
 
-                                    options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now.ToUniversalTime().ToString("o").Replace(":", "-")}.log" } };
+                                    options.Files = new[] { new LogFileOptions { Path = logFilePath } };
 
                                     options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
                                 });
@@ -124,6 +128,16 @@ public class Program
         {
             HandleUnloggableException(e);
         }
+        finally
+        {
+            Console.WriteLine("Compressing logfile...");
+
+            await new FileInfo(logFilePath).CompressAsync(deleteOriginal: true);
+
+            Console.WriteLine("Compressing logfile... done");
+
+            File.Delete(logFilePath);
+        }
 
         Environment.ExitCode = r ?? (int)ExitCode.ERROR;
         return Environment.ExitCode;
@@ -134,11 +148,11 @@ public class Program
         Console.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:\n{e}");
     }
 
-    private CommandLineBuilder GetCommandLineBuilder()
+    private CommandLineBuilder GetCommandLineBuilder(DateTime versionUtc)
     {
         var root = new RootCommand
         {
-            new ArchiveCliCommand().GetCommand(),
+            new ArchiveCliCommand(versionUtc).GetCommand(),
             new RestoreCliCommand().GetCommand(),
             new DedupEvalCliCommand().GetCommand()
         };

@@ -1,25 +1,27 @@
 ﻿using Arius.Core.Models;
 using System;
 using System.IO;
+using System.IO.Compression;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions;
 
-static class FileInfoExtensions
+public static class FileInfoExtensions
 {
-    public static bool IsPointerFile(this FileInfo fi) => fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase);
+    internal static bool IsPointerFile(this FileInfo fi) => fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase);
 
 
     /// <summary>
     /// Copy to targetDir preserving the original filename
     /// </summary>
-    public static FileInfo CopyTo(this FileInfo source, DirectoryInfo targetDir)
+    internal static FileInfo CopyTo(this FileInfo source, DirectoryInfo targetDir)
     {
         return source.CopyTo(Path.Combine(targetDir.FullName, source.Name));
     }
     /// <summary>
     /// Copy to targetDir with the given name
     /// </summary>
-    public static FileInfo CopyTo(this FileInfo source, DirectoryInfo targetDir, string targetName)
+    internal static FileInfo CopyTo(this FileInfo source, DirectoryInfo targetDir, string targetName)
     {
         return source.CopyTo(Path.Combine(targetDir.FullName, targetName));
     }
@@ -28,7 +30,7 @@ static class FileInfoExtensions
     /// Copy to the targetDir in the same relative path as vs the sourceRoot
     /// eg. CopyTo('dir1\documents\file.txt', 'dir1', 'dir2') results in 'dir2\documents\file.txt')
     /// </summary>
-    public static FileInfo CopyTo(this FileInfo source, DirectoryInfo sourceRoot, DirectoryInfo targetDir, bool overwrite = false)
+    internal static FileInfo CopyTo(this FileInfo source, DirectoryInfo sourceRoot, DirectoryInfo targetDir, bool overwrite = false)
     {
         var relativeName = Path.GetRelativePath(sourceRoot.FullName, source.FullName);
         var target = new FileInfo(Path.Combine(targetDir.FullName, relativeName));
@@ -42,11 +44,24 @@ static class FileInfoExtensions
 
         return target;
     }
-        
-    public static void Rename(this FileInfo source, string targetName)
+
+    internal static void Rename(this FileInfo source, string targetName)
     {
         source.MoveTo(Path.Combine(source.DirectoryName, targetName));
     }
 
-    public static string GetRelativeName(this FileInfo fi, DirectoryInfo root) => Path.GetRelativePath(root.FullName, fi.FullName);
+    internal static string GetRelativeName(this FileInfo fi, DirectoryInfo root) => Path.GetRelativePath(root.FullName, fi.FullName);
+
+    public static async Task CompressAsync(this FileInfo fi, bool deleteOriginal)
+    {
+        using (var ss = fi.OpenRead())
+        {
+            using var ts = File.OpenWrite($"{fi.FullName}.gzip");
+            using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+            await ss.CopyToAsync(gzs);
+        }
+
+        if (deleteOriginal)
+            fi.Delete();
+    }
 }

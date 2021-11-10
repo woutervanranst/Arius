@@ -116,7 +116,8 @@ abstract class TestBase
             removeLocal,
             tier.ToString(),
             dedup,
-            TestSetup.ArchiveTestDirectory.FullName);
+            TestSetup.ArchiveTestDirectory.FullName,
+            DateTime.UtcNow);
 
         await c.Execute();
 
