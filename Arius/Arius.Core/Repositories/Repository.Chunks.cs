@@ -197,7 +197,7 @@ internal partial class Repository
             if (await bbc.ExistsAsync())
             {
                 var p = (await bbc.GetPropertiesAsync()).Value;
-                if (!p.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.ContentLength == 0)
+                if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
                 {
                     logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -218,8 +218,8 @@ internal partial class Repository
                     length = ts.Position;
                 }
 
-                await bbc.SetMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG);
                 await bbc.SetAccessTierAsync(tier);
+                await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes-256-cbc+gzip" });
 
                 logger.LogInformation($"Uploading Chunk {chunk.Hash.ToShortString()}... done");
 

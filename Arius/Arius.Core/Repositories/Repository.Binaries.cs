@@ -265,7 +265,7 @@ internal partial class Repository
             if (await bbc.ExistsAsync())
             {
                 var p = (await bbc.GetPropertiesAsync()).Value;
-                if (!p.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG) || p.ContentLength == 0)
+                if (p.ContentType != JsonContentType || p.ContentLength == 0)
                 {
                     logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -292,8 +292,8 @@ internal partial class Repository
                 throw e2;
             }
 
-            await bbc.SetMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG);
             await bbc.SetAccessTierAsync(AccessTier.Cool);
+            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = JsonContentType });
 
             logger.LogInformation($"Creating ChunkList for '{bh.ToShortString()}'... done with {chunkHashes.Length} chunks");
         }
@@ -311,8 +311,8 @@ internal partial class Repository
             {
                 var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
 
-                if (!await bbc.HasMetadataTagAsync(SUCCESSFUL_UPLOAD_METADATA_TAG))
-                    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{SUCCESSFUL_UPLOAD_METADATA_TAG}' tag and is potentially corrupt");
+                if ((await bbc.GetPropertiesAsync()).Value.ContentType != JsonContentType)
+                    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JsonContentType}' ContentType and is potentially corrupt");
 
                 using (var ss = await bbc.OpenReadAsync())
                 {
@@ -336,5 +336,7 @@ internal partial class Repository
         internal string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
 
         private const string ChunkListsFolderName = "chunklists";
+
+        private const string JsonContentType = "application/json+gzip";
     }
 }

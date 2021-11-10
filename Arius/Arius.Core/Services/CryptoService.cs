@@ -20,6 +20,8 @@ internal static class CryptoService
     private const int blockSize = 128;
     private const int saltSize = 8;
 
+    public static readonly string ContentType = "application/aes-256-cbc+gzip";
+
     public static async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
     {
         /* SET UP ENCRYPTION
@@ -58,7 +60,7 @@ internal static class CryptoService
          * https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
          */
 
-        using var gzs = new GZipStream(cs, CompressionLevel.Fastest);
+        using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
 
 
         // Write salt to the begining of the TARGET stream -- not the gz stream
