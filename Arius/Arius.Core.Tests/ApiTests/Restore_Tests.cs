@@ -5,6 +5,7 @@ using Arius.Core.Services;
 using Arius.Core.Tests;
 using Arius.Core.Tests.Extensions;
 using Azure.Storage.Blobs.Models;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
@@ -21,13 +22,69 @@ class Restore_Tests : TestBase
         RestoreTestDirectory.Clear();
     }
 
+    /*
+     * Restore_SynchronizeDownloadFile              Restore_SynchronizeFile_ValidationException
+     * Restore_SynchronizeDownloadDirectory
+     * Restore_SynchronizeNoDownloadFile            Restore_SynchronizeFile_ValidationException
+     * Restore_SynchroniseNoDownloadDirectory
+     * Restore_NoSynchronizeDownloadFile
+     * Restore_NoSynchronizeDownloadDirectory
+     * Restore_NoSynchronizeNoDownloadFile
+     * Restore_NoSynchronizeNoDownloadDirectory
+     */
+
+    [Test]
+    public void Restore_SynchronizeFile_ValidationException([Values(true, false)] bool download) //Synchronize flag only valid on directory
+    {
+        var fn = Path.Combine(TestBase.RestoreTestDirectory.FullName, "ha.pointer.arius");
+        File.WriteAllText(fn, "");
+
+        Assert.CatchAsync<ValidationException>(async () => await RestoreCommand(synchronize: true, download: download, path: fn));
+
+        File.Delete(fn);
+    }
+
+    [Test]
+    public async Task Restore_SynchronizeDownloadDirectory()
+    {
+    }
+
+    [Test]
+    public async Task Restore_SynchroniseNoDownloadDirectory()
+    {
+    }
+
+    [Test]
+    public async Task Restore_NoSynchronizeDownloadFile()
+    {
+    }
+
+    [Test]
+    public async Task Restore_NoSynchronizeDownloadDirectory()
+    {
+    }
+
+    [Test]
+    public async Task Restore_NoSynchronizeNoDownloadFile()
+    {
+    }
+
+    [Test]
+    public async Task Restore_NoSynchronizeNoDownloadDirectory()
+    {
+    }
+    
+
+
+
+
 
     /// <summary>
     /// Test the --synchronize flag
     /// </summary>
     /// <returns></returns>
     [Test] //Deze hoort bij Order(1001) maar gemaakt om apart te draaien
-    public async Task Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized()
+    public async Task Restore_SynchronizeNoDownloadDirectory_PointerFilesSynchronized()
     {
         //Archive the full directory so that only pointers remain
         await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
@@ -52,32 +109,61 @@ class Restore_Tests : TestBase
         Assert.IsTrue(f3.Exists); //non-pointer files remain intact
     }
 
-
     [Test]
-    public async Task Restore_SynchronizeFile_InvalidOperationException()
+    public async Task Restore_NoSynchronizeDownloadDirectory_Success()
     {
-        // Scenario: Restore - pass synchronize option and pass a single file as path -- should result in InvalidOperation
+        // Selective restore
 
         //Archive the full directory so that only pointers remain
         await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
 
-        var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
-        var pfi2 = pfi.CopyTo(RestoreTestDirectory);
-        Assert.CatchAsync<InvalidOperationException>(async () =>
-        {
-            try
-            {
-                await RestoreCommand(
-                    synchronize: true,
-                    download: false,
-                    path: pfi2.FullName);
-            }
-            catch (AggregateException e)
-            {
-                throw e.InnerException.InnerException;
-            }
-        });
+        Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
+
+        // Copy one pointer (to restore) to the restoredirectory
+        var pfi1 = TestSetup.ArchiveTestDirectory.GetPointerFileInfos().First();
+        pfi1 = pfi1.CopyTo(TestSetup.RestoreTestDirectory);
+
+        //var pf1 = new PointerFile(TestSetup.RestoreTestDirectory, pfi1);
+        //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
+
+        //Assert.IsTrue(File.Exists(pf1.FullName));
+        //Assert.IsNull(bf1); //does not exist
+
+
+        await RestoreCommand(synchronize: false, download: true, keepPointers: true);
+
+        //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
+
+
+        //Assert.IsTrue(File.Exists(pf1.FullName));
+        //Assert.IsTrue(File.Exists(bf1.FullName));
+
+        //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
+
+        ////Assert.IsTrue(pfi1.Exists);
+        //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
+        //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
+
     }
+
+    [Test]
+    public async Task Restore_SynchronizeDownloadDirectory_Success()
+    {
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
+    }
+
+
+
+    [Test]
+    public async Task Restore_NoSynchronizeDownloadFile_Success()
+    {
+        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
+            throw new NotImplementedException();
+    }
+
+
+
 
 
     [Test]
@@ -88,13 +174,13 @@ class Restore_Tests : TestBase
         //Archive the full directory so that only pointers remain
         await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
 
-        // 1. synchronize and do not download folder: Restore_SynchronizeNoDownloadFolder_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
+        // 1. synchronize and do not download Directory: Restore_SynchronizeNoDownloadDirectory_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
         // 2.1 synchronize and do not fownload file -- invalidoperaiton
         // 2.2 synchroniwe and download file -- invalidoperatoin
         // 3. do not synchronize and download file
 
-        // synchronize and download folder --> Restore_SynchronizeDirectoryNoPointers_Success
-        // do not synchronize and download folder --> Restore_NoSynchronizeDownload_Success
+        // synchronize and download Directory --> Restore_SynchronizeDirectoryNoPointers_Success
+        // do not synchronize and download Directory --> Restore_NoSynchronizeDownload_Success
 
 
 
@@ -111,67 +197,7 @@ class Restore_Tests : TestBase
     }
 
 
-    [Test]
-    public async Task Restore_NoSynchronizeDownload_Success()
-    {
-        // Selectively restore
-
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
-
-        //Assert.IsTrue(TestSetup.restoreTestDirectory.IsEmpty());
-
-        //// Copy one pointer (to restore) to the restoredirectory
-        //var pfi1 = TestSetup.archiveTestDirectory.GetPointerFileInfos().First();
-        //pfi1 = pfi1.CopyTo(TestSetup.restoreTestDirectory);
-
-        //var pf1 = new PointerFile(TestSetup.restoreTestDirectory, pfi1);
-        //var bf1 = PointerService.GetBinaryFile(pf1); // new BinaryFile(pf1.Root, pf1.BinaryFileInfo);
-
-        //Assert.IsTrue(File.Exists(pf1.FullName));
-        //Assert.IsNull(bf1); //does not exist
-
-
-        ////This is not yet implemented
-        //Assert.CatchAsync<NotImplementedException>(async () => await RestoreCommand(synchronize: false, download: true, keepPointers: true));
-
-        //var services = await RestoreCommand(synchronize: false, download: true, keepPointers: true);
-
-
-        //Assert.IsTrue(File.Exists(pf1.FullName));
-        //Assert.IsTrue(File.Exists(bf1.FullName));
-
-        //IEnumerable<FileInfo> restoredFiles = TestSetup.restoreTestDirectory.GetAllFiles();
-
-        ////Assert.IsTrue(pfi1.Exists);
-        //Assert.IsNotNull(restoredFiles.Single(fi => fi.IsPointerFile()));
-        //Assert.IsNotNull(restoredFiles.Single(fi => !fi.IsPointerFile()));
-    }
-
-
-    [Test]
-    public async Task Restore_FileDoesNotExist_ValidationException()
-    {
-        //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
-
-        var pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
-        var pfi2 = pfi.CopyTo(RestoreTestDirectory);
-
-        // Delete the pointerfile
-        pfi2.Delete();
-
-        // Restore a file that does not exist
-        Assert.CatchAsync<FluentValidation.ValidationException>(async () =>
-            await RestoreCommand(path: pfi2.FullName));
-    }
-
-    [Test]
-    public async Task Restore_FolderDoesNotExist_ValidationException()
-    {
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
-    }
+    
 
     [Test]
     public async Task Restore_OneFileWithChunkAlreadyDownloaded_BinaryFileRestoredFromLocal()
