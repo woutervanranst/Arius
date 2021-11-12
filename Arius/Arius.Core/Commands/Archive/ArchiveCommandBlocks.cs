@@ -92,7 +92,7 @@ internal class IndexBlock : TaskBlockBase<DirectoryInfo>
                             if (pf.Hash != bh)
                                 throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-                            if (!await repo.Binaries.ExistsAsync(bh))
+                            if (!await repo.Binaries.ExistsAsync(bh))//TODO this is a choke point for large state files -- the hashing could already go ahead?
                             {
                                 logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
                                 await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
