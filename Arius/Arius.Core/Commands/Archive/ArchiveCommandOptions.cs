@@ -16,8 +16,9 @@ internal class ArchiveCommandOptions :
         RemoveLocal = removeLocal;
         Tier = tier;
         Dedup = dedup;
-        Path = path;
+        Path = new DirectoryInfo(path);
         VersionUtc = versionUtc;
+
         var validator = new Validator();
         validator.ValidateAndThrow(this);
     }
@@ -26,10 +27,10 @@ internal class ArchiveCommandOptions :
     public bool RemoveLocal { get; private init; }
     public AccessTier Tier { get; private init; }
     public bool Dedup { get; private init; }
-    public string Path { get; private init; }
+    public DirectoryInfo Path { get; }
     public DateTime VersionUtc { get; private init; }
 
-    public int IndexBlock_Parallelism => 8 * 2; // Environment.ProcessorCount; //index AND hash options
+    public int IndexBlock_Parallelism => 1; //8 * 2; // Environment.ProcessorCount; //index AND hash options
 
     public int BinariesToUpload_BufferSize => 1000;
 
@@ -60,7 +61,7 @@ internal class ArchiveCommandOptions :
                 .NotEmpty()
                 .Custom((path, context) =>
                 {
-                    if (!Directory.Exists(path))
+                    if (!path.Exists)
                         context.AddFailure($"Directory {path} does not exist.");
                 });
             RuleFor(o => o.Tier).Must(tier =>

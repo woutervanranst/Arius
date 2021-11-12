@@ -41,8 +41,7 @@ internal class ArchiveCommand : ICommand
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var repo = services.GetRequiredService<Repository>();
         var pointerService = services.GetRequiredService<PointerService>();
-        var root = new DirectoryInfo(options.Path);
-
+        
 
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
@@ -51,13 +50,16 @@ internal class ArchiveCommand : ICommand
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
-            sourceFunc: () => root,
+            sourceFunc: () => options.Path,
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,
             fastHash: options.FastHash,
             pointerService: pointerService,
             repo: repo,
             hvp: services.GetRequiredService<IHashValueProvider>(),
-            onIndexedPointerFile: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B301
+            onIndexedPointerFile: async pf =>
+            {
+                await pointerFileEntriesToCreate.Writer.WriteAsync(pf); //B301
+            },
             onIndexedBinaryFile: async arg =>
             {
                 var (bf, alreadyBackedUp) = arg;
@@ -71,7 +73,10 @@ internal class ArchiveCommand : ICommand
                 else
                     await binariesToUpload.Writer.WriteAsync(bf); //B302
             },
-            onBinaryFileIndexCompleted: () => binariesToUpload.Writer.Complete(), //B310 
+            onBinaryFileIndexCompleted: () =>
+            {
+                binariesToUpload.Writer.Complete(); //B310
+            },
             binaryFileUploadCompletedTaskCompletionSource: binaryFileUploadCompleted,
             onCompleted: () => { });
         var indexTask = indexBlock.GetTask;
@@ -86,7 +91,10 @@ internal class ArchiveCommand : ICommand
             maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
             repo: repo,
             options: options,
-            onBinaryExists: async bf => await pointersToCreate.Writer.WriteAsync(bf), //B403
+            onBinaryExists: async bf =>
+            {
+                await pointersToCreate.Writer.WriteAsync(bf); //B403
+            },
             onCompleted: () =>
             {
                 pointersToCreate.Writer.Complete(); //B410
@@ -153,7 +161,7 @@ internal class ArchiveCommand : ICommand
             },
             maxDegreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
             repo: repo,
-            root: root,
+            root: options.Path,
             pointerService: pointerService,
             versionUtc: options.VersionUtc,
             onCompleted: () => { });
