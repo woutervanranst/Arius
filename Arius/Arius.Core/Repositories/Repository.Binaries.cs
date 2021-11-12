@@ -53,7 +53,7 @@ internal partial class Repository
         /// </summary>
         public async Task UploadAsync(BinaryFile bf, ArchiveCommandOptions options)
         {
-            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of '{bf.Name}' ('{bf.Hash.ToShortString()}')...");
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
 
             // Upload the Binary
             var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
@@ -64,7 +64,7 @@ internal partial class Repository
                     return await UploadBinaryAsSingleChunkAsync(bf, options);
             });
 
-            logger.LogInformation($"Uploading {bf.Length.GetBytesReadable()} of {bf}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
             // Create the ChunkList
             await CreateChunkHashListAsync(bf.Hash, chs);

@@ -190,7 +190,7 @@ internal partial class Repository
         /// <returns>Returns the length of the uploaded stream.</returns>
         public async Task<long> UploadAsync(IChunk chunk, AccessTier tier)
         {
-            logger.LogDebug($"Uploading Chunk {chunk.Hash.ToShortString()}...");
+            logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
 
             var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
@@ -203,7 +203,13 @@ internal partial class Repository
                     await bbc.DeleteAsync();
                 }
                 else
-                    throw new InvalidOperationException($"Chunk {chunk.Hash} with nonzero length already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                {
+                    // graceful handling if the chunk is already uploaded
+                    //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                    logger.LogWarning($"Chunk '{chunk.Hash}' already existsted, was perhaps uploaded in a previous, crashed run?");
+
+                    return p.ContentLength;
+                }
             }
 
             try
@@ -219,9 +225,9 @@ internal partial class Repository
                 }
 
                 await bbc.SetAccessTierAsync(tier);
-                await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes-256-cbc+gzip" });
+                await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
-                logger.LogInformation($"Uploading Chunk {chunk.Hash.ToShortString()}... done");
+                logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
 
                 return length;
             }
