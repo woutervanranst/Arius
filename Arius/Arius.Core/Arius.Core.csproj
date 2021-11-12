@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <VersionMajor>1</VersionMajor>
+    <VersionMajor>2</VersionMajor>
     <VersionMinor>0</VersionMinor>
     <VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.ToString("Mdd"))</VersionPatch>
     <VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
@@ -29,8 +29,8 @@
     <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>
     <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
     <Authors>Wouter Van Ranst</Authors>
-    <Company>Wouter Van Ranst</Company>
-    <Copyright>Wouter Van Ranst</Copyright>
+    <Company>Blue Software</Company>
+    <Copyright>Blue Software</Copyright>
 
     <TieredCompilation>false</TieredCompilation>
   </PropertyGroup>
