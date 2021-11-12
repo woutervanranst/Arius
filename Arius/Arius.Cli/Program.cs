@@ -130,13 +130,17 @@ public class Program
         }
         finally
         {
-            Console.WriteLine("Compressing logfile...");
+            var fi = new FileInfo(logFilePath);
+            if (fi.Exists)
+            {
+                Console.WriteLine("Compressing logfile...");
 
-            await new FileInfo(logFilePath).CompressAsync(deleteOriginal: true);
+                await fi.CompressAsync(deleteOriginal: true);
 
-            Console.WriteLine("Compressing logfile... done");
+                Console.WriteLine("Compressing logfile... done");
 
-            File.Delete(logFilePath);
+                fi.Delete();
+            }
         }
 
         Environment.ExitCode = r ?? (int)ExitCode.ERROR;
