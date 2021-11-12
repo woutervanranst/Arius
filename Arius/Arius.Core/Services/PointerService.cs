@@ -80,7 +80,6 @@ internal class PointerService
         else
         {
             // The PointerFile exists
-
             var pf = OpenPointerFile(root, target);
 
             //Check whether the contents of the PointerFile are correct / is it a valid PointerFile / does the hash it refer to match the binaryHash (eg. not in the case of 0 bytes or ...)

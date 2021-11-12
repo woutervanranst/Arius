@@ -39,20 +39,11 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
         var repo = services.GetRequiredService<Repository>();
         var pointerService = services.GetRequiredService<PointerService>();
 
-        DirectoryInfo root;
-        FileSystemInfo pathToRestore;
+        DirectoryInfo root = null;
+        FileSystemInfo pathToRestore = null;
 
-        if (File.GetAttributes(options.Path).HasFlag(FileAttributes.Directory))
-        {
-            root = new DirectoryInfo(options.Path);
-            pathToRestore = root;
-        }
-        else
-        {
-            var file = new FileInfo(options.Path);
-            root = file.Directory;
-            pathToRestore = file;
-        }
+
+        
 
             
         logger.LogInformation("Determining PointerFiles to restore...");
@@ -64,7 +55,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
-            sourceFunc: () => pathToRestore, //S10
+            sourceFunc: () => options.Path, //S10
             maxDegreeOfParallelism: 2,
             synchronize: options.Synchronize,
             repo: repo,
@@ -94,7 +85,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
                     restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
                 }
             },
-            done: () => 
+            onCompleted: () => 
             {
                 binariesToDownload.Writer.Complete(); //S13
             });
