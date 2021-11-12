@@ -18,7 +18,7 @@ using Arius.Core.Extensions;
 
 namespace Arius.Core.Commands.Archive;
 
-internal class ArchiveCommand : ICommand
+internal class ArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
 {
     public ArchiveCommand(ArchiveCommandOptions options,
         ILogger<ArchiveCommand> logger,
