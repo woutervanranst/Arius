@@ -23,12 +23,12 @@ internal class ArchiveCommandOptions :
         validator.ValidateAndThrow(this);
     }
 
-    public bool FastHash { get; private init; }
-    public bool RemoveLocal { get; private init; }
-    public AccessTier Tier { get; private init; }
-    public bool Dedup { get; private init; }
+    public bool FastHash { get; }
+    public bool RemoveLocal { get; }
+    public AccessTier Tier { get; }
+    public bool Dedup { get; }
     public DirectoryInfo Path { get; }
-    public DateTime VersionUtc { get; private init; }
+    public DateTime VersionUtc { get; }
 
     public int IndexBlock_Parallelism => 1; //8 * 2; // Environment.ProcessorCount; //index AND hash options
 
