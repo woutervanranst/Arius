@@ -96,7 +96,7 @@ internal class RestoreCliCommand : ICliCommand
                         var facade = host.Services.GetRequiredService<IFacade>();
 
                         logger.LogInformation($@"Creating RestoreCommand: restoring '{accountName}\{container}' to '{path}'...");
-                        var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path);
+                        var c = facade.CreateRestoreCommand(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path, DateTime.UtcNow);
 
                         logger.LogInformation("Executing Command...");
                         var r = await c.Execute();

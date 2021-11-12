@@ -163,7 +163,8 @@ abstract class TestBase
             synchronize,
             download,
             keepPointers,
-            path);
+            path,
+            DateTime.UtcNow);
 
         await c.Execute();
 
