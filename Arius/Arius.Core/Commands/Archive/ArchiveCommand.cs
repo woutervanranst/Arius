@@ -46,7 +46,7 @@ internal class ArchiveCommand : ICommand //This class is internal but the interf
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
-        var binaryFileUploadCompleted = new TaskCompletionSource();
+        var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
