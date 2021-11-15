@@ -271,7 +271,13 @@ internal partial class Repository
                     await bbc.DeleteAsync();
                 }
                 else
-                    throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
+                {
+                    // gracful handling if the chunklist already exists
+                    //throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
+                    logger.LogWarning($"ChunkList for '{bh.ToShortString()}' already exists");
+                    
+                    return;
+                }
             }
 
             try
