@@ -192,24 +192,33 @@ internal partial class Repository
         {
             logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
 
-            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
-
-            if (await bbc.ExistsAsync())
+            BlockBlobClient bbc;
+            try
             {
-                var p = (await bbc.GetPropertiesAsync()).Value;
-                if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
-                {
-                    logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
-                    await bbc.DeleteAsync();
-                }
-                else
-                {
-                    // graceful handling if the chunk is already uploaded
-                    //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
-                    logger.LogWarning($"Chunk '{chunk.Hash}' already existsted, was perhaps uploaded in a previous, crashed run?");
+                bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
-                    return p.ContentLength;
+                if (await bbc.ExistsAsync())
+                {
+                    var p = (await bbc.GetPropertiesAsync()).Value;
+                    if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
+                    {
+                        logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
+                        await bbc.DeleteAsync();
+                    }
+                    else
+                    {
+                        // graceful handling if the chunk is already uploaded
+                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                        logger.LogWarning($"Chunk '{chunk.Hash}' already existsted, was perhaps uploaded in a previous, crashed run?");
+
+                        return p.ContentLength;
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
+                throw;
             }
 
             try

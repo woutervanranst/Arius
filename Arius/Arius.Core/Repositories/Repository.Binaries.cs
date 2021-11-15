@@ -259,25 +259,34 @@ internal partial class Repository
             if (chunkHashes.Length == 1)
                 return; //do not create a ChunkList for only one ChunkHash
 
-            var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
-
-            // Check if the blob exists in an invalid state
-            if (await bbc.ExistsAsync())
+            BlockBlobClient bbc;
+            try
             {
-                var p = (await bbc.GetPropertiesAsync()).Value;
-                if (p.ContentType != JsonContentType || p.ContentLength == 0)
+                bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+
+                // Check if the blob exists in an invalid state
+                if (await bbc.ExistsAsync())
                 {
-                    logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
-                    await bbc.DeleteAsync();
+                    var p = (await bbc.GetPropertiesAsync()).Value;
+                    if (p.ContentType != JsonContentType || p.ContentLength == 0)
+                    {
+                        logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
+                        await bbc.DeleteAsync();
+                    }
+                    else
+                    {
+                        // gracful handling if the chunklist already exists
+                        //throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
+                        logger.LogWarning($"ChunkList for '{bh.ToShortString()}' already exists");
+
+                        return;
+                    }
                 }
-                else
-                {
-                    // gracful handling if the chunklist already exists
-                    //throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
-                    logger.LogWarning($"ChunkList for '{bh.ToShortString()}' already exists");
-                    
-                    return;
-                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, $"Exception while reading properties of chunklist {bh}");
+                throw;
             }
 
             try
