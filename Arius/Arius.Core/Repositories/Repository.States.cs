@@ -82,10 +82,7 @@ internal partial class Repository
             if (!File.Exists(dbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            var db = new AriusDbContext(await dbPathTask, HasChanges);
-            db.Database.SetCommandTimeout(60); //set command timeout to 60s to avoid concurrentcy errors on 'table is locked'
-
-            return db;
+            return new (await dbPathTask, HasChanges);
         }
 
         private void HasChanges(int numChanges)

@@ -220,6 +220,9 @@ internal class ArchiveCommand : ICommand //This class is internal but the interf
         // Await the current stage of the pipeline
         await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*//*.Append(commitPointerFileEntryRepositoryTask)*/), BlockBase.CancellationTask);
 
+        // save the state in any case regardless of errors or not TODO IS THIS A GOOD IDEA? inconsistent state? i dont think so as the db is 'lagging' behind a sucessful blob writes and blob writes are handled gracefully
+        await repo.States.CommitToBlobStorage(options.VersionUtc);
+
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
             && ts.Any())
         {
@@ -231,7 +234,6 @@ internal class ArchiveCommand : ICommand //This class is internal but the interf
             throw new AggregateException(exceptions);
         }
 
-        await repo.States.CommitToBlobStorage(options.VersionUtc);
         //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
         //{
         //    //something went wrong
