@@ -121,7 +121,7 @@ internal partial class Repository
             }
 
             await bbc.SetAccessTierAsync(AccessTier.Cool);
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "application/aes-256-cbc+gzip" });
+            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
