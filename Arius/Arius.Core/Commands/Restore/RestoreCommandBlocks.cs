@@ -26,7 +26,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
        bool synchronize,
        Repository repo,
        PointerService pointerService,
-       Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> indexedPointerFile,
+       Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> onIndexedPointerFile,
        Action onCompleted)
        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: onCompleted)
     {
@@ -34,14 +34,14 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         this.synchronize = synchronize;
         this.repo = repo;
         this.pointerService = pointerService;
-        this.indexedPointerFile = indexedPointerFile;
+        this.onIndexedPointerFile = onIndexedPointerFile;
     }
 
     private readonly int maxDegreeOfParallelism;
     private readonly bool synchronize;
     private readonly Repository repo;
     private readonly PointerService pointerService;
-    private readonly Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> indexedPointerFile;
+    private readonly Func<(PointerFile PointerFile, BinaryFile RestoredBinaryFile), Task> onIndexedPointerFile;
 
     protected override async Task TaskBodyImplAsync(FileSystemInfo source)
     {
@@ -50,7 +50,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
             if (source is not DirectoryInfo)
                 throw new ArgumentException($"The synchronize flag is only valid for directories");
 
-            await Synchronize((DirectoryInfo)source);
+            await SynchronizeThenIndex((DirectoryInfo)source);
         }
         else
         {
@@ -58,13 +58,13 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         }
     }
 
-    private async Task Synchronize(DirectoryInfo root)
+    private async Task SynchronizeThenIndex(DirectoryInfo root)
     {
         var currentPfes = (await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false)).ToArray();
 
         logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
-        var t1 = Task.Run(async () => await CreatePointerFilesIfNotExist(root, currentPfes));
+        var t1 = Task.Run(async () => await CreatePointerFilesIfNotExistAsync(root, currentPfes));
         var t2 = Task.Run(() => DeletePointerFilesIfShouldNotExist(root, currentPfes));
 
         await Task.WhenAll(t1, t2);
@@ -74,14 +74,14 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
     /// </summary>
     /// <returns></returns>
-    private async Task CreatePointerFilesIfNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
+    private async Task CreatePointerFilesIfNotExistAsync(DirectoryInfo root, PointerFileEntry[] pfes)
     {
         await Parallel.ForEachAsync(pfes,
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (pfe, ct) => 
             {
                 var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);
-                await IndexedPointerFile(pf);
+                await IndexedPointerFileAsync(pf);
             });
     }
 
@@ -115,7 +115,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         if (source is DirectoryInfo root)
             await ProcessPointersInDirectory(root);
         else if (source is FileInfo fi && fi.IsPointerFile())
-            await IndexedPointerFile(pointerService.GetPointerFile(fi.Directory, fi)); //TODO test dit in non root
+            await IndexedPointerFileAsync(pointerService.GetPointerFile(fi.Directory, fi)); //TODO test dit in non root
         else
             throw new InvalidOperationException($"Argument {source} is not valid");
     }
@@ -125,15 +125,35 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         var pfs = root.GetPointerFileInfos().Select(fi => pointerService.GetPointerFile(root, fi));
 
         foreach (var pf in pfs)
-            await IndexedPointerFile(pf);
+            await IndexedPointerFileAsync(pf);
     }
 
 
-    private async Task IndexedPointerFile(PointerFile pf)
+    private async Task IndexedPointerFileAsync(PointerFile pf)
     {
         var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+        await onIndexedPointerFile((pf, bf)); //bf can be null if it is not yet restored
+    }
+}
 
-        await indexedPointerFile((pf, bf)); //bf can be null if it is not yet restored
+internal class DownloadBinaryBlock : ChannelTaskBlockBase<(PointerFile, BinaryFile)>
+{
+    public DownloadBinaryBlock(ILoggerFactory loggerFactory,
+        Func<ChannelReader<(PointerFile, BinaryFile)>> sourceFunc,
+        DirectoryInfo restoreTempDir,
+        Repository repo,
+        Action done)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
+    { 
+    }
+
+    ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries;
+
+
+    protected override Task ForEachBodyImplAsync((PointerFile, BinaryFile) item, CancellationToken cancellationToken)
+    {
+
+        throw new NotImplementedException();
     }
 }
 

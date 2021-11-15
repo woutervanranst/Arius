@@ -39,51 +39,54 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
         var repo = services.GetRequiredService<Repository>();
         var pointerService = services.GetRequiredService<PointerService>();
 
-        DirectoryInfo root = null;
-        FileSystemInfo pathToRestore = null;
-
+        
+        
+        
 
         
 
             
-        logger.LogInformation("Determining PointerFiles to restore...");
+        //logger.LogInformation("Determining PointerFiles to restore...");
 
 
-        var binariesToDownload = Channel.CreateUnbounded<BinaryHash>();
-        var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
-        var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: BinaryHash. Values (PointerFiles) that are waiting for the Keys (Binaries) to be created
+        var binariesToDownload = Channel.CreateUnbounded<(PointerFile, BinaryFile)>();
+        //var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
+        //var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: BinaryHash. Values (PointerFiles) that are waiting for the Keys (Binaries) to be created
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => options.Path, //S10
-            maxDegreeOfParallelism: 2,
+            maxDegreeOfParallelism: options.IndexBlock_Parallelism,
             synchronize: options.Synchronize,
             repo: repo,
             pointerService: pointerService,
-            indexedPointerFile: async arg =>
+            onIndexedPointerFile: async arg =>
             {
                 if (!options.Download)
                     return; //no need to download
 
-                var (pf, bf) = arg;
-                if (bf is null)
-                {
-                    // need to download the binary for this pointer
-                    await binariesToDownload.Writer.WriteAsync(pf.Hash); //S11
-                    pointerFilesWaitingForBinaryRestoration.AddOrUpdate( //S14
-                        key: pf.Hash,
-                        addValue: new() { pf },
-                        updateValueFactory: (h, bag) =>
-                        {
-                            bag.Add(pf);
-                            return bag;
-                        });
-                }
-                if (bf is not null)
-                { 
-                    // this binary / binaryfile is already restored
-                    restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
-                }
+                await binariesToDownload.Writer.WriteAsync(arg);
+
+
+                //var (pf, bf) = arg;
+                //if (bf is null)
+                //{
+                //    // need to download the binary for this pointer
+                //    await binariesToDownload.Writer.WriteAsync(pf.Hash); //S11
+                //    pointerFilesWaitingForBinaryRestoration.AddOrUpdate( //S14
+                //        key: pf.Hash,
+                //        addValue: new() { pf },
+                //        updateValueFactory: (h, bag) =>
+                //        {
+                //            bag.Add(pf);
+                //            return bag;
+                //        });
+                //}
+                //if (bf is not null)
+                //{ 
+                //    // this binary / binaryfile is already restored
+                //    restoredBinaries.TryAdd(bf.Hash, bf); //S12 //NOTE: TryAdd returns false if this key is already present but that is OK, we just need a single BinaryFile to be present in order to restore future potential duplicates
+                //}
             },
             onCompleted: () => 
             {
@@ -91,36 +94,36 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
             });
         var indexTask = indexBlock.GetTask;
 
-        await indexTask; //S19
+        //await indexTask; //S19
 
-        logger.LogInformation($"Determining PointerFiles to restore... done. {binariesToDownload.Reader.Count} PointerFile(s) to restore.");
+        //logger.LogInformation($"Determining PointerFiles to restore... done. {binariesToDownload.Reader.Count} PointerFile(s) to restore.");
 
 
-        var chunksForBinary = new ConcurrentDictionary<BinaryHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
-        var pointersToRestore = Channel.CreateBounded<(IChunk[] Chunks, PointerFile[] PointerFiles)>(new BoundedChannelOptions(options.PARALLELISLD) { AllowSynchronousContinuations = false, FullMode = BoundedChannelFullMode.Wait, SingleReader = false, SingleWriter = false});
-        var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
-        var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
+        //var chunksForBinary = new ConcurrentDictionary<BinaryHash, (ChunkHash[] All, List<ChunkHash> PendingDownload)>();
+        //var pointersToRestore = Channel.CreateBounded<(IChunk[] Chunks, PointerFile[] PointerFiles)>(new BoundedChannelOptions(options.PARALLELISLD) { AllowSynchronousContinuations = false, FullMode = BoundedChannelFullMode.Wait, SingleReader = false, SingleWriter = false});
+        //var downloadedChunks = new ConcurrentDictionary<ChunkHash, IChunkFile>();
+        //var restoreTempDir = services.GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
 
-        var downloadChunksForBinaryBlock = new DownloadChunksForBinaryBlock(
-            loggerFactory: loggerFactory,
-            sourceFunc: () => binariesToDownload,
-            restoreTempDir: restoreTempDir,
-            repo: repo,
-            restoredBinaries: restoredBinaries,
-            chunksRestored: async (mh, cs) =>
-            {
-                pointerFilesWaitingForBinaryRestoration.Remove(mh, out var pointerFiles);
-                await pointersToRestore.Writer.WriteAsync((cs, pointerFiles.ToArray())); //S21
-            },
-            chunksHydrating: (mh) =>
-            {
+        //var downloadChunksForBinaryBlock = new DownloadChunksForBinaryBlock(
+        //    loggerFactory: loggerFactory,
+        //    sourceFunc: () => binariesToDownload,
+        //    restoreTempDir: restoreTempDir,
+        //    repo: repo,
+        //    restoredBinaries: restoredBinaries,
+        //    chunksRestored: async (mh, cs) =>
+        //    {
+        //        pointerFilesWaitingForBinaryRestoration.Remove(mh, out var pointerFiles);
+        //        await pointersToRestore.Writer.WriteAsync((cs, pointerFiles.ToArray())); //S21
+        //    },
+        //    chunksHydrating: (mh) =>
+        //    {
 
-            },
-            done: () => 
-            {
-                pointersToRestore.Writer.Complete(); //S29
-            });
-        var downloadChunksForBinaryTask = downloadChunksForBinaryBlock.GetTask;
+        //    },
+        //    done: () => 
+        //    {
+        //        pointersToRestore.Writer.Complete(); //S29
+        //    });
+        //var downloadChunksForBinaryTask = downloadChunksForBinaryBlock.GetTask;
 
 
 
@@ -152,16 +155,16 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
 
 
 
-        var restorePointerFileBlock = new RestoreBinaryFileBlock(
-            loggerFactory: loggerFactory,
-            sourceFunc: () => pointersToRestore,
-            pointerService: pointerService,
-            chunker: services.GetRequiredService<Chunker>(),
-            root: root,
-            done: () => 
-            { 
-            });
-        var restorePointerFileTask = restorePointerFileBlock.GetTask;
+        //var restorePointerFileBlock = new RestoreBinaryFileBlock(
+        //    loggerFactory: loggerFactory,
+        //    sourceFunc: () => pointersToRestore,
+        //    pointerService: pointerService,
+        //    chunker: services.GetRequiredService<Chunker>(),
+        //    root: (DirectoryInfo)options.Path,
+        //    done: () => 
+        //    { 
+        //    });
+        //var restorePointerFileTask = restorePointerFileBlock.GetTask;
 
         // TODO DELETE ALL TEMP HYDRATED IN STORAGE ACCOUNT
         // repo.DeleteHydrateFolder();
