@@ -49,7 +49,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
         //logger.LogInformation("Determining PointerFiles to restore...");
 
 
-        var binariesToDownload = Channel.CreateUnbounded<(PointerFile, BinaryFile)>();
+        var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
         //var restoredBinaries = new ConcurrentDictionary<BinaryHash, IChunkFile>();
         //var pointerFilesWaitingForBinaryRestoration = new ConcurrentDictionary<BinaryHash, ConcurrentBag<PointerFile>>(); //Key: BinaryHash. Values (PointerFiles) that are waiting for the Keys (Binaries) to be created
 
