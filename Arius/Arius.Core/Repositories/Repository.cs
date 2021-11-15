@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -29,7 +30,24 @@ internal partial class Repository
     {
         var logger = loggerFactory.CreateLogger<Repository>();
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-        var container = new BlobContainerClient(connectionString, options.Container);
+        var container = new BlobContainerClient(
+            connectionString, 
+            blobContainerName: options.Container,
+            /* 
+             * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
+             *      -- this is a throttling error most likely, hence specifiying exponential backoff
+             *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
+             */
+            options: new BlobClientOptions()
+            {
+                Retry =
+                {
+                    Delay = TimeSpan.FromSeconds(2),        //The delay between retry attempts for a fixed approach or the delay on which to base calculations for a backoff-based approach
+                    MaxRetries = 5,                         //The maximum number of retry attempts before giving up
+                    Mode = RetryMode.Exponential,           //The approach to use for calculating retry delays
+                    MaxDelay = TimeSpan.FromSeconds(60)     //The maximum permissible delay between retry attempts
+                }
+            });
 
         var r0 = container.CreateIfNotExists(PublicAccessType.None);
         if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
