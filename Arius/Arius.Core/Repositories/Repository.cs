@@ -54,7 +54,7 @@ internal partial class Repository
         if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
             logger.LogInformation($"Created container {options.Container}... ");
 
-        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, chunker, container);
+        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
         Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
         States = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);

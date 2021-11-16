@@ -24,7 +24,6 @@ namespace Arius.Core.Models;
 //    public Hash Hash { get; }
 //}
 
-/// <inheritdoc/>
 //internal interface IAriusEntryWithHash : IAriusEntry //, IWithHashValue
 //{
 //}
@@ -56,7 +55,7 @@ internal interface IFile
     public void Delete();
 }
 
-
+/// <inheritdoc/>
 internal abstract class FileBase : IFile
 {
     protected FileBase(FileInfo fi)
@@ -74,6 +73,7 @@ internal abstract class FileBase : IFile
     public abstract Hash Hash { get; }
 }
 
+/// <inheritdoc/>
 internal abstract class RelativeFileBase : FileBase
 {
     protected RelativeFileBase(DirectoryInfo root, FileInfo fi) : base(fi)
@@ -83,12 +83,19 @@ internal abstract class RelativeFileBase : FileBase
 
     public DirectoryInfo Root { get; }
 
+    /// <summary>
+    /// Relative File Name (with extention)
+    /// </summary>
     public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
+
+    /// <summary>
+    /// Relative File Path (directory)
+    /// </summary>
     public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
     public override string ToString() => RelativeName;
 }
 
-    
+/// <inheritdoc/>
 internal class PointerFile : RelativeFileBase
 {
     public static readonly string Extension = ".pointer.arius";
@@ -98,13 +105,6 @@ internal class PointerFile : RelativeFileBase
     //  DO NOT IMPLEMENT THIS, IT WILL CAUSE CONFUSION & BUGS & INVALID ARCHIVES
     //}
 
-    ///// <summary>
-    ///// Create a new PointerFile with the given root and read the Hash from the file
-    ///// </summary>
-    //public PointerFile(DirectoryInfo root, FileInfo fi) : base(root, fi)
-    //{
-    //    Hash = new (File.ReadAllText(fi.FullName));
-    //}
     /// <summary>
     /// Create a new PointerFile with the given root and the given BinaryHash
     /// </summary>
@@ -116,6 +116,7 @@ internal class PointerFile : RelativeFileBase
     public override BinaryHash Hash { get; }
 }
 
+/// <inheritdoc cref="RelativeFileBase" />
 internal class BinaryFile : RelativeFileBase, IChunkFile, IChunk
 {
     public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 

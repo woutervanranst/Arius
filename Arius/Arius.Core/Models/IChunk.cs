@@ -34,17 +34,17 @@ internal record MemoryChunk : IChunk
     public Task<Stream> OpenWriteAsync() => throw new InvalidOperationException(); // not supposed to write to this
 }
 
-internal class ChunkFile : FileBase, IChunkFile
-{
-    public static readonly string Extension = ".ariuschunk";
+//internal class FileChunk : FileBase, IChunkFile
+//{
+//    public static readonly string Extension = ".ariuschunk";
 
-    public ChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
-    {
-        Hash = hash;
-    }
+//    public ChunkFile(FileInfo fi, ChunkHash hash) : base(fi)
+//    {
+//        Hash = hash;
+//    }
 
-    public override ChunkHash Hash { get; }
+//    public override ChunkHash Hash { get; }
 
-    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)File.OpenRead(fi.FullName));
-    public Task<Stream> OpenWriteAsync() => Task.FromResult((Stream)File.Create(fi.FullName));
-}
+//    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)File.OpenRead(fi.FullName));
+//    public Task<Stream> OpenWriteAsync() => Task.FromResult((Stream)File.Create(fi.FullName));
+//}

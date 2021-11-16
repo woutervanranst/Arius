@@ -23,6 +23,7 @@ using Azure.Storage.Blobs.Specialized;
 using System.IO.Compression;
 using System.Net;
 using Arius.Core.Commands.Restore;
+using Arius.Core.Services;
 
 namespace Arius.Core.Repositories;
 
@@ -33,8 +34,8 @@ internal partial class Repository
     {
         internal BinaryRepository(ILogger<BinaryRepository> logger,
             Repository parent,
-            Chunker chunker,
-            BlobContainerClient container)
+            BlobContainerClient container,
+            Chunker chunker)
         {
             this.logger = logger;
             this.repo = parent;
@@ -185,33 +186,52 @@ internal partial class Repository
         // --- BINARY DOWNLOAD ------------------------------------------------
 
         /// <summary>
-        /// Download the given Binary with the specified options
+        /// Download the given Binary with the specified options.
+        /// Start hydration for the chunks if required.
+        /// Returns null if the Binary is not yet hydrated
         /// </summary>
-        public async Task<BinaryFile> DownloadAsync(BinaryHash bh, RestoreCommandOptions options)
+        public async Task<bool> TryDownloadAsync(BinaryHash bh, FileInfo target, RestoreCommandOptions options, bool rehydrateIfNeeded = true)
         {
             var chs = await GetChunkHashesAsync(bh);
-            var cl = chs.Select(ch => (ChunkHash: ch, Blob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
+            var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
 
+            var chunksToHydrate = chunks
+                .Where(c => c.ChunkBlob is null)
+                .Select(c => repo.Chunks.GetChunkBlobByHash(c.ChunkHash, requireHydrated: false));
+            if (chunksToHydrate.Any())
+            {
+                chunksToHydrate = chunksToHydrate.ToArray();
+                //At least one chunk is not hydrated so the Binary cannot be downloaded
+                logger.LogInformation($"{chunksToHydrate.Count()} chunk(s) for '{bh.ToShortString()}' not hydrated. Cannot yet restore.");
 
+                if (rehydrateIfNeeded)
+                    foreach (var c in chunksToHydrate)
+                        //hydrate this chunk
+                        await repo.Chunks.HydrateAsync(c);
 
-            return null;
+                return false;
+            }
+            else
+            {
+                //All chunks are hydrated  so we can restore the Binary
+                logger.LogInformation($"Downloading Binary '{bh.ToShortString()}' from {chunks.Length} chunk(s)...");
 
+                var p = await GetPropertiesAsync(bh);
+                var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
+                {
+                    await using var ts = target.OpenWrite();
+                    foreach (var (_, cb) in chunks)
+                    {
+                        await using var cs = await cb.OpenReadAsync();
+                        await CryptoService.DecryptAndDecompressAsync(cs, ts, options.Passphrase);
+                    }
+                });
 
-            //var p = await GetPropertiesAsync(bh);
-            //if (p.ChunkCount == 1)
-            //{
-            //    // This is not a chunked file
-            //}
-            //else
-            //{
-            //    // This is a chunked file
-            //}
+                logger.LogInformation($"Downloading Binary '{bh.ToShortString()}' of {p.ArchivedLength.GetBytesReadable()} from {chunks.Length} chunk(s)... Completed in {stats.seconds}s ({stats.MBps} MBps / {stats.Mbps} Mbps)");
+
+                return true;
+            }
         }
-
-        //private async Task<BinaryFile> DownloadSingleChunk(BinaryHash bh)
-        //{
-
-        //}
 
 
         // --- BINARY PROPERTIES ------------------------------------------------

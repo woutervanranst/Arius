@@ -137,7 +137,7 @@ internal partial class Repository
 
         public async Task HydrateAsync(ChunkBlobBase blobToHydrate)
         {
-            logger.LogInformation($"Checking hydration for chunk {blobToHydrate.Hash.ToShortString()}");
+            logger.LogDebug($"Checking hydration for chunk {blobToHydrate.Hash.ToShortString()}");
 
             if (blobToHydrate.AccessTier == AccessTier.Hot ||
                 blobToHydrate.AccessTier == AccessTier.Cool)
@@ -152,7 +152,7 @@ internal partial class Repository
                     blobToHydrate.Uri,
                     new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
-                logger.LogInformation($"Hydration started for {blobToHydrate.Hash.ToShortString()}");
+                logger.LogInformation($"Hydration started for '{blobToHydrate.Hash.ToShortString()}'");
             }
             else
             {
@@ -161,9 +161,9 @@ internal partial class Repository
 
                 var status = (await hydratedItem.GetPropertiesAsync()).Value.ArchiveStatus;
                 if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
-                    logger.LogInformation($"Hydration pending for {blobToHydrate.Hash.ToShortString()}");
+                    logger.LogInformation($"Hydration pending for '{blobToHydrate.Hash.ToShortString()}'");
                 else if (status == null)
-                    logger.LogInformation($"Hydration done for {blobToHydrate.Hash.ToShortString()}");
+                    logger.LogInformation($"Hydration done for '{blobToHydrate.Hash.ToShortString()}'");
                 else
                     throw new ArgumentException("TODO");
             }

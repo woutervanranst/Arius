@@ -162,192 +162,72 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
          */
 
         var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
-        if (bf is not null)
+        if (bf is null)
         {
-            // 1. The BinaryFile is already restored
+            // 2. The Binary is not yet restored
+
+            var binaryToDownload = restoredBinaries.TryAdd(pf.Hash, new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously));
+            if (binaryToDownload)
+            {
+                // 2.1 Download not yet started --> start download
+                logger.LogInformation($"Starting download for Binary '{pf.Hash.ToShortString()}' ('{pf.RelativeName}')");
+
+                var restored = await repo.Binaries.TryDownloadAsync(pf.Hash, pointerService.GetBinaryFileInfo(pf), options);
+
+                if (restored)
+                    bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+
+                restoredBinaries[pf.Hash].SetResult(bf); //also set in case of null (ie not restored)
+            }
+            else
+            {
+                // 2.2 Download ongoing --> wait for it
+                bf = await restoredBinaries[pf.Hash].Task;
+            }
+
+            if (bf is null)
+                //the binary could not yet be restored -- nothing left to do here
+                return;
+
+            //TODO what if chunk does not exist?
+
+            //// For unit testing purposes
+            //internal static bool ChunkRestoredFromLocal { get; set; } = false;
+            //internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
+            //internal static bool ChunkStartedHydration { get; set; } = false;
+        }
+        else
+        {
+            // 1. The Binaryis already restored
             restoredBinaries.AddOrUpdate(bf.Hash,
-                addValueFactory: (_) => 
+                addValueFactory: (_) =>
                 {
+                    logger.LogInformation($"Binary '{bf.RelativeName}' already restored.");
                     var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
                     tcs.SetResult(bf);
                     return tcs;
                 },
-                updateValueFactory: (bh, tcs) => 
+                updateValueFactory: (bh, tcs) =>
                 {
                     if (tcs.Task.IsCompleted)
                         return tcs; // this is a duplicate binary
-                        
+
                     tcs.SetResult(bf);
                     return tcs;
                 });
-
-            //restoredBinaries.TryAdd(bf.Hash, new TaskCompletionSource<BinaryFile>(bf));
         }
-        else
+
+        var bfi = pointerService.GetBinaryFileInfo(pf);
+        if (!bfi.Exists)
         {
-            // 2. The BinaryFile is not yet restored
-        
-            var binaryToDownload = restoredBinaries.TryAdd(pf.Hash, new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously));
-            if (binaryToDownload)
-            {
-                // 2.1 Download not yet started
-                logger.LogInformation($"Starting download for Binary '{pf.Hash}' ({pf.RelativeName})");
-
-                await repo.Binaries.DownloadAsync(pf.Hash, options);
-
-            }
-            else
-            {
-
-            }
+            File.Copy(bf.FullName, bfi.FullName);
+            //bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: false);
         }
+
+        bfi.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
+        bfi.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
     }
 }
-
-
-internal class DownloadChunksForBinaryBlock : ChannelTaskBlockBase<BinaryHash>
-{
-    public DownloadChunksForBinaryBlock(ILoggerFactory loggerFactory,
-        Func<ChannelReader<BinaryHash>> sourceFunc,
-        DirectoryInfo restoreTempDir,
-        Repository repo,
-        ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries,
-        Func<BinaryHash, IChunk[], Task> chunksRestored,
-        Action<BinaryHash> chunksHydrating,
-        Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
-    {
-        this.restoreTempDir = restoreTempDir;
-        this.repo = repo;
-        this.restoredBinaries = restoredBinaries;
-        this.chunksRestored = chunksRestored;
-        this.chunksHydrating = chunksHydrating;
-    }
-
-    private readonly DirectoryInfo restoreTempDir;
-    private readonly Repository repo;
-    private readonly Func<BinaryHash, IChunk[], Task> chunksRestored;
-    private readonly Action<BinaryHash> chunksHydrating;
-    private readonly ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries;
-
-    private readonly ConcurrentHashSet<BinaryHash> restoringBinaries = new();
-    private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource<IChunk>> downloadingChunks = new();
-
-    protected override async Task ForEachBodyImplAsync(BinaryHash bh, CancellationToken ct)
-    {
-        if (restoredBinaries.ContainsKey(bh))
-        {
-            // the Binary for this PointerFile is already restored
-            throw new NotImplementedException();
-            await chunksRestored(bh, null);
-            return;
-        }
-
-        if (!restoringBinaries.Add(bh))
-            // the Binary for this PointerFile is already being processed.
-            // this method can be called multiple times by S11
-            // the waiting PointerFiles will be notified when the first call completes
-            return;
-
-        var chs = await repo.Binaries.GetChunkHashesAsync(bh);
-        await Parallel.ForEachAsync(chs,
-            new ParallelOptions { MaxDegreeOfParallelism = 1 },
-            async (ch, cancellationToken) =>
-            {
-                bool toDownload = downloadingChunks.TryAdd(ch, new TaskCompletionSource<IChunk>(TaskCreationOptions.RunContinuationsAsynchronously));
-                if (toDownload)
-                {
-                        // this Chunk is not yet downloaded
-                        var c = await GetChunkFileAsync(ch);
-                    downloadingChunks[ch].SetResult(c);
-                }
-                else
-                {
-                    var t = downloadingChunks[ch].Task;
-                    if (!t.IsCompleted)
-                    {
-                            // the Chunk is being downloaded but not yet completed
-
-                            // LOG
-
-                            await t;
-                    }
-                    else
-                    {
-                            // the Chunk is already downloaded
-
-                            // LOG
-                        }
-                }
-            });
-
-        var cs = await Task.WhenAll(chs.Select(async ch => await downloadingChunks[ch].Task));
-        if (cs.Any(c => c is null))
-        {
-            logger.LogInformation($"At least one Chunk is still hydrating for binary {bh.ToShortString()}... cannot yet restore");
-            chunksHydrating(bh);
-        }
-        else
-        {
-            logger.LogInformation($"All chunks downloaded for binary {bh.ToShortString()}... ready to restore BinaryFile");
-            chunksRestored(bh, cs);
-        }
-    }
-
-
-    // For unit testing purposes
-    internal static bool ChunkRestoredFromLocal { get; set; } = false;
-    internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
-    internal static bool ChunkStartedHydration { get; set; } = false;
-
-    /// <summary>
-    /// Get a local ChunkFile for the given ChunkHash
-    /// Returns null if it cannot be downloaded because it is not yet hydrated
-    /// Throws InvalidOperationException if the cunk cannot be found 
-    /// </summary>
-    /// <param name="ch"></param>
-    /// <returns></returns>
-    private async Task<IChunkFile> GetChunkFileAsync(ChunkHash ch)
-    {
-        var cfi = GetLocalChunkFileInfo(ch);
-
-        if (cfi.Exists)
-        {
-            // Chunk already downloaded
-            ChunkRestoredFromLocal = true;
-            logger.LogInformation($"Chunk {ch.ToShortString()} already downloaded");
-
-            return new ChunkFile(cfi, ch);
-        }
-        else if (repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true) is var onlineChunk && onlineChunk is not null)
-        {
-            // Hydrated chunk (in cold/hot storage) but not yet downloaded
-            await repo.Chunks.DownloadAsync(onlineChunk, cfi);
-
-            throw new NotImplementedException("check downloaded chunk size with the db");
-
-            ChunkRestoredFromOnlineTier = true;
-            logger.LogInformation($"Chunk {ch.ToShortString()} downloaded from online tier");
-
-            return new ChunkFile(cfi, ch);
-        }
-        else if (repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: false) is var archivedChunk && archivedChunk is not null)
-        {
-            // Archived chunk (in archive storage) not yet hydrated
-            await repo.Chunks.HydrateAsync(archivedChunk);
-
-            ChunkStartedHydration = true;
-            logger.LogInformation($"Chunk {ch.ToShortString()} started hydration... cannot yet download");
-
-            return null;
-        }
-        else
-            throw new InvalidOperationException($"Unable to find Chunk '{ch}'");
-    }
-
-    private FileInfo GetLocalChunkFileInfo(ChunkHash ch) => new(Path.Combine(restoreTempDir.FullName, $"{ch}{ChunkFile.Extension}"));
-}
-
 
 
 internal class RestoreBinaryFileBlock : ChannelTaskBlockBase<(IChunk[] Chunks, PointerFile[] PointerFiles)>
@@ -386,7 +266,7 @@ internal class RestoreBinaryFileBlock : ChannelTaskBlockBase<(IChunk[] Chunks, P
                 if (bfi.Exists)
                     throw new Exception();
 
-                await chunker.MergeAsync(root, item.Chunks, bfi);
+                //await chunker.MergeAsync(root, item.Chunks, bfi);
             }
             else
             {
