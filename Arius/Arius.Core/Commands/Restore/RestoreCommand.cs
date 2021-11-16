@@ -94,6 +94,19 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
             });
         var indexTask = indexBlock.GetTask;
 
+
+        var downloadBinaryBlock = new DownloadBinaryBlock(
+            loggerFactory: loggerFactory,
+            sourceFunc: () => binariesToDownload,
+            pointerService: pointerService,
+            options: options,
+            repo: repo,
+            onCompleted: () => 
+            { 
+            });
+        var downloadBinaryTask = downloadBinaryBlock.GetTask;
+
+
         //await indexTask; //S19
 
         //logger.LogInformation($"Determining PointerFiles to restore... done. {binariesToDownload.Reader.Count} PointerFile(s) to restore.");

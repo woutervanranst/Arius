@@ -134,23 +134,73 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
     public DownloadBinaryBlock(ILoggerFactory loggerFactory,
         Func<ChannelReader<PointerFile>> sourceFunc,
         PointerService pointerService,
-        DirectoryInfo restoreTempDir,
         Repository repo,
-        Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
+        RestoreCommandOptions options,
+        Action onCompleted)
+        : base(loggerFactory: loggerFactory, sourceFunc
+            : sourceFunc, onCompleted: onCompleted)
     {
         this.pointerService = pointerService;
+        this.repo = repo;
+        this.options = options;
     }
 
-    ConcurrentDictionary<BinaryHash, IChunkFile> restoredBinaries;
+    private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource<BinaryFile>> restoredBinaries = new();
     private readonly PointerService pointerService;
+    private readonly Repository repo;
+    private readonly RestoreCommandOptions options;
 
-    protected override Task ForEachBodyImplAsync(PointerFile pf, CancellationToken cancellationToken)
+    protected override async Task ForEachBodyImplAsync(PointerFile pf, CancellationToken ct)
     {
+        /* This PointerFile may need to be restored.
+         * 
+         * 1.   [At the start up the run] The BinaryFile for this PointerFile exists --> no need to restore
+         * 2.1. [At the start up the run] The BinaryFile for this PointerFile does not yet exist, and download of the Binary has not started --> start the download
+         * 2.2. [At the start up the run] The BinaryFile for this PointerFile does not yet exist, and download of the Binary has started but not completed --> wait for it
+         * 2.3. [At the start up the run] The BinaryFile for this PointerFile does not yet exist, and download has completed --> copy
+         * 3.   We encounter a restored BinaryFile while we are downloading the same binary?????????????????????????????????????????????????????????
+         */
+
         var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+        if (bf is not null)
+        {
+            // 1. The BinaryFile is already restored
+            restoredBinaries.AddOrUpdate(bf.Hash,
+                addValueFactory: (_) => 
+                {
+                    var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    tcs.SetResult(bf);
+                    return tcs;
+                },
+                updateValueFactory: (bh, tcs) => 
+                {
+                    if (tcs.Task.IsCompleted)
+                        return tcs; // this is a duplicate binary
+                        
+                    tcs.SetResult(bf);
+                    return tcs;
+                });
 
+            //restoredBinaries.TryAdd(bf.Hash, new TaskCompletionSource<BinaryFile>(bf));
+        }
+        else
+        {
+            // 2. The BinaryFile is not yet restored
+        
+            var binaryToDownload = restoredBinaries.TryAdd(pf.Hash, new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously));
+            if (binaryToDownload)
+            {
+                // 2.1 Download not yet started
+                logger.LogInformation($"Starting download for Binary '{pf.Hash}' ({pf.RelativeName})");
 
-        throw new NotImplementedException();
+                await repo.Binaries.DownloadAsync(pf.Hash, options);
+
+            }
+            else
+            {
+
+            }
+        }
     }
 }
 

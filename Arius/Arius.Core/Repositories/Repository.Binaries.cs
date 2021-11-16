@@ -22,6 +22,7 @@ using Microsoft.EntityFrameworkCore;
 using Azure.Storage.Blobs.Specialized;
 using System.IO.Compression;
 using System.Net;
+using Arius.Core.Commands.Restore;
 
 namespace Arius.Core.Repositories;
 
@@ -30,7 +31,7 @@ internal partial class Repository
     public BinaryRepository Binaries { get; init; }
     internal class BinaryRepository
     {
-        internal BinaryRepository(ILogger<BinaryRepository> logger, 
+        internal BinaryRepository(ILogger<BinaryRepository> logger,
             Repository parent,
             Chunker chunker,
             BlobContainerClient container)
@@ -118,11 +119,11 @@ internal partial class Repository
             await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(),
                 new ParallelOptions { MaxDegreeOfParallelism = options.TransferChunked_ParallelChunkTransfers
 
- },
+                },
                 async (chunk, cancellationToken) =>
                 {
                     var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
-                logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
+                    logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
 
                     if (await parent.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
@@ -159,7 +160,7 @@ internal partial class Repository
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
-                        //TODO TES THIS PATH
+                            //TODO TES THIS PATH
                         }
                     }
 
@@ -182,6 +183,36 @@ internal partial class Repository
         }
 
         // --- BINARY DOWNLOAD ------------------------------------------------
+
+        /// <summary>
+        /// Download the given Binary with the specified options
+        /// </summary>
+        public async Task<BinaryFile> DownloadAsync(BinaryHash bh, RestoreCommandOptions options)
+        {
+            var chs = await GetChunkHashesAsync(bh);
+            var cl = chs.Select(ch => (ChunkHash: ch, Blob: parent.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
+
+
+
+            return null;
+
+
+            //var p = await GetPropertiesAsync(bh);
+            //if (p.ChunkCount == 1)
+            //{
+            //    // This is not a chunked file
+            //}
+            //else
+            //{
+            //    // This is a chunked file
+            //}
+        }
+
+        //private async Task<BinaryFile> DownloadSingleChunk(BinaryHash bh)
+        //{
+
+        //}
+
 
         // --- BINARY PROPERTIES ------------------------------------------------
 
@@ -250,7 +281,7 @@ internal partial class Repository
             //    .ToArrayAsync();
         }
 
-        // --- CHUNKLIST ------------------------
+        // --- CHUNKLIST ------------------------------------------------
 
         internal async Task CreateChunkHashListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
         {
