@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
@@ -192,41 +193,16 @@ internal partial class Repository
         {
             logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
 
-            BlockBlobClient bbc;
-            try
-            {
-                bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
+            BlockBlobClient bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
-                if (await bbc.ExistsAsync())
-                {
-                    var p = (await bbc.GetPropertiesAsync()).Value;
-                    if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
-                    {
-                        logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
-                        await bbc.DeleteAsync();
-                    }
-                    else
-                    {
-                        // graceful handling if the chunk is already uploaded
-                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
-                        logger.LogWarning($"Chunk '{chunk.Hash}' already existsted, was perhaps uploaded in a previous, crashed run?");
-
-                        return p.ContentLength;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
-                throw;
-            }
+        RestartUpload:
 
             try
             {
                 // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
 
                 long length;
-                using (var ts = await bbc.OpenWriteAsync(overwrite: true))
+                using (var ts = await bbc.OpenWriteAsync(overwrite: true, options: ThrowOnExistOptions)) //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
                 {
                     using var ss = await chunk.OpenReadAsync();
                     await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
@@ -239,6 +215,34 @@ internal partial class Repository
                 logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
 
                 return length;
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
+            {
+                // The blob already exists
+                try
+                {
+                    var p = (await bbc.GetPropertiesAsync()).Value;
+                    if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
+                    {
+                        logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
+                        await bbc.DeleteAsync();
+
+                        goto RestartUpload;
+                    }
+                    else
+                    {
+                        // graceful handling if the chunk is already uploaded
+                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                        logger.LogWarning($"A valid Chunk '{chunk.Hash}' already existsted, perhaps in a previous/crashed run?");
+
+                        return p.ContentLength;
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
+                    throw;
+                }
             }
             catch (Exception e)
             {

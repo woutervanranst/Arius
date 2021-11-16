@@ -21,6 +21,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Azure.Storage.Blobs.Specialized;
 using System.IO.Compression;
+using System.Net;
 
 namespace Arius.Core.Repositories;
 
@@ -259,42 +260,47 @@ internal partial class Repository
             if (chunkHashes.Length == 1)
                 return; //do not create a ChunkList for only one ChunkHash
 
-            BlockBlobClient bbc;
+            BlockBlobClient bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+
+        RestartUpload:
+
             try
             {
-                bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+                using (var ts = await bbc.OpenWriteAsync(overwrite: true, options: ThrowOnExistOptions)) //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+                {
+                    using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+                    await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));
+                }
 
-                // Check if the blob exists in an invalid state
-                if (await bbc.ExistsAsync())
+                await bbc.SetAccessTierAsync(AccessTier.Cool);
+                await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = JsonGzipContentType });
+
+                logger.LogInformation($"Creating ChunkList for '{bh.ToShortString()}'... done with {chunkHashes.Length} chunks");
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
+            {
+                // The blob already exists
+                try
                 {
                     var p = (await bbc.GetPropertiesAsync()).Value;
-                    if (p.ContentType != JsonContentType || p.ContentLength == 0)
+                    if (p.ContentType != JsonGzipContentType || p.ContentLength == 0)
                     {
                         logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                         await bbc.DeleteAsync();
+
+                        goto RestartUpload;
                     }
                     else
                     {
                         // gracful handling if the chunklist already exists
                         //throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
-                        logger.LogWarning($"ChunkList for '{bh.ToShortString()}' already exists");
-
-                        return;
+                        logger.LogWarning($"A valid ChunkList for '{bh}' already existed, perhaps in a previous/crashed run?");
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, $"Exception while reading properties of chunklist {bh}");
-                throw;
-            }
-
-            try
-            {
-                using (var ts = await bbc.OpenWriteAsync(overwrite: true))
+                catch (Exception e)
                 {
-                    using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
-                    await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));
+                    logger.LogError(e, $"Exception while reading properties of chunklist {bh}");
+                    throw;
                 }
             }
             catch (Exception e)
@@ -306,11 +312,6 @@ internal partial class Repository
 
                 throw e2;
             }
-
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = JsonContentType });
-
-            logger.LogInformation($"Creating ChunkList for '{bh.ToShortString()}'... done with {chunkHashes.Length} chunks");
         }
 
         internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash bh)
@@ -326,8 +327,8 @@ internal partial class Repository
             {
                 var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
 
-                if ((await bbc.GetPropertiesAsync()).Value.ContentType != JsonContentType)
-                    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JsonContentType}' ContentType and is potentially corrupt");
+                if ((await bbc.GetPropertiesAsync()).Value.ContentType != JsonGzipContentType)
+                    throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JsonGzipContentType}' ContentType and is potentially corrupt");
 
                 using (var ss = await bbc.OpenReadAsync())
                 {
@@ -352,6 +353,6 @@ internal partial class Repository
 
         private const string ChunkListsFolderName = "chunklists";
 
-        private const string JsonContentType = "application/json+gzip";
+        private const string JsonGzipContentType = "application/json+gzip";
     }
 }

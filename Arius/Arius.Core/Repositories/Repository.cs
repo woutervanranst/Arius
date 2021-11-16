@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using Azure;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -58,4 +59,9 @@ internal partial class Repository
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
         States = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
     }
+
+    private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+    {
+        OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
+    };
 }
