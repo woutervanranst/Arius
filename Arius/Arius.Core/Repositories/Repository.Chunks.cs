@@ -27,13 +27,13 @@ internal partial class Repository
         internal ChunkRepository(ILogger<ChunkRepository> logger, Repository parent, BlobContainerClient container, string passphrase)
         {
             this.logger = logger;
-            this.parent = parent;
+            this.repo = parent;
             this.container = container;
             this.passphrase = passphrase;
         }
 
         private readonly ILogger<ChunkRepository> logger;
-        private readonly Repository parent;
+        private readonly Repository repo;
         private readonly BlobContainerClient container;
         private readonly string passphrase;
 

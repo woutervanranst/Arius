@@ -29,11 +29,11 @@ internal partial class Repository
         internal PointerFileEntryRepository(ILogger<PointerFileEntryRepository> logger, Repository parent)
         {
             this.logger = logger;
-            this.parent = parent;
+            this.repo = parent;
         }
 
         private readonly ILogger<PointerFileEntryRepository> logger;
-        private readonly Repository parent;
+        private readonly Repository repo;
 
         /// <summary>
         /// Create a PointerFileEntry for the given PointerFile and the given version
@@ -74,7 +74,7 @@ internal partial class Repository
         /// </summary>
         private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
 
             var lastVersion = await db.PointerFileEntries
                 .Where(pfe0 => pfe.RelativeName.Equals(pfe0.RelativeName))
@@ -146,7 +146,7 @@ internal partial class Repository
         {
             //TODO an exception here is swallowed
 
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             var r = await db.PointerFileEntries.AsParallel()
                 .GroupBy(pfe => pfe.RelativeName)
                 .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc))
@@ -164,7 +164,7 @@ internal partial class Repository
         /// <returns></returns>
         internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             return await db.PointerFileEntries.ToArrayAsync(); //TODO to TEST suite?
         }
 
@@ -206,7 +206,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             return await db.PointerFileEntries
                 .Select(pfe => pfe.VersionUtc)
                 .Distinct()

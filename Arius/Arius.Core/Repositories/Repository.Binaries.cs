@@ -37,13 +37,13 @@ internal partial class Repository
             BlobContainerClient container)
         {
             this.logger = logger;
-            this.parent = parent;
+            this.repo = parent;
             this.chunker = chunker;
             this.container = container;
         }
 
         private readonly ILogger<BinaryRepository> logger;
-        private readonly Repository parent;
+        private readonly Repository repo;
         private readonly Chunker chunker;
         private readonly BlobContainerClient container;
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
@@ -126,12 +126,12 @@ internal partial class Repository
                     logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
 
-                    if (await parent.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    if (await repo.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
                         logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
 
-                        var length = parent.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
+                        var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, 0);
                     }
@@ -143,7 +143,7 @@ internal partial class Repository
                             // 2 Does not yet exist remote and not yet being created --> upload
                             logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
 
-                            var length = await parent.Chunks.UploadAsync(chunk, options.Tier);
+                            var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, length);
 
@@ -156,7 +156,7 @@ internal partial class Repository
 
                             await uploadingChunks[chunk.Hash].Task;
 
-                            var length = parent.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
+                            var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
@@ -177,7 +177,7 @@ internal partial class Repository
         /// <returns></returns>
         private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf, ArchiveCommandOptions options)
         {
-            var length = await parent.Chunks.UploadAsync(bf, options.Tier);
+            var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 
             return (((IChunk)bf).Hash.SingleToArray(), length, length);
         }
@@ -190,7 +190,7 @@ internal partial class Repository
         public async Task<BinaryFile> DownloadAsync(BinaryHash bh, RestoreCommandOptions options)
         {
             var chs = await GetChunkHashesAsync(bh);
-            var cl = chs.Select(ch => (ChunkHash: ch, Blob: parent.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
+            var cl = chs.Select(ch => (ChunkHash: ch, Blob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
 
 
 
@@ -227,7 +227,7 @@ internal partial class Repository
                 ChunkCount = chunkCount
             };
 
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             await db.BinaryProperties.AddAsync(bm);
             await db.SaveChangesAsync();
         }
@@ -236,7 +236,7 @@ internal partial class Repository
         {
             try
             {
-                await using var db = await parent.States.GetCurrentStateDbContext();
+                await using var db = await repo.States.GetCurrentStateDbContext();
                 return db.BinaryProperties.Single(bp => bp.Hash == bh);
             }
             catch (InvalidOperationException e) when (e.Message == "Sequence contains no elements")
@@ -247,7 +247,7 @@ internal partial class Repository
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             return await db.BinaryProperties.AnyAsync(bm => bm.Hash == bh);
         }
 
@@ -257,7 +257,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<int> CountAsync()
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             return await db.BinaryProperties.CountAsync();
             //return await db.PointerFileEntries
             //    .Select(pfe => pfe.BinaryHash)
@@ -271,7 +271,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<BinaryHash[]> GetAllBinaryHashesAsync()
         {
-            await using var db = await parent.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContext();
             return await db.BinaryProperties
                 .Select(bp => bp.Hash)
                 .ToArrayAsync();

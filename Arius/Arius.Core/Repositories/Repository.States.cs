@@ -26,7 +26,7 @@ internal partial class Repository
         public StateRepository(ILogger<StateRepository> logger, Repository parent, BlobContainerClient container, string passphrase)
         {
             this.logger = logger;
-            this.parent = parent;
+            this.repo = parent;
             this.container = container;
             this.passphrase = passphrase;
 
@@ -35,7 +35,7 @@ internal partial class Repository
         }
 
         private readonly ILogger<StateRepository> logger;
-        private readonly Repository parent;
+        private readonly Repository repo;
         private readonly BlobContainerClient container;
         private readonly string passphrase;
         private readonly Task<string> dbPathTask;
