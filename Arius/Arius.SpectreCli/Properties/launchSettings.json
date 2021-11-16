@@ -2,7 +2,7 @@
   "profiles": {
     "archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woute2rvr -c test --fasthash --dedup --tier cool C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool C:\\Users\\Wouter\\Documents\\Test"
     },
   }
 }
