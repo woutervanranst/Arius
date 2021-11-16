@@ -2,36 +2,38 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
+using Serilog.Events;
+using Spectre.Console.Cli;
 
-namespace Demo
+namespace Spectre.Console.Examples
 {
-    public enum Verbosity
+    public class LogCommandSettings : CommandSettings
     {
-        Quiet,
-        Minimal,
-        Normal,
-        Detailed,
-        Diagnostic
+        [CommandOption("--logFile")]
+        [Description("Path and file name for logging")]
+        public string LogFile { get; set; }
+
+        [CommandOption("--logLevel")]
+        [Description("Minimum level for logging")]
+        [TypeConverter(typeof(VerbosityConverter))]
+        [DefaultValue(LogEventLevel.Information)]
+        public LogEventLevel LogLevel { get; set; }
     }
 
     public sealed class VerbosityConverter : TypeConverter
     {
-        private readonly Dictionary<string, Verbosity> _lookup;
+        private readonly Dictionary<string, LogEventLevel> _lookup;
 
         public VerbosityConverter()
         {
-            _lookup = new Dictionary<string, Verbosity>(StringComparer.OrdinalIgnoreCase)
+            _lookup = new Dictionary<string, LogEventLevel>(StringComparer.OrdinalIgnoreCase)
             {
-                { "q", Verbosity.Quiet },
-                { "quiet", Verbosity.Quiet },
-                { "m", Verbosity.Minimal },
-                { "minimal", Verbosity.Minimal },
-                { "n", Verbosity.Normal },
-                { "normal", Verbosity.Normal },
-                { "d", Verbosity.Detailed },
-                { "detailed", Verbosity.Detailed },
-                { "diag", Verbosity.Diagnostic },
-                { "diagnostic", Verbosity.Diagnostic }
+                {"d", LogEventLevel.Debug},
+                {"v", LogEventLevel.Verbose},
+                {"i", LogEventLevel.Information},
+                {"w", LogEventLevel.Warning},
+                {"e", LogEventLevel.Error},
+                {"f", LogEventLevel.Fatal}
             };
         }
 
