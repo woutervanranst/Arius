@@ -47,7 +47,7 @@ internal partial class Repository
         private readonly BlobContainerClient container;
         private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
 
-        // --- BINARY ------------------------
+        // --- BINARY UPLOAD ------------------------------------------------
 
         /// <summary>
         /// Upload the given BinaryFile with the specified options
@@ -181,6 +181,9 @@ internal partial class Repository
             return (((IChunk)bf).Hash.SingleToArray(), length, length);
         }
 
+        // --- BINARY DOWNLOAD ------------------------------------------------
+
+        // --- BINARY PROPERTIES ------------------------------------------------
 
         private async Task CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
@@ -224,10 +227,11 @@ internal partial class Repository
         public async Task<int> CountAsync()
         {
             await using var db = await parent.States.GetCurrentStateDbContext();
-            return await db.PointerFileEntries
-                .Select(pfe => pfe.BinaryHash)
-                .Distinct()
-                .CountAsync();
+            return await db.BinaryProperties.CountAsync();
+            //return await db.PointerFileEntries
+            //    .Select(pfe => pfe.BinaryHash)
+            //    .Distinct()
+            //    .CountAsync();
         }
 
         /// <summary>
@@ -237,13 +241,16 @@ internal partial class Repository
         public async Task<BinaryHash[]> GetAllBinaryHashesAsync()
         {
             await using var db = await parent.States.GetCurrentStateDbContext();
-            return await db.PointerFileEntries
-                .Select(pfe => pfe.BinaryHash)
-                .Distinct()
+            return await db.BinaryProperties
+                .Select(bp => bp.Hash)
                 .ToArrayAsync();
+            //return await db.PointerFileEntries
+            //    .Select(pfe => pfe.BinaryHash)
+            //    .Distinct()
+            //    .ToArrayAsync();
         }
 
-
+        // --- CHUNKLIST ------------------------
 
         internal async Task CreateChunkHashListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
         {
