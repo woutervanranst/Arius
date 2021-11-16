@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -189,7 +190,7 @@ internal partial class Repository
         /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
         /// </summary>
         /// <returns>Returns the length of the uploaded stream.</returns>
-        public async Task<long> UploadAsync(IChunk chunk, AccessTier tier)
+        internal async Task<long> UploadAsync(IChunk chunk, AccessTier tier)
         {
             logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
 
@@ -255,7 +256,7 @@ internal partial class Repository
             }
         }
 
-        public async Task DownloadAsync(ChunkBlobBase cbb, FileInfo target)
+        internal async Task DownloadAsync(ChunkBlobBase cbb, FileInfo target)
         {
             try
             {
