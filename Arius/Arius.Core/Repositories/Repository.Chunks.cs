@@ -72,7 +72,7 @@ internal partial class Repository
             var cb1 = GetChunkBlobByName(blobName);
 
             if (cb1 is null)
-                throw new InvalidOperationException($"No Chunk for hash {chunkHash.Value}");
+                throw new InvalidOperationException($"Could not find Chunk {chunkHash.Value}");
 
             // if we don't need a hydrated chunk, return this one
             if (!requireHydrated)

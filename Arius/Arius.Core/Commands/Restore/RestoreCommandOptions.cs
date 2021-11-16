@@ -34,7 +34,8 @@ internal class RestoreCommandOptions : ServicesOptions,
     public FileSystemInfo Path { get; }
 
 
-    public int IndexBlock_Parallelism => 16 * 2;
+    public int IndexBlock_Parallelism => 1; // 16 * 2;
+    public int DownloadBinaryBlock_Parallelism => 1; //16 * 2;
     public int PARALLELISLD => 100;
 
 

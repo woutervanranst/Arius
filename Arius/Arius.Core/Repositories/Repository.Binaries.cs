@@ -220,6 +220,49 @@ internal partial class Repository
                 var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
                 {
                     await using var ts = target.OpenWrite();
+                    
+                    // Faster version but more code
+                    //if (chunks.Length == 1)
+                    //{
+                    //    await using var cs = await chunks[0].ChunkBlob.OpenReadAsync();
+                    //    await CryptoService.DecryptAndDecompressAsync(cs, ts, options.Passphrase);
+                    //}
+                    //else
+                    //{
+                    //    var x = new ConcurrentDictionary<ChunkHash, byte[]>();
+
+                    //    var t0 = Task.Run(async () =>
+                    //    {
+                    //        await Parallel.ForEachAsync(chunks,
+                    //            new ParallelOptions() { MaxDegreeOfParallelism = 20 },
+                    //            async (c, ct) =>
+                    //            {
+                    //                await using var ms = new MemoryStream();
+                    //                await using var cs = await c.ChunkBlob.OpenReadAsync();
+                    //                await CryptoService.DecryptAndDecompressAsync(cs, ms, options.Passphrase);
+                    //                if (!x.TryAdd(c.ChunkHash, ms.ToArray()))
+                    //                    throw new InvalidOperationException();
+                    //            });
+                    //    });
+
+                    //    var t1 = Task.Run(async () =>
+                    //    {
+                    //        foreach (var (ch, _) in chunks)
+                    //        {
+                    //            while (!x.ContainsKey(ch))
+                    //                await Task.Yield();
+
+                    //            if (!x.TryRemove(ch, out var buff))
+                    //                throw new InvalidOperationException();
+
+                    //            await ts.WriteAsync(buff);
+                    //            //await x[ch].CopyToAsync(ts);
+                    //        }
+                    //    });
+
+                    //    Task.WaitAll(t0, t1);
+                    //}
+
                     foreach (var (_, cb) in chunks)
                     {
                         await using var cs = await cb.OpenReadAsync();

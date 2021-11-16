@@ -136,19 +136,22 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         PointerService pointerService,
         Repository repo,
         RestoreCommandOptions options,
-        Action onCompleted)
-        : base(loggerFactory: loggerFactory, sourceFunc
-            : sourceFunc, onCompleted: onCompleted)
+        Action chunkRehydrating,
+        Action onCompleted,
+        int maxDegreeOfParallelism)
+        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
         this.pointerService = pointerService;
         this.repo = repo;
         this.options = options;
+        this.chunkRehydrating = chunkRehydrating;
     }
 
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource<BinaryFile>> restoredBinaries = new();
     private readonly PointerService pointerService;
     private readonly Repository repo;
     private readonly RestoreCommandOptions options;
+    private readonly Action chunkRehydrating;
 
     protected override async Task ForEachBodyImplAsync(PointerFile pf, CancellationToken ct)
     {
@@ -162,7 +165,27 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
          */
 
         var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
-        if (bf is null)
+        if (bf is not null)
+        {
+            // 1. The Binary is already restored
+            restoredBinaries.AddOrUpdate(bf.Hash,
+                addValueFactory: (_) =>
+                {
+                    logger.LogInformation($"Binary '{bf.RelativeName}' already restored.");
+                    var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    tcs.SetResult(bf);
+                    return tcs;
+                },
+                updateValueFactory: (bh, tcs) =>
+                {
+                    if (tcs.Task.IsCompleted)
+                        return tcs; // this is a duplicate binary
+
+                    tcs.SetResult(bf);
+                    return tcs;
+                });
+        }
+        else
         {
             // 2. The Binary is not yet restored
 
@@ -172,7 +195,18 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 // 2.1 Download not yet started --> start download
                 logger.LogInformation($"Starting download for Binary '{pf.Hash.ToShortString()}' ('{pf.RelativeName}')");
 
-                var restored = await repo.Binaries.TryDownloadAsync(pf.Hash, pointerService.GetBinaryFileInfo(pf), options);
+                bool restored;
+                try
+                {
+                    restored = await repo.Binaries.TryDownloadAsync(pf.Hash, pointerService.GetBinaryFileInfo(pf), options);
+                }
+                catch (Exception e)
+                {
+                    var e2 = new InvalidOperationException($"Could not restore binary ({pf.Hash}) for {pf.RelativeName}. Delete the PointerFile, disable synchronize and try again to restore without this binary.", e);
+                    logger.LogError(e2);
+
+                    throw e2;
+                }
 
                 if (restored)
                     bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
@@ -196,96 +230,14 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             //internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
             //internal static bool ChunkStartedHydration { get; set; } = false;
         }
-        else
-        {
-            // 1. The Binaryis already restored
-            restoredBinaries.AddOrUpdate(bf.Hash,
-                addValueFactory: (_) =>
-                {
-                    logger.LogInformation($"Binary '{bf.RelativeName}' already restored.");
-                    var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    tcs.SetResult(bf);
-                    return tcs;
-                },
-                updateValueFactory: (bh, tcs) =>
-                {
-                    if (tcs.Task.IsCompleted)
-                        return tcs; // this is a duplicate binary
-
-                    tcs.SetResult(bf);
-                    return tcs;
-                });
-        }
 
         var bfi = pointerService.GetBinaryFileInfo(pf);
         if (!bfi.Exists)
         {
             File.Copy(bf.FullName, bfi.FullName);
-            //bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: false);
         }
 
         bfi.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
         bfi.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
     }
 }
-
-
-internal class RestoreBinaryFileBlock : ChannelTaskBlockBase<(IChunk[] Chunks, PointerFile[] PointerFiles)>
-{
-    public RestoreBinaryFileBlock(ILoggerFactory loggerFactory,
-        Func<ChannelReader<(IChunk[] Chunks, PointerFile[] PointerFiles)>> sourceFunc,
-        PointerService pointerService,
-        Chunker chunker,
-        DirectoryInfo root,
-        Action done)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: done)
-    {
-        this.pointerService = pointerService;
-        this.chunker = chunker;
-        this.root = root;
-    }
-
-    private readonly PointerService pointerService;
-    private readonly Chunker chunker;
-    private readonly DirectoryInfo root;
-
-    protected override async Task ForEachBodyImplAsync((IChunk[] Chunks, PointerFile[] PointerFiles) item, CancellationToken ct)
-    {
-        FileInfo bfi = null;
-
-        for (int i = 0; i < item.PointerFiles.Length; i++)
-        {
-            var pf = item.PointerFiles[i];
-            FileInfo target;
-
-            if (i == 0)
-            {
-                bfi = pointerService.GetBinaryFileInfo(pf);
-                target = bfi;
-
-                if (bfi.Exists)
-                    throw new Exception();
-
-                //await chunker.MergeAsync(root, item.Chunks, bfi);
-            }
-            else
-            {
-                throw new NotImplementedException(); // todo write unit tests
-
-                target = pointerService.GetBinaryFileInfo(pf);
-
-                bfi.CopyTo(target.FullName);
-            }
-
-            target.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
-            target.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
-        }
-
-
-        //TODO QUID DELET ECHUNKS
-
-
-    }
-
-}
-
