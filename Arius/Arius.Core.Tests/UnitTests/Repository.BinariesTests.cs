@@ -93,14 +93,16 @@ class BinaryRepositoryTests : TestBase
         var ms = new MemoryStream();
         var bc = TestSetup.Container.GetBlobClient(repo.Binaries.GetChunkListBlobName(bh));
         bc.Upload(ms);
-        await bc.SetMetadataTagAsync(tag);
+        throw new NotImplementedException();
+        //await bc.SetMetadataTagAsync(tag);
 
         // create the chunkhashlist -- this will delete & recretate
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 
         // the blob is replaced ( == the tag on the original blob will be gone)
-        var hasTag = await bc.HasMetadataTagAsync(tag);
-        Assert.IsFalse(hasTag);
+        throw new NotImplementedException();
+        //var hasTag = await bc.HasMetadataTagAsync(tag);
+        //Assert.IsFalse(hasTag);
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
         repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
