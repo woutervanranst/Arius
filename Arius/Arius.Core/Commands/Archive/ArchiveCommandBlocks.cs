@@ -200,7 +200,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         */
 
         // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash));
+        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
         if (binaryExistsRemote)
         {
             // 1 Exists remote
