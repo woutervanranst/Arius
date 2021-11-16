@@ -3,19 +3,19 @@ using Spectre.Console.Cli;
 
 namespace Spectre.Console.Examples
 {
-    public class HelloCommand : Command<HelloCommand.Settings>
+    public class ArchiveCliCommand : Command<ArchiveCliCommand.Settings>
     {
-        private ILogger<HelloCommand> _logger;
+        private ILogger<ArchiveCliCommand> _logger;
         private IAnsiConsole _console;
 
-        public HelloCommand(IAnsiConsole console, ILogger<HelloCommand> logger)
+        public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger)
         {
             _console = console;
             _logger = logger;
-            _logger.LogDebug("{0} initialized", nameof(HelloCommand));
+            _logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
         }
 
-        public class Settings : LogCommandSettings
+        public class Settings : CommandSettings
         {
             [CommandArgument(0, "[Name]")]
             public string Name { get; set; }

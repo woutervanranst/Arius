@@ -1,53 +1,229 @@
+using System;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Arius.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using Spectre.Console.Cli;
+using Spectre.Console.Examples;
 
-/*
- * Dynamically control serilog configuration via command line parameters
- *
- * This works around the chicken and egg situation with configuring serilog via the command line.
- * The logger needs to be configured prior to executing the parser, but the logger needs the parsed values
- * to be configured. By using serilog.sinks.map we can defer configuration. We use a LogLevelSwitch to control the
- * logging levels dynamically, and then we use a serilog enricher that has its state populated via a
- * Spectre.Console CommandInterceptor
- */
-
-namespace Spectre.Console.Examples
+namespace Arius.SpectreCli
 {
-    public class Program
+    public static class Program
     {
-        static int Main(string[] args)
+        public static int Main(string[] args)
         {
-            // to retrieve the log file name, we must first parse the command settings
-            // this will require us to delay setting the file path for the file writer.
-            // With serilog we can use an enricher and Serilog.Sinks.Map to dynamically
-            // pull this setting.
-            var serviceCollection = new ServiceCollection()
-                .AddLogging(configure =>
-                    configure.AddSerilog(new LoggerConfiguration()
-                        // log level will be dynamically be controlled by our log interceptor upon running
-                        .MinimumLevel.ControlledBy(LogInterceptor.LogLevel)
-                        // the log enricher will add a new property with the log file path from the settings
-                        // that we can use to set the path dynamically
-                        .Enrich.With<LoggingEnricher>()
-                        // serilog.sinks.map will defer the configuration of the sink to be ondemand
-                        // allowing us to look at the properties set by the enricher to set the path appropriately
-                        .WriteTo.Map(LoggingEnricher.LogFilePathPropertyName,
-                            (logFilePath, wt) => wt.File($"{logFilePath}"), 1)
-                        .CreateLogger()
-                    )
-                );
+            var registrations = new ServiceCollection();
+            registrations.AddSingleton<IGreeter, HelloWorldGreeter>();
+            //registrations.AddLogging();
+            //registrations.AddSingleton<ILogger<ArchiveCommand>>((Logger<ArchiveCommand>)null);
 
-            var registrar = new TypeRegistrar(serviceCollection);
+            // Create a type registrar and register any dependencies.
+            // A type registrar is an adapter for a DI framework.
+            var registrar = new TypeRegistrar(registrations);
+
             var app = new CommandApp(registrar);
-
             app.Configure(config =>
             {
-                config.SetInterceptor(new LogInterceptor()); // add the interceptor
-                config.AddCommand<HelloCommand>("hello");
+                config.SetApplicationName("arius");
+
+                config.AddCommand<ArchiveCommand>("archive");
+
+                //config.AddBranch<ArchiveSettings>("archive", add =>
+                //{
+                //    add.AddCommand<AddPackageCommand>("package");
+                //    add.AddCommand<AddReferenceCommand>("reference");
+                //});
             });
 
             return app.Run(args);
         }
+    }
+
+
+    public interface IGreeter
+    {
+        void Greet(string name);
+    }
+    public sealed class HelloWorldGreeter : IGreeter
+    {
+        public void Greet(string name)
+        {
+            //AnsiConsole.WriteLine($"Hello {name}!");
+        }
+    }
+
+    public abstract class RepositorySettings : CommandSettings
+    {
+        protected RepositorySettings()
+        {
+            AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
+            AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
+
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+                Path = "/archive";
+        }
+
+        [Description("Blob Account Name")]
+        [CommandOption("-n|--accountname <ACCOUNT_NAME>")]
+        public string AccountName { get; init; }
+
+        [Description("Blob Account Key")]
+        [CommandOption("-k|--accountkey <ACCOUNT_KEY>")]
+        public string AccountKey { get; init; }
+
+        [Description("Blob Container Name")]
+        [CommandOption("-c|--container <CONTAINER>")]
+        public string Container { get; init; }
+
+        [Description("Passphrase")]
+        [CommandOption("-p|--passphrase <PASSPHRASE>")]
+        public string Passphrase { get; set; }
+
+        [JsonIgnore]
+        [Description("Path to archive")]
+        [CommandArgument(0, "<PATH>")]
+        public string Path
+        {
+            get => path;
+            init
+            {
+                path = value;
+
+                // Load Config if it exists in the path
+                var configFile = new FileInfo(System.IO.Path.Combine(path, "arius.config"));
+                try
+                {
+                    if (configFile.Exists)
+                    {
+                        using var ss = configFile.OpenRead();
+                        using var ms = new MemoryStream();
+                        CryptoService.DecryptAndDecompressAsync(ss, ms, Passphrase).Wait();
+                        ms.Seek(0, SeekOrigin.Begin);
+                        var s = JsonSerializer.Deserialize<RepositorySettings>(ms);
+
+                        this.AccountName = s.AccountName;
+                        this.AccountKey = s.AccountKey;
+                        this.Container = s.Container;
+                    }
+                }
+                catch (AggregateException e) when (e.InnerException is InvalidDataException)
+                {
+                    // Wrong Passphrase?
+                }
+                catch (AggregateException e) when (e.InnerException is ArgumentNullException)
+                {
+                    // No passphrase
+                }
+                catch (JsonException e)
+                {
+                    configFile.Delete();
+                    //Console.WriteLine(e);
+                    //throw;
+                }
+            }
+        }
+        private readonly string path;
+
+
+        public override Spectre.Console.ValidationResult Validate()
+        {
+            if (AccountName is null)
+                return Spectre.Console.ValidationResult.Error($"AccountName is required");
+
+            if (AccountKey is null)
+                return Spectre.Console.ValidationResult.Error($"AccountKey is required");
+
+            if (Container is null)
+                return Spectre.Console.ValidationResult.Error($"Container is required");
+
+            if (Passphrase is null)
+                return Spectre.Console.ValidationResult.Error($"Passphrase is required");
+
+
+            // Save the Config
+            var configFile = new FileInfo(System.IO.Path.Combine(path, "arius.config"));
+            using var ms0 = new MemoryStream();
+            JsonSerializer.Serialize(ms0, this);
+            ms0.Seek(0, SeekOrigin.Begin);
+            using var ts = configFile.OpenWrite();
+            CryptoService.CompressAndEncryptAsync(ms0, ts, Passphrase).Wait();
+            configFile.Attributes = FileAttributes.Hidden; // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
+
+            return base.Validate();
+        }
+    }
+
+    
+
+    public class ArchiveCommand : Command<ArchiveCommand.ArchiveSettings>
+    {
+        public class ArchiveSettings : RepositorySettings
+        {
+            [Description("Storage tier to use (hot|cool|archive)")]
+            [CommandOption("-t|--tier <TIER>")]
+            [DefaultValue("archive")]
+            public string Tier { get; set; }
+
+            [Description("Remove local file after a successful upload")]
+            [CommandOption("--remove-local")]
+            [DefaultValue(false)]
+            public bool RemoveLocal { get; set; }
+
+            [Description("Deduplicate the chunks in the binary files")]
+            [CommandOption("--dedup")]
+            [DefaultValue(false)]
+            public bool Dedup { get; set; }
+
+            [Description("Use the cached hash of a file (faster, do not use in an archive where file contents change)")]
+            [CommandOption("--fasthash")]
+            [DefaultValue(false)]
+            public bool Fasthash { get; set; }
+
+
+            public override Spectre.Console.ValidationResult Validate()
+            {
+                if (Tier is null)
+                    return Spectre.Console.ValidationResult.Error($"Tier is required");
+
+                string[] validTiers = { "hot", "cool", "archive" };
+                Tier = Tier.ToLowerInvariant();
+                if (!validTiers.Contains(Tier))
+                    return Spectre.Console.ValidationResult.Error($"'{Tier}' is not a valid tier");
+
+                //if (!File.GetAttributes(PathString).HasFlag(FileAttributes.Directory))
+                //    return ValidationResult.Error($"'{PathString}' is not a valid directory");
+
+                //if (!Directory.Exists(PathString) || !File.GetAttributes(PathString).HasFlag(FileAttributes.Directory)) // as per https://stackoverflow.com/a/1395226/1582323
+                //    return ValidationResult.Error($"'{PathString}' is not a valid directory");
+
+                return base.Validate();
+            }
+        }
+
+
+
+        public ArchiveCommand(IGreeter /*ILogger<ArchiveCommand>*/ logger)
+        {
+        }
+
+        public override int Execute(CommandContext context, ArchiveSettings settings)
+        {
+            Console.WriteLine(settings.Path);
+            // Omitted
+            return 0;
+        }
+
+        //public override ValidationResult Validate(CommandContext context, ArchiveSettings settings)
+        //{
+        //    if (settings.Project is null)
+        //        return ValidationResult.Error($"Path not found");
+            
+        //    return base.Validate(context, settings);
+        //}
     }
 }

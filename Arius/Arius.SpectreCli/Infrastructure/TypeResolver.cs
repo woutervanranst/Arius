@@ -4,7 +4,7 @@ using Spectre.Console.Cli;
 
 namespace Spectre.Console.Examples
 {
-    public sealed class TypeResolver : ITypeResolver
+    public sealed class TypeResolver : ITypeResolver, IDisposable
     {
         private readonly IServiceProvider _provider;
 
@@ -15,7 +15,20 @@ namespace Spectre.Console.Examples
 
         public object Resolve(Type type)
         {
-            return _provider.GetRequiredService(type);
+            if (type == null)
+            {
+                return null;
+            }
+
+            return _provider.GetService(type);
+        }
+
+        public void Dispose()
+        {
+            if (_provider is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
     }
 }

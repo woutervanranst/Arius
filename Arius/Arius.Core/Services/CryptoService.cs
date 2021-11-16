@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Services;
 
-internal static class CryptoService
+public static class CryptoService
 {
     private const string OPENSSL_SALT_PREFIX = "Salted__";
     private static readonly byte[] OPENSSL_SALT_PREFIX_BYTES = Encoding.ASCII.GetBytes(OPENSSL_SALT_PREFIX);
