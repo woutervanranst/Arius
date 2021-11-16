@@ -193,7 +193,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         /* 
         * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
         * Four possibilities:
-        *   1.  [At the start of the run] the Binary already exist remotely
+        *   1.   [At the start of the run] the Binary already exist remotely
         *   2.1. [At the start of the run] the Binary did not yet exist remotely, and upload has not started --> upload it 
         *   2.2. [At the start of the run] the Binary did not yet exist remotely, and upload has started but not completed --> wait for it to complete
         *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
