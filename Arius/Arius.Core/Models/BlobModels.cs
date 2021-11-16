@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -102,10 +103,10 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
     {
         try
         {
-            props = bbc.GetProperties().Value;
+            props = bbc.GetProperties().Value; //TODO to async
             this.bbc = bbc;
         }
-        catch (Azure.RequestFailedException)
+        catch (RequestFailedException)
         {
             throw new ArgumentException($"Blob {bbc.Uri} not found. Either this is expected (no hydrated blob found) or the archive integrity is compromised?");
         }
