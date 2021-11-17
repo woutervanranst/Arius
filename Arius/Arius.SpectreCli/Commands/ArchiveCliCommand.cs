@@ -13,7 +13,7 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
     {
         this.console = console;
         this.logger = logger;
-        this.logger.LogDebug("{0} initialized", nameof(Commands.ArchiveCliCommand));
+        this.logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
     }
 
     private ILogger<ArchiveCliCommand> logger;
@@ -21,6 +21,11 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
 
     public class ArchiveSettings : RepositorySettings
     {
+        public ArchiveSettings(string accountNane, string accountKey, string container, string passphrase)
+        {
+
+        }
+
         [Description("Storage tier to use (hot|cool|archive)")]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
@@ -41,15 +46,15 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
         [DefaultValue(false)]
         public bool Fasthash { get; set; }
 
-        public override Spectre.Console.ValidationResult Validate()
+        public override ValidationResult Validate()
         {
             if (Tier is null)
-                return Spectre.Console.ValidationResult.Error($"Tier is required");
+                return ValidationResult.Error($"Tier is required");
 
             string[] validTiers = { "hot", "cool", "archive" };
             Tier = Tier.ToLowerInvariant();
             if (!validTiers.Contains(Tier))
-                return Spectre.Console.ValidationResult.Error($"'{Tier}' is not a valid tier");
+                return ValidationResult.Error($"'{Tier}' is not a valid tier");
 
             return base.Validate();
         }

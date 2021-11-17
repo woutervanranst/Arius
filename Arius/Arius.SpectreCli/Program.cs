@@ -1,13 +1,6 @@
-using System;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using System.Globalization;
-using System.Linq;
-using Arius.SpectreCli.Commands;
 using Arius.SpectreCli.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Serilog.Core;
+using Spectre.Console;
 using Spectre.Console.Cli;
 using Spectre.Console.Examples;
 
@@ -29,9 +22,15 @@ namespace Arius.SpectreCli
 
                 config.SetApplicationName("arius");
 
+                //config.SetExceptionHandler(ex =>
+                //{
+                //    AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                //    return -1;
+                //});
+
                 config.AddCommand<Commands.ArchiveCliCommand>("archive");
             });
-
+            
             return app.Run(args);
         }
     }

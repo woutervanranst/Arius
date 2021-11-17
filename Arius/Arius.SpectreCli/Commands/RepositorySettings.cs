@@ -1,8 +1,10 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Arius.CliSpectre.Utils;
 using Arius.Core.Services;
 using Arius.SpectreCli.Utils;
 using Spectre.Console;
@@ -18,7 +20,7 @@ public class RepositorySettings : CommandSettings // do not make it abstract as 
         AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
 
         if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
-            Path = new DirectoryInfo("/archive");
+            Path = new DirectoryInfo("/archive"); //when runnning in a docker container
     }
 
     [Description("Blob Account Name")]
@@ -49,38 +51,13 @@ public class RepositorySettings : CommandSettings // do not make it abstract as 
             path = value;
 
             // Load Config if it exists in the path
-            var configFile = new FileInfo(System.IO.Path.Combine(path.FullName, "arius.config"));
-            try
-            {
-                if (configFile.Exists)
-                {
-                    using var ss = configFile.OpenRead();
-                    using var ms = new MemoryStream();
-                    CryptoService.DecryptAndDecompressAsync(ss, ms, Passphrase).Wait();
-                    ms.Seek(0, SeekOrigin.Begin);
-                    var s = JsonSerializer.Deserialize<RepositorySettings>(ms);
-
-                    this.AccountName = s.AccountName;
-                    this.AccountKey = s.AccountKey;
-                    this.Container = s.Container;
-                }
-            }
-            catch (AggregateException e) when (e.InnerException is InvalidDataException)
-            {
-                // Wrong Passphrase?
-            }
-            catch (AggregateException e) when (e.InnerException is ArgumentNullException)
-            {
-                // No passphrase
-            }
-            catch (JsonException e)
-            {
-                configFile.Delete();
-                //Console.WriteLine(e);
-                //throw;
-            }
+            var c = PersistedRepositoryConfigReader.LoadSettings(value, Passphrase);
+            
         }
     }
+
+    
+
     private readonly DirectoryInfo path;
 
     public override ValidationResult Validate()
@@ -99,13 +76,7 @@ public class RepositorySettings : CommandSettings // do not make it abstract as 
 
 
         // Save the Config
-        var configFile = new FileInfo(System.IO.Path.Combine(path.FullName, "arius.config"));
-        using var ms0 = new MemoryStream();
-        JsonSerializer.Serialize(ms0, this);
-        ms0.Seek(0, SeekOrigin.Begin);
-        using var ts = configFile.OpenWrite();
-        CryptoService.CompressAndEncryptAsync(ms0, ts, Passphrase).Wait();
-        configFile.Attributes = FileAttributes.Hidden; // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
+        PersistedRepositoryConfigReader.SaveSettings(this);
 
         return base.Validate();
     }

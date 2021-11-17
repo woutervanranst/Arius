@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli", "Arius.Cli\Ariu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Legacy", "Arius.Core.Legacy\Arius.Core.Legacy.csproj", "{13C2BC9B-D68A-4F3C-B948-31A3A8E245C0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.SpectreCli", "Arius.SpectreCli\Arius.SpectreCli.csproj", "{B0186E2E-8775-4406-B0FC-AF82E22F7418}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.CliSpectre", "Arius.SpectreCli\Arius.CliSpectre.csproj", "{B0186E2E-8775-4406-B0FC-AF82E22F7418}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
