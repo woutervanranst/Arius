@@ -58,7 +58,7 @@ namespace Arius.CliSpectre.Utils
             ms.Seek(0, SeekOrigin.Begin);
 
             var fn = Path.Combine(settings.Path.FullName, "arius.config");
-            using var ts = File.Open(fn, FileMode.Create, FileAccess.Write); // FileInfo.OpenWrite APPENDS/does not truncate 
+            using var ts = File.Open(fn, FileMode.Truncate, FileAccess.Write); // FileInfo.OpenWrite APPENDS/does not truncate 
             ms.CopyTo(ts);
             File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
         }

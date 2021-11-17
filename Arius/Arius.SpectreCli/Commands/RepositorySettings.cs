@@ -52,12 +52,14 @@ internal abstract class RepositorySettings : CommandSettings, IRepositoryOptions
             path = value;
 
             // Load Config if it exists in the path
+            // TODO Test precedence: Environment Variable < Settings < Cli
             var c = PersistedRepositoryConfigReader.LoadSettings(value, Passphrase);
+
             if (c != default)
             {
-                AccountName = c.accountName;
-                AccountKey = c.accountKey;
-                Container = c.container;
+                AccountName ??= c.accountName; // if the CLI option is not specified, AccountName will be null
+                AccountKey ??= c.accountKey;
+                Container ??= c.container;
             }
         }
     }
