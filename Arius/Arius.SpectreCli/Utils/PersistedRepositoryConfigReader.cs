@@ -5,8 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Arius.CliSpectre.Commands;
 using Arius.Core.Services;
-using Arius.SpectreCli.Commands;
 
 namespace Arius.CliSpectre.Utils
 {
@@ -57,10 +57,10 @@ namespace Arius.CliSpectre.Utils
             JsonSerializer.Serialize(ms, s);
             ms.Seek(0, SeekOrigin.Begin);
 
-            var configFile = new FileInfo(Path.Combine(settings.Path.FullName, "arius.config"));
-            using var ts = configFile.OpenWrite();
+            var fn = Path.Combine(settings.Path.FullName, "arius.config");
+            using var ts = File.Open(fn, FileMode.Create, FileAccess.Write); // FileInfo.OpenWrite APPENDS/does not truncate 
             ms.CopyTo(ts);
-            configFile.Attributes = FileAttributes.Hidden; // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
+            File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
         }
 
         private class PersistedSettings
