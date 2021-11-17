@@ -1,15 +1,16 @@
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Arius.SpectreCli.Commands;
+namespace Arius.CliSpectre.Commands;
 
-public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
+internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, IFacade2 facade)
     {
         this.console = console;
         this.logger = logger;
@@ -19,7 +20,7 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
     private ILogger<ArchiveCliCommand> logger;
     private IAnsiConsole console;
 
-    public class ArchiveSettings : RepositorySettings
+    internal class ArchiveSettings : RepositorySettings
     {
         [Description("Storage tier to use (hot|cool|archive)")]
         [CommandOption("-t|--tier <TIER>")]

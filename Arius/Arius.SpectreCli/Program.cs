@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using Arius.CliSpectre.Commands;
 using Arius.CliSpectre.Utils;
+using Arius.Core.Commands;
 using Arius.SpectreCli.Infrastructure;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
@@ -34,9 +36,10 @@ namespace Arius.CliSpectre
                 .Build();
 
             var services = new ServiceCollection();
+            services.AddAriusCore();
             services.AddLogging(builder =>
             {
-                // Add Console Logging
+                // Add Coconfnsole Logging
                 //loggingBuilder
                 //    .AddConfiguration(config.GetSection("Logging"))
                 //    //.AddSimpleConsole(options =>
@@ -47,20 +50,20 @@ namespace Arius.CliSpectre
 
                 // Add File Logging
                 // Do not log to file if we are in a unit test - Do not configure Karambola file logging in a unit test. The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
-                if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
-                {
-                    builder.AddFile(options =>
-                    {
-                        options.RootPath = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? 
-                            "/logs" : 
-                            AppContext.BaseDirectory;
+                //if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                //{
+                //    builder.AddFile(options =>
+                //    {
+                //        options.RootPath = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? 
+                //            "/logs" : 
+                //            AppContext.BaseDirectory;
 
-                        options.Files = new[] { new LogFileOptions { Path = logFilePath } };
+                //        options.Files = new[] { new LogFileOptions { Path = logFilePath } };
 
-                        options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
-                    });
+                //        options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                //    });
 
-                }
+                //}
             });
 
             var registrar = new TypeRegistrar(services);
@@ -74,7 +77,7 @@ namespace Arius.CliSpectre
 
                 config.PropagateExceptions();
 
-                config.AddCommand<SpectreCli.Commands.ArchiveCliCommand>("archive");
+                config.AddCommand<ArchiveCliCommand>("archive");
             });
 
             try

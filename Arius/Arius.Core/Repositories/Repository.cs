@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
@@ -19,15 +20,7 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal interface IOptions
-    {
-        string AccountName { get; }
-        string AccountKey { get; }
-        string Container { get; }
-        string Passphrase { get; }
-    }
-
-    public Repository(ILoggerFactory loggerFactory, IOptions options, Chunker chunker)
+    public Repository(ILoggerFactory loggerFactory, IRepositoryOptions options, Chunker chunker)
     {
         var logger = loggerFactory.CreateLogger<Repository>();
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";

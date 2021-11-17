@@ -5,16 +5,17 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Arius.CliSpectre.Utils;
+using Arius.Core.Commands;
 using Arius.Core.Services;
 using Arius.SpectreCli.Utils;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Arius.SpectreCli.Commands;
+namespace Arius.CliSpectre.Commands;
 
-public class RepositorySettings : CommandSettings // do not make it abstract as we re serializing this
+internal abstract class RepositorySettings : CommandSettings, IRepositoryOptions
 {
-    public RepositorySettings()
+    protected RepositorySettings()
     {
         AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
         AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");

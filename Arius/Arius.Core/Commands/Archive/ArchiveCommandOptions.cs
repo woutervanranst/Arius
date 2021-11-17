@@ -2,12 +2,19 @@
 using FluentValidation;
 using System;
 using System.IO;
+using Arius.Core.Services;
 
 namespace Arius.Core.Commands.Archive;
 
+public interface IArchiveCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
+{
+
+}
 internal class ArchiveCommandOptions : 
-    ServicesOptions,
-    Facade.Facade.IOptions
+    RepositoryOptions,
+    IArchiveCommandOptions,
+    Facade.IOptions,
+    IHashValueProvider.IOptions
 {
     internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
         : base(accountName, accountKey, container, passphrase)
@@ -34,7 +41,7 @@ internal class ArchiveCommandOptions :
 
     public int BinariesToUpload_BufferSize => 1000;
 
-    public int UploadBinaryFileBlock_BinaryFileParallelism => 16 * 2;
+    public int UploadBinaryFileBlock_BinaryFileParallelism => 1; // 16 * 2;
     public int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
     public int TransferChunked_ParallelChunkTransfers => 128 * 2;
 
