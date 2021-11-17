@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Arius.Core.Commands.DedupEval;
 
-internal class DedupEvalCommandOptions : Facade.Facade.IOptions,
+internal class DedupEvalCommandOptions : Facade.IOptions,
     DedupEvalCommand.IOptions,
 
     IHashValueProvider.IOptions

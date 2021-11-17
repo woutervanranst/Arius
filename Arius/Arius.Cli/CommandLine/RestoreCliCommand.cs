@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Configuration;
-using Arius.Core.Facade;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -8,6 +7,7 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 
 namespace Arius.Cli.CommandLine;
 

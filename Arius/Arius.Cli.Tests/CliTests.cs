@@ -1,6 +1,5 @@
 ﻿using Arius.Cli;
 using Arius.Core.Commands;
-using Arius.Core.Facade;
 using Moq;
 using NUnit.Framework;
 using System;

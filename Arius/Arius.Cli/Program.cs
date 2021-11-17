@@ -11,11 +11,11 @@ using System.Threading.Tasks;
 using Karambolo.Extensions.Logging.File;
 using Arius.Cli.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Arius.Core.Facade;
 using System.IO;
 using System.CommandLine.Parsing;
 using Arius.Cli.CommandLine;
 using System.IO.Compression;
+using Arius.Core.Commands;
 using Arius.Core.Extensions;
 
 /*

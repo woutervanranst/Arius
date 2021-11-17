@@ -32,11 +32,38 @@ using System.Threading.Tasks.Dataflow;
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 
-/*
- * This is required for legacy compatibilty
- */
-[assembly: InternalsVisibleTo("Arius.Core.Legacy")]
-namespace Arius.Core.Facade;
+namespace Arius.Core.Commands;
+
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddAriusCore(this IServiceCollection services)
+    {
+        //services.AddOptions<LibraryOptions>()
+        //    .Configure(options =>
+        //    {
+        //        // Specify default option values
+        //    });
+
+        // Register lib services here...
+        services.AddSingleton<IFacade2, Facade2>();
+        // services.AddScoped<ILibraryService, DefaultLibraryService>();
+
+        return services;
+    }
+}
+
+public interface IFacade2 // the interface is public, the class is internal
+{
+    ICommand CreateArchiveCommand(IArchiveCommandOptions options);
+}
+
+internal class Facade2 : IFacade2
+{
+    public ICommand CreateArchiveCommand(IArchiveCommandOptions options)
+    {
+        throw new NotImplementedException();
+    }
+}
 
 public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
 {
@@ -124,7 +151,7 @@ public class Facade : IFacade
 
     internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
     {
-        var options = new ServicesOptions(accountName, accountKey, container, passphrase);
+        var options = new RepositoryOptions(accountName, accountKey, container, passphrase);
             
         return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
     }

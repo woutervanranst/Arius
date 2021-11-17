@@ -1,6 +1,5 @@
 using Arius.Cli.Extensions;
 using Arius.Core.Configuration;
-using Arius.Core.Facade;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,6 +10,7 @@ using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 
 namespace Arius.Cli.CommandLine;
 
