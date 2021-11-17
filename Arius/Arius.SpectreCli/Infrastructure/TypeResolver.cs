@@ -1,16 +1,15 @@
 using System;
-using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
-namespace Spectre.Console.Examples
+namespace Arius.CliSpectre.Infrastructure
 {
     public sealed class TypeResolver : ITypeResolver, IDisposable
     {
-        private readonly IServiceProvider _provider;
+        private readonly IServiceProvider provider;
 
         public TypeResolver(IServiceProvider provider)
         {
-            _provider = provider ?? throw new ArgumentNullException(nameof(provider));
+            this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
         }
 
         public object Resolve(Type type)
@@ -20,12 +19,12 @@ namespace Spectre.Console.Examples
                 return null;
             }
 
-            return _provider.GetService(type);
+            return provider.GetService(type);
         }
 
         public void Dispose()
         {
-            if (_provider is IDisposable disposable)
+            if (provider is IDisposable disposable)
             {
                 disposable.Dispose();
             }

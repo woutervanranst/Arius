@@ -1,4 +1,5 @@
 using System;
+using Arius.CliSpectre.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
@@ -6,26 +7,26 @@ namespace Spectre.Console.Examples
 {
     public sealed class TypeRegistrar : ITypeRegistrar
     {
-        private readonly IServiceCollection _builder;
-
         public TypeRegistrar(IServiceCollection builder)
         {
-            _builder = builder;
+            this.builder = builder;
         }
+        private readonly IServiceCollection builder;
+
 
         public ITypeResolver Build()
         {
-            return new TypeResolver(_builder.BuildServiceProvider());
+            return new TypeResolver(builder.BuildServiceProvider());
         }
 
         public void Register(Type service, Type implementation)
         {
-            _builder.AddSingleton(service, implementation);
+            builder.AddSingleton(service, implementation);
         }
 
         public void RegisterInstance(Type service, object implementation)
         {
-            _builder.AddSingleton(service, implementation);
+            builder.AddSingleton(service, implementation);
         }
 
         public void RegisterLazy(Type service, Func<object> func)
@@ -35,7 +36,7 @@ namespace Spectre.Console.Examples
                 throw new ArgumentNullException(nameof(func));
             }
 
-            _builder.AddSingleton(service, _ => func());
+            builder.AddSingleton(service, _ => func());
         }
     }
 }
