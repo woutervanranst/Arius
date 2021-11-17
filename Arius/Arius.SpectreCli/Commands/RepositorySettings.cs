@@ -52,7 +52,12 @@ public class RepositorySettings : CommandSettings // do not make it abstract as 
 
             // Load Config if it exists in the path
             var c = PersistedRepositoryConfigReader.LoadSettings(value, Passphrase);
-            
+            if (c != default)
+            {
+                AccountName = c.accountName;
+                AccountKey = c.accountKey;
+                Container = c.container;
+            }
         }
     }
 

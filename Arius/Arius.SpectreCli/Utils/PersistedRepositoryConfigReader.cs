@@ -15,19 +15,15 @@ namespace Arius.CliSpectre.Utils
         public static (string accountName, string accountKey, string container) LoadSettings(DirectoryInfo path, string passphrase)
         {
             var configFile = new FileInfo(Path.Combine(path.FullName, "arius.config"));
+            if (!configFile.Exists)
+                return default;
 
             try
             {
-                if (configFile.Exists)
-                {
-                    using var ss = configFile.OpenRead();
-                    using var ms = new MemoryStream();
-                    CryptoService.DecryptAndDecompressAsync(ss, ms, passphrase).Wait();
-                    ms.Seek(0, SeekOrigin.Begin);
-                    var s = JsonSerializer.Deserialize<RepositorySettings>(ms);
+                using var ss = configFile.OpenRead();
+                var ps = JsonSerializer.Deserialize<PersistedSettings>(ss);
 
-                    return (s.AccountName, s.AccountKey, s.Container);
-                }
+                return (ps.AccountName, CryptoService.Decrypt(ps.EncryptedAccountKey, passphrase), ps.Container);
             }
             catch (AggregateException e) when (e.InnerException is InvalidDataException)
             {
@@ -39,7 +35,8 @@ namespace Arius.CliSpectre.Utils
             }
             catch (JsonException e)
             {
-                configFile.Delete();
+                //configFile.Delete();
+
                 //Console.WriteLine(e);
                 //throw;
             }
@@ -49,20 +46,28 @@ namespace Arius.CliSpectre.Utils
 
         public static void SaveSettings(RepositorySettings settings)
         {
-            var configFile = new FileInfo(System.IO.Path.Combine(settings.Path.FullName, "arius.config"));
-            using var ms0 = new MemoryStream();
-            JsonSerializer.Serialize(ms0, this);
-            ms0.Seek(0, SeekOrigin.Begin);
+            var s = new PersistedSettings
+            {
+                AccountName = settings.AccountName,
+                EncryptedAccountKey = CryptoService.Encrypt(settings.AccountKey, settings.Passphrase),
+                Container = settings.Container
+            };
+            
+            using var ms = new MemoryStream();
+            JsonSerializer.Serialize(ms, s);
+            ms.Seek(0, SeekOrigin.Begin);
+
+            var configFile = new FileInfo(Path.Combine(settings.Path.FullName, "arius.config"));
             using var ts = configFile.OpenWrite();
-            CryptoService.CompressAndEncryptAsync(ms0, ts, settings.Passphrase).Wait();
+            ms.CopyTo(ts);
             configFile.Attributes = FileAttributes.Hidden; // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
         }
 
         private class PersistedSettings
         {
-            private string AccountName { get; set; }
-            private string EncryptedAccountKey { get; set; }
-            private string Container { get; set; }
+            public string AccountName { get; init; }
+            public string EncryptedAccountKey { get; init; }
+            public string Container { get; init; }
         }
     }
 }

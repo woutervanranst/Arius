@@ -21,11 +21,6 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
 
     public class ArchiveSettings : RepositorySettings
     {
-        public ArchiveSettings(string accountNane, string accountKey, string container, string passphrase)
-        {
-
-        }
-
         [Description("Storage tier to use (hot|cool|archive)")]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
@@ -73,6 +68,24 @@ public class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
         logger.LogInformation("Starting my command");
         AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
         logger.LogInformation("Completed my command");
+
+            var table = new Table().RoundedBorder();
+            table.AddColumn("[grey]Name[/]");
+            table.AddColumn("[grey]Value[/]");
+
+            var properties = settings.GetType().GetProperties();
+            foreach (var property in properties)
+            {
+                var value = property.GetValue(settings)
+                    ?.ToString()
+                    ?.Replace("[", "[[");
+
+                table.AddRow(
+                    property.Name,
+                    value ?? "[grey]null[/]");
+            }
+
+            AnsiConsole.Write(table);
 
         return 0;
     }
