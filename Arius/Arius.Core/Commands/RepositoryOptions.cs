@@ -11,27 +11,8 @@ public interface IRepositoryOptions : ICommandOptions // the interface is public
     string AccountKey { get; }
     string Container { get; }
     string Passphrase { get; }
-}
 
-internal class RepositoryOptions : 
-    IRepositoryOptions
-{
-    public string AccountName { get; }
-    public string AccountKey { get; }
-    public string Container { get; }
-    public string Passphrase { get; }
-
-    internal RepositoryOptions(string accountName, string accountKey, string container, string passphrase) 
-    {
-        AccountName = accountName;
-        AccountKey = accountKey;
-        Container = container;
-        Passphrase = passphrase;
-
-        var validator = new Validator();
-        validator.ValidateAndThrow(this);
-    }
-    private class Validator : AbstractValidator<RepositoryOptions>
+    protected class Validator : AbstractValidator<IRepositoryOptions>
     {
         public Validator()
         {

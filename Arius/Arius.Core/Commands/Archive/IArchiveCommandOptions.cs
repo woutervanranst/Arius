@@ -41,10 +41,14 @@ public interface IArchiveCommandOptions :  // the interface is public, the imple
 
     int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
-    internal class Validator : AbstractValidator<IArchiveCommandOptions>
+    internal new class Validator : AbstractValidator<IArchiveCommandOptions>
     {
         public Validator()
         {
+            RuleFor(o => (IRepositoryOptions)o).SetInheritanceValidator(v =>
+            {
+                v.Add<IRepositoryOptions>(new IRepositoryOptions.Validator());
+            });
             RuleFor(o => o.Path)
                 .NotEmpty()
                 .Custom((path, context) =>

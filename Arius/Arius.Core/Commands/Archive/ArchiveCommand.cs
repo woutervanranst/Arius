@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using Arius.Core.Services.Chunkers;
 using System.Threading.Channels;
 using Arius.Core.Extensions;
+using FluentValidation;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -34,7 +35,7 @@ internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
         var validator = new IArchiveCommandOptions.Validator();
-        await validator.ValidateAsync(options);
+        await validator.ValidateAndThrowAsync(options);
 
 
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
