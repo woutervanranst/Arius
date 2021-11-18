@@ -46,6 +46,8 @@ public static class ServiceCollectionExtensions
 
         // Register lib services here...
         services.AddSingleton<IFacade2, Facade2>();
+        services.AddSingleton<IArchiveCommand, ArchiveCommand>();
+        //services.AddSingleton<IArchiveCommandOptions, Archivesett>();
         // services.AddScoped<ILibraryService, DefaultLibraryService>();
 
         return services;
@@ -129,13 +131,15 @@ public class Facade : IFacade
     }
     public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
     {
-        var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
+        throw new NotImplementedException();
 
-        var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+        //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
 
-        var ac = sp.GetRequiredService<ArchiveCommand>();
+        //var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
-        return ac;
+        //var ac = sp.GetRequiredService<ArchiveCommand>();
+
+        //return ac;
     }
 
     public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc)

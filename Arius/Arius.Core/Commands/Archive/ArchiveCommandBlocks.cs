@@ -170,7 +170,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
         Func<ChannelReader<BinaryFile>> sourceFunc,
         int maxDegreeOfParallelism,
         Repository repo,
-        ArchiveCommandOptions options,
+        IArchiveCommandOptions options,
         Func<BinaryFile, Task> onBinaryExists,
         Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
     {
@@ -180,7 +180,7 @@ internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
     }
 
     private readonly Repository repo;
-    private readonly ArchiveCommandOptions options;
+    private readonly IArchiveCommandOptions options;
         
     private readonly Func<BinaryFile, Task> onBinaryExists;
 

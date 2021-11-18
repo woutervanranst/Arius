@@ -1,31 +1,46 @@
+using System;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
+using Arius.SpectreCli.Utils;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Arius.CliSpectre.Commands;
 
-internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSettings>
+internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, IFacade2 facade)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, IArchiveCommand command)
     {
         this.console = console;
         this.logger = logger;
+        this.command = command;
         this.logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
     }
 
     private ILogger<ArchiveCliCommand> logger;
+    private readonly IArchiveCommand command;
     private IAnsiConsole console;
+    private IArchiveCommandOptions options;
 
-    internal class ArchiveSettings : RepositorySettings
+    internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
+
         [Description("Storage tier to use (hot|cool|archive)")]
+        [TypeConverter(typeof(TierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
-        public string Tier { get; set; }
+        public AccessTier Tier
+        {
+            get => tier;
+            set => tier = value;
+        }
+        private AccessTier tier;
+
 
         [Description("Remove local file after a successful upload")]
         [CommandOption("--remove-local")]
@@ -40,17 +55,19 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSetting
         [Description("Use the cached hash of a file (faster, do not use in an archive where file contents change)")]
         [CommandOption("--fasthash")]
         [DefaultValue(false)]
-        public bool Fasthash { get; set; }
+        public bool FastHash { get; set; }
+
+        public DateTime VersionUtc => DateTime.UtcNow;
 
         public override ValidationResult Validate()
         {
-            if (Tier is null)
-                return ValidationResult.Error($"Tier is required");
+            //if (Tier is null)
+            //    return ValidationResult.Error($"Tier is required");
 
-            string[] validTiers = { "hot", "cool", "archive" };
-            Tier = Tier.ToLowerInvariant();
-            if (!validTiers.Contains(Tier))
-                return ValidationResult.Error($"'{Tier}' is not a valid tier");
+            //string[] validTiers = { "hot", "cool", "archive" };
+            //Tier = Tier.ToLowerInvariant();
+            //if (!validTiers.Contains(Tier))
+            //    return ValidationResult.Error($"'{Tier}' is not a valid tier");
 
             return base.Validate();
         }
@@ -64,29 +81,32 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveSetting
     //    return base.Validate(context, settings);
     //}
 
-    public override async Task<int> ExecuteAsync(CommandContext context, ArchiveSettings settings)
+    public override async Task<int> ExecuteAsync(CommandContext context, ArchiveCommandOptions options)
     {
         logger.LogInformation("Starting my command");
-        AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
-        logger.LogInformation("Completed my command");
 
-            var table = new Table().RoundedBorder();
-            table.AddColumn("[grey]Name[/]");
-            table.AddColumn("[grey]Value[/]");
+        await command.ExecuteAsync(options);
+        
+        //AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
+        //logger.LogInformation("Completed my command");
 
-            var properties = settings.GetType().GetProperties();
-            foreach (var property in properties)
-            {
-                var value = property.GetValue(settings)
-                    ?.ToString()
-                    ?.Replace("[", "[[");
+        //    var table = new Table().RoundedBorder();
+        //    table.AddColumn("[grey]Name[/]");
+        //    table.AddColumn("[grey]Value[/]");
 
-                table.AddRow(
-                    property.Name,
-                    value ?? "[grey]null[/]");
-            }
+        //    var properties = settings.GetType().GetProperties();
+        //    foreach (var property in properties)
+        //    {
+        //        var value = property.GetValue(settings)
+        //            ?.ToString()
+        //            ?.Replace("[", "[[");
 
-            AnsiConsole.Write(table);
+        //        table.AddRow(
+        //            property.Name,
+        //            value ?? "[grey]null[/]");
+        //    }
+
+        //    AnsiConsole.Write(table);
 
         return 0;
     }

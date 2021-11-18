@@ -13,9 +13,9 @@ using Spectre.Console.Cli;
 
 namespace Arius.CliSpectre.Commands;
 
-internal abstract class RepositorySettings : CommandSettings, IRepositoryOptions
+internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 {
-    protected RepositorySettings()
+    protected RepositoryOptions()
     {
         AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
         AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
@@ -40,7 +40,6 @@ internal abstract class RepositorySettings : CommandSettings, IRepositoryOptions
     [CommandOption("-p|--passphrase <PASSPHRASE>")]
     public string Passphrase { get; set; }
 
-    [JsonIgnore]
     [Description("Path to archive")]
     [TypeConverter(typeof(DirectoryTypeConverter))]
     [CommandArgument(0, "<PATH>")]

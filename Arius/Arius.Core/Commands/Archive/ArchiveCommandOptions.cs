@@ -6,34 +6,19 @@ using Arius.Core.Services;
 
 namespace Arius.Core.Commands.Archive;
 
-public interface IArchiveCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
+public interface IArchiveCommandOptions :  // the interface is public, the implementation internal
+    IRepositoryOptions
+    //,
+    //IHashValueProvider.IOptions
 {
-
-}
-internal class ArchiveCommandOptions : 
-    RepositoryOptions,
-    IArchiveCommandOptions,
-    Facade.IOptions,
-    IHashValueProvider.IOptions
-{
-    internal ArchiveCommandOptions(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
-        : base(accountName, accountKey, container, passphrase)
-    {
-        FastHash = fastHash;
-        RemoveLocal = removeLocal;
-        Tier = tier;
-        Dedup = dedup;
-        Path = new DirectoryInfo(path);
-        VersionUtc = versionUtc;
-
-        var validator = new Validator();
-        validator.ValidateAndThrow(this);
-    }
-
-    public bool FastHash { get; }
-    public bool RemoveLocal { get; }
-    public AccessTier Tier { get; }
-    public bool Dedup { get; }
+    string AccountName { get; }
+    string AccountKey { get; }
+    string Container { get; }
+    string Passphrase { get; }
+    bool FastHash { get; }
+    bool RemoveLocal { get; }
+    AccessTier Tier { get; }
+    bool Dedup { get; }
     public DirectoryInfo Path { get; }
     public DateTime VersionUtc { get; }
 
@@ -46,7 +31,7 @@ internal class ArchiveCommandOptions :
     public int TransferChunked_ParallelChunkTransfers => 128 * 2;
 
     public int PointersToCreate_BufferSize => 1000;
-    
+
     public int CreatePointerFileIfNotExistsBlock_Parallelism => 1;
 
     public int PointerFileEntriesToCreate_BufferSize => 1000;
@@ -54,27 +39,26 @@ internal class ArchiveCommandOptions :
     public int CreatePointerFileEntryIfNotExistsBlock_Parallelism => 1;
 
     public int BinariesToDelete_BufferSize => 1000;
-    
+
     public int DeleteBinaryFilesBlock_Parallelism => 1;
 
     public int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
+}
 
-
-    private class Validator : AbstractValidator<ArchiveCommandOptions>
+internal class IArchiveCommandValidator : AbstractValidator<IArchiveCommandOptions>
+{
+    public IArchiveCommandValidator()
     {
-        public Validator()
-        {
-            RuleFor(o => o.Path)
-                .NotEmpty()
-                .Custom((path, context) =>
-                {
-                    if (!path.Exists)
-                        context.AddFailure($"Directory {path} does not exist.");
-                });
-            RuleFor(o => o.Tier).Must(tier =>
-                tier == AccessTier.Hot ||
-                tier == AccessTier.Cool ||
-                tier == AccessTier.Archive);
-        }
+        RuleFor(o => o.Path)
+            .NotEmpty()
+            .Custom((path, context) =>
+            {
+                if (!path.Exists)
+                    context.AddFailure($"Directory {path} does not exist.");
+            });
+        RuleFor(o => o.Tier).Must(tier =>
+            tier == AccessTier.Hot ||
+            tier == AccessTier.Cool ||
+            tier == AccessTier.Archive);
     }
 }

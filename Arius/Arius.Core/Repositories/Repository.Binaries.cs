@@ -54,7 +54,7 @@ internal partial class Repository
         /// <summary>
         /// Upload the given BinaryFile with the specified options
         /// </summary>
-        public async Task UploadAsync(BinaryFile bf, ArchiveCommandOptions options)
+        public async Task UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
 
@@ -82,7 +82,7 @@ internal partial class Repository
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf, ArchiveCommandOptions options)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
             var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
@@ -176,7 +176,7 @@ internal partial class Repository
         /// </summary>
         /// <param name="bf"></param>
         /// <returns></returns>
-        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf, ArchiveCommandOptions options)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
             var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 

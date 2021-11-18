@@ -44,7 +44,7 @@ namespace Arius.CliSpectre.Utils
             return default;
         }
 
-        public static void SaveSettings(RepositorySettings settings)
+        public static void SaveSettings(RepositoryOptions settings)
         {
             var s = new PersistedSettings
             {

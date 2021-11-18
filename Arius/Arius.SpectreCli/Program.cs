@@ -3,6 +3,7 @@ using System.IO;
 using Arius.CliSpectre.Commands;
 using Arius.CliSpectre.Utils;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Arius.SpectreCli.Infrastructure;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +38,7 @@ namespace Arius.CliSpectre
 
             var services = new ServiceCollection();
             services.AddAriusCore();
+            //services.AddSingleton<IArchiveCommandOptionsProvider, ArchiveCliCommand>();
             services.AddLogging(builder =>
             {
                 // Add Coconfnsole Logging
@@ -78,6 +80,7 @@ namespace Arius.CliSpectre
                 config.PropagateExceptions();
 
                 config.AddCommand<ArchiveCliCommand>("archive");
+
             });
 
             try
