@@ -20,7 +20,7 @@ internal class RestoreCommandOptionsTests : TestBase
     [Test]
     public void Ctor_ValidDirectory_PathInstanceOfDirectoryInfo()
     {
-        var o = new RestoreCommandOptions(
+        var o = new IRestoreCommandOptions(
             accountName: "ha",
             accountKey: "he",
             container: "hi",
@@ -41,7 +41,7 @@ internal class RestoreCommandOptionsTests : TestBase
         var fn = Path.Combine(TestBase.RestoreTestDirectory.FullName, "ha.pointer.arius");
         File.WriteAllText(fn, "");
 
-        var o = new RestoreCommandOptions(
+        var o = new IRestoreCommandOptions(
             accountName: "ha",
             accountKey: "he",
             container: "hi",
@@ -62,7 +62,7 @@ internal class RestoreCommandOptionsTests : TestBase
     public void Ctor_NonExistingDirectory_FileNotFoundException()
     {
         Assert.Catch<FileNotFoundException>(() =>
-            new RestoreCommandOptions(
+            new IRestoreCommandOptions(
             accountName: "ha",
             accountKey: "he",
             container: "hi",
@@ -78,7 +78,7 @@ internal class RestoreCommandOptionsTests : TestBase
     public void Ctor_NonExistingFile_FileNotFoundException()
     {
         Assert.Catch<FileNotFoundException>(() =>
-            new RestoreCommandOptions(
+            new IRestoreCommandOptions(
             accountName: "ha",
             accountKey: "he",
             container: "hi",

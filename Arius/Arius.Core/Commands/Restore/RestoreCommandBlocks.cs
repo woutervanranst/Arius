@@ -135,7 +135,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         Func<ChannelReader<PointerFile>> sourceFunc,
         PointerService pointerService,
         Repository repo,
-        RestoreCommandOptions options,
+        IRestoreCommandOptions options,
         Action chunkRehydrating,
         Action onCompleted,
         int maxDegreeOfParallelism)
@@ -150,7 +150,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource<BinaryFile>> restoredBinaries = new();
     private readonly PointerService pointerService;
     private readonly Repository repo;
-    private readonly RestoreCommandOptions options;
+    private readonly IRestoreCommandOptions options;
     private readonly Action chunkRehydrating;
 
     protected override async Task ForEachBodyImplAsync(PointerFile pf, CancellationToken ct)

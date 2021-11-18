@@ -190,7 +190,7 @@ internal partial class Repository
         /// Start hydration for the chunks if required.
         /// Returns null if the Binary is not yet hydrated
         /// </summary>
-        public async Task<bool> TryDownloadAsync(BinaryHash bh, FileInfo target, RestoreCommandOptions options, bool rehydrateIfNeeded = true)
+        public async Task<bool> TryDownloadAsync(BinaryHash bh, FileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
         {
             var chs = await GetChunkHashesAsync(bh);
             var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();

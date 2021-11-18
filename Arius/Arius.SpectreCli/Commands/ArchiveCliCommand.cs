@@ -28,7 +28,6 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
-
         [Description("Storage tier to use (hot|cool|archive)")]
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]

@@ -33,6 +33,10 @@ internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is
 
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
+        var validator = new IArchiveCommandOptions.Validator();
+        await validator.ValidateAsync(options);
+
+
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var repo = services.GetRequiredService<Repository>();
         var pointerService = services.GetRequiredService<PointerService>();

@@ -35,6 +35,9 @@ namespace Arius.Core.Commands;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
+    /// </summary>
     public static IServiceCollection AddAriusArchiveCommand(this IServiceCollection services)
     {
         //services.AddOptions<LibraryOptions>()
@@ -49,9 +52,14 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
+    /// </summary>
     public static IServiceCollection AddAriusRestoreCommand(this IServiceCollection services)
     {
-        throw new NotImplementedException();
+        services.AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
+
+        return services;
     }
 }
 

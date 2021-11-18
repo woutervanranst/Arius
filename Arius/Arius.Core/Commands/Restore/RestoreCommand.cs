@@ -16,24 +16,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ICommand //This class is internal but the interface is public for use in the Facade
+internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
-    public RestoreCommand(RestoreCommandOptions options,
-        ILogger<RestoreCommand> logger,
+    public RestoreCommand(ILogger<RestoreCommand> logger,
         IServiceProvider serviceProvider)
     {
-        this.options = options;
         this.logger = logger;
         services = serviceProvider;
     }
 
-    private readonly RestoreCommandOptions options;
     private readonly ILogger<RestoreCommand> logger;
     private readonly IServiceProvider services;
 
-    IServiceProvider ICommand.Services => services;
+    IServiceProvider ICommand<IRestoreCommandOptions>.Services => services;
 
-    public async Task<int> Execute()
+    public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
     {
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var repo = services.GetRequiredService<Repository>();
@@ -55,7 +52,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
 
                 await binariesToDownload.Writer.WriteAsync(arg);
             },
-            onCompleted: () => 
+            onCompleted: () =>
             {
                 binariesToDownload.Writer.Complete(); //S13
             });
@@ -74,7 +71,7 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
             {
                 chunkRehydrating = true;
             },
-            onCompleted: () => 
+            onCompleted: () =>
             {
             });
         var downloadBinaryTask = downloadBinaryBlock.GetTask;
@@ -85,6 +82,10 @@ internal class RestoreCommand : ICommand //This class is internal but the interf
         {
             logger.LogInformation("All binaries restored, deleting temporary hydration folder, if applicable");
             await repo.Chunks.DeleteHydrateFolderAsync();
+        }
+        else
+        {
+            logger.LogWarning("WARNING: Not all files are restored as chunks are still being hydrated. Please run the restore operation again in 12-24 hours.");
         }
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
