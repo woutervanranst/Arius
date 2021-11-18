@@ -3,8 +3,12 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands;
 
-public interface ICommand
+public interface ICommandOptions
+{
+}
+
+public interface ICommand<T> where T : ICommandOptions
 {
     internal IServiceProvider Services { get; }
-    public Task<int> Execute();
+    public Task<int> ExecuteAsync(T options);
 }

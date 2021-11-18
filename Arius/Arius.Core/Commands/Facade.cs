@@ -1,6 +1,5 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
-using Arius.Core.Commands.DedupEval;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
 using Arius.Core.Extensions;
@@ -36,7 +35,7 @@ namespace Arius.Core.Commands;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddAriusCore(this IServiceCollection services)
+    public static IServiceCollection AddAriusArchiveCommand(this IServiceCollection services)
     {
         //services.AddOptions<LibraryOptions>()
         //    .Configure(options =>
@@ -45,34 +44,36 @@ public static class ServiceCollectionExtensions
         //    });
 
         // Register lib services here...
-        services.AddSingleton<IFacade2, Facade2>();
-        services.AddSingleton<IArchiveCommand, ArchiveCommand>();
-        //services.AddSingleton<IArchiveCommandOptions, Archivesett>();
-        // services.AddScoped<ILibraryService, DefaultLibraryService>();
+        services.AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>();
 
         return services;
     }
-}
 
-public interface IFacade2 // the interface is public, the class is internal
-{
-    ICommand CreateArchiveCommand(IArchiveCommandOptions options);
-}
-
-internal class Facade2 : IFacade2
-{
-    public ICommand CreateArchiveCommand(IArchiveCommandOptions options)
+    public static IServiceCollection AddAriusRestoreCommand(this IServiceCollection services)
     {
         throw new NotImplementedException();
     }
 }
 
-public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
-{
-    ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc);
-    ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc);
-    ICommand CreateDedupEvalCommand(string path);
-}
+//public interface IFacade2 // the interface is public, the class is internal
+//{
+//    ICommand CreateArchiveCommand(IArchiveCommandOptions options);
+//}
+
+//internal class Facade2 : IFacade2
+//{
+//    public ICommand CreateArchiveCommand(IArchiveCommandOptions options)
+//    {
+//        throw new NotImplementedException();
+//    }
+//}
+
+//public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
+//{
+//    ICommand<IArchiveCommandOptions> CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc);
+//    ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc);
+//    ICommand CreateDedupEvalCommand(string path);
+//}
 
 
 // TODO implement library as DI
@@ -96,11 +97,11 @@ public interface IFacade //Interface used mainly for injecting a mock facade in 
 //    }
 //}
 
-public class Facade : IFacade
+public class Facade //: IFacade
 {
-    internal interface IOptions // Used for DI in the facade
-    {
-    }
+    //internal interface IOptions // Used for DI in the facade
+    //{
+    //}
 
     public Facade(ILoggerFactory loggerFactory,
         IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
@@ -118,83 +119,83 @@ public class Facade : IFacade
     private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
 
 
-    public ICommand CreateDedupEvalCommand(string path)
-    {
-        var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
+    //public ICommand CreateDedupEvalCommand(string path)
+    //{
+    //    var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
 
-        var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+    //    var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
-        var dec = sp.GetRequiredService<DedupEvalCommand>();
+    //    var dec = sp.GetRequiredService<DedupEvalCommand>();
 
-        return dec;
+    //    return dec;
 
-    }
-    public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
-    {
-        throw new NotImplementedException();
+    //}
+    //public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
+    //{
+    //    throw new NotImplementedException();
 
-        //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
+    //    //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
 
-        //var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+    //    //var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
-        //var ac = sp.GetRequiredService<ArchiveCommand>();
+    //    //var ac = sp.GetRequiredService<ArchiveCommand>();
 
-        //return ac;
-    }
+    //    //return ac;
+    //}
 
-    public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc)
-    {
-        var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path, pointInTimeUtc);
+    //public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc)
+    //{
+    //    var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path, pointInTimeUtc);
 
-        var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+    //    var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
-        var rc = sp.GetRequiredService<RestoreCommand>();
+    //    var rc = sp.GetRequiredService<RestoreCommand>();
 
-        return rc;
-    }
+    //    return rc;
+    //}
 
-    internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
-    {
-        var options = new RepositoryOptions(accountName, accountKey, container, passphrase);
+    //internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
+    //{
+    //    var options = new RepositoryOptions(accountName, accountKey, container, passphrase);
             
-        return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
-    }
+    //    return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+    //}
 
 
-    private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, T options) where T : class, Facade.IOptions
-    {
-        var sc = new ServiceCollection();
+    //private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, T options) where T : class, Facade.IOptions
+    //{
+    //    var sc = new ServiceCollection();
 
-        sc
-            //Add Commmands
-            .AddSingleton<DedupEvalCommand>()
-            .AddSingleton<ArchiveCommand>()
-            .AddSingleton<RestoreCommand>()
+    //    sc
+    //        //Add Commmands
+    //        //.AddSingleton<DedupEvalCommand>()
+    //        .AddSingleton<ArchiveCommand>()
+    //        .AddSingleton<RestoreCommand>()
 
-            //Add Services
-            .AddSingleton<PointerService>()
-            .AddSingleton<IHashValueProvider, SHA256Hasher>()
-            .AddSingleton<Repository>()
+    //        //Add Services
+    //        .AddSingleton<PointerService>()
+    //        .AddSingleton<IHashValueProvider, SHA256Hasher>()
+    //        .AddSingleton<Repository>()
 
-            // Add Chunkers
-            .AddSingleton<Chunker, ByteBoundaryChunker>();
+    //        // Add Chunkers
+    //        .AddSingleton<Chunker, ByteBoundaryChunker>();
 
-        // Add Options
-        sc
-            .AddSingleton(tempDirectoryAppSettings);
+    //    // Add Options
+    //    sc
+    //        .AddSingleton(tempDirectoryAppSettings);
 
-        //Add the options for the Services & Repositories
-        foreach (var type in options.GetType().GetInterfaces())
-            sc.AddSingleton(type, options);
+    //    //Add the options for the Services & Repositories
+    //    foreach (var type in options.GetType().GetInterfaces())
+    //        sc.AddSingleton(type, options);
 
-        sc.AddSingleton<T>(options);
+    //    sc.AddSingleton<T>(options);
 
-        sc
-            .AddSingleton<ILoggerFactory>(loggerFactory)
-            .AddLogging();
+    //    sc
+    //        .AddSingleton<ILoggerFactory>(loggerFactory)
+    //        .AddLogging();
 
-        return sc.BuildServiceProvider();
-    }
+    //    return sc.BuildServiceProvider();
+    //}
 }
 
 

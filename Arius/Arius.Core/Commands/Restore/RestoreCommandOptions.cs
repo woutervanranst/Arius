@@ -6,7 +6,6 @@ using System.IO;
 namespace Arius.Core.Commands.Restore;
 
 internal class RestoreCommandOptions : RepositoryOptions,
-    Facade.IOptions,
     IHashValueProvider.IOptions
 {
     internal RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc)

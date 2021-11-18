@@ -18,15 +18,9 @@ using Arius.Core.Extensions;
 
 namespace Arius.Core.Commands.Archive;
 
-public interface IArchiveCommand : ICommand //This class is internal but the interface is public for use in the Facade
+internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
-    Task<int> ExecuteAsync(IArchiveCommandOptions options);
-}
-
-internal class ArchiveCommand : IArchiveCommand
-{
-    public ArchiveCommand(ILogger<ArchiveCommand> logger,
-        IServiceProvider serviceProvider)
+    public ArchiveCommand(ILogger<ArchiveCommand> logger, IServiceProvider serviceProvider)
     {
         this.logger = logger;
         services = serviceProvider;
@@ -35,12 +29,7 @@ internal class ArchiveCommand : IArchiveCommand
     private readonly ILogger<ArchiveCommand> logger;
     private readonly IServiceProvider services;
 
-    IServiceProvider ICommand.Services => services;
-
-    public async Task<int> Execute()
-    {
-        throw new NotImplementedException();
-    }
+    IServiceProvider ICommand<IArchiveCommandOptions>.Services => services;
 
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {

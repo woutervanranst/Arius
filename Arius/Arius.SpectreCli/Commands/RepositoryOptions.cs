@@ -41,7 +41,7 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
     public string Passphrase { get; set; }
 
     [Description("Path to archive")]
-    [TypeConverter(typeof(DirectoryTypeConverter))]
+    [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
     [CommandArgument(0, "<PATH>")]
     public DirectoryInfo Path
     {

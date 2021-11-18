@@ -10,7 +10,7 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.SpectreCli.Utils;
 
-public sealed class DirectoryTypeConverter : TypeConverter
+public sealed class StringToDirectoryInfoTypeConverter : TypeConverter
 {
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
@@ -29,7 +29,7 @@ public sealed class DirectoryTypeConverter : TypeConverter
     }
 }
 
-public sealed class TierTypeConverter : TypeConverter
+public sealed class StringToAccessTierTypeConverter : TypeConverter
 {
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {

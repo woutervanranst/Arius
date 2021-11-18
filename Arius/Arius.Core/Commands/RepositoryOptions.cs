@@ -5,7 +5,7 @@ using FluentValidation;
 using System;
 namespace Arius.Core.Commands;
 
-public interface IRepositoryOptions // the interface is public, the implementation is internal
+public interface IRepositoryOptions : ICommandOptions // the interface is public, the implementation is internal
 {
     string AccountName { get; }
     string AccountKey { get; }
@@ -14,7 +14,6 @@ public interface IRepositoryOptions // the interface is public, the implementati
 }
 
 internal class RepositoryOptions : 
-    Facade.IOptions,
     IRepositoryOptions
 {
     public string AccountName { get; }

@@ -37,11 +37,11 @@ namespace Arius.CliSpectre
                 .Build();
 
             var services = new ServiceCollection();
-            services.AddAriusCore();
+            services.AddAriusArchiveCommand();
             //services.AddSingleton<IArchiveCommandOptionsProvider, ArchiveCliCommand>();
             services.AddLogging(builder =>
             {
-                // Add Coconfnsole Logging
+                // Add COnsole Logging
                 //loggingBuilder
                 //    .AddConfiguration(config.GetSection("Logging"))
                 //    //.AddSimpleConsole(options =>

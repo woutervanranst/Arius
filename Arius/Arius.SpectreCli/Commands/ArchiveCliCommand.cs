@@ -14,7 +14,7 @@ namespace Arius.CliSpectre.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, IArchiveCommand command)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, Core.Commands.ICommand<IArchiveCommandOptions> command)
     {
         this.console = console;
         this.logger = logger;
@@ -23,23 +23,17 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     }
 
     private ILogger<ArchiveCliCommand> logger;
-    private readonly IArchiveCommand command;
+    private readonly Core.Commands.ICommand<IArchiveCommandOptions> command;
     private IAnsiConsole console;
-    private IArchiveCommandOptions options;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
 
         [Description("Storage tier to use (hot|cool|archive)")]
-        [TypeConverter(typeof(TierTypeConverter))]
+        [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
-        public AccessTier Tier
-        {
-            get => tier;
-            set => tier = value;
-        }
-        private AccessTier tier;
+        public AccessTier Tier { get; set; }
 
 
         [Description("Remove local file after a successful upload")]
