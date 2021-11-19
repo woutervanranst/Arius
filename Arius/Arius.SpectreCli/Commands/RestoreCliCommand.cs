@@ -31,6 +31,12 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
     internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
     {
+        public RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+            : base(accountName, accountKey, container, passphrase, path)
+        {
+            Path = path;
+        }
+
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
         [CommandOption("-s|--synchronize")]
         [DefaultValue(false)]
@@ -53,11 +59,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         [Description("Local path")]
         [TypeConverter(typeof(StringToFileSystemInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
-        public DirectoryInfo Path
-        {
-            get => (DirectoryInfo)PathInternal;
-            init => PathInternal = value;
-        }
+        public DirectoryInfo Path { get; }
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)

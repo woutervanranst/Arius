@@ -36,10 +36,10 @@ namespace Arius.CliSpectre
             var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
 
             using var logFileStream = File.Open(logFilePath, FileMode.CreateNew, FileAccess.Write);
-            Trace.Listeners.Add(new TextWriterTraceListener(logFileStream));
+            Trace.Listeners.Add(new TextWriterTraceListener(logFileStream)); //TODO File size: https://www.codeproject.com/Articles/2680/Writing-custom-NET-trace-listeners
+            Trace.AutoFlush = true;
 
             Trace.WriteLine("Started");
-            Trace.Flush();
 
             // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
             var config = new ConfigurationBuilder()
@@ -110,7 +110,6 @@ namespace Arius.CliSpectre
                 AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
                 return -1;
             }
-            
         }
     }
 }

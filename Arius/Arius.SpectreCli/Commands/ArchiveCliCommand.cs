@@ -31,6 +31,13 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
+        public ArchiveCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+            //AccessTier tier, bool removeLocal, bool dedup, bool fastHash, DirectoryInfo path)
+            : base(accountName, accountKey,container, passphrase, path)
+        {
+            Path = path;
+        }
+
         [Description("Storage tier to use (hot|cool|archive)")]
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
@@ -55,18 +62,14 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [Description("Local path")]
         [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
-        public DirectoryInfo Path
-        {
-            get => (DirectoryInfo)PathInternal;
-            init => PathInternal = value;
-        }
+        public DirectoryInfo Path { get; }
 
         public DateTime VersionUtc => DateTime.UtcNow;
 
         public override ValidationResult Validate()
         {
-            if (PathInternal is not DirectoryInfo)
-                return ValidationResult.Error($"Tier is required");
+            //if (PathInternal is not DirectoryInfo)
+            //    return ValidationResult.Error($"Tier is required");
 
             //string[] validTiers = { "hot", "cool", "archive" };
             //Tier = Tier.ToLowerInvariant();
