@@ -48,8 +48,7 @@ namespace Arius.CliSpectre
                 .Build();
 
             var services = new ServiceCollection()
-                .AddAriusArchiveCommand()
-                .AddAriusRestoreCommand()
+                .AddAriusCore()
                 .AddLogging(builder =>
                 {
                     // Add COnsole Logging

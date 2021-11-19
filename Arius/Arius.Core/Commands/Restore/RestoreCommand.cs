@@ -32,6 +32,10 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
 
     public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
     {
+        throw new NotImplementedException();
+        //var validator = new IrestoreCommandOptions.Validator();
+        //await validator.ValidateAndThrowAsync(options);
+
         var loggerFactory = services.GetRequiredService<ILoggerFactory>();
         var repo = services.GetRequiredService<Repository>();
         var pointerService = services.GetRequiredService<PointerService>();

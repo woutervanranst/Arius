@@ -97,10 +97,12 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     {
         logger.LogInformation("Starting my command");
 
+        await archiveCommand.ExecuteAsync(options);
+
+
         await Task.Delay(5000);
 
         return 0;
-        //await archiveCommand.ExecuteAsync(options);
         
         //AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
         //logger.LogInformation("Completed my command");

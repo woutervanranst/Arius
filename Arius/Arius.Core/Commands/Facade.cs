@@ -37,8 +37,9 @@ public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
+    /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
     /// </summary>
-    public static IServiceCollection AddAriusArchiveCommand(this IServiceCollection services)
+    public static IServiceCollection AddAriusCore(this IServiceCollection services)
     {
         //services.AddOptions<LibraryOptions>()
         //    .Configure(options =>
@@ -47,17 +48,35 @@ public static class ServiceCollectionExtensions
         //    });
 
         // Register lib services here...
-        services.AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>();
+        services
+            .AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>()
+            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
+
+        services
+            .AddSingleton<PointerService>()
+            .AddSingleton<IHashValueProvider, SHA256Hasher>()
+            .AddSingleton<Repository>()
+
+            // Add Chunkers
+            .AddSingleton<Chunker, ByteBoundaryChunker>();
 
         return services;
-    }
 
-    /// <summary>
-    /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
-    /// </summary>
-    public static IServiceCollection AddAriusRestoreCommand(this IServiceCollection services)
-    {
-        services.AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
+        // Add Options
+        //    sc
+        //        .AddSingleton(tempDirectoryAppSettings);
+
+        //    //Add the options for the Services & Repositories
+        //    foreach (var type in options.GetType().GetInterfaces())
+        //        sc.AddSingleton(type, options);
+
+        //    sc.AddSingleton<T>(options);
+
+        //    sc
+        //        .AddSingleton<ILoggerFactory>(loggerFactory)
+        //        .AddLogging();
+
+        //    return sc.BuildServiceProvider();
 
         return services;
     }
