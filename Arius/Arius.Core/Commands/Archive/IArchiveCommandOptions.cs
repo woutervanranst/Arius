@@ -6,10 +6,9 @@ using Arius.Core.Services;
 
 namespace Arius.Core.Commands.Archive;
 
-public interface IArchiveCommandOptions :  // the interface is public, the implementation internal
-    IRepositoryOptions
-    //,
-    //IHashValueProvider.IOptions
+public interface IArchiveCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
+//,
+//IHashValueProvider.IOptions
 {
     bool FastHash { get; }
     bool RemoveLocal { get; }
@@ -41,25 +40,33 @@ public interface IArchiveCommandOptions :  // the interface is public, the imple
 
     int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
+
     internal new class Validator : AbstractValidator<IArchiveCommandOptions>
     {
         public Validator()
         {
-            RuleFor(o => (IRepositoryOptions)o).SetInheritanceValidator(v =>
-            {
-                v.Add<IRepositoryOptions>(new IRepositoryOptions.Validator());
-            });
+            // validate the IRepositoryOptions (AccountName, AccountKey, Container, Passphrase)
+            RuleFor(o => (IRepositoryOptions)o)
+                .SetInheritanceValidator(v => 
+                    v.Add<IRepositoryOptions>(new IRepositoryOptions.Validator()));
+            
+            // Validate Path
             RuleFor(o => o.Path)
                 .NotEmpty()
                 .Custom((path, context) =>
                 {
+                    if (path is not DirectoryInfo)
+                        context.AddFailure("Path must be a directory");
                     if (!path.Exists)
                         context.AddFailure($"Directory {path} does not exist.");
                 });
-            RuleFor(o => o.Tier).Must(tier =>
-                tier == AccessTier.Hot ||
-                tier == AccessTier.Cool ||
-                tier == AccessTier.Archive);
+
+            // Validate Tier
+            RuleFor(o => o.Tier)
+                .Must(tier =>
+                    tier == AccessTier.Hot ||
+                    tier == AccessTier.Cool ||
+                    tier == AccessTier.Archive);
         }
     }
 }

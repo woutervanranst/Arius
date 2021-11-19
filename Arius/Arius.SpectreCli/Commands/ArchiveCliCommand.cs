@@ -1,29 +1,32 @@
-using System;
+using System;   
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.CliSpectre.Utils;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
-using Arius.SpectreCli.Utils;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using AriusCoreCommand = Arius.Core.Commands; //there is a conflict between Spectre.Console.Cli.ICommand and Arius.Core.Commands.ICommand
 
 namespace Arius.CliSpectre.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, Core.Commands.ICommand<IArchiveCommandOptions> command)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand)
     {
         this.console = console;
         this.logger = logger;
-        this.command = command;
-        this.logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
+        this.archiveCommand = archiveCommand;
+
+        logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
     }
 
     private ILogger<ArchiveCliCommand> logger;
-    private readonly Core.Commands.ICommand<IArchiveCommandOptions> command;
+    private readonly AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand;
     private IAnsiConsole console;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
@@ -32,23 +35,31 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
-        public AccessTier Tier { get; set; }
-
+        public AccessTier Tier { get; init; }
 
         [Description("Remove local file after a successful upload")]
         [CommandOption("--remove-local")]
         [DefaultValue(false)]
-        public bool RemoveLocal { get; set; }
+        public bool RemoveLocal { get; init; }
 
         [Description("Deduplicate the chunks in the binary files")]
         [CommandOption("--dedup")]
         [DefaultValue(false)]
-        public bool Dedup { get; set; }
+        public bool Dedup { get; init; }
 
         [Description("Use the cached hash of a file (faster, do not use in an archive where file contents change)")]
         [CommandOption("--fasthash")]
         [DefaultValue(false)]
-        public bool FastHash { get; set; }
+        public bool FastHash { get; init; }
+
+        [Description("Local path")]
+        [TypeConverter(typeof(StringToFileSystemInfoTypeConverter))]
+        [CommandArgument(0, "<PATH>")]
+        public DirectoryInfo Path
+        {
+            get => (DirectoryInfo)PathInternal;
+            init => PathInternal = value;
+        }
 
         public DateTime VersionUtc => DateTime.UtcNow;
 
@@ -78,7 +89,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     {
         logger.LogInformation("Starting my command");
 
-        await command.ExecuteAsync(options);
+        await archiveCommand.ExecuteAsync(options);
         
         //AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
         //logger.LogInformation("Completed my command");

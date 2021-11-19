@@ -4,5 +4,9 @@
       "commandName": "Project",
       "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool C:\\Users\\Wouter\\Documents\\Test"
     },
+    "restore": {
+      "commandName": "Project",
+      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
+    }
   }
 }

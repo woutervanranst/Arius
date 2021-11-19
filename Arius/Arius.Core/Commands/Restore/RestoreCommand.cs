@@ -40,7 +40,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
 
         var indexBlock = new IndexBlock(
             loggerFactory: loggerFactory,
-            sourceFunc: () => options.Path, //S10
+            sourceFunc: () => (DirectoryInfo)options.Path, //S10
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,
             synchronize: options.Synchronize,
             repo: repo,

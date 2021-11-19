@@ -44,7 +44,7 @@ namespace Arius.CliSpectre.Utils
             return default;
         }
 
-        public static void SaveSettings(RepositoryOptions settings)
+        public static void SaveSettings(RepositoryOptions settings, DirectoryInfo root)
         {
             var s = new PersistedSettings
             {
@@ -57,8 +57,10 @@ namespace Arius.CliSpectre.Utils
             JsonSerializer.Serialize(ms, s);
             ms.Seek(0, SeekOrigin.Begin);
 
-            var fn = Path.Combine(settings.Path.FullName, "arius.config");
-            using var ts = File.Open(fn, FileMode.Truncate, FileAccess.Write); // FileInfo.OpenWrite APPENDS/does not truncate 
+            var fn = Path.Combine(root.FullName, "arius.config");
+            using var ts = File.Exists(fn)
+                ? File.Open(fn, FileMode.Truncate, FileAccess.Write)  // FileInfo.OpenWrite APPENDS/does not truncate 
+                : File.Open(fn, FileMode.CreateNew, FileAccess.Write);
             ms.CopyTo(ts);
             File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
         }

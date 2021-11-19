@@ -1,26 +1,30 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.SpectreCli.Utils;
+namespace Arius.CliSpectre.Utils;
 
-public sealed class StringToDirectoryInfoTypeConverter : TypeConverter
+public sealed class StringToFileSystemInfoTypeConverter : TypeConverter
 {
     public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
     {
         if (value is string stringValue)
         {
-            if (!File.GetAttributes(stringValue).HasFlag(FileAttributes.Directory) || // as per https://stackoverflow.com/a/1395226/1582323
-                !Directory.Exists(stringValue))
-                throw new NotSupportedException($"'{stringValue}' is not a valid directory");
-
             return new DirectoryInfo(stringValue);
+
+
+            // Check whether the given path exists (throws FileNotFoundException) and is a File or Directory
+            return File.GetAttributes(stringValue).HasFlag(FileAttributes.Directory) ? // as per https://stackoverflow.com/a/1395226/1582323
+                new DirectoryInfo(stringValue) :
+                new FileInfo(stringValue);
+
+            //if (!File.GetAttributes(stringValue).HasFlag(FileAttributes.Directory) || // as per https://stackoverflow.com/a/1395226/1582323
+            //    !Directory.Exists(stringValue))
+            //    throw new NotSupportedException($"'{stringValue}' is not a valid directory");
+
+            //return new DirectoryInfo(stringValue);
 
             //if (!Directory.Exists(PathString) || !File.GetAttributes(PathString).HasFlag(FileAttributes.Directory)) // as per https://stackoverflow.com/a/1395226/1582323
             //    return ValidationResult.Error($"'{PathString}' is not a valid directory");

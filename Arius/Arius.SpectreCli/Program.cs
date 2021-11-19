@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using Arius.CliSpectre.Commands;
 using Arius.CliSpectre.Utils;
@@ -36,37 +37,37 @@ namespace Arius.CliSpectre
                 .AddJsonFile($"appsettings.json", true, true)
                 .Build();
 
-            var services = new ServiceCollection();
-            services.AddAriusArchiveCommand();
-            //services.AddSingleton<IArchiveCommandOptionsProvider, ArchiveCliCommand>();
-            services.AddLogging(builder =>
-            {
-                // Add COnsole Logging
-                //loggingBuilder
-                //    .AddConfiguration(config.GetSection("Logging"))
-                //    //.AddSimpleConsole(options =>
-                //    //{
-                //    //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                //    //});
-                //    .AddCustomFormatter(options => { });
+            var services = new ServiceCollection()
+                .AddAriusArchiveCommand()
+                .AddAriusRestoreCommand()
+                .AddLogging(builder =>
+                {
+                    // Add COnsole Logging
+                    //loggingBuilder
+                    //    .AddConfiguration(config.GetSection("Logging"))
+                    //    //.AddSimpleConsole(options =>
+                    //    //{
+                    //    //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                    //    //});
+                    //    .AddCustomFormatter(options => { });
 
-                // Add File Logging
-                // Do not log to file if we are in a unit test - Do not configure Karambola file logging in a unit test. The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
-                //if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
-                //{
-                //    builder.AddFile(options =>
-                //    {
-                //        options.RootPath = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? 
-                //            "/logs" : 
-                //            AppContext.BaseDirectory;
+                    // Add File Logging
+                    // Do not log to file if we are in a unit test - Do not configure Karambola file logging in a unit test. The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
+                    //if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                    //{
+                    //    builder.AddFile(options =>
+                    //    {
+                    //        options.RootPath = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? 
+                    //            "/logs" : 
+                    //            AppContext.BaseDirectory;
 
-                //        options.Files = new[] { new LogFileOptions { Path = logFilePath } };
+                    //        options.Files = new[] { new LogFileOptions { Path = logFilePath } };
 
-                //        options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
-                //    });
+                    //        options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                    //    });
 
-                //}
-            });
+                    //}
+                });
 
             var registrar = new TypeRegistrar(services);
 
@@ -80,12 +81,20 @@ namespace Arius.CliSpectre
                 config.PropagateExceptions();
 
                 config.AddCommand<ArchiveCliCommand>("archive");
+                config.AddCommand<RestoreCliCommand>("restore");
 
             });
 
             try
             {
                 return app.Run(args);
+            }
+            catch (CommandParseException e)
+            {
+                AnsiConsole.Write(e.Pretty);
+                //AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+                Trace.WriteLine(ExceptionFormats.ShortenEverything);
+                return -1;
             }
             catch (Exception e)
             {
