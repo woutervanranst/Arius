@@ -29,7 +29,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
     private readonly AriusCoreCommand.ICommand<IRestoreCommandOptions> restoreCommand;
 
 
-    internal class RestoreCommandOptions : RepositoryOptions //, IRestoreCommandOptions
+    internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
     {
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
         [CommandOption("-s|--synchronize")]
@@ -53,10 +53,10 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         [Description("Local path")]
         [TypeConverter(typeof(StringToFileSystemInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
-        public object Path
+        public DirectoryInfo Path
         {
-            get => PathInternal;
-            init => PathInternal = (FileSystemInfo)value;
+            get => (DirectoryInfo)PathInternal;
+            init => PathInternal = value;
         }
     }
 

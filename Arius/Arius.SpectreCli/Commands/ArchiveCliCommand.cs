@@ -53,7 +53,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         public bool FastHash { get; init; }
 
         [Description("Local path")]
-        [TypeConverter(typeof(StringToFileSystemInfoTypeConverter))]
+        [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
         public DirectoryInfo Path
         {
@@ -65,8 +65,8 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
         public override ValidationResult Validate()
         {
-            //if (Tier is null)
-            //    return ValidationResult.Error($"Tier is required");
+            if (PathInternal is not DirectoryInfo)
+                return ValidationResult.Error($"Tier is required");
 
             //string[] validTiers = { "hot", "cool", "archive" };
             //Tier = Tier.ToLowerInvariant();
@@ -75,6 +75,30 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
             return base.Validate();
         }
+
+        //public override ValidationResult Validate()
+        //{
+        //    if (AccountName is null)
+        //        return ValidationResult.Error($"AccountName is required");
+
+        //    if (AccountKey is null)
+        //        return ValidationResult.Error($"AccountKey is required");
+
+        //    if (Container is null)
+        //        return ValidationResult.Error($"Container is required");
+
+        //    if (Passphrase is null)
+        //        return ValidationResult.Error($"Passphrase is required");
+
+        //    if (PathInternal is null)
+        //        return ValidationResult.Error($"Path is required");
+
+
+        //    // Save the Config
+        //    PersistedRepositoryConfigReader.SaveSettings(this, (DirectoryInfo)PathInternal);
+
+        //    return base.Validate();
+        //}
     }
 
     //public override ValidationResult Validate(CommandContext context, ArchiveSettings settings)

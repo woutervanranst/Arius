@@ -2,11 +2,11 @@
   "profiles": {
     "archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "archive C:\\Users\\Wouter\\Documents\\Test -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool"
     },
     "restore": {
       "commandName": "Project",
-      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
+      "commandLineArgs": "restore C:\\Users\\Wouter\\Documents\\Test2 -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download"
     }
   }
 }

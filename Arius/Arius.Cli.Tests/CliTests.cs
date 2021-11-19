@@ -12,6 +12,15 @@ using System.Threading.Tasks;
 
 namespace Arius.Cli.Tests;
 
+
+/* Archive file
+ * Archive with directory exists
+ * archive with directory not exists
+ *
+ * 
+ *
+ */
+
 class CliTests
 {
     [Test]

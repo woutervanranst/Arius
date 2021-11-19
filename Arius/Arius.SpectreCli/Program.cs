@@ -29,8 +29,17 @@ namespace Arius.CliSpectre
 //        \/                   \/ ";
 
 
+            
+
+
             var versionUtc = DateTime.UtcNow;
             var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+
+            using var logFileStream = File.Open(logFilePath, FileMode.CreateNew, FileAccess.Write);
+            Trace.Listeners.Add(new TextWriterTraceListener(logFileStream));
+
+            Trace.WriteLine("Started");
+            Trace.Flush();
 
             // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
             var config = new ConfigurationBuilder()

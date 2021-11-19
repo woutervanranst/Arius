@@ -38,35 +38,35 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
     [Description("Passphrase")]
     [CommandOption("-p|--passphrase <PASSPHRASE>")]
-    public string Passphrase { get; set; }
+    public string Passphrase { get; init; }
 
-    protected FileSystemInfo PathInternal
+    protected object PathInternal
     {
-        get => path;
+        get => pathInternal;
         init
         {
-            path = value;
+            pathInternal = value;
 
-            if (path is DirectoryInfo di)
+            // Load Config if it exists in the path
+            if (value is DirectoryInfo configFileRoot)
             {
-                // Load Config if it exists in the path
                 // TODO Test precedence: Environment Variable < Settings < Cli
-                var c = PersistedRepositoryConfigReader.LoadSettings(di, Passphrase);
-
+                var c = PersistedRepositoryConfigReader.LoadSettings(configFileRoot, Passphrase);
                 if (c != default)
                 {
                     AccountName ??= c.accountName; // if the CLI option is not specified, AccountName will be null
                     AccountKey ??= c.accountKey;
                     Container ??= c.container;
+
+                    Trace.WriteLine("Loaded settings from configfile");
+                    return;
                 }
             }
-            else
-            {
-                //TODO Not saving when restoring a file?
-            }
+
+            Trace.WriteLine("Could not load settings from file");
         }
     }
-    private readonly FileSystemInfo path;
+    private readonly object pathInternal;
 
     public override ValidationResult Validate()
     {
@@ -82,12 +82,13 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
         if (Passphrase is null)
             return ValidationResult.Error($"Passphrase is required");
 
-        if (PathInternal is null)
+        if (pathInternal is null)
             return ValidationResult.Error($"Path is required");
 
 
         // Save the Config
-        PersistedRepositoryConfigReader.SaveSettings(this, (DirectoryInfo)PathInternal);
+        if (pathInternal is DirectoryInfo configFileRoot)
+            PersistedRepositoryConfigReader.SaveSettings(this, configFileRoot);
 
         return base.Validate();
     }

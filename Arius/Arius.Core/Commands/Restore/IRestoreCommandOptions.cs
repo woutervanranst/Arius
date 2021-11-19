@@ -31,7 +31,7 @@ public interface IRestoreCommandOptions : IRepositoryOptions
     bool Download { get; }
     bool KeepPointers { get; }
     DateTime? PointInTimeUtc { get; }
-    object Path { get; }
+    DirectoryInfo Path { get; }
 
 
     int IndexBlock_Parallelism => 1; // 16 * 2;
