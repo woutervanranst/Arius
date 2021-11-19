@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Arius.CliSpectre.Commands;
 using Arius.CliSpectre.Utils;
 using Arius.Core.Commands;
@@ -18,7 +19,7 @@ namespace Arius.CliSpectre
 {
     public static class Program
     {
-        public static int Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
 //            var logo = @"
 //   _____        .__             
@@ -87,29 +88,43 @@ namespace Arius.CliSpectre
 
                 config.SetApplicationName("arius");
 
-                config.PropagateExceptions();
+                config.SetExceptionHandler(ex =>
+                {
+                    Trace.WriteLine(ex);
+
+                    switch (ex)
+                    {
+                        case CommandParseException e:
+                            AnsiConsole.Write(e.Pretty);
+                            break;
+                        case CommandRuntimeException e: // occurs when ValidationResult.Error is returned in Validate()
+                            AnsiConsole.Write(e.Message);
+                            break;
+                        default:
+                            AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                            break;
+                    }
+
+                });
 
                 config.AddCommand<ArchiveCliCommand>("archive");
                 config.AddCommand<RestoreCliCommand>("restore");
 
             });
 
-            try
-            {
-                return app.Run(args);
-            }
-            catch (CommandParseException e)
-            {
-                AnsiConsole.Write(e.Pretty);
-                //AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
-                Trace.WriteLine(ExceptionFormats.ShortenEverything);
-                return -1;
-            }
-            catch (Exception e)
-            {
-                AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
-                return -1;
-            }
+            return await AnsiConsole.Progress()
+                .Columns(new ProgressColumn[]
+                {
+                    new TaskDescriptionColumn(),
+                    new SpinnerColumn()
+                })
+                .StartAsync(async context =>
+                {
+                    var t0 = context.AddTask("archive");
+                    
+                    return await app.RunAsync(args);
+                });
+            
         }
     }
 }
