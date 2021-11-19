@@ -18,11 +18,16 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
     protected RepositoryOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
     {
         // 1. Load from Environment Variables
-        AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
+        AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"); //TODO check https://github.com/spectreconsole/spectre.console/issues/539
         AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
 
         if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
-            path = new DirectoryInfo("/archive"); //when runnning in a docker container
+        {
+            if (path is not null)
+                throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
+
+            Path = new DirectoryInfo("/archive"); //when runnning in a docker container
+        }
 
         // 2. Try to load from config file
         // TODO Test precedence: Environment Variable < Settings < Cli
@@ -33,21 +38,17 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
             AccountKey ??= c.accountKey;
             Container ??= c.container;
 
-            Trace.WriteLine("Loaded settings from configfile");
+            Trace.WriteLine("Loaded options from configfile");
         }
         else
-            Trace.WriteLine("Could not load settings from file");
+            Trace.WriteLine("Could not load options from file");
 
         //3. Overwrite if manually specified
         AccountName ??= accountName;
         AccountKey ??= accountKey;
         Container ??= container;
         Passphrase ??= passphrase;
-
-        Validate();
-
-        // Save the Config
-        PersistedRepositoryConfigReader.SaveSettings(this, path);
+        Path ??= path;
     }
 
     [Description("Blob Account Name")]
@@ -66,6 +67,8 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
     [CommandOption("-p|--passphrase <PASSPHRASE>")]
     public string Passphrase { get; }
 
+    protected object Path { get; }
+
     public override ValidationResult Validate()
     {
         if (AccountName is null)
@@ -79,6 +82,17 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
         if (Passphrase is null)
             return ValidationResult.Error($"Passphrase is required");
+
+        // Save the Config
+        if (Path is DirectoryInfo di)
+        {
+            Trace.WriteLine("Saving options");
+            PersistedRepositoryConfigReader.SaveSettings(this, di);
+        }
+        else
+        {
+            Trace.WriteLine("Path is not a directory, not saving options");
+        }
 
         return base.Validate();
     }

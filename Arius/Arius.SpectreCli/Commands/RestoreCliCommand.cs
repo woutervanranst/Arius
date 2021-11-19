@@ -34,7 +34,6 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         public RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
             : base(accountName, accountKey, container, passphrase, path)
         {
-            Path = path;
         }
 
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
@@ -57,9 +56,33 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         public DateTime? PointInTimeUtc { get; init; }
 
         [Description("Local path")]
-        [TypeConverter(typeof(StringToFileSystemInfoTypeConverter))]
+        [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
-        public DirectoryInfo Path { get; }
+        public new DirectoryInfo Path => (DirectoryInfo)base.Path;
+
+        public override ValidationResult Validate()
+        {
+            if (!Path.Exists)
+                return ValidationResult.Error($"{Path} does not exist");
+
+            return base.Validate();
+        }
+    }
+
+    public override ValidationResult Validate(CommandContext context, RestoreCommandOptions settings)
+    {
+        /*
+         * For a reason unknown to me, the Validate on the ArchiveCommandOptions SHOULD be called as part of the override but they are not
+         * Hence calling it manually
+         * See https://github.com/spectreconsole/spectre.console/discussions/217 for a working example
+         */
+
+        var v = settings.Validate();
+
+        if (!v.Successful)
+            return v;
+
+        return base.Validate(context, settings);
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)

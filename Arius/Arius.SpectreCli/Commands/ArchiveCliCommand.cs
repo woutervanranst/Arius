@@ -32,10 +32,8 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
         public ArchiveCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
-            //AccessTier tier, bool removeLocal, bool dedup, bool fastHash, DirectoryInfo path)
             : base(accountName, accountKey,container, passphrase, path)
         {
-            Path = path;
         }
 
         [Description("Storage tier to use (hot|cool|archive)")]
@@ -62,61 +60,47 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [Description("Local path")]
         [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
         [CommandArgument(0, "<PATH>")]
-        public DirectoryInfo Path { get; }
+        public new DirectoryInfo Path => (DirectoryInfo)base.Path;
 
         public DateTime VersionUtc => DateTime.UtcNow;
 
         public override ValidationResult Validate()
         {
-            //if (PathInternal is not DirectoryInfo)
-            //    return ValidationResult.Error($"Tier is required");
+            var validTiers = new[] { AccessTier.Hot, AccessTier.Cool, AccessTier.Archive };
+            if (!validTiers.Contains(Tier))
+                return ValidationResult.Error($"'{Tier}' is not a valid tier");
 
-            //string[] validTiers = { "hot", "cool", "archive" };
-            //Tier = Tier.ToLowerInvariant();
-            //if (!validTiers.Contains(Tier))
-            //    return ValidationResult.Error($"'{Tier}' is not a valid tier");
+            if (!Path.Exists)
+                return ValidationResult.Error($"{Path} does not exist");
 
             return base.Validate();
         }
-
-        //public override ValidationResult Validate()
-        //{
-        //    if (AccountName is null)
-        //        return ValidationResult.Error($"AccountName is required");
-
-        //    if (AccountKey is null)
-        //        return ValidationResult.Error($"AccountKey is required");
-
-        //    if (Container is null)
-        //        return ValidationResult.Error($"Container is required");
-
-        //    if (Passphrase is null)
-        //        return ValidationResult.Error($"Passphrase is required");
-
-        //    if (PathInternal is null)
-        //        return ValidationResult.Error($"Path is required");
-
-
-        //    // Save the Config
-        //    PersistedRepositoryConfigReader.SaveSettings(this, (DirectoryInfo)PathInternal);
-
-        //    return base.Validate();
-        //}
     }
 
-    //public override ValidationResult Validate(CommandContext context, ArchiveSettings settings)
-    //{
-    //    if (settings.Project is null)
-    //        return ValidationResult.Error($"Path not found");
+    public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
+    {
+        /*
+         * For a reason unknown to me, the Validate on the ArchiveCommandOptions SHOULD be called as part of the override but they are not
+         * Hence calling it manually
+         * See https://github.com/spectreconsole/spectre.console/discussions/217 for a working example
+         */
 
-    //    return base.Validate(context, settings);
-    //}
+        var v = settings.Validate();
+
+        if (!v.Successful)
+            return v;
+
+        return base.Validate(context, settings);
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext context, ArchiveCommandOptions options)
     {
         logger.LogInformation("Starting my command");
 
-        await archiveCommand.ExecuteAsync(options);
+        await Task.Delay(5000);
+
+        return 0;
+        //await archiveCommand.ExecuteAsync(options);
         
         //AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
         //logger.LogInformation("Completed my command");

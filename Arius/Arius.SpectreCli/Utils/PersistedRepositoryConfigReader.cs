@@ -74,7 +74,7 @@ namespace Arius.CliSpectre.Utils
             ms.CopyTo(ts);
             File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
 
-            Trace.WriteLine("Saved settings to file");
+            Trace.WriteLine("Saved options to file");
         }
 
         private class PersistedSettings
