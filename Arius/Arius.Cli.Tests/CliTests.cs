@@ -16,7 +16,8 @@ namespace Arius.Cli.Tests;
 /* Archive file
  * Archive with directory exists
  * archive with directory not exists
- *
+ * archive with invalid tier
+ * archive without specifying password
  * 
  *
  */
