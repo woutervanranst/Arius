@@ -19,6 +19,18 @@ namespace Arius.CliSpectre.Infrastructure
                 return null;
             }
 
+            /* NOTE: as of 20/11/21 -- when receiving a System.MethodAccessException: 'Attempt by method 'Microsoft.Extensions.Logging.Configuration.LoggerProviderConfigurationFactory.GetConfiguration(System.Type)' to access method 'Microsoft.Extensions.Logging.ProviderAliasUtilities.GetAlias(System.Type)' failed.'
+             * This is due to a package version conflict between
+             *      Karambolo.Extensions.Logging.File:3.2.1
+             * and 
+             *      Microsoft.Extensions.Configuration.Json:6.0.0
+             *      Microsoft.Extensions.DependencyInjection:6.0.0
+             *      Microsoft.Extensions.Logging:6.0.0
+             * and something in Arius.Core
+             *
+             * Use Microsoft.Extensions.Hosting:6.0.0 instead
+             */
+
             return provider.GetService(type);
         }
 

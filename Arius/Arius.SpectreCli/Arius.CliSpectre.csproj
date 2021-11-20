@@ -8,9 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.0" />
     <PackageReference Include="Spectre.Console" Version="0.42.1-preview.0.18" />
   </ItemGroup>
 
