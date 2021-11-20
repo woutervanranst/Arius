@@ -44,11 +44,20 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
             Trace.WriteLine("Could not load options from file");
 
         //3. Overwrite if manually specified
-        AccountName ??= accountName;
-        AccountKey ??= accountKey;
-        Container ??= container;
-        Passphrase ??= passphrase;
-        Path ??= path;
+        if (accountName is not null)
+            AccountName = accountName;
+
+        if (accountKey is not null)
+            AccountKey = accountKey;
+
+        if (container is not null)
+            Container = container;
+
+        if (passphrase is not null)
+            Passphrase = passphrase;
+
+        if (path is not null)
+            Path = path;
     }
 
     [Description("Blob Account Name")]
