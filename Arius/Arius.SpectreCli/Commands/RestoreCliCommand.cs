@@ -31,8 +31,8 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
     internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
     {
-        public RestoreCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
-            : base(accountName, accountKey, container, passphrase, path)
+        public RestoreCommandOptions(ILogger<RestoreCommandOptions> logger, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+            : base(logger, accountName, accountKey, container, passphrase, path)
         {
         }
 
@@ -87,11 +87,6 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)
     {
-        //Console.WriteLine(options.Path);
-        //throw new NotImplementedException();
-
-        //return await restoreCommand.ExecuteAsync(options);
-
-        return 0;
+        return await restoreCommand.ExecuteAsync(options);
     }
 }

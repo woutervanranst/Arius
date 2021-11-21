@@ -15,8 +15,10 @@ namespace Arius.CliSpectre.Commands;
 
 internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 {
-    protected RepositoryOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+    protected RepositoryOptions(ILogger<RepositoryOptions> logger, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
     {
+        this.logger = logger;
+
         // 1. Load from Environment Variables
         AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"); //TODO check https://github.com/spectreconsole/spectre.console/issues/539
         AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
@@ -38,10 +40,10 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
             AccountKey ??= c.accountKey;
             Container ??= c.container;
 
-            Trace.WriteLine("Loaded options from configfile");
+            logger.LogDebug("Loaded options from configfile");
         }
         else
-            Trace.WriteLine("Could not load options from file");
+            logger.LogDebug("Could not load options from file");
 
         //3. Overwrite if manually specified
         if (accountName is not null)
@@ -59,6 +61,8 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
         if (path is not null)
             Path = path;
     }
+
+    private readonly ILogger<RepositoryOptions> logger;
 
     [Description("Blob Account Name")]
     [CommandOption("-n|--accountname <ACCOUNT_NAME>")]
@@ -95,12 +99,12 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
         // Save the Config
         if (Path is DirectoryInfo di)
         {
-            Trace.WriteLine("Saving options");
-            PersistedRepositoryConfigReader.SaveSettings(this, di);
+            logger.LogDebug("Saving options");
+            PersistedRepositoryConfigReader.SaveSettings(logger, this, di);
         }
         else
         {
-            Trace.WriteLine("Path is not a directory, not saving options");
+            logger.LogDebug("Path is not a directory, not saving options");
         }
 
         return base.Validate();

@@ -31,8 +31,8 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
-        public ArchiveCommandOptions(string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
-            : base(accountName, accountKey,container, passphrase, path)
+        public ArchiveCommandOptions(ILogger<ArchiveCommandOptions> logger, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+            : base(logger, accountName, accountKey,container, passphrase, path)
         {
         }
 

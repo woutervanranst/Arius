@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.CliSpectre.Commands;
 using Arius.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.CliSpectre.Utils
 {
@@ -54,7 +55,7 @@ namespace Arius.CliSpectre.Utils
             return default;
         }
 
-        public static void SaveSettings(RepositoryOptions settings, DirectoryInfo root)
+        public static void SaveSettings(ILogger logger, RepositoryOptions settings, DirectoryInfo root)
         {
             var s = new PersistedSettings
             {
@@ -74,7 +75,7 @@ namespace Arius.CliSpectre.Utils
             ms.CopyTo(ts);
             File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
 
-            Trace.WriteLine("Saved options to file");
+            logger.LogDebug("Saved options to file");
         }
 
         private class PersistedSettings
