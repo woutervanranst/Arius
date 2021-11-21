@@ -6,8 +6,6 @@ using System.IO;
 namespace Arius.Core.Commands.Restore;
 
 public interface IRestoreCommandOptions : IRepositoryOptions
-    //,
-    //IHashValueProvider.IOptions
 {
     bool Synchronize { get; }
     bool Download { get; }
@@ -20,7 +18,7 @@ public interface IRestoreCommandOptions : IRepositoryOptions
     int DownloadBinaryBlock_Parallelism => 1; //16 * 2;
 
 
-    internal new class Validator : AbstractValidator<IRestoreCommandOptions>
+    internal class Validator : AbstractValidator<IRestoreCommandOptions>
     {
         public Validator()
         {
