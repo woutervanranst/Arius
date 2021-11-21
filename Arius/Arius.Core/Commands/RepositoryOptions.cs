@@ -12,7 +12,9 @@ public interface IRepositoryOptions : ICommandOptions // the interface is public
     string Container { get; }
     string Passphrase { get; }
 
+#pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
     protected class Validator : AbstractValidator<IRepositoryOptions>
+#pragma warning restore CS0108
     {
         public Validator()
         {
