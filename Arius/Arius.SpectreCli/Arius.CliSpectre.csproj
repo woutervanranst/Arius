@@ -8,13 +8,17 @@
 
   <ItemGroup>
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.1" />
-    <!--References for Karambolo, as per https://github.com/adams85/filelogger/issues/19-->
+    <!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="6.0.0" />
 
     <PackageReference Include="Spectre.Console" Version="0.42.1-preview.0.18" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
+
+    <!-- For AddCustomFormatter Logger-->
+	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="6.0.0" />
+    
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
   </ItemGroup>
