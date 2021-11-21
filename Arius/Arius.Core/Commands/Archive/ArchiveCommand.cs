@@ -12,37 +12,35 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using Arius.Core.Services.Chunkers;
 using System.Threading.Channels;
 using Arius.Core.Extensions;
 using FluentValidation;
 
 namespace Arius.Core.Commands.Archive;
 
-internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
+internal class ArchiveCommand : ServiceProvider, ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
-    public ArchiveCommand(ILogger<ArchiveCommand> logger, IServiceProvider serviceProvider)
+    public ArchiveCommand(ILoggerFactory loggerFactory, ILogger<ArchiveCommand> logger)
     {
+        this.loggerFactory = loggerFactory;
         this.logger = logger;
-        services = serviceProvider;
     }
 
+    private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ArchiveCommand> logger;
-    private readonly IServiceProvider services;
 
-    IServiceProvider ICommand<IArchiveCommandOptions>.Services => services;
+    IServiceProvider ICommand<IArchiveCommandOptions>.Services => base.Services;
 
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
         var validator = new IArchiveCommandOptions.Validator();
         await validator.ValidateAndThrowAsync(options);
 
+        base.InitServiceProvider(loggerFactory, options);
 
-        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-        var repo = services.GetRequiredService<Repository>();
-        var pointerService = services.GetRequiredService<PointerService>();
+        var repo = Services.GetRequiredService<Repository>();
+        var pointerService = Services.GetRequiredService<PointerService>();
         
-
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
@@ -55,7 +53,7 @@ internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is
             fastHash: options.FastHash,
             pointerService: pointerService,
             repo: repo,
-            hvp: services.GetRequiredService<IHashValueProvider>(),
+            hvp: Services.GetRequiredService<IHashValueProvider>(),
             onIndexedPointerFile: async pf =>
             {
                 await pointerFileEntriesToCreate.Writer.WriteAsync(pf); //B301
@@ -67,7 +65,7 @@ internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is
                 {
                     if (options.RemoveLocal)
                         throw new NotImplementedException(); //todo redundant with b1202?
-                        //await binariesToDelete.Writer.WriteAsync(bf); //B401
+                    //await binariesToDelete.Writer.WriteAsync(bf); //B401
                     //else - discard //B304
                 }
                 else
@@ -117,7 +115,7 @@ internal class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is
             },
             onPointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf), //B1201
             onCompleted: () => binariesToDelete.Writer.Complete() //B1310
-            );
+        );
         var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
 

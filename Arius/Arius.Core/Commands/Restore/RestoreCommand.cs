@@ -11,34 +11,34 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
+internal class RestoreCommand : ServiceProvider, ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
-    public RestoreCommand(ILogger<RestoreCommand> logger,
-        IServiceProvider serviceProvider)
+    public RestoreCommand(ILoggerFactory loggerFactory, ILogger<RestoreCommand> logger)
     {
+        this.loggerFactory = loggerFactory;
         this.logger = logger;
-        services = serviceProvider;
     }
 
+    private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<RestoreCommand> logger;
-    private readonly IServiceProvider services;
 
-    IServiceProvider ICommand<IRestoreCommandOptions>.Services => services;
+    IServiceProvider ICommand<IRestoreCommandOptions>.Services => base.Services;
 
     public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
     {
-        throw new NotImplementedException();
-        //var validator = new IrestoreCommandOptions.Validator();
-        //await validator.ValidateAndThrowAsync(options);
+        var validator = new IRestoreCommandOptions.Validator();
+        await validator.ValidateAndThrowAsync(options);
 
-        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-        var repo = services.GetRequiredService<Repository>();
-        var pointerService = services.GetRequiredService<PointerService>();
+        base.InitServiceProvider(loggerFactory, options);
+
+        var repo = Services.GetRequiredService<Repository>();
+        var pointerService = Services.GetRequiredService<PointerService>();
 
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
 
