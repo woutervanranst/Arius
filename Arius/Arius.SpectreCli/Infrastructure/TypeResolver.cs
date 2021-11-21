@@ -26,7 +26,6 @@ namespace Arius.CliSpectre.Infrastructure
              *      Microsoft.Extensions.Configuration.Json:6.0.0
              *      Microsoft.Extensions.DependencyInjection:6.0.0
              *      Microsoft.Extensions.Logging:6.0.0
-             * and something in Arius.Core
              *
              * Use Microsoft.Extensions.Hosting:6.0.0 instead
              */
