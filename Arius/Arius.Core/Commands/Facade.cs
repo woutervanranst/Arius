@@ -52,13 +52,7 @@ public static class ServiceCollectionExtensions
             .AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>()
             .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
 
-        services
-            .AddSingleton<PointerService>()
-            .AddSingleton<IHashValueProvider, SHA256Hasher>()
-            .AddSingleton<Repository>()
 
-            // Add Chunkers
-            .AddSingleton<Chunker, ByteBoundaryChunker>();
 
         return services;
 
