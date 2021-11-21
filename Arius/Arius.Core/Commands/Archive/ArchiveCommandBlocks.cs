@@ -297,7 +297,7 @@ internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<Poi
 
     protected override async Task ForEachBodyImplAsync(PointerFile pointerFile, CancellationToken ct)
     {
-        logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
+        logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
 
         var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
 
