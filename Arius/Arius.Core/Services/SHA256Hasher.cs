@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -12,11 +13,6 @@ namespace Arius.Core.Services;
 
 internal interface IHashValueProvider
 {
-    internal interface IOptions
-    {
-        string Passphrase { get; }
-    }
-
     BinaryHash GetBinaryHash(FileInfo bfi);
     BinaryHash GetBinaryHash(string binaryFileFullName);
         
@@ -28,7 +24,7 @@ internal interface IHashValueProvider
 
 internal class SHA256Hasher : IHashValueProvider
 {
-    public SHA256Hasher(ILogger<SHA256Hasher> logger, IHashValueProvider.IOptions options)
+    public SHA256Hasher(ILogger<SHA256Hasher> logger, IRepositoryOptions options)
     {
         this.logger = logger;
         salt = options.Passphrase;
