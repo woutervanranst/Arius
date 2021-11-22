@@ -70,6 +70,7 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
     [Description("Blob Account Key")]
     [CommandOption("-k|--accountkey <ACCOUNT_KEY>")]
+    [LogObfuscate]
     public string AccountKey { get; }
 
     [Description("Blob Container Name")]
@@ -78,6 +79,7 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
     [Description("Passphrase")]
     [CommandOption("-p|--passphrase <PASSPHRASE>")]
+    [LogObfuscate]
     public string Passphrase { get; }
 
     protected object Path { get; }
