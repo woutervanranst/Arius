@@ -61,7 +61,6 @@ internal partial class ArchiveCommand
 
         protected override async Task TaskBodyImplAsync(DirectoryInfo root)
         {
-            //var ka = new ConcurrentDictionary<BinaryHash, (bool exists, ConcurrentBag<PointerFile> ka)>();
             var latentPointers = new ConcurrentQueue<PointerFile>();
             var binariesThatWillBeUploaded = new ConcurrentHashSet<BinaryHash>();
 
@@ -138,7 +137,7 @@ internal partial class ArchiveCommand
                 async (pf, ct) =>
                 {
                     if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
-                    throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
+                        throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
 
                     await onIndexedPointerFile(pf);
                 });

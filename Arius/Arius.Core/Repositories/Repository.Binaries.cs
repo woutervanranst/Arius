@@ -328,6 +328,12 @@ internal partial class Repository
             //    .CountAsync();
         }
 
+        public async Task<long> TotalIncrementalLengthAsync()
+        {
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
+            return await db.BinaryProperties.SumAsync(bp => bp.IncrementalLength);
+        }
+
         /// <summary>
         /// Get all the (distinct) BinaryHashes
         /// </summary>

@@ -131,7 +131,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
         table.AddRow("Local files", "Files",   $"{s.localBeforeFiles}", $"+{s.localDeltaFiles}", $"TODO");
         table.AddRow("",            "Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"+{s.localDeltaSize.GetBytesReadable()}", "TODO");
-        table.AddRow("",            "Entries", $"{s.localDeltaPointerFiles}", $"+{s.localDeltaPointerFiles}", "TODO");
+        table.AddRow("",            "Entries", $"{s.localBeforePointerFiles}", $"+{s.localDeltaPointerFiles}", "TODO");
 
         table.AddEmptyRow();
 
