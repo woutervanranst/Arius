@@ -3,32 +3,44 @@
 namespace Arius.Core.Commands.Archive;
 public class ArchiveCommandStatistics
 {
-    public void AddLocalRepositoryStatistic(int pointerFileCount = 0, int binaryFileCount = 0, long binaryFileSize = 0)
+    public void AddLocalRepositoryStatistic(int beforeFiles = 0, long beforeSize = 0, int beforePointerFiles = 0,
+        int deltaFiles = 0, long deltaSize = 0, int deltaPointerFiles = 0)
     {
-        Interlocked.Add(ref this.pointerFileCount, pointerFileCount);
-        Interlocked.Add(ref this.binaryFileCount, binaryFileCount);
-        Interlocked.Add(ref this.binaryFileSize, binaryFileSize);
+        Interlocked.Add(ref this.localBeforeFiles, beforeFiles);
+        Interlocked.Add(ref this.localBeforeSize, beforeSize);
+        Interlocked.Add(ref this.localBeforePointerFiles, beforePointerFiles);
+
+        Interlocked.Add(ref this.localDeltaFiles, deltaFiles);
+        Interlocked.Add(ref this.localDeltaSize, deltaSize);
+        Interlocked.Add(ref this.localDeltaPointerFiles, deltaPointerFiles);
     }
 
-    public int PointerFileCount => pointerFileCount;
-    private int pointerFileCount;
+    public int localBeforeFiles;
+    public long localBeforeSize;
+    public int localBeforePointerFiles;
 
-    public int BinaryFileCount => binaryFileCount;
-    private int binaryFileCount;
-
-    public long BinaryFileSize => binaryFileSize;
-    private long binaryFileSize;
+    public int localDeltaFiles;
+    public long localDeltaSize;
+    public int localDeltaPointerFiles;
 
 
-    public void AddTransactionStatistic(int binaryFileUploaded = 0, long binaryFileSizeUploaded = 0)
+    public void AddRemoteRepositoryStatistic(int beforeBinaries = 0, long beforeSize = 0, int beforePointerFileEntries = 0,
+        int deltaBinaries = 0, long deltaSize = 0, int deltaPointerFileEntries = 0)
     {
-        Interlocked.Add(ref this.binaryFileUploaded, binaryFileUploaded);
-        Interlocked.Add(ref this.binaryFileSizeUploaded, binaryFileSizeUploaded);
+        Interlocked.Add(ref this.remoteBeforeBinaries, beforeBinaries);
+        Interlocked.Add(ref this.remoteBeforeSize, beforeSize);
+        Interlocked.Add(ref this.remoteBeforePointerFileEntries, beforePointerFileEntries);
+
+        Interlocked.Add(ref this.remoteDeltaBinaries, deltaBinaries);
+        Interlocked.Add(ref this.remoteDeltaSize, deltaSize);
+        Interlocked.Add(ref this.remoteDeltaPointerFileEntries, deltaPointerFileEntries);
     }
 
-    public int BinaryFileUploaded => binaryFileUploaded;
-    private int binaryFileUploaded;
+    public int remoteBeforeBinaries;
+    public long remoteBeforeSize;
+    public int remoteBeforePointerFileEntries;
 
-    public long BinaryFileSizeUploaded => binaryFileSizeUploaded;
-    private long binaryFileSizeUploaded;
+    public int remoteDeltaBinaries;
+    public long remoteDeltaSize;
+    public int remoteDeltaPointerFileEntries;
 }

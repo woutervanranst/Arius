@@ -129,16 +129,15 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         table.AddColumn(new TableColumn("Archive Operation").Centered());
         table.AddColumn(new TableColumn("After").Centered());
 
-        table.AddRow("Local files", "Files", $"+{s.BinaryFileCount}");
-        table.AddRow("Local file size", s.BinaryFileSize.GetBytesReadable());
-        table.AddRow("Sparse files", (s.PointerFileCount - s.BinaryFileCount).ToString());
-        
+        table.AddRow("Local files", "Files",   $"{s.localBeforeFiles}", $"+{s.localDeltaFiles}", $"TODO");
+        table.AddRow("",            "Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"+{s.localDeltaSize.GetBytesReadable()}", "TODO");
+        table.AddRow("",            "Entries", $"{s.localDeltaPointerFiles}", $"+{s.localDeltaPointerFiles}", "TODO");
+
         table.AddEmptyRow();
 
-        table.AddRow("Uploaded files", s.BinaryFileUploaded.ToString());
-        table.AddRow("Uploaded file size", s.BinaryFileSizeUploaded.GetBytesReadable());
-
-
+        table.AddRow("Remote repository", "Binaries", $"{s.remoteBeforeBinaries}", $"+{s.remoteDeltaBinaries}", $"TODO");
+        table.AddRow("",                  "Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"+{s.remoteDeltaSize.GetBytesReadable()}", "TODO");
+        table.AddRow("",                  "Entries", $"{s.remoteBeforePointerFileEntries}", $"+{s.remoteDeltaPointerFileEntries}", "TODO");
 
 
         //table.AddRow("Baz", "[green]Qux[/]");

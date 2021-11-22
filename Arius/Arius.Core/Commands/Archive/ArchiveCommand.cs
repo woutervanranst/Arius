@@ -50,6 +50,10 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        var pfes = await repo.PointerFileEntries.GetCurrentEntries(false);
+        var bs = await repo.Binaries.CountAsync();
+        stats.AddRemoteRepositoryStatistic();
+
         var indexBlock = new IndexBlock(this,
             sourceFunc: () => options.Path,
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,

@@ -77,7 +77,7 @@ internal partial class ArchiveCommand
                         {
                             // PointerFile
                             logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
-                            stats.AddLocalRepositoryStatistic(pointerFileCount: 1);
+                            stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.Hash))
                                 // The pointer points to an existing binary
@@ -93,7 +93,7 @@ internal partial class ArchiveCommand
                             var bf = new BinaryFile(root, fi, bh);
 
                             logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
-                            stats.AddLocalRepositoryStatistic(binaryFileCount: 1, binaryFileSize: bf.Length);
+                            stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
                             if (pf is not null)
                             {
@@ -210,6 +210,8 @@ internal partial class ArchiveCommand
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
+            stats.AddLocalRepositoryStatistic(deltaFiles: 1, deltaSize: bf.Length);
+
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
             var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
             if (binaryExistsRemote)
@@ -232,7 +234,7 @@ internal partial class ArchiveCommand
 
                     await repo.Binaries.UploadAsync(bf, options);
 
-                    stats.AddTransactionStatistic(1, bf.Length);
+                    stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bf.Length);
 
                     uploadingBinaries[bf.Hash].SetResult();
                 }

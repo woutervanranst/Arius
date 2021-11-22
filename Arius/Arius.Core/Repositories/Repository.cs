@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;
