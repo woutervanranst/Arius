@@ -80,7 +80,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (pfe, ct) => 
             {
-                var pf = pointerService.CreatePointerFileIfNotExists(root, pfe);
+                var (_, pf) = pointerService.CreatePointerFileIfNotExists(root, pfe);
                 await onIndexedPointerFile(pf);
             });
     }

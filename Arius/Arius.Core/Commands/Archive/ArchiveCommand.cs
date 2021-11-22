@@ -104,11 +104,9 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
 
         
-        var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(
-            loggerFactory: loggerFactory,
+        var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(this,
             sourceFunc: () => pointersToCreate,
             maxDegreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
-            pointerService: pointerService,
             onSuccesfullyBackedUp: async bf =>
             {
                 if (options.RemoveLocal)

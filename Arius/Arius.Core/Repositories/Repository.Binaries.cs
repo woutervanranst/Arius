@@ -54,7 +54,7 @@ internal partial class Repository
         /// <summary>
         /// Upload the given BinaryFile with the specified options
         /// </summary>
-        public async Task UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
+        public async Task<BinaryProperties> UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
 
@@ -73,7 +73,7 @@ internal partial class Repository
             await CreateChunkHashListAsync(bf.Hash, chs);
 
             // Create the BinaryMetadata
-            await CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
+            return await CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
 
         }
 
@@ -279,9 +279,9 @@ internal partial class Repository
 
         // --- BINARY PROPERTIES ------------------------------------------------
 
-        private async Task CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
+        private async Task<BinaryProperties> CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
-            var bm = new BinaryProperties()
+            var bp = new BinaryProperties()
             {
                 Hash = bf.Hash,
                 OriginalLength = bf.Length,
@@ -291,8 +291,10 @@ internal partial class Repository
             };
 
             await using var db = await repo.States.GetCurrentStateDbContextAsync();
-            await db.BinaryProperties.AddAsync(bm);
+            await db.BinaryProperties.AddAsync(bp);
             await db.SaveChangesAsync();
+
+            return bp;
         }
 
         public async Task<BinaryProperties> GetPropertiesAsync(BinaryHash bh)

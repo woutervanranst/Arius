@@ -2,6 +2,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
@@ -24,7 +25,7 @@ internal class PointerService
     /// <summary>
     /// Create a pointer from a BinaryFile
     /// </summary>
-    public PointerFile CreatePointerFileIfNotExists(BinaryFile bf)
+    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(BinaryFile bf)
     {
         var target = new FileInfo(GetPointerFileFullName(bf));
 
@@ -39,7 +40,7 @@ internal class PointerService
     /// <summary>
     /// Create a pointer from a PointerFileEntry
     /// </summary>
-    public PointerFile CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileEntry pfe)
+    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileEntry pfe)
     {
         var target = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
 
@@ -51,13 +52,12 @@ internal class PointerService
             lastWriteTimeUtc: pfe.LastWriteTimeUtc!.Value);
     }
 
-    private PointerFile CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, BinaryHash binaryHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+    private (bool created, PointerFile pf) CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, BinaryHash binaryHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
     {
         if (!target.Exists)
         {
             // Create the PointerFile
-            if (!target.Directory!.Exists)
-                target.Directory.Create();
+            if (!target.Directory!.Exists) target.Directory.Create();
 
             var pfc = new PointerFileContents { BinaryHash = binaryHash.Value };
             var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
@@ -75,7 +75,7 @@ internal class PointerService
 
             logger.LogInformation($"Created PointerFile '{target.GetRelativeName(root)}'");
 
-            return new PointerFile(root, target, binaryHash);
+            return (true, new PointerFile(root, target, binaryHash));
         }
         else
         {
@@ -90,10 +90,10 @@ internal class PointerService
                 //Graceful - Recreate the pointer
                 logger.LogWarning($"The PointerFile {pf.RelativeName} is broken. Overwriting");
                 target.Delete();
-                pf = CreatePointerFileIfNotExists(target, root, binaryHash, creationTimeUtc, lastWriteTimeUtc);
+                (_, pf) = CreatePointerFileIfNotExists(target, root, binaryHash, creationTimeUtc, lastWriteTimeUtc);
             }
 
-            return pf;
+            return (false, pf);
         }
     }
 

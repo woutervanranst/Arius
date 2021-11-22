@@ -231,9 +231,9 @@ internal partial class ArchiveCommand
                     // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
 
-                    await repo.Binaries.UploadAsync(bf, options);
+                    var bp = await repo.Binaries.UploadAsync(bf, options);
 
-                    stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bf.Length);
+                    stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bp.IncrementalLength);
 
                     uploadingBinaries[bf.Hash].SetResult();
                 }
@@ -258,43 +258,54 @@ internal partial class ArchiveCommand
             await onBinaryExists(bf);
         }
     }
+
+
+    internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
+    {
+        public CreatePointerFileIfNotExistsBlock(ArchiveCommand command,
+            Func<ChannelReader<BinaryFile>> sourceFunc,
+            int maxDegreeOfParallelism,
+            Func<BinaryFile, Task> onSuccesfullyBackedUp,
+            Func<PointerFile, Task> onPointerFileCreated,
+            Action onCompleted)
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(),
+                    sourceFunc: sourceFunc, 
+                    maxDegreeOfParallelism: 
+                    maxDegreeOfParallelism, 
+                    onCompleted: onCompleted)
+        {
+            this.stats = command.stats;
+            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            this.onSuccesfullyBackedUp = onSuccesfullyBackedUp;
+            this.onPointerFileCreated = onPointerFileCreated;
+        }
+
+        private readonly ArchiveCommandStatistics stats;
+        private readonly PointerService pointerService;
+        private readonly Func<BinaryFile, Task> onSuccesfullyBackedUp;
+        private readonly Func<PointerFile, Task> onPointerFileCreated;
+
+        protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
+        {
+            logger.LogDebug($"Creating pointer for '{bf.RelativeName}'...");
+
+            var (created, pf) = pointerService.CreatePointerFileIfNotExists(bf);
+
+            logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
+            if (created)
+                stats.AddLocalRepositoryStatistic(deltaPointerFiles: 1);
+
+            await onSuccesfullyBackedUp(bf);
+            await onPointerFileCreated(pf);
+        }
+    }
 }
 
 
 
 
 
-internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
-{
-    public CreatePointerFileIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<ChannelReader<BinaryFile>> sourceFunc,
-        int maxDegreeOfParallelism,
-        PointerService pointerService,
-        Func<BinaryFile, Task> onSuccesfullyBackedUp,
-        Func<PointerFile, Task> onPointerFileCreated,
-        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
-    {
-        this.pointerService = pointerService;
-        this.onSuccesfullyBackedUp = onSuccesfullyBackedUp;
-        this.onPointerFileCreated = onPointerFileCreated;
-    }
 
-    private readonly PointerService pointerService;
-    private readonly Func<BinaryFile, Task> onSuccesfullyBackedUp;
-    private readonly Func<PointerFile, Task> onPointerFileCreated;
-
-    protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
-    {
-        logger.LogInformation($"Creating pointer for '{bf.RelativeName}'...");
-
-        var pf = pointerService.CreatePointerFileIfNotExists(bf);
-
-        logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
-
-        await onSuccesfullyBackedUp(bf);
-        await onPointerFileCreated(pf);
-    }
-}
 
 
 internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
