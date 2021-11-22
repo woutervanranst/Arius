@@ -299,73 +299,94 @@ internal partial class ArchiveCommand
             await onPointerFileCreated(pf);
         }
     }
-}
 
 
-
-
-
-
-
-
-internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
-{
-    public CreatePointerFileEntryIfNotExistsBlock(ILoggerFactory loggerFactory,
-        Func<ChannelReader<PointerFile>> sourceFunc,
-        int maxDegreeOfParallelism,
-        Repository repo,
-        DateTime versionUtc,
-        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
+    internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
     {
-        this.repo = repo;
-        this.versionUtc = versionUtc;
+        public CreatePointerFileEntryIfNotExistsBlock(ArchiveCommand command,
+            Func<ChannelReader<PointerFile>> sourceFunc,
+            int maxDegreeOfParallelism,
+            DateTime versionUtc,
+            Action onCompleted) 
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(),
+                    sourceFunc: sourceFunc, 
+                    maxDegreeOfParallelism: maxDegreeOfParallelism, 
+                    onCompleted: onCompleted)
+        {
+            this.stats = command.stats;
+            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.versionUtc = versionUtc;
+        }
+
+        private readonly ArchiveCommandStatistics stats;
+        private readonly Repository repo;
+        private readonly DateTime versionUtc;
+
+        protected override async Task ForEachBodyImplAsync(PointerFile pointerFile, CancellationToken ct)
+        {
+            logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
+
+            var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
+
+            switch (r)
+            {
+                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.Inserted:
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted entry.");
+                    stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1);
+                    break;
+                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
+                    stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: -1);
+                    break;
+                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
+                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
     }
 
-    private readonly Repository repo;
-    private readonly DateTime versionUtc;
 
-    protected override async Task ForEachBodyImplAsync(PointerFile pointerFile, CancellationToken ct)
+    internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
     {
-        logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
-
-        var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
-
-        switch (r)
+        public DeleteBinaryFilesBlock(ArchiveCommand command,
+            Func<ChannelReader<BinaryFile>> sourceFunc,
+            int maxDegreeOfParallelism,
+            Action onCompleted)
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(), 
+                    sourceFunc: sourceFunc, 
+                    maxDegreeOfParallelism: maxDegreeOfParallelism, 
+                    onCompleted: onCompleted)
         {
-            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.Inserted:
-                logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted entry.");
-                break;
-            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
-                logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
-                break;
-            case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
-                logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
-                break;
-            default:
-                throw new NotImplementedException();
+            this.stats = command.stats;
+        }
+
+        private readonly ArchiveCommandStatistics stats;
+
+        protected override Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
+        {
+
+            if (File.Exists(bf.FullName))
+            {
+                logger.LogDebug($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
+
+                bf.Delete();
+
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
+                stats.AddLocalRepositoryStatistic(deltaFiles: -1, deltaSize: bf.Length * -1); //TODO test icw 
+            }
+
+            return Task.CompletedTask;
         }
     }
 }
 
 
-internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
-{
-    public DeleteBinaryFilesBlock(ILoggerFactory loggerFactory,
-        Func<ChannelReader<BinaryFile>> sourceFunc,
-        int maxDegreeOfParallelism,
-        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
-    {
-    }
 
-    protected override Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
-    {
-        logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
-        bf.Delete();
-        logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
 
-        return Task.CompletedTask;
-    }
-}
+
+
 
 
 internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
@@ -402,69 +423,6 @@ internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : Channe
     }
 }
 
-
-//internal class ExportToJsonBlock : TaskBlockBase<ChannelReader<PointerFileEntry>> //! must be single threaded hence TaskBlockBase
-//{
-//    public ExportToJsonBlock(ILoggerFactory loggerFactory,
-//        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
-//        Repository repo,
-//        DateTime versionUtc,
-//        Action done) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, done: done)
-//    {
-//        this.repo = repo;
-//        this.versionUtc = versionUtc;
-//    }
-
-//    private readonly Repository repo;
-//    private readonly DateTime versionUtc;
-
-
-//    protected override async Task TaskBodyImplAsync(ChannelReader<PointerFileEntry> source)
-//    {
-//        logger.LogInformation($"Writing state to JSON...");
-
-//        using var file = File.Create($"arius-state-{versionUtc.ToLocalTime():yyyyMMdd-HHmmss}.json");
-//        var writer = new Utf8JsonWriter(file, new JsonWriterOptions() { Indented = true });
-//        writer.WriteStartArray();
-
-//        // See https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-converters-how-to
-
-//        await foreach (var pfe in source.ReadAllAsync()
-//                     //.AsParallel().WithDegreeOfParallelism(8) // ! Cannot write to file concurrently
-//                 )
-//        {
-//            var chs = await repo.BinaryManifests.GetChunkHashesAsync(pfe.BinaryHash);
-//            var entry = new PointerFileEntryWithChunkHashes(pfe, chs);
-
-//            JsonSerializer.Serialize(writer, entry, new JsonSerializerOptions { Encoder = JavaScriptEncoder.Default });
-//        }
-
-//        writer.WriteEndArray();
-//        await writer.FlushAsync();
-
-//        logger.LogInformation($"Writing state to JSON... done");
-//    }
-
-//    private readonly struct PointerFileEntryWithChunkHashes
-//    {
-//        public PointerFileEntryWithChunkHashes(PointerFileEntry pfe, ChunkHash[] chs)
-//        {
-//            this.pfe = pfe;
-//            this.chs = chs;
-//        }
-
-//        private readonly PointerFileEntry pfe;
-//        private readonly ChunkHash[] chs;
-
-//        public string BinaryHash => pfe.BinaryHash.Value;
-//        public IEnumerable<string> ChunkHashes => chs.Select(h => h.Value);
-//        public string RelativeName => pfe.RelativeName;
-//        public DateTime VersionUtc => pfe.VersionUtc;
-//        public bool IsDeleted => pfe.IsDeleted;
-//        public DateTime? CreationTimeUtc => pfe.CreationTimeUtc;
-//        public DateTime? LastWriteTimeUtc => pfe.LastWriteTimeUtc;
-//    }
-//}
 
 
 internal class ValidateBlock

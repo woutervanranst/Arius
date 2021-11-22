@@ -126,19 +126,16 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
         
-        var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(
-            loggerFactory: loggerFactory,
+        var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(this,
             sourceFunc: () => pointerFileEntriesToCreate,
             maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
-            repo: repo,
             versionUtc: options.VersionUtc,
             onCompleted: () => { });
         var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
 
 
 
-        var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(
-            loggerFactory: loggerFactory,
+        var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(this,
             sourceFunc: () => binariesToDelete,
             maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
             onCompleted: () => { });
