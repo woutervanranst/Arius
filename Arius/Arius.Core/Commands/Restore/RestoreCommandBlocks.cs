@@ -60,7 +60,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
 
     private async Task SynchronizeThenIndex(DirectoryInfo root)
     {
-        var currentPfes = (await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false)).ToArray();
+        var currentPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: false)).ToArray();
 
         logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 

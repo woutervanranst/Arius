@@ -290,7 +290,7 @@ internal partial class Repository
                 ChunkCount = chunkCount
             };
 
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             await db.BinaryProperties.AddAsync(bm);
             await db.SaveChangesAsync();
         }
@@ -299,7 +299,7 @@ internal partial class Repository
         {
             try
             {
-                await using var db = await repo.States.GetCurrentStateDbContext();
+                await using var db = await repo.States.GetCurrentStateDbContextAsync();
                 return db.BinaryProperties.Single(bp => bp.Hash == bh);
             }
             catch (InvalidOperationException e) when (e.Message == "Sequence contains no elements")
@@ -310,7 +310,7 @@ internal partial class Repository
 
         public async Task<bool> ExistsAsync(BinaryHash bh)
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.BinaryProperties.AnyAsync(bm => bm.Hash == bh);
         }
 
@@ -320,7 +320,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<int> CountAsync()
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.BinaryProperties.CountAsync();
             //return await db.PointerFileEntries
             //    .Select(pfe => pfe.BinaryHash)
@@ -334,7 +334,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<BinaryHash[]> GetAllBinaryHashesAsync()
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.BinaryProperties
                 .Select(bp => bp.Hash)
                 .ToArrayAsync();

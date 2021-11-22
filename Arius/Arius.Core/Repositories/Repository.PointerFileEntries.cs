@@ -74,7 +74,7 @@ internal partial class Repository
         /// </summary>
         private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
 
             var lastVersion = await db.PointerFileEntries
                 .Where(pfe0 => pfe.RelativeName.Equals(pfe0.RelativeName))
@@ -105,16 +105,16 @@ internal partial class Repository
         private static readonly PointerFileEntryEqualityComparer equalityComparer = new();
 
 
-        public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntries(bool includeDeleted)
+        public async Task<IEnumerable<PointerFileEntry>> GetCurrentEntriesAsync(bool includeDeleted)
         {
-            return await GetPointerFileEntries(DateTime.UtcNow, includeDeleted);
+            return await GetPointerFileEntriesAsync(DateTime.UtcNow, includeDeleted);
         }
 
         /// <summary>
         /// Get the PointerFileEntries at the given version.
         /// If no version is specified, the current (most recent) will be returned
         /// </summary>
-        public async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntries(DateTime pointInTimeUtc, bool includeDeleted)
+        public async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted)
         {
             var pfes = await GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc);
 
@@ -146,7 +146,7 @@ internal partial class Repository
         {
             //TODO an exception here is swallowed
 
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             var r = await db.PointerFileEntries.AsParallel()
                 .GroupBy(pfe => pfe.RelativeName)
                 .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc))
@@ -164,7 +164,7 @@ internal partial class Repository
         /// <returns></returns>
         internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.PointerFileEntries.ToArrayAsync(); //TODO to TEST suite?
         }
 
@@ -206,7 +206,7 @@ internal partial class Repository
         /// <returns></returns>
         public async Task<IEnumerable<DateTime>> GetVersionsAsync()
         {
-            await using var db = await repo.States.GetCurrentStateDbContext();
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.PointerFileEntries
                 .Select(pfe => pfe.VersionUtc)
                 .Distinct()

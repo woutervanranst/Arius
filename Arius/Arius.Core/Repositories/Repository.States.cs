@@ -31,7 +31,7 @@ internal partial class Repository
             this.passphrase = passphrase;
 
             // download latest state
-            dbPathTask = Task.Run(async () => await GetLastestStateDb());
+            dbPathTask = Task.Run(async () => await GetLastestStateDbAsync());
         }
 
         private readonly ILogger<StateRepository> logger;
@@ -42,7 +42,7 @@ internal partial class Repository
         private bool hasChanges;
 
 
-        private async Task<string> GetLastestStateDb()
+        private async Task<string> GetLastestStateDbAsync()
         {
             var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
                 .Select(bi => bi.Name)
@@ -73,7 +73,7 @@ internal partial class Repository
         private AriusDbContext mockedContext;
 
 
-        internal async Task<AriusDbContext> GetCurrentStateDbContext()
+        internal async Task<AriusDbContext> GetCurrentStateDbContextAsync()
         {
             if (mockedContext is not null)
                 return mockedContext;
@@ -93,7 +93,7 @@ internal partial class Repository
             logger.LogDebug($"{numChanges} state entries written to the database");
         }
 
-        internal async Task CommitToBlobStorage(DateTime versionUtc)
+        internal async Task CommitToBlobStorageAsync(DateTime versionUtc)
         {
             if (!hasChanges)
             {
@@ -103,7 +103,7 @@ internal partial class Repository
 
             var vacuumedDbPath = Path.GetTempFileName();
 
-            await using var db = await GetCurrentStateDbContext();
+            await using var db = await GetCurrentStateDbContextAsync();
             await db.Database.ExecuteSqlRawAsync($"VACUUM main INTO '{vacuumedDbPath}';"); //https://www.sqlitetutorial.net/sqlite-vacuum/
 
             var originalLength = new FileInfo(await dbPathTask).Length;

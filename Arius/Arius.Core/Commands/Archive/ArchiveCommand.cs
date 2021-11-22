@@ -50,7 +50,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var pfes = await repo.PointerFileEntries.GetCurrentEntries(false);
+        var pfes = await repo.PointerFileEntries.GetCurrentEntriesAsync(false);
         var bs = await repo.Binaries.CountAsync();
         stats.AddRemoteRepositoryStatistic();
 
@@ -152,7 +152,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
             sourceFunc: async () =>
             {
                 var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
-                var pfes = (await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false))
+                var pfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: false))
                     .Where(pfe => pfe.VersionUtc < options.VersionUtc); // that were not created in the current run (those are assumed to be up to date)
                 await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
                 return pointerFileEntriesToCheckForDeletedPointers;
@@ -219,7 +219,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*//*.Append(commitPointerFileEntryRepositoryTask)*/), BlockBase.CancellationTask);
 
         // save the state in any case regardless of errors or not TODO IS THIS A GOOD IDEA? inconsistent state? i dont think so as the db is 'lagging' behind a sucessful blob writes and blob writes are handled gracefully
-        await repo.States.CommitToBlobStorage(options.VersionUtc);
+        await repo.States.CommitToBlobStorageAsync(options.VersionUtc);
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
             && ts.Any())
