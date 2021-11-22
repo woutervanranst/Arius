@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Arius.CliSpectre.Utils;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Extensions;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -128,6 +129,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         // Add some rows
         table.AddRow("Indexed PointerFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedPointerFileCount.ToString());
         table.AddRow("Indexed BinaryFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedBinaryFileCount.ToString());
+        table.AddRow("BinaryFiles Size", ((ArchiveCommandStatistics)statisticsProvider).IndexedBinaryFileSize.GetBytesReadable().ToString());
 
 
         //table.AddRow("Baz", "[green]Qux[/]");

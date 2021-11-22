@@ -93,11 +93,11 @@ internal partial class ArchiveCommand
                         else
                         {
                             // BinaryFile
-                            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}'");
-                            stats.AddIndexedFile(binaryFileCount: 1);
-
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
+
+                            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}'");
+                            stats.AddIndexedFile(binaryFileCount: 1, binaryFileSize: bf.Length);
 
                             if (pf is not null)
                             {
@@ -173,8 +173,6 @@ internal partial class ArchiveCommand
             // 
         }
     }
-
-
 }
 
 

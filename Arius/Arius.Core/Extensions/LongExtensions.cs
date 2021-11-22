@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Extensions;
 
-internal static class LongExtensions
+public static class LongExtensions
 {
     // https://stackoverflow.com/a/11124118/1582323
 

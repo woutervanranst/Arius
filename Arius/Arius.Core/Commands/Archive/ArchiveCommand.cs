@@ -20,7 +20,7 @@ namespace Arius.Core.Commands.Archive;
 
 public interface IArchiveCommandStatistics
 {
-    void AddIndexedFile(int pointerFileCount = 0, int binaryFileCount = 0);
+    void AddIndexedFile(int pointerFileCount = 0, int binaryFileCount = 0, long binaryFileSize = 0);
 }
 
 
