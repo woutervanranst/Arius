@@ -24,6 +24,11 @@ namespace Arius.CliSpectre
 
         public static async Task<int> Main(string[] args)
         {
+            AnsiConsole.Write(
+                new FigletText(FigletFont.Default, "Arius")
+                    .LeftAligned()
+                    .Color(Color.Blue));
+
             var versionUtc = DateTime.UtcNow;
             var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
 
@@ -41,11 +46,11 @@ namespace Arius.CliSpectre
                 .Build();
 
             var services = new ServiceCollection()
-                .AddAriusCore()
+                .AddAriusCore<ArchiveCommandStatistics>()
                 //.AddSingleton<IConfigurationRoot>(config);
                 .AddLogging(builder =>
                 {
-                    builder.AddConfiguration(config.GetSection("Logging"));
+                    builder.AddConfiguration(config.GetSection("Logging")); // tif this doesnt work see https://stackoverflow.com/a/54892390/1582323, https://blog.bitscry.com/2017/05/30/appsettings-json-in-net-core-console-app/
 
                     // Add Console Logging
                     // Reference <PackageReference Include="Spectre.Console.Extensions.Logging" Version="0.3.0-alpha0011" /> in csproj

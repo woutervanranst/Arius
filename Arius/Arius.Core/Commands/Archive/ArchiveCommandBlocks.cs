@@ -15,151 +15,166 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using ConcurrentCollections;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Arius.Core.Commands.Archive;
 
-internal class IndexBlock : TaskBlockBase<DirectoryInfo>
+internal partial class ArchiveCommand
 {
-    public IndexBlock(ILoggerFactory loggerFactory,
-        Func<DirectoryInfo> sourceFunc,
-        int maxDegreeOfParallelism,
-        bool fastHash,
-        PointerService pointerService,
-        Repository repo,
-        IHashValueProvider hvp,
-        TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource,
-        Func<PointerFile, Task> onIndexedPointerFile,
-        Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile,
-        Action onBinaryFileIndexCompleted,
-        Action onCompleted)
-        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: onCompleted)
+    private class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
-        this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-        this.fastHash = fastHash;
-        this.pointerService = pointerService;
-        this.repo = repo;
-        this.hvp = hvp;
-        this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
-        this.onIndexedPointerFile = onIndexedPointerFile;
-        this.onIndexedBinaryFile = onIndexedBinaryFile;
-        this.onBinaryFileIndexCompleted = onBinaryFileIndexCompleted;
-    }
+        public IndexBlock(ArchiveCommand command,
+            Func<DirectoryInfo> sourceFunc,
+            int maxDegreeOfParallelism,
+            TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource,
+            Func<PointerFile, Task> onIndexedPointerFile,
+            Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile,
+            Action onBinaryFileIndexCompleted,
+            Action onCompleted)
+            : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(), 
+                sourceFunc: sourceFunc, 
+                onCompleted: onCompleted)
+        {
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
 
-    private readonly int maxDegreeOfParallelism;
-    private readonly bool fastHash;
-    private readonly PointerService pointerService;
-    private readonly Repository repo;
-    private readonly Func<PointerFile, Task> onIndexedPointerFile;
-    private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
-    private readonly IHashValueProvider hvp;
-    private readonly Action onBinaryFileIndexCompleted;
-    private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
+            this.stats = command.stats;
 
-    protected override async Task TaskBodyImplAsync(DirectoryInfo root)
-    {
-        //var ka = new ConcurrentDictionary<BinaryHash, (bool exists, ConcurrentBag<PointerFile> ka)>();
-        var latentPointers = new ConcurrentQueue<PointerFile>();
-        var binariesThatWillBeUploaded = new ConcurrentHashSet<BinaryHash>();
+            this.fastHash = command.executionServices.Options.FastHash;
+            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.hvp = command.executionServices.GetRequiredService<IHashValueProvider>();
 
-        await Parallel.ForEachAsync(root.GetAllFileInfos(logger),
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            async (fi, ct) =>
-            {
-                try
+            this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
+            this.onIndexedPointerFile = onIndexedPointerFile;
+            this.onIndexedBinaryFile = onIndexedBinaryFile;
+            this.onBinaryFileIndexCompleted = onBinaryFileIndexCompleted;
+        }
+
+        private readonly IArchiveCommandStatistics stats;
+
+        private readonly int maxDegreeOfParallelism;
+        private readonly bool fastHash;
+        private readonly PointerService pointerService;
+        private readonly Repository repo;
+        private readonly IHashValueProvider hvp;
+
+        private readonly Func<PointerFile, Task> onIndexedPointerFile;
+        private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
+        private readonly Action onBinaryFileIndexCompleted;
+        private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
+
+        protected override async Task TaskBodyImplAsync(DirectoryInfo root)
+        {
+            //var ka = new ConcurrentDictionary<BinaryHash, (bool exists, ConcurrentBag<PointerFile> ka)>();
+            var latentPointers = new ConcurrentQueue<PointerFile>();
+            var binariesThatWillBeUploaded = new ConcurrentHashSet<BinaryHash>();
+
+            await Parallel.ForEachAsync(root.GetAllFileInfos(logger),
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (fi, ct) =>
                 {
-                    var pf = pointerService.GetPointerFile(root, fi);
+                    try
+                    { 
+                        var pf = pointerService.GetPointerFile(root, fi);
 
-                    if (fi.IsPointerFile())
-                    {
-                        // PointerFile
-                        logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
-
-                        if (await repo.Binaries.ExistsAsync(pf.Hash))
-                            // The pointer points to an existing binary
-                            await onIndexedPointerFile(pf);
-                        else
-                            // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
-                            latentPointers.Enqueue(pf);
-                    }
-                    else
-                    {
-                        // BinaryFile
-                        var bh = GetBinaryHash(root, fi, pf);
-                        var bf = new BinaryFile(root, fi, bh);
-
-                        if (pf is not null)
+                        if (fi.IsPointerFile())
                         {
-                            if (pf.Hash != bh)
-                                throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+                            // PointerFile
+                            logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
+                            stats.AddIndexedFile(pointerFileCount: 1);
 
-                            if (!await repo.Binaries.ExistsAsync(bh))//TODO this is a choke point for large state files -- the hashing could already go ahead?
+                            if (await repo.Binaries.ExistsAsync(pf.Hash))
+                                // The pointer points to an existing binary
+                                await onIndexedPointerFile(pf);
+                            else
+                                // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
+                                latentPointers.Enqueue(pf);
+                        }
+                        else
+                        {
+                            // BinaryFile
+                            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}'");
+                            stats.AddIndexedFile(binaryFileCount: 1);
+
+                            var bh = GetBinaryHash(root, fi, pf);
+                            var bf = new BinaryFile(root, fi, bh);
+
+                            if (pf is not null)
                             {
-                                logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
-                                await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
+                                if (pf.Hash != bh)
+                                    throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+
+                                if (!await repo.Binaries.ExistsAsync(bh)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
+                                {
+                                    logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
+                                    await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
+                                }
+                                else
+                                {
+                                    //An equivalent PointerFile already exists and is already being sent through the pipe to have a PointerFileEntry be created - skip.
+
+                                    logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                                    await onIndexedBinaryFile((bf, AlreadyBackedUp: true));
+                                }
                             }
                             else
                             {
-                                //An equivalent PointerFile already exists and is already being sent through the pipe to have a PointerFileEntry be created - skip.
-
-                                logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
-                                await onIndexedBinaryFile((bf, AlreadyBackedUp: true));
+                                // No PointerFile -- to process
+                                await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
-                        }
-                        else
-                        {
-                            // No PointerFile -- to process
-                            await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
-                        }
 
-                        binariesThatWillBeUploaded.Add(bh);
+                            binariesThatWillBeUploaded.Add(bh);
+                        }
                     }
-                }
-                catch (IOException e) when (e.Message.Contains("virus"))
+                    catch (IOException e) when (e.Message.Contains("virus"))
+                    {
+                        logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
+                    }
+                });
+
+            //Wait until all binaries 
+            onBinaryFileIndexCompleted();
+            await binaryFileUploadCompletedTaskCompletionSource.Task;
+
+            //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
+            await Parallel.ForEachAsync(latentPointers.GetConsumingEnumerable(),
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (pf, ct) =>
                 {
-                    logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
-                }
-            });
-
-        //Wait until all binaries 
-        onBinaryFileIndexCompleted();
-        await binaryFileUploadCompletedTaskCompletionSource.Task;
-
-        //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
-        await Parallel.ForEachAsync(latentPointers.GetConsumingEnumerable(),
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            async (pf, ct) =>
-            {
-                if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
+                    if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
                     throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
 
-                await onIndexedPointerFile(pf);
-            });
-    }
-    private BinaryHash GetBinaryHash(DirectoryInfo root, FileInfo fi, PointerFile pf)
-    {
-        BinaryHash binaryHash = default;
-        if (fastHash && pf is not null)
-        {
-            //A corresponding PointerFile exists and FastHash is TRUE
-            binaryHash = pf.Hash; //use the hash from the pointerfile
-
-            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}' with hash '{binaryHash.ToShortString()}' (fasthash)");
+                    await onIndexedPointerFile(pf);
+                });
         }
-        else
+        private BinaryHash GetBinaryHash(DirectoryInfo root, FileInfo fi, PointerFile pf)
         {
-            var rn = fi.GetRelativeName(root);
+            BinaryHash binaryHash = default;
+            if (fastHash && pf is not null)
+            {
+                //A corresponding PointerFile exists and FastHash is TRUE
+                binaryHash = pf.Hash; //use the hash from the pointerfile
 
-            logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
+                logger.LogInformation($"Found BinaryFile '{pf.RelativeName}' with hash '{binaryHash.ToShortString()}' (fasthash)");
+            }
+            else
+            {
+                var rn = fi.GetRelativeName(root);
 
-            var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
-                binaryHash = hvp.GetBinaryHash(fi));
+                logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
 
-            logger.LogInformation($"Found BinaryFile '{rn}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
+                var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
+                    binaryHash = hvp.GetBinaryHash(fi));
+
+                logger.LogInformation($"Found BinaryFile '{rn}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
+            }
+
+            return binaryHash;
+            // 
         }
-
-        return binaryHash;
-        // 
     }
+
+
 }
 
 

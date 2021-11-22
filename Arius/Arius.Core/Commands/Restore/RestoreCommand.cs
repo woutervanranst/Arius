@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ServiceProvider, ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
+internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
     public RestoreCommand(ILoggerFactory loggerFactory, ILogger<RestoreCommand> logger)
     {
@@ -28,17 +28,18 @@ internal class RestoreCommand : ServiceProvider, ICommand<IRestoreCommandOptions
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<RestoreCommand> logger;
 
-    IServiceProvider ICommand<IRestoreCommandOptions>.Services => base.Services;
+    private ExecutionServiceProvider<IRestoreCommandOptions> executionServices;
+
+    IServiceProvider ICommand<IRestoreCommandOptions>.Services => executionServices.Services;
 
     public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
     {
         var validator = new IRestoreCommandOptions.Validator();
         await validator.ValidateAndThrowAsync(options);
 
-        base.InitServiceProvider(loggerFactory, options);
-
-        var repo = Services.GetRequiredService<Repository>();
-        var pointerService = Services.GetRequiredService<PointerService>();
+        executionServices = ExecutionServiceProvider<IRestoreCommandOptions>.BuildServiceProvider(loggerFactory, options);
+        var repo = executionServices.GetRequiredService<Repository>();
+        var pointerService = executionServices.GetRequiredService<PointerService>();
 
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
 

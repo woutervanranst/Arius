@@ -16,17 +16,22 @@ namespace Arius.CliSpectre.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand)
+    public ArchiveCliCommand(IAnsiConsole console, 
+        ILogger<ArchiveCliCommand> logger, 
+        AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand,
+        IArchiveCommandStatistics statisticsProvider)
     {
         this.console = console;
         this.logger = logger;
         this.archiveCommand = archiveCommand;
+        this.statisticsProvider = statisticsProvider;
 
         logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
     }
 
-    private ILogger<ArchiveCliCommand> logger;
+    private readonly ILogger<ArchiveCliCommand> logger;
     private readonly AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand;
+    private readonly IArchiveCommandStatistics statisticsProvider;
     private IAnsiConsole console;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
@@ -95,17 +100,44 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     public override async Task<int> ExecuteAsync(CommandContext context, ArchiveCommandOptions options)
     {
-        logger.LogInformation("Starting my command");
+        logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
+
+        foreach (var property in options.GetType().GetProperties())
+        {
+            var value = property.GetValue(options)?.ToString();
+            if (Attribute.IsDefined(property, typeof(ObfuscateInLogAttribute)))
+                value = "***";
+
+            logger.LogDebug($"{property.Name}: {value}");
+        }
 
         await archiveCommand.ExecuteAsync(options);
 
 
-        await Task.Delay(5000);
+        var rule = new Rule("[red]Summary[/]");
+        AnsiConsole.Write(rule);
 
-        return 0;
-        
-        //AnsiConsole.MarkupLine($"Hello, [blue]{settings.Path}[/]");
-        //logger.LogInformation("Completed my command");
+
+        // Create a table
+        var table = new Table();
+
+        // Add some columns
+        table.AddColumn("Task");
+        table.AddColumn(new TableColumn("Count").Centered());
+
+        // Add some rows
+        table.AddRow("Indexed PointerFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedPointerFileCount.ToString());
+        table.AddRow("Indexed BinaryFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedBinaryFileCount.ToString());
+
+
+        //table.AddRow("Baz", "[green]Qux[/]");
+        //table.AddRow(new Markup("[blue]Corgi[/]"), new Panel("Waldo"));
+
+        // Render the table to the console
+        AnsiConsole.Write(table);
+
+
+
 
         //    var table = new Table().RoundedBorder();
         //    table.AddColumn("[grey]Name[/]");

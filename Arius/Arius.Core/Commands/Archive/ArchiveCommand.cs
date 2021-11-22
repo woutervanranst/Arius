@@ -18,42 +18,47 @@ using FluentValidation;
 
 namespace Arius.Core.Commands.Archive;
 
-internal class ArchiveCommand : ServiceProvider, ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
+public interface IArchiveCommandStatistics
 {
-    public ArchiveCommand(ILoggerFactory loggerFactory, ILogger<ArchiveCommand> logger)
+    void AddIndexedFile(int pointerFileCount = 0, int binaryFileCount = 0);
+}
+
+
+internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
+{
+    public ArchiveCommand(ILoggerFactory loggerFactory, ILogger<ArchiveCommand> logger, 
+        IArchiveCommandStatistics statisticsProvider)
     {
         this.loggerFactory = loggerFactory;
         this.logger = logger;
+        this.stats = statisticsProvider;
     }
 
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ArchiveCommand> logger;
+    private readonly IArchiveCommandStatistics stats;
 
-    IServiceProvider ICommand<IArchiveCommandOptions>.Services => base.Services;
+    private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
+    IServiceProvider ICommand<IArchiveCommandOptions>.Services => executionServices.Services;
+    
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
         var validator = new IArchiveCommandOptions.Validator();
         await validator.ValidateAndThrowAsync(options);
 
-        base.InitServiceProvider(loggerFactory, options);
+        executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
+        var repo = executionServices.GetRequiredService<Repository>();
+        var pointerService = executionServices.GetRequiredService<PointerService>();
 
-        var repo = Services.GetRequiredService<Repository>();
-        var pointerService = Services.GetRequiredService<PointerService>();
-        
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        var indexBlock = new IndexBlock(
-            loggerFactory: loggerFactory,
+        var indexBlock = new IndexBlock(this,
             sourceFunc: () => options.Path,
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,
-            fastHash: options.FastHash,
-            pointerService: pointerService,
-            repo: repo,
-            hvp: Services.GetRequiredService<IHashValueProvider>(),
             onIndexedPointerFile: async pf =>
             {
                 await pointerFileEntriesToCreate.Writer.WriteAsync(pf); //B301
