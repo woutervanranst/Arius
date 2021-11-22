@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
     /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
     /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
     /// </summary>
-    public static IServiceCollection AddAriusCore<TStatisticsProvider>(this IServiceCollection services) where TStatisticsProvider : class, IArchiveCommandStatistics
+    public static IServiceCollection AddAriusCore(this IServiceCollection services)
 
     {
         //services.AddOptions<LibraryOptions>()
@@ -51,9 +51,9 @@ public static class ServiceCollectionExtensions
         // Register lib services here...
         services
             .AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>()
-            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
+            .AddSingleton<ArchiveCommandStatistics>()
 
-        services.AddSingleton<IArchiveCommandStatistics, TStatisticsProvider>();
+            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
 
 
 

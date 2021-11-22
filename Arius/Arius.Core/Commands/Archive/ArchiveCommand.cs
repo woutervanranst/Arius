@@ -18,16 +18,10 @@ using FluentValidation;
 
 namespace Arius.Core.Commands.Archive;
 
-public interface IArchiveCommandStatistics
-{
-    void AddIndexedFile(int pointerFileCount = 0, int binaryFileCount = 0, long binaryFileSize = 0);
-}
-
-
 internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
 {
     public ArchiveCommand(ILoggerFactory loggerFactory, ILogger<ArchiveCommand> logger, 
-        IArchiveCommandStatistics statisticsProvider)
+        ArchiveCommandStatistics statisticsProvider)
     {
         this.loggerFactory = loggerFactory;
         this.logger = logger;
@@ -36,7 +30,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ArchiveCommand> logger;
-    private readonly IArchiveCommandStatistics stats;
+    private readonly ArchiveCommandStatistics stats;
 
     private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
@@ -88,12 +82,9 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
         var pointersToCreate = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.PointersToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
 
-        var uploadBinaryFileBlock = new UploadBinaryFileBlock(
-            loggerFactory: loggerFactory,
+        var uploadBinaryFileBlock = new UploadBinaryFileBlock(this,
             sourceFunc: () => binariesToUpload,
             maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
-            repo: repo,
-            options: options,
             onBinaryExists: async bf =>
             {
                 await pointersToCreate.Writer.WriteAsync(bf); //B403

@@ -35,33 +35,29 @@ internal partial class ArchiveCommand
                 sourceFunc: sourceFunc, 
                 onCompleted: onCompleted)
         {
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-
             this.stats = command.stats;
-
             this.fastHash = command.executionServices.Options.FastHash;
             this.pointerService = command.executionServices.GetRequiredService<PointerService>();
             this.repo = command.executionServices.GetRequiredService<Repository>();
             this.hvp = command.executionServices.GetRequiredService<IHashValueProvider>();
 
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
             this.onIndexedPointerFile = onIndexedPointerFile;
             this.onIndexedBinaryFile = onIndexedBinaryFile;
             this.onBinaryFileIndexCompleted = onBinaryFileIndexCompleted;
         }
 
-        private readonly IArchiveCommandStatistics stats;
-
-        private readonly int maxDegreeOfParallelism;
+        private readonly ArchiveCommandStatistics stats;
         private readonly bool fastHash;
         private readonly PointerService pointerService;
         private readonly Repository repo;
         private readonly IHashValueProvider hvp;
-
+        private readonly int maxDegreeOfParallelism;
+        private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
         private readonly Func<PointerFile, Task> onIndexedPointerFile;
         private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
         private readonly Action onBinaryFileIndexCompleted;
-        private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
 
         protected override async Task TaskBodyImplAsync(DirectoryInfo root)
         {
@@ -81,7 +77,7 @@ internal partial class ArchiveCommand
                         {
                             // PointerFile
                             logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
-                            stats.AddIndexedFile(pointerFileCount: 1);
+                            stats.AddLocalRepositoryStatistic(pointerFileCount: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.Hash))
                                 // The pointer points to an existing binary
@@ -96,8 +92,8 @@ internal partial class ArchiveCommand
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
 
-                            logger.LogInformation($"Found BinaryFile '{pf.RelativeName}'");
-                            stats.AddIndexedFile(binaryFileCount: 1, binaryFileSize: bf.Length);
+                            logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
+                            stats.AddLocalRepositoryStatistic(binaryFileCount: 1, binaryFileSize: bf.Length);
 
                             if (pf is not null)
                             {
@@ -173,90 +169,98 @@ internal partial class ArchiveCommand
             // 
         }
     }
-}
 
-
-internal class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
-{
-    public UploadBinaryFileBlock(
-        ILoggerFactory loggerFactory,
-        Func<ChannelReader<BinaryFile>> sourceFunc,
-        int maxDegreeOfParallelism,
-        Repository repo,
-        IArchiveCommandOptions options,
-        Func<BinaryFile, Task> onBinaryExists,
-        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
+    private class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
     {
-        this.repo = repo;
-        this.options = options;
-        this.onBinaryExists = onBinaryExists;
-    }
-
-    private readonly Repository repo;
-    private readonly IArchiveCommandOptions options;
-        
-    private readonly Func<BinaryFile, Task> onBinaryExists;
-
-    private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
-    private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
-        
-
-    protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
-    {
-        /* 
-        * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
-        * Four possibilities:
-        *   1.   [At the start of the run] the Binary already exist remotely
-        *   2.1. [At the start of the run] the Binary did not yet exist remotely, and upload has not started --> upload it 
-        *   2.2. [At the start of the run] the Binary did not yet exist remotely, and upload has started but not completed --> wait for it to complete
-        *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
-        */
-
-        // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-        var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
-        if (binaryExistsRemote)
+        public UploadBinaryFileBlock(ArchiveCommand command,
+            Func<ChannelReader<BinaryFile>> sourceFunc,
+            int maxDegreeOfParallelism,
+            Func<BinaryFile, Task> onBinaryExists,
+            Action onCompleted)
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(),
+                    sourceFunc: sourceFunc, 
+                    maxDegreeOfParallelism: maxDegreeOfParallelism, 
+                    onCompleted: onCompleted)
         {
-            // 1 Exists remote
-            logger.LogInformation($"Binary for {bf} already exists. No need to upload.");
+            this.stats = command.stats;
+            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.options = command.executionServices.Options;
+
+            this.onBinaryExists = onBinaryExists;
         }
-        else
+
+        private readonly ArchiveCommandStatistics stats;
+        private readonly Repository repo;
+        private readonly IArchiveCommandOptions options;
+
+        private readonly Func<BinaryFile, Task> onBinaryExists;
+
+        private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
+        private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
+
+
+        protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
         {
-            // 2 Did not exist remote before the run -- ensure we start the upload only once
+            /* 
+            * This BinaryFile does not yet have an equivalent PointerFile and may need to be uploaded.
+            * Four possibilities:
+            *   1.   [At the start of the run] the Binary already exist remotely
+            *   2.1. [At the start of the run] the Binary did not yet exist remotely, and upload has not started --> upload it 
+            *   2.2. [At the start of the run] the Binary did not yet exist remotely, and upload has started but not completed --> wait for it to complete
+            *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
+            */
 
-            /* TryAdd returns true if the new value was added
-             * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
-             */
-            var binaryToUpload = uploadingBinaries.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); 
-            if (binaryToUpload)
+            // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
+            if (binaryExistsRemote)
             {
-                // 2.1 Does not yet exist remote and not yet being created --> upload
-                logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
-
-                await repo.Binaries.UploadAsync(bf, options);
-
-                uploadingBinaries[bf.Hash].SetResult();
+                // 1 Exists remote
+                logger.LogInformation($"Binary for {bf} already exists. No need to upload.");
             }
             else
             {
-                var t = uploadingBinaries[bf.Hash].Task;
-                if (!t.IsCompleted)
-                {
-                    // 2.2 Did not exist remote but is being created
-                    logger.LogInformation($"Binary for {bf} does not exist remotely but is being uploaded. Wait for upload to finish.");
+                // 2 Did not exist remote before the run -- ensure we start the upload only once
 
-                    await t;
+                /* TryAdd returns true if the new value was added
+                 * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
+                 */
+                var binaryToUpload = uploadingBinaries.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                if (binaryToUpload)
+                {
+                    // 2.1 Does not yet exist remote and not yet being created --> upload
+                    logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
+
+                    await repo.Binaries.UploadAsync(bf, options);
+
+                    stats.AddTransactionStatistic(1, bf.Length);
+
+                    uploadingBinaries[bf.Hash].SetResult();
                 }
                 else
                 {
-                    // 2.3  Did not exist remote but is created in the mean time
-                    logger.LogInformation($"Binary for {bf} did not exist remotely but was uploaded in the mean time.");
+                    var t = uploadingBinaries[bf.Hash].Task;
+                    if (!t.IsCompleted)
+                    {
+                        // 2.2 Did not exist remote but is being created
+                        logger.LogInformation($"Binary for {bf} does not exist remotely but is being uploaded. Wait for upload to finish.");
+
+                        await t;
+                    }
+                    else
+                    {
+                        // 2.3  Did not exist remote but is created in the mean time
+                        logger.LogInformation($"Binary for {bf} did not exist remotely but was uploaded in the mean time.");
+                    }
                 }
             }
+
+            await onBinaryExists(bf);
         }
-            
-        await onBinaryExists(bf);
     }
 }
+
+
+
 
 
 internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>

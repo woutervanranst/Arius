@@ -20,7 +20,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     public ArchiveCliCommand(IAnsiConsole console, 
         ILogger<ArchiveCliCommand> logger, 
         AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand,
-        IArchiveCommandStatistics statisticsProvider)
+        ArchiveCommandStatistics statisticsProvider)
     {
         this.console = console;
         this.logger = logger;
@@ -32,7 +32,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     private readonly ILogger<ArchiveCliCommand> logger;
     private readonly AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand;
-    private readonly IArchiveCommandStatistics statisticsProvider;
+    private readonly ArchiveCommandStatistics statisticsProvider;
     private IAnsiConsole console;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
@@ -119,17 +119,26 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         AnsiConsole.Write(rule);
 
 
-        // Create a table
+        // Create summary table
+        var s = (ArchiveCommandStatistics)statisticsProvider;
+
         var table = new Table();
+        table.AddColumn("");
+        table.AddColumn("");
+        table.AddColumn(new TableColumn("Before").Centered());
+        table.AddColumn(new TableColumn("Archive Operation").Centered());
+        table.AddColumn(new TableColumn("After").Centered());
 
-        // Add some columns
-        table.AddColumn("Task");
-        table.AddColumn(new TableColumn("Count").Centered());
+        table.AddRow("Local files", "Files", $"+{s.BinaryFileCount}");
+        table.AddRow("Local file size", s.BinaryFileSize.GetBytesReadable());
+        table.AddRow("Sparse files", (s.PointerFileCount - s.BinaryFileCount).ToString());
+        
+        table.AddEmptyRow();
 
-        // Add some rows
-        table.AddRow("Indexed PointerFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedPointerFileCount.ToString());
-        table.AddRow("Indexed BinaryFiles", ((ArchiveCommandStatistics)statisticsProvider).IndexedBinaryFileCount.ToString());
-        table.AddRow("BinaryFiles Size", ((ArchiveCommandStatistics)statisticsProvider).IndexedBinaryFileSize.GetBytesReadable().ToString());
+        table.AddRow("Uploaded files", s.BinaryFileUploaded.ToString());
+        table.AddRow("Uploaded file size", s.BinaryFileSizeUploaded.GetBytesReadable());
+
+
 
 
         //table.AddRow("Baz", "[green]Qux[/]");

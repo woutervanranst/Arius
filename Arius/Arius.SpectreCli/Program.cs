@@ -46,7 +46,7 @@ namespace Arius.CliSpectre
                 .Build();
 
             var services = new ServiceCollection()
-                .AddAriusCore<ArchiveCommandStatistics>()
+                .AddAriusCore()
                 //.AddSingleton<IConfigurationRoot>(config);
                 .AddLogging(builder =>
                 {
