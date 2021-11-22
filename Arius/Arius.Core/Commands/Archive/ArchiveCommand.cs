@@ -143,8 +143,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
 
 
-        var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(
-            loggerFactory: loggerFactory,
+        var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(this,
             sourceFunc: async () =>
             {
                 var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
@@ -154,9 +153,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
                 return pointerFileEntriesToCheckForDeletedPointers;
             },
             maxDegreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
-            repo: repo,
             root: options.Path,
-            pointerService: pointerService,
             versionUtc: options.VersionUtc,
             onCompleted: () => { });
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;

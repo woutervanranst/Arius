@@ -169,6 +169,7 @@ internal partial class ArchiveCommand
         }
     }
 
+
     private class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
     {
         public UploadBinaryFileBlock(ArchiveCommand command,
@@ -258,9 +259,9 @@ internal partial class ArchiveCommand
             await onBinaryExists(bf);
         }
     }
+    
 
-
-    internal class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
+    private class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
     {
         public CreatePointerFileIfNotExistsBlock(ArchiveCommand command,
             Func<ChannelReader<BinaryFile>> sourceFunc,
@@ -299,9 +300,9 @@ internal partial class ArchiveCommand
             await onPointerFileCreated(pf);
         }
     }
+    
 
-
-    internal class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
+    private class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
     {
         public CreatePointerFileEntryIfNotExistsBlock(ArchiveCommand command,
             Func<ChannelReader<PointerFile>> sourceFunc,
@@ -348,7 +349,7 @@ internal partial class ArchiveCommand
     }
 
 
-    internal class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
+    private class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
     {
         public DeleteBinaryFilesBlock(ArchiveCommand command,
             Func<ChannelReader<BinaryFile>> sourceFunc,
@@ -365,8 +366,7 @@ internal partial class ArchiveCommand
         private readonly ArchiveCommandStatistics stats;
 
         protected override Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
-        {
-
+        { 
             if (File.Exists(bf.FullName))
             {
                 logger.LogDebug($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
@@ -380,48 +380,61 @@ internal partial class ArchiveCommand
             return Task.CompletedTask;
         }
     }
-}
 
 
-
-
-
-
-
-
-internal class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
-{
-    public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ILoggerFactory loggerFactory,
-        Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
-        int maxDegreeOfParallelism,
-        Repository repo,
-        DirectoryInfo root,
-        PointerService pointerService,
-        DateTime versionUtc,
-        Action onCompleted) : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, maxDegreeOfParallelism: maxDegreeOfParallelism, onCompleted: onCompleted)
+    private class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
     {
-        this.repo = repo;
-        this.root = root;
-        this.pointerService = pointerService;
-        this.versionUtc = versionUtc;
-    }
-
-    private readonly Repository repo;
-    private readonly DirectoryInfo root;
-    private readonly PointerService pointerService;
-    private readonly DateTime versionUtc;
-
-    protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe, CancellationToken ct)
-    {
-        if (!pfe.IsDeleted &&
-            pointerService.GetPointerFile(root, pfe) is null &&
-            pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ArchiveCommand command,
+            Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
+            int maxDegreeOfParallelism,
+            DirectoryInfo root,
+            DateTime versionUtc,
+            Action onCompleted)
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(), 
+                    sourceFunc: sourceFunc, 
+                    maxDegreeOfParallelism: 
+                    maxDegreeOfParallelism, 
+                    onCompleted: onCompleted)
         {
-            logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
-            await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
+            this.stats = command.stats;
+            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            
+            this.root = root;
+            this.versionUtc = versionUtc;
+        }
+
+        private readonly ArchiveCommandStatistics stats;
+        private readonly Repository repo;
+        private readonly PointerService pointerService;
+
+        private readonly DirectoryInfo root;
+        private readonly DateTime versionUtc;
+
+        protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe, CancellationToken ct)
+        {
+            if (!pfe.IsDeleted &&
+                pointerService.GetPointerFile(root, pfe) is null &&
+                pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+            {
+                logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
+                stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: -1);
+
+                await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
+                throw new NotImplementedException(); //todo decrease size
+            }
         }
     }
 }
+
+
+
+
+
+
+
+
+
 
 
 
