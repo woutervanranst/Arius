@@ -418,10 +418,10 @@ internal partial class ArchiveCommand
                 pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
+                stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);
                 stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: -1);
 
                 await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
-                throw new NotImplementedException(); //todo decrease size
             }
         }
     }

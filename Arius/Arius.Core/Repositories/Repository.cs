@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Services.Chunkers;
@@ -50,4 +52,14 @@ internal partial class Repository
     {
         OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
     };
+
+    public async Task<(int binaryCount, long binariesSize, int pointerFileEntryCount)> GetCurrentStats()
+    {
+        var binaryCount = await Binaries.CountAsync();
+        var binariesSize = await Binaries.TotalIncrementalLengthAsync();
+        var pfes = await PointerFileEntries.GetCurrentEntriesAsync(false);
+        pfes.TryGetNonEnumeratedCount(out var pointerFileEntryCount);
+
+        return (binaryCount, binariesSize, pointerFileEntryCount);
+    }
 }

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using Spectre.Console.Examples;
+using StateVersion = Arius.CliSpectre.Commands.StateVersion;
 
 namespace Arius.CliSpectre
 {
@@ -47,6 +48,7 @@ namespace Arius.CliSpectre
 
             var services = new ServiceCollection()
                 .AddAriusCore()
+                .AddSingleton(new StateVersion(versionUtc))
                 //.AddSingleton<IConfigurationRoot>(config);
                 .AddLogging(builder =>
                 {

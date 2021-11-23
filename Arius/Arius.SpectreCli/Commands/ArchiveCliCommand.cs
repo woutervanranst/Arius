@@ -37,9 +37,10 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
-        public ArchiveCommandOptions(ILogger<ArchiveCommandOptions> logger, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
+        public ArchiveCommandOptions(ILogger<ArchiveCommandOptions> logger, StateVersion version, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
             : base(logger, accountName, accountKey,container, passphrase, path)
         {
+            VersionUtc = version.VersionUtc;
         }
 
         [Description("Storage tier to use (hot|cool|archive)")]
@@ -68,7 +69,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [CommandArgument(0, "<PATH>")]
         public new DirectoryInfo Path => (DirectoryInfo)base.Path;
 
-        public DateTime VersionUtc => DateTime.UtcNow;
+        public DateTime VersionUtc { get; }
 
         public override ValidationResult Validate()
         {
@@ -129,22 +130,34 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         table.AddColumn(new TableColumn("Archive Operation").Centered());
         table.AddColumn(new TableColumn("After").Centered());
 
-        table.AddRow("Local files", "Files",   $"{s.localBeforeFiles}", $"+{s.localDeltaFiles}", $"TODO");
-        table.AddRow("",            "Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"+{s.localDeltaSize.GetBytesReadable()}", "TODO");
-        table.AddRow("",            "Entries", $"{s.localBeforePointerFiles}", $"+{s.localDeltaPointerFiles}", "TODO");
+        table.AddRow("Local files", "(1) Files",   $"{s.localBeforeFiles}", $"{s.localDeltaFiles:+#;-#;0}", $"{s.localBeforeFiles + s.localDeltaFiles}");
+        table.AddRow("",            "(2) Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"+{s.localDeltaSize.GetBytesReadable()}", $"{(s.localBeforeSize + s.localDeltaSize).GetBytesReadable()}");
+        table.AddRow("",            "(3) Entries", $"{s.localBeforePointerFiles}", $"{s.localDeltaPointerFiles:+#;-#;0}", $"{s.localBeforePointerFiles + s.localDeltaPointerFiles}");
 
         table.AddEmptyRow();
 
-        table.AddRow("Remote repository", "Binaries", $"{s.remoteBeforeBinaries}", $"+{s.remoteDeltaBinaries}", $"TODO");
-        table.AddRow("",                  "Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"+{s.remoteDeltaSize.GetBytesReadable()}", "TODO");
-        table.AddRow("",                  "Entries", $"{s.remoteBeforePointerFileEntries}", $"+{s.remoteDeltaPointerFileEntries}", "TODO");
+        table.AddRow("Remote repository", "(4) Binaries", $"{s.remoteBeforeBinaries}", $"{s.remoteDeltaBinaries:+#;-#;0}", $"{s.remoteAfterBinaries}");
+        table.AddRow("",                  "(5) Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"+{s.remoteDeltaSize.GetBytesReadable()}", $"{s.remoteAfterSize.GetBytesReadable()}");
+        table.AddRow("",                  "(6) Entries", $"{s.remoteBeforePointerFileEntries}", $"{s.remoteDeltaPointerFileEntries:+#;-#;0}", $"{s.remoteAfterPointerFileEntries}");
 
 
         //table.AddRow("Baz", "[green]Qux[/]");
         //table.AddRow(new Markup("[blue]Corgi[/]"), new Panel("Waldo"));
 
-        // Render the table to the console
         AnsiConsole.Write(table);
+
+        console.WriteLine("(1) ...");
+        console.WriteLine("(2) ...");
+        console.WriteLine("(3) ...");
+        console.WriteLine("(4) ...");
+        console.WriteLine("(5) Compressed and encrypted size of unique binaries");
+        console.WriteLine("(6) ...");
+
+        console.WriteLine();
+
+        var duration = DateTime.UtcNow - options.VersionUtc;
+        console.WriteLine($"Duration: {duration:g}s");
+        console.WriteLine($"Speed: {(double)s.localDeltaSize / 1024 / 1024 / duration.TotalSeconds} MBps");
 
 
 

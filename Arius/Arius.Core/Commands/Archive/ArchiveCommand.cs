@@ -50,10 +50,13 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        stats.AddRemoteRepositoryStatistic( //todo on another task for the explicit previous version?
-            beforeBinaries: await repo.Binaries.CountAsync(), 
-            beforeSize: await repo.Binaries.TotalIncrementalLengthAsync(), 
-            beforePointerFileEntries: (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).Count()); //todo trynonenumeratiive?
+
+        var startStats = await repo.GetCurrentStats();
+        stats.AddRemoteRepositoryStatistic(
+            beforeBinaries: startStats.binaryCount,
+            beforeSize: startStats.binariesSize,
+            beforePointerFileEntries: startStats.pointerFileEntryCount);
+
 
         var indexBlock = new IndexBlock(this,
             sourceFunc: () => options.Path,
@@ -211,6 +214,12 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         // Await the current stage of the pipeline
         await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*//*.Append(commitPointerFileEntryRepositoryTask)*/), BlockBase.CancellationTask);
 
+        var endStats = await repo.GetCurrentStats();
+        stats.AddRemoteRepositoryStatistic(
+            afterBinaries: endStats.binaryCount,
+            afterSize: endStats.binariesSize,
+            afterPointerFileEntries: endStats.pointerFileEntryCount);
+
         // save the state in any case regardless of errors or not TODO IS THIS A GOOD IDEA? inconsistent state? i dont think so as the db is 'lagging' behind a sucessful blob writes and blob writes are handled gracefully
         await repo.States.CommitToBlobStorageAsync(options.VersionUtc);
 
@@ -230,6 +239,8 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         //    //something went wrong
         //    throw new InvalidOperationException("Not all queues are emptied");
         //}
+
+        
 
         return 0;
     }
