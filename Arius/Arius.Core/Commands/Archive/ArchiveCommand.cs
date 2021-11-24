@@ -51,11 +51,12 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
 
-        var startStats = await repo.GetCurrentStats();
+        // Get statistics of before the run
+        var startStats = await repo.GetStats();
         stats.AddRemoteRepositoryStatistic(
             beforeBinaries: startStats.binaryCount,
             beforeSize: startStats.binariesSize,
-            beforePointerFileEntries: startStats.pointerFileEntryCount);
+            beforePointerFileEntries: startStats.currentPointerFileEntryCount);
 
 
         var indexBlock = new IndexBlock(this,
@@ -87,9 +88,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var indexTask = indexBlock.GetTask;
 
 
-
         var pointersToCreate = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.PointersToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
-
         var uploadBinaryFileBlock = new UploadBinaryFileBlock(this,
             sourceFunc: () => binariesToUpload,
             maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
@@ -104,7 +103,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
             }
         );
         var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
-
 
         
         var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(this,
@@ -121,7 +119,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
 
 
-
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
         // can be ignored since we'll be awaiting the pointersToCreate
         Task.WhenAll(indexTask, createPointerFileIfNotExistsTask)
@@ -132,10 +129,8 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(this,
             sourceFunc: () => pointerFileEntriesToCreate,
             maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism,
-            versionUtc: options.VersionUtc,
             onCompleted: () => { });
         var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
-
 
 
         var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(this,
@@ -143,7 +138,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
             maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism,
             onCompleted: () => { });
         var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
-
 
 
         var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(this,
@@ -162,63 +156,32 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
 
 
-
-        //var commitPointerFileEntryRepositoryTask = Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask)
-        //    .ContinueWith(async _ => await repo.PointerFileEntries.CommitPointerFileEntries()); //B1502 //TODO also Commit in a finally clause?
-
-
-
-        //var exportJsonBlock = new ExportToJsonBlock(
-        //    loggerFactory: loggerFactory,
-        //    sourceFunc: async () =>
-        //    {
-        //        await Task.WhenAll(createPointerFileEntryIfNotExistsTask, createDeletedPointerFileEntryForDeletedPointerFilesTask); //B1503 -- wait for the PointerFileEntries to be up to date
-
-        //        var pointerFileEntriesToExport = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
-        //        var pfes = await repo.PointerFileEntries.GetCurrentEntries(includeDeleted: false);
-        //        await pointerFileEntriesToExport.Writer.AddFromEnumerable(pfes, true); //B1501
-        //        return pointerFileEntriesToExport;
-        //    },
-        //    repo: repo,
-        //    versionUtc: versionUtc,
-        //    done: () => { });
-        //var exportJsonTask = exportJsonBlock.GetTask; //B1502
-        //var exportJsonTask = createPointerFileEntryIfNotExistsTask
-        //    .ContinueWith(async _ => await exportJsonBlock.GetTask); //B1502
-
-        var validateBlock = new ValidateBlock(
-            loggerFactory: loggerFactory,
-            sourceFunc: null,
-            repo: repo,
-            versionUtc: options.VersionUtc,
-            done: () => { });
-
-
-        var updateTierBlock = new UpdateTierBlock(
-            loggerFactory: loggerFactory,
+        var updateTierBlock = new UpdateTierBlock(this,
             sourceFunc: () => repo,
             maxDegreeOfParallelism: 10,
-            repo: repo,
-            targetAccessTier: options.Tier,
             onCompleted: () => { });
         var updateTierTask = updateTierBlock.GetTask;
-            
-
+        
+        
         //while (true)
         //{
         //    await Task.Yield();
         //}
 
 
-
         // Await the current stage of the pipeline
-        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks/*.Append(exportJsonTask)*//*.Append(commitPointerFileEntryRepositoryTask)*/), BlockBase.CancellationTask);
+        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
 
-        var endStats = await repo.GetCurrentStats();
+
+        // Get statistics after the run
+        var endStats = await repo.GetStats();
         stats.AddRemoteRepositoryStatistic(
             afterBinaries: endStats.binaryCount,
             afterSize: endStats.binariesSize,
-            afterPointerFileEntries: endStats.pointerFileEntryCount);
+            afterPointerFileEntries: endStats.currentPointerFileEntryCount);
+        var vs = (await repo.PointerFileEntries.GetVersionsAsync()).ToArray();
+        stats.versionCount = vs.Length;
+        stats.lastVersion = vs.Last();
 
         // save the state in any case regardless of errors or not TODO IS THIS A GOOD IDEA? inconsistent state? i dont think so as the db is 'lagging' behind a sucessful blob writes and blob writes are handled gracefully
         await repo.States.CommitToBlobStorageAsync(options.VersionUtc);
@@ -239,8 +202,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         //    //something went wrong
         //    throw new InvalidOperationException("Not all queues are emptied");
         //}
-
-        
 
         return 0;
     }

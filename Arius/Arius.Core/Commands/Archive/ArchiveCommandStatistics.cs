@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -76,4 +77,8 @@ public class ArchiveCommandStatistics
     public int remoteAfterBinaries;
     public long remoteAfterSize;
     public int remoteAfterPointerFileEntries;
+
+
+    public int versionCount;
+    public DateTime lastVersion;
 }

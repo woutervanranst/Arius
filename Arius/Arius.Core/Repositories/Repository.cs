@@ -53,13 +53,12 @@ internal partial class Repository
         OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
     };
 
-    public async Task<(int binaryCount, long binariesSize, int pointerFileEntryCount)> GetCurrentStats()
+    public async Task<(int binaryCount, long binariesSize, int currentPointerFileEntryCount)> GetStats()
     {
         var binaryCount = await Binaries.CountAsync();
         var binariesSize = await Binaries.TotalIncrementalLengthAsync();
-        var pfes = await PointerFileEntries.GetCurrentEntriesAsync(false);
-        pfes.TryGetNonEnumeratedCount(out var pointerFileEntryCount);
+        var currentPointerFileEntryCount = (await PointerFileEntries.GetPointerFileEntriesAsync()/*.GetCurrentEntriesAsync(false)*/).Count();
 
-        return (binaryCount, binariesSize, pointerFileEntryCount);
+        return (binaryCount, binariesSize, currentPointerFileEntryCount);
     }
 }

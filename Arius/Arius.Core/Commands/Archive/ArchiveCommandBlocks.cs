@@ -307,7 +307,6 @@ internal partial class ArchiveCommand
         public CreatePointerFileEntryIfNotExistsBlock(ArchiveCommand command,
             Func<ChannelReader<PointerFile>> sourceFunc,
             int maxDegreeOfParallelism,
-            DateTime versionUtc,
             Action onCompleted) 
                 : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(),
                     sourceFunc: sourceFunc, 
@@ -316,7 +315,7 @@ internal partial class ArchiveCommand
         {
             this.stats = command.stats;
             this.repo = command.executionServices.GetRequiredService<Repository>();
-            this.versionUtc = versionUtc;
+            this.versionUtc = command.executionServices.Options.VersionUtc;
         }
 
         private readonly ArchiveCommandStatistics stats;
@@ -336,8 +335,9 @@ internal partial class ArchiveCommand
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1);
                     break;
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                    // TODO IS THIS EVER HIT?? I dont think so - the deleted entry is created in CreateDeletedPointerFileEntryForDeletedPointerFilesBlock
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
-                    stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: -1);
+                    stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
                     break;
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
                     logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
@@ -419,91 +419,38 @@ internal partial class ArchiveCommand
             {
                 logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);
-                stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: -1);
+                stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
 
                 await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
             }
         }
     }
-}
 
 
-
-
-
-
-
-
-
-
-
-
-internal class ValidateBlock
-{
-    public ValidateBlock(ILoggerFactory loggerFactory,
-        Func<BlockingCollection<PointerFileEntry>> sourceFunc,
-        Repository repo,
-        DateTime versionUtc,
-        Action done)
+    private class UpdateTierBlock : TaskBlockBase
     {
-        //logger.LogInformation($"Validating {pointerFile.FullName}...");
+        public UpdateTierBlock(ArchiveCommand command,
+            Func<Repository> sourceFunc,
+            int maxDegreeOfParallelism,
+            Action onCompleted) 
+                : base(loggerFactory: command.executionServices.GetRequiredService<ILoggerFactory>(),
+                    onCompleted: onCompleted)
+        {
+            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.targetAccessTier = targetAccessTier;
+        }
 
-        //logger.LogWarning($"Validating {pointerFile.FullName}... - Not yet implemented");
+        private readonly int maxDegreeOfParallelism;
+        private readonly Repository repo;
+        private readonly AccessTier targetAccessTier;
 
-        ////    // Validate the manifest
-        ////    var chunkHashes = await repo.GetChunkHashesAsync(pointerFile.Hash);
+        protected override async Task TaskBodyImplAsync()
+        {
+            if (targetAccessTier != AccessTier.Archive)
+                return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
 
-        ////    if (!chunkHashes.Any())
-        ////        throw new InvalidOperationException($"Manifest {pointerFile.Hash} (of PointerFile {pointerFile.FullName}) contains no chunks");
-
-        ////    double length = 0;
-        ////    foreach (var chunkHash in chunkHashes)
-        ////    {
-        ////        var cb = repo.GetChunkBlobByHash(chunkHash, false);
-        ////        length += cb.Length;
-        ////    }
-
-        ////    var bfi = pointerFile.BinaryFileInfo;
-        ////    if (bfi.Exists)
-        ////    {
-        ////        //TODO if we would know the EXACT/uncompressed size from the PointerFileEntry - use that
-        ////        if (bfi.Length / length < 0.9)
-        ////            throw new InvalidOperationException("something is wrong");
-        ////    }
-        ////    else
-        ////    {
-        ////        //TODO if we would know the expected size from the PointerFileEntry - use that
-        ////        if (length == 0)
-        ////            throw new InvalidOperationException("something is wrong");
-        ////    }
-
-        //logger.LogInformation($"Validating {pointerFile.FullName}... OK!");
-    }
-}
-
-internal class UpdateTierBlock : TaskBlockBase
-{
-    public UpdateTierBlock(ILoggerFactory loggerFactory,
-        Func<Repository> sourceFunc,
-        int maxDegreeOfParallelism,
-        Repository repo,
-        AccessTier targetAccessTier,
-        Action onCompleted) : base(loggerFactory: loggerFactory, onCompleted: onCompleted)
-    {
-        this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-        this.repo = repo;
-        this.targetAccessTier = targetAccessTier;
-    }
-
-    private readonly int maxDegreeOfParallelism;
-    private readonly Repository repo;
-    private readonly AccessTier targetAccessTier;
-
-    protected override async Task TaskBodyImplAsync()
-    {
-        if (targetAccessTier != AccessTier.Archive)
-            return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
-
-        await repo.Chunks.SetAllAccessTierAsync(targetAccessTier, maxDegreeOfParallelism);
+            await repo.Chunks.SetAllAccessTierAsync(targetAccessTier, maxDegreeOfParallelism);
+        }
     }
 }

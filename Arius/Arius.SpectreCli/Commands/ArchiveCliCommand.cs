@@ -115,10 +115,8 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
         await archiveCommand.ExecuteAsync(options);
 
-
-        var rule = new Rule("[red]Summary[/]");
-        AnsiConsole.Write(rule);
-
+        console.WriteLine();
+        console.Write(new Rule("[red]Summary[/]"));
 
         // Create summary table
         var s = (ArchiveCommandStatistics)statisticsProvider;
@@ -144,20 +142,25 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         //table.AddRow("Baz", "[green]Qux[/]");
         //table.AddRow(new Markup("[blue]Corgi[/]"), new Panel("Waldo"));
 
-        AnsiConsole.Write(table);
+        console.Write(table);
+        
+        console.WriteLine("  (1) Number of files in the local path");
+        console.WriteLine("  (2) Size of the files in the local path");
+        console.WriteLine("  (3) Number of files + pointers in the local path (ie including 'thin' files)");
+        console.WriteLine("  (4) Number of unique binaries (in all versions)");
+        console.WriteLine("  (5) Compressed and encrypted size of unique binaries (in all versions)");
+        console.WriteLine("  (6) Number of files + pointers (in all versions)");
 
-        console.WriteLine("(1) ...");
-        console.WriteLine("(2) ...");
-        console.WriteLine("(3) ...");
-        console.WriteLine("(4) ...");
-        console.WriteLine("(5) Compressed and encrypted size of unique binaries");
-        console.WriteLine("(6) ...");
+        console.WriteLine();
+
+        console.WriteLine($"Number of versions: {s.versionCount}");
+        console.WriteLine($"Last version with changes: {s.lastVersion.ToLocalTime()} {(s.lastVersion == options.VersionUtc ? "(this run)" : "(no changes this run)")}");
 
         console.WriteLine();
 
         var duration = DateTime.UtcNow - options.VersionUtc;
-        console.WriteLine($"Duration: {duration:g}s");
-        console.WriteLine($"Speed: {(double)s.localDeltaSize / 1024 / 1024 / duration.TotalSeconds} MBps");
+        console.WriteLine($"Duration: {duration:hh\\:mm\\:ss}s");
+        console.WriteLine($"Speed: {Math.Round((double)s.localDeltaSize / 1024 / 1024 / duration.TotalSeconds, 2)} MBps");
 
 
 
