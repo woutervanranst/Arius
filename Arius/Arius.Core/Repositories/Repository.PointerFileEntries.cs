@@ -211,7 +211,9 @@ internal partial class Repository
                 .Select(pfe => pfe.VersionUtc)
                 .Distinct()
                 .OrderBy(version => version)
+                .Select(pfe => DateTime.SpecifyKind(pfe, DateTimeKind.Utc))
                 .ToArrayAsync();
+            
         }
     }
 }
