@@ -57,7 +57,11 @@ internal partial class Repository
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                 async (cbb, ct) =>
                 {
+                    if (cbb.AccessTier == tier)
+                        return;
+
                     await cbb.SetAccessTierAsync(tier);
+                    logger.LogDebug($"Set acces tier to Archive for {cbb.Hash}");
                 });
         }
 
