@@ -30,6 +30,9 @@ class ByteBoundaryChunkerTests : TestBase
     [Test]
     public void ChunkAndMerge_DedupFile_Match()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         //Create the HashValueProvider and the Chunker
         var services = GetServices();
         var hvp = services.GetRequiredService<IHashValueProvider>();

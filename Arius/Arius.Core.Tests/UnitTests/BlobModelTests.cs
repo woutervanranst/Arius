@@ -20,6 +20,9 @@ class BlobModelTests : TestBase
     [Test]
     public async Task Properties_ChunkBlobBase_Valid()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         EnsureArchiveTestDirectoryFileInfo();
         await EnsureArchiveCommandHasRun();
 

@@ -24,6 +24,9 @@ class ArchiveTier_Tests : TestBase
     [Test]
     public async Task Archive_OneFileArchiveTier_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
         var bfi = EnsureArchiveTestDirectoryFileInfo();

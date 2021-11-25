@@ -69,6 +69,9 @@ class BinaryRepositoryTests : TestBase
     [Test]
     public async Task CreateChunkHashListAsync_CanOnlyBeCreatedOnce_Exception()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         var repo = GetRepository();
 
         var bh = new BinaryHash(Guid.NewGuid().ToString());
@@ -82,6 +85,9 @@ class BinaryRepositoryTests : TestBase
     [Test]
     public async Task CreateChunkHashListAsync_RecreateInvalidZeroLength_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         const string tag = "Bla"; //intentionally capitalized to test case sensitivity
 
         var repo = GetRepository();
@@ -137,6 +143,9 @@ class BinaryRepositoryTests : TestBase
     [Test]
     public async Task GetChunkHashesAsync_InvalidTag_Exception()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         var repo = GetRepository();
 
         var bh = new BinaryHash(Guid.NewGuid().ToString());

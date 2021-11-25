@@ -15,6 +15,9 @@ class Dedup_Tests : TestBase
     [Test]
     public async Task Archive_OneFile_Dedup_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         await TestSetup.PurgeRemote(); //purge the remote in case non-deduped files exist
         ArchiveTestDirectory.Clear();
 
@@ -37,6 +40,9 @@ class Dedup_Tests : TestBase
     [Test]
     public async Task Archive_Directory_Dedup_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         await TestSetup.PurgeRemote(); //purge the remote in case non-deduped files exist
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);

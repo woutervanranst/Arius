@@ -39,6 +39,9 @@ class Archive_Directory_Tests : TestBase
     [Test]
     public async Task Archive_FullDirectory()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         var bfis = await EnsureFullDirectoryArchived();
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);

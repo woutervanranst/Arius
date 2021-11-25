@@ -30,6 +30,9 @@ class Restore_Tests_Old : TestBase
     [Test, Order(110)]
     public async Task Restore_OneFile_FromCoolTier()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
         await RestoreCommand(synchronize: true, download: true, keepPointers: true);

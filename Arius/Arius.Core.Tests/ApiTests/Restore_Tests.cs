@@ -36,6 +36,9 @@ class Restore_Tests : TestBase
     [Test]
     public void Restore_SynchronizeFile_ValidationException([Values(true, false)] bool download) //Synchronize flag only valid on directory
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         var fn = Path.Combine(TestBase.RestoreTestDirectory.FullName, "ha.pointer.arius");
         File.WriteAllText(fn, "");
 
@@ -86,6 +89,9 @@ class Restore_Tests : TestBase
     [Test] //Deze hoort bij Order(1001) maar gemaakt om apart te draaien
     public async Task Restore_SynchronizeNoDownloadDirectory_PointerFilesSynchronized()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         //Archive the full directory so that only pointers remain
         await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
 
@@ -112,6 +118,9 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_NoSynchronizeDownloadDirectory_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         // Selective restore
 
         //Archive the full directory so that only pointers remain
@@ -149,8 +158,8 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_SynchronizeDownloadDirectory_Success()
     {
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
     }
 
 
@@ -158,8 +167,8 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_NoSynchronizeDownloadFile_Success()
     {
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
     }
 
 
@@ -169,6 +178,9 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_File_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         // Scenario: restore a single file
 
         //Archive the full directory so that only pointers remain
@@ -202,6 +214,9 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_OneFileWithChunkAlreadyDownloaded_BinaryFileRestoredFromLocal()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         // Reset params
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
@@ -245,6 +260,9 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_OneFileWithChunkToDownload_BinaryFileRestored()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         // Reset params
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
@@ -279,6 +297,9 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_OneFileWithArchivedChunk_CannotYetBeRestored()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         // Reset params
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromLocal = false;
         //Commands.Restore.DownloadChunksForBinaryBlock.ChunkRestoredFromOnlineTier = false;
@@ -313,13 +334,16 @@ class Restore_Tests : TestBase
     [Test]
     public async Task Restore_OneFileWithTEMPHYDRATEDChunk_BinaryFileRestoredTempDeleted()
     {
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
     }
 
     [Test]
     public async Task Restore_DedupedFile_Success()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         EnsureArchiveTestDirectoryFileInfo();
         await ArchiveCommand(dedup: true);
 

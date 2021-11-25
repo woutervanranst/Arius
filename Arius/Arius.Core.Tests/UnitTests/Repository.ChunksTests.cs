@@ -16,6 +16,9 @@ class ChunkRepositoryTests : TestBase
     [Test]
     public async Task GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         EnsureArchiveTestDirectoryFileInfo();
         await EnsureArchiveCommandHasRun();
 
@@ -41,6 +44,9 @@ class ChunkRepositoryTests : TestBase
     [Test]
     public void CopyUnitTestsFromBinaryRepositoryTests()
     {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
         throw new NotImplementedException();
     }
 }
