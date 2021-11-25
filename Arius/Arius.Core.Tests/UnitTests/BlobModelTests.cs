@@ -20,30 +20,30 @@ class BlobModelTests : TestBase
     [Test]
     public async Task Properties_ChunkBlobBase_Valid()
     {
-        EnsureArchiveTestDirectoryFileInfo();
-        await EnsureArchiveCommandHasRun();
+        //EnsureArchiveTestDirectoryFileInfo();
+        //await EnsureArchiveCommandHasRun();
 
-        var repo = GetRepository();
+        //var repo = GetRepository();
 
-        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
-        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
+        //var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
+        //var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
 
-        Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
+        //Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 
-        Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
+        //Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
-        Assert.AreEqual(cb1.Folder, cb2.Folder);
-        Assert.AreEqual(cb1.Folder, Repository.ChunkRepository.ChunkFolderName);
+        //Assert.AreEqual(cb1.Folder, cb2.Folder);
+        //Assert.AreEqual(cb1.Folder, Repository.ChunkRepository.ChunkFolderName);
 
-        Assert.AreEqual(cb1.FullName, cb2.FullName);
-        Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
+        //Assert.AreEqual(cb1.FullName, cb2.FullName);
+        //Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
 
-        Assert.AreEqual(cb1.Hash, cb2.Hash);
+        //Assert.AreEqual(cb1.Hash, cb2.Hash);
 
-        Assert.AreEqual(cb1.Length, cb2.Length);
-        Assert.IsTrue(cb1.Length > 0);
+        //Assert.AreEqual(cb1.Length, cb2.Length);
+        //Assert.IsTrue(cb1.Length > 0);
 
-        Assert.AreEqual(cb1.Name, cb2.Name);
-        Assert.IsFalse(cb1.Name.Contains('/')); //the Name does NOT contain the directory
+        //Assert.AreEqual(cb1.Name, cb2.Name);
+        //Assert.IsFalse(cb1.Name.Contains('/')); //the Name does NOT contain the directory
     }
 }
