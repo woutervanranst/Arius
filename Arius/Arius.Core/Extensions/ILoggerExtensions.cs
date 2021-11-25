@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions;
 
-internal static class ILoggerExtensions
+public static class ILoggerExtensions
 {
     public static void LogError(this ILogger logger, Exception e)
     {
