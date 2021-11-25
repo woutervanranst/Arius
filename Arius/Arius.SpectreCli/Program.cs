@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Arius.CliSpectre.Commands;
 using Arius.CliSpectre.Utils;
 using Arius.Core.Commands;
+using Arius.Core.Extensions;
 using Arius.SpectreCli.Infrastructure;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
@@ -93,8 +94,8 @@ namespace Arius.CliSpectre
 
                 config.SetExceptionHandler(ex =>
                 {
-                    //Trace.WriteLine(ex);
-                    throw new NotImplementedException(); // todo log exception
+                    var logger = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Main");
+                    logger.LogError(ex);
 
                     switch (ex)
                     {
