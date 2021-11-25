@@ -61,7 +61,8 @@ internal class PointerService
 
             var pfc = new PointerFileContents { BinaryHash = binaryHash.Value };
             var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
-                
+            
+            if (target.Directory is var d && !d.Exists) d.Create();
             using var s = target.OpenWrite();
             s.Write(json);
             s.Close();
