@@ -11,6 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Tests;
 
@@ -74,14 +75,33 @@ abstract class TestBase
         return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
     }
 
-
-    protected ServiceProvider GetServices()
+    private class JustRepositoryOptions : IRepositoryOptions
     {
-        return TestSetup.Facade.GetServices(
-            TestSetup.AccountName,
-            TestSetup.AccountKey,
-            TestSetup.Container.Name,
-            TestSetup.Passphrase);
+        public string AccountName { get; init; }
+        public string AccountKey { get; init; }
+        public string Container { get; init; }
+        public string Passphrase { get; init; }
+    }
+
+    protected IServiceProvider GetServices()
+    {
+        var options = new JustRepositoryOptions
+        {
+            AccountName = TestSetup.AccountName,
+            AccountKey = TestSetup.AccountKey,
+            Container = TestSetup.Container.Name,
+            Passphrase = TestSetup.Passphrase
+        };
+
+        var sp = ExecutionServiceProvider<JustRepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options);
+
+        return sp.Services;
+
+        //return TestSetup.Facade.GetServices(
+        //    TestSetup.AccountName,
+        //    TestSetup.AccountKey,
+        //    TestSetup.Container.Name,
+        //    TestSetup.Passphrase);
     }
     protected Repository GetRepository()
     {
@@ -107,23 +127,25 @@ abstract class TestBase
     /// </summary>
     protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
-        var c = TestSetup.Facade.CreateArchiveCommand(
-            TestSetup.AccountName,
-            TestSetup.AccountKey,
-            TestSetup.Passphrase,
-            fastHash,
-            TestSetup.Container.Name,
-            removeLocal,
-            tier.ToString(),
-            dedup,
-            TestSetup.ArchiveTestDirectory.FullName,
-            DateTime.UtcNow);
+        return null;
 
-        await c.Execute();
+        //var c = TestSetup.Facade.CreateArchiveCommand(
+        //    TestSetup.AccountName,
+        //    TestSetup.AccountKey,
+        //    TestSetup.Passphrase,
+        //    fastHash,
+        //    TestSetup.Container.Name,
+        //    removeLocal,
+        //    tier.ToString(),
+        //    dedup,
+        //    TestSetup.ArchiveTestDirectory.FullName,
+        //    DateTime.UtcNow);
 
-        archiveHasRun = true;
+        //await c.Execute();
 
-        return c.Services;
+        //archiveHasRun = true;
+
+        //return c.Services;
     }
 
     protected static async Task EnsureArchiveCommandHasRun()
@@ -155,20 +177,22 @@ abstract class TestBase
         bool download = false,
         bool keepPointers = true)
     {
-        var c = TestSetup.Facade.CreateRestoreCommand(
-            TestSetup.AccountName,
-            TestSetup.AccountKey,
-            TestSetup.Container.Name,
-            TestSetup.Passphrase,
-            synchronize,
-            download,
-            keepPointers,
-            path,
-            DateTime.UtcNow);
+        return null;
 
-        await c.Execute();
+        //var c = TestSetup.Facade.CreateRestoreCommand(
+        //    TestSetup.AccountName,
+        //    TestSetup.AccountKey,
+        //    TestSetup.Container.Name,
+        //    TestSetup.Passphrase,
+        //    synchronize,
+        //    download,
+        //    keepPointers,
+        //    path,
+        //    DateTime.UtcNow);
 
-        return c.Services;
+        //await c.Execute();
+
+        //return c.Services;
     }
 
 
