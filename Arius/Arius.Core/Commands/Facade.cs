@@ -74,8 +74,6 @@ public static class ServiceCollectionExtensions
         //        .AddLogging();
 
         //    return sc.BuildServiceProvider();
-
-        return services;
     }
 }
 
