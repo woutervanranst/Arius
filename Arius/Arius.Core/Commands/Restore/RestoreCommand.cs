@@ -41,6 +41,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
         var repo = executionServices.GetRequiredService<Repository>();
         var pointerService = executionServices.GetRequiredService<PointerService>();
 
+
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
 
         var indexBlock = new IndexBlock(
@@ -63,6 +64,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
             });
         var indexTask = indexBlock.GetTask;
 
+
         var chunkRehydrating = false;
 
         var downloadBinaryBlock = new DownloadBinaryBlock(
@@ -80,6 +82,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
             {
             });
         var downloadBinaryTask = downloadBinaryBlock.GetTask;
+
 
         await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
 
