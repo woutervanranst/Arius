@@ -75,7 +75,7 @@ internal partial class ArchiveCommand
                         if (fi.IsPointerFile())
                         {
                             // PointerFile
-                            logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
+                            logger.LogDebug($"Found PointerFile '{pf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.Hash))
@@ -91,7 +91,7 @@ internal partial class ArchiveCommand
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
 
-                            logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
+                            logger.LogDebug($"Found BinaryFile '{bf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
                             if (pf is not null)
@@ -210,7 +210,8 @@ internal partial class ArchiveCommand
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-            stats.AddLocalRepositoryStatistic(deltaFiles: 1, deltaSize: bf.Length);
+            if (!options.RemoveLocal) //if we're removing the binaries after, this is not a >0 change in the delta.
+                stats.AddLocalRepositoryStatistic(deltaFiles: 1, deltaSize: bf.Length);
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
             var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
@@ -340,7 +341,7 @@ internal partial class ArchiveCommand
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
                     break;
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
-                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
+                    logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
                     break;
                 default:
                     throw new NotImplementedException();
@@ -361,20 +362,22 @@ internal partial class ArchiveCommand
                     onCompleted: onCompleted)
         {
             this.stats = command.stats;
+            this.removeLocal = command.executionServices.Options.RemoveLocal;
         }
 
         private readonly ArchiveCommandStatistics stats;
+        private readonly bool removeLocal;
 
         protected override Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
         { 
             if (File.Exists(bf.FullName))
             {
                 logger.LogDebug($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
+                stats.AddLocalRepositoryStatistic(deltaFiles: -1, deltaSize: bf.Length * -1); //NOTE this is before the Delete() call because bf.Length does not work on an unexisting file //TODO test icw  
 
                 bf.Delete();
 
                 logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
-                stats.AddLocalRepositoryStatistic(deltaFiles: -1, deltaSize: bf.Length * -1); //TODO test icw 
             }
 
             return Task.CompletedTask;
@@ -438,7 +441,7 @@ internal partial class ArchiveCommand
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
             this.repo = command.executionServices.GetRequiredService<Repository>();
-            this.targetAccessTier = targetAccessTier;
+            this.targetAccessTier = command.executionServices.Options.Tier;
         }
 
         private readonly int maxDegreeOfParallelism;
