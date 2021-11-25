@@ -104,14 +104,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     {
         logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
 
-        foreach (var property in options.GetType().GetProperties())
-        {
-            var value = property.GetValue(options)?.ToString();
-            if (Attribute.IsDefined(property, typeof(ObfuscateInLogAttribute)))
-                value = "***";
-
-            logger.LogDebug($"{property.Name}: {value}");
-        }
+        logger.LogProperties(options);
 
         await archiveCommand.ExecuteAsync(options);
 
@@ -129,13 +122,13 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         table.AddColumn(new TableColumn("After").Centered());
 
         table.AddRow("Local files", "(1) Files",   $"{s.localBeforeFiles}", $"{s.localDeltaFiles:+#;-#;0}", $"{s.localBeforeFiles + s.localDeltaFiles}");
-        table.AddRow("",            "(2) Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"+{s.localDeltaSize.GetBytesReadable()}", $"{(s.localBeforeSize + s.localDeltaSize).GetBytesReadable()}");
+        table.AddRow("",            "(2) Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"{PlusSignOnly(s.localDeltaSize)}{s.localDeltaSize.GetBytesReadable()}", $"{(s.localBeforeSize + s.localDeltaSize).GetBytesReadable()}");
         table.AddRow("",            "(3) Entries", $"{s.localBeforePointerFiles}", $"{s.localDeltaPointerFiles:+#;-#;0}", $"{s.localBeforePointerFiles + s.localDeltaPointerFiles}");
 
         table.AddEmptyRow();
 
         table.AddRow("Remote repository", "(4) Binaries", $"{s.remoteBeforeBinaries}", $"{s.remoteDeltaBinaries:+#;-#;0}", $"{s.remoteAfterBinaries}");
-        table.AddRow("",                  "(5) Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"+{s.remoteDeltaSize.GetBytesReadable()}", $"{s.remoteAfterSize.GetBytesReadable()}");
+        table.AddRow("",                  "(5) Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"{PlusSignOnly(s.remoteDeltaSize)}{s.remoteDeltaSize.GetBytesReadable()}", $"{s.remoteAfterSize.GetBytesReadable()}");
         table.AddRow("",                  "(6) Entries", $"{s.remoteBeforePointerFileEntries}", $"{s.remoteDeltaPointerFileEntries:+#;-#;0}", $"{s.remoteAfterPointerFileEntries}");
 
 
@@ -185,4 +178,11 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
         return 0;
     }
+
+    private string PlusSignOnly(long number) =>
+        number switch
+        {
+            > 0 => "+",
+            _ => ""
+        };
 }

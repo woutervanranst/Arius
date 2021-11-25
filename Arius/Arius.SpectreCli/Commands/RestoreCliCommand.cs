@@ -87,6 +87,10 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)
     {
+        logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.Container}' to '{options.Path}'");
+
+        logger.LogProperties(options);
+
         return await restoreCommand.ExecuteAsync(options);
     }
 }
