@@ -72,8 +72,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
                 if (alreadyBackedUp)
                 {
                     if (options.RemoveLocal)
-                        throw new NotImplementedException(); //todo redundant with b1202?
-                    //await binariesToDelete.Writer.WriteAsync(bf); //B401
+                        await binariesToDelete.Writer.WriteAsync(bf); //B401 //NOTE B1202 deletes NEWLY archived binaries, this one deletes EXISTING binaries //TODO test the flow
                     //else - discard //B304
                 }
                 else
