@@ -63,7 +63,7 @@ internal partial class Repository
                 await using var ts = File.OpenWrite(localDbPath);
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded state version {lastStateBlobName}");
+                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}'");
             }
 
             return localDbPath;
