@@ -34,12 +34,6 @@ namespace Arius.CliSpectre
             var versionUtc = DateTime.UtcNow;
             var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
 
-            //using var logFileStream = File.Open(logFilePath, FileMode.CreateNew, FileAccess.Write);
-            //Trace.Listeners.Add(new TextWriterTraceListener(logFileStream)); //TODO File size: https://www.codeproject.com/Articles/2680/Writing-custom-NET-trace-listeners
-            //Trace.AutoFlush = true;
-
-            //Trace.WriteLine("Started");
-
             // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
             var config = new ConfigurationBuilder()
                 .AddJsonFile($"appsettings.json", true, true)
@@ -56,8 +50,6 @@ namespace Arius.CliSpectre
                     builder.AddConfiguration(config.GetSection("Logging")); // tif this doesnt work see https://stackoverflow.com/a/54892390/1582323, https://blog.bitscry.com/2017/05/30/appsettings-json-in-net-core-console-app/
 
                     // Add Console Logging
-                    // Reference <PackageReference Include="Spectre.Console.Extensions.Logging" Version="0.3.0-alpha0011" /> in csproj
-                    //builder.AddInlineSpectreConsole(c => { c.LogLevel = LogLevel.Trace; });
                     //.AddSimpleConsole(options =>
                     //{
                     //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
@@ -117,7 +109,7 @@ namespace Arius.CliSpectre
 
             });
 
-            return await app.RunAsync(args);
+            var r = await app.RunAsync(args);
 
             //return await AnsiConsole.Progress()
             //    .Columns(new ProgressColumn[]
@@ -132,6 +124,19 @@ namespace Arius.CliSpectre
             //        return await app.RunAsync(args);
             //    });
 
+            if (r == 0)
+            {
+                //Compress Logfile if the run didn not result in an exception
+                var fi = new FileInfo(logFilePath);
+                if (fi.Exists)
+                {
+                    AnsiConsole.WriteLine("Compressing logfile...");
+                    await fi.CompressAsync(deleteOriginal: true);
+                    AnsiConsole.WriteLine("Compressing logfile... done");
+                }
+            }
+
+            return r;
         }
     }
 }
