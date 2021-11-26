@@ -245,8 +245,12 @@ internal class PointerService
 
         if (ensureCorrectHash)
         {
-            if (binaryHash != hvp.GetBinaryHash(bfi.FullName))
-                throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again.");
+            var bh2 = hvp.GetBinaryHash(bfi.FullName);
+            if (binaryHash != bh2)
+            {
+                logger.LogWarning($"Hash of {bfi.FullName}: '{bh2}'. Should be: '{binaryHash}'");
+                throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again. If the file is intact, was it archived with fasthash and another password?");
+            }
         }
 
         return new BinaryFile(root, bfi, binaryHash);
