@@ -1,30 +1,17 @@
 {
   "profiles": {
-    //"Run": {
-    //  "commandName": "Project"
-    //},
-    "arius archive": {
+    "archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive"
+      "commandLineArgs": "archive C:\\Users\\Wouter\\Documents\\Test -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
     },
-    "arius archive Test": {
+    "restore": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool C:\\Users\\Wouter\\Documents\\Test"
-      //"commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archive2 --fasthash --tier cool \"e:\\Archive\""
-      //"commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c ariusico3 --fasthash --tier cool e:\\icotest"
+      "commandLineArgs": "restore C:\\Users\\Wouter\\Documents\\Test2 -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download"
     },
-    //"arius archive BIG": {
-    //  "commandName": "Project",
-    //  //"commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --fasthash --tier cool C:\\Users\\Wouter\\Documents\\Test"
-    //  "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c ariusbackup2 --fasthash --dedup --tier cool \"E:\\Archive\\Backup DVDs - 0 - Raw\""
-    //},
-    "arius restore Test": {
+    "restore BIG": {
       "commandName": "Project",
-      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
-    },
-    "arius dedupeval Test": {
-      "commandName": "Project",
-      "commandLineArgs": "dedupeval C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archivededup --synchronize"
     }
+
   }
 }
