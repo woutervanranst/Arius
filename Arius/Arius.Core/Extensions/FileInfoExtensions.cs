@@ -54,10 +54,10 @@ public static class FileInfoExtensions
 
     public static async Task CompressAsync(this FileInfo fi, bool deleteOriginal)
     {
-        using (var ss = fi.OpenRead())
+        await using (var ss = fi.OpenRead())
         {
-            using var ts = File.OpenWrite($"{fi.FullName}.gzip");
-            using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+            await using var ts = File.OpenWrite($"{fi.FullName}.gzip");
+            await using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
             await ss.CopyToAsync(gzs);
         }
 
