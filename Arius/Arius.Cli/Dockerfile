@@ -12,16 +12,16 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 ARG GITHUB_USER
 ARG GITHUB_TOKEN
 WORKDIR /src
-COPY "Arius.CliSpectre.csproj" .
+COPY "Arius.Cli.csproj" .
 RUN dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
-RUN dotnet restore "Arius.CliSpectre.csproj"
+RUN dotnet restore "Arius.Cli.csproj"
 COPY . .
 WORKDIR "/src"
-RUN dotnet build "Arius.CliSpectre.csproj" -c Release -o /app/build
+RUN dotnet build "Arius.Cli.csproj" -c Release -o /app/build
 
 
 FROM build AS publish
-RUN dotnet publish "Arius.CliSpectre.csproj" -c Release -o /app/publish
+RUN dotnet publish "Arius.Cli.csproj" -c Release -o /app/publish
 
 
 FROM base as final
