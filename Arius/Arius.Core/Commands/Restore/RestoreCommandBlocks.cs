@@ -234,7 +234,10 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         var bfi = pointerService.GetBinaryFileInfo(pf);
         if (!bfi.Exists)
         {
+            //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
+            logger.LogInformation($"To restore {pf.RelativeName}, copying {bf.RelativeName} to {bfi.FullName}");
             File.Copy(bf.FullName, bfi.FullName);
+            await Task.Delay(500, ct); // File.Copy keeps the file locked for read access just too long when we re setting CreationTime and LastWriteTime
         }
 
         bfi.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
