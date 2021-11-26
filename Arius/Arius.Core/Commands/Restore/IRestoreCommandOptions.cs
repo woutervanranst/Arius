@@ -14,8 +14,8 @@ public interface IRestoreCommandOptions : IRepositoryOptions
     DirectoryInfo Path { get; }
 
 
-    int IndexBlock_Parallelism => 1; // 16 * 2;
-    int DownloadBinaryBlock_Parallelism => 1; //16 * 2;
+    int IndexBlock_Parallelism => 16 * 2;
+    int DownloadBinaryBlock_Parallelism => 16 * 2;
 
 
     internal class Validator : AbstractValidator<IRestoreCommandOptions>
