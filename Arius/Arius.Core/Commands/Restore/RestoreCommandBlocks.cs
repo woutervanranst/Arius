@@ -169,19 +169,37 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         {
             // 1. The Binary is already restored
             restoredBinaries.AddOrUpdate(bf.Hash,
-                addValueFactory: (_) =>
+                addValueFactory: _ =>
                 {
                     logger.LogInformation($"Binary '{bf.RelativeName}' already restored.");
+                    
                     var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
                     tcs.SetResult(bf);
+
                     return tcs;
                 },
                 updateValueFactory: (bh, tcs) =>
                 {
-                    if (tcs.Task.IsCompleted)
-                        return tcs; // this is a duplicate binary
+                    /* We are have already processed the hash for this binaryfile, because
+                     * 3.1. This pf is a duplicate of a pf2 that was already restored before the run
+                     * 3.2. This pf is a duplicate of a pf2 that WAS restored DURING the run
+                     * 3.3. This pf is a duplicate of a pf2 that IS currently BEING restored
+                     */
 
-                    tcs.SetResult(bf);
+                    if (tcs.Task.IsCompleted)
+                    {
+                        // 3.1 + 3.2: BinaryFile already restored, no need to update the tcs
+                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is already restored in '{bf.RelativeName}'");
+                    }
+                    else
+                    {
+                        // 3.3
+                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is being downloaded but we encountered a local duplicate ({bf.RelativeName}). Using that one.");
+                        // TODO cancel the ongoing download and use tcs.Task.Result as BinaryFile to copy to pf
+
+                        tcs.SetResult(bf);
+                    }
+
                     return tcs;
                 });
         }
@@ -193,7 +211,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             if (binaryToDownload)
             {
                 // 2.1 Download not yet started --> start download
-                logger.LogInformation($"Starting download for Binary '{pf.Hash.ToShortString()}' ('{pf.RelativeName}')");
+                logger.LogDebug($"Starting download for Binary '{pf.Hash.ToShortString()}' ('{pf.RelativeName}')");
 
                 bool restored;
                 try
@@ -211,7 +229,15 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 if (restored)
                     bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
 
-                restoredBinaries[pf.Hash].SetResult(bf); //also set in case of null (ie not restored)
+                if (!restoredBinaries[pf.Hash].Task.IsCompleted)
+                {
+                    restoredBinaries[pf.Hash].SetResult(bf); //also set in case of null (ie not restored because still in Archive tier)
+                }
+                else
+                {
+                    // 3.3 while we were downloading this binary, we encountered a local file that had the same hash --> no need to set the binary
+                    logger.LogInformation($"We downloaded the binary for {pf.RelativeName} but meanwhile we encountered a local copy already. Download was acutally unnecessary. Sorry.");
+                }
             }
             else
             {
