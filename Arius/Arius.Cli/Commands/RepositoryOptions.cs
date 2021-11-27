@@ -28,9 +28,8 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
             if (path is not null)
                 throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
 
-            Path = new DirectoryInfo("/archive"); //when runnning in a docker container
-
-            logger.LogWarning($"{((DirectoryInfo)Path).FullName} {((DirectoryInfo)Path).Exists}");
+            path = new DirectoryInfo("/archive"); //when runnning in a docker container
+            Path = path;
         }
 
         // 2. Try to load from config file
