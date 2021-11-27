@@ -202,62 +202,67 @@ internal partial class Repository
 
         RestartUpload:
 
+        try
+        {
+            // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
+
+            long length;
+            await using (var ts = await bbc.OpenWriteAsync(overwrite: true, options: ThrowOnExistOptions)) //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+            {
+                await using var ss = await chunk.OpenReadAsync();
+                await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+                length = ts.Position;
+            }
+
+            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType }); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
+            await bbc.SetAccessTierAsync(tier);
+
+            logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
+
+            return length;
+        }
+        catch (RequestFailedException rfe) when (rfe.ErrorCode == "BlobArchived")
+        {
+            // cannot execute this operation on an archived blob
+            throw;
+        }
+        catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
+        {
+            // The blob already exists
             try
             {
-                // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
-
-                long length;
-                using (var ts = await bbc.OpenWriteAsync(overwrite: true, options: ThrowOnExistOptions)) //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+                var p = (await bbc.GetPropertiesAsync()).Value;
+                if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
                 {
-                    using var ss = await chunk.OpenReadAsync();
-                    await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
-                    length = ts.Position;
+                    logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
+                    await bbc.DeleteAsync();
+
+                    goto RestartUpload;
                 }
-
-                await bbc.SetAccessTierAsync(tier);
-                await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
-
-                logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
-
-                return length;
-            }
-            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
-            {
-                // The blob already exists
-                try
+                else
                 {
-                    var p = (await bbc.GetPropertiesAsync()).Value;
-                    if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
-                    {
-                        logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
-                        await bbc.DeleteAsync();
+                    // graceful handling if the chunk is already uploaded
+                    //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                    logger.LogWarning($"A valid Chunk '{chunk.Hash}' already existsted, perhaps in a previous/crashed run?");
 
-                        goto RestartUpload;
-                    }
-                    else
-                    {
-                        // graceful handling if the chunk is already uploaded
-                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
-                        logger.LogWarning($"A valid Chunk '{chunk.Hash}' already existsted, perhaps in a previous/crashed run?");
-
-                        return p.ContentLength;
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
-                    throw;
+                    return p.ContentLength;
                 }
             }
             catch (Exception e)
             {
-                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.Hash}. Deleting...", e);
-                logger.LogError(e2); //TODO test this in a unit test
-                await bbc.DeleteAsync();
-                logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
-                
-                throw e2;
+                logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
+                throw;
             }
+        }
+        catch (Exception e)
+        {
+            var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.Hash}. Deleting...", e);
+            logger.LogError(e2); //TODO test this in a unit test
+            await bbc.DeleteAsync();
+            logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
+
+            throw e2;
+        }
         }
 
         internal async Task DownloadAsync(ChunkBlobBase cbb, FileInfo target)
