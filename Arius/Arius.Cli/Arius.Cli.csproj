@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Arius.Core" Version="2.0.1127.788" />
+    <PackageReference Include="Arius.Core" Version="2.0.1127.807" />
 	<!--<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />-->
 
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.1" />
