@@ -98,6 +98,9 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
         if (Passphrase is null)
             return ValidationResult.Error($"Passphrase is required");
 
+        if (Path is null)
+            return ValidationResult.Error($"Path is required");
+
         // Save the Config
         if (Path is DirectoryInfo di)
         {
