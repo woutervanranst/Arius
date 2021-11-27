@@ -1,9 +1,8 @@
 using System;
-using Arius.CliSpectre.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 
-namespace Spectre.Console.Examples
+namespace Arius.Cli.Infrastructure
 {
     public sealed class TypeRegistrar : ITypeRegistrar
     {

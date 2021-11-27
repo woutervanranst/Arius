@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.CliSpectre.Utils;
+namespace Arius.Cli.Utils;
 
 /// <summary>
 /// Marks a field as needed to be obfuscated in logs

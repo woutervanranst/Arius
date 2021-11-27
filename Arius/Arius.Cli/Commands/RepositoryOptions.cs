@@ -1,17 +1,13 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Arius.CliSpectre.Utils;
+using Arius.Cli.Utils;
 using Arius.Core.Commands;
-using Arius.Core.Services;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
-namespace Arius.CliSpectre.Commands;
+namespace Arius.Cli.Commands;
 
 internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 {

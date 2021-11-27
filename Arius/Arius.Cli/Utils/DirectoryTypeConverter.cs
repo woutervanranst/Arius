@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.CliSpectre.Utils;
+namespace Arius.Cli.Utils;
 
 public sealed class StringToFileSystemInfoTypeConverter : TypeConverter
 {

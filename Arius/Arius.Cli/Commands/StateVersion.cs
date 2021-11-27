@@ -1,6 +1,6 @@
 using System;
 
-namespace Arius.CliSpectre.Commands;
+namespace Arius.Cli.Commands;
 
 internal class StateVersion
 {

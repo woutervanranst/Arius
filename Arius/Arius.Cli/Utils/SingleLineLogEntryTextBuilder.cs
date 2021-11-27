@@ -6,7 +6,7 @@ using System.Threading;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Logging;
 
-namespace Arius.CliSpectre.Utils;
+namespace Arius.Cli.Utils;
 // https://github.com/adams85/filelogger/tree/5263fa0424f1fed0a1fddc7b0f7454fb59e27c53/samples/CustomFormat
 
 [DebuggerStepThrough]

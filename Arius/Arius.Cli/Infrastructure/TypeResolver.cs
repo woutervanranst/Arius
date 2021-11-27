@@ -1,7 +1,7 @@
 using System;
 using Spectre.Console.Cli;
 
-namespace Arius.CliSpectre.Infrastructure
+namespace Arius.Cli.Infrastructure
 {
     public sealed class TypeResolver : ITypeResolver, IDisposable
     {

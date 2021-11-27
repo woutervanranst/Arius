@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 
-namespace Arius.CliSpectre.Utils;
+namespace Arius.Cli.Utils;
 
 public static class ConsoleLoggerExtensions
 {
