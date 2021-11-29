@@ -17,9 +17,10 @@ namespace Arius.Cli;
 
 public static class Program
 {
-
     [ThreadStatic]
     public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
+
+    internal static string ContainerName = null;
 
     public static async Task<int> Main(string[] args)
     {
@@ -121,6 +122,16 @@ public static class Program
         //        return await app.RunAsync(args);
         //    });
 
+        if (ContainerName is not null)
+        {
+            // prepend the container name to the log
+            var fi = new FileInfo(logFilePath);
+            if (fi.Exists)
+            {
+                logFilePath = logFilePath.Replace("arius-", $"arius-{ContainerName}-"); //todo this is not the most elegant way
+                fi.MoveTo(logFilePath);
+            }
+        }
         if (r == 0)
         {
             //Compress Logfile if the run didn not result in an exception

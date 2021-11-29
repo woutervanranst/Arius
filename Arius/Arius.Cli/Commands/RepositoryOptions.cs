@@ -57,6 +57,8 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
         if (path is not null)
             Path = path;
+
+        Program.ContainerName = container; // for the log file name h4x0r
     }
 
     private readonly ILogger<RepositoryOptions> logger;

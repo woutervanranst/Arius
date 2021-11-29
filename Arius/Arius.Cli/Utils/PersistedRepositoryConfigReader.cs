@@ -68,7 +68,7 @@ internal static class PersistedRepositoryConfigReader
             ? File.Open(fn, FileMode.Truncate, FileAccess.Write)  // FileInfo.OpenWrite APPENDS/does not truncate 
             : File.Open(fn, FileMode.CreateNew, FileAccess.Write);
         ms.CopyTo(ts);
-        File.SetAttributes(fn, FileAttributes.Hidden | FileAttributes.System); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
+        File.SetAttributes(fn, FileAttributes.Hidden); // make it hidden so it is not archived by the ArchiveCommandBlocks.IndexBlock
 
         logger.LogDebug("Saved options to file");
     }
