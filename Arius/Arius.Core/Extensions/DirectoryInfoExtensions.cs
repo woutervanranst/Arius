@@ -127,6 +127,12 @@ static class DirectoryInfoExtensions
     {
         var lowercaseFilename = fi.Name.ToLower();
 
+        if (lowercaseFilename.Equals("arius.config") && 
+            fi.Length < 1024 &&
+            File.ReadAllLines(fi.FullName)[0].StartsWith("{\"AccountName\":\"")) //TODO h4x0r since on Linux/Docker we cannot set the HIDDEN or SYSTEM attribute so cannot detect the arius.config file to ignore it.
+                                                                                 // related to https://stackoverflow.com/questions/45635937/change-file-permissions-in-mounted-folder-inside-docker-container-on-windows-hos ?
+            return true;
+
         return lowercaseFilename.Equals("autorun.ini") ||
                lowercaseFilename.Equals("thumbs.db") ||
                lowercaseFilename.Equals(".ds_store");
