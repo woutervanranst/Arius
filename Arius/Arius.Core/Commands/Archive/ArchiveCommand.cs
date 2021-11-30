@@ -186,7 +186,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         stats.versionCount = vs.Length;
         stats.lastVersion = vs.Last();
 
-        // save the state in any case regardless of errors or not TODO IS THIS A GOOD IDEA? inconsistent state? i dont think so as the db is 'lagging' behind a sucessful blob writes and blob writes are handled gracefully
+        // save the state in any case even in case of errors otherwise the info on BinaryProperties is lost
         await repo.States.CommitToBlobStorageAsync(options.VersionUtc);
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
@@ -199,12 +199,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
             throw new AggregateException(exceptions);
         }
-
-        //else if (!binaryFilesWaitingForManifestCreation.IsEmpty /*|| chunksForManifest.Count > 0*/)
-        //{
-        //    //something went wrong
-        //    throw new InvalidOperationException("Not all queues are emptied");
-        //}
 
         return 0;
     }

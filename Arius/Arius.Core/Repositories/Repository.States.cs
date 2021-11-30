@@ -125,7 +125,7 @@ internal partial class Repository
 
             //Delete the original database and the compressed file
             await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite"); //todo gzip
+            File.Move(vacuumedDbPath, $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite");
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
 
