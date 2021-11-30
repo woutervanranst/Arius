@@ -137,7 +137,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
         var r = new Recorder(console);
         r.Write(table);
-        logger.LogInformation(r.ExportText());
+        logger.LogDebug(r.ExportText()); //h4x0r LogInformation actually prints it to the screen
 
 
         console.WriteLine("  (1) Number of files in the local path");
