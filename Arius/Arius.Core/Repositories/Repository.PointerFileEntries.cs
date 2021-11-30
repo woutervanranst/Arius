@@ -89,12 +89,12 @@ internal partial class Repository
 
                 if (pfe.IsDeleted)
                 {
-                    logger.LogInformation($"Deleted '{pfe.RelativeName}'");
+                    logger.LogInformation($"Deleted Entry '{pfe.RelativeName}'");
                     return CreatePointerFileEntryResult.InsertedDeleted;
                 }
                 else
                 {
-                    logger.LogInformation($"Added '{pfe.RelativeName}'");
+                    logger.LogInformation($"Added Entry '{pfe.RelativeName}'");
                     return CreatePointerFileEntryResult.Inserted;
                 }
             }
