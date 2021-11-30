@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
@@ -19,18 +20,12 @@ public static class Program
     [ThreadStatic]
     public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
 
-    internal static string ContainerName = null;
-
     public static async Task<int> Main(string[] args)
     {
         AnsiConsole.Write(
             new FigletText(FigletFont.Default, "Arius")
                 .LeftAligned()
                 .Color(Color.Blue));
-
-        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
-        var versionUtc = DateTime.UtcNow;
-        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
 
         // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
         var config = new ConfigurationBuilder()
@@ -39,6 +34,10 @@ public static class Program
             //.AddEnvironmentVariables();//
             .Build();
 
+        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
+        var versionUtc = DateTime.UtcNow;
+        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+        
         var services = new ServiceCollection()
             .AddAriusCore()
             .AddSingleton(new StateVersion(versionUtc))
@@ -72,11 +71,12 @@ public static class Program
             });
 
         var registrar = new TypeRegistrar(services);
+        var parsedOptionsProvider = new ParsedOptionsProvider();
 
         var app = new CommandApp(registrar);
         app.Configure(config =>
         {
-            config.SetInterceptor(new LogInterceptor()); // add the interceptor
+            config.SetInterceptor(new CommandInterceptor(parsedOptionsProvider));
 
             config.SetApplicationName("arius");
 
@@ -121,18 +121,28 @@ public static class Program
 
         //        return await app.RunAsync(args);
         //    });
+        
 
-        // todo log in docker compress / sqlite in docker compress
-
-        foreach (var f in logPath.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
+        var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
+            .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
+            .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
+        
+        var ro = (IRepositoryOptions)parsedOptionsProvider.Options;
+        var commandName = parsedOptionsProvider.Options switch
         {
-            if (ContainerName is not null)
-                // prepend the container name to the log
-                f.MoveTo(f.FullName.Replace("arius-", $"arius-{ContainerName}-"));
+            ArchiveCliCommand.ArchiveCommandOptions => "archive",
+            RestoreCliCommand.RestoreCommandOptions => "restore",
+            _ => throw new NotImplementedException()
+        };
 
-            AnsiConsole.WriteLine($"Compressing {f.Name}...");
-            await f.CompressAsync(deleteOriginal: true);
-            AnsiConsole.WriteLine($"Compressing {f.Name}... done");
+        foreach (var logfile in logfiles)
+        {
+            // prepend the container name to the log
+            logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{ro.Container}-")));
+
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
+            await logfile.CompressAsync(deleteOriginal: true);
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
         }
 
         return r;
