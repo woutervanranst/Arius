@@ -1,6 +1,6 @@
 using Spectre.Console.Cli;
 
-namespace Arius.Cli.Infrastructure;
+namespace Arius.Cli.Utils;
 
 public class LogInterceptor : ICommandInterceptor
 {
