@@ -16,11 +16,11 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
     DateTime VersionUtc { get; }
 
 
-    int IndexBlock_Parallelism => 8 * 2; // Environment.ProcessorCount; //index AND hash options
+    int IndexBlock_Parallelism => Environment.ProcessorCount * 2; //index AND hash options
 
-    int BinariesToUpload_BufferSize => 1000;
+    int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
-    int UploadBinaryFileBlock_BinaryFileParallelism => 16 * 2;
+    int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
     int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
     int TransferChunked_ParallelChunkTransfers => 128 * 2;
 
