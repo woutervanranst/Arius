@@ -29,10 +29,10 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         logger.LogDebug("{0} initialized", nameof(ArchiveCliCommand));
     }
 
+    private readonly IAnsiConsole console;
     private readonly ILogger<ArchiveCliCommand> logger;
     private readonly AriusCoreCommand.ICommand<IArchiveCommandOptions> archiveCommand;
     private readonly ArchiveCommandStatistics statisticsProvider;
-    private IAnsiConsole console;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
     {
@@ -162,7 +162,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         return 0;
     }
 
-    private string PlusSignOnly(long number) =>
+    private static string PlusSignOnly(long number) =>
         number switch
         {
             > 0 => "+",

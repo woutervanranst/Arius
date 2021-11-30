@@ -13,7 +13,9 @@ namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(IAnsiConsole console, ILogger<RestoreCliCommand> logger, AriusCoreCommand.ICommand<IRestoreCommandOptions> restoreCommand)
+    public RestoreCliCommand(IAnsiConsole console, 
+        ILogger<RestoreCliCommand> logger, 
+        AriusCoreCommand.ICommand<IRestoreCommandOptions> restoreCommand)
     {
         this.console = console;
         this.logger = logger;
