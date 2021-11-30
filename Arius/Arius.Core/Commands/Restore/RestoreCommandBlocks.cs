@@ -164,17 +164,17 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
          * 3.   We encounter a restored BinaryFile while we are downloading the same binary?????????????????????????????????????????????????????????
          */
 
-        var bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
-        if (bf is not null)
+        var binary = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+        if (binary is not null)
         {
             // 1. The Binary is already restored
-            restoredBinaries.AddOrUpdate(bf.Hash,
+            restoredBinaries.AddOrUpdate(binary.Hash,
                 addValueFactory: _ =>
                 {
-                    logger.LogInformation($"Binary '{bf.RelativeName}' already restored.");
+                    logger.LogInformation($"Binary '{binary.RelativeName}' already restored.");
                     
                     var tcs = new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    tcs.SetResult(bf);
+                    tcs.SetResult(binary);
 
                     return tcs;
                 },
@@ -189,15 +189,15 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                     if (tcs.Task.IsCompleted)
                     {
                         // 3.1 + 3.2: BinaryFile already restored, no need to update the tcs
-                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is already restored in '{bf.RelativeName}'");
+                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is already restored in '{binary.RelativeName}'");
                     }
                     else
                     {
                         // 3.3
-                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is being downloaded but we encountered a local duplicate ({bf.RelativeName}). Using that one.");
+                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is being downloaded but we encountered a local duplicate ({binary.RelativeName}). Using that one.");
                         // TODO cancel the ongoing download and use tcs.Task.Result as BinaryFile to copy to pf
 
-                        tcs.SetResult(bf);
+                        tcs.SetResult(binary);
                     }
 
                     return tcs;
@@ -227,11 +227,11 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 }
 
                 if (restored)
-                    bf = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+                    binary = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
 
                 if (!restoredBinaries[pf.Hash].Task.IsCompleted)
                 {
-                    restoredBinaries[pf.Hash].SetResult(bf); //also set in case of null (ie not restored because still in Archive tier)
+                    restoredBinaries[pf.Hash].SetResult(binary); //also set in case of null (ie not restored because still in Archive tier)
                 }
                 else
                 {
@@ -242,10 +242,10 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             else
             {
                 // 2.2 Download ongoing --> wait for it
-                bf = await restoredBinaries[pf.Hash].Task;
+                binary = await restoredBinaries[pf.Hash].Task;
             }
 
-            if (bf is null)
+            if (binary is null)
                 //the binary could not yet be restored -- nothing left to do here
                 return;
 
@@ -257,17 +257,26 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             //internal static bool ChunkStartedHydration { get; set; } = false;
         }
 
-        var bfi = pointerService.GetBinaryFileInfo(pf);
-        if (!bfi.Exists)
+        var targetBinary = pointerService.GetBinaryFileInfo(pf);
+        if (!targetBinary.Exists)
         {
-            //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
-            logger.LogInformation($"To restore '{pf.RelativeName}', copying '{bf.RelativeName}' to '{bfi.FullName}'");
-            File.Copy(bf.FullName, bfi.FullName);
-            bfi.Refresh(); // need to refresh since it did not exist ; otherwise we cannot set the CreationTime / lastWriteTime
-            //await Task.Delay(500, ct); // File.Copy keeps the file locked for read access just too long when we re setting CreationTime and LastWriteTime
-        }
+            //TODO ensure this path is tested
 
-        bfi.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
-        bfi.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
+            //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
+            logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.Hash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
+            await using (var ss = await binary.OpenReadAsync())
+            {
+                targetBinary.Directory.Create();
+                await using var ts = File.OpenWrite(targetBinary.FullName);
+                await ss.CopyToAsync(ts); // File.Copy keeps the file locked when we re setting CreationTime and LastWriteTime
+            }
+
+
+            targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
+            targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
+
+            //File.SetCreationTimeUtc(bfi.FullName, File.GetCreationTimeUtc(pf.FullName));
+            //File.SetLastWriteTimeUtc(bfi.FullName, File.GetLastWriteTimeUtc(pf.FullName));
+        }
     }
 }
