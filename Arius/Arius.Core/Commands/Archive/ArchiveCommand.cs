@@ -160,10 +160,14 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
             maxDegreeOfParallelism: 10,
             onCompleted: () => { });
         var updateTierTask = updateTierBlock.GetTask;
-        
-        
+
+
         //while (true)
         //{
+        //    var status = indexBlock.GetTask.Status != TaskStatus.RanToCompletion ? 
+        //        "Indexing ongoing" :
+        //        binariesToUpload.Reader.)
+
         //    await Task.Yield();
         //}
 
