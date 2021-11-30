@@ -113,12 +113,12 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         // Create summary table
         var s = (ArchiveCommandStatistics)statisticsProvider;
 
-        var table = new Table();
-        table.AddColumn("");
-        table.AddColumn("");
-        table.AddColumn(new TableColumn("Before").Centered());
-        table.AddColumn(new TableColumn("Archive Operation").Centered());
-        table.AddColumn(new TableColumn("After").Centered());
+        var table = new Table()
+            .AddColumn("")
+            .AddColumn("")
+            .AddColumn(new TableColumn("Before").Centered())
+            .AddColumn(new TableColumn("Archive Operation").Centered())
+            .AddColumn(new TableColumn("After").Centered());
 
         table.AddRow("Local files", "(1) Files",   $"{s.localBeforeFiles}", $"{s.localDeltaFiles:+#;-#;0}", $"{s.localBeforeFiles + s.localDeltaFiles}");
         table.AddRow("",            "(2) Size",    $"{s.localBeforeSize.GetBytesReadable()}", $"{PlusSignOnly(s.localDeltaSize)}{s.localDeltaSize.GetBytesReadable()}", $"{(s.localBeforeSize + s.localDeltaSize).GetBytesReadable()}");
@@ -130,12 +130,16 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         table.AddRow("",                  "(5) Size", $"{s.remoteBeforeSize.GetBytesReadable()}", $"{PlusSignOnly(s.remoteDeltaSize)}{s.remoteDeltaSize.GetBytesReadable()}", $"{s.remoteAfterSize.GetBytesReadable()}");
         table.AddRow("",                  "(6) Entries", $"{s.remoteBeforePointerFileEntries}", $"{s.remoteDeltaPointerFileEntries:+#;-#;0}", $"{s.remoteAfterPointerFileEntries}");
 
-
         //table.AddRow("Baz", "[green]Qux[/]");
         //table.AddRow(new Markup("[blue]Corgi[/]"), new Panel("Waldo"));
 
         console.Write(table);
-        
+
+        var r = new Recorder(console);
+        r.Write(table);
+        logger.LogInformation(r.ExportText());
+
+
         console.WriteLine("  (1) Number of files in the local path");
         console.WriteLine("  (2) Size of the files in the local path");
         console.WriteLine("  (3) Number of files + pointers in the local path (ie including 'thin' files)");
@@ -153,27 +157,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         var duration = DateTime.UtcNow - options.VersionUtc;
         console.WriteLine($"Duration: {duration:hh\\:mm\\:ss}s");
         console.WriteLine($"Speed: {Math.Round((double)s.localDeltaSize / 1024 / 1024 / duration.TotalSeconds, 2)} MBps");
-
-
-
-
-        //    var table = new Table().RoundedBorder();
-        //    table.AddColumn("[grey]Name[/]");
-        //    table.AddColumn("[grey]Value[/]");
-
-        //    var properties = settings.GetType().GetProperties();
-        //    foreach (var property in properties)
-        //    {
-        //        var value = property.GetValue(settings)
-        //            ?.ToString()
-        //            ?.Replace("[", "[[");
-
-        //        table.AddRow(
-        //            property.Name,
-        //            value ?? "[grey]null[/]");
-        //    }
-
-        //    AnsiConsole.Write(table);
+        
 
         return 0;
     }
