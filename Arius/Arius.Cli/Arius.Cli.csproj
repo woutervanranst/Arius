@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Arius.Core" Version="2.0.1130.322" />
+    <PackageReference Include="Arius.Core" Version="2.0.1130.590" />
 	<!--<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />-->
 
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.1" />
@@ -22,7 +22,7 @@
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="6.0.0" />
 
-    <PackageReference Include="Spectre.Console" Version="0.42.1-preview.0.18" />
+    <PackageReference Include="Spectre.Console" Version="0.43.0" />
 
     <!-- For AddCustomFormatter Logger-->
 	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
@@ -42,6 +42,12 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+
+
+  <ItemGroup>
+    <Folder Include="Infrastructure\" />
   </ItemGroup>
 
 </Project>
