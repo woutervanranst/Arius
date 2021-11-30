@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Arius.Cli.Commands;
-using Arius.Cli.Infrastructure;
 using Arius.Cli.Utils;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
@@ -46,7 +45,7 @@ public static class Program
             //.AddSingleton<IConfigurationRoot>(config);
             .AddLogging(builder =>
             {
-                builder.AddConfiguration(config.GetSection("Logging")); // tif this doesnt work see https://stackoverflow.com/a/54892390/1582323, https://blog.bitscry.com/2017/05/30/appsettings-json-in-net-core-console-app/
+                builder.AddConfiguration(config.GetSection("Logging")); // if this doesnt work see https://stackoverflow.com/a/54892390/1582323, https://blog.bitscry.com/2017/05/30/appsettings-json-in-net-core-console-app/
 
                 // Add Console Logging
                 //.AddSimpleConsole(options =>
@@ -99,6 +98,7 @@ public static class Program
                         break;
                 }
 
+                return -1;
             });
 
             config.AddCommand<ArchiveCliCommand>("archive");
