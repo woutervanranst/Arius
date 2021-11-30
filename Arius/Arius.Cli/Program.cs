@@ -29,8 +29,9 @@ public static class Program
                 .LeftAligned()
                 .Color(Color.Blue));
 
+        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
         var versionUtc = DateTime.UtcNow;
-        var logFilePath = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
 
         // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
         var config = new ConfigurationBuilder()
@@ -62,11 +63,9 @@ public static class Program
                     {
                         config.GetSection("Logging").Bind("File", options);
 
-                        options.RootPath = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ?
-                            "/logs" :
-                            AppContext.BaseDirectory;
+                        options.RootPath = logPath.FullName;
 
-                        options.Files = new[] { new LogFileOptions { Path = logFilePath } };
+                        options.Files = new[] { new LogFileOptions { Path = logFileName } };
 
                         options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
                     });
@@ -109,6 +108,7 @@ public static class Program
 
         var r = await app.RunAsync(args);
 
+        // See https://github.com/spectreconsole/spectre.console/discussions/162
         //return await AnsiConsole.Progress()
         //    .Columns(new ProgressColumn[]
         //    {
@@ -122,26 +122,17 @@ public static class Program
         //        return await app.RunAsync(args);
         //    });
 
-        if (ContainerName is not null)
+        // todo log in docker compress / sqlite in docker compress
+
+        foreach (var f in logPath.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
         {
-            // prepend the container name to the log
-            var fi = new FileInfo(logFilePath);
-            if (fi.Exists)
-            {
-                logFilePath = logFilePath.Replace("arius-", $"arius-{ContainerName}-"); //todo this is not the most elegant way
-                fi.MoveTo(logFilePath);
-            }
-        }
-        if (r == 0)
-        {
-            //Compress Logfile if the run didn not result in an exception
-            var fi = new FileInfo(logFilePath);
-            if (fi.Exists)
-            {
-                AnsiConsole.WriteLine("Compressing logfile...");
-                await fi.CompressAsync(deleteOriginal: true);
-                AnsiConsole.WriteLine("Compressing logfile... done");
-            }
+            if (ContainerName is not null)
+                // prepend the container name to the log
+                f.MoveTo(f.FullName.Replace("arius-", $"arius-{ContainerName}-"));
+
+            AnsiConsole.WriteLine($"Compressing {f.Name}...");
+            await f.CompressAsync(deleteOriginal: true);
+            AnsiConsole.WriteLine($"Compressing {f.Name}... done");
         }
 
         return r;
