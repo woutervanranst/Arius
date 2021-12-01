@@ -32,9 +32,9 @@ internal partial class Repository
                 Retry =
                 {
                     Delay = TimeSpan.FromSeconds(2),        //The delay between retry attempts for a fixed approach or the delay on which to base calculations for a backoff-based approach
-                    MaxRetries = 5,                         //The maximum number of retry attempts before giving up
+                    MaxRetries = 10,                         //The maximum number of retry attempts before giving up
                     Mode = RetryMode.Exponential,           //The approach to use for calculating retry delays
-                    MaxDelay = TimeSpan.FromSeconds(60)     //The maximum permissible delay between retry attempts
+                    MaxDelay = TimeSpan.FromSeconds(120)     //The maximum permissible delay between retry attempts
                 }
             });
 
