@@ -221,12 +221,7 @@ internal partial class Repository
 
             return length;
         }
-        catch (RequestFailedException rfe) when (rfe.ErrorCode == "BlobArchived")
-        {
-            // cannot execute this operation on an archived blob
-            throw;
-        }
-        catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
+        catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict /*409*/) //icw ThrowOnExistOptions. In case of hot/cool, throws a 409+BlobAlreadyExists. In case of archive, throws a 409+BlobArchived
         {
             // The blob already exists
             try
@@ -241,7 +236,7 @@ internal partial class Repository
                 }
                 else
                 {
-                    // graceful handling if the chunk is already uploaded
+                    // graceful handling if the chunk is already uploaded but it does not yet exist in the database
                     //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
                     logger.LogWarning($"A valid Chunk '{chunk.Hash}' already existsted, perhaps in a previous/crashed run?");
 
