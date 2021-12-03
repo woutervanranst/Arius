@@ -103,7 +103,7 @@ public static class Program
 
             config.AddCommand<ArchiveCliCommand>("archive");
             config.AddCommand<RestoreCliCommand>("restore");
-
+            config.AddCommand<RehydrateCliCommand>("rehydrate");
         });
 
         var r = await app.RunAsync(args);
@@ -132,6 +132,7 @@ public static class Program
         {
             ArchiveCliCommand.ArchiveCommandOptions => "archive",
             RestoreCliCommand.RestoreCommandOptions => "restore",
+            RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
             _ => throw new NotImplementedException()
         };
 

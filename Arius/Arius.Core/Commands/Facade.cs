@@ -18,6 +18,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Arius.Core.Commands.Rehydrate;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -53,7 +54,8 @@ public static class ServiceCollectionExtensions
             .AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>()
             .AddSingleton<ArchiveCommandStatistics>()
 
-            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>();
+            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>()
+            .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
 
 
 
