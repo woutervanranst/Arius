@@ -14,6 +14,9 @@ internal static class PersistedRepositoryConfigReader
 
     public static (string accountName, string accountKey, string container) LoadSettings(DirectoryInfo path, string passphrase)
     {
+        if (path is null)
+            return default;
+
         var configFile = new FileInfo(Path.Combine(path.FullName, CONFIG_FILE_NAME));
         if (!configFile.Exists)
             return default;
