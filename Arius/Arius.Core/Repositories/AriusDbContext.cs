@@ -34,7 +34,10 @@ internal partial class Repository
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            options.UseSqlite($"Data Source={dbPath};Cache=Shared",  //Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
+            /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
+             *  NOTE if it still fails, try 'pragma temp_store=memory'
+             */
+            options.UseSqlite($"Data Source={dbPath};Cache=Shared",  
                 sqliteOptions =>
                 {
                     sqliteOptions.CommandTimeout(60); //set command timeout to 60s to avoid concurrency errors on 'table is locked'
