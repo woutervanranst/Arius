@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Rehydrate;
 
@@ -17,7 +18,13 @@ public interface IRehydrateCommandOptions : IRepositoryOptions // the interface 
 
 internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
 {
+    public RehydrateCommand(ILogger<RehydrateCommand> logger)
+    {
+        this.logger = logger;
+    }
+
     private IServiceProvider services;
+    private readonly ILogger<RehydrateCommand> logger;
 
     IServiceProvider ICommand<IRehydrateCommandOptions>.Services => services;
 
@@ -26,10 +33,19 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
         var container = new BlobContainerClient(connectionString, blobContainerName: options.Container);
 
-        var archivedBlobs = container.GetBlobsAsync(prefix: "chunks").Where(bi => bi.Properties.AccessTier == AccessTier.Archive);
+        var archivedBlobs = await container.GetBlobsAsync(prefix: "chunks").Where(bi => bi.Properties.AccessTier == AccessTier.Archive).ToArrayAsync();
 
-        var count = 0;
-        const int MAX_COUNT = 10_000;
+        var size = archivedBlobs.Sum(bi => bi.Properties.ContentLength);
+        var count = archivedBlobs.Count();
+
+        logger.LogInformation("Estimated price as per https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ (North Europe -- Read Operations, All other Operations");
+        logger.LogInformation($"SetAccessTier Operation: {count} blobs * 6.3860 EUR/10k operations = {count * 6.3860 / 10_000} EUR");
+        logger.LogInformation($"Data Retrieval: {(size / 1024 / 1024 / 1024)} GB * 0.0197 EUR/GB = {size / 1024 / 1024 / 1024 * 0.0197} EUR");
+
+
+
+        count = 0;
+        const int MAX_COUNT = 20_000;
         var cts = new CancellationTokenSource();
 
         try
