@@ -48,7 +48,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
         [Description("Keep pointer files after downloading content files")]
         [CommandOption("--keep-pointers")]
-        [DefaultValue(true)]
+        [DefaultValue(true)] //TODO there is no way of turning this off
         public bool KeepPointers { get; init; }
 
         //[Description("")]
