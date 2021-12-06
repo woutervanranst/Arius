@@ -1,19 +1,17 @@
 {
   "profiles": {
-    "arius": {
-      "commandName": "Project"
-    },
-    "arius archive": {
+    "archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive"
+      "commandLineArgs": "archive C:\\Users\\Wouter\\Documents\\Test -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
     },
-    "arius archive real": {
+    "restore": {
       "commandName": "Project",
-      "commandLineArgs": "archive -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --tier cool C:\\Users\\Wouter\\Documents\\Test"
+      "commandLineArgs": "restore C:\\Users\\Wouter\\Documents\\Test2 -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download"
     },
-    "arius restore": {
+    "restore BIG": {
       "commandName": "Project",
-      "commandLineArgs": "restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c arius --synchronize --download C:\\Users\\Wouter\\Documents\\Test2"
+      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archivededup --synchronize"
     }
+
   }
 }

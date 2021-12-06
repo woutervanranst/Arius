@@ -1,145 +1,151 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 using System;
-using System.CommandLine;
-using System.CommandLine.Builder;
-using System.CommandLine.Hosting;
-using System.CommandLine.Invocation;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Karambolo.Extensions.Logging.File;
-using Arius.Cli.Extensions;
-using Microsoft.Extensions.DependencyInjection;
-using Arius.Core.Facade;
 using System.IO;
-using System.CommandLine.Parsing;
-using Arius.Cli.CommandLine;
+using System.Linq;
+using System.Threading.Tasks;
+using Arius.Cli.Commands;
+using Arius.Cli.Utils;
+using Arius.Core.Commands;
+using Arius.Core.Extensions;
+using Karambolo.Extensions.Logging.File;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Spectre.Console.Cli;
 
-/*
- * This is required to test the internals of the Arius.Cli assembly
- */
-[assembly: InternalsVisibleTo("Arius.Cli.Tests")]
-namespace Arius.Cli
+namespace Arius.Cli;
+
+public static class Program
 {
-    public class Program
+    [ThreadStatic]
+    public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
+
+    public static async Task<int> Main(string[] args)
     {
-        public enum ExitCode
-        {
-            SUCCESS = 0,
-            ERROR = 1,
-        }
+        AnsiConsole.Write(
+            new FigletText(FigletFont.Default, "Arius")
+                .LeftAligned()
+                .Color(Color.Blue));
 
-        internal InvocationContext InvocationContext { get; private set; }
+        // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
+        var config = new ConfigurationBuilder()
+            .AddJsonFile($"appsettings.json", true, true)
+            //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
+            //.AddEnvironmentVariables();//
+            .Build();
 
-        public static async Task<int> Main(string[] args) => await (new Program().Main(args));
-        internal async Task<int> Main(string[] args, IFacade facade = default)
-        {
-            //TaskScheduler.UnobservedTaskException += (sender, e) =>
-            //{
-            //};
-
-            //AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-            //{
-            //};
-
-            Console.WriteLine("Arius started.");
-
-            int? r = default;
-            DirectoryInfo? tempDir = default;
-
-            try
+        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
+        var versionUtc = DateTime.UtcNow;
+        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+        
+        var services = new ServiceCollection()
+            .AddAriusCore()
+            .AddSingleton(new StateVersion(versionUtc))
+            //.AddSingleton<IConfigurationRoot>(config);
+            .AddLogging(builder =>
             {
-                var cliParser = GetCommandLineBuilder()
-                    .UseHost(_ => Host.CreateDefaultBuilder(), host =>
+                builder.AddConfiguration(config.GetSection("Logging")); // if this doesnt work see https://stackoverflow.com/a/54892390/1582323, https://blog.bitscry.com/2017/05/30/appsettings-json-in-net-core-console-app/
+
+                // Add Console Logging
+                //.AddSimpleConsole(options =>
+                //{
+                //    // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
+                //});
+                builder.AddCustomFormatter(options => { });
+
+                // Add File Logging
+                // Do not log to file if we are in a unit test - Do not configure Karambola file logging in a unit test. The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution
+                if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
+                {
+                    builder.AddFile(options =>
                     {
-                        InvocationContext = host.GetInvocationContext(); //TODO code smell - get this from the IHostBuilder somehow? see https://github.com/dotnet/command-line-api/issues/1025 ? https://github.com/dotnet/command-line-api/issues/1312 ? By design https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine.Hosting.Tests/HostingTests.cs#L357 ?
+                        config.GetSection("Logging").Bind("File", options);
 
-                        host
-                                .ConfigureAppConfiguration(builder =>
-                                {
-                                    builder.AddJsonFile("appsettings.json");
-                                })
-                                .ConfigureLogging((hostBuilderContext, loggingBuilder) =>
-                                {
-                                    loggingBuilder
-                                    .AddConfiguration(hostBuilderContext.Configuration.GetSection("Logging"))
-                                    .AddSimpleConsole(options =>
-                                    {
-                                        // See for options: https://docs.microsoft.com/en-us/dotnet/core/extensions/console-log-formatter#simple
-                                    });
+                        options.RootPath = logPath.FullName;
 
-                                    // Check whether we are running in a unit test
-                                    if (!Environment.GetCommandLineArgs()[0].EndsWith("testhost.dll"))
-                                    {
-                                        /* Do not configure Karambola file logging in a unit test
-                                            The Karambola extension disposes itself in a weird way when the IHost is initialized multiple times in one ApplicationDomain during the test suite execution */
-                                        loggingBuilder.AddFile(options =>
-                                        {
-                                            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs"))
-                                                options.RootPath = "/logs";
-                                            else
-                                                options.RootPath = AppContext.BaseDirectory;
+                        options.Files = new[] { new LogFileOptions { Path = logFileName } };
 
-                                            options.Files = new[] { new LogFileOptions { Path = $"arius-{DateTime.Now:yyyyMMdd-HHmmss}.log" } };
+                        options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+                    });
+                }
+            });
 
-                                            options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
-                                        });
+        var registrar = new TypeRegistrar(services);
+        var parsedOptionsProvider = new ParsedOptionsProvider();
 
-                                    }
-
-                                })
-                                .ConfigureServices((hostContext, services) =>
-                                {
-                                    if (facade is null)
-                                        services.AddSingleton<IFacade, Facade>();
-                                    else
-                                        services.AddSingleton(facade);
-
-                                    services.AddOptions<Arius.Core.Configuration.AzCopyAppSettings>().Bind(hostContext.Configuration.GetSection("AzCopier"));
-                                    services.AddOptions<Arius.Core.Configuration.TempDirectoryAppSettings>().Bind(hostContext.Configuration.GetSection("TempDir"));
-                                });
-                    })
-
-                    /* Replace .UseDefaults() by its implementation to allow for custom ExceptionHandler
-                        *  UseDefaults() implementation: https://github.com/dotnet/command-line-api/blob/3264927b51a5efda4f612c3c08ea1fc089f4fc35/src/System.CommandLine/Builder/CommandLineBuilderExtensions.cs#L282
-                        *  Workaround: https://github.com/dotnet/command-line-api/issues/796#issuecomment-670763630
-                        */
-                    .UseDefaults()
-                    .UseExceptionHandler((e, context) =>
-                    {
-                        // NOTE: Logging is not available here -- https://github.com/dotnet/command-line-api/issues/1311
-                        //var logger = context.GetHost().Services.GetRequiredService<ILogger>();
-                        HandleUnloggableException(e);
-                    })
-                    .Build();
-
-                r = await cliParser.InvokeAsync(args);
-            }
-            catch (Exception e)
-            {
-                HandleUnloggableException(e);
-            }
-
-            Environment.ExitCode = r ?? (int)ExitCode.ERROR;
-            return Environment.ExitCode;
-        }
-
-        private static void HandleUnloggableException(Exception e)
+        var app = new CommandApp(registrar);
+        app.Configure(config =>
         {
-            Console.WriteLine($"An unhandled exception has occurred before the logging infrastructure was set up:\n{e}");
-        }
+            config.SetInterceptor(new CommandInterceptor(parsedOptionsProvider));
 
-        private CommandLineBuilder GetCommandLineBuilder()
-        {
-            var root = new RootCommand
+            config.SetApplicationName("arius");
+
+            config.SetExceptionHandler(ex =>
             {
-                new ArchiveCliCommand().GetCommand(),
-                new RestoreCliCommand().GetCommand()
-            };
-            root.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
+                var logger = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Main");
+                logger.LogError(ex);
 
-            return new CommandLineBuilder(root);
+                switch (ex)
+                {
+                    case CommandParseException e:
+                        AnsiConsole.Write(e.Pretty);
+                        break;
+                    case CommandRuntimeException e: // occurs when ValidationResult.Error is returned in Validate()
+                        AnsiConsole.Write(e.Message);
+                        break;
+                    default:
+                        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                        break;
+                }
+
+                return -1;
+            });
+
+            config.AddCommand<ArchiveCliCommand>("archive");
+            config.AddCommand<RestoreCliCommand>("restore");
+            config.AddCommand<RehydrateCliCommand>("rehydrate");
+        });
+
+        var r = await app.RunAsync(args);
+
+        // See https://github.com/spectreconsole/spectre.console/discussions/162
+        //return await AnsiConsole.Progress()
+        //    .Columns(new ProgressColumn[]
+        //    {
+        //        new TaskDescriptionColumn(),
+        //        new SpinnerColumn()
+        //    })
+        //    .StartAsync(async context =>
+        //    {
+        //        var t0 = context.AddTask("archive");
+
+        //        return await app.RunAsync(args);
+        //    });
+        
+
+        var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
+            .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
+            .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
+        
+        var ro = (IRepositoryOptions)parsedOptionsProvider.Options;
+        var commandName = parsedOptionsProvider.Options switch
+        {
+            ArchiveCliCommand.ArchiveCommandOptions => "archive",
+            RestoreCliCommand.RestoreCommandOptions => "restore",
+            RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
+            _ => throw new NotImplementedException()
+        };
+
+        foreach (var logfile in logfiles)
+        {
+            // prepend the container name to the log
+            logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{ro.Container}-")));
+
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
+            await logfile.CompressAsync(deleteOriginal: true);
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
         }
+
+        return r;
     }
 }

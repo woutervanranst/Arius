@@ -13,22 +13,26 @@ on:
 jobs:
   job1:
     name: Release Nuget Package
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: ./Arius
-
-    runs-on: ubuntu-latest
 
     steps:
     - name: Check out code
       uses: actions/checkout@v2
 
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 6.0.x
+
     - name: Build
       run: dotnet build Arius.Core -c Release
     
-    - name: Test
-      run: dotnet test Arius.Core.Tests -c Release --no-build
+    #- name: Test
+    #  run: dotnet test Arius.Core.Tests -c Release --no-build
     
     - name: Pack
       run: dotnet pack Arius.Core -c Release --no-build --output .

@@ -8,15 +8,14 @@ on:
 jobs:
   job1:
     name: Run Test Suite
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: ./Arius
 
     runs-on: ubuntu-latest
-    
     timeout-minutes: 10
-
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -35,7 +34,7 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
-          dotnet-version: '6.0.x'
+          dotnet-version: 6.0.x
           include-prerelease: true
 
       - name: Test

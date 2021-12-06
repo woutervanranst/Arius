@@ -18,16 +18,11 @@ defaults:
   run:
     working-directory: ./Arius
 
-
-
-
-
-
 jobs:
   artifact:
     name: Release Artifact
-
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Check out code
@@ -36,7 +31,8 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 5.0.x
+        dotnet-version: 6.0.x
+        include-prerelease: true
         
     - name: Add Arius.Core Github Package Source
       run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'

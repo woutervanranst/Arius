@@ -1,69 +1,66 @@
 ﻿using System;
 
-namespace Arius.Core.Extensions
+namespace Arius.Core.Extensions;
+
+public static class LongExtensions
 {
-    internal static class LongExtensions
+    // https://stackoverflow.com/a/11124118/1582323
+
+    // TODO Consider the use of https://github.com/omar/ByteSize and/or https://github.com/Humanizr/Humanizer#bytesize
+
+    public static string GetBytesReadable(this long i)
     {
-        // https://stackoverflow.com/a/11124118/1582323
+        // Determine the suffix and readable value
+        string suffix;
+        double readable;
 
-        public static string GetBytesReadable(this long i)
+        switch (Math.Abs(i))
         {
-            // Get absolute value
-            long absolute_i = i < 0 ? -i : i;
-            // Determine the suffix and readable value
-            string suffix;
-            double readable;
-            if (absolute_i >= 0x1000000000000000) // Exabyte
-            {
-                suffix = "EB";
+            case >= 0x1000000000000000: // Exabyte
+                suffix = "EiB";
                 readable = i >> 50;
-            }
-            else if (absolute_i >= 0x4000000000000) // Petabyte
-            {
-                suffix = "PB";
+                break;
+            case >= 0x4000000000000:  // Petabyte
+                suffix = "PiB";
                 readable = i >> 40;
-            }
-            else if (absolute_i >= 0x10000000000) // Terabyte
-            {
-                suffix = "TB";
+                break;
+            case >= 0x10000000000: // Terabyte
+                suffix = "TiB";
                 readable = i >> 30;
-            }
-            else if (absolute_i >= 0x40000000) // Gigabyte
-            {
-                suffix = "GB";
+                break;
+            case >= 0x40000000: // Gigabyte
+                suffix = "GiB";
                 readable = i >> 20;
-            }
-            else if (absolute_i >= 0x100000) // Megabyte
-            {
-                suffix = "MB";
+                break;
+            case >= 0x100000: // Megabyte
+                suffix = "MiB";
                 readable = i >> 10;
-            }
-            else if (absolute_i >= 0x400) // Kilobyte
-            {
-                suffix = "KB";
+                break;
+            case >= 0x400: // Kilobyte
+                suffix = "KiB";
                 readable = i;
-            }
-            else
-            {
+                break;
+            default:
                 return i.ToString("0 B"); // Byte
-            }
-            // Divide by 1024 to get fractional value
-            readable /= 1024;
-            // Return formatted number with suffix
-            return readable.ToString("0.### ") + suffix;
         }
 
+        // Divide by 1024 to get fractional value
+        readable /= 1024;
 
-        public enum Size
-        {
-            KB
-        }
-        public static string GetBytesReadable(this long i, Size size)
-        {
-            if (size == Size.KB)
-                return $"{i / 1024:N0} {size:g}";
-
-            throw new NotImplementedException();
-        }
+        // Return formatted number with suffix
+        return readable.ToString("0.### ") + suffix;
     }
+
+
+    //public enum Size
+    //{
+    //    KB
+    //}
+    //public static string GetBytesReadable(this long i, Size size)
+    //{
+    //    if (size == Size.KB)
+    //        return $"{i / 1024:N0} {size:g}";
+
+    //    throw new NotImplementedException();
+    //}
 }
