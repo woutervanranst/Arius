@@ -33,7 +33,10 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
         var container = new BlobContainerClient(connectionString, blobContainerName: options.Container);
 
-        var archivedBlobs = await container.GetBlobsAsync(prefix: "chunks").Where(bi => bi.Properties.AccessTier == AccessTier.Archive).ToArrayAsync();
+        var archivedBlobs = await container.GetBlobsAsync(prefix: "chunks")
+            .Where(bi => bi.Properties.AccessTier == AccessTier.Archive &&
+                         bi.Properties.ArchiveStatus == null) //not RehydratePendingToCool
+            .ToArrayAsync();
 
         var size = archivedBlobs.Sum(bi => bi.Properties.ContentLength);
         var count = archivedBlobs.Count();
@@ -42,10 +45,8 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         logger.LogInformation($"SetAccessTier Operation: {count} blobs * 6.3860 EUR/10k operations = {count * 6.3860 / 10_000} EUR");
         logger.LogInformation($"Data Retrieval: {(size / 1024 / 1024 / 1024)} GB * 0.0197 EUR/GB = {size / 1024 / 1024 / 1024 * 0.0197} EUR");
 
-
-
         count = 0;
-        const int MAX_COUNT = 20_000;
+        const int MAX_COUNT = 30_000;
         var cts = new CancellationTokenSource();
 
         try
