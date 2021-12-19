@@ -85,7 +85,7 @@ internal class ChunkBlobItem : ChunkBlobBase
 
     public override long Length => bi.Properties.ContentLength!.Value;
     public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
-    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bcc.GetBlobClient(bi.Name).SetAccessTierAsync(accessTier);
+    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bcc.GetBlobClient(bi.Name).SetAccessTierPerPolicyAsync(Length, accessTier);
     public override string FullName => bi.Name;
 
     public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
@@ -125,7 +125,7 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
         _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
     };
 
-    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bbc.SetAccessTierAsync(accessTier);
+    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bbc.SetAccessTierPerPolicyAsync(Length, accessTier);
 
     public override string FullName => bbc.Name;
 

@@ -198,7 +198,7 @@ internal partial class Repository
         {
             logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
 
-            BlockBlobClient bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
+            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
 
         RestartUpload:
 
@@ -215,7 +215,7 @@ internal partial class Repository
             }
 
             await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType }); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
-            await bbc.SetAccessTierAsync(tier);
+            await bbc.SetAccessTierPerPolicyAsync(length, tier);
 
             logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
 
