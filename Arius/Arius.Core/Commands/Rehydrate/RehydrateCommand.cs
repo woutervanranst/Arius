@@ -46,7 +46,7 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         logger.LogInformation($"Data Retrieval: {(size / 1024 / 1024 / 1024)} GB * 0.0197 EUR/GB = {size / 1024 / 1024 / 1024 * 0.0197} EUR");
 
         count = 0;
-        const int MAX_COUNT = 30_000;
+        const int MAX_COUNT = 10_000;
         var cts = new CancellationTokenSource();
 
         try
