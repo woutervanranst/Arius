@@ -90,7 +90,7 @@ internal partial class Repository
             var incrementalLength = 0L;
 
             // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
-            var t = Task.Run(async () =>
+            var chunkTask = Task.Run(async () =>
             {
                 await using var binaryFileStream = await bf.OpenReadAsync();
 
@@ -161,12 +161,13 @@ internal partial class Repository
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
-                            //TODO TES THIS PATH
+                            //TODO Write unit test for this path
                         }
                     }
 
                     Interlocked.Add(ref degreeOfParallelism, -1);
                 });
+            await chunkTask; //this task will always be compete at this point
 
             return (chs.ToArray(), totalLength, incrementalLength);
         }
