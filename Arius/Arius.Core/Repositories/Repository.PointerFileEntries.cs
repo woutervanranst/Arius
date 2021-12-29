@@ -233,6 +233,8 @@ internal partial class Repository
         }
         private static PointerFileEntry ToPlatformSpecific(PointerFileEntry platformNeutral)
         {
+            // TODO UNIT TEST for linux pointers (already done if run in the github runner?
+
             if (platformNeutral is null)
                 return null;
 
