@@ -23,6 +23,7 @@ internal partial class Repository
         
         try
         {
+            // Check the credentials with a short Retry interval
             var c = new BlobContainerClient(connectionString, blobContainerName: options.Container, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
             c.Exists();
             //TODO test with wrong accountname, accountkey
