@@ -210,8 +210,10 @@ internal partial class ArchiveCommand
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-            if (!options.RemoveLocal) //if we're removing the binaries after, this is not a >0 change in the delta.
-                stats.AddLocalRepositoryStatistic(deltaFiles: 1, deltaSize: bf.Length);
+            if (options.RemoveLocal) // NOTE THIS BLOCK CAN BE DELETED IF THE ARCHIVE STATISTICS FUNCIONALITY WORKS FINE
+                stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //Do not add -1 it here, it is set in DeleteBinaryFilesBlock after successful deletion
+            else
+                stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //if we're keeping the local binaries, there are no deltas due to the archive operation
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
             var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
