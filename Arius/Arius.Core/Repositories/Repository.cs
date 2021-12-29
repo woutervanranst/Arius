@@ -4,6 +4,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Extensions;
 using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;
@@ -19,6 +20,21 @@ internal partial class Repository
     {
         var logger = loggerFactory.CreateLogger<Repository>();
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+        
+        try
+        {
+            var c = new BlobContainerClient(connectionString, blobContainerName: options.Container, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
+            c.Exists();
+            //TODO test with wrong accountname, accountkey
+        }
+        catch (AggregateException e)
+        {
+            logger.LogError(e);
+
+            var msg = e.InnerExceptions.Select(ee => ee.Message).Distinct().Join();
+            throw new ArgumentException("Cannot connect to blob container. Double check AccountName and AccountKey or network connectivity?");
+        }
+
         var container = new BlobContainerClient(
             connectionString, 
             blobContainerName: options.Container,
