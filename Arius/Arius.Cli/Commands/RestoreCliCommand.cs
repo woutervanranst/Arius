@@ -57,7 +57,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
         [Description("Local path")]
         [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
-        [CommandArgument(0, "<PATH>")]
+        [CommandArgument(0, "[PATH]")] //Path is really mandatory but is not passed explicitly when running in Docker - so the Spectre.Console.Cli.CommandValidator.ValidateRequiredParameters fails
         public new DirectoryInfo Path => (DirectoryInfo)base.Path;
 
         public override ValidationResult Validate()
