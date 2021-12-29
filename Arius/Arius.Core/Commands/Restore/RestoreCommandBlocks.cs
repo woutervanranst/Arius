@@ -47,10 +47,10 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     {
         if (synchronize)
         {
-            if (source is not DirectoryInfo)
+            if (source is not DirectoryInfo di)
                 throw new ArgumentException($"The synchronize flag is only valid for directories");
 
-            await SynchronizeThenIndex((DirectoryInfo)source);
+            await SynchronizeThenIndex(di);
         }
         else
         {
