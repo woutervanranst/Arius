@@ -81,6 +81,7 @@ internal partial class Repository
                 .OrderBy(pfe0 => pfe0.VersionUtc)
                 .LastOrDefaultAsync();
 
+            pfe = ToPlatformNeutral(pfe);
             var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
             if (toAdd)
             {
@@ -153,6 +154,7 @@ internal partial class Repository
                 .ToAsyncEnumerable() //TODO ParallelEnumerable? //remove this and the dependency on Linq.Async?
                 .Where(c => c.Any())
                 .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last())
+                .Select(pfe => ToPlatformSpecific(pfe))
                 .ToArrayAsync();
 
             return r;
@@ -214,6 +216,30 @@ internal partial class Repository
                 .Select(pfe => DateTime.SpecifyKind(pfe, DateTimeKind.Utc))
                 .ToArrayAsync();
             
+        }
+
+
+
+        private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
+        private static PointerFileEntry ToPlatformNeutral(PointerFileEntry platformSpecific)
+        {
+            if (platformSpecific is null)
+                return null;
+
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformSpecific;
+            
+            return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
+        }
+        private static PointerFileEntry ToPlatformSpecific(PointerFileEntry platformNeutral)
+        {
+            if (platformNeutral is null)
+                return null;
+
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformNeutral;
+
+            return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
         }
     }
 }
