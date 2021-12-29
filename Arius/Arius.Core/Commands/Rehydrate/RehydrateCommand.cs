@@ -41,7 +41,7 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         var size = archivedBlobs.Sum(bi => bi.Properties.ContentLength);
         var count = archivedBlobs.Count();
 
-        logger.LogInformation("Estimated price as per https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ (North Europe -- Read Operations, All other Operations");
+        logger.LogInformation("Estimated price as per https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ (North Europe -- Read Operations, All other Operations)");
         logger.LogInformation($"SetAccessTier Operation: {count} blobs * 6.3860 EUR/10k operations = {count * 6.3860 / 10_000} EUR");
         logger.LogInformation($"Data Retrieval: {(size / 1024 / 1024 / 1024)} GB * 0.0197 EUR/GB = {size / 1024 / 1024 / 1024 * 0.0197} EUR");
 
