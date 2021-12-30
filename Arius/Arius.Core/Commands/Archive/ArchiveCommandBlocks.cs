@@ -75,7 +75,7 @@ internal partial class ArchiveCommand
                         if (fi.IsPointerFile())
                         {
                             // PointerFile
-                            logger.LogDebug($"Found PointerFile '{pf.RelativeName}'");
+                            logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.Hash))
@@ -91,7 +91,7 @@ internal partial class ArchiveCommand
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
 
-                            logger.LogDebug($"Found BinaryFile '{bf.RelativeName}'");
+                            logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
                             if (pf is not null)
@@ -455,7 +455,16 @@ internal partial class ArchiveCommand
             if (targetAccessTier != AccessTier.Archive)
                 return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
 
-            await repo.Chunks.SetAllAccessTierAsync(targetAccessTier, maxDegreeOfParallelism);
+            var blobsNotInTier = repo.Chunks.GetAllChunkBlobs().Where(cbb => cbb.AccessTier != targetAccessTier);
+
+            await Parallel.ForEachAsync(blobsNotInTier,
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (cbb, ct) =>
+                {
+                    var updated = await cbb.SetAccessTierPerPolicyAsync(targetAccessTier);
+                    if (updated)
+                        logger.LogInformation($"Set acces tier to '{targetAccessTier.ToString()}' for chunk '{cbb.Hash.ToShortString()}'");
+                });
         }
     }
 }
