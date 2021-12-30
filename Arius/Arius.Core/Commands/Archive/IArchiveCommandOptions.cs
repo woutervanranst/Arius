@@ -38,6 +38,8 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
 
     int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
+    int UpdateTierBlock_Parallelism => 10;
+
 
 #pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
     internal class Validator : AbstractValidator<IArchiveCommandOptions>

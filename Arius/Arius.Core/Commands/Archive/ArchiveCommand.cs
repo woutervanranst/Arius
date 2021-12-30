@@ -157,7 +157,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
         var updateTierBlock = new UpdateTierBlock(this,
             sourceFunc: () => repo,
-            maxDegreeOfParallelism: 10,
+            maxDegreeOfParallelism: options.UpdateTierBlock_Parallelism,
             onCompleted: () => { });
         var updateTierTask = updateTierBlock.GetTask;
 
