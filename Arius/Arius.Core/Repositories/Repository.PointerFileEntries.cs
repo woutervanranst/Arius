@@ -76,12 +76,13 @@ internal partial class Repository
         {
             await using var db = await repo.States.GetCurrentStateDbContextAsync();
 
+            pfe = ToPlatformNeutral(pfe);
+
             var lastVersion = await db.PointerFileEntries
                 .Where(pfe0 => pfe.RelativeName.Equals(pfe0.RelativeName))
                 .OrderBy(pfe0 => pfe0.VersionUtc)
                 .LastOrDefaultAsync();
 
-            pfe = ToPlatformNeutral(pfe);
             var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
             if (toAdd)
             {
@@ -162,12 +163,19 @@ internal partial class Repository
 
         /// <summary>
         /// Get All PointerFileEntries
+        /// DO NOT USE?
+        /// TODO REMOVE ME
         /// </summary>
         /// <returns></returns>
         internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
         {
             await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.PointerFileEntries.ToArrayAsync(); //TODO to TEST suite?
+        }
+        internal async Task<int> CountAsync()
+        {
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
+            return await db.PointerFileEntries.CountAsync();
         }
 
 

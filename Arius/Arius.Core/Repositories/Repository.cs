@@ -73,7 +73,7 @@ internal partial class Repository
     {
         var binaryCount = await Binaries.CountAsync();
         var binariesSize = await Binaries.TotalIncrementalLengthAsync();
-        var currentPointerFileEntryCount = (await PointerFileEntries.GetPointerFileEntriesAsync()/*.GetCurrentEntriesAsync(false)*/).Count();
+        var currentPointerFileEntryCount = await PointerFileEntries.CountAsync();
 
         return (binaryCount, binariesSize, currentPointerFileEntryCount);
     }
