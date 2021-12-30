@@ -15,6 +15,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.UnitTests;
@@ -38,11 +39,9 @@ class ByteBoundaryChunkerTests : TestBase
         var hvp = services.GetRequiredService<IHashValueProvider>();
         var logger = services.GetRequiredService<ILogger<ByteBoundaryChunker>>();
 
-        // SCENARIO 1: the buffer is larger than the stream
-        // Chunk a small stream with no minimum chunk size
+        // SCENARIO 1: the buffer is larger than the stream -- Chunk a small stream with no minimum chunk size
         var chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: 0);
         var smallByteArray = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3, 0, 0, 5, 6, 7, 0, 0, 1, 2, 3 };
-        //var smallByteArray = new byte[] { 1, 2, 3, 0, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3 };
         var smallStream = new MemoryStream(smallByteArray);
         var chunks = chunker.Chunk(smallStream).ToArray();
             
@@ -50,62 +49,58 @@ class ByteBoundaryChunkerTests : TestBase
         Assert.AreEqual(smallByteArray, chunks.SelectMany(b => b.Bytes).ToArray());
 
 
-        // SCENARIO 2: the buffer is smaller than the stream
-        // Chunk a file
-        chunker = new ByteBoundaryChunker(logger, hvp);
+
+        // SCENARIO 2: the buffer is smaller than the stream -- Chunk a file
 
         //Generate new dedup file
         var bf = CreateNewBinaryFile(hvp);
 
         //Chunk it
-        using (var bfs = File.OpenRead(bf.FullName))
+        using var bfs = File.OpenRead(bf.FullName);
+        const int MIN_CHUNK_SIZE = 1024;
+        chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: MIN_CHUNK_SIZE);
+        chunks = chunker.Chunk(bfs).ToArray();
+
+        // the chunker actually chunked something
+        Assert.IsTrue(chunks.Length > 1);
+
+
+        var original = File.ReadAllBytes(bf.FullName);
+        var recomposed = chunks.SelectMany(b => b.Bytes).ToArray();
+
+        // the length of the stream is equal to the length of the sum of the chunks
+        Assert.AreEqual(original.Length, recomposed.Length);
+
+        // the streams are equal byte for byte, inplemented by the hashes are equal
+        var originalHash = hvp.GetChunkHash(original);
+        var recomposedHash = hvp.GetChunkHash(recomposed);
+        Assert.AreEqual(originalHash, recomposedHash);
+
+        foreach (var chunk in chunks)
         {
-            chunks = chunker.Chunk(bfs).ToArray();
+            var chunkBytes = chunk.Bytes;
+            Assert.IsTrue(chunkBytes.Length >= chunker.MinChunkSize);
 
-            // the chunker actually chunked something
-            Assert.IsTrue(chunks.Length > 1);
-
-
-            var original = File.ReadAllBytes(bf.FullName); 
-            var recomposed = chunks.SelectMany(b => b.Bytes).ToArray();
-
-            // the length of the stream is equal to the length of the sum of the chunks
-            Assert.AreEqual(original.Length, recomposed.Length);
-
-            //// the streams are equal byte for byte
-            //Assert.AreEqual(original, recomposed);
-
-            // the hashes are equal
-            var originalHash = hvp.GetChunkHash(original);
-            var recomposedHash = hvp.GetChunkHash(recomposed);
-            Assert.AreEqual(originalHash, recomposedHash);
-
-            foreach (var chunk in chunks)
+            if (chunk != chunks.Last())
             {
-                var chunkBytes = chunk.Bytes;
-                Assert.IsTrue(chunkBytes.Length >= chunker.MinChunkSize);
+                // each chunk (apart from the last one) ends with the delimiter
+                Assert.IsTrue(chunkBytes[(chunkBytes.Length - 2)..].SequenceEqual(chunker.Delimiter));
 
-                if (chunk != chunks.Last())
-                {
-                    // each chunk (apart from the last one) ends with the delimiter
-                    Assert.IsTrue(chunkBytes[(chunkBytes.Length - 2)..].SequenceEqual(chunker.Delimiter));
-
-                    // the delimiter is the only one in this chunk
-                    var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes).IndexOf(chunker.Delimiter);
-                    Assert.AreEqual(chunkBytes.Length - 2, indexOfDelimiter);
-                }
-                else
-                {
-                    //the last chunk does not contain the delimiter
-                    var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes).IndexOf(chunker.Delimiter);
-                    Assert.AreEqual(-1, indexOfDelimiter);
-                }
+                // the delimiter is the only one in this chunk
+                    // ignore the delimiters in the MIN_CHUNK_SIZE part of the byte array
+                var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes[MIN_CHUNK_SIZE..]).IndexOf(chunker.Delimiter) + MIN_CHUNK_SIZE;
+                Assert.AreEqual(chunkBytes.Length - 2, indexOfDelimiter);
+            }
+            else
+            {
+                //the last chunk does not contain the delimiter
+                var indexOfDelimiter = new ReadOnlySpan<byte>(chunkBytes).IndexOf(chunker.Delimiter);
+                Assert.AreEqual(-1, indexOfDelimiter);
             }
         }
 
         //Merge it
         //var target = new FileInfo(Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile2.xyz"));
-            
         //chunker.Merge(chunks, target);
 
         ////Calculate the hash of the result
@@ -113,7 +108,6 @@ class ByteBoundaryChunkerTests : TestBase
 
         //Assert.AreEqual(bf.Hash, hash_target);
     }
-
 
     private static BinaryFile CreateNewBinaryFile(IHashValueProvider hvp)
     {
