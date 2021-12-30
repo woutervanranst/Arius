@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Tests;
+using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MockQueryable.Moq;
@@ -67,7 +68,7 @@ class BinaryRepositoryTests : TestBase
     }
 
     [Test]
-    public async Task CreateChunkHashListAsync_CanOnlyBeCreatedOnce_Exception()
+    public async Task CreateChunkHashListAsync_AlreadyExists_Graceful()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
@@ -77,9 +78,11 @@ class BinaryRepositoryTests : TestBase
         var bh = new BinaryHash(Guid.NewGuid().ToString());
         var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
 
+        // Create the first time
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 
-        Assert.CatchAsync<InvalidOperationException>(async () => await repo.Binaries.CreateChunkHashListAsync(bh, chs));
+        // Create the 2nd time // only a warning is logged, no exception is thrown
+        await repo.Binaries.CreateChunkHashListAsync(bh, chs);
     }
 
     [Test]
@@ -87,8 +90,6 @@ class BinaryRepositoryTests : TestBase
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
-
-        const string tag = "Bla"; //intentionally capitalized to test case sensitivity
 
         var repo = GetRepository();
 
@@ -99,16 +100,13 @@ class BinaryRepositoryTests : TestBase
         var ms = new MemoryStream();
         var bc = TestSetup.Container.GetBlobClient(repo.Binaries.GetChunkListBlobName(bh));
         bc.Upload(ms);
-        throw new NotImplementedException();
-        //await bc.SetMetadataTagAsync(tag);
+        var lmd = bc.GetProperties().Value.ETag;
 
         // create the chunkhashlist -- this will delete & recretate
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 
-        // the blob is replaced ( == the tag on the original blob will be gone)
-        throw new NotImplementedException();
-        //var hasTag = await bc.HasMetadataTagAsync(tag);
-        //Assert.IsFalse(hasTag);
+        // the blob is replaced ( == the ETag is different)
+        Assert.AreNotEqual(lmd, bc.GetProperties().Value.ETag);
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
         repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
@@ -156,7 +154,7 @@ class BinaryRepositoryTests : TestBase
 
         //remove the tag
         var bc = TestSetup.Container.GetBlobClient(repo.Binaries.GetChunkListBlobName(bh));
-        await bc.SetMetadataAsync(default(IDictionary<string, string>));
+        await bc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "string" });
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
         repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
