@@ -34,7 +34,7 @@ class Archive_OneFile_Tests : TestBase
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
         var bfi = EnsureArchiveTestDirectoryFileInfo();
-        AccessTier tier = AccessTier.Cool;
+        var tier = AccessTier.Cool;
         await ArchiveCommand(tier);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
