@@ -70,7 +70,7 @@ class CryptoTests : TestBase
     {
         // Ensure compatibility with openssl
 
-        var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl");
+        var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl"); //add 'C:\Program Files\OpenSSL-Win64\bin' to the PATH
         var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip");
 
         var encFile = Path.GetTempFileName();
