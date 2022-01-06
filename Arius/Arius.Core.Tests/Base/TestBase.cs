@@ -11,7 +11,9 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Microsoft.Extensions.Logging.Abstractions;
+using NUnit.Framework.Constraints;
 
 namespace Arius.Core.Tests;
 
@@ -122,12 +124,53 @@ abstract class TestBase
         await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
     }
 
+    class ArchiveCommandOptions : IArchiveCommandOptions
+    {
+        public string AccountName { get; init; }
+        public string AccountKey { get; init; }
+        public string Container { get; init; }
+        public string Passphrase { get; init; }
+        public bool FastHash { get; init; }
+        public bool RemoveLocal { get; init; }
+        public AccessTier Tier { get; init; }
+        public bool Dedup { get; init; }
+        public DirectoryInfo Path { get; init; }
+        public DateTime VersionUtc { get; init; }
+    }
+
     /// <summary>
     /// Archive to the given tier
     /// </summary>
     protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
-        return null;
+        var options = new ArchiveCommandOptions
+        {
+            AccountName = TestSetup.AccountName,
+            AccountKey = TestSetup.AccountKey,
+            Container = TestSetup.Container.Name,
+            Dedup = dedup,
+            FastHash = fastHash,
+            Passphrase = TestSetup.Passphrase,
+            Path = TestSetup.ArchiveTestDirectory,
+            RemoveLocal = removeLocal,
+            Tier = tier,
+            VersionUtc = DateTime.UtcNow
+        };
+
+        var sp = new ServiceCollection()
+            .AddAriusCore()
+            .AddLogging()
+            .BuildServiceProvider();
+
+        var archiveCommand = sp.GetRequiredService<Commands.ICommand<IArchiveCommandOptions>>();
+
+        await archiveCommand.ExecuteAsync(options);
+
+        archiveHasRun = true;
+
+        return archiveCommand.Services;
+
+
 
         //var c = TestSetup.Facade.CreateArchiveCommand(
         //    TestSetup.AccountName,
