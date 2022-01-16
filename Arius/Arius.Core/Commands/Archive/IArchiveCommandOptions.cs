@@ -16,7 +16,7 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
     DateTime VersionUtc { get; }
 
 
-    int IndexBlock_Parallelism => Environment.ProcessorCount * 2; //index AND hash options
+    int IndexBlock_Parallelism => Environment.ProcessorCount * 8; //index AND hash options. A low count doesnt achieve a high throughput when there are a lot of small files
 
     int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
