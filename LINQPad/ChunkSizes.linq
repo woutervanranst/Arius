@@ -16,20 +16,18 @@ var containerName = "series";
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 var container = new BlobContainerClient(connectionString, containerName);
 
-var lastStateBlobName = await container.GetBlobsAsync(prefix: "states/")
-				.Select(bi => bi.Name)
-				.OrderBy(n => n)
-				.LastOrDefaultAsync();
+var cs = container.GetBlobs(prefix: "chunks/0000").Select(bi => new { bi.Name, AccessTier = bi.Properties.AccessTier.Value.ToString(), bi.Properties.ContentLength });
 
-var cs = container.GetBlobBaseClient(lastStateBlobName);
+//cs.Chart(xFunc: x => x.Name, yFunc: x => x.ContentLength).Dump();
+//cs.Dump();
+Util.WriteCsv(cs, @"C:\Users\woute\Downloads\test1.csv");
 
-await using (var ss = await cs.OpenReadAsync())
-{
-	var fn = Path.Combine(Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Downloads", "db.sqlite");
-	await using (var ts = File.OpenWrite(fn))
-	{
-		await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
-	}
-	
-	fn.Dump();
-}
+//
+//await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
+//{
+//	await using var ts = await bbc.OpenWriteAsync(overwrite: true);
+//	await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+//}
+//
+//await bbc.SetAccessTierAsync(AccessTier.Cool);
+//await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });

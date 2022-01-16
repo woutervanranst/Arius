@@ -13,23 +13,21 @@ var passphrase = Util.GetPassword("passphrase");
 var accountName = "vanranstarius2";
 var containerName = "series";
 
+var vacuumedDbPath = @"C:\Users\woute\Downloads\2.sqlite";
+
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 var container = new BlobContainerClient(connectionString, containerName);
-
-var lastStateBlobName = await container.GetBlobsAsync(prefix: "states/")
-				.Select(bi => bi.Name)
-				.OrderBy(n => n)
-				.LastOrDefaultAsync();
-
-var cs = container.GetBlobBaseClient(lastStateBlobName);
-
-await using (var ss = await cs.OpenReadAsync())
-{
-	var fn = Path.Combine(Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Downloads", "db.sqlite");
-	await using (var ts = File.OpenWrite(fn))
-	{
-		await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
-	}
 	
-	fn.Dump();
+var StateDbsFolderName = "states";
+var versionUtc = DateTime.Now;
+
+var blobName = $"{StateDbsFolderName}/{versionUtc:s}";
+var bbc = container.GetBlockBlobClient(blobName);
+await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
+{
+	await using var ts = await bbc.OpenWriteAsync(overwrite: true);
+	await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
 }
+
+await bbc.SetAccessTierAsync(AccessTier.Cool);
+await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
