@@ -49,13 +49,13 @@ internal partial class Repository
                 .OrderBy(n => n)
                 .LastOrDefaultAsync();
 
-            var localDbPath = Path.GetTempFileName();
+            var localDbPath = Path.GetTempFileName(); //TODO write this to the /log directory so it is outside of the container in case of a crash
             if (lastStateBlobName is null)
             {
                 await using var db = new AriusDbContext(localDbPath, HasChanges);
                 await db.Database.EnsureCreatedAsync();
 
-                logger.LogInformation("Created new state database");
+                logger.LogInformation($"Created new state database to '{localDbPath}'");
             }
             else
             {
@@ -63,7 +63,7 @@ internal partial class Repository
                 await using var ts = File.OpenWrite(localDbPath);
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}'");
+                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}' to '{localDbPath}'");
             }
 
             return localDbPath;
