@@ -40,7 +40,7 @@ public static class ServiceCollectionExtensions
     /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
     /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
     /// </summary>
-    public static IServiceCollection AddAriusCore(this IServiceCollection services)
+    public static IServiceCollection AddAriusCoreCommands(this IServiceCollection services)
 
     {
         //services.AddOptions<LibraryOptions>()

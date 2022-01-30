@@ -14,7 +14,7 @@ namespace Arius.Cli.Commands;
 
 /* When adding a new Command:
  *  Arius.Core
- *      in Facade.AddAriusCore:         .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
+ *      in Facade.AddAriusCoreCommands:         .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
  *      options:                        public interface IRehydrateCommandOptions : IRepositoryOptions
  *      a new Command:                  internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
  *

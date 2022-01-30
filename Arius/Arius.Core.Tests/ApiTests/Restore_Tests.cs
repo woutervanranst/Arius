@@ -230,11 +230,11 @@ class Restore_Tests : TestBase
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
         var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
             
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var a_pf = ps.GetPointerFile(a_pfi);
         var a_bf = ps.GetBinaryFile(a_pf, false);
 
-        var restoreTempDir = GetServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+        var restoreTempDir = GetExecutionServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
 
         var a_bfi = new FileInfo(a_bf.FullName);
         throw new NotImplementedException();
@@ -288,7 +288,7 @@ class Restore_Tests : TestBase
         //Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
         // the BinaryFile is restored
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
         var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
         Assert.IsNotNull(r_bfi);
@@ -325,7 +325,7 @@ class Restore_Tests : TestBase
         //Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
         // the BinaryFile is NOT restored
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
         var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
         Assert.IsNull(r_bfi);
@@ -350,7 +350,7 @@ class Restore_Tests : TestBase
         await RestoreCommand(RestoreTestDirectory.FullName, true, true, true);
 
         // the BinaryFile is restored
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var r_pfi = RestoreTestDirectory.GetPointerFileInfos().Single();
         var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
         var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);

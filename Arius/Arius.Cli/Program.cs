@@ -39,7 +39,7 @@ public static class Program
         var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
         
         var services = new ServiceCollection()
-            .AddAriusCore()
+            .AddAriusCoreCommands()
             .AddSingleton(new StateVersion(versionUtc))
             //.AddSingleton<IConfigurationRoot>(config);
             .AddLogging(builder =>

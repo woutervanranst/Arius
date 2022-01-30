@@ -12,8 +12,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
+using Castle.Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework.Constraints;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Tests;
 
@@ -66,18 +68,22 @@ abstract class TestBase
         return fis.ToArray();
 
     }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
+
     protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
     {
         var sfi = sourceFiles.Value.First();
         return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
     }
+
     protected static FileInfo[] EnsureArchiveTestDirectoryFileInfos()
     {
         var sfis = sourceFiles.Value;
         return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
     }
 
-    private class JustRepositoryOptions : IRepositoryOptions
+
+
+    private class ExecutionServicesRepositoryOptions : IRepositoryOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -85,9 +91,9 @@ abstract class TestBase
         public string Passphrase { get; init; }
     }
 
-    protected IServiceProvider GetServices()
+    private IServiceProvider GetExecutionServices()
     {
-        var options = new JustRepositoryOptions
+        var options = new ExecutionServicesRepositoryOptions
         {
             AccountName = TestSetup.AccountName,
             AccountKey = TestSetup.AccountKey,
@@ -95,36 +101,26 @@ abstract class TestBase
             Passphrase = TestSetup.Passphrase
         };
 
-        var sp = ExecutionServiceProvider<JustRepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options);
+        var sp = ExecutionServiceProvider<ExecutionServicesRepositoryOptions>.BuildServiceProvider(
+            NullLoggerFactory.Instance, options);
 
         return sp.Services;
-
-        //return TestSetup.Facade.GetServices(
-        //    TestSetup.AccountName,
-        //    TestSetup.AccountKey,
-        //    TestSetup.Container.Name,
-        //    TestSetup.Passphrase);
-    }
-    protected Repository GetRepository()
-    {
-        return GetServices().GetRequiredService<Repository>();
-    }
-    protected PointerService GetPointerService()
-    {
-        return GetServices().GetRequiredService<PointerService>();
     }
 
+    protected Repository GetRepository() => GetExecutionServices().GetRequiredService<Repository>();
+    protected PointerService GetPointerService() => GetExecutionServices().GetRequiredService<PointerService>();
+    protected IHashValueProvider GetHashValueProvider() => GetExecutionServices().GetRequiredService<IHashValueProvider>();
+    protected ILogger<T> GetLogger<T>() => GetExecutionServices().GetRequiredService<ILogger<T>>();
+    
 
 
-    /// <summary>
-    /// Archive to the cool tier
-    /// </summary>
+
     protected static async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
     }
 
-    class ArchiveCommandOptions : IArchiveCommandOptions
+    private class ArchiveCommandOptions : IArchiveCommandOptions
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
@@ -143,6 +139,13 @@ abstract class TestBase
     /// </summary>
     protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
+        var sp = new ServiceCollection()
+            .AddAriusCoreCommands()
+            .AddLogging()
+            .BuildServiceProvider();
+        var archiveCommand = sp.GetRequiredService<ICommand<IArchiveCommandOptions>>();
+
+
         var options = new ArchiveCommandOptions
         {
             AccountName = TestSetup.AccountName,
@@ -156,13 +159,6 @@ abstract class TestBase
             Tier = tier,
             VersionUtc = DateTime.UtcNow
         };
-
-        var sp = new ServiceCollection()
-            .AddAriusCore()
-            .AddLogging()
-            .BuildServiceProvider();
-
-        var archiveCommand = sp.GetRequiredService<Commands.ICommand<IArchiveCommandOptions>>();
 
         await archiveCommand.ExecuteAsync(options);
 
