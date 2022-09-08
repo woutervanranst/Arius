@@ -40,13 +40,4 @@ class ChunkRepositoryTests : TestBase
 
         Assert.IsNull(cb);
     }
-
-    [Test]
-    public void CopyUnitTestsFromBinaryRepositoryTests()
-    {
-        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-            return;
-
-        throw new NotImplementedException();
-    }
 }
