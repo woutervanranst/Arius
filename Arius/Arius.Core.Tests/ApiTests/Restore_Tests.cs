@@ -234,11 +234,11 @@ class Restore_Tests : TestBase
         var a_pf = ps.GetPointerFile(a_pfi);
         var a_bf = ps.GetBinaryFile(a_pf, false);
 
-        var restoreTempDir = GetExecutionServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+        var restoreTempDir = GetRestoreTempDirectory(RestoreTestDirectory);
 
         var a_bfi = new FileInfo(a_bf.FullName);
-        throw new NotImplementedException();
-        //a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
+        a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}");
+        // NOTE when fixing sep22: could not find ChunkFile anymore - this was the original line. a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
 
 
         // Restore

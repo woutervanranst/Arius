@@ -101,8 +101,7 @@ abstract class TestBase
             Passphrase = TestSetup.Passphrase
         };
 
-        var sp = ExecutionServiceProvider<ExecutionServicesRepositoryOptions>.BuildServiceProvider(
-            NullLoggerFactory.Instance, options);
+        var sp = ExecutionServiceProvider<ExecutionServicesRepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options);
 
         return sp.Services;
     }
@@ -111,6 +110,7 @@ abstract class TestBase
     protected PointerService GetPointerService() => GetExecutionServices().GetRequiredService<PointerService>();
     protected IHashValueProvider GetHashValueProvider() => GetExecutionServices().GetRequiredService<IHashValueProvider>();
     protected ILogger<T> GetLogger<T>() => GetExecutionServices().GetRequiredService<ILogger<T>>();
+    protected DirectoryInfo GetRestoreTempDirectory(DirectoryInfo root) => GetExecutionServices().GetRequiredService<Configuration.TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
     
 
 
