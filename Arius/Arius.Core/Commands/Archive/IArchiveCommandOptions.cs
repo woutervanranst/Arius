@@ -22,7 +22,7 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
 
     int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
     int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    int TransferChunked_ParallelChunkTransfers => 128 * 2;
+    int TransferChunked_ParallelChunkTransfers => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
 
     int PointersToCreate_BufferSize => 1000;
 
