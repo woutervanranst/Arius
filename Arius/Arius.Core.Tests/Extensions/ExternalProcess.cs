@@ -26,7 +26,6 @@ internal static class ExternalProcess
 
         logger.LogDebug($"Looking for windows:{windowsExecutableName} / linux:{linuxExecutableName}");
         var path = Environment.GetEnvironmentVariable("PATH");
-
         if (string.IsNullOrEmpty(path))
             logger.LogWarning("Environment variable PATH not found");
 
@@ -68,8 +67,7 @@ internal static class ExternalProcess
                 throw new ArgumentException($"Could not find {windowsExecutableName} in {path}", nameof(windowsExecutableName), e); //TODO Karl this should terminate the application flow
             }
         }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
             // 1. Find using WHICH
             // https://ss64.com/bash/which.html -- alternatief https://ss64.com/bash/whereis.html
@@ -87,8 +85,8 @@ internal static class ExternalProcess
                 throw new ArgumentException($"Could not find {linuxExecutableName} in /", nameof(linuxExecutableName), e);
             }
         }
-
-        throw new NotImplementedException();
+        else
+            throw new NotSupportedException($"{RuntimeInformation.OSDescription} is not supported");
     }
 
     public static string RunSimpleProcess(string fileName, string arguments)
