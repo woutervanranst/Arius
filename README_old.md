@@ -13,7 +13,6 @@ The name derives from the Greek for 'immortal'.
 - [Arius](#arius)
   - [Key design scenarios](#key-design-scenarios)
   - [Key design objectives](#key-design-objectives)
-  - [Overview](#overview)
     - [Archive](#archive)
     - [Restore](#restore)
   - [Usage](#usage)
@@ -34,8 +33,7 @@ The name derives from the Greek for 'immortal'.
     - [Archive](#archive-1)
     - [Restore](#restore-1)
     - [Restore with common tools](#restore-with-common-tools)
-    - [Deduplication](#deduplication)
-      - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
+    - [Debugging Docker in Visual Studio](#debugging-docker-in-visual-studio)
 - [Attributions](#attributions)
 
 ## Key design scenarios
@@ -74,11 +72,11 @@ Why did I create Arius?
 - [x] Leverage common tools, to allow restores even when this project would become deprecated.
 - [ ] Point in time restore (FUTURE).
 
-## Overview
+<!-- ## Overview
 
 Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier. The following diagram shows the concept of how Arius works.
 
-![](docs/overview.png)
+![](docs/overview.png) -->
 
 ### Archive
 
@@ -322,7 +320,7 @@ gzip -d original.file.gz -f
 # at this point 'original.file' will be the original binary
 ```
 
-### Deduplication
+<!-- ### Deduplication
 
 #### How it works
 
@@ -398,7 +396,7 @@ Conclusions:
 | 4096  | 71,704  | 2469531 |      3,219  | 65,943 | - | - |   29,37 | 96,45% | 91,97% |
 
 Conclusions:
-- General purpose files are much better suited for deduplication and offer a significant increase in space reduction compared to gzip
+- General purpose files are much better suited for deduplication and offer a significant increase in space reduction compared to gzip -->
 
 ### Debugging Docker in Visual Studio
 
