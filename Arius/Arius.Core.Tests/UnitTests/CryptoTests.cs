@@ -69,9 +69,8 @@ class CryptoTests : TestBase
     public async Task DecryptWithOpenSsl_File_Equal()
     {
         // Ensure compatibility with openssl
-
         var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl"); //add 'C:\Program Files\OpenSSL-Win64\bin' to the PATH
-        var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip");
+        var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip"); //add 'C:\Program Files\Git\usr\bin\' to the PATH
 
         var encFile = Path.GetTempFileName();
         var decFile = Path.GetTempFileName();
