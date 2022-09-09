@@ -35,9 +35,9 @@ class Archive_OneFile_Tests : TestBase
         //1 additional Manifest exists
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         //The ArchiveTestDirectory contains exactly one file
-        Assert.AreEqual(1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Length);
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         //PointerFile is created
@@ -73,8 +73,8 @@ class Archive_OneFile_Tests : TestBase
         //1 additional Manifest exists
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
-        Assert.AreEqual(1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Length);
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         //PointerFile is created
@@ -115,9 +115,9 @@ class Archive_OneFile_Tests : TestBase
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // The current archive is cleared
-        Assert.AreEqual(currentPfeWithoutDeleted1.Count(), 0);
+        Assert.AreEqual(currentPfeWithoutDeleted1.Length, 0);
         // One additional PointerFileEntry marking it as deleted
-        Assert.AreEqual(allPfes0.Count() + 1, allPfes1.Count());
+        Assert.AreEqual(allPfes0.Length + 1, allPfes1.Length);
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // Manifests have not changed
@@ -134,9 +134,9 @@ class Archive_OneFile_Tests : TestBase
 
         RepoStats(out _, out var chunkBlobItemCount2, out var binaryCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
         // The current archive again has one file
-        Assert.AreEqual(currentPfeWithoutDeleted2.Count(), 1);
+        Assert.AreEqual(currentPfeWithoutDeleted2.Length, 1);
         // One additinoal PointerFileEntry marking it as existing
-        Assert.AreEqual(allPfes1.Count() + 1, allPfes2.Count());
+        Assert.AreEqual(allPfes1.Length + 1, allPfes2.Length);
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount2);
         // Manifests have not changed
@@ -169,7 +169,7 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created
         Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
         GetPointerInfo(repo, bfi2, out var pf2, out var pfe2);
@@ -212,7 +212,7 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created
         Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
         GetPointerInfo(repo, bfi3, out var pf3, out var pfe3);
@@ -257,7 +257,7 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
         GetPointerInfo(pfi2, out var pf2, out var pfe2);
@@ -303,9 +303,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // No net increase in current PointerFileEntries
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length, currentPfeWithoutDeleted1.Length);
 
         var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
@@ -352,9 +352,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // One additional PointerFileEntry
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count()); //* CHANGED
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length); //* CHANGED
 
         var pfi1_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
@@ -426,9 +426,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // No net increase in current PointerFileEntries
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length, currentPfeWithoutDeleted1.Length);
 
         var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);

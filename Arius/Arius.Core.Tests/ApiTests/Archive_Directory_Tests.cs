@@ -31,7 +31,7 @@ class Archive_Directory_Tests : TestBase
         //Manifests for each file
         Assert.AreEqual(bfis.Length, binaryCount1);
         //PointerFileEntries for each file
-        Assert.AreEqual(bfis.Length, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(bfis.Length, currentPfeWithoutDeleted1.Length);
     }
 
 
