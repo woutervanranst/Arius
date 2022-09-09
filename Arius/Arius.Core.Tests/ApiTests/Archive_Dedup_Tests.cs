@@ -47,18 +47,23 @@ class Archive_Dedup_Tests : TestBase
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-        TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
+        TestSetup.StageArchiveTestDirectory(out var bfi1, TestSetup.SourceFilesType.File1);
+        TestSetup.StageArchiveTestDirectory(out var bfi2, TestSetup.SourceFilesType.File2);
+        TestSetup.StageArchiveTestDirectory(out var bfi4, TestSetup.SourceFilesType.File4WithSpace);
+        //TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
+        await ArchiveCommand(dedup: true);
+
+        TestSetup.StageArchiveTestDirectory(out var bfi_deduped, TestSetup.SourceFilesType.File5Deduplicated);
         await ArchiveCommand(dedup: true);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
 
-        GetPointerInfo(repo, bfis[0], out var pf0, out var pfe0);
+        GetPointerInfo(repo, bfi1, out var pf0, out var pfe0);
         var ch0 = await repo.Binaries.GetChunkHashesAsync(pf0.Hash);
 
-        GetPointerInfo(repo, bfis[1], out var pf1, out var pfe1);
+        GetPointerInfo(repo, bfi2, out var pf1, out var pfe1);
         var ch1 = await repo.Binaries.GetChunkHashesAsync(pf1.Hash);
 
-        var bfi_deduped = bfis.Single(fi => fi.Name.Contains("deduplicated file"));
         GetPointerInfo(repo, bfi_deduped, out var pf5, out var pfe5);
         var ch5 = await repo.Binaries.GetChunkHashesAsync(pf5.Hash);
         var ch5_UniqueChunks = ch5.Except(ch0).Except(ch1).ToArray();
