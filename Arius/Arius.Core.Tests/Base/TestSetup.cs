@@ -139,7 +139,7 @@ internal static class TestSetup
 
     public static void StageArchiveTestDirectory(out FileInfo fi, SourceFilesType type)
     {
-        fi = files[type.Value].Value;
+        fi = files[type.Value].Value.CopyTo(SourceFolder, ArchiveTestDirectory);
     }
     public static void StageArchiveTestDirectory(out FileInfo fi, string key = null, int sizeInBytes = 2 * 1024 * 1024 + 1)
     {
