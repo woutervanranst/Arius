@@ -157,7 +157,7 @@ internal static class TestSetup
     }
     public static void StageArchiveTestDirectory(out FileInfo[] fis)
     {
-        fis = files.Values.Select(fi => fi.Value).ToArray();
+        fis = files.Values.Select(fi => fi.Value.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
     }
 
 
