@@ -16,33 +16,14 @@ namespace Arius.Core.Tests.ApiTests;
 
 class Archive_Directory_Tests : TestBase
 {
-    protected override void BeforeEachTest()
-    {
-        ArchiveTestDirectory.Clear();
-    }
-
-    public static async Task<FileInfo[]> EnsureFullDirectoryArchived(bool purgeRemote = false, bool dedup = false, bool removeLocal = false, AccessTier tier = default)
-    {
-        if (purgeRemote)
-            await TestSetup.PurgeRemote();
-
-        if (tier == default)
-            tier = AccessTier.Cool;
-
-        TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
-        await ArchiveCommand(tier, removeLocal: removeLocal, dedup: dedup);
-
-        return bfis;
-    }
-
-
     [Test]
     public async Task Archive_FullDirectory()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfis = await EnsureFullDirectoryArchived();
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
+        await ArchiveCommand();
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
         //Chunks for each file

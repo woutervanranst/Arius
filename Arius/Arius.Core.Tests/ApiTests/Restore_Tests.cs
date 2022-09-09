@@ -93,7 +93,8 @@ class Restore_Tests : TestBase
             return;
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         var pf1 = ArchiveTestDirectory.GetPointerFileInfos().First();
         var pf2 = ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
@@ -124,7 +125,8 @@ class Restore_Tests : TestBase
         // Selective restore
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
@@ -184,7 +186,8 @@ class Restore_Tests : TestBase
         // Scenario: restore a single file
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         // 1. synchronize and do not download Directory: Restore_SynchronizeNoDownloadDirectory_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
         // 2.1 synchronize and do not fownload file -- invalidoperaiton
@@ -224,7 +227,8 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         // Copy the pointer and the chunk to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
@@ -270,7 +274,8 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: false);
 
         // Copy the pointer to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
@@ -307,7 +312,9 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, removeLocal: false, tier: AccessTier.Archive);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(purgeRemote: true, removeLocal: false, tier: AccessTier.Archive);
+
 
         // Copy the pointer to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();

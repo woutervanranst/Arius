@@ -105,10 +105,13 @@ abstract class TestBase
     /// <summary>
     /// Archive to the given tier
     /// </summary>
-    protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier = default, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier = default, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (tier == default)
             tier = AccessTier.Cool;
+
+        if (purgeRemote)
+            await TestSetup.PurgeRemote();
 
         var sp = new ServiceCollection()
             .AddAriusCoreCommands()

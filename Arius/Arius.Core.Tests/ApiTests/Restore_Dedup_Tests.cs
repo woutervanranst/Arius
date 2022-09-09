@@ -36,8 +36,17 @@ class Restore_Dedup_Tests : TestBase
     [Test]
     public async Task Restore_DedupedDirectory_Success()
     {
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(purgeRemote: true, dedup: true, removeLocal: false);
+
+        // the restore directory is empty
+        Assert.IsFalse(RestoreTestDirectory.EnumerateFiles().Any());
 
         await RestoreCommand(RestoreTestDirectory.FullName, true, true);
+
+        Assert.IsTrue(RestoreTestDirectory.EnumerateFiles().Any());
+
+        // TODO add actual tests
+        throw new NotImplementedException();
     }
 }
