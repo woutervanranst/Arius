@@ -29,11 +29,9 @@ class ArchiveTier_Tests : TestBase
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi, sizeInBytes: 1024 * 1024 + 1); // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync) 
         AccessTier tier = AccessTier.Archive;
         await ArchiveCommand(tier);
-
-
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
         //1 additional chunk was uploaded

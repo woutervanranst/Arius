@@ -33,7 +33,7 @@ class Archive_OneFile_Tests : TestBase
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         var tier = AccessTier.Cool;
         await ArchiveCommand(tier);
 
@@ -44,7 +44,8 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
         Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        //The ArchiveTestDirectory contains exactly one file
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Count());
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         //PointerFile is created
@@ -69,7 +70,8 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        string key = nameof(Archive_DeleteUndelete_Success);
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi, key); 
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -96,7 +98,7 @@ class Archive_OneFile_Tests : TestBase
 
 
         // UNDELETE
-        _ = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out _, key);
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount2, out var binaryCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
@@ -110,14 +112,13 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(binaryCount0, binaryCount2);
     }
 
-
     [Test]
     public async Task Archive_DuplicateBinaryFile_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -158,12 +159,8 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
-        //await ArchiveCommand(); <-- the only difference
-
-        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
-
-        // Add a duplicate of the BinaryFile
+        // Stage two binaries, duplicates
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         var bfi2 = bfi1.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi1.Name}");
         // With slightly modified datetime
         bfi2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -171,6 +168,12 @@ class Archive_OneFile_Tests : TestBase
 
         await ArchiveCommand();
 
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+
+        // Add a third duplicate
+        var bfi3 = bfi2.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi2.Name}");
+
+        await ArchiveCommand();
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded
@@ -181,16 +184,16 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
 
 
-        GetPointerInfo(repo, bfi2, out var pf2, out var pfe2);
+        GetPointerInfo(repo, bfi3, out var pf3, out var pfe3);
         // A new PointerFile is created
-        Assert.IsTrue(File.Exists(pf2.FullName));
+        Assert.IsTrue(File.Exists(pf3.FullName));
         // A PointerFileEntry with the matching relativeName exists
-        Assert.IsNotNull(pfe2);
+        Assert.IsNotNull(pfe3);
         // The PointerFileEntry is not marked as deleted
-        Assert.IsFalse(pfe2.IsDeleted);
+        Assert.IsFalse(pfe3.IsDeleted);
         // The Creation- and LastWriteTimeUtc match
-        Assert.AreEqual(bfi2.CreationTimeUtc, pfe2.CreationTimeUtc);
-        Assert.AreEqual(bfi2.LastWriteTimeUtc, pfe2.LastWriteTimeUtc);
+        Assert.AreEqual(bfi3.CreationTimeUtc, pfe3.CreationTimeUtc);
+        Assert.AreEqual(bfi3.LastWriteTimeUtc, pfe3.LastWriteTimeUtc);
     }
 
     [Test]
@@ -199,7 +202,7 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         await ArchiveCommand();
 
 
@@ -248,7 +251,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename BinaryFile and PointerFile -- this is like a 'move'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand();
 
 
@@ -297,7 +300,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename BinaryFile without renaming the PointerFile -- this is like a 'duplicate'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand();
 
 
@@ -344,7 +347,7 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         // Ensure the BinaryFile exists
         Assert.IsTrue(File.Exists(bfi.FullName));
 
@@ -369,7 +372,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename PointerFile that no longer has a BinaryFile -- this is like a 'move'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand(removeLocal: true);
 
 
