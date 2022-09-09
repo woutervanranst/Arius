@@ -73,7 +73,8 @@ class Archive_OneFile_Tests : TestBase
         //1 additional Manifest exists
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Count());
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         //PointerFile is created
