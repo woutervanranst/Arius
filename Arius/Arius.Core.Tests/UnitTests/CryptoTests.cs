@@ -35,7 +35,7 @@ class CryptoTests : TestBase
 
         try
         {
-            var sourceFile = EnsureArchiveTestDirectoryFileInfo();
+            TestSetup.StageArchiveTestDirectory(out FileInfo sourceFile);
 
             using (var ss = File.OpenRead(sourceFile.FullName))
             {
@@ -79,7 +79,7 @@ class CryptoTests : TestBase
 
         try
         {
-            var sourceFile = EnsureArchiveTestDirectoryFileInfo();
+            TestSetup.StageArchiveTestDirectory(out FileInfo sourceFile);
 
             using (var ss = File.OpenRead(sourceFile.FullName))
             {

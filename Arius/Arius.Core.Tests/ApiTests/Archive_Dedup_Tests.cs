@@ -47,7 +47,7 @@ class Archive_Dedup_Tests : TestBase
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-        var bfis = EnsureArchiveTestDirectoryFileInfos();
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
         await ArchiveCommand(dedup: true);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);

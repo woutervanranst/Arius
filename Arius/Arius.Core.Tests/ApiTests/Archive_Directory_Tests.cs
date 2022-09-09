@@ -29,7 +29,7 @@ class Archive_Directory_Tests : TestBase
         if (tier == default)
             tier = AccessTier.Cool;
 
-        var bfis = EnsureArchiveTestDirectoryFileInfos();
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
         await ArchiveCommand(tier, removeLocal: removeLocal, dedup: dedup);
 
         return bfis;

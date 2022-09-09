@@ -19,7 +19,7 @@ class ChunkRepositoryTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
         var repo = GetRepository();

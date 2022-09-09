@@ -5,6 +5,7 @@ using Arius.Core.Tests.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ class BlobModelTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
         var repo = GetRepository();

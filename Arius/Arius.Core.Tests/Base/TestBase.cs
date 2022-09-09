@@ -16,6 +16,7 @@ using Castle.Core.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework.Constraints;
 using Microsoft.Extensions.Logging;
+using Arius.Core.Tests.Extensions;
 
 namespace Arius.Core.Tests;
 
@@ -34,6 +35,10 @@ abstract class TestBase
     {
         // Runs before each test. (Optional)
         BlockBase.Reset();
+
+        // Ensure the Archive and Restore directories are empty
+        ArchiveTestDirectory.Clear();
+        RestoreTestDirectory.Clear();
     }
 
     [TearDown]
@@ -47,38 +52,6 @@ abstract class TestBase
     {
         // Runs once after all tests in this class are executed. (Optional)
         // Not guaranteed that it executes instantly after all tests from the class.
-    }
-
-
-    private static readonly Lazy<FileInfo[]> sourceFiles = new(() =>
-    {
-        var fis = new List<FileInfo>
-        {
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1), //make it an odd size to test buffer edge cases
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 2.doc"), 2 * 1024 * 1024),
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 1", "file 3 large.txt"), 10 * 1024 * 1024),
-            TestSetup.CreateRandomFile(Path.Combine(SourceFolder.FullName, "dir 2", "file4 with space.txt"), 1 * 1024 * 1024),
-        };
-
-        var f = Path.Combine(SourceFolder.FullName, "dir 2", "deduplicated file.txt"); //special file created out of two other files
-        var concatenatedBytes = File.ReadAllBytes(fis[0].FullName).Concat(File.ReadAllBytes(fis[1].FullName));
-        File.WriteAllBytes(f, concatenatedBytes.ToArray());
-        fis.Add(new FileInfo(f));
-
-        return fis.ToArray();
-
-    }, isThreadSafe: false); //isThreadSafe because otherwise the tests go into a race condition to obtain the files
-
-    protected static FileInfo EnsureArchiveTestDirectoryFileInfo()
-    {
-        var sfi = sourceFiles.Value.First();
-        return sfi.CopyTo(SourceFolder, ArchiveTestDirectory);
-    }
-
-    protected static FileInfo[] EnsureArchiveTestDirectoryFileInfos()
-    {
-        var sfis = sourceFiles.Value;
-        return sfis.Select(sfi => sfi.CopyTo(SourceFolder, ArchiveTestDirectory)).ToArray();
     }
 
 
@@ -115,11 +88,6 @@ abstract class TestBase
 
 
 
-    protected static async Task ArchiveCommand(bool removeLocal = false, bool fastHash = false, bool dedup = false)
-    {
-        await ArchiveCommand(AccessTier.Cool, removeLocal, fastHash, dedup);
-    }
-
     private class ArchiveCommandOptions : IArchiveCommandOptions
     {
         public string AccountName { get; init; }
@@ -137,8 +105,11 @@ abstract class TestBase
     /// <summary>
     /// Archive to the given tier
     /// </summary>
-    protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    protected static async Task<IServiceProvider> ArchiveCommand(AccessTier tier = default, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
+        if (tier == default)
+            tier = AccessTier.Cool;
+
         var sp = new ServiceCollection()
             .AddAriusCoreCommands()
             .AddLogging()
