@@ -428,32 +428,35 @@ class Archive_OneFile_Tests : TestBase
         var e = ae!.InnerExceptions.Single().InnerException;
         Assert.IsInstanceOf<ArgumentException>(e);
         Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
-
-        File.Delete(fn);
     }
 
-    [Test]
-    public async Task Archive_NonMatchingPointer_Exception()
+    [Test, Combinatorial]
+    public async Task Archive_NonMatchingPointer_Exception([Values(true, false)] bool matchLastWriteTime)
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        //// Scenario 1 - garbage in the pointerfile (not a v1 pointer, not a sha hash)
-        //var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
-        //await File.WriteAllTextAsync(fn, "kaka");
+        // Stage a situation with a binary and a pointer
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
+        await ArchiveCommand();
+        var ps = GetPointerService();
+        var pf = ps.GetPointerFile(bfi);
+        // But the Pointer does not match
+        File.WriteAllLines(pf.FullName, new[] { "{\"BinaryHash\":\"aaaaaaaaaaaaa7da82bfb533db099d2e843ee5f03efa8657e9da1aca63396f4c\"}" });
+        
+        if (matchLastWriteTime)
+            File.SetLastWriteTimeUtc(pf.FullName, File.GetLastWriteTimeUtc(bfi.FullName));
 
-        //var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
-        //var e = ae!.InnerExceptions.Single().InnerException;
-        //Assert.IsInstanceOf<ArgumentException>(e);
-        //Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
+        var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+        var e = ae!.InnerExceptions.Single().InnerException;
+        Assert.IsInstanceOf<InvalidOperationException>(e);
 
-        //File.Delete(fn);
-
-
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
-
-        // expected throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+        if (matchLastWriteTime)
+            // LastWriteTime matches - Arius assumes the pointer belongs to the binaryfile but the hash doesnt match
+            Assert.IsTrue(e.Message.Contains("is not valid for the BinaryFile"));
+        else
+            // LastWriteTime does not match - Arius assumes this modified file, but can't find the binary anywhere
+            Assert.IsTrue(e.Message.Contains("exists on disk but no corresponding binary exists either locally or remotely"));
     }
 
     [Test]
