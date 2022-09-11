@@ -9,11 +9,12 @@ using Arius.Core.Commands.Archive;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Azure.Storage.Blobs;
+using Arius.Core.Repositories;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions;
 
 [Binding]
-public class AriusCoreSteps
+class AriusCoreSteps
 {
     [BeforeTestRun]
     public static void InitializeFacade(IObjectContainer oc)
@@ -32,15 +33,20 @@ public class AriusCoreSteps
         });
     }
 
-    public AriusCoreSteps(RepositoryOptions ro, BlobContainerClient bcc, Directories directories)
+    public AriusCoreSteps(ScenarioContext sc, RepositoryOptions ro, BlobContainerClient bcc, Directories directories, Repository repo)
     {
+        this.scenarioContext = sc;
         repositoryOptions = ro;
         this.container = bcc;
         this.directories = directories;
+        this.repository = repo;
     }
+
+    private readonly ScenarioContext scenarioContext;
     private readonly RepositoryOptions repositoryOptions;
     private readonly BlobContainerClient container;
     private readonly Directories directories;
+    private readonly Repository repository;
 
     [BeforeScenario]
     public void ClearDirectories()
@@ -105,6 +111,7 @@ public class AriusCoreSteps
     public async Task WhenArchived()
     {
         await ArchiveCommand();
+        scenarioContext[ScenarioContextIds.AFTERARCHIVE] = await RemoteRepositorySteps.GetRepoStats(repository);
     }
 
 

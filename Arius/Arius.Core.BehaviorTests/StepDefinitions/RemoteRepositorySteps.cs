@@ -18,15 +18,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 {
     public record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
 
+    class ScenarioContextIds
+    {
+        public const string INITIAL = "InitialRepoStats";
+        public const string AFTERARCHIVE = "AfterArchiveRepoStats";
+    }
     [Binding]
     class RemoteRepositorySteps
     {
         private const string TestContainerNamePrefix = "unittest";
 
+
         [BeforeTestRun(Order = 1)]
         public static async Task InitializeRemoteRepository(/*ITestRunnerManager testRunnerManager, ITestRunner testRunner, */IObjectContainer oc)
         {
-
             var accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
             if (string.IsNullOrEmpty(accountName))
                 throw new ArgumentException("Environment variable ARIUS_ACCOUNT_NAME not specified");
@@ -60,27 +65,27 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             });
         }
 
-        
 
-
-
-        
-
-        public RemoteRepositorySteps(BlobContainerClient bcc, Repository r) //IObjectContainer oc, BlobContainerClient bcc, Facade f, ScenarioContext context)
+        public RemoteRepositorySteps(ScenarioContext sc, BlobContainerClient bcc, Repository r) //IObjectContainer oc, BlobContainerClient bcc, Facade f, ScenarioContext context)
         {
+            this.scenarioContext = sc;
             this.container = bcc;
             this.repository = r;
         }
 
+        private readonly ScenarioContext scenarioContext;
         private readonly BlobContainerClient container;
         private readonly Repository repository;
-        private readonly ScenarioContext context;
 
+        [BeforeScenario]
+        public async Task InitRepostats(ScenarioContext sc)
+        {
+            sc[ScenarioContextIds.INITIAL] = await GetRepoStats(repository);
+        }
 
         [Given(@"a remote archive")]
         public void GivenRemoteArchive()
         {
-            RepoStats(out _, out _, out _, out _, out _, out _);
         }
 
         [Given(@"an empty remote archive")]
@@ -96,31 +101,43 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         [Then(@"(.*) additional chunks uploaded")]
-        public void ThenAdditionalChunksUploaded(int p0)
+        public async Task ThenAdditionalChunksUploaded(int p0)
         {
-            RepoStats(out _, out _, out _, out _, out _, out _);
+            var (chunkBlobItemCount0, _, _, _, _) = (RepoStat)scenarioContext[ScenarioContextIds.INITIAL];
+            var (chunkBlobItemCount1, _, _, _, _) = (RepoStat)scenarioContext[ScenarioContextIds.AFTERARCHIVE];
 
-            throw new PendingStepException();
+            Assert.AreEqual(chunkBlobItemCount0 + p0, chunkBlobItemCount1);
         }
 
 
+        public record RepoStat(int chunkBlobItemCount, 
+            int binaryCount,
+            PointerFileEntry[] currentPfeWithDeleted, 
+            PointerFileEntry[] currentPfeWithoutDeleted, 
+            PointerFileEntry[] allPfes);
 
-
-        protected void RepoStats(out Repository repo,
-            out int chunkBlobItemCount,
-            out int binaryCount,
-            out PointerFileEntry[] currentPfeWithDeleted, out PointerFileEntry[] currentPfeWithoutDeleted,
-            out PointerFileEntry[] allPfes)
+        public static async Task<RepoStat> GetRepoStats(Repository repo)
         {
-            repo = repository;
+            var t1 = Task.Run(async () => await repo.Chunks.GetAllChunkBlobs().CountAsync());
+            var t2 = Task.Run(async () => await repo.Binaries.CountAsync());
+            var t3 = Task.Run(async () => (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray());
+            var t4 = Task.Run(async () => (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray());
+            var t5 = Task.Run(async () => (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray());
 
-            chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().CountAsync().Result;
-            binaryCount = repo.Binaries.CountAsync().Result;
+            await Task.WhenAll(t1, t2, t3, t4, t5);
 
-            currentPfeWithDeleted = repo.PointerFileEntries.GetCurrentEntriesAsync(true).Result.ToArray();
-            currentPfeWithoutDeleted = repo.PointerFileEntries.GetCurrentEntriesAsync(false).Result.ToArray();
+            return new(t1.Result, t2.Result, t3.Result, t4.Result, t5.Result);
 
-            allPfes = repo.PointerFileEntries.GetPointerFileEntriesAsync().Result.ToArray();
+
+            //var chunkBlobItemCount = repo.Chunks.GetAllChunkBlobs().CountAsync().Result;
+            //var binaryCount = repo.Binaries.CountAsync().Result;
+
+            //var currentPfeWithDeleted = repo.PointerFileEntries.GetCurrentEntriesAsync(true).Result.ToArray();
+            //var currentPfeWithoutDeleted = repo.PointerFileEntries.GetCurrentEntriesAsync(false).Result.ToArray();
+
+            //var allPfes = repo.PointerFileEntries.GetPointerFileEntriesAsync().Result.ToArray();
+
+            //return (chunkBlobItemCount, binaryCount, currentPfeWithDeleted, currentPfeWithoutDeleted, allPfes);
         }
 
 
