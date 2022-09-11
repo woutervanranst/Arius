@@ -13,4 +13,11 @@ Scenario: Archive
 
 Scenario: Archive2
 	Given an empty remote archive
-	Given one local file
+	Given a local archive with 1 file
+	When archived
+	Then 1 additional chunks uploaded
+
+#Scenario: Archive3
+#	Given a local repository with files
+#	* file 1 with 2 KB
+#	* file 2 with 1 KB

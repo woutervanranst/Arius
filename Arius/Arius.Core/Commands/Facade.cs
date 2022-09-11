@@ -31,6 +31,7 @@ using Arius.Core.Commands.Rehydrate;
  * This is required to test the internals of the Arius.Core assembly
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
+[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
 namespace Arius.Core.Commands;
 

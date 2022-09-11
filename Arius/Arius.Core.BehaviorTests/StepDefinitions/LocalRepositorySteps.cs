@@ -2,10 +2,15 @@ using Azure.Storage.Blobs;
 using BoDi;
 using NUnit.Framework;
 using System;
+using System.Diagnostics;
 using TechTalk.SpecFlow;
+using Arius.Core.Extensions;
+using Arius.Core.BehaviorTests.Extensions;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
+    public record Directories(DirectoryInfo root, DirectoryInfo SourceFolder, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
+
     [Binding]
     public class LocalRepositorySteps
     {
@@ -13,27 +18,59 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public static void InitializeLocalRepository(IObjectContainer oc, BlobContainerClient bcc)
         {
             var unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius", bcc.Name));
-
             var sourceFolder = unitTestRoot.CreateSubdirectory("source");
             var archiveTestDirectory = unitTestRoot.CreateSubdirectory("archive");
             var restoreTestDirectory = unitTestRoot.CreateSubdirectory("restore");
 
-            oc.RegisterInstanceAs<DirectoryInfo>(sourceFolder, "SourceFolder");
-            oc.RegisterInstanceAs<DirectoryInfo>(archiveTestDirectory, "ArchiveTestDirectory");
-            oc.RegisterInstanceAs<DirectoryInfo>(restoreTestDirectory, "RestoreTestDirectory");
+            oc.RegisterInstanceAs(new Directories(unitTestRoot, sourceFolder, archiveTestDirectory, restoreTestDirectory));
         }
 
-        public LocalRepositorySteps(IObjectContainer oc)
+        public LocalRepositorySteps(Directories directories)
         {
-            archiveTestDirectory = oc.Resolve<DirectoryInfo>("ArchiveTestDirectory");
+            this.directories = directories;
+
+            file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
         }
 
-        private readonly DirectoryInfo archiveTestDirectory;
+        [BeforeScenario]
+        public void ClearDirectories()
+        {
+            directories.ArchiveTestDirectory.Clear();
+            directories.RestoreTestDirectory.Clear();
+        }
 
-        [Given(@"one local file")]
+        private readonly Directories directories;
+        private Lazy<FileInfo> file1;
+
+        [Given(@"a local archive with 1 file")]
         public void GivenOneLocalFile()
         {
-            // throw new PendingStepException();
+            file1.Value.CopyTo(directories.SourceFolder, directories.ArchiveTestDirectory);
+        }
+        
+
+        private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes) // TODO make private
+        {
+            // https://stackoverflow.com/q/4432178/1582323
+
+            var f = new FileInfo(fileFullName);
+            if (!f.Directory.Exists)
+                f.Directory.Create();
+
+            byte[] data = new byte[sizeInBytes];
+            var rng = new Random();
+            rng.NextBytes(data);
+            File.WriteAllBytes(fileFullName, data);
+
+            return f;
+        }
+
+        [AfterTestRun]
+        public static async Task OneTimeTearDown(Directories directories)
+        {
+            // Delete local temp
+            foreach (var d in directories.root.GetDirectories())
+                d.Delete(true);
         }
     }
 }
