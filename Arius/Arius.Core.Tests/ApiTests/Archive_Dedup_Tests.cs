@@ -47,12 +47,13 @@ class Archive_Dedup_Tests : TestBase
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
+        // Archive some files
         TestSetup.StageArchiveTestDirectory(out var bfi1, TestSetup.SourceFilesType.File1);
         TestSetup.StageArchiveTestDirectory(out var bfi2, TestSetup.SourceFilesType.File2);
         TestSetup.StageArchiveTestDirectory(out var bfi4, TestSetup.SourceFilesType.File4WithSpace);
-        //TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
         await ArchiveCommand(dedup: true);
 
+        // Archive a file, which consists out of File1 + File2
         TestSetup.StageArchiveTestDirectory(out var bfi_deduped, TestSetup.SourceFilesType.File5Deduplicated);
         await ArchiveCommand(dedup: true);
 
