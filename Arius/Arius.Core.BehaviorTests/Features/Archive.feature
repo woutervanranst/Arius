@@ -11,11 +11,15 @@ Scenario: Archive
 	Then the files should be archived
 
 
-Scenario: Archive2
+Scenario: Archive one file
 	Given an empty remote archive
 	Given a local archive with 1 file
 	When archived
-	Then 1 additional chunks uploaded
+	Then 1 additional chunk
+	Then 1 additional manifest
+	Then 1 additional PointerFileEntry
+	Then 1 additional existing PointerFileEntry
+	Then the file has a PointerFile
 
 #Scenario: Archive3
 #	Given a local repository with files

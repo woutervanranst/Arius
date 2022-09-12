@@ -30,6 +30,7 @@ namespace Arius.Core.Repositories;
 internal partial class Repository
 {
     public BinaryRepository Binaries { get; init; }
+
     internal class BinaryRepository
     {
         internal BinaryRepository(ILogger<BinaryRepository> logger,

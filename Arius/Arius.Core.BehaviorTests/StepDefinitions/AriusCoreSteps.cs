@@ -33,20 +33,18 @@ class AriusCoreSteps
         });
     }
 
-    public AriusCoreSteps(ScenarioContext sc, RepositoryOptions ro, BlobContainerClient bcc, Directories directories, Repository repo)
+    public AriusCoreSteps(ScenarioContext sc, RepositoryOptions ro, BlobContainerClient bcc, Directories directories)
     {
         this.scenarioContext = sc;
         repositoryOptions = ro;
         this.container = bcc;
         this.directories = directories;
-        this.repository = repo;
     }
 
     private readonly ScenarioContext scenarioContext;
     private readonly RepositoryOptions repositoryOptions;
     private readonly BlobContainerClient container;
     private readonly Directories directories;
-    private readonly Repository repository;
 
     [BeforeScenario]
     public void ClearDirectories()
@@ -103,7 +101,8 @@ class AriusCoreSteps
 
         await archiveCommand.ExecuteAsync(options);
 
-        return archiveCommand.Services;
+        return null; //do not use this anymore
+        //return archiveCommand.Services;
     }
 
 
@@ -111,8 +110,7 @@ class AriusCoreSteps
     public async Task WhenArchived()
     {
         await ArchiveCommand();
-        scenarioContext[ScenarioContextIds.AFTERARCHIVE] = await RemoteRepositorySteps.GetRepoStats(repository);
+
+        await scenarioContext.AddRepoStatsAsync(ScenarioContextExtensions.ScenarioContextIds.AFTERARCHIVE);
     }
-
-
 }

@@ -6,6 +6,8 @@ using System.Diagnostics;
 using TechTalk.SpecFlow;
 using Arius.Core.Extensions;
 using Arius.Core.BehaviorTests.Extensions;
+using Arius.Core.Repositories;
+using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
@@ -25,8 +27,9 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             oc.RegisterInstanceAs(new Directories(unitTestRoot, sourceFolder, archiveTestDirectory, restoreTestDirectory));
         }
 
-        public LocalRepositorySteps(Directories directories)
+        public LocalRepositorySteps(ScenarioContext sc, Directories directories)
         {
+            this.sc = sc;
             this.directories = directories;
 
             file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
@@ -39,15 +42,33 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.RestoreTestDirectory.Clear();
         }
 
+        private readonly ScenarioContext sc;
         private readonly Directories directories;
         private Lazy<FileInfo> file1;
 
         [Given(@"a local archive with 1 file")]
         public void GivenOneLocalFile()
         {
-            file1.Value.CopyTo(directories.SourceFolder, directories.ArchiveTestDirectory);
+            var f = file1.Value.CopyTo(directories.SourceFolder, directories.ArchiveTestDirectory);
+
+            sc[ScenarioContextIds.FILE1.ToString()] = f;
         }
-        
+
+        [Then(@"the file has a PointerFile")]
+        public void TheFileHasAPointerFile()
+        {
+            var repo = sc.ScenarioContainer.Resolve<Repository>();
+            var fi = (FileInfo)sc[ScenarioContextIds.FILE1.ToString()];
+
+        }
+
+
+
+
+
+
+
+
 
         private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes) // TODO make private
         {
