@@ -14,7 +14,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
     public record Directories(DirectoryInfo root, DirectoryInfo SourceFolder, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
 
     [Binding]
-    public class LocalRepositorySteps
+    class LocalRepositorySteps : LocalTestBase
     {
         [BeforeTestRun(Order = 2)]
         public static void InitializeLocalRepository(IObjectContainer oc, BlobContainerClient bcc)
@@ -27,11 +27,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             oc.RegisterInstanceAs(new Directories(unitTestRoot, sourceFolder, archiveTestDirectory, restoreTestDirectory));
         }
 
-        public LocalRepositorySteps(ScenarioContext sc, Directories directories)
+        public LocalRepositorySteps(ScenarioContext sc, Directories directories) : base(sc, directories)
         {
-            this.sc = sc;
-            this.directories = directories;
-
             file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
         }
 
@@ -42,8 +39,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.RestoreTestDirectory.Clear();
         }
 
-        private readonly ScenarioContext sc;
-        private readonly Directories directories;
         private Lazy<FileInfo> file1;
 
         [Given(@"a local archive with 1 file")]
@@ -51,15 +46,17 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
             var f = file1.Value.CopyTo(directories.SourceFolder, directories.ArchiveTestDirectory);
 
-            sc[ScenarioContextIds.FILE1.ToString()] = f;
+            scenarioContext[ScenarioContextIds.FILE1.ToString()] = f;
         }
 
         [Then(@"the file has a PointerFile")]
         public void TheFileHasAPointerFile()
         {
-            var repo = sc.ScenarioContainer.Resolve<Repository>();
-            var fi = (FileInfo)sc[ScenarioContextIds.FILE1.ToString()];
+            var fi = (FileInfo)scenarioContext[ScenarioContextIds.FILE1.ToString()];
 
+            var (pf, pfe) = GetPointerInfo(fi);
+
+            Assert.IsNotNull(pfe);
         }
 
 

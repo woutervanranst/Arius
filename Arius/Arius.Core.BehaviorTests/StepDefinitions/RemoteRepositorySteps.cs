@@ -2,6 +2,7 @@ using Arius.Core.Commands;
 using Arius.Core.Configuration;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
 using BoDi;
@@ -29,12 +30,33 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         protected readonly ScenarioContext scenarioContext;
-       
+    }
+
+    class LocalTestBase : TestBase
+    {
+        public LocalTestBase(ScenarioContext sc, Directories dirs) : base(sc)
+        {
+            directories = dirs;
+        }
+
+        protected readonly Directories directories;
+
+        protected (PointerFile pf, PointerFileEntry? pfe) GetPointerInfo(FileInfo fi)
+        {
+            var pf = scenarioContext.GetPointerService().GetPointerFile(fi);
+
+            var a_rn = Path.GetRelativePath(directories.ArchiveTestDirectory.FullName, fi.FullName);
+            var pfe = scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+
+            return (pf, pfe);
+
+        }
     }
 
     static class ScenarioContextExtensions
     {
         public static Repository GetRepository(this ScenarioContext sc) => sc.ScenarioContainer.Resolve<Repository>();
+        public static PointerService GetPointerService(this ScenarioContext sc) => sc.ScenarioContainer.Resolve<PointerService>();
 
         public static async Task AddRepoStatsAsync(this ScenarioContext sc, ScenarioContextIds id) => sc[id.ToString()] = await GetRepoStatsAsync(GetRepository(sc));
         public static RepoStat GetRepoStat(this ScenarioContext sc, ScenarioContextIds id) => (RepoStat)sc[id.ToString()];
@@ -104,10 +126,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
                 return sp.Services;
             }).InstancePerDependency(); // see https://github.com/SpecFlowOSS/BoDi/pull/16
-            oc.RegisterFactoryAs<Repository>((oc) =>
-            {
-                return oc.Resolve<IServiceProvider>().GetRequiredService<Repository>();
-            }).InstancePerDependency();
+            oc.RegisterFactoryAs<Repository>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<Repository>()).InstancePerDependency();
+            oc.RegisterFactoryAs<PointerService>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<PointerService>()).InstancePerDependency();
         }
 
 
