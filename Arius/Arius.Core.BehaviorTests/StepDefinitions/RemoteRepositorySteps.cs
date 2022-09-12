@@ -4,6 +4,7 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using BoDi;
 using Microsoft.Extensions.DependencyInjection;
@@ -194,9 +195,18 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var x0 = scenarioContext.GetRepoStat(ScenarioContextIds.INITIAL).currentPfeWithoutDeleted.Length;
             var x1 = scenarioContext.GetRepoStat(ScenarioContextIds.AFTERARCHIVE).currentPfeWithoutDeleted.Length;
 
-            Assert.AreEqual(x0 + x, x1);
+            (x0 + x).Should().Be(x1);
         }
 
+        [Then(@"all chunks are in the (.*) tier")]
+        public async Task ThenAllChunksAreInTheTier(string t)
+        {
+            var tier = (AccessTier)t;
+
+            var chunks = await scenarioContext.GetRepository().Chunks.GetAllChunkBlobs().ToListAsync();
+
+            chunks.Select(cbb => cbb.AccessTier).Should().Equal(tier);
+        }
 
 
 

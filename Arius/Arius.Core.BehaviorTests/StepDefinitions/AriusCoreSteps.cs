@@ -70,11 +70,8 @@ class AriusCoreSteps
     /// <summary>
     /// Archive to the given tier
     /// </summary>
-    private async Task<IServiceProvider> ArchiveCommand(AccessTier tier = default, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
-        if (tier == default)
-            tier = AccessTier.Cool;
-
         if (purgeRemote)
             await RemoteRepositorySteps.PurgeRemote(container);
 
@@ -106,10 +103,19 @@ class AriusCoreSteps
     }
 
 
-    [When(@"archived")]
-    public async Task WhenArchived()
+    [When(@"archived to the (.*) tier")]
+    public async Task WhenArchived(string t)
     {
-        await ArchiveCommand();
+        //var tier = t.ToUpper() switch
+        //{
+        //    "COOL" => AccessTier.Cool,
+        //    "ARCHIVE" => AccessTier.Archive,
+        //    _ => throw new ArgumentOutOfRangeException(nameof(t))
+        //};
+
+        var tier = (AccessTier)t;
+
+        await ArchiveCommand(tier);
 
         await scenarioContext.AddRepoStatsAsync(ScenarioContextExtensions.ScenarioContextIds.AFTERARCHIVE);
     }

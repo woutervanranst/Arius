@@ -14,13 +14,14 @@ Scenario: Archive
 Scenario: Archive one file
 	Given an empty remote archive
 	Given a local archive with 1 file
-	When archived
+	When archived to the Cool tier
 	Then 1 additional chunk
 	Then 1 additional manifest
 	Then 1 additional PointerFileEntry
 	Then 1 additional existing PointerFileEntry
 	#Then the file has a PointerFile
-	Then all local files have PointerFiles
+	Then all local files have PointerFiles and PointerFileEntries
+	Then all chunks are in the Archive tier
 
 #Scenario: Archive3
 #	Given a local repository with files
