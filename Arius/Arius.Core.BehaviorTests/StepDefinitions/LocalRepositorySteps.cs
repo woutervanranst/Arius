@@ -49,16 +49,33 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             scenarioContext[ScenarioContextIds.FILE1.ToString()] = f;
         }
 
-        [Then(@"the file has a PointerFile")]
-        public void TheFileHasAPointerFile()
+        //[Then(@"the file has a PointerFile")]
+        //public void TheFileHasAPointerFile()
+        //{
+        //    var fi = (FileInfo)scenarioContext[ScenarioContextIds.FILE1.ToString()];
+
+        //    var (pf, pfe) = GetPointerInfo(fi);
+
+        //    Assert.IsNotNull(pfe);
+        //}
+
+
+
+
+        [Then(@"all local files have PointerFiles and PointerFileEntries")]
+        public void ThenAllLocalFilesHavePointerFiles()
         {
-            var fi = (FileInfo)scenarioContext[ScenarioContextIds.FILE1.ToString()];
+            foreach (var fi in directories.ArchiveTestDirectory.GetAllFileInfos())
+            {
+                if (fi.IsPointerFile())
+                    continue;
 
-            var (pf, pfe) = GetPointerInfo(fi);
+                var (pf, pfe) = GetPointerInfo(fi);
 
-            Assert.IsNotNull(pfe);
+                Assert.IsNotNull(pf);
+                Assert.IsNotNull(pfe);
+            }
         }
-
 
 
 

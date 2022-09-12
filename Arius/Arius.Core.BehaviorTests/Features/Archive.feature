@@ -19,7 +19,8 @@ Scenario: Archive one file
 	Then 1 additional manifest
 	Then 1 additional PointerFileEntry
 	Then 1 additional existing PointerFileEntry
-	Then the file has a PointerFile
+	#Then the file has a PointerFile
+	Then all local files have PointerFiles
 
 #Scenario: Archive3
 #	Given a local repository with files
