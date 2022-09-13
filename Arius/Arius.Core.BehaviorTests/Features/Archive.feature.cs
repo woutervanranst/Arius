@@ -151,7 +151,7 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("all local files have PointerFiles and PointerFileEntries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 24
- testRunner.Then("all chunks are in the Archive tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("all chunks are in the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();

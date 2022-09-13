@@ -65,15 +65,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"all local files have PointerFiles and PointerFileEntries")]
         public void ThenAllLocalFilesHavePointerFiles()
         {
-            foreach (var fi in directories.ArchiveTestDirectory.GetAllFileInfos())
+            foreach (var bfi in directories.ArchiveTestDirectory.GetAllFileInfos())
             {
-                if (fi.IsPointerFile())
+                if (bfi.IsPointerFile())
                     continue;
 
-                var (pf, pfe) = GetPointerInfo(fi);
+                var (pf, pfe) = GetPointerInfo(bfi);
 
-                Assert.IsNotNull(pf);
-                Assert.IsNotNull(pfe);
+                pf.Should().NotBeNull();
+                
+                pfe.Should().NotBeNull();
+                pfe.IsDeleted.Should().BeFalse();
+
+                bfi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+                bfi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
             }
         }
 
