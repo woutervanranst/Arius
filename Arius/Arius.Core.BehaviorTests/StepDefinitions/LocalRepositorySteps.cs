@@ -11,25 +11,26 @@ using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
-    public record Directories(DirectoryInfo root, DirectoryInfo SourceFolder, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
+    public record Directories(DirectoryInfo Root, DirectoryInfo RunRoot, DirectoryInfo SourceDirectory, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
 
     [Binding]
     class LocalRepositorySteps : LocalTestBase
     {
-        [BeforeTestRun(Order = 2)]
+        [BeforeTestRun(Order = 2)] //run after the RemoteRepository is initialized, and the BlobContainerClient is available for DI
         public static void InitializeLocalRepository(IObjectContainer oc, BlobContainerClient bcc)
         {
-            var unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius", bcc.Name));
-            var sourceFolder = unitTestRoot.CreateSubdirectory("source");
-            var archiveTestDirectory = unitTestRoot.CreateSubdirectory("archive");
-            var restoreTestDirectory = unitTestRoot.CreateSubdirectory("restore");
+            var root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
+            var runRoot = root.CreateSubdirectory(bcc.Name);
+            var sourceDirectory = runRoot.CreateSubdirectory("source");
+            var archiveTestDirectory = runRoot.CreateSubdirectory("archive");
+            var restoreTestDirectory = runRoot.CreateSubdirectory("restore");
 
-            oc.RegisterInstanceAs(new Directories(unitTestRoot, sourceFolder, archiveTestDirectory, restoreTestDirectory));
+            oc.RegisterInstanceAs(new Directories(root, runRoot, sourceDirectory, archiveTestDirectory, restoreTestDirectory));
         }
 
         public LocalRepositorySteps(ScenarioContext sc, Directories directories) : base(sc, directories)
         {
-            file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceFolder.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
+            file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
         }
 
         [BeforeScenario]
@@ -41,12 +42,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         private Lazy<FileInfo> file1;
 
-        [Given(@"a local archive with 1 file")]
-        public void GivenOneLocalFile()
+        [Given(@"a local archive with 1 file (.*)")]
+        public void GivenOneLocalFile(string name)
         {
-            var f = file1.Value.CopyTo(directories.SourceFolder, directories.ArchiveTestDirectory);
+            var f = file1.Value.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            scenarioContext[ScenarioContextIds.FILE1.ToString()] = f;
+            scenarioContext[name] = f;
         }
 
         //[Then(@"the file has a PointerFile")]
@@ -88,6 +89,27 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.ArchiveTestDirectory.Clear();
         }
 
+        [Then(@"(.*) does not have a PointerFile")]
+        public void ThenFileDoesNotHaveAPointerFile(string name)
+        {
+            var fi = (FileInfo)scenarioContext[name];
+
+            var (pf, pfe) = GetPointerInfo(fi);
+
+            pf.Should().BeNull();
+        }
+
+        [Then(@"the PointerFileEntry for (.*) is marked as deleted")]
+        public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string name)
+        {
+            var fi = (FileInfo)scenarioContext[name];
+
+            var (pf, pfe) = GetPointerInfo(fi);
+
+            pfe.IsDeleted.Should().BeTrue();
+        }
+
+
 
 
 
@@ -112,10 +134,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         [AfterTestRun]
-        public static async Task OneTimeTearDown(Directories directories)
+        public static void OneTimeTearDown(Directories directories)
         {
             // Delete local temp
-            foreach (var d in directories.root.GetDirectories())
+            foreach (var d in directories.Root.GetDirectories())
                 d.Delete(true);
         }
     }
