@@ -162,7 +162,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
                 await bcc.DeleteBlobAsync(bi.Name);
         }
 
-        [Then(@"(.*) additional chunks?")]
+        [Then(@"(.*) additional Chunks?")]
         public void ThenAdditionalChunks(int x)
         {
             var x0 = scenarioContext.GetRepoStat(ScenarioContextIds.INITIAL).chunkBlobItemCount;
@@ -171,7 +171,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional manifests?")]
+        [Then(@"(.*) additional Manifests?")]
         public void ThenAdditionalManifests(int x)
         {
             var x0 = scenarioContext.GetRepoStat(ScenarioContextIds.INITIAL).binaryCount;
@@ -180,7 +180,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional PointerFileEntry?")]
+        [Then(@"(.*) additional (?:PointerFileEntry|PointerFileEntries)")]
         public void ThenAdditionalPointerFileEntry(int x)
         {
             var x0 = scenarioContext.GetRepoStat(ScenarioContextIds.INITIAL).currentPfeWithDeleted.Length;
@@ -189,7 +189,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional existing PointerFileEntry?")]
+        [Then(@"(.*) additional existing (?:PointerFileEntry|PointerFileEntries)")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
         {
             var x0 = scenarioContext.GetRepoStat(ScenarioContextIds.INITIAL).currentPfeWithoutDeleted.Length;
@@ -207,6 +207,15 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             chunks.Select(cbb => cbb.AccessTier).Should().Equal(tier);
         }
+
+        [Then(@"(.*) total existing (?:PointerFileEntry|PointerFileEntries)")]
+        public void ThenTotalExistingPointerFileEntries(int x)
+        {
+            var x1 = scenarioContext.GetRepoStat(ScenarioContextIds.AFTERARCHIVE).currentPfeWithoutDeleted.Length;
+
+            x1.Should().Be(x);
+        }
+
 
 
 

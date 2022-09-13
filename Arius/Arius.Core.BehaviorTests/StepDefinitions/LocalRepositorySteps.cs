@@ -82,6 +82,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             }
         }
 
+        [When(@"the local archive is cleared")]
+        public void WhenTheLocalArchiveIsCleared()
+        {
+            directories.ArchiveTestDirectory.Clear();
+        }
+
 
 
 
