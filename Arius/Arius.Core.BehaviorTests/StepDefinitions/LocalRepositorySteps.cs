@@ -30,7 +30,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         public LocalRepositorySteps(ScenarioContext sc, Directories directories) : base(sc, directories)
         {
-            file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
+        //    file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
         }
 
         [BeforeScenario]
@@ -40,22 +40,30 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.RestoreTestDirectory.Clear();
         }
 
-        private Lazy<FileInfo> file1;
+        //private Lazy<FileInfo> file1;
 
         [Given(@"a local archive with file {word}")]
-        public void GivenOneLocalFile(string name)
+        public void GivenOneLocalFile(string fileId)
         {
-            var f = file1.Value.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
+            var f0 = GetOrCreateSourceFile(fileId);
+            var f1 = f0.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            scenarioContext[name] = f;
+            scenarioContext[fileId] = f1;
         }
 
-        [Given(@"a local archive with file {word} duplicate of {word}")]
-        public void GivenOneLocalFileDuplicateOfFile(string name, string namwe2)
-        {
-            var f = file1.Value.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
+        
 
-            scenarioContext[name] = f;
+        [Given(@"a local archive with file {word} duplicate of {word}")]
+        public void GivenOneLocalFileDuplicateOfFile(string newFileId, string originalFileId)
+        {
+            var f0 = GetOrCreateSourceFile(originalFileId);
+            var f1 = f0.CopyTo(directories.ArchiveTestDirectory, $"Duplicate of {f0.Name}");
+            var f2 = f1.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
+
+            f2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            f2.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+
+            scenarioContext[newFileId] = f2;
         }
 
 
@@ -99,20 +107,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.ArchiveTestDirectory.Clear();
         }
 
-        [Then(@"(.*) does not have a PointerFile")]
-        public void ThenFileDoesNotHaveAPointerFile(string name)
+        [Then(@"{word} does not have a PointerFile")]
+        public void ThenFileDoesNotHaveAPointerFile(string fileId)
         {
-            var fi = (FileInfo)scenarioContext[name];
+            var fi = (FileInfo)scenarioContext[fileId];
 
             var (pf, pfe) = GetPointerInfo(fi);
 
             pf.Should().BeNull();
         }
 
-        [Then(@"the PointerFileEntry for (.*) is marked as deleted")]
-        public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string name)
+        [Then(@"the PointerFileEntry for {word} is marked as deleted")]
+        public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string fileId)
         {
-            var fi = (FileInfo)scenarioContext[name];
+            var fi = (FileInfo)scenarioContext[fileId];
 
             var (pf, pfe) = GetPointerInfo(fi);
 
@@ -125,9 +133,25 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
+        private FileInfo GetOrCreateSourceFile(string fileId, string? name = default, int? sizeInBytes = default)
+        {
+            if (!scenarioContext.ContainsKey(fileId))
+            {
+                if (name == default)
+                    name = Path.GetRandomFileName();
 
+                if (sizeInBytes == default)
+                    sizeInBytes = 512000 + 1;
 
-        private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes) // TODO make private
+                var f = CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", name), sizeInBytes!.Value);
+
+                scenarioContext[fileId] = f;
+            }
+
+            return (FileInfo)scenarioContext[fileId];
+        }
+
+        private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
         {
             // https://stackoverflow.com/q/4432178/1582323
 

@@ -143,7 +143,7 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(binaryCount0, binaryCount2);
     }
 
-    [Test]
+    [Test] // FEATURE OK
     public async Task Archive_DuplicateBinaryFile_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

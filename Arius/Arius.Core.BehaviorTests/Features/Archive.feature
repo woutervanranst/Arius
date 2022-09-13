@@ -51,6 +51,11 @@ Scenario: Archive a duplicate file
 
 	# Add the duplicate file
 	Given a local archive with file File101 duplicate of File100
+	When archived to the Cool tier
+	Then 0 additional Chunks
+	Then 0 additional Manifests
+	Then 1 additional existing PointerFileEntry
+	Then all local files have PointerFiles and PointerFileEntries
 	
 
 
