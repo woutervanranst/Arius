@@ -17,7 +17,7 @@ namespace Arius.Core.Tests.ApiTests;
 
 class Archive_OneFile_Tests : TestBase
 {
-    [Test, Order(1)]
+    [Test, Order(1)] // FEATURE OK
     public async Task Archive_OneFileCoolTier_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
@@ -95,7 +95,7 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(bfi.LastWriteTimeUtc, pfe.LastWriteTimeUtc);
     }
 
-    [Test]
+    [Test] // FEATURE OK
     public async Task Archive_DeleteUndelete_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

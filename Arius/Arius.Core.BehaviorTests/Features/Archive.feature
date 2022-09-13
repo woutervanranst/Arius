@@ -3,10 +3,14 @@
 Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.feature)
 ***Further read***: **[Learn more about how to generate Living Documentation](https://docs.specflow.org/projects/specflow-livingdoc/en/latest/LivingDocGenerator/Generating-Documentation.html)**
 
+// Cucumber Expressions: https://docs.specflow.org/projects/specflow/en/latest/Bindings/Cucumber-Expressions.html
+// TODO: Living Documentation
+//TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
+
 @mytag
 Scenario: Archive one file
 	Given a remote archive
-	Given a local archive with 1 file File1
+	Given a local archive with file File1
 	When archived to the Cool tier
 	Then 1 additional Chunk
 	Then 1 additional Manifest
@@ -19,7 +23,7 @@ Scenario: Archive one file
 Scenario: Undelete a file
 	# Archive initial file
 	Given a remote archive
-	Given a local archive with 1 file File1
+	Given a local archive with file File1
 	When archived to the Cool tier
 	
 	# Delete, then archive
@@ -33,10 +37,20 @@ Scenario: Undelete a file
 	Then the PointerFileEntry for File1 is marked as deleted
 
 	# Restore
-	Given a local archive with 1 file File1
+	Given a local archive with file File1
 	When archived to the Cool tier
 	Then 1 total existing PointerFileEntries
+	Then 1 additional total PointerFileEntries
+	Then 0 additional Chunks
+	Then 0 additional Manifests
 	
+Scenario: Archive a duplicate file
+	Given a remote archive
+	Given a local archive with file File100
+	When archived to the Cool tier
+
+	# Add the duplicate file
+	Given a local archive with file File101 duplicate of File100
 	
 
 

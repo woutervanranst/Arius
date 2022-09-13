@@ -162,7 +162,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
                 await bcc.DeleteBlobAsync(bi.Name);
         }
 
-        [Then(@"(.*) additional Chunks?")]
+        [Then("{int} additional Chunk(s)")]
         public void ThenAdditionalChunks(int x)
         {
             var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().chunkBlobItemCount;
@@ -171,7 +171,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional Manifests?")]
+        [Then("{int} additional Manifest(s)")]
         public void ThenAdditionalManifests(int x)
         {
             var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().binaryCount;
@@ -180,7 +180,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional total (?:PointerFileEntry|PointerFileEntries)")]
+        [Then("{int} additional total PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalTotalPointerFileEntry(int x)
         {
             var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().allPfes.Length;
@@ -189,7 +189,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional existing (?:PointerFileEntry|PointerFileEntries)")]
+        [Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
         {
             var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
@@ -198,7 +198,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             (x0 + x).Should().Be(x1);
         }
 
-        [Then(@"all chunks are in the (.*) tier")]
+        [Then(@"all chunks are in the {word} tier")]
         public async Task ThenAllChunksAreInTheTier(string t)
         {
             var tier = (AccessTier)t;
@@ -208,13 +208,21 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             chunks.Select(cbb => cbb.AccessTier).Should().Equal(tier);
         }
 
-        [Then(@"(.*) total existing (?:PointerFileEntry|PointerFileEntries)")]
+        [Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
         public void ThenTotalExistingPointerFileEntries(int x)
         {
             var x1 = scenarioContext.GetRepoStats().Last().currentPfeWithoutDeleted.Length;
 
             x1.Should().Be(x);
         }
+
+        //[Then(@"(\d) total (?:PointerFileEntry|PointerFileEntries)")]
+        //public void ThenTotalPointerFileEntries(int x)
+        //{
+        //    var x1 = scenarioContext.GetRepoStats().Last().allPfes.Length;
+
+        //    x1.Should().Be(x);
+        //}
 
 
 

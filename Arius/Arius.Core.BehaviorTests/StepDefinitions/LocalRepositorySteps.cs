@@ -42,13 +42,23 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         private Lazy<FileInfo> file1;
 
-        [Given(@"a local archive with 1 file (.*)")]
+        [Given(@"a local archive with file {word}")]
         public void GivenOneLocalFile(string name)
         {
             var f = file1.Value.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
             scenarioContext[name] = f;
         }
+
+        [Given(@"a local archive with file {word} duplicate of {word}")]
+        public void GivenOneLocalFileDuplicateOfFile(string name, string namwe2)
+        {
+            var f = file1.Value.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
+
+            scenarioContext[name] = f;
+        }
+
+
 
         //[Then(@"the file has a PointerFile")]
         //public void TheFileHasAPointerFile()
