@@ -70,11 +70,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public static List<RepoStat> GetRepoStats(this ScenarioContext sc) => ((List<RepoStat>)sc["RepoStats"]);
 
 
-        public enum ScenarioContextIds
-        {
-            FILE1
-        }
-
         public record RepoStat(int chunkBlobItemCount,
             int binaryCount,
             PointerFileEntry[] currentPfeWithDeleted,
