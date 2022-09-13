@@ -6,7 +6,7 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 @mytag
 Scenario: Archive one file
 	Given a remote archive
-	Given a local archive with 1 file
+	Given a local archive with 1 file File1
 	When archived to the Cool tier
 	Then 1 additional Chunk
 	Then 1 additional Manifest
@@ -17,21 +17,27 @@ Scenario: Archive one file
 	Then all chunks are in the Cool tier
 
 Scenario: Undelete a file
+	# Archive initial file
 	Given a remote archive
-	Given a local archive with 1 file
-	# 1st Archive
+	Given a local archive with 1 file File1
 	When archived to the Cool tier
+	
+	# Delete, then archive
 	When the local archive is cleared
-	# 2nd Archive
 	When archived to the Cool tier
 	Then 0 total existing PointerFileEntries
 	Then 1 additional total PointerFileEntry
 	Then 0 additional Chunks
 	Then 0 additional Manifests
-	Given a local archive with 1 file
-	# 3rd Archive
+	Then File1 does not have a PointerFile
+	Then the PointerFileEntry for File1 is marked as deleted
+
+	# Restore
+	Given a local archive with 1 file File1
 	When archived to the Cool tier
 	Then 1 total existing PointerFileEntries
+	
+	
 
 
 #Scenario: Archive3
