@@ -117,6 +117,6 @@ class AriusCoreSteps
 
         await ArchiveCommand(tier);
 
-        await scenarioContext.AddRepoStatsAsync(ScenarioContextExtensions.ScenarioContextIds.AFTERARCHIVE);
+        await scenarioContext.AddRepoStatsAsync();
     }
 }
