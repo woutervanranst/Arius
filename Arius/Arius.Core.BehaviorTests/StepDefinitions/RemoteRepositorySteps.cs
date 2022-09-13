@@ -216,18 +216,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             x1.Should().Be(x);
         }
 
-        //[Then(@"(\d) total (?:PointerFileEntry|PointerFileEntries)")]
-        //public void ThenTotalPointerFileEntries(int x)
-        //{
-        //    var x1 = scenarioContext.GetRepoStats().Last().allPfes.Length;
-
-        //    x1.Should().Be(x);
-        //}
-
-
-
-
-
 
 
 

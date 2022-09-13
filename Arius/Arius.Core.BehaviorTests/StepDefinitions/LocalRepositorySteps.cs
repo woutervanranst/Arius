@@ -30,7 +30,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         public LocalRepositorySteps(ScenarioContext sc, Directories directories) : base(sc, directories)
         {
-        //    file1 = new(() => CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", "file 1.txt"), 512000 + 1)); //make it an odd size to test buffer edge cases
         }
 
         [BeforeScenario]
@@ -39,8 +38,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             directories.ArchiveTestDirectory.Clear();
             directories.RestoreTestDirectory.Clear();
         }
-
-        //private Lazy<FileInfo> file1;
 
         [Given(@"a local archive with file {word}")]
         public void GivenOneLocalFile(string fileId)
@@ -65,20 +62,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             scenarioContext[newFileId] = f2;
         }
-
-
-
-        //[Then(@"the file has a PointerFile")]
-        //public void TheFileHasAPointerFile()
-        //{
-        //    var fi = (FileInfo)scenarioContext[ScenarioContextIds.FILE1.ToString()];
-
-        //    var (pf, pfe) = GetPointerInfo(fi);
-
-        //    Assert.IsNotNull(pfe);
-        //}
-
-
 
 
         [Then(@"all local files have PointerFiles and PointerFileEntries")]

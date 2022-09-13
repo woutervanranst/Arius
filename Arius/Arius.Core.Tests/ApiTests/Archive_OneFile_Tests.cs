@@ -184,7 +184,7 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(bfi2.LastWriteTimeUtc, pfe2.LastWriteTimeUtc);
     }
 
-    [Test]
+    [Test] //FEATURE OK
     public async Task Archive_TwoDuplicateBinaryFiles_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

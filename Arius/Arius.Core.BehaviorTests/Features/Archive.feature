@@ -20,6 +20,7 @@ Scenario: Archive one file
 	Then all local files have PointerFiles and PointerFileEntries
 	Then all chunks are in the Cool tier
 
+
 Scenario: Undelete a file
 	# Archive initial file
 	Given a remote archive
@@ -44,7 +45,8 @@ Scenario: Undelete a file
 	Then 0 additional Chunks
 	Then 0 additional Manifests
 	
-Scenario: Archive a duplicate file
+
+Scenario: Archive a duplicate file that was already archived
 	Given a remote archive
 	Given a local archive with file File100
 	When archived to the Cool tier
@@ -57,7 +59,25 @@ Scenario: Archive a duplicate file
 	Then 1 additional existing PointerFileEntry
 	Then all local files have PointerFiles and PointerFileEntries
 	
+Scenario: Archive two duplicate files
+	Given a remote archive
+	Given a local archive with file File110
+	
+	Given a local archive with file File111 duplicate of File110
+	When archived to the Cool tier
+	Then 1 additional Chunk
+	Then 1 additional Manifest
+	Then 2 additional existing PointerFileEntries
+	Then all local files have PointerFiles and PointerFileEntries
 
+	Given a local archive with file File112 duplicate of File110
+	When archived to the Cool tier
+	Then 0 additional Chunks
+	Then 0 additional Manifests
+	Then 1 additional existing PointerFileEntry
+	Then all local files have PointerFiles and PointerFileEntries
+
+	
 
 #Scenario: Archive3
 #	Given a local repository with files
