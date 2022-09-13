@@ -67,7 +67,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             ((List<RepoStat>)sc["RepoStats"]).Add(await GetRepoStatsAsync(GetRepository(sc)));
         }
 
-        public static List<RepoStat> GetRepoStat(this ScenarioContext sc) => ((List<RepoStat>)sc["RepoStats"]);
+        public static List<RepoStat> GetRepoStats(this ScenarioContext sc) => ((List<RepoStat>)sc["RepoStats"]);
 
 
         public enum ScenarioContextIds
@@ -170,8 +170,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"(.*) additional Chunks?")]
         public void ThenAdditionalChunks(int x)
         {
-            var x0 = scenarioContext.GetRepoStat().SkipLast(1).Last().chunkBlobItemCount;
-            var x1 = scenarioContext.GetRepoStat().Last().chunkBlobItemCount;
+            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().chunkBlobItemCount;
+            var x1 = scenarioContext.GetRepoStats().Last().chunkBlobItemCount;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -179,17 +179,17 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"(.*) additional Manifests?")]
         public void ThenAdditionalManifests(int x)
         {
-            var x0 = scenarioContext.GetRepoStat().SkipLast(1).Last().binaryCount;
-            var x1 = scenarioContext.GetRepoStat().Last().binaryCount;
+            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().binaryCount;
+            var x1 = scenarioContext.GetRepoStats().Last().binaryCount;
 
             Assert.AreEqual(x0 + x, x1);
         }
 
-        [Then(@"(.*) additional (?:PointerFileEntry|PointerFileEntries)")]
-        public void ThenAdditionalPointerFileEntry(int x)
+        [Then(@"(.*) additional total (?:PointerFileEntry|PointerFileEntries)")]
+        public void ThenAdditionalTotalPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRepoStat().SkipLast(1).Last().currentPfeWithDeleted.Length;
-            var x1 = scenarioContext.GetRepoStat().Last().currentPfeWithDeleted.Length;
+            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().allPfes.Length;
+            var x1 = scenarioContext.GetRepoStats().Last().allPfes.Length;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -197,8 +197,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"(.*) additional existing (?:PointerFileEntry|PointerFileEntries)")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRepoStat().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
-            var x1 = scenarioContext.GetRepoStat().Last().currentPfeWithoutDeleted.Length;
+            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
+            var x1 = scenarioContext.GetRepoStats().Last().currentPfeWithoutDeleted.Length;
 
             (x0 + x).Should().Be(x1);
         }
@@ -216,7 +216,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"(.*) total existing (?:PointerFileEntry|PointerFileEntries)")]
         public void ThenTotalExistingPointerFileEntries(int x)
         {
-            var x1 = scenarioContext.GetRepoStat().Last().currentPfeWithoutDeleted.Length;
+            var x1 = scenarioContext.GetRepoStats().Last().currentPfeWithoutDeleted.Length;
 
             x1.Should().Be(x);
         }

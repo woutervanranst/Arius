@@ -10,7 +10,7 @@ Scenario: Archive one file
 	When archived to the Cool tier
 	Then 1 additional Chunk
 	Then 1 additional Manifest
-	Then 1 additional PointerFileEntry
+	Then 1 additional total PointerFileEntry
 	Then 1 additional existing PointerFileEntry
 	#Then the file has a PointerFile
 	Then all local files have PointerFiles and PointerFileEntries
@@ -19,14 +19,15 @@ Scenario: Archive one file
 Scenario: Undelete a file
 	Given a remote archive
 	Given a local archive with 1 file
-	# - 1st Archive
+	# 1st Archive
 	When archived to the Cool tier
 	When the local archive is cleared
 	# 2nd Archive
 	When archived to the Cool tier
 	Then 0 total existing PointerFileEntries
-	Then 1 additional PointerFileEntry
-	#Then 0 additional Chunks
+	Then 1 additional total PointerFileEntry
+	Then 0 additional Chunks
+	Then 0 additional Manifests
 	Given a local archive with 1 file
 	# 3rd Archive
 	When archived to the Cool tier
