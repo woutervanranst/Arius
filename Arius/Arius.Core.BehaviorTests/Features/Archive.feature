@@ -77,6 +77,20 @@ Scenario: Archive two duplicate files
 	Then 1 additional existing PointerFileEntry
 	Then all local files have PointerFiles and PointerFileEntries
 
+
+Scenario: Archive a duplicate PointerFile
+	Given a remote archive
+	Given a local archive with file File120
+	When archived to the Cool tier
+
+	Given a duplicate Pointer of file File120
+	When archived to the Cool tier
+
+	Then 0 additional Chunks
+	Then 0 additional Manifests
+	Then 1 additional existing PointerFileEntry
+	Then 2 PointerFiles exist
+	Then all local PointerFiles have PointerFileEntries
 	
 
 #Scenario: Archive3

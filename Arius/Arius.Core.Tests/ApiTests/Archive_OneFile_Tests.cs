@@ -227,7 +227,7 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(bfi3.LastWriteTimeUtc, pfe3.LastWriteTimeUtc);
     }
 
-    [Test]
+    [Test] // FEATURE OK
     public async Task Archive_DuplicatePointerFile_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

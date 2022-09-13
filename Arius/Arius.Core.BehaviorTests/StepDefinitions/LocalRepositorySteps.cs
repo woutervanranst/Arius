@@ -65,17 +65,31 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
         [Then(@"all local files have PointerFiles and PointerFileEntries")]
-        public void ThenAllLocalFilesHavePointerFiles()
+        public void ThenAllLocalFilesHavePointerFilesAndPointerFileEntries()
         {
-            foreach (var bfi in directories.ArchiveTestDirectory.GetAllFileInfos())
+            foreach (var bfi in directories.ArchiveTestDirectory.GetBinaryFileInfos())
             {
-                if (bfi.IsPointerFile())
-                    continue;
-
                 var (pf, pfe) = GetPointerInfo(bfi);
 
                 pf.Should().NotBeNull();
                 
+                pfe.Should().NotBeNull();
+                pfe.IsDeleted.Should().BeFalse();
+
+                bfi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+                bfi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
+            }
+        }
+
+        [Then(@"all local PointerFiles have PointerFileEntries")]
+        public void ThenAllLocalPointerFilesHavePointerFileEntries()
+        {
+            foreach (var bfi in directories.ArchiveTestDirectory.GetPointerFileInfos())
+            {
+                var (pf, pfe) = GetPointerInfo(bfi);
+
+                pf.Should().NotBeNull();
+
                 pfe.Should().NotBeNull();
                 pfe.IsDeleted.Should().BeFalse();
 
@@ -110,6 +124,25 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             pfe.IsDeleted.Should().BeTrue();
         }
 
+
+        [Given("a duplicate Pointer of file {word}")]
+        public void WhenADuplicatePointerOfFileFile(string fileId)
+        {
+            var fi = (FileInfo)scenarioContext[fileId];
+
+            var (pf0, _) = GetPointerInfo(fi);
+            var pf1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
+            File.Copy(pf0.FullName, pf1.FullName);
+
+            pf1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            pf1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+        }
+
+        [Then("{int} PointerFile(s) exist")]
+        public void ThenPointerFilesExist(int p0)
+        {
+            directories.ArchiveTestDirectory.GetPointerFileInfos().Count().Should().Be(p0);
+        }
 
 
 
