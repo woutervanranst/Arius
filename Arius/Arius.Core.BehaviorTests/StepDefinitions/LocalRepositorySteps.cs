@@ -32,7 +32,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
         }
 
-        [BeforeScenario]
+        //[BeforeScenario]
         public void ClearDirectories()
         {
             directories.ArchiveTestDirectory.Clear();
@@ -111,7 +111,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [When(@"the local archive is cleared")]
         public void WhenTheLocalArchiveIsCleared()
         {
-            directories.ArchiveTestDirectory.Clear();
+            ClearDirectories();
         }
 
         [Then(@"{word} does not have a PointerFile")]
