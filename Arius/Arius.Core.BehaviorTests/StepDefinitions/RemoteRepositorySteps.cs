@@ -94,23 +94,28 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
                 await bcc.DeleteBlobAsync(bi.Name);
         }
 
-        [Then("{int} additional Chunk(s)")]
-        public void ThenAdditionalChunks(int x)
+        [Then("{int} additional Chunk(s) and Manifest(s)")]
+        public void ThenAdditionalChunksAndManifests(int x)
         {
             var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().chunkBlobItemCount;
             var x1 = scenarioContext.GetRemoteRepoStats().Last().chunkBlobItemCount;
 
             Assert.AreEqual(x0 + x, x1);
-        }
 
-        [Then("{int} additional Manifest(s)")]
-        public void ThenAdditionalManifests(int x)
-        {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().binaryCount;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().binaryCount;
+            x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().binaryCount;
+            x1 = scenarioContext.GetRemoteRepoStats().Last().binaryCount;
 
             Assert.AreEqual(x0 + x, x1);
         }
+
+        //[Then("{int} additional Manifest(s)")]
+        //public void ThenAdditionalManifests(int x)
+        //{
+        //    var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().binaryCount;
+        //    var x1 = scenarioContext.GetRemoteRepoStats().Last().binaryCount;
+
+        //    Assert.AreEqual(x0 + x, x1);
+        //}
 
         [Then("{int} additional total PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalTotalPointerFileEntry(int x)

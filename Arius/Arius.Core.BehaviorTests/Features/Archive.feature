@@ -12,8 +12,7 @@ Scenario: Archive one file
 	Given a remote archive
 	Given a local folder with only file File1
 	When archived to the Cool tier
-	Then 1 additional Chunk
-	Then 1 additional Manifest
+	Then 1 additional Chunk and Manifest
 	#Then 1 additional total PointerFileEntry
 	Then 1 total existing PointerFileEntry
 	Then the PointerFile for file File1 exists
@@ -34,8 +33,7 @@ Scenario: Undelete a file
 	When the local folder is cleared
 	When archived to the Cool tier
 	Then 0 total existing PointerFileEntries
-	Then 0 additional Chunks
-	Then 0 additional Manifests
+	Then 0 additional Chunks and Manifests
 	Then File1 does not have a PointerFile
 	Then the PointerFileEntry for File1 is marked as deleted
 
@@ -44,8 +42,7 @@ Scenario: Undelete a file
 	When archived to the Cool tier
 	Then 1 total existing PointerFileEntries
 	Then 1 additional total PointerFileEntry
-	Then 0 additional Chunks
-	Then 0 additional Manifests
+	Then 0 additional Chunks and Manifests
 	
 
 Scenario: Archive a duplicate file that was already archived
@@ -56,8 +53,7 @@ Scenario: Archive a duplicate file that was already archived
 	# Add the duplicate file
 	Given a local folder with file File101 duplicate of file File100
 	When archived to the Cool tier
-	Then 0 additional Chunks
-	Then 0 additional Manifests
+	Then 0 additional Chunks and Manifests
 	Then 1 additional existing PointerFileEntry
 	Then all local files have PointerFiles and PointerFileEntries
 	
@@ -68,15 +64,13 @@ Scenario: Archive two duplicate files
 	
 	Given a local folder with file File111 duplicate of file File110
 	When archived to the Cool tier
-	Then 1 additional Chunk
-	Then 1 additional Manifest
+	Then 1 additional Chunk and Manifest
 	Then 2 additional existing PointerFileEntries
 	Then all local files have PointerFiles and PointerFileEntries
 
 	Given a local folder with file File112 duplicate of file File111
 	When archived to the Cool tier
-	Then 0 additional Chunks
-	Then 0 additional Manifests
+	Then 0 additional Chunks and Manifests
 	Then 1 additional existing PointerFileEntry
 	Then all local files have PointerFiles and PointerFileEntries
 
@@ -88,9 +82,8 @@ Scenario: Archive a duplicate PointerFile
 
 	Given a duplicate Pointer Pointer121 of file File120
 	When archived to the Cool tier
-
-	Then 0 additional Chunks
-	Then 0 additional Manifests
+	
+	Then 0 additional Chunks and Manifests
 	Then 1 additional existing PointerFileEntry
 	#Then 2 additional PointerFiles exist
 	Then the PointerFile for file File120 exists
