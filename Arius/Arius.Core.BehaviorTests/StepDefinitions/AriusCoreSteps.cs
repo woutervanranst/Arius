@@ -103,16 +103,9 @@ class AriusCoreSteps
     }
 
 
-    [When(@"archived to the (.*) tier")]
+    [When("archived to the {word} tier")]
     public async Task WhenArchived(string t)
     {
-        //var tier = t.ToUpper() switch
-        //{
-        //    "COOL" => AccessTier.Cool,
-        //    "ARCHIVE" => AccessTier.Archive,
-        //    _ => throw new ArgumentOutOfRangeException(nameof(t))
-        //};
-
         var tier = (AccessTier)t;
 
         await ArchiveCommand(tier);
