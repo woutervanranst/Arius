@@ -70,7 +70,7 @@ Scenario: Archive two duplicate files
 	Then 2 additional existing PointerFileEntries
 	Then all local files have PointerFiles and PointerFileEntries
 
-	Given a local archive with file File112 duplicate of File110
+	Given a local archive with file File112 duplicate of File111
 	When archived to the Cool tier
 	Then 0 additional Chunks
 	Then 0 additional Manifests

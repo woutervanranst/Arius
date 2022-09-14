@@ -43,10 +43,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public void GivenOneLocalFile(string fileId)
         {
             var f0 = GetOrCreateSourceFile(fileId);
+
             var f1 = f0.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            scenarioContext[fileId] = f1;
+            scenarioContext[fileId] = new RelatedFiles(f0, f1, null);
         }
+
+        record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
         
 
@@ -54,13 +57,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public void GivenOneLocalFileDuplicateOfFile(string newFileId, string originalFileId)
         {
             var f0 = GetOrCreateSourceFile(originalFileId);
-            var f1 = f0.CopyTo(directories.ArchiveTestDirectory, $"Duplicate of {f0.Name}");
+            var f1 = f0.CopyTo(directories.SourceDirectory, $"Duplicate of {f0.Name}");
+            f1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            f1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+
             var f2 = f1.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            f2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
-            f2.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
-
-            scenarioContext[newFileId] = f2;
+            scenarioContext[newFileId] = new RelatedFiles(f1, f2, null);
         }
 
 
@@ -107,7 +110,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"{word} does not have a PointerFile")]
         public void ThenFileDoesNotHaveAPointerFile(string fileId)
         {
-            var fi = (FileInfo)scenarioContext[fileId];
+            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
 
             var (pf, pfe) = GetPointerInfo(fi);
 
@@ -117,7 +120,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"the PointerFileEntry for {word} is marked as deleted")]
         public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string fileId)
         {
-            var fi = (FileInfo)scenarioContext[fileId];
+            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
 
             var (pf, pfe) = GetPointerInfo(fi);
 
@@ -128,7 +131,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Given("a duplicate Pointer of file {word}")]
         public void WhenADuplicatePointerOfFileFile(string fileId)
         {
-            var fi = (FileInfo)scenarioContext[fileId];
+            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
 
             var (pf0, _) = GetPointerInfo(fi);
             var pf1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
@@ -161,10 +164,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
                 var f = CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", name), sizeInBytes!.Value);
 
-                scenarioContext[fileId] = f;
+                scenarioContext[fileId] = new RelatedFiles(f, null, null);
             }
 
-            return (FileInfo)scenarioContext[fileId];
+            return ((RelatedFiles)scenarioContext[fileId]).Source;
         }
 
         private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)
