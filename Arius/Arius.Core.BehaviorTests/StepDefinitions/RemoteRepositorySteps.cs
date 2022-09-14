@@ -59,24 +59,26 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public static Repository GetRepository(this ScenarioContext sc) => sc.ScenarioContainer.Resolve<Repository>();
         public static PointerService GetPointerService(this ScenarioContext sc) => sc.ScenarioContainer.Resolve<PointerService>();
 
-        public static async Task AddRepoStatsAsync(this ScenarioContext sc)
-        {
-            if (!sc.ContainsKey("RepoStats"))
-                sc["RepoStats"] = new List<RepoStat>();
+        private const string REMOTE_REPO_STATS = "RepoStats";
+        private const string LOCAL_REPO_STATS = "LocalStats";
 
-            ((List<RepoStat>)sc["RepoStats"]).Add(await GetRepoStatsAsync(GetRepository(sc)));
+        public static async Task AddRemoteRepoStatsAsync(this ScenarioContext sc)
+        {
+            if (!sc.ContainsKey(REMOTE_REPO_STATS))
+                sc[REMOTE_REPO_STATS] = new List<RemoteRepoStat>();
+
+            sc.GetRemoteRepoStats().Add(await CreateRemoteRepoStat(GetRepository(sc)));
         }
 
-        public static List<RepoStat> GetRepoStats(this ScenarioContext sc) => ((List<RepoStat>)sc["RepoStats"]);
+        public static List<RemoteRepoStat> GetRemoteRepoStats(this ScenarioContext sc) => (List<RemoteRepoStat>)sc[REMOTE_REPO_STATS];
 
-
-        public record RepoStat(int chunkBlobItemCount,
+        public record RemoteRepoStat(int chunkBlobItemCount,
             int binaryCount,
             PointerFileEntry[] currentPfeWithDeleted,
             PointerFileEntry[] currentPfeWithoutDeleted,
             PointerFileEntry[] allPfes);
 
-        private static async Task<RepoStat> GetRepoStatsAsync(Repository repo)
+        private static async Task<RemoteRepoStat> CreateRemoteRepoStat(Repository repo)
         {
             var chunkBlobItemCount = await repo.Chunks.GetAllChunkBlobs().CountAsync();
             var binaryCount = await repo.Binaries.CountAsync();
@@ -86,7 +88,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
-            return new RepoStat(chunkBlobItemCount, binaryCount, currentPfeWithDeleted, currentPfeWithoutDeleted, allPfes);
+            return new RemoteRepoStat(chunkBlobItemCount, binaryCount, currentPfeWithDeleted, currentPfeWithoutDeleted, allPfes);
         }
 
     }
@@ -148,14 +150,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Given(@"a remote archive")]
         public async Task GivenRemoteArchive()
         {
-            await scenarioContext.AddRepoStatsAsync();
+            await scenarioContext.AddRemoteRepoStatsAsync();
         }
 
         [Given(@"an empty remote archive")]
         public async Task GivenAnEmptyRemoteArchive()
         {
             await PurgeRemote(container);
-            await scenarioContext.AddRepoStatsAsync();
+            await scenarioContext.AddRemoteRepoStatsAsync();
         }
         public static async Task PurgeRemote(BlobContainerClient bcc)
         {
@@ -167,8 +169,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then("{int} additional Chunk(s)")]
         public void ThenAdditionalChunks(int x)
         {
-            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().chunkBlobItemCount;
-            var x1 = scenarioContext.GetRepoStats().Last().chunkBlobItemCount;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().chunkBlobItemCount;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().chunkBlobItemCount;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -176,8 +178,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then("{int} additional Manifest(s)")]
         public void ThenAdditionalManifests(int x)
         {
-            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().binaryCount;
-            var x1 = scenarioContext.GetRepoStats().Last().binaryCount;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().binaryCount;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().binaryCount;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -185,8 +187,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then("{int} additional total PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalTotalPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().allPfes.Length;
-            var x1 = scenarioContext.GetRepoStats().Last().allPfes.Length;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().allPfes.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().allPfes.Length;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -194,8 +196,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRepoStats().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
-            var x1 = scenarioContext.GetRepoStats().Last().currentPfeWithoutDeleted.Length;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().currentPfeWithoutDeleted.Length;
 
             (x0 + x).Should().Be(x1);
         }
@@ -213,7 +215,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
         public void ThenTotalExistingPointerFileEntries(int x)
         {
-            var x1 = scenarioContext.GetRepoStats().Last().currentPfeWithoutDeleted.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().currentPfeWithoutDeleted.Length;
 
             x1.Should().Be(x);
         }
