@@ -9,17 +9,19 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @mytag
 Scenario: Archive one file
-	Given an empty remote archive
+	Given a remote archive
 	Given a local folder with only file File1
 	When archived to the Cool tier
 	Then 1 additional Chunk
 	Then 1 additional Manifest
-	Then 1 additional total PointerFileEntry
-	Then 1 additional existing PointerFileEntry
-	#Then the file has a PointerFile
-	Then all local files have PointerFiles and PointerFileEntries
+	#Then 1 additional total PointerFileEntry
+	Then 1 total existing PointerFileEntry
+	Then the PointerFile for file File1 exists
 	Then all chunks are in the Cool tier
 
+#Scenario: Archive one file to the Archive tier
+#	Given a remote archive
+#	Given a local folder with file File130 of size ARCHIVE_TIER_LIMIT
 
 Scenario: Undelete a file
 	# Archive initial file
@@ -59,6 +61,7 @@ Scenario: Archive a duplicate file that was already archived
 	Then 1 additional existing PointerFileEntry
 	Then all local files have PointerFiles and PointerFileEntries
 	
+
 Scenario: Archive two duplicate files
 	Given a remote archive
 	Given a local folder with file File110
