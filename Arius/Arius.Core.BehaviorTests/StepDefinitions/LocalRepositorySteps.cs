@@ -53,7 +53,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             scenarioContext.AddLocalRepoStats();
         }
 
-        [Given("a local folder with file {word} of size ARCHIVE_TIER_LIMIT")]
+        [Given("a local folder with BinaryFile {word} of size ARCHIVE_TIER_LIMIT")]
         public void GivenALocalFolderWithFileFileOfSizeARCHIVE_TIER_LIMIT(string fileId)
         {
             throw new PendingStepException();
@@ -68,7 +68,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
 
-        [Given(@"a local folder with file {word} duplicate of file {word}")]
+        [Given(@"a local folder with BinaryFile {word} duplicate of BinaryFile {word}")]
         public void GivenALocalFolderWithFileDuplicateOf(string newFileId, string originalFileId)
         {
             var f0 = GetOrCreateSourceFile(originalFileId);

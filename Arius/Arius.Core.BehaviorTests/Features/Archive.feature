@@ -32,18 +32,18 @@ Scenario: Archive one file
 Scenario: Undelete a file
 	# Archive initial file
 	Given a remote archive
-	Given a local folder with BinaryFile File1
+	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
 	Then 1 additional existing PointerFileEntries
 	
 	# Delete, then archive
-	When BinaryFile File1 and its PointerFile are deleted
+	When BinaryFile File2 and its PointerFile are deleted
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
-	Then File1 does not have a PointerFile and the PointerFileEntry is marked as deleted
+	Then File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
 
 	# Restore
-	Given a local folder with BinaryFile File1
+	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
 	Then 1 additional existing PointerFileEntries
 	Then 1 additional total PointerFileEntry
@@ -56,7 +56,7 @@ Scenario: Archive a duplicate file that was already archived
 	When archived to the Cool tier
 
 	# Add the duplicate file
-	Given a local folder with file File101 duplicate of file File100
+	Given a local folder with BinaryFile File101 duplicate of BinaryFile File100
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
 	Then 1 additional existing PointerFileEntry
@@ -67,13 +67,13 @@ Scenario: Archive two duplicate files
 	Given a remote archive
 	Given a local folder with BinaryFile File110
 	
-	Given a local folder with file File111 duplicate of file File110
+	Given a local folder with BinaryFile File111 duplicate of BinaryFile File110
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
 	Then 2 additional existing PointerFileEntries
 	Then all local files have PointerFiles and PointerFileEntries
 
-	Given a local folder with file File112 duplicate of file File111
+	Given a local folder with BinaryFile File112 duplicate of BinaryFile File111
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
 	Then 1 additional existing PointerFileEntry
