@@ -137,7 +137,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             var chunks = await scenarioContext.GetRepository().Chunks.GetAllChunkBlobs().ToListAsync();
 
-            chunks.Select(cbb => cbb.AccessTier).Should().Equal(tier);
+            chunks.Select(cbb => cbb.AccessTier).Should().AllBeEquivalentTo(tier);
         }
 
         [Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
