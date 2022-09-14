@@ -139,21 +139,23 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         private readonly BlobContainerClient container;
 
-        [BeforeScenario]
-        public static async Task InitRepostats(ScenarioContext sc)
-        {
-            await sc.AddRepoStatsAsync();
-        }
+        //[BeforeScenario]
+        //public static async Task InitRepostats(ScenarioContext sc)
+        //{
+        //    await sc.AddRepoStatsAsync();
+        //}
 
         [Given(@"a remote archive")]
-        public void GivenRemoteArchive()
+        public async Task GivenRemoteArchive()
         {
+            await scenarioContext.AddRepoStatsAsync();
         }
 
         [Given(@"an empty remote archive")]
         public async Task GivenAnEmptyRemoteArchive()
         {
             await PurgeRemote(container);
+            await scenarioContext.AddRepoStatsAsync();
         }
         public static async Task PurgeRemote(BlobContainerClient bcc)
         {
