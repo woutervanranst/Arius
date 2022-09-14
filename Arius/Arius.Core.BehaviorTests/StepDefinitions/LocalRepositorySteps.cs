@@ -61,8 +61,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
 
-        
-
         [Given(@"a local folder with file {word} duplicate of file {word}")]
         public void GivenALocalFolderWithFileDuplicateOf(string newFileId, string originalFileId)
         {
@@ -76,44 +74,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             scenarioContext[newFileId] = new RelatedFiles(f1, f2, null);
         }
 
-
-
-
-        [Then(@"all local files have PointerFiles and PointerFileEntries")]
-        public void ThenAllLocalFilesHavePointerFilesAndPointerFileEntries()
+        [Given("a duplicate Pointer {word} of file {word}")]
+        public void WhenADuplicatePointerOfFileFile(string pointerId, string fileId)
         {
-            foreach (var bfi in directories.ArchiveTestDirectory.GetBinaryFileInfos())
-            {
-                var (pf, pfe) = GetPointerInfo(bfi);
+            var bfi0 = ((RelatedFiles)scenarioContext[fileId]).Archive;
 
-                pf.Should().NotBeNull();
-                
-                pfe.Should().NotBeNull();
-                pfe.IsDeleted.Should().BeFalse();
+            var (pf0, _) = GetPointerInfo(bfi0);
+            var pfi1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
+            File.Copy(pf0.FullName, pfi1.FullName);
 
-                bfi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
-                bfi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
-            }
+            pfi1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+            pfi1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
+
+            scenarioContext[pointerId] = pfi1;
         }
-
-        [Then(@"all local PointerFiles have PointerFileEntries")]
-        public void ThenAllLocalPointerFilesHavePointerFileEntries()
-        {
-            foreach (var bfi in directories.ArchiveTestDirectory.GetPointerFileInfos())
-            {
-                var (pf, pfe) = GetPointerInfo(bfi);
-
-                pf.Should().NotBeNull();
-
-                pfe.Should().NotBeNull();
-                pfe.IsDeleted.Should().BeFalse();
-
-                bfi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
-                bfi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
-            }
-        }
-
-
 
 
 
@@ -122,6 +96,9 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
             ClearDirectories();
         }
+
+
+
 
         [Then(@"{word} does not have a PointerFile")]
         public void ThenFileDoesNotHaveAPointerFile(string fileId)
@@ -144,18 +121,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
 
-        [Given("a duplicate Pointer of file {word}")]
-        public void WhenADuplicatePointerOfFileFile(string fileId)
-        {
-            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
-
-            var (pf0, _) = GetPointerInfo(fi);
-            var pf1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
-            File.Copy(pf0.FullName, pf1.FullName);
-
-            pf1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
-            pf1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
-        }
+       
 
         //[Then("{int} PointerFile(s) exist")]
         //public void ThenPointerFilesExist(int p0)
@@ -171,6 +137,55 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             Assert.AreEqual(x0 + x, x1);
         }
+
+
+
+        [Then(@"all local files have PointerFiles and PointerFileEntries")]
+        public void ThenAllLocalFilesHavePointerFilesAndPointerFileEntries()
+        {
+            foreach (var bfi in directories.ArchiveTestDirectory.GetBinaryFileInfos())
+                IsValidPointerFile(bfi);
+        }
+
+        [Then(@"all local PointerFiles have PointerFileEntries")]
+        public void ThenAllLocalPointerFilesHavePointerFileEntries()
+        {
+            foreach (var pfi in directories.ArchiveTestDirectory.GetPointerFileInfos())
+                IsValidPointerFile(pfi);
+        }
+
+        /// <summary>
+        /// if a (Binary)FileInfo -> checks whether it has a valid PointerFile
+        /// if a PointerFile -> chekcs whether is it valid
+        /// </summary>
+        /// <param name="fi"></param>
+        private void IsValidPointerFile(FileInfo fi)
+        {
+            var (pf, pfe) = GetPointerInfo(fi);
+
+            pf.Should().NotBeNull();
+
+            pfe.Should().NotBeNull();
+            pfe.IsDeleted.Should().BeFalse();
+
+            fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+            fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
+        }
+
+        [Then("the PointerFile for file {word} exists")]
+        public void ThenThePointerFileForFileFileExists(string fileId)
+        {
+            var bfi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+            IsValidPointerFile(bfi);
+        }
+
+        [Then("the PointerFile {word} exists")]
+        public void ThenThePointerFilePointerExists(string pointerId)
+        {
+            var pfi = (FileInfo)scenarioContext[pointerId];
+            IsValidPointerFile(pfi);
+        }
+
 
 
 
