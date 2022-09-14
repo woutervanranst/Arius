@@ -40,13 +40,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         [Given(@"a local archive with file {word}")]
-        public void GivenOneLocalFile(string fileId)
+        public void GivenLocalArchiveWithFile(string fileId)
         {
             var f0 = GetOrCreateSourceFile(fileId);
 
             var f1 = f0.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
             scenarioContext[fileId] = new RelatedFiles(f0, f1, null);
+        }
+
+        [Given(@"a local archive with only file {word}")]
+        public void GivenLocalArchiveWithOnlyFile(string fileId)
+        {
+            ClearDirectories();
+            GivenLocalArchiveWithFile(fileId);
         }
 
         record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
