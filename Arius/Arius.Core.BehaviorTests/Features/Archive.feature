@@ -34,19 +34,17 @@ Scenario: Undelete a file
 	Given a remote archive
 	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
-	Then 1 additional existing PointerFileEntries
-	
+	Then 1 additional existing PointerFileEntry
 	# Delete, then archive
 	When BinaryFile File2 and its PointerFile are deleted
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
-	Then File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
-
+	Then BinaryFile File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
 	# Restore
 	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
+	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
 	Then 1 additional existing PointerFileEntries
-	Then 1 additional total PointerFileEntry
 	Then 0 additional Chunks and Manifests
 	
 
@@ -54,7 +52,6 @@ Scenario: Archive a duplicate file that was already archived
 	Given a remote archive
 	Given a local folder with BinaryFile File100
 	When archived to the Cool tier
-
 	# Add the duplicate file
 	Given a local folder with BinaryFile File101 duplicate of BinaryFile File100
 	When archived to the Cool tier

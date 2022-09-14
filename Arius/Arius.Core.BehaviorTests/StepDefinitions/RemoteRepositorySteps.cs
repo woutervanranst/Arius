@@ -113,14 +113,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    Assert.AreEqual(x0 + x, x1);
         //}
 
-        [Then("{int} additional total PointerFileEntry/PointerFileEntries")]
-        public void ThenAdditionalTotalPointerFileEntry(int x)
-        {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().AllPfes.Length;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().AllPfes.Length;
+        //[Then("{int} additional total PointerFileEntry/PointerFileEntries")]
+        //public void ThenAdditionalTotalPointerFileEntry(int x)
+        //{
+        //    var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().AllPfes.Length;
+        //    var x1 = scenarioContext.GetRemoteRepoStats().Last().AllPfes.Length;
 
-            Assert.AreEqual(x0 + x, x1);
-        }
+        //    Assert.AreEqual(x0 + x, x1);
+        //}
 
         [Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
@@ -131,6 +131,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             (x0 + x).Should().Be(x1);
         }
 
+        
         [Then(@"all chunks are in the {word} tier")]
         public async Task ThenAllChunksAreInTheTier(string t)
         {

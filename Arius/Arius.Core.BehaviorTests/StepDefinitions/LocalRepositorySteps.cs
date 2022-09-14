@@ -60,12 +60,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
 
-        //[BeforeScenario]
-        public void ClearDirectories()
-        {
-            directories.ArchiveTestDirectory.Clear();
-            directories.RestoreTestDirectory.Clear();
-        }
+        ////[BeforeScenario]
+        //public void ClearDirectories()
+        //{
+        //    directories.ArchiveTestDirectory.Clear();
+        //    directories.RestoreTestDirectory.Clear();
+        //}
 
 
         [Given(@"a local folder with BinaryFile {word} duplicate of BinaryFile {word}")]
@@ -119,15 +119,26 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        [Then(@"{word} does not have a PointerFile and the PointerFileEntry is marked as deleted")]
-        public void ThenFileDoesNotHaveAPointerFile(string fileId)
+        [Then(@"BinaryFile {word} does not have a PointerFile and the PointerFileEntry is marked as deleted")]
+        public void ThenFileDoesNotHaveAPointerFile(string binaryFileId)
         {
-            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
 
             var (pf, pfe) = GetPointerInfo(fi);
 
             pf.Should().BeNull();
             pfe.IsDeleted.Should().BeTrue();
+        }
+
+        [Then("BinaryFile {word} has a PointerFile and the PointerFileEntry is marked as exists")]
+        public void ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
+        {
+            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+
+            var (pf, pfe) = GetPointerInfo(fi);
+
+            pf.Should().NotBeNull();
+            pfe.IsDeleted.Should().BeFalse();
         }
 
         //[Then(@"the PointerFileEntry for {word} is marked as deleted")]
@@ -141,7 +152,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
 
-       
+
 
         //[Then("{int} PointerFile(s) exist")]
         //public void ThenPointerFilesExist(int p0)
