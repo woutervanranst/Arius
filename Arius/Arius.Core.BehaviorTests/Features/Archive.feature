@@ -10,11 +10,10 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 @mytag
 Scenario: Archive one file
 	Given a remote archive
-	Given a local folder with only file File1
+	Given a local folder with file File1
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
-	#Then 1 additional total PointerFileEntry
-	Then 1 total existing PointerFileEntry
+	Then 1 additional existing PointerFileEntry
 	Then the PointerFile for file File1 exists
 	Then all chunks are in the Cool tier
 
