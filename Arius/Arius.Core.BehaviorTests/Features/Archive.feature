@@ -9,8 +9,8 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @mytag
 Scenario: Archive one file
-	Given a remote archive
-	Given a local archive with file File1
+	Given an empty remote archive
+	Given a local archive with only file File1
 	When archived to the Cool tier
 	Then 1 additional Chunk
 	Then 1 additional Manifest
