@@ -100,8 +100,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var rs0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last();
             var rs1 = scenarioContext.GetRemoteRepoStats().Last();
 
-            (rs0.chunkBlobItemCount + x).Should().Be(rs1.chunkBlobItemCount);
-            (rs0.binaryCount + x).Should().Be(rs1.binaryCount);
+            (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
+            (rs0.ManifestCount + x).Should().Be(rs1.ManifestCount);
         }
 
         //[Then("{int} additional Manifest(s)")]
@@ -116,8 +116,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then("{int} additional total PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalTotalPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().allPfes.Length;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().allPfes.Length;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().AllPfes.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().AllPfes.Length;
 
             Assert.AreEqual(x0 + x, x1);
         }
@@ -125,8 +125,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
         public void ThenAdditionalExistingPointerFileEntry(int x)
         {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().currentPfeWithoutDeleted.Length;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().currentPfeWithoutDeleted.Length;
+            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().CurrentExistingPfes.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
 
             (x0 + x).Should().Be(x1);
         }
@@ -144,7 +144,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
         public void ThenTotalExistingPointerFileEntries(int x)
         {
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().currentPfeWithoutDeleted.Length;
+            var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
 
             x1.Should().Be(x);
         }

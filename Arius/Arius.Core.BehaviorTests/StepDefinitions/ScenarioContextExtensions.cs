@@ -13,11 +13,11 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         private const string REMOTE_REPO_STATS = "RepoStats";
         private const string LOCAL_REPO_STATS = "LocalStats";
 
-        public record RemoteRepoStat(int chunkBlobItemCount,
-            int binaryCount,
-            PointerFileEntry[] currentPfeWithDeleted,
-            PointerFileEntry[] currentPfeWithoutDeleted,
-            PointerFileEntry[] allPfes);
+        public record RemoteRepoStat(int ChunkCount,
+            int ManifestCount,
+            PointerFileEntry[] CurrentWithDeletedPfes,
+            PointerFileEntry[] CurrentExistingPfes,
+            PointerFileEntry[] AllPfes);
         public record LocalRepoStat(FileInfo[] PointerFileInfos);
 
         public static async Task AddRemoteRepoStatsAsync(this ScenarioContext sc)
@@ -42,15 +42,15 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         private static async Task<RemoteRepoStat> CreateRemoteRepoStat(Repository repo)
         {
-            var chunkBlobItemCount = await repo.Chunks.GetAllChunkBlobs().CountAsync();
-            var binaryCount = await repo.Binaries.CountAsync();
+            var chunkCount = await repo.Chunks.GetAllChunkBlobs().CountAsync();
+            var manifestCount = await repo.Binaries.CountAsync();
 
-            var currentPfeWithDeleted = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
-            var currentPfeWithoutDeleted = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
+            var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
+            var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
 
             var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
-            return new RemoteRepoStat(chunkBlobItemCount, binaryCount, currentPfeWithDeleted, currentPfeWithoutDeleted, allPfes);
+            return new RemoteRepoStat(chunkCount, manifestCount, currentWithDeletedPfes, currentExistingPfes, allPfes);
         }
         private static LocalRepoStat CreateLocalRepoStat(DirectoryInfo di)
         {
