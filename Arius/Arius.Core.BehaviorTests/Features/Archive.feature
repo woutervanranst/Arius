@@ -16,21 +16,23 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 @mytag
 Scenario: Archive one file
 	Given a remote archive
-	Given a local folder with file File1
+	Given a local folder with BinaryFile File1
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
 	Then 1 additional existing PointerFileEntry
 	Then the PointerFile for file File1 exists
 	Then all chunks are in the Cool tier
 
+
 #Scenario: Archive one file to the Archive tier
 #	Given a remote archive
-#	Given a local folder with file File130 of size ARCHIVE_TIER_LIMIT
+#	Given a local folder with BinaryFile File130 of size ARCHIVE_TIER_LIMIT
+
 
 Scenario: Undelete a file
 	# Archive initial file
 	Given a remote archive
-	Given a local folder with file File1
+	Given a local folder with BinaryFile File1
 	When archived to the Cool tier
 	Then 1 additional existing PointerFileEntries
 	
@@ -39,10 +41,9 @@ Scenario: Undelete a file
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
 	Then File1 does not have a PointerFile and the PointerFileEntry is marked as deleted
-	#Then the PointerFileEntry for File1 is marked as deleted
 
 	# Restore
-	Given a local folder with file File1
+	Given a local folder with BinaryFile File1
 	When archived to the Cool tier
 	Then 1 additional existing PointerFileEntries
 	Then 1 additional total PointerFileEntry
@@ -51,7 +52,7 @@ Scenario: Undelete a file
 
 Scenario: Archive a duplicate file that was already archived
 	Given a remote archive
-	Given a local folder with file File100
+	Given a local folder with BinaryFile File100
 	When archived to the Cool tier
 
 	# Add the duplicate file
@@ -64,7 +65,7 @@ Scenario: Archive a duplicate file that was already archived
 
 Scenario: Archive two duplicate files
 	Given a remote archive
-	Given a local folder with file File110
+	Given a local folder with BinaryFile File110
 	
 	Given a local folder with file File111 duplicate of file File110
 	When archived to the Cool tier
@@ -81,7 +82,7 @@ Scenario: Archive two duplicate files
 
 Scenario: Archive a duplicate PointerFile
 	Given a remote archive
-	Given a local folder with file File120
+	Given a local folder with BinaryFile File120
 	When archived to the Cool tier
 
 	Given a duplicate Pointer Pointer121 of file File120

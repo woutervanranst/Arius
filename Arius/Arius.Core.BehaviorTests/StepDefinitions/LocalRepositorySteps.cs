@@ -42,7 +42,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    GivenLocalFolderWithFile(fileId);
         //}
 
-        [Given(@"a local folder with file {word}")]
+        [Given(@"a local folder with BinaryFile {word}")]
         public void GivenLocalFolderWithFile(string fileId)
         {
             var f0 = GetOrCreateSourceFile(fileId);
