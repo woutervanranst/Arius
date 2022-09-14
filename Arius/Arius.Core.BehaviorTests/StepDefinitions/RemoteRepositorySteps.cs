@@ -149,11 +149,11 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    x1.Should().Be(x);
         //}
 
-        [Then(@"No existing PointerFileEntry/PointerFileEntries")]
-        public void ThenTotalExistingPointerFileEntries()
-        {
-            scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Should().BeEmpty();
-        }
+        //[Then(@"No existing PointerFileEntry/PointerFileEntries")]
+        //public void ThenTotalExistingPointerFileEntries()
+        //{
+        //    scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Should().BeEmpty();
+        //}
 
 
 

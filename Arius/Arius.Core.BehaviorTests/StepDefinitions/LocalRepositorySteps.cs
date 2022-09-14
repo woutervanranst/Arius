@@ -35,12 +35,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
 
-        [Given(@"a local folder with only file {word}")]
-        public void GivenLocalFolderWithOnlyFile(string fileId)
-        {
-            ClearDirectories();
-            GivenLocalFolderWithFile(fileId);
-        }
+        //[Given(@"a local folder with only file {word}")]
+        //public void GivenLocalFolderWithOnlyFile(string fileId)
+        //{
+        //    ClearDirectories();
+        //    GivenLocalFolderWithFile(fileId);
+        //}
 
         [Given(@"a local folder with file {word}")]
         public void GivenLocalFolderWithFile(string fileId)
@@ -52,6 +52,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             scenarioContext[fileId] = new RelatedFiles(f0, f1, null);
             scenarioContext.AddLocalRepoStats();
         }
+
+        [Given("a local folder with file {word} of size ARCHIVE_TIER_LIMIT")]
+        public void GivenALocalFolderWithFileFileOfSizeARCHIVE_TIER_LIMIT(string fileId)
+        {
+            throw new PendingStepException();
+        }
+
 
         //[BeforeScenario]
         public void ClearDirectories()
@@ -91,11 +98,23 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        [When(@"the local folder is cleared")]
-        public void WhenTheLocalFolderIsCleared()
+        //[When(@"the local folder is cleared")]
+        //public void WhenTheLocalFolderIsCleared()
+        //{
+        //    ClearDirectories();
+        //}
+
+        [When(@"BinaryFile {word} and its PointerFile are deleted")]
+        public void FileIsDeleted(string fileId)
         {
-            ClearDirectories();
+            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+            fi.Delete();
+
+            var (pfi, _) = GetPointerInfo(fi);
+            pfi.Delete();
         }
+
+
 
 
 

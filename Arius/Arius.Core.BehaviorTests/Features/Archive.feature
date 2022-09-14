@@ -7,6 +7,12 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 // TODO: Living Documentation
 //TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
 
+/*
+	PRINCIPLES
+
+		No checks on 'total' pointerfileentries, chunks, ... --> test on additinoal ones
+*/
+
 @mytag
 Scenario: Archive one file
 	Given a remote archive
@@ -29,9 +35,8 @@ Scenario: Undelete a file
 	Then 1 additional existing PointerFileEntries
 	
 	# Delete, then archive
-	When the local folder is cleared
+	When BinaryFile File1 and its PointerFile are deleted
 	When archived to the Cool tier
-	Then No existing PointerFileEntries
 	Then 0 additional Chunks and Manifests
 	Then File1 does not have a PointerFile
 	Then the PointerFileEntry for File1 is marked as deleted
