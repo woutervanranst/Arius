@@ -31,7 +31,7 @@ Scenario: Undelete a file
 	# Delete, then archive
 	When the local folder is cleared
 	When archived to the Cool tier
-	Then 0 total existing PointerFileEntries
+	Then No existing PointerFileEntries
 	Then 0 additional Chunks and Manifests
 	Then File1 does not have a PointerFile
 	Then the PointerFileEntry for File1 is marked as deleted
@@ -39,7 +39,7 @@ Scenario: Undelete a file
 	# Restore
 	Given a local folder with file File1
 	When archived to the Cool tier
-	Then 1 total existing PointerFileEntries
+	Then 1 additional existing PointerFileEntries
 	Then 1 additional total PointerFileEntry
 	Then 0 additional Chunks and Manifests
 	

@@ -141,15 +141,19 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             chunks.Select(cbb => cbb.AccessTier).Should().AllBeEquivalentTo(tier);
         }
 
-        [Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
-        public void ThenTotalExistingPointerFileEntries(int x)
+        //[Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]
+        //public void ThenTotalExistingPointerFileEntries(int x)
+        //{
+        //    var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
+
+        //    x1.Should().Be(x);
+        //}
+
+        [Then(@"No existing PointerFileEntry/PointerFileEntries")]
+        public void ThenTotalExistingPointerFileEntries()
         {
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
-
-            x1.Should().Be(x);
+            scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Should().BeEmpty();
         }
-
-
 
 
 
