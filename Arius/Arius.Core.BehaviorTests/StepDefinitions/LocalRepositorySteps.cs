@@ -32,11 +32,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
         }
 
-        //[BeforeScenario]
-        public void ClearDirectories()
+        record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
+
+
+        [Given(@"a local archive with only file {word}")]
+        public void GivenLocalArchiveWithOnlyFile(string fileId)
         {
-            directories.ArchiveTestDirectory.Clear();
-            directories.RestoreTestDirectory.Clear();
+            ClearDirectories();
+            GivenLocalArchiveWithFile(fileId);
         }
 
         [Given(@"a local archive with file {word}")]
@@ -47,16 +50,16 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var f1 = f0.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
             scenarioContext[fileId] = new RelatedFiles(f0, f1, null);
+            scenarioContext.AddLocalRepoStats();
         }
 
-        [Given(@"a local archive with only file {word}")]
-        public void GivenLocalArchiveWithOnlyFile(string fileId)
+        //[BeforeScenario]
+        public void ClearDirectories()
         {
-            ClearDirectories();
-            GivenLocalArchiveWithFile(fileId);
+            directories.ArchiveTestDirectory.Clear();
+            directories.RestoreTestDirectory.Clear();
         }
 
-        record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
         
 
@@ -72,6 +75,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             scenarioContext[newFileId] = new RelatedFiles(f1, f2, null);
         }
+
+
 
 
         [Then(@"all local files have PointerFiles and PointerFileEntries")]
@@ -107,6 +112,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
                 bfi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
             }
         }
+
+
+
+
 
         [When(@"the local archive is cleared")]
         public void WhenTheLocalArchiveIsCleared()
@@ -148,11 +157,22 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             pf1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
         }
 
-        [Then("{int} PointerFile(s) exist")]
-        public void ThenPointerFilesExist(int p0)
+        //[Then("{int} PointerFile(s) exist")]
+        //public void ThenPointerFilesExist(int p0)
+        //{
+        //    directories.ArchiveTestDirectory.GetPointerFileInfos().Count().Should().Be(p0);
+        //}
+
+        [Then("{int} additional PointerFile(s) exist")]
+        public void ThenPointerFilesExist(int x)
         {
-            directories.ArchiveTestDirectory.GetPointerFileInfos().Count().Should().Be(p0);
+            var x0 = scenarioContext.GetLocalRepoStats().SkipLast(1).Last().PointerFileInfos.Length;
+            var x1 = scenarioContext.GetLocalRepoStats().Last().PointerFileInfos.Length;
+
+            Assert.AreEqual(x0 + x, x1);
         }
+
+
 
 
 

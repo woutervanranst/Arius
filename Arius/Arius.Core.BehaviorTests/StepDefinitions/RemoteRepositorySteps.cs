@@ -1,5 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Configuration;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
@@ -62,6 +63,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         private const string REMOTE_REPO_STATS = "RepoStats";
         private const string LOCAL_REPO_STATS = "LocalStats";
 
+        public record RemoteRepoStat(int chunkBlobItemCount,
+            int binaryCount,
+            PointerFileEntry[] currentPfeWithDeleted,
+            PointerFileEntry[] currentPfeWithoutDeleted,
+            PointerFileEntry[] allPfes);
+        public record LocalRepoStat(FileInfo[] PointerFileInfos);
+
         public static async Task AddRemoteRepoStatsAsync(this ScenarioContext sc)
         {
             if (!sc.ContainsKey(REMOTE_REPO_STATS))
@@ -69,14 +77,18 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             sc.GetRemoteRepoStats().Add(await CreateRemoteRepoStat(GetRepository(sc)));
         }
+        public static void AddLocalRepoStats(this ScenarioContext sc)
+        {
+            if (!sc.ContainsKey(LOCAL_REPO_STATS))
+                sc[LOCAL_REPO_STATS] = new List<LocalRepoStat>();
+
+            var di = sc.ScenarioContainer.Resolve<Directories>().ArchiveTestDirectory; // todo when you are here because of Restore not working, probably we can do away with the restore directory entirly?
+            sc.GetLocalRepoStats().Add(CreateLocalRepoStat(di));
+        }
+
 
         public static List<RemoteRepoStat> GetRemoteRepoStats(this ScenarioContext sc) => (List<RemoteRepoStat>)sc[REMOTE_REPO_STATS];
-
-        public record RemoteRepoStat(int chunkBlobItemCount,
-            int binaryCount,
-            PointerFileEntry[] currentPfeWithDeleted,
-            PointerFileEntry[] currentPfeWithoutDeleted,
-            PointerFileEntry[] allPfes);
+        public static List<LocalRepoStat> GetLocalRepoStats(this ScenarioContext sc) => (List<LocalRepoStat>)sc[LOCAL_REPO_STATS];
 
         private static async Task<RemoteRepoStat> CreateRemoteRepoStat(Repository repo)
         {
@@ -89,6 +101,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
             return new RemoteRepoStat(chunkBlobItemCount, binaryCount, currentPfeWithDeleted, currentPfeWithoutDeleted, allPfes);
+        }
+        private static LocalRepoStat CreateLocalRepoStat(DirectoryInfo di)
+        {
+            var pfis = di.GetPointerFileInfos().ToArray();
+
+            return new LocalRepoStat(pfis);
         }
 
     }
