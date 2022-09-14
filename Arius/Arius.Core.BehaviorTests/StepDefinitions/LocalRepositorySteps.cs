@@ -35,15 +35,15 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
 
-        [Given(@"a local archive with only file {word}")]
-        public void GivenLocalArchiveWithOnlyFile(string fileId)
+        [Given(@"a local folder with only file {word}")]
+        public void GivenLocalFolderWithOnlyFile(string fileId)
         {
             ClearDirectories();
-            GivenLocalArchiveWithFile(fileId);
+            GivenLocalFolderWithFile(fileId);
         }
 
-        [Given(@"a local archive with file {word}")]
-        public void GivenLocalArchiveWithFile(string fileId)
+        [Given(@"a local folder with file {word}")]
+        public void GivenLocalFolderWithFile(string fileId)
         {
             var f0 = GetOrCreateSourceFile(fileId);
 
@@ -63,8 +63,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
         
 
-        [Given(@"a local archive with file {word} duplicate of {word}")]
-        public void GivenOneLocalFileDuplicateOfFile(string newFileId, string originalFileId)
+        [Given(@"a local folder with file {word} duplicate of file {word}")]
+        public void GivenALocalFolderWithFileDuplicateOf(string newFileId, string originalFileId)
         {
             var f0 = GetOrCreateSourceFile(originalFileId);
             var f1 = f0.CopyTo(directories.SourceDirectory, $"Duplicate of {f0.Name}");
@@ -117,8 +117,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        [When(@"the local archive is cleared")]
-        public void WhenTheLocalArchiveIsCleared()
+        [When(@"the local folder is cleared")]
+        public void WhenTheLocalFolderIsCleared()
         {
             ClearDirectories();
         }

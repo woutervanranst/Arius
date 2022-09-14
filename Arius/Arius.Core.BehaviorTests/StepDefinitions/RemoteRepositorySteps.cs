@@ -21,14 +21,11 @@ using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
     public record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
-
-    
     
     [Binding]
     class RemoteRepositorySteps : TestBase
     {
         private const string TestContainerNamePrefix = "unittest";
-
 
         [BeforeTestRun(Order = 1)]
         public static async Task InitializeRemoteRepository(/*ITestRunnerManager testRunnerManager, ITestRunner testRunner, */IObjectContainer oc)
