@@ -97,15 +97,11 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().chunkBlobItemCount;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().chunkBlobItemCount;
+            var rs0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last();
+            var rs1 = scenarioContext.GetRemoteRepoStats().Last();
 
-            Assert.AreEqual(x0 + x, x1);
-
-            x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().binaryCount;
-            x1 = scenarioContext.GetRemoteRepoStats().Last().binaryCount;
-
-            Assert.AreEqual(x0 + x, x1);
+            (rs0.chunkBlobItemCount + x).Should().Be(rs1.chunkBlobItemCount);
+            (rs0.binaryCount + x).Should().Be(rs1.binaryCount);
         }
 
         //[Then("{int} additional Manifest(s)")]
