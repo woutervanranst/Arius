@@ -38,8 +38,8 @@ Scenario: Undelete a file
 	When BinaryFile File1 and its PointerFile are deleted
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
-	Then File1 does not have a PointerFile
-	Then the PointerFileEntry for File1 is marked as deleted
+	Then File1 does not have a PointerFile and the PointerFileEntry is marked as deleted
+	#Then the PointerFileEntry for File1 is marked as deleted
 
 	# Restore
 	Given a local folder with file File1

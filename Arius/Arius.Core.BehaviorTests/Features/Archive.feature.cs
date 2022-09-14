@@ -167,10 +167,7 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 41
- testRunner.Then("File1 does not have a PointerFile", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 42
- testRunner.Then("the PointerFileEntry for File1 is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("File1 does not have a PointerFile and the PointerFileEntry is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 45
  testRunner.Given("a local folder with file File1", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");

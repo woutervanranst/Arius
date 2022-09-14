@@ -119,7 +119,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        [Then(@"{word} does not have a PointerFile")]
+        [Then(@"{word} does not have a PointerFile and the PointerFileEntry is marked as deleted")]
         public void ThenFileDoesNotHaveAPointerFile(string fileId)
         {
             var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
@@ -127,17 +127,18 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var (pf, pfe) = GetPointerInfo(fi);
 
             pf.Should().BeNull();
-        }
-
-        [Then(@"the PointerFileEntry for {word} is marked as deleted")]
-        public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string fileId)
-        {
-            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
-
-            var (pf, pfe) = GetPointerInfo(fi);
-
             pfe.IsDeleted.Should().BeTrue();
         }
+
+        //[Then(@"the PointerFileEntry for {word} is marked as deleted")]
+        //public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string fileId)
+        //{
+        //    var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+
+        //    var (pf, pfe) = GetPointerInfo(fi);
+
+        //    pfe.IsDeleted.Should().BeTrue();
+        //}
 
 
        
