@@ -122,14 +122,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    Assert.AreEqual(x0 + x, x1);
         //}
 
-        [Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
-        public void ThenAdditionalExistingPointerFileEntry(int x)
-        {
-            var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().CurrentExistingPfes.Length;
-            var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
+        //[Then(@"{int} additional existing PointerFileEntry/PointerFileEntries")]
+        //public void ThenAdditionalExistingPointerFileEntry(int x)
+        //{
+        //    var x0 = scenarioContext.GetRemoteRepoStats().SkipLast(1).Last().CurrentExistingPfes.Length;
+        //    var x1 = scenarioContext.GetRemoteRepoStats().Last().CurrentExistingPfes.Length;
 
-            (x0 + x).Should().Be(x1);
-        }
+        //    (x0 + x).Should().Be(x1);
+        //}
 
         
         [Then(@"all chunks are in the {word} tier")]

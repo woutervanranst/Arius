@@ -171,19 +171,19 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        [Then(@"all local files have PointerFiles and PointerFileEntries")]
-        public void ThenAllLocalFilesHavePointerFilesAndPointerFileEntries()
-        {
-            foreach (var bfi in directories.ArchiveTestDirectory.GetBinaryFileInfos())
-                IsValidPointerFile(bfi);
-        }
+        //[Then(@"all local files have PointerFiles and PointerFileEntries")]
+        //public void ThenAllLocalFilesHavePointerFilesAndPointerFileEntries()
+        //{
+        //    foreach (var bfi in directories.ArchiveTestDirectory.GetBinaryFileInfos())
+        //        IsValidPointerFile(bfi);
+        //}
 
-        [Then(@"all local PointerFiles have PointerFileEntries")]
-        public void ThenAllLocalPointerFilesHavePointerFileEntries()
-        {
-            foreach (var pfi in directories.ArchiveTestDirectory.GetPointerFileInfos())
-                IsValidPointerFile(pfi);
-        }
+        //[Then(@"all local PointerFiles have PointerFileEntries")]
+        //public void ThenAllLocalPointerFilesHavePointerFileEntries()
+        //{
+        //    foreach (var pfi in directories.ArchiveTestDirectory.GetPointerFileInfos())
+        //        IsValidPointerFile(pfi);
+        //}
 
         /// <summary>
         /// if a (Binary)FileInfo -> checks whether it has a valid PointerFile
@@ -203,12 +203,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
         }
 
-        [Then("the PointerFile for file {word} exists")]
-        public void ThenThePointerFileForFileFileExists(string fileId)
-        {
-            var bfi = ((RelatedFiles)scenarioContext[fileId]).Archive;
-            IsValidPointerFile(bfi);
-        }
+        //[Then("the PointerFile for file {word} exists")]
+        //public void ThenThePointerFileForFileFileExists(string fileId)
+        //{
+        //    var bfi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+        //    IsValidPointerFile(bfi);
+        //}
 
         [Then("the PointerFile {word} exists")]
         public void ThenThePointerFilePointerExists(string pointerId)

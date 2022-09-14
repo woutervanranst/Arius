@@ -19,8 +19,7 @@ Scenario: Archive one file
 	Given a local folder with BinaryFile File1
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
-	Then 1 additional existing PointerFileEntry
-	Then the PointerFile for file File1 exists
+	Then BinaryFile File1 has a PointerFile and the PointerFileEntry is marked as exists
 	Then all chunks are in the Cool tier
 
 
@@ -34,7 +33,7 @@ Scenario: Undelete a file
 	Given a remote archive
 	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
-	Then 1 additional existing PointerFileEntry
+	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
 	# Delete, then archive
 	When BinaryFile File2 and its PointerFile are deleted
 	When archived to the Cool tier
@@ -44,37 +43,35 @@ Scenario: Undelete a file
 	Given a local folder with BinaryFile File2
 	When archived to the Cool tier
 	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
-	Then 1 additional existing PointerFileEntries
 	Then 0 additional Chunks and Manifests
 	
 
 Scenario: Archive a duplicate file that was already archived
 	Given a remote archive
-	Given a local folder with BinaryFile File100
+	Given a local folder with BinaryFile File300
 	When archived to the Cool tier
 	# Add the duplicate file
-	Given a local folder with BinaryFile File101 duplicate of BinaryFile File100
+	Given a local folder with BinaryFile File301 duplicate of BinaryFile File300
 	When archived to the Cool tier
+	Then BinaryFile File300 has a PointerFile and the PointerFileEntry is marked as exists
+	Then BinaryFile File301 has a PointerFile and the PointerFileEntry is marked as exists
 	Then 0 additional Chunks and Manifests
-	Then 1 additional existing PointerFileEntry
-	Then all local files have PointerFiles and PointerFileEntries
 	
 
 Scenario: Archive two duplicate files
 	Given a remote archive
-	Given a local folder with BinaryFile File110
 	
-	Given a local folder with BinaryFile File111 duplicate of BinaryFile File110
+	Given a local folder with BinaryFile File400
+	Given a local folder with BinaryFile File401 duplicate of BinaryFile File400
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
-	Then 2 additional existing PointerFileEntries
-	Then all local files have PointerFiles and PointerFileEntries
+	Then BinaryFile File400 has a PointerFile and the PointerFileEntry is marked as exists
+	Then BinaryFile File401 has a PointerFile and the PointerFileEntry is marked as exists
 
-	Given a local folder with BinaryFile File112 duplicate of BinaryFile File111
+	Given a local folder with BinaryFile File402 duplicate of BinaryFile File401
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
-	Then 1 additional existing PointerFileEntry
-	Then all local files have PointerFiles and PointerFileEntries
+	Then BinaryFile File402 has a PointerFile and the PointerFileEntry is marked as exists
 
 
 Scenario: Archive a duplicate PointerFile
