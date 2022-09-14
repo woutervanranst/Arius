@@ -32,6 +32,9 @@ public static class FileInfoExtensions
     /// </summary>
     internal static FileInfo CopyTo(this FileInfo source, DirectoryInfo sourceRoot, DirectoryInfo targetDir, bool overwrite = false)
     {
+        if (!source.IsInDirectoryTree(sourceRoot))
+            throw new ArgumentException($"{source.FullName} is not in the source directory {sourceRoot.FullName}");
+
         var relativeName = Path.GetRelativePath(sourceRoot.FullName, source.FullName);
         var target = new FileInfo(Path.Combine(targetDir.FullName, relativeName));
         target.Directory.Create();
@@ -43,6 +46,29 @@ public static class FileInfoExtensions
         }
 
         return target;
+    }
+
+    /// <summary>
+    /// Checks whether fi is in the directory tree under parent, recursively
+    /// eg. c:\test\dir1\file1.txt, c:\test\dir1 is true
+    /// eg. c:\test\dir1\file1.txt, c:\test\abcd is false
+    /// </summary>
+    /// <param name="fi"></param>
+    /// <param name="parent"></param>
+    /// <returns></returns>
+    internal static bool IsInDirectoryTree(this FileInfo fi, DirectoryInfo parent)
+    {
+        var dir = fi.Directory;
+        while (true)
+        {
+            if (String.Compare(dir.FullName, parent.FullName, StringComparison.OrdinalIgnoreCase) == 0)
+                return true;
+
+            dir = dir.Parent;
+
+            if (dir is null)
+                return false;
+        }
     }
 
     internal static void Rename(this FileInfo source, string targetName)
