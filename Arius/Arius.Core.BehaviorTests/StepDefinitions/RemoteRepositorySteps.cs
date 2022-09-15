@@ -81,12 +81,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             await scenarioContext.AddRemoteRepoStatsAsync();
         }
 
-        [Given(@"an empty remote archive")]
-        public async Task GivenAnEmptyRemoteArchive()
-        {
-            await PurgeRemote(container);
-            await scenarioContext.AddRemoteRepoStatsAsync();
-        }
+        //[Given(@"an empty remote archive")]
+        //public async Task GivenAnEmptyRemoteArchive()
+        //{
+        //    await PurgeRemote(container);
+        //    await scenarioContext.AddRemoteRepoStatsAsync();
+        //}
         public static async Task PurgeRemote(BlobContainerClient bcc)
         {
             // delete all blobs in the container but leave the container
@@ -147,7 +147,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             
-            var (pf, pfe) = await GetPointerInfoAsync(bfi);
+            var (_, pfe) = await GetPointerInfoAsync(bfi);
 
             var repo = scenarioContext.GetRepository();
 
@@ -157,13 +157,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             foreach (var ch in chs)
             {
-                repo.Chunks.GetChunkBlobByHash(ch, false).AccessTier.Should().Be(tier);
+                var ch0 = repo.Chunks.GetChunkBlobByHash(ch, false);
+                ch0.AccessTier.Should().Be(tier);
 
-                var r = repo.Chunks.GetChunkBlobByHash(ch, true);
+                var ch1 = repo.Chunks.GetChunkBlobByHash(ch, true);
                 if (h == "HYDRATED")
-                    r.Should().NotBeNull();
+                    ch1.Should().NotBeNull();
                 else if (h == "NOT_HYDRATED")
-                    r.Should().BeNull();
+                    ch1.Should().BeNull();
                 else
                     throw new NotImplementedException();
             }

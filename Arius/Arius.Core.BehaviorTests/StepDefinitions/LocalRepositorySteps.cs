@@ -80,22 +80,22 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
         [Given(@"a local folder with BinaryFile {word} duplicate of BinaryFile {word}")]
-        public void GivenALocalFolderWithFileDuplicateOf(string newFileId, string originalFileId)
+        public void GivenALocalFolderWithFileDuplicateOf(string newBinaryFileId, string originalBinaryFileId)
         {
-            var f0 = GetOrCreateSourceFile(originalFileId);
+            var f0 = GetOrCreateSourceFile(originalBinaryFileId);
             var f1 = f0.CopyTo(directories.SourceDirectory, $"Duplicate of {f0.Name}");
             f1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
             f1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
 
             var f2 = f1.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            scenarioContext[newFileId] = new RelatedFiles(f1, f2, null);
+            scenarioContext[newBinaryFileId] = new RelatedFiles(f1, f2, null);
         }
 
-        [Given("a duplicate Pointer {word} of file {word}")]
-        public async Task WhenADuplicatePointerOfFileFile(string pointerId, string fileId)
+        [Given("a duplicate PointerFile {word} of the Pointer of BinaryFile {word}")]
+        public async Task WhenADuplicatePointerOfFileFile(string pointerFileId, string binaryFileId)
         {
-            var bfi0 = ((RelatedFiles)scenarioContext[fileId]).Archive;
+            var bfi0 = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
 
             var (pf0, _) = await GetPointerInfoAsync(bfi0);
             var pfi1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
@@ -104,7 +104,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             pfi1.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
             pfi1.LastWriteTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
 
-            scenarioContext[pointerId] = pfi1;
+            scenarioContext[pointerFileId] = pfi1;
         }
 
 
@@ -116,9 +116,9 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         [When(@"BinaryFile {word} and its PointerFile are deleted")]
-        public async Task FileIsDeleted(string fileId)
+        public async Task FileIsDeleted(string binaryFileId)
         {
-            var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
+            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             fi.Delete();
 
             var (pfi, _) = await GetPointerInfoAsync(fi);
@@ -222,10 +222,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         [Then("the PointerFile {word} exists")]
-        public void ThenThePointerFilePointerExists(string pointerId)
+        public async Task ThenThePointerFilePointerExists(string pointerFileId)
         {
-            var pfi = (FileInfo)scenarioContext[pointerId];
-            IsValidPointerFile(pfi);
+            var pfi = (FileInfo)scenarioContext[pointerFileId];
+            await IsValidPointerFile(pfi);
         }
 
 

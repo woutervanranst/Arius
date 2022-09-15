@@ -86,7 +86,7 @@ Scenario: Archive a duplicate PointerFile
 	Given a local folder with BinaryFile File120
 	When archived to the Cool tier
 
-	Given a duplicate Pointer Pointer121 of file File120
+	Given a duplicate PointerFile Pointer121 of the Pointer of BinaryFile File120
 	When archived to the Cool tier
 	
 	Then 0 additional Chunks and Manifests

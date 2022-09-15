@@ -328,7 +328,7 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 89
- testRunner.Given("a duplicate Pointer Pointer121 of file File120", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("a duplicate PointerFile Pointer121 of the Pointer of BinaryFile File120", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 90
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
