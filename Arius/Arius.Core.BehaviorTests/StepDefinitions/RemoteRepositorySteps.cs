@@ -132,14 +132,30 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         
-        [Then(@"all chunks are in the {word} tier")]
-        public async Task ThenAllChunksAreInTheTier(string t)
+        //[Then(@"all chunks are in the {word} tier")]
+        //public async Task ThenAllChunksAreInTheTier(string t)
+        //{
+        //    var tier = (AccessTier)t;
+
+        //    var chunks = await scenarioContext.GetRepository().Chunks.GetAllChunkBlobs().ToListAsync();
+
+        //    chunks.Select(cbb => cbb.AccessTier).Should().AllBeEquivalentTo(tier);
+        //}
+
+        [Then(@"the Chunks for BinaryFile {word} are in the {word} tier")]
+        public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryFileId, string t)
         {
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            
+            var (pf, pfe) = await GetPointerInfoAsync(bfi);
+
+            var repo = scenarioContext.GetRepository();
+
+            var chs = await repo.Binaries.GetChunkHashesAsync(pfe!.BinaryHash);
+
             var tier = (AccessTier)t;
 
-            var chunks = await scenarioContext.GetRepository().Chunks.GetAllChunkBlobs().ToListAsync();
-
-            chunks.Select(cbb => cbb.AccessTier).Should().AllBeEquivalentTo(tier);
+            chs.Select(ch => repo.Chunks.GetChunkBlobByHash(ch, false).AccessTier).Should().AllBeEquivalentTo(tier);
         }
 
         //[Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]

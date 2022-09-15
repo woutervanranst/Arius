@@ -11,10 +11,12 @@ using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
-    public record Directories(DirectoryInfo Root, DirectoryInfo RunRoot, DirectoryInfo SourceDirectory, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
+    record Directories(DirectoryInfo Root, DirectoryInfo RunRoot, DirectoryInfo SourceDirectory, DirectoryInfo ArchiveTestDirectory, DirectoryInfo RestoreTestDirectory);
+
+    record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
     [Binding]
-    class LocalRepositorySteps : LocalTestBase
+    class LocalRepositorySteps : TestBase
     {
         [BeforeTestRun(Order = 2)] //run after the RemoteRepository is initialized, and the BlobContainerClient is available for DI
         public static void InitializeLocalRepository(IObjectContainer oc, BlobContainerClient bcc)
@@ -28,11 +30,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             oc.RegisterInstanceAs(new Directories(root, runRoot, sourceDirectory, archiveTestDirectory, restoreTestDirectory));
         }
 
-        public LocalRepositorySteps(ScenarioContext sc, Directories directories) : base(sc, directories)
+        public LocalRepositorySteps(ScenarioContext sc) : base(sc)
         {
         }
 
-        record RelatedFiles(FileInfo Source, FileInfo Archive, FileInfo Restore);
 
 
         //[Given(@"a local folder with only file {word}")]
@@ -82,11 +83,11 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         [Given("a duplicate Pointer {word} of file {word}")]
-        public void WhenADuplicatePointerOfFileFile(string pointerId, string fileId)
+        public async Task WhenADuplicatePointerOfFileFile(string pointerId, string fileId)
         {
             var bfi0 = ((RelatedFiles)scenarioContext[fileId]).Archive;
 
-            var (pf0, _) = GetPointerInfo(bfi0);
+            var (pf0, _) = await GetPointerInfoAsync(bfi0);
             var pfi1 = new FileInfo(Path.Combine(directories.ArchiveTestDirectory.FullName, $"Duplicate of {pf0.Name}"));
             File.Copy(pf0.FullName, pfi1.FullName);
 
@@ -105,12 +106,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         [When(@"BinaryFile {word} and its PointerFile are deleted")]
-        public void FileIsDeleted(string fileId)
+        public async Task FileIsDeleted(string fileId)
         {
             var fi = ((RelatedFiles)scenarioContext[fileId]).Archive;
             fi.Delete();
 
-            var (pfi, _) = GetPointerInfo(fi);
+            var (pfi, _) = await GetPointerInfoAsync(fi);
             pfi.Delete();
         }
 
@@ -120,22 +121,22 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
         [Then(@"BinaryFile {word} does not have a PointerFile and the PointerFileEntry is marked as deleted")]
-        public void ThenFileDoesNotHaveAPointerFile(string binaryFileId)
+        public async Task ThenFileDoesNotHaveAPointerFile(string binaryFileId)
         {
             var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
 
-            var (pf, pfe) = GetPointerInfo(fi);
+            var (pf, pfe) = await GetPointerInfoAsync(fi);
 
             pf.Should().BeNull();
             pfe.IsDeleted.Should().BeTrue();
         }
 
         [Then("BinaryFile {word} has a PointerFile and the PointerFileEntry is marked as exists")]
-        public void ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
+        public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
         {
             var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
 
-            var (pf, pfe) = GetPointerInfo(fi);
+            var (pf, pfe) = await GetPointerInfoAsync(fi);
 
             pf.Should().NotBeNull();
             pfe.IsDeleted.Should().BeFalse();
@@ -190,9 +191,9 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         /// if a PointerFile -> chekcs whether is it valid
         /// </summary>
         /// <param name="fi"></param>
-        private void IsValidPointerFile(FileInfo fi)
+        private async Task IsValidPointerFile(FileInfo fi)
         {
-            var (pf, pfe) = GetPointerInfo(fi);
+            var (pf, pfe) = await GetPointerInfoAsync(fi);
 
             pf.Should().NotBeNull();
 

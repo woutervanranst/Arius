@@ -20,7 +20,7 @@ Scenario: Archive one file
 	When archived to the Cool tier
 	Then 1 additional Chunk and Manifest
 	Then BinaryFile File1 has a PointerFile and the PointerFileEntry is marked as exists
-	Then all chunks are in the Cool tier
+	Then the Chunks for BinaryFile File1 are in the Cool tier
 
 
 #Scenario: Archive one file to the Archive tier

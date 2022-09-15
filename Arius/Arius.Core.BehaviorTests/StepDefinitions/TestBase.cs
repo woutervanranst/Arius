@@ -8,29 +8,21 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         public TestBase(ScenarioContext sc)
         {
             scenarioContext = sc;
-        }
-
-        protected readonly ScenarioContext scenarioContext;
-    }
-
-    class LocalTestBase : TestBase
-    {
-        public LocalTestBase(ScenarioContext sc, Directories dirs) : base(sc)
-        {
-            directories = dirs;
+            directories = sc.ScenarioContainer.Resolve<Directories>();
         }
 
         protected readonly Directories directories;
+        protected readonly ScenarioContext scenarioContext;
 
-        protected (PointerFile pf, PointerFileEntry? pfe) GetPointerInfo(FileInfo fi)
+        protected async Task<(PointerFile pf, PointerFileEntry? pfe)> GetPointerInfoAsync(FileInfo fi)
         {
             var pf = scenarioContext.GetPointerService().GetPointerFile(fi);
 
             var a_rn = Path.GetRelativePath(directories.ArchiveTestDirectory.FullName, fi.FullName);
-            var pfe = scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+            var pfes = await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true);
+            var pfe = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
 
             return (pf, pfe);
-
         }
     }
 }
