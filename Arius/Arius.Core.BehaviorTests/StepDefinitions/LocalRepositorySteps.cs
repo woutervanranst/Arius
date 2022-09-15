@@ -44,20 +44,30 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         [Given(@"a local folder with BinaryFile {word}")]
-        public void GivenLocalFolderWithFile(string fileId)
+        public void GivenLocalFolderWithFile(string binaryFileId)
         {
-            var f0 = GetOrCreateSourceFile(fileId);
+            NewMethod(binaryFileId);
+        }
+        [Given("a local folder with BinaryFile {word} of size {word}")]
+        public void GivenALocalFolderWithFileFileOfSizeARCHIVE_TIER_LIMIT(string binaryFileId, string size)
+        {
+            int? sizeInBytes = size switch
+            {
+                "BELOW_ARCHIVE_TIER_LIMIT" => null,
+                "ABOVE_ARCHIVE_TIER_LIMIT" => 1024 * 1024 + 1  // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync) 
+            };
+
+            NewMethod(binaryFileId, sizeInBytes);
+        }
+
+        private void NewMethod(string binaryFileId, int? sizeInBytes = null)
+        {
+            var f0 = GetOrCreateSourceFile(binaryFileId, sizeInBytes: sizeInBytes);
 
             var f1 = f0.CopyTo(directories.SourceDirectory, directories.ArchiveTestDirectory);
 
-            scenarioContext[fileId] = new RelatedFiles(f0, f1, null);
+            scenarioContext[binaryFileId] = new RelatedFiles(f0, f1, null);
             scenarioContext.AddLocalRepoStats();
-        }
-
-        [Given("a local folder with BinaryFile {word} of size ARCHIVE_TIER_LIMIT")]
-        public void GivenALocalFolderWithFileFileOfSizeARCHIVE_TIER_LIMIT(string fileId)
-        {
-            throw new PendingStepException();
         }
 
 
@@ -226,22 +236,22 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
 
 
-        private FileInfo GetOrCreateSourceFile(string fileId, string? name = default, int? sizeInBytes = default)
+        private FileInfo GetOrCreateSourceFile(string binaryFileId, string? name = default, int? sizeInBytes = default)
         {
-            if (!scenarioContext.ContainsKey(fileId))
+            if (!scenarioContext.ContainsKey(binaryFileId))
             {
                 if (name == default)
                     name = Path.GetRandomFileName();
 
                 if (sizeInBytes == default)
-                    sizeInBytes = 512000 + 1;
+                    sizeInBytes = 512000 + 1; //make it an odd size to test buffer edge cases
 
                 var f = CreateRandomFile(Path.Combine(directories.SourceDirectory.FullName, "dir 1", name), sizeInBytes!.Value);
 
-                scenarioContext[fileId] = new RelatedFiles(f, null, null);
+                scenarioContext[binaryFileId] = new RelatedFiles(f, null, null);
             }
 
-            return ((RelatedFiles)scenarioContext[fileId]).Source;
+            return ((RelatedFiles)scenarioContext[binaryFileId]).Source;
         }
 
         private static FileInfo CreateRandomFile(string fileFullName, int sizeInBytes)

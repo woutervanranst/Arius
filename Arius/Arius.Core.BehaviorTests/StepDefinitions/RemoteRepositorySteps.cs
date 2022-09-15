@@ -142,8 +142,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    chunks.Select(cbb => cbb.AccessTier).Should().AllBeEquivalentTo(tier);
         //}
 
-        [Then(@"the Chunks for BinaryFile {word} are in the {word} tier")]
-        public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryFileId, string t)
+        [Then(@"the Chunks for BinaryFile {word} are in the {word} tier and are {word}")]
+        public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryFileId, string t, string h)
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             
@@ -155,7 +155,18 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             var tier = (AccessTier)t;
 
-            chs.Select(ch => repo.Chunks.GetChunkBlobByHash(ch, false).AccessTier).Should().AllBeEquivalentTo(tier);
+            foreach (var ch in chs)
+            {
+                repo.Chunks.GetChunkBlobByHash(ch, false).AccessTier.Should().Be(tier);
+
+                var r = repo.Chunks.GetChunkBlobByHash(ch, true);
+                if (h == "HYDRATED")
+                    r.Should().NotBeNull();
+                else if (h == "NOT_HYDRATED")
+                    r.Should().BeNull();
+                else
+                    throw new NotImplementedException();
+            }
         }
 
         //[Then(@"{int} total existing PointerFileEntry/PointerFileEntries")]

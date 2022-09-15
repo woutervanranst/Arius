@@ -55,7 +55,7 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(bfi.LastWriteTimeUtc, pfe.LastWriteTimeUtc);
     }
 
-    [Test]
+    [Test] // FEATURE OK
     public async Task Archive_OneFileArchiveTier_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

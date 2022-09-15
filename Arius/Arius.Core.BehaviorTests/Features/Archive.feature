@@ -14,13 +14,20 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 */
 
 @mytag
-Scenario: Archive one file
+Scenario Outline: Archive one file
 	Given a remote archive
-	Given a local folder with BinaryFile File1
-	When archived to the Cool tier
+	Given a local folder with BinaryFile <FILE> of size <SIZE>
+	When archived to the <TO_TIER> tier
 	Then 1 additional Chunk and Manifest
-	Then BinaryFile File1 has a PointerFile and the PointerFileEntry is marked as exists
-	Then the Chunks for BinaryFile File1 are in the Cool tier
+	Then BinaryFile <FILE> has a PointerFile and the PointerFileEntry is marked as exists
+	Then the Chunks for BinaryFile <FILE> are in the <ACTUAL_TIER> tier and are <HYDRATED_STATUS>
+
+	Examples:
+		| FILE    | SIZE                     | TO_TIER | ACTUAL_TIER | HYDRATED_STATUS |
+		| File100 | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
+		| File101 | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
+		| File102 | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool        | HYDRATED        |
+		| File103 | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive     | NOT_HYDRATED    |
 
 
 #Scenario: Archive one file to the Archive tier
@@ -94,3 +101,8 @@ Scenario: Archive a duplicate PointerFile
 #	Given a local repository with files
 #	* file 1 with 2 KB
 #	* file 2 with 1 KB
+#Given the following users exist:
+#  | name   | email              | twitter         |
+#  | Aslak  | aslak@cucumber.io  | @aslak_hellesoy |
+#  | Julien | julien@cucumber.io | @jbpros         |
+#  | Matt   | matt@cucumber.io   | @mattwynne      |
