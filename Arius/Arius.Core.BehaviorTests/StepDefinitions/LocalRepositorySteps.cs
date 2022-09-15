@@ -171,14 +171,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    directories.ArchiveTestDirectory.GetPointerFileInfos().Count().Should().Be(p0);
         //}
 
-        [Then("{int} additional PointerFile(s) exist")]
-        public void ThenPointerFilesExist(int x)
-        {
-            var x0 = scenarioContext.GetLocalRepoStats().SkipLast(1).Last().PointerFileInfos.Length;
-            var x1 = scenarioContext.GetLocalRepoStats().Last().PointerFileInfos.Length;
+        //[Then("{int} additional PointerFile(s) exist")]
+        //public void ThenPointerFilesExist(int x)
+        //{
+        //    var x0 = scenarioContext.GetLocalRepoStats().SkipLast(1).Last().PointerFileInfos.Length;
+        //    var x1 = scenarioContext.GetLocalRepoStats().Last().PointerFileInfos.Length;
 
-            Assert.AreEqual(x0 + x, x1);
-        }
+        //    Assert.AreEqual(x0 + x, x1);
+        //}
 
 
 
