@@ -88,14 +88,14 @@ Scenario: Archive a duplicate PointerFile
 
 	Given a duplicate PointerFile Pointer121 of the Pointer of BinaryFile File120
 	When archived to the Cool tier
-	
+
 	Then 0 additional Chunks and Manifests
-	Then 1 additional existing PointerFileEntry
-	#Then 2 additional PointerFiles exist
-	Then the PointerFile for file File120 exists
-	Then the PointerFile Pointer121 exists
-	#Then all local PointerFiles have PointerFileEntries
+	Then BinaryFile File120 has a PointerFile and the PointerFileEntry is marked as exists
+	Then the PointerFileEntry for PointerFile Pointer121 is marked as exists
 	
+
+Scenarios: Rename BinaryFile with PointerFile
+	Given: a remote archive
 
 #Scenario: Archive3
 #	Given a local repository with files

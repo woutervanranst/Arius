@@ -54,7 +54,8 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             int? sizeInBytes = size switch
             {
                 "BELOW_ARCHIVE_TIER_LIMIT" => null,
-                "ABOVE_ARCHIVE_TIER_LIMIT" => 1024 * 1024 + 1  // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync) 
+                "ABOVE_ARCHIVE_TIER_LIMIT" => 1024 * 1024 + 1,  // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync) 
+                _ => throw new NotImplementedException()
             };
 
             NewMethod(binaryFileId, sizeInBytes);
@@ -118,10 +119,10 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [When(@"BinaryFile {word} and its PointerFile are deleted")]
         public async Task FileIsDeleted(string binaryFileId)
         {
-            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
-            fi.Delete();
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            bfi.Delete();
 
-            var (pfi, _) = await GetPointerInfoAsync(fi);
+            var (pfi, _) = await GetPointerInfoAsync(bfi);
             pfi.Delete();
         }
 
@@ -133,24 +134,53 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [Then(@"BinaryFile {word} does not have a PointerFile and the PointerFileEntry is marked as deleted")]
         public async Task ThenFileDoesNotHaveAPointerFile(string binaryFileId)
         {
-            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
-
-            var (pf, pfe) = await GetPointerInfoAsync(fi);
-
-            pf.Should().BeNull();
-            pfe.IsDeleted.Should().BeTrue();
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            await CheckPointerFile(bfi, shouldExist: false);
         }
 
         [Then("BinaryFile {word} has a PointerFile and the PointerFileEntry is marked as exists")]
         public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
         {
-            var fi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            await CheckPointerFile(bfi, shouldExist: true);
+        }
 
+        [Then("the PointerFileEntry for PointerFile {word} is marked as exists")]
+        public async Task ThenThePointerFileEntryForPointerFilePointerIsMarkedAsExists(string pointerFileId)
+        {
+            var pfi = (FileInfo)scenarioContext[pointerFileId];
+            await CheckPointerFile(pfi, shouldExist: true);
+        }
+        //[Then("the PointerFile {word} exists")]
+        //public async Task ThenThePointerFilePointerExists(string pointerFileId)
+        //{
+        //    var pfi = (FileInfo)scenarioContext[pointerFileId];
+        //    await CheckPointerFile(pfi, shouldExist: true);
+        //}
+
+        /// <summary>
+        /// if a (Binary)FileInfo -> checks whether it has a valid PointerFile
+        /// if a PointerFile -> chekcs whether is it valid
+        /// </summary>
+        private async Task CheckPointerFile(FileInfo fi, bool shouldExist)
+        {
             var (pf, pfe) = await GetPointerInfoAsync(fi);
 
-            pf.Should().NotBeNull();
-            pfe.IsDeleted.Should().BeFalse();
+            if (!shouldExist)
+            { 
+                pf.Should().BeNull();
+                pfe.IsDeleted.Should().BeTrue();
+            }
+            else
+            {
+                pf.Should().NotBeNull();
+                pfe.IsDeleted.Should().BeFalse();
+
+                fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+                fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
+            }
         }
+
 
         //[Then(@"the PointerFileEntry for {word} is marked as deleted")]
         //public void ThenThePointerFileEntryForFileIsMarkedAsDeleted(string fileId)
@@ -196,23 +226,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //        IsValidPointerFile(pfi);
         //}
 
-        /// <summary>
-        /// if a (Binary)FileInfo -> checks whether it has a valid PointerFile
-        /// if a PointerFile -> chekcs whether is it valid
-        /// </summary>
-        /// <param name="fi"></param>
-        private async Task IsValidPointerFile(FileInfo fi)
-        {
-            var (pf, pfe) = await GetPointerInfoAsync(fi);
+        
+        ///// <param name="fi"></param>
+        //private async Task IsValidPointerFile(FileInfo fi)
+        //{
+        //    var (pf, pfe) = await GetPointerInfoAsync(fi);
 
-            pf.Should().NotBeNull();
+        //    pf.Should().NotBeNull();
 
-            pfe.Should().NotBeNull();
-            pfe.IsDeleted.Should().BeFalse();
+        //    pfe.Should().NotBeNull();
+        //    pfe.IsDeleted.Should().BeFalse();
 
-            fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
-            fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
-        }
+        //    fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+        //    fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
+        //}
 
         //[Then("the PointerFile for file {word} exists")]
         //public void ThenThePointerFileForFileFileExists(string fileId)
@@ -221,12 +248,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    IsValidPointerFile(bfi);
         //}
 
-        [Then("the PointerFile {word} exists")]
-        public async Task ThenThePointerFilePointerExists(string pointerFileId)
-        {
-            var pfi = (FileInfo)scenarioContext[pointerFileId];
-            await IsValidPointerFile(pfi);
-        }
+        
 
 
 
