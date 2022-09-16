@@ -110,15 +110,25 @@ Scenario: Rename BinaryFile with PointerFile
 
 Scenario: Rename BinaryFile only
 	Given a remote archive
-	Given a local folder with BinaryFile File700
+	Given a local folder with BinaryFile File7
 	When archived to the Cool tier
 
-	When BinaryFile File700 is renamed and moved to a subdirectory
+	When BinaryFile File7 is renamed and moved to a subdirectory
 	When archived to the Cool tier
 
 	Then 0 additional Chunks and Manifests
-	Then BinaryFile File700 has a PointerFile and the PointerFileEntry is marked as exists
+	Then BinaryFile File7 has a PointerFile and the PointerFileEntry is marked as exists
 	Then the PointerFile at the old location exists and the PointerFileEntry is marked as exists
+
+Scenario: Delete Only BinaryFile
+	Given a remote archive
+	Given a local folder with BinaryFile File8
+	When archived to the Cool tier
+
+	When BinaryFile File8 is deleted
+
+	When archived to the Cool tier
+	Then BinaryFile File8 has a PointerFile and the PointerFileEntry is marked as exists
 
 
 #Scenario: Archive3
