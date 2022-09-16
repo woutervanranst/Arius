@@ -118,8 +118,7 @@ Scenario: Rename BinaryFile only
 
 	Then 0 additional Chunks and Manifests
 	Then BinaryFile File700 has a PointerFile and the PointerFileEntry is marked as exists
-	Then 
-	Then there is a PointerFile at the previous location of File700 with a PointerFileEntry that is marked as exists
+	Then the PointerFile at the old location exists and the PointerFileEntry is marked as exists
 
 
 #Scenario: Archive3
