@@ -83,19 +83,29 @@ Scenario: Archive two duplicate files
 
 Scenario: Archive a duplicate PointerFile
 	Given a remote archive
-	Given a local folder with BinaryFile File120
+	Given a local folder with BinaryFile File500
 	When archived to the Cool tier
 
-	Given a duplicate PointerFile Pointer121 of the Pointer of BinaryFile File120
+	Given a duplicate PointerFile Pointer501 of the Pointer of BinaryFile File500
 	When archived to the Cool tier
 
 	Then 0 additional Chunks and Manifests
-	Then BinaryFile File120 has a PointerFile and the PointerFileEntry is marked as exists
-	Then the PointerFileEntry for PointerFile Pointer121 is marked as exists
+	Then BinaryFile File500 has a PointerFile and the PointerFileEntry is marked as exists
+	Then the PointerFileEntry for PointerFile Pointer501 is marked as exists
 	
 
-Scenarios: Rename BinaryFile with PointerFile
-	Given: a remote archive
+Scenario: Rename BinaryFile with PointerFile
+	Given a remote archive
+	Given a local folder with BinaryFile File600
+	When archived to the Cool tier
+
+	When BinaryFile File600 and its PointerFile are renamed and moved to a subdirectory
+	When archived to the Cool tier
+
+	Then 0 additional Chunk and Manifest
+	Then the PointerFileEntry for BinaryFile File600 only exists at the new location
+	Then BinaryFile File600 has a PointerFile and the PointerFileEntry is marked as exists
+
 
 #Scenario: Archive3
 #	Given a local repository with files

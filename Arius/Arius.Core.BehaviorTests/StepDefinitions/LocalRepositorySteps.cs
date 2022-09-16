@@ -226,7 +226,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //        IsValidPointerFile(pfi);
         //}
 
-        
+
         ///// <param name="fi"></param>
         //private async Task IsValidPointerFile(FileInfo fi)
         //{
@@ -248,7 +248,34 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    IsValidPointerFile(bfi);
         //}
 
-        
+        [When("BinaryFile {word} and its PointerFile are renamed and moved to a subdirectory")]
+        public async Task WhenBinaryFileFileAndItsPointerFileAreRenamedAndMovedToASubdirectory(string binaryFileId)
+        {
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            var (pf, _) = await GetPointerInfoAsync(bfi);
+
+            var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
+            var targetName = Path.GetRandomFileName();
+
+            bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
+            File.Move(pf.FullName, Path.Combine(targetDir.FullName, targetName + Models.PointerFile.Extension));
+        }
+
+        [Then("the PointerFileEntry for BinaryFile {word} only exists at the new location")]
+        public async Task ThenBinaryFileFileOnlyExistsAtTheNewLocation(string binaryFileId)
+        {
+            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+            var (pf, pfe) = await GetPointerInfoAsync(bfi);
+
+            var allPfes = (await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
+            var x = allPfes.Where(pfe0 => pfe0.BinaryHash == pfe.BinaryHash).OrderBy(pfe0 => pfe0.VersionUtc).ToArray();
+
+            x.Last().RelativeName.Should().Be(pfe.RelativeName); // the last entry is the one in the local folder
+            x.Last().IsDeleted.Should().BeFalse(); // it exists
+            x.SkipLast(1).Select(pfe => pfe.IsDeleted).Should().AllBeEquivalentTo(true); // all other locations no longer exist
+        }
+
+
 
 
 

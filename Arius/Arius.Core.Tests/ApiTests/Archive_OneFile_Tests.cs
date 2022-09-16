@@ -274,7 +274,7 @@ class Archive_OneFile_Tests : TestBase
     }
 
 
-    [Test]
+    [Test] // FEATURE OK
     public async Task Archive_RenameBinaryFileWithPointerFile_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)

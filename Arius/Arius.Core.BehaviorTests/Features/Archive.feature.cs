@@ -322,13 +322,13 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Given("a remote archive", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 86
- testRunner.Given("a local folder with BinaryFile File120", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("a local folder with BinaryFile File500", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 87
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 89
- testRunner.Given("a duplicate PointerFile Pointer121 of the Pointer of BinaryFile File120", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("a duplicate PointerFile Pointer501 of the Pointer of BinaryFile File500", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 90
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -337,11 +337,54 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 93
- testRunner.Then("BinaryFile File120 has a PointerFile and the PointerFileEntry is marked as exists" +
+ testRunner.Then("BinaryFile File500 has a PointerFile and the PointerFileEntry is marked as exists" +
                         "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 94
- testRunner.Then("the PointerFileEntry for PointerFile Pointer121 is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("the PointerFileEntry for PointerFile Pointer501 is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Rename BinaryFile with PointerFile")]
+        public void RenameBinaryFileWithPointerFile()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Rename BinaryFile with PointerFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 97
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 98
+ testRunner.Given("a remote archive", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 99
+ testRunner.Given("a local folder with BinaryFile File600", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 100
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 102
+ testRunner.When("BinaryFile File600 and its PointerFile are renamed and moved to a subdirectory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 103
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 104
+ testRunner.Then("the PointerFileEntry for BinaryFile File600 only exists at the new location", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 105
+ testRunner.Then("BinaryFile File600 has a PointerFile and the PointerFileEntry is marked as exists" +
+                        "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
