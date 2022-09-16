@@ -379,12 +379,66 @@ this.ScenarioInitialize(scenarioInfo);
 #line 103
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 104
- testRunner.Then("the PointerFileEntry for BinaryFile File600 only exists at the new location", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
 #line 105
+ testRunner.Then("0 additional Chunk and Manifest", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 106
+ testRunner.Then("the BinaryFile at the old location no longer exist", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 107
+ testRunner.Then("the PointerFile at the old location no longer exist and the PointerFileEntry is m" +
+                        "arked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 109
  testRunner.Then("BinaryFile File600 has a PointerFile and the PointerFileEntry is marked as exists" +
                         "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Rename BinaryFile only")]
+        public void RenameBinaryFileOnly()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Rename BinaryFile only", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 111
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 112
+ testRunner.Given("a remote archive", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 113
+ testRunner.Given("a local folder with BinarFile File700", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 114
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 116
+ testRunner.When("BinaryFile File700 is renamed and moved to a subdirectory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 117
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 119
+ testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 120
+ testRunner.Then("BinaryFile File700 has a PointerFile and the PointerFileEntry is marked as exists" +
+                        "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 121
+ testRunner.Then("there is a PointerFile at the previous location of File700 with a PointerFileEntr" +
+                        "y that is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();

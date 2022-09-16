@@ -8,6 +8,7 @@ using Arius.Core.Extensions;
 using Arius.Core.BehaviorTests.Extensions;
 using Arius.Core.Repositories;
 using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
+using Arius.Core.Models;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
@@ -248,32 +249,91 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //    IsValidPointerFile(bfi);
         //}
 
+        private const string OLD_BINARYFILE_LOCATION = "OLD_BINARYFILE_LOCATION";
+        private const string OLD_POINTERFILE = "OLD_POINTERFILE_LOCATION";
+
         [When("BinaryFile {word} and its PointerFile are renamed and moved to a subdirectory")]
         public async Task WhenBinaryFileFileAndItsPointerFileAreRenamedAndMovedToASubdirectory(string binaryFileId)
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             var (pf, _) = await GetPointerInfoAsync(bfi);
 
-            var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
-            var targetName = Path.GetRandomFileName();
-
-            bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
-            File.Move(pf.FullName, Path.Combine(targetDir.FullName, targetName + Models.PointerFile.Extension));
+            MoveBinaryFile(bfi);
+            MovePointerFile(pf, bfi);
         }
-
-        [Then("the PointerFileEntry for BinaryFile {word} only exists at the new location")]
-        public async Task ThenBinaryFileFileOnlyExistsAtTheNewLocation(string binaryFileId)
+        [When("BinaryFile {word} is renamed and moved to a subdirectory")]
+        public void WhenBinaryFileFileIsRenamedAndMovedToASubdirectory(string binaryFileId)
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
-            var (pf, pfe) = await GetPointerInfoAsync(bfi);
 
-            var allPfes = (await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
-            var x = allPfes.Where(pfe0 => pfe0.BinaryHash == pfe.BinaryHash).OrderBy(pfe0 => pfe0.VersionUtc).ToArray();
-
-            x.Last().RelativeName.Should().Be(pfe.RelativeName); // the last entry is the one in the local folder
-            x.Last().IsDeleted.Should().BeFalse(); // it exists
-            x.SkipLast(1).Select(pfe => pfe.IsDeleted).Should().AllBeEquivalentTo(true); // all other locations no longer exist
+            MoveBinaryFile(bfi);
         }
+        private void MoveBinaryFile(FileInfo bfi)
+        {
+            scenarioContext[OLD_BINARYFILE_LOCATION] = bfi.FullName;
+            var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
+            var targetName = Path.GetRandomFileName();
+            bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
+        }
+        private void MovePointerFile(PointerFile pf, FileInfo correspondingBinaryFile)
+        {
+            scenarioContext[OLD_POINTERFILE] = pf;
+            File.Move(pf.FullName, correspondingBinaryFile.FullName + Models.PointerFile.Extension);
+        }
+
+
+
+        [Then("the BinaryFile at the old location no longer exist")]
+        public void ThenTheBinaryFileAtTheOldLocationNoLongerExist()
+        {
+            File.Exists((string)scenarioContext[OLD_BINARYFILE_LOCATION]).Should().BeFalse();
+        }
+
+        [Then("the PointerFile at the old location no longer exist and the PointerFileEntry is marked as deleted")]
+        public async Task ThenThePointerFileAtTheOldLocationNoLongerExistAndThePointerFileEntryIsMarkedAsDeleted()
+        {
+            // the pointerFile at the old location no longer exists
+            var pf = (PointerFile)scenarioContext[OLD_POINTERFILE];
+            File.Exists(pf.FullName).Should().BeFalse();
+
+            // the PointerFileEntry is marked as deleted
+            var pfes = await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(true);
+            var pfe = pfes.Where(pfe => pfe.RelativeName == pf.RelativeName).Single();
+
+            pfe.IsDeleted.Should().BeTrue();
+        }
+
+
+
+        //[Then("the PointerFileEntry for BinaryFile {word} only exists at the new location")]
+        //public async Task ThenBinaryFileFileOnlyExistsAtTheNewLocation(string binaryFileId)
+        //{
+        //    var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+        //    var (pf, pfe) = await GetPointerInfoAsync(bfi);
+
+        //    var allPfes = (await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
+        //    var x = allPfes.Where(pfe0 => pfe0.BinaryHash == pfe.BinaryHash).OrderBy(pfe0 => pfe0.VersionUtc).ToArray();
+
+        //    x.Last().RelativeName.Should().Be(pfe.RelativeName); // the last entry is the one in the local folder
+        //    x.Last().IsDeleted.Should().BeFalse(); // it exists
+        //    x.SkipLast(1).Select(pfe => pfe.IsDeleted).Should().AllBeEquivalentTo(true); // all other locations no longer exist
+        //}
+
+        //[Then("there is a PointerFile at the previous location of {word} with a PointerFileEntry that is marked as exists")]
+        //public async Task ThenThereIsAPointerFileAtThePreviousLocationOfFileWithAPointerFileEntryThatIsMarkedAsExists(string binaryFileId)
+        //{
+        //    var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+        //    var (pf, pfe) = await GetPointerInfoAsync(bfi);
+
+        //    var allPfes = (await scenarioContext.GetRepository().PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
+        //    var x = allPfes.Where(pfe0 => pfe0.BinaryHash == pfe.BinaryHash).OrderBy(pfe0 => pfe0.VersionUtc).ToArray();
+
+        //    var previousLocationPfe = x.SkipLast(1).Last().RelativeName;
+
+        //    x.Last().IsDeleted.Should().BeFalse(); // it exists
+        //    x.SkipLast(1).Select(pfe => pfe.IsDeleted).Should().AllBeEquivalentTo(true); // all other locations no longer exist
+        //}
+
 
 
 
