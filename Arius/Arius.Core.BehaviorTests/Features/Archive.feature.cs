@@ -389,7 +389,7 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("the PointerFile at the old location no longer exist and the PointerFileEntry is m" +
                         "arked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 109
+#line 108
  testRunner.Then("BinaryFile File600 has a PointerFile and the PointerFileEntry is marked as exists" +
                         "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
@@ -418,7 +418,7 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Given("a remote archive", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 113
- testRunner.Given("a local folder with BinarFile File700", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.Given("a local folder with BinaryFile File700", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 114
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -437,8 +437,8 @@ this.ScenarioInitialize(scenarioInfo);
                         "", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 121
- testRunner.Then("there is a PointerFile at the previous location of File700 with a PointerFileEntr" +
-                        "y that is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("the PointerFile at the old location exists and the PointerFileEntry is marked as " +
+                        "exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();

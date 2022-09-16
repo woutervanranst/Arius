@@ -253,35 +253,29 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         private const string OLD_POINTERFILE = "OLD_POINTERFILE_LOCATION";
 
         [When("BinaryFile {word} and its PointerFile are renamed and moved to a subdirectory")]
-        public async Task WhenBinaryFileFileAndItsPointerFileAreRenamedAndMovedToASubdirectory(string binaryFileId)
+        public async Task WhenBinaryFileFileAndItsPointerFileAreRenamedAndMovedToASubdirectory(string binaryFileId) => await MoveFiles(binaryFileId, true, true);
+        [When("BinaryFile {word} is renamed and moved to a subdirectory")]
+        public async Task WhenBinaryFileFileIsRenamedAndMovedToASubdirectory(string binaryFileId) => await MoveFiles(binaryFileId, true, false);
+        private async Task MoveFiles(string binaryFileId, bool moveBinary, bool movePointer)
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             var (pf, _) = await GetPointerInfoAsync(bfi);
 
-            MoveBinaryFile(bfi);
-            MovePointerFile(pf, bfi);
-        }
-        [When("BinaryFile {word} is renamed and moved to a subdirectory")]
-        public void WhenBinaryFileFileIsRenamedAndMovedToASubdirectory(string binaryFileId)
-        {
-            var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
-
-            MoveBinaryFile(bfi);
-        }
-        private void MoveBinaryFile(FileInfo bfi)
-        {
             scenarioContext[OLD_BINARYFILE_LOCATION] = bfi.FullName;
-            var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
-            var targetName = Path.GetRandomFileName();
-            bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
-        }
-        private void MovePointerFile(PointerFile pf, FileInfo correspondingBinaryFile)
-        {
             scenarioContext[OLD_POINTERFILE] = pf;
-            File.Move(pf.FullName, correspondingBinaryFile.FullName + Models.PointerFile.Extension);
+
+            if (moveBinary)
+            {
+                var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
+                var targetName = Path.GetRandomFileName();
+                bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
+            }
+
+            if (movePointer)
+            {
+                File.Move(pf.FullName, bfi.FullName + Models.PointerFile.Extension);
+            }
         }
-
-
 
         [Then("the BinaryFile at the old location no longer exist")]
         public void ThenTheBinaryFileAtTheOldLocationNoLongerExist()
@@ -302,6 +296,14 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             pfe.IsDeleted.Should().BeTrue();
         }
+
+        [Then("the PointerFile at the old location exists and the PointerFileEntry is marked as exists")]
+        public async Task ThenThePointerFileAtTheOldLocationExistsAndThePointerFileEntryIsMarkedAsExists()
+        {
+            var pf = (PointerFile)scenarioContext[OLD_POINTERFILE];
+            await CheckPointerFile(new FileInfo(pf.FullName), true);
+        }
+
 
 
 
