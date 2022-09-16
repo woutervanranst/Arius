@@ -67,10 +67,11 @@ class AriusCoreSteps
         public DateTime VersionUtc { get; init; }
     }
 
-    /// <summary>
-    /// Archive to the given tier
-    /// </summary>
-    private async Task<IServiceProvider> ArchiveCommand(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    [When("archived to the {word} tier")]
+    public async Task WhenArchived(string tier) => await ArchiveCommandAsync((AccessTier)tier);
+    [When("archived to the {word} tier with option RemoveLocal")]
+    public async Task WhenArchivedRemoveLocal(string tier) => await ArchiveCommandAsync((AccessTier)tier, removeLocal: true);
+    private async Task ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (purgeRemote)
             await RemoteRepositorySteps.PurgeRemote(container);
@@ -97,18 +98,6 @@ class AriusCoreSteps
         };
 
         await archiveCommand.ExecuteAsync(options);
-
-        return null; //do not use this anymore
-        //return archiveCommand.Services;
-    }
-
-
-    [When("archived to the {word} tier")]
-    public async Task WhenArchived(string t)
-    {
-        var tier = (AccessTier)t;
-
-        await ArchiveCommand(tier);
 
         await scenarioContext.AddRemoteRepoStatsAsync();
         scenarioContext.AddLocalRepoStats();
