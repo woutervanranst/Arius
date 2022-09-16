@@ -444,12 +444,12 @@ this.ScenarioInitialize(scenarioInfo);
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Delete Only BinaryFile")]
-        public void DeleteOnlyBinaryFile()
+        [NUnit.Framework.DescriptionAttribute("Archive with RemoveLocal")]
+        public void ArchiveWithRemoveLocal()
         {
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete Only BinaryFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive with RemoveLocal", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 123
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -467,15 +467,12 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Given("a local folder with BinaryFile File8", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 126
- testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.When("archived to the Cool tier with option RemoveLocal", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 128
- testRunner.When("BinaryFile File8 is deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+ testRunner.Then("BinaryFile File8 no longer exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 130
- testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 132
+#line 129
  testRunner.Then("BinaryFile File8 has a PointerFile and the PointerFileEntry is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }

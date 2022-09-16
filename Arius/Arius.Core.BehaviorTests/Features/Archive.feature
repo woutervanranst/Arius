@@ -120,14 +120,12 @@ Scenario: Rename BinaryFile only
 	Then BinaryFile File7 has a PointerFile and the PointerFileEntry is marked as exists
 	Then the PointerFile at the old location exists and the PointerFileEntry is marked as exists
 
-Scenario: Delete Only BinaryFile
+Scenario: Archive with RemoveLocal
 	Given a remote archive
 	Given a local folder with BinaryFile File8
-	When archived to the Cool tier
+	When archived to the Cool tier with option RemoveLocal
 
-	When BinaryFile File8 is deleted
-
-	When archived to the Cool tier
+	Then BinaryFile File8 no longer exists
 	Then BinaryFile File8 has a PointerFile and the PointerFileEntry is marked as exists
 
 

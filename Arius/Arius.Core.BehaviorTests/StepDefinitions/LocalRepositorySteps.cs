@@ -304,6 +304,12 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
             File.Exists((string)scenarioContext[OLD_BINARYFILE_LOCATION]).Should().BeFalse();
         }
+        [Then("BinaryFile {word} no longer exists")]
+        public void ThenBinaryFileFileIsDeleted(string binaryFileId)
+        {
+            ((RelatedFiles)scenarioContext[binaryFileId]).Archive.Exists.Should().BeFalse();
+        }
+
 
         [Then("the PointerFile at the old location no longer exist and the PointerFileEntry is marked as deleted")]
         public async Task ThenThePointerFileAtTheOldLocationNoLongerExistAndThePointerFileEntryIsMarkedAsDeleted()
