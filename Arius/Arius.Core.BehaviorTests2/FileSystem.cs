@@ -13,7 +13,7 @@ namespace Arius.Core.BehaviorTests2
         private static void ClassInit()
         {
             root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
-            runRoot = root.CreateSubdirectory(AriusRepository.ContainerName);
+            runRoot = root.CreateSubdirectory(Arius.ContainerName);
             TestDirectory = runRoot.CreateSubdirectory("test");
         }
 
@@ -30,7 +30,7 @@ namespace Arius.Core.BehaviorTests2
         }
 
         private static string GetFileName(string relativeName) => Path.Combine(TestDirectory.FullName, relativeName);
-        private static FileInfo GetFileInfo(string relativeName) => new FileInfo(GetFileName(relativeName));
+        public static FileInfo GetFileInfo(string relativeName) => new FileInfo(GetFileName(relativeName));
 
         public static bool Exists(string relativeName) => File.Exists(GetFileName(relativeName));
         public static long Length(string relativeName) => new FileInfo(GetFileName(relativeName)).Length;
@@ -52,7 +52,7 @@ namespace Arius.Core.BehaviorTests2
 
         public static PointerFile GetPointerFile(string relativeName)
         {
-            return AriusRepository.PointerService.Value.GetPointerFile(TestDirectory, GetFileInfo(relativeName));
+            return Arius.PointerService.Value.GetPointerFile(TestDirectory, GetFileInfo(relativeName));
         }
 
 

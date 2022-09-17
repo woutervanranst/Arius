@@ -17,7 +17,7 @@ using TechTalk.SpecFlow;
 namespace Arius.Core.BehaviorTests2
 {
     [Binding]
-    static class AriusRepository
+    static class Arius
     {
         private const string TestContainerNamePrefix = "unittest";
         private record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
@@ -105,18 +105,28 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
+
+
+        public static async Task<PointerFileEntry> GetPointerFileEntryAsync(string pointerRelativeName)
+        {
+            var pfes = await GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true);
+            var pfe = pfes.SingleOrDefault(r => r.RelativeName == pointerRelativeName);
+
+            return pfe;
+        }
+
         //private static Lazy<Facade> facade = new(() =>
         //{
         //    var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
-        //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-        //    {
-        //        TempDirectoryName = ".ariustemp",
-        //        RestoreTempDirectoryName = ".ariusrestore"
-        //    });
+            //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+            //    {
+            //        TempDirectoryName = ".ariustemp",
+            //        RestoreTempDirectoryName = ".ariusrestore"
+            //    });
 
-        //    return new Facade(loggerFactory, tempDirectoryAppSettings);
-        //});
+            //    return new Facade(loggerFactory, tempDirectoryAppSettings);
+            //});
 
 
         private record ArchiveCommandOptions : IArchiveCommandOptions

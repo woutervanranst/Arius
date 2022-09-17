@@ -25,8 +25,8 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
-            var rs0 = AriusRepository.Stats.SkipLast(1).Last();
-            var rs1 = AriusRepository.Stats.Last();
+            var rs0 = Arius.Stats.SkipLast(1).Last();
+            var rs1 = Arius.Stats.Last();
 
             (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
             (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);

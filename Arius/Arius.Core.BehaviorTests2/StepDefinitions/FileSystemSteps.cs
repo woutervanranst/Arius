@@ -1,4 +1,5 @@
 using Arius.Core.Commands;
+using Arius.Core.Extensions;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
@@ -31,7 +32,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             CreateFile(relativeName, size);
 
-            await AriusRepository.ArchiveCommandAsync(tier);
+            await Arius.ArchiveCommandAsync(tier);
         }
         [Given(@"the following local files are archived to {word} tier:")]
         public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
@@ -41,7 +42,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             foreach (var f in files)
                 CreateFile(f.RelativeName, f.Size);
 
-            await AriusRepository.ArchiveCommandAsync(tier);
+            await Arius.ArchiveCommandAsync(tier);
         }
         record FileTableEntry(string RelativeName, string Size);
         private static void CreateFile(string relativeName, string size)
@@ -70,11 +71,36 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
         [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]
-        public void ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
+        public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
         {
-            var pf = FileSystem.GetPointerFile(binaryRelativeName);
+            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, true);
+        }
 
-            throw new PendingStepException();
+        private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
+        {
+            var fi = FileSystem.GetFileInfo(relativeName);
+            var pf = FileSystem.GetPointerFile(relativeName);
+            var pfe = await Arius.GetPointerFileEntryAsync(pf.RelativeName);
+
+            if (shouldExist)
+            {
+                pf.Should().NotBeNull();
+                pfe.IsDeleted.Should().BeFalse();
+
+                if (!fi.IsPointerFile())
+                {
+                    fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
+                    fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
+                }
+            }
+            else
+            {
+                pf.Should().BeNull();
+                pfe.IsDeleted.Should().BeTrue();
+
+                if (!fi.IsPointerFile())
+                    fi.Exists.Should().BeFalse();
+            }
         }
 
 
