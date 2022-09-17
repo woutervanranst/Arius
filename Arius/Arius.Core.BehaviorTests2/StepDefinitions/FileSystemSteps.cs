@@ -62,8 +62,8 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     throw new ArgumentOutOfRangeException()
             };
 
-            if (FileSystem.Exists(relativeName))
-                if (FileSystem.Length(relativeName) != sizeInBytes)
+            if (FileSystem.Exists(FileSystem.ArchiveDirectory, relativeName))
+                if (FileSystem.Length(FileSystem.ArchiveDirectory, relativeName) != sizeInBytes)
                     throw new ArgumentException("File already exists and is of different size");
 
             FileSystem.CreateFile(relativeName, sizeInBytes);

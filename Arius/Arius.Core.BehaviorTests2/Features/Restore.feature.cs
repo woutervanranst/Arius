@@ -74,14 +74,14 @@ namespace Arius.Core.BehaviorTests2.Features
         }
         
         [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("bla")]
+        [NUnit.Framework.DescriptionAttribute("Restore one file")]
         [NUnit.Framework.CategoryAttribute("tag1")]
-        public void Bla()
+        public void RestoreOneFile()
         {
             string[] tagsOfScenario = new string[] {
                     "tag1"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("bla", null, tagsOfScenario, argumentsOfScenario, featureTags);
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Restore one file", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 6
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
@@ -92,44 +92,12 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-                TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
-                            "RelativeName",
-                            "Size"});
-                table1.AddRow(new string[] {
-                            "dir1\\wouter.txt",
-                            "15 KB"});
-                table1.AddRow(new string[] {
-                            "dir2\\joke.pdf",
-                            "BELOW_ARCHIVE_TIER_LIMIT"});
-                table1.AddRow(new string[] {
-                            "taxes.doc",
-                            "BELOW_ARCHIVE_TIER_LIMIT"});
 #line 7
- testRunner.Given("the following local files are archived to Cool tier:", ((string)(null)), table1, "Given ");
+ testRunner.Given("a local file \"r1.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Cool " +
+                        "tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("bla2")]
-        public void Bla2()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("bla2", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 13
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-#line 14
-  testRunner.Then("haha", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 8
+ testRunner.When("restored", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
             }
             this.ScenarioCleanup();

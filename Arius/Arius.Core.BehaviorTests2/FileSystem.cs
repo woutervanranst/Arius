@@ -14,12 +14,14 @@ namespace Arius.Core.BehaviorTests2
         {
             root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
             runRoot = root.CreateSubdirectory(Arius.ContainerName);
-            TestDirectory = runRoot.CreateSubdirectory("test");
+            ArchiveDirectory = runRoot.CreateSubdirectory("archive");
+            RestoreDirectory = runRoot.CreateSubdirectory("restore");
         }
 
         private static DirectoryInfo root;
         private static DirectoryInfo runRoot;
-        public static DirectoryInfo TestDirectory { get; private set; }
+        public static DirectoryInfo ArchiveDirectory { get; private set; }
+        public static DirectoryInfo RestoreDirectory { get; private set; }
 
         [AfterTestRun]
         private static void ClassCleanup()
@@ -29,14 +31,14 @@ namespace Arius.Core.BehaviorTests2
                 d.Delete(true);
         }
 
-        private static string GetFileName(string relativeName) => Path.Combine(TestDirectory.FullName, relativeName);
-        public static FileInfo GetFileInfo(string relativeName) => new FileInfo(GetFileName(relativeName));
+        private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
+        public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
 
-        public static bool Exists(string relativeName) => File.Exists(GetFileName(relativeName));
-        public static long Length(string relativeName) => new FileInfo(GetFileName(relativeName)).Length;
+        public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
+        public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
         public static void CreateFile(string relativeName, int sizeInBytes)
         {
-            var fileName = GetFileName(relativeName);
+            var fileName = GetFileName(ArchiveDirectory, relativeName);
 
             // https://stackoverflow.com/q/4432178/1582323
             var f = new FileInfo(fileName);
@@ -50,9 +52,9 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
-        public static PointerFile GetPointerFile(string relativeName)
+        public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName)
         {
-            return Arius.PointerService.Value.GetPointerFile(TestDirectory, GetFileInfo(relativeName));
+            return Arius.PointerService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
         }
 
 

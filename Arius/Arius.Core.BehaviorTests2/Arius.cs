@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
@@ -42,9 +43,6 @@ namespace Arius.Core.BehaviorTests2
             container = await blobService.CreateBlobContainerAsync(ContainerName);
 
             options = new RepositoryOptions(accountName, accountKey, ContainerName, passphrase);
-
-            //oc.RegisterFactoryAs<Repository>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<Repository>()).InstancePerDependency();
-            //oc.RegisterFactoryAs<PointerService>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<PointerService>()).InstancePerDependency();
 
             await AddRepoStat();
         }
@@ -170,7 +168,7 @@ namespace Arius.Core.BehaviorTests2
                 Dedup = dedup,
                 FastHash = fastHash,
                 Passphrase = options.Passphrase,
-                Path = FileSystem.TestDirectory,
+                Path = FileSystem.ArchiveDirectory,
                 RemoveLocal = removeLocal,
                 Tier = tier,
                 VersionUtc = DateTime.UtcNow
@@ -179,6 +177,45 @@ namespace Arius.Core.BehaviorTests2
             await archiveCommand.ExecuteAsync(aco);
 
             await AddRepoStat();
+        }
+
+
+
+        private record RestoreCommandOptions : IRestoreCommandOptions
+        {
+            public bool Synchronize { get; init; }
+            public bool Download { get; init; }
+            public bool KeepPointers { get; init; }
+            public DateTime? PointInTimeUtc { get; init; }
+            public DirectoryInfo Path { get; init; }
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+            public string Passphrase { get; init; }
+        }
+
+        public static async Task RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
+        {
+            var sp = new ServiceCollection()
+                .AddAriusCoreCommands()
+                .AddLogging()
+                .BuildServiceProvider();
+            var restoreCommand = sp.GetRequiredService<ICommand<IRestoreCommandOptions>>();
+
+            var rco = new RestoreCommandOptions
+            {
+                AccountName = options.AccountName,
+                AccountKey = options.AccountKey,
+                Container = options.Container,
+                Passphrase = options.Passphrase,
+                Download = download,
+                KeepPointers = keepPointers,
+                Path = FileSystem.RestoreDirectory,
+                PointInTimeUtc = DateTime.UtcNow,
+                Synchronize = synchronize
+            };
+
+            await restoreCommand.ExecuteAsync(rco);
         }
     }
 }

@@ -31,8 +31,8 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
         private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
         {
-            var fi = FileSystem.GetFileInfo(relativeName);
-            var pf = FileSystem.GetPointerFile(relativeName);
+            var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
+            var pf = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, relativeName);
             var pfe = await Arius.GetPointerFileEntryAsync(pf.RelativeName);
 
             if (shouldExist)

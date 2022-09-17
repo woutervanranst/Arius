@@ -21,5 +21,14 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         public RestoreSteps(ScenarioContext sc) : base(sc)
         {
         }
+
+        [When("restored")]
+        public async Task WhenRestored()
+        {
+            await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: true);
+        }
+
+
+
     }
 }
