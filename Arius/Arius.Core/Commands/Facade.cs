@@ -32,6 +32,7 @@ using Arius.Core.Commands.Rehydrate;
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
+[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests2")]
 
 namespace Arius.Core.Commands;
 

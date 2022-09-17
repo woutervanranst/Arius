@@ -11,6 +11,7 @@ using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 using Arius.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using TechTalk.SpecFlow.Assist;
+using System.Text.RegularExpressions;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
@@ -134,11 +135,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             
         }
 
-        [Given(@"the following users exist:")]
-        public async Task Haha(Table table)
-        {
-            //var account = table.CreateInstance<Account>();
-        }
         
 
 

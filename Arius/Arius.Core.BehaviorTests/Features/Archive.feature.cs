@@ -515,10 +515,6 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("the PointerFile at the old location no longer exist and the PointerFileEntry is m" +
                         "arked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 140
- testRunner.Then("the PointerFile for BinaryFile File9 exists and the PointerFileEntry is marked as" +
-                        " exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
             }
             this.ScenarioCleanup();
         }
@@ -541,23 +537,23 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
                 TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
-                            "name",
-                            "email",
-                            "twitter"});
+                            "ID",
+                            "RelativeFileName",
+                            "Size"});
                 table1.AddRow(new string[] {
-                            "Aslak",
-                            "aslak@cucumber.io",
-                            "@aslak_hellesoy"});
+                            "File1",
+                            "dir1\\wouter.txt",
+                            "15 KB"});
                 table1.AddRow(new string[] {
-                            "Julien",
-                            "julien@cucumber.io",
-                            "@jbpros"});
+                            "File2",
+                            "dir2\\joke.pdf",
+                            "BELOW_ARCHIVE_TIER_LIMIT"});
                 table1.AddRow(new string[] {
-                            "Matt",
-                            "matt@cucumber.io",
-                            "@mattwynne"});
+                            "File3",
+                            "taxes.doc",
+                            "BELOW_ARCHIVE_TIER_LIMIT"});
 #line 151
- testRunner.Given("the following users exist:", ((string)(null)), table1, "Given ");
+ testRunner.Given("the following local files are archived:", ((string)(null)), table1, "Given ");
 #line hidden
             }
             this.ScenarioCleanup();

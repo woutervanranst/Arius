@@ -148,8 +148,9 @@ Scenario: Rename PointerFile that no longer has a BinaryFile
 #
 
 Scenario: bla
-	Given the following users exist:
-  | name   | email              | twitter         |
-  | Aslak  | aslak@cucumber.io  | @aslak_hellesoy |
-  | Julien | julien@cucumber.io | @jbpros         |
-  | Matt   | matt@cucumber.io   | @mattwynne      |
+	Given the following local files are archived:
+  | ID    | RelativeFileName | Size                     |
+  | File1 | dir1\\wouter.txt | 15 KB                    |
+  | File2 | dir2\\joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |
+  | File3 | taxes.doc        | BELOW_ARCHIVE_TIER_LIMIT |
+
