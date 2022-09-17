@@ -10,6 +10,7 @@ using Arius.Core.Repositories;
 using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 using Arius.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions
 {
@@ -111,13 +112,6 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
 
-
-        //[When(@"the local folder is cleared")]
-        //public void WhenTheLocalFolderIsCleared()
-        //{
-        //    ClearDirectories();
-        //}
-
         [When(@"BinaryFile {word} and its PointerFile are deleted")]
         public async Task BinaryFileAndPointerFileAreDeleted(string binaryFileId) => await DeleteFilesAsync(binaryFileId, true, true);
 
@@ -140,6 +134,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             
         }
 
+        [Given(@"the following users exist:")]
+        public async Task Haha(Table table)
+        {
+            //var account = table.CreateInstance<Account>();
+        }
+        
+
 
 
 
@@ -151,31 +152,25 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             await CheckPointerFileAsync(bfi, shouldExist: false);
         }
-
         [Then("BinaryFile {word} has a PointerFile and the PointerFileEntry is marked as exists")]
         public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
         {
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             await CheckPointerFileAsync(bfi, shouldExist: true);
         }
-
         [Then("the PointerFileEntry for PointerFile {word} is marked as exists")]
         public async Task ThenThePointerFileEntryForPointerFilePointerIsMarkedAsExists(string pointerFileId)
         {
             var pfi = (FileInfo)scenarioContext[pointerFileId];
             await CheckPointerFileAsync(pfi, shouldExist: true);
         }
-        //[Then("the PointerFile for BinaryFile {word} exists and its PointerFileEntry is marked as exists")]
-        //public void ThenThePointerFileForBinaryFileFileExistsAndItsPointerFileEntryIsMarkedAsExists(string binaryFileId0)
+        //[Then("the PointerFile for BinaryFile {word} exists and the PointerFileEntry is marked as exists")]
+        //public async Task ThenThePointerFileForBinaryFileFileExistsAndThePointerFileEntryIsMarkedAsExists(string binaryFileId)
         //{
-        //    var bfi 
-        //}
-
-        //[Then("the PointerFile {word} exists")]
-        //public async Task ThenThePointerFilePointerExists(string pointerFileId)
-        //{
-        //    var pfi = (FileInfo)scenarioContext[pointerFileId];
-        //    await CheckPointerFile(pfi, shouldExist: true);
+        //    await ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(binaryFileId);
+        //    //var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
+        //    //var (pf, pfe) = await
+        //    //throw new PendingStepException();
         //}
 
         /// <summary>
@@ -272,32 +267,40 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         //}
 
         private const string OLD_BINARYFILE_LOCATION = "OLD_BINARYFILE_LOCATION";
-        private const string OLD_POINTERFILE = "OLD_POINTERFILE_LOCATION";
+        private const string OLD_POINTERFILE = "OLD_POINTERFILE";
+        private const string NEW_POINTERFILE_LOCATION = "NEW_POINTERFILE_LOCATION";
 
         [When("BinaryFile {word} and its PointerFile are renamed and moved to a subdirectory")]
         public async Task WhenBinaryFileFileAndItsPointerFileAreRenamedAndMovedToASubdirectory(string binaryFileId) => await MoveFiles(binaryFileId, true, true);
         [When("BinaryFile {word} is renamed and moved to a subdirectory")]
         public async Task WhenBinaryFileFileIsRenamedAndMovedToASubdirectory(string binaryFileId) => await MoveFiles(binaryFileId, true, false);
+        [When("the PointerFile for BinaryFile {word} is renamed and moved to a subdirectory")]
+        public async Task WhenThePointerFileForBinaryFileWordIsRenamedAndMovedToASubdirectory(string binaryFileId) => await MoveFiles(binaryFileId, false, true);
         private async Task MoveFiles(string binaryFileId, bool moveBinary, bool movePointer)
         {
+            // TODO REFACTOR THIS METHOD
+
             var bfi = ((RelatedFiles)scenarioContext[binaryFileId]).Archive;
             var (pf, _) = await GetPointerInfoAsync(bfi);
 
             scenarioContext[OLD_BINARYFILE_LOCATION] = bfi.FullName;
             scenarioContext[OLD_POINTERFILE] = pf;
 
-            if (moveBinary)
-            {
-                var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
-                var targetName = Path.GetRandomFileName();
-                bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
-            }
+            var targetDir = bfi.Directory.CreateSubdirectory(Path.GetRandomFileName());
+            var targetName = Path.GetRandomFileName();
 
+            if (moveBinary)
+                bfi.MoveTo(Path.Combine(targetDir.FullName, targetName)); // the FileInfo in scenarioContext is updated with this new location
             if (movePointer)
             {
-                File.Move(pf.FullName, bfi.FullName + Models.PointerFile.Extension);
+                var npl = Path.Combine(targetDir.FullName, targetName) + PointerFile.Extension;
+                File.Move(pf.FullName, npl);
+                scenarioContext[NEW_POINTERFILE_LOCATION] = npl;
             }
         }
+
+
+
 
         [Then("the BinaryFile at the old location no longer exist")]
         public void ThenTheBinaryFileAtTheOldLocationNoLongerExist()

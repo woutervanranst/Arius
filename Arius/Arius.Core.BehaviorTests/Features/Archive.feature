@@ -128,13 +128,28 @@ Scenario: Archive with RemoveLocal
 	Then BinaryFile File8 no longer exists
 	Then BinaryFile File8 has a PointerFile and the PointerFileEntry is marked as exists
 
+Scenario: Rename PointerFile that no longer has a BinaryFile
+	Given a remote archive
+	Given a local folder with BinaryFile File9
+	When archived to the Cool tier with option RemoveLocal
+
+	When the PointerFile for BinaryFile File9 is renamed and moved to a subdirectory
+	When archived to the Cool tier
+
+	Then the PointerFile at the old location no longer exist and the PointerFileEntry is marked as deleted
+	#Then the PointerFile for BinaryFile File9 exists and the PointerFileEntry is marked as exists
+	#Then THE POINTERFILE AT THE NEW LOCATION EXISTS
+
 
 #Scenario: Archive3
 #	Given a local repository with files
 #	* file 1 with 2 KB
 #	* file 2 with 1 KB
-#Given the following users exist:
-#  | name   | email              | twitter         |
-#  | Aslak  | aslak@cucumber.io  | @aslak_hellesoy |
-#  | Julien | julien@cucumber.io | @jbpros         |
-#  | Matt   | matt@cucumber.io   | @mattwynne      |
+#
+
+Scenario: bla
+	Given the following users exist:
+  | name   | email              | twitter         |
+  | Aslak  | aslak@cucumber.io  | @aslak_hellesoy |
+  | Julien | julien@cucumber.io | @jbpros         |
+  | Matt   | matt@cucumber.io   | @mattwynne      |
