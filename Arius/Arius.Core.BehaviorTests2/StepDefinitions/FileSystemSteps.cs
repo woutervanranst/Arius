@@ -25,16 +25,16 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [StepArgumentTransformation]
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
+
         [Given(@"a local file {string} of size {string} is archived to {word}")]
-        public async Task Ha(string relativeName, string size, AccessTier tier)
+        public async Task GivenALocalFileOfSizeIsArchivedTo(string relativeName, string size, AccessTier tier)
         {
             CreateFile(relativeName, size);
 
             await AriusRepository.ArchiveCommandAsync(tier);
         }
-
         [Given(@"the following local files are archived to {word} tier:")]
-        public async Task GivenTheFollowingLocalFilesAreArchived(AccessTier tier, Table table)
+        public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
         {
             var files = table.CreateSet<FileTableEntry>().ToList();
 
@@ -44,8 +44,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             await AriusRepository.ArchiveCommandAsync(tier);
         }
         record FileTableEntry(string RelativeName, string Size);
-
-
         private static void CreateFile(string relativeName, string size)
         {
             var sizeInBytes = size switch

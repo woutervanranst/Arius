@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Configuration;
+using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -39,15 +40,17 @@ namespace Arius.Core.BehaviorTests2
             Container = await blobService.CreateBlobContainerAsync(containerName);
 
             options = new RepositoryOptions(accountName, accountKey, Container.Name, passphrase);
-            serviceProvider = ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
 
             //oc.RegisterFactoryAs<Repository>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<Repository>()).InstancePerDependency();
             //oc.RegisterFactoryAs<PointerService>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<PointerService>()).InstancePerDependency();
+
+            await AddRepoStat();
         }
 
-        private static IServiceProvider serviceProvider;
         private static RepositoryOptions options;
         internal static BlobContainerClient Container { get; private set; }
+        private static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
+        private static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
 
         [AfterTestRun]
         private static async Task ClassCleanup() => await PurgeRemote(false);
@@ -70,6 +73,7 @@ namespace Arius.Core.BehaviorTests2
 
         }
 
+
         [BeforeScenario]
         public static void ClearDirectories()
         {
@@ -77,19 +81,37 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
-
-        private static Lazy<Facade> facade = new(() =>
+        public record AriusRepositoryStats(int ChunkCount, int ManifestCount);
+        public static List<AriusRepositoryStats> Stats { get; } = new();
+        private static async Task AddRepoStat()
         {
-            var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+            var repo = GetRepository();
 
-            var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-            {
-                TempDirectoryName = ".ariustemp",
-                RestoreTempDirectoryName = ".ariusrestore"
-            });
+            var chunkCount = await repo.Chunks.GetAllChunkBlobs().CountAsync();
+            var manifestCount = await repo.Binaries.CountAsync();
 
-            return new Facade(loggerFactory, tempDirectoryAppSettings);
-        });
+            //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
+            //var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
+
+            //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
+
+            Stats.Add(new(chunkCount, manifestCount));
+
+        }
+
+
+        //private static Lazy<Facade> facade = new(() =>
+        //{
+        //    var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+
+        //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+        //    {
+        //        TempDirectoryName = ".ariustemp",
+        //        RestoreTempDirectoryName = ".ariusrestore"
+        //    });
+
+        //    return new Facade(loggerFactory, tempDirectoryAppSettings);
+        //});
 
 
         private record ArchiveCommandOptions : IArchiveCommandOptions
@@ -120,8 +142,7 @@ namespace Arius.Core.BehaviorTests2
                 .BuildServiceProvider();
             var archiveCommand = sp.GetRequiredService<ICommand<IArchiveCommandOptions>>();
 
-
-            var options2 = new ArchiveCommandOptions
+            var aco = new ArchiveCommandOptions
             {
                 AccountName = options.AccountName,
                 AccountKey = options.AccountKey,
@@ -135,7 +156,9 @@ namespace Arius.Core.BehaviorTests2
                 VersionUtc = DateTime.UtcNow
             };
 
-            await archiveCommand.ExecuteAsync(options2);
+            await archiveCommand.ExecuteAsync(aco);
+
+            await AddRepoStat();
         }
     }
 }

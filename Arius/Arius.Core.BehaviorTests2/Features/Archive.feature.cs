@@ -120,6 +120,9 @@ this.ScenarioInitialize(scenarioInfo);
 #line 18
  testRunner.Given(string.Format("a local file \"{0}\" of size \"{1}\" is archived to {2}", relativeName, size, toTier), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
+#line 19
+ testRunner.Then("1 additional Chunk and Manifest", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
             }
             this.ScenarioCleanup();
         }
