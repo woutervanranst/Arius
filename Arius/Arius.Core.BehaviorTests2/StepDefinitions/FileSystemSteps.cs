@@ -68,5 +68,15 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             FileSystem.CreateFile(relativeName, sizeInBytes);
         }
 
+
+        [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]
+        public void ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
+        {
+            var pf = FileSystem.GetPointerFile(binaryRelativeName);
+
+            throw new PendingStepException();
+        }
+
+
     }
 }

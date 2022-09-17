@@ -1,7 +1,9 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Configuration;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -33,13 +35,13 @@ namespace Arius.Core.BehaviorTests2
 
             const string passphrase = "myPassphrase";
 
-            var containerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMdd-HHmmss}";
+            ContainerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMdd-HHmmss}";
 
             var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
             var blobService = new BlobServiceClient(connectionString);
-            Container = await blobService.CreateBlobContainerAsync(containerName);
+            container = await blobService.CreateBlobContainerAsync(ContainerName);
 
-            options = new RepositoryOptions(accountName, accountKey, Container.Name, passphrase);
+            options = new RepositoryOptions(accountName, accountKey, ContainerName, passphrase);
 
             //oc.RegisterFactoryAs<Repository>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<Repository>()).InstancePerDependency();
             //oc.RegisterFactoryAs<PointerService>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<PointerService>()).InstancePerDependency();
@@ -48,9 +50,12 @@ namespace Arius.Core.BehaviorTests2
         }
 
         private static RepositoryOptions options;
-        internal static BlobContainerClient Container { get; private set; }
-        private static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
+        private static BlobContainerClient container;
+        internal static string ContainerName { get; private set; }
+        internal static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
         private static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
+        internal static Lazy<PointerService> PointerService = new(() => GetServiceProvider().GetRequiredService<PointerService>());
+
 
         [AfterTestRun]
         private static async Task ClassCleanup() => await PurgeRemote(false);
@@ -60,13 +65,13 @@ namespace Arius.Core.BehaviorTests2
             if (leaveContainer)
             {
                 // Delete all blobs in the container but leave the container
-                await foreach (var bi in Container.GetBlobsAsync())
-                    await Container.DeleteBlobAsync(bi.Name);
+                await foreach (var bi in container.GetBlobsAsync())
+                    await container.DeleteBlobAsync(bi.Name);
             }
             else
             {
                 // Delete all containers
-                var blobService = Container.GetParentBlobServiceClient();
+                var blobService = container.GetParentBlobServiceClient();
                 foreach (var bci in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                     await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
             }
