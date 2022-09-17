@@ -90,7 +90,7 @@ namespace Arius.Core.BehaviorTests2.Features
         [NUnit.Framework.TestCaseAttribute("f1.txt", "BELOW_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
         [NUnit.Framework.TestCaseAttribute("f2.txt", "ABOVE_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
         [NUnit.Framework.TestCaseAttribute("f3.txt", "BELOW_ARCHIVE_TIER_LIMIT", "Archive", "Cool", "HYDRATED", null)]
-        [NUnit.Framework.TestCaseAttribute("f4.txt", "ABOVE_ARCHIVE_TIER_LIMIT", "Archive", "Archive", "NOT_HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("f4 d.txt", "ABOVE_ARCHIVE_TIER_LIMIT", "Archive", "Archive", "NOT_HYDRATED", null)]
         public void ArchiveOneFile(string relativeName, string size, string toTier, string actualTier, string hydratedStatus, string[] exampleTags)
         {
             string[] @__tags = new string[] {
@@ -125,6 +125,9 @@ this.ScenarioInitialize(scenarioInfo);
 #line hidden
 #line 20
  testRunner.Then(string.Format("BinaryFile \"{0}\" has a PointerFile and the PointerFileEntry is marked as exists", relativeName), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 21
+ testRunner.Then(string.Format("the Chunks for BinaryFile \"{0}\" are in the {1} tier and are {2}", relativeName, actualTier, hydratedStatus), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();

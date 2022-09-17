@@ -70,39 +70,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         }
 
 
-        [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]
-        public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
-        {
-            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, true);
-        }
-
-        private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
-        {
-            var fi = FileSystem.GetFileInfo(relativeName);
-            var pf = FileSystem.GetPointerFile(relativeName);
-            var pfe = await Arius.GetPointerFileEntryAsync(pf.RelativeName);
-
-            if (shouldExist)
-            {
-                pf.Should().NotBeNull();
-                pfe.IsDeleted.Should().BeFalse();
-
-                if (!fi.IsPointerFile())
-                {
-                    fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
-                    fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
-                }
-            }
-            else
-            {
-                pf.Should().BeNull();
-                pfe.IsDeleted.Should().BeTrue();
-
-                if (!fi.IsPointerFile())
-                    fi.Exists.Should().BeFalse();
-            }
-        }
-
+        
 
     }
 }

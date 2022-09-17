@@ -18,14 +18,14 @@ Scenario Outline: Archive one file
 	Given a local file "<RelativeName>" of size "<Size>" is archived to <ToTier>
 	Then 1 additional Chunk and Manifest
 	Then BinaryFile "<RelativeName>" has a PointerFile and the PointerFileEntry is marked as exists
-	#Then the Chunks for BinaryFile <RelativeName> are in the <ActualTier> tier and are <HydratedStatus>
+	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus>
 
 	Examples:
 		| RelativeName | Size                     | ToTier  | ActualTier | HydratedStatus |
 		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
 		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
 		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool       | HYDRATED       |
-		| f4.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
+		| f4 d.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
 
 #
 #Scenario: Undelete a file

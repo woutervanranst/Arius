@@ -53,7 +53,7 @@ namespace Arius.Core.BehaviorTests2
         private static BlobContainerClient container;
         internal static string ContainerName { get; private set; }
         internal static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
-        private static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
+        internal static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
         internal static Lazy<PointerService> PointerService = new(() => GetServiceProvider().GetRequiredService<PointerService>());
 
 
@@ -107,10 +107,15 @@ namespace Arius.Core.BehaviorTests2
 
 
 
-        public static async Task<PointerFileEntry> GetPointerFileEntryAsync(string pointerRelativeName)
+        /// <summary>
+        /// Get the PointerFileEntry associated with this PointerFile or BinaryFile
+        /// </summary>
+        /// <param name="relativeName">Either a PointerFile or a BinaryFile</param>
+        /// <returns></returns>
+        public static async Task<PointerFileEntry> GetPointerFileEntryAsync(string relativeName)
         {
             var pfes = await GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true);
-            var pfe = pfes.SingleOrDefault(r => r.RelativeName == pointerRelativeName);
+            var pfe = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile
 
             return pfe;
         }
