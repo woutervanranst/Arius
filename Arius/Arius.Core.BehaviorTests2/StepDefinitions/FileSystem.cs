@@ -12,12 +12,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
             runRoot = root.CreateSubdirectory(AriusRepository.Container.Name);
-            testDirectory = runRoot.CreateSubdirectory("test");
+            TestDirectory = runRoot.CreateSubdirectory("test");
         }
 
         private static DirectoryInfo root;
         private static DirectoryInfo runRoot;
-        private static DirectoryInfo testDirectory;
+        public static DirectoryInfo TestDirectory { get; private set; }
 
         [AfterTestRun]
         private static void ClassCleanup()
@@ -27,7 +27,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                 d.Delete(true);
         }
 
-        private static string GetFileName(string relativeName) => Path.Combine(testDirectory.FullName, relativeName);
+        private static string GetFileName(string relativeName) => Path.Combine(TestDirectory.FullName, relativeName);
 
         public static bool Exists(string relativeName) => File.Exists(GetFileName(relativeName));
         public static long Length(string relativeName) => new FileInfo(GetFileName(relativeName)).Length;
