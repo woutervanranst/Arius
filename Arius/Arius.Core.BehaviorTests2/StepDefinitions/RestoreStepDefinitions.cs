@@ -12,84 +12,16 @@ using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
-    [Binding]
-    class bls
-    {
-        public bls(FileSystemContext sdc)
-        {
-            sdc.name = "ha";
-        }
-
-        [Then("haha")]
-        public void ThenHaha()
-        {
-        }
-
-
-    }
-
 
     [Binding]
     class RestoreStepDefinitions : TestBase
     {
-        private const string TestContainerNamePrefix = "unittest";
-
-        record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
-
-
-        [BeforeTestRun(Order = 1)]
-        public static async Task InitializeRemoteRepository(IObjectContainer oc)
+        public RestoreStepDefinitions(ScenarioContext sc) : base(sc)
         {
-            var accountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME");
-            if (string.IsNullOrEmpty(accountName))
-                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_NAME not specified");
-
-            var accountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
-            if (string.IsNullOrEmpty(accountKey))
-                throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
-
-            const string Passphrase = "myPassphrase";
-
-            var containerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMdd-HHmmss}";
-
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
-            var blobService = new BlobServiceClient(connectionString);
-            var container = await blobService.CreateBlobContainerAsync(containerName);
-
-            oc.RegisterInstanceAs<BlobContainerClient>(container);
-            oc.RegisterInstanceAs(new RepositoryOptions(accountName, accountKey, containerName, Passphrase));
-            oc.RegisterInstanceAs<FileSystemContext>(new FileSystemContext());
-
-            oc.RegisterFactoryAs<IServiceProvider>((oc) =>
-            {
-                var options = oc.Resolve<RepositoryOptions>();
-                var sp = ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options);
-
-                return sp.Services;
-            }).InstancePerDependency(); // see https://github.com/SpecFlowOSS/BoDi/pull/16
-            oc.RegisterFactoryAs<Repository>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<Repository>()).InstancePerDependency();
-            oc.RegisterFactoryAs<PointerService>((oc) => oc.Resolve<IServiceProvider>().GetRequiredService<PointerService>()).InstancePerDependency();
         }
 
-        [BeforeTestRun(Order = 2)] //run after the RemoteRepository is initialized, and the BlobContainerClient is available for DI
-        public static void InitializeLocalRepository(IObjectContainer oc, BlobContainerClient bcc)
-        {
-            var root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
-            var runRoot = root.CreateSubdirectory(bcc.Name);
-            var sourceDirectory = runRoot.CreateSubdirectory("source");
-            var testDirectory = runRoot.CreateSubdirectory("test");
-
-            oc.RegisterInstanceAs(new Directories(root, runRoot, sourceDirectory, testDirectory));
-        }
-
-        public RestoreStepDefinitions(FileSystemContext fsc, ScenarioContext sc) : base(sc)
-        {
-            fsc.name = "he";
-        }
-
-        [Given(@"the following local files are archived:")]
-        public async Task Haha(Table table)
+        [Given(@"the following local files are archived to {word} tier:")]
+        public async Task GivenTheFollowingLocalFilesAreArchived(string tier, Table table)
         {
             var files = table.CreateSet<FileTableEntry>().ToList();
 
@@ -110,15 +42,14 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                         throw new ArgumentOutOfRangeException()
                 };
 
+                if (FileSystem.Exists(f.RelativeName))
+                    if (FileSystem.Length(f.RelativeName) != sizeInBytes)
+                        throw new ArgumentException("File already exists and is of different size");
 
-
-
-
+                FileSystem.CreateFile(f.RelativeName, sizeInBytes);
             }
-
-
         }
 
-        record FileTableEntry(string Id, string RelativeFileName, string Size);
+        record FileTableEntry(string Id, string RelativeName, string Size);
     }
 }

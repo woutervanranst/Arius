@@ -93,23 +93,19 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
                 TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
-                            "ID",
-                            "RelativeFileName",
+                            "RelativeName",
                             "Size"});
                 table1.AddRow(new string[] {
-                            "File1",
                             "dir1\\wouter.txt",
                             "15 KB"});
                 table1.AddRow(new string[] {
-                            "File2",
                             "dir2\\joke.pdf",
                             "BELOW_ARCHIVE_TIER_LIMIT"});
                 table1.AddRow(new string[] {
-                            "File3",
                             "taxes.doc",
                             "BELOW_ARCHIVE_TIER_LIMIT"});
 #line 7
- testRunner.Given("the following local files are archived:", ((string)(null)), table1, "Given ");
+ testRunner.Given("the following local files are archived to Cool tier:", ((string)(null)), table1, "Given ");
 #line hidden
             }
             this.ScenarioCleanup();
