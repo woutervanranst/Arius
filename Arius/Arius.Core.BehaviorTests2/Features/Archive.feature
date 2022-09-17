@@ -15,17 +15,17 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @mytag
 Scenario Outline: Archive one file
-	Given a local file "<FILE>" of size "<SIZE>" is archived to <TO_TIER>
-	Then 1 additional Chunk and Manifest
-	Then BinaryFile <FILE> has a PointerFile and the PointerFileEntry is marked as exists
-	Then the Chunks for BinaryFile <FILE> are in the <ACTUAL_TIER> tier and are <HYDRATED_STATUS>
+	Given a local file "<RelativeName>" of size "<Size>" is archived to <ToTier>
+	#Then 1 additional Chunk and Manifest
+	#Then BinaryFile <RelativeName> has a PointerFile and the PointerFileEntry is marked as exists
+	#Then the Chunks for BinaryFile <RelativeName> are in the <ActualTier> tier and are <HydratedStatus>
 
 	Examples:
-		| RelativeName | SIZE                     | TO_TIER | ACTUAL_TIER | HYDRATED_STATUS |
-		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
-		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
-		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool        | HYDRATED        |
-		| f4.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive     | NOT_HYDRATED    |
+		| RelativeName | Size                     | ToTier  | ActualTier | HydratedStatus |
+		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
+		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
+		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool       | HYDRATED       |
+		| f4.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
 
 #
 #Scenario: Undelete a file

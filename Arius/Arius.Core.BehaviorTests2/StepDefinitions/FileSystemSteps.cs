@@ -16,9 +16,9 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
 
     [Binding]
-    class RestoreStepDefinitions : TestBase
+    class FileSystemSteps : TestBase
     {
-        public RestoreStepDefinitions(ScenarioContext sc) : base(sc)
+        public FileSystemSteps(ScenarioContext sc) : base(sc)
         {
         }
 

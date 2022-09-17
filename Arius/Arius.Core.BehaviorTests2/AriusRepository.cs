@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using TechTalk.SpecFlow;
 
-namespace Arius.Core.BehaviorTests2.StepDefinitions
+namespace Arius.Core.BehaviorTests2
 {
     [Binding]
     static class AriusRepository
@@ -67,7 +67,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                 foreach (var bci in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
                     await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
             }
-            
+
         }
 
         [BeforeScenario]

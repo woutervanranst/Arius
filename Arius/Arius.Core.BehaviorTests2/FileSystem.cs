@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using TechTalk.SpecFlow;
 
-namespace Arius.Core.BehaviorTests2.StepDefinitions
+namespace Arius.Core.BehaviorTests2
 {
     [Binding]
     static class FileSystem

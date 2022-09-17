@@ -6,7 +6,7 @@ using BoDi;
 using Microsoft.Extensions.DependencyInjection;
 using TechTalk.SpecFlow;
 
-namespace Arius.Core.BehaviorTests2.StepDefinitions
+namespace Arius.Core.BehaviorTests2
 {
     [Binding]
     static class ScenarioContextExtensions

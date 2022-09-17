@@ -87,11 +87,11 @@ namespace Arius.Core.BehaviorTests2.Features
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("Archive one file")]
         [NUnit.Framework.CategoryAttribute("mytag")]
-        [NUnit.Framework.TestCaseAttribute("File100", "BELOW_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
-        [NUnit.Framework.TestCaseAttribute("File101", "ABOVE_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
-        [NUnit.Framework.TestCaseAttribute("File102", "BELOW_ARCHIVE_TIER_LIMIT", "Archive", "Cool", "HYDRATED", null)]
-        [NUnit.Framework.TestCaseAttribute("File103", "ABOVE_ARCHIVE_TIER_LIMIT", "Archive", "Archive", "NOT_HYDRATED", null)]
-        public void ArchiveOneFile(string fILE, string sIZE, string tO_TIER, string aCTUAL_TIER, string hYDRATED_STATUS, string[] exampleTags)
+        [NUnit.Framework.TestCaseAttribute("f1.txt", "BELOW_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("f2.txt", "ABOVE_ARCHIVE_TIER_LIMIT", "Cool", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("f3.txt", "BELOW_ARCHIVE_TIER_LIMIT", "Archive", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("f4.txt", "ABOVE_ARCHIVE_TIER_LIMIT", "Archive", "Archive", "NOT_HYDRATED", null)]
+        public void ArchiveOneFile(string relativeName, string size, string toTier, string actualTier, string hydratedStatus, string[] exampleTags)
         {
             string[] @__tags = new string[] {
                     "mytag"};
@@ -101,11 +101,11 @@ namespace Arius.Core.BehaviorTests2.Features
             }
             string[] tagsOfScenario = @__tags;
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            argumentsOfScenario.Add("FILE", fILE);
-            argumentsOfScenario.Add("SIZE", sIZE);
-            argumentsOfScenario.Add("TO_TIER", tO_TIER);
-            argumentsOfScenario.Add("ACTUAL_TIER", aCTUAL_TIER);
-            argumentsOfScenario.Add("HYDRATED_STATUS", hYDRATED_STATUS);
+            argumentsOfScenario.Add("RelativeName", relativeName);
+            argumentsOfScenario.Add("Size", size);
+            argumentsOfScenario.Add("ToTier", toTier);
+            argumentsOfScenario.Add("ActualTier", actualTier);
+            argumentsOfScenario.Add("HydratedStatus", hydratedStatus);
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive one file", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 17
 this.ScenarioInitialize(scenarioInfo);
@@ -118,16 +118,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 18
- testRunner.Given(string.Format("a local file \"{0}\" of size \"{1}\" is archived to {2}", fILE, sIZE, tO_TIER), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
-#line hidden
-#line 19
- testRunner.Then("1 additional Chunk and Manifest", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 20
- testRunner.Then(string.Format("BinaryFile {0} has a PointerFile and the PointerFileEntry is marked as exists", fILE), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 21
- testRunner.Then(string.Format("the Chunks for BinaryFile {0} are in the {1} tier and are {2}", fILE, aCTUAL_TIER, hYDRATED_STATUS), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Given(string.Format("a local file \"{0}\" of size \"{1}\" is archived to {2}", relativeName, size, toTier), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
             }
             this.ScenarioCleanup();
