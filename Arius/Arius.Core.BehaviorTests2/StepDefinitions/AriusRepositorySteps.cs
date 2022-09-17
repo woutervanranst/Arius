@@ -29,7 +29,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var rs1 = AriusRepository.Stats.Last();
 
             (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
-            (rs0.ManifestCount + x).Should().Be(rs1.ManifestCount);
+            (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
         }
     }
 }

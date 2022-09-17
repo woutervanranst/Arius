@@ -81,21 +81,21 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
-        public record AriusRepositoryStats(int ChunkCount, int ManifestCount);
+        public record AriusRepositoryStats(int ChunkCount, int BinaryCount);
         public static List<AriusRepositoryStats> Stats { get; } = new();
         private static async Task AddRepoStat()
         {
             var repo = GetRepository();
 
             var chunkCount = await repo.Chunks.GetAllChunkBlobs().CountAsync();
-            var manifestCount = await repo.Binaries.CountAsync();
+            var binaryCount = await repo.Binaries.CountAsync();
 
             //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
             //var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
 
             //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
-            Stats.Add(new(chunkCount, manifestCount));
+            Stats.Add(new(chunkCount, binaryCount));
 
         }
 
