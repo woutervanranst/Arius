@@ -27,7 +27,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
 
-        [Given(@"a local file {string} of size {string} is archived to {word}")]
+        [Given(@"a local file {string} of size {string} is archived to the {word} tier")]
         public async Task GivenALocalFileOfSizeIsArchivedTo(string relativeName, string size, AccessTier tier)
         {
             CreateFile(relativeName, size);

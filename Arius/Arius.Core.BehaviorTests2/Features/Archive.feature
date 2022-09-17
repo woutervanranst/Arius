@@ -15,7 +15,7 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @mytag
 Scenario Outline: Archive one file
-	Given a local file "<RelativeName>" of size "<Size>" is archived to <ToTier>
+	Given a local file "<RelativeName>" of size "<Size>" is archived to the <ToTier> tier
 	Then 1 additional Chunk and Manifest
 	Then BinaryFile "<RelativeName>" has a PointerFile and the PointerFileEntry is marked as exists
 	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus>
