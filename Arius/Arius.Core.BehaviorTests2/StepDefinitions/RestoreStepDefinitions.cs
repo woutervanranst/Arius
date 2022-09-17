@@ -12,14 +12,27 @@ using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
+    [Binding]
+    class bls
+    {
+        public bls(FileSystemContext sdc)
+        {
+            sdc.name = "ha";
+        }
+
+        [Then("haha")]
+        public void ThenHaha()
+        {
+        }
+
+
+    }
 
 
     [Binding]
     class RestoreStepDefinitions : TestBase
     {
         private const string TestContainerNamePrefix = "unittest";
-
-        
 
         record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
 
@@ -46,6 +59,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
             oc.RegisterInstanceAs<BlobContainerClient>(container);
             oc.RegisterInstanceAs(new RepositoryOptions(accountName, accountKey, containerName, Passphrase));
+            oc.RegisterInstanceAs<FileSystemContext>(new FileSystemContext());
 
             oc.RegisterFactoryAs<IServiceProvider>((oc) =>
             {
@@ -69,8 +83,9 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             oc.RegisterInstanceAs(new Directories(root, runRoot, sourceDirectory, testDirectory));
         }
 
-        public RestoreStepDefinitions(ScenarioContext sc) : base(sc)
+        public RestoreStepDefinitions(FileSystemContext fsc, ScenarioContext sc) : base(sc)
         {
+            fsc.name = "he";
         }
 
         [Given(@"the following local files are archived:")]
