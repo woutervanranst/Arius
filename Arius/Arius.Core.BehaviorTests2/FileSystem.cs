@@ -1,4 +1,5 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,6 +58,34 @@ namespace Arius.Core.BehaviorTests2
             return Arius.PointerService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
         }
 
+        public static void RestoreDirectoryEqualToArchiveDirectory()
+        {
+            var archiveFiles = ArchiveDirectory.GetAllFileInfos();
+            var restoredFiles = RestoreDirectory.GetAllFileInfos();
+
+            bool a = archiveFiles.SequenceEqual(restoredFiles, new FileComparer());
+            
+            a.Should().BeTrue();
+        }
+
+        private class FileComparer : IEqualityComparer<FileInfo>
+        {
+            public FileComparer() { }
+
+            public bool Equals(FileInfo x, FileInfo y)
+            {
+                return x.Name == y.Name &&
+                       x.Length == y.Length &&
+                       x.CreationTimeUtc == y.CreationTimeUtc &&
+                       x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
+                       SHA256Hasher.GetHashValue(x.FullName, "").Equals(SHA256Hasher.GetHashValue(y.FullName, ""));
+            }
+
+            public int GetHashCode(FileInfo obj)
+            {
+                return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
+            }
+        }
 
     }
 }
