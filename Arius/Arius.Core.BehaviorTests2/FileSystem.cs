@@ -32,9 +32,10 @@ namespace Arius.Core.BehaviorTests2
                 d.Delete(true);
         }
 
+
         private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
         public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
-
+        public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.PointerService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
         public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
         public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
         public static void CreateFile(string relativeName, int sizeInBytes)
@@ -53,20 +54,19 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
-        public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName)
-        {
-            return Arius.PointerService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
-        }
+        
 
         public static void RestoreDirectoryEqualToArchiveDirectory()
         {
             var archiveFiles = ArchiveDirectory.GetAllFileInfos();
             var restoredFiles = RestoreDirectory.GetAllFileInfos();
 
-            bool a = archiveFiles.SequenceEqual(restoredFiles, new FileComparer());
-            
-            a.Should().BeTrue();
+            archiveFiles.SequenceEqual(restoredFiles, new FileComparer()).Should().BeTrue();
         }
+
+
+
+
 
         private class FileComparer : IEqualityComparer<FileInfo>
         {

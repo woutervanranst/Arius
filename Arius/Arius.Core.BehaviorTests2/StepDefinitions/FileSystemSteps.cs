@@ -69,8 +69,17 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             FileSystem.CreateFile(relativeName, sizeInBytes);
         }
 
+        [When("archived to the {word} tier")]
+        public async Task WhenArchivedToTheCoolTier(AccessTier tier)
+        {
+            await Arius.ArchiveCommandAsync(tier);
+        }
 
-        
+
+
+
+
+
 
     }
 }

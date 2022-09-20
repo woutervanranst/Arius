@@ -27,25 +27,23 @@ Scenario Outline: Archive one file
 		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool       | HYDRATED       |
 		| f4 d.txt     | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
 
-#
-#Scenario: Undelete a file
-#	# Archive initial file
-#	Given a remote archive
-#	Given a local folder with BinaryFile File2
-#	When archived to the Cool tier
-#	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
-#	# Delete, then archive
-#	When BinaryFile File2 and its PointerFile are deleted
-#	When archived to the Cool tier
-#	Then 0 additional Chunks and Manifests
-#	Then BinaryFile File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
-#	# Restore
-#	Given a local folder with BinaryFile File2
-#	When archived to the Cool tier
-#	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
-#	Then 0 additional Chunks and Manifests
-#	
-#
+
+Scenario: Undelete a file
+	# Archive initial file
+	Given a local file "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
+	Then BinaryFile "File2.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	# Delete, then archive
+	When BinaryFile "File2.txt" and its PointerFile are deleted
+	When archived to the Cool tier
+	Then 0 additional Chunks and Manifests
+	Then BinaryFile File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
+	# Restore
+	Given a local folder with BinaryFile File2
+	When archived to the Cool tier
+	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
+	Then 0 additional Chunks and Manifests
+	
+
 #Scenario: Archive a duplicate file that was already archived
 #	Given a remote archive
 #	Given a local folder with BinaryFile File300

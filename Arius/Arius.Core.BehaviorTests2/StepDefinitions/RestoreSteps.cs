@@ -28,7 +28,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: true);
         }
 
-        [Then("all files are restoreed successfully")]
+        [Then("all files are restored successfully")]
         public void ThenAllFilesAreRestoreedSuccessfully()
         {
             FileSystem.RestoreDirectoryEqualToArchiveDirectory();

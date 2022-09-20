@@ -20,9 +20,7 @@ namespace Arius.Core.BehaviorTests2
     [Binding]
     static class Arius
     {
-        private const string TestContainerNamePrefix = "unittest";
-        private record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
-
+        
         [BeforeTestRun(Order = 1)]
         private static async Task ClassInit()
         {
@@ -46,18 +44,30 @@ namespace Arius.Core.BehaviorTests2
 
             await AddRepoStat();
         }
-
+        
+        private const string TestContainerNamePrefix = "unittest";
+        private record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
         private static RepositoryOptions options;
         private static BlobContainerClient container;
         internal static string ContainerName { get; private set; }
         internal static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
         internal static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
         internal static Lazy<PointerService> PointerService = new(() => GetServiceProvider().GetRequiredService<PointerService>());
+        //private static Lazy<Facade> facade = new(() =>
+        //{
+        //    var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
+        //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+        //    {
+        //        TempDirectoryName = ".ariustemp",
+        //        RestoreTempDirectoryName = ".ariusrestore"
+        //    });
+
+        //    return new Facade(loggerFactory, tempDirectoryAppSettings);
+        //});
 
         [AfterTestRun]
         private static async Task ClassCleanup() => await PurgeRemote(false);
-
         private static async Task PurgeRemote(bool leaveContainer = false)
         {
             if (leaveContainer)
@@ -84,8 +94,6 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
-        public record AriusRepositoryStats(int ChunkCount, int BinaryCount);
-        public static List<AriusRepositoryStats> Stats { get; } = new();
         private static async Task AddRepoStat()
         {
             var repo = GetRepository();
@@ -99,10 +107,9 @@ namespace Arius.Core.BehaviorTests2
             //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
             Stats.Add(new(chunkCount, binaryCount));
-
         }
-
-
+        public record AriusRepositoryStats(int ChunkCount, int BinaryCount);
+        public static List<AriusRepositoryStats> Stats { get; } = new();
 
 
         /// <summary>
@@ -118,36 +125,6 @@ namespace Arius.Core.BehaviorTests2
             return pfe;
         }
 
-        //private static Lazy<Facade> facade = new(() =>
-        //{
-        //    var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-
-            //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-            //    {
-            //        TempDirectoryName = ".ariustemp",
-            //        RestoreTempDirectoryName = ".ariusrestore"
-            //    });
-
-            //    return new Facade(loggerFactory, tempDirectoryAppSettings);
-            //});
-
-
-        private record ArchiveCommandOptions : IArchiveCommandOptions
-        {
-            public string AccountName { get; init; }
-            public string AccountKey { get; init; }
-            public string Container { get; init; }
-            public string Passphrase { get; init; }
-            public bool FastHash { get; init; }
-            public bool RemoveLocal { get; init; }
-            public AccessTier Tier { get; init; }
-            public bool Dedup { get; init; }
-            public DirectoryInfo Path { get; init; }
-            public DateTime VersionUtc { get; init; }
-        }
-
-
-        //record ArchiveCommandOptions (string AccountName, string AccountKey, string Container, string Passphrase, bool FastHash, bool RemoveLocal, AccessTier Tier, bool Dedup, DirectoryInfo Path, DateTime VersionUtc) : IArchiveCommandOptions;
 
         public static async Task ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
@@ -178,21 +155,20 @@ namespace Arius.Core.BehaviorTests2
 
             await AddRepoStat();
         }
-
-
-
-        private record RestoreCommandOptions : IRestoreCommandOptions
+        private record ArchiveCommandOptions : IArchiveCommandOptions
         {
-            public bool Synchronize { get; init; }
-            public bool Download { get; init; }
-            public bool KeepPointers { get; init; }
-            public DateTime? PointInTimeUtc { get; init; }
-            public DirectoryInfo Path { get; init; }
             public string AccountName { get; init; }
             public string AccountKey { get; init; }
             public string Container { get; init; }
             public string Passphrase { get; init; }
+            public bool FastHash { get; init; }
+            public bool RemoveLocal { get; init; }
+            public AccessTier Tier { get; init; }
+            public bool Dedup { get; init; }
+            public DirectoryInfo Path { get; init; }
+            public DateTime VersionUtc { get; init; }
         }
+
 
         public static async Task RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
         {
@@ -216,6 +192,18 @@ namespace Arius.Core.BehaviorTests2
             };
 
             await restoreCommand.ExecuteAsync(rco);
+        }
+        private record RestoreCommandOptions : IRestoreCommandOptions
+        {
+            public bool Synchronize { get; init; }
+            public bool Download { get; init; }
+            public bool KeepPointers { get; init; }
+            public DateTime? PointInTimeUtc { get; init; }
+            public DirectoryInfo Path { get; init; }
+            public string AccountName { get; init; }
+            public string AccountKey { get; init; }
+            public string Container { get; init; }
+            public string Passphrase { get; init; }
         }
     }
 }

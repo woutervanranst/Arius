@@ -6,7 +6,7 @@ A short summary of the feature
 Scenario: Restore one file
 	Given a local file "r1.txt" of size "ABOVE_ARCHIVE_TIER_LIMIT" is archived to the Cool tier 
 	When restored
-	Then all files are restoreed successfully
+	Then all files are restored successfully
 
 
 #Scenario: bla
