@@ -261,7 +261,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         if (!targetBinary.Exists)
         {
             //TODO ensure this path is tested
-
+            
             //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
             logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.Hash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
             await using (var ss = await binary.OpenReadAsync())
@@ -270,13 +270,9 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 await using var ts = File.OpenWrite(targetBinary.FullName);
                 await ss.CopyToAsync(ts); // File.Copy keeps the file locked when we re setting CreationTime and LastWriteTime
             }
-
-
-            targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
-            targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
-
-            //File.SetCreationTimeUtc(bfi.FullName, File.GetCreationTimeUtc(pf.FullName));
-            //File.SetLastWriteTimeUtc(bfi.FullName, File.GetLastWriteTimeUtc(pf.FullName));
         }
+
+        targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
+        targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
     }
 }
