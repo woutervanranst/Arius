@@ -36,11 +36,11 @@ Scenario: Undelete a file
 	When BinaryFile "File2.txt" and its PointerFile are deleted
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
-	Then BinaryFile File2 does not have a PointerFile and the PointerFileEntry is marked as deleted
+	Then the PointerFileEntry for BinaryFile "File2.txt" is marked as deleted
 	# Restore
-	Given a local folder with BinaryFile File2
+	When BinaryFile "File2.txt" is undeleted
 	When archived to the Cool tier
-	Then BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists
+	Then BinaryFile "File2.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	Then 0 additional Chunks and Manifests
 	
 

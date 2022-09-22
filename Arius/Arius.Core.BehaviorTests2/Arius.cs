@@ -117,7 +117,7 @@ namespace Arius.Core.BehaviorTests2
         /// </summary>
         /// <param name="relativeName">Either a PointerFile or a BinaryFile</param>
         /// <returns></returns>
-        public static async Task<PointerFileEntry> GetPointerFileEntryAsync(string relativeName)
+        public static async Task<PointerFileEntry?> GetPointerFileEntryAsync(string relativeName)
         {
             var pfes = await GetRepository().PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true);
             var pfe = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile

@@ -17,12 +17,14 @@ namespace Arius.Core.BehaviorTests2
             runRoot = root.CreateSubdirectory(Arius.ContainerName);
             ArchiveDirectory = runRoot.CreateSubdirectory("archive");
             RestoreDirectory = runRoot.CreateSubdirectory("restore");
+            TempDirectory = runRoot.CreateSubdirectory("temp");
         }
 
         private static DirectoryInfo root;
         private static DirectoryInfo runRoot;
         public static DirectoryInfo ArchiveDirectory { get; private set; }
         public static DirectoryInfo RestoreDirectory { get; private set; }
+        public static DirectoryInfo TempDirectory { get; private set; }
 
         [AfterTestRun]
         private static void ClassCleanup()

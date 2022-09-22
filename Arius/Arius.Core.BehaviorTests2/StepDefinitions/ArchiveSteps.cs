@@ -1,5 +1,6 @@
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
@@ -23,16 +24,58 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
         }
 
+        [When(@"BinaryFile {string} and its PointerFile are deleted")]
+        public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, true);
+
+        [When(@"BinaryFile {string} is deleted")]
+        public void BinaryFileIsDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, false);
+
+        private void DeleteFiles(string binaryRelativeName, bool deleteBinaryFile, bool deletePointerFile)
+        {
+            var bfi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, binaryRelativeName);
+
+            if (deleteBinaryFile)
+            {
+                // Store for future undelete
+                var bfi2 = bfi.CopyTo(FileSystem.ArchiveDirectory, FileSystem.TempDirectory, true);
+                scenarioContext[binaryRelativeName] = bfi2;
+
+                bfi.Delete();
+            }
+            if (deletePointerFile)
+            {
+                var pfi = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, binaryRelativeName);
+                pfi.Delete();
+            }
+        }
+
+        [When("BinaryFile {string} is undeleted")]
+        public void WhenBinaryFileIsUndeleted(string binaryRelativeName)
+        {
+            var bfi = (FileInfo)scenarioContext[binaryRelativeName];
+            bfi.CopyTo(FileSystem.TempDirectory, FileSystem.ArchiveDirectory, true);
+            bfi.Delete();
+        }
+
+
+
+
+
         [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]
         public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
         {
             await CheckPointerFileAndPointerFileEntry(binaryRelativeName, true);
         }
+        [Then("the PointerFileEntry for BinaryFile {string} is marked as deleted")]
+        public async Task ThenThePointerFileEntryForIsMarkedAsDeleted(string binaryRelativeName)
+        {
+            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, false);
+        }
         private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
         {
             var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
             var pf = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, relativeName);
-            var pfe = await Arius.GetPointerFileEntryAsync(pf.RelativeName);
+            var pfe = await Arius.GetPointerFileEntryAsync(relativeName);
 
             if (shouldExist)
             {
@@ -54,8 +97,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     fi.Exists.Should().BeFalse();
             }
         }
-
         
+
+
+
+
+
         [Then(@"the Chunks for BinaryFile {string} are in the {word} tier and are {word}")]
         public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus)
         {
@@ -85,26 +132,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
 
-        [When(@"BinaryFile {string} and its PointerFile are deleted")]
-        public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, true);
-
-        [When(@"BinaryFile {string} is deleted")]
-        public void BinaryFileIsDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, false);
-
-        private void DeleteFiles(string binaryRelativeName, bool deleteBinaryFile, bool deletePointerFile)
-        {
-            var bfi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, binaryRelativeName);
-
-            if (deleteBinaryFile)
-            {
-                bfi.Delete();
-            }
-            if (deletePointerFile)
-            {
-                var pfi = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, binaryRelativeName);
-                pfi.Delete();
-            }
-
-        }
+       
     }
 }

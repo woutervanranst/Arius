@@ -168,17 +168,17 @@ this.ScenarioInitialize(scenarioInfo);
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 39
- testRunner.Then("BinaryFile File2 does not have a PointerFile and the PointerFileEntry is marked a" +
-                        "s deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("the PointerFileEntry for BinaryFile \"File2.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 41
- testRunner.Given("a local folder with BinaryFile File2", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+ testRunner.When("BinaryFile \"File2.txt\" is undeleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 42
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 43
- testRunner.Then("BinaryFile File2 has a PointerFile and the PointerFileEntry is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+ testRunner.Then("BinaryFile \"File2.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
+                        "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 44
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
