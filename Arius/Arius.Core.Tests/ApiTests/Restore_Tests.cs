@@ -22,61 +22,6 @@ class Restore_Tests : TestBase
         RestoreTestDirectory.Clear();
     }
 
-    /*
-     * Restore_SynchronizeDownloadFile              Restore_SynchronizeFile_ValidationException
-     * Restore_SynchronizeDownloadDirectory
-     * Restore_SynchronizeNoDownloadFile            Restore_SynchronizeFile_ValidationException
-     * Restore_SynchroniseNoDownloadDirectory
-     * Restore_NoSynchronizeDownloadFile
-     * Restore_NoSynchronizeDownloadDirectory
-     * Restore_NoSynchronizeNoDownloadFile
-     * Restore_NoSynchronizeNoDownloadDirectory
-     */
-
-    [Test]
-    public void Restore_SynchronizeFile_ValidationException([Values(true, false)] bool download) //Synchronize flag only valid on directory
-    {
-        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-            return;
-
-        var fn = Path.Combine(TestBase.RestoreTestDirectory.FullName, "ha.pointer.arius");
-        File.WriteAllText(fn, "");
-
-        Assert.CatchAsync<ValidationException>(async () => await RestoreCommand(synchronize: true, download: download, path: fn));
-
-        File.Delete(fn);
-    }
-
-    [Test]
-    public async Task Restore_SynchronizeDownloadDirectory()
-    {
-    }
-
-    [Test]
-    public async Task Restore_SynchroniseNoDownloadDirectory()
-    {
-    }
-
-    [Test]
-    public async Task Restore_NoSynchronizeDownloadFile()
-    {
-    }
-
-    [Test]
-    public async Task Restore_NoSynchronizeDownloadDirectory()
-    {
-    }
-
-    [Test]
-    public async Task Restore_NoSynchronizeNoDownloadFile()
-    {
-    }
-
-    [Test]
-    public async Task Restore_NoSynchronizeNoDownloadDirectory()
-    {
-    }
-    
 
 
 
