@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Archive.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore - Copy.feature.cs" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -38,6 +39,10 @@
 
   <ItemGroup>
     <SpecFlowFeatureFiles Update="Features\Archive.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Restore_File.feature">
       <Visible>$(UsingMicrosoftNETSdk)</Visible>
       <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
     </SpecFlowFeatureFiles>

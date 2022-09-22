@@ -20,22 +20,22 @@ namespace Arius.Core.BehaviorTests2.Features
     [System.CodeDom.Compiler.GeneratedCodeAttribute("TechTalk.SpecFlow", "3.9.0.0")]
     [System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [NUnit.Framework.TestFixtureAttribute()]
-    [NUnit.Framework.DescriptionAttribute("Restore")]
-    public partial class RestoreFeature
+    [NUnit.Framework.DescriptionAttribute("Restore Directory")]
+    public partial class RestoreDirectoryFeature
     {
         
         private TechTalk.SpecFlow.ITestRunner testRunner;
         
         private static string[] featureTags = ((string[])(null));
         
-#line 1 "Restore.feature"
+#line 1 "Restore_Directory.feature"
 #line hidden
         
         [NUnit.Framework.OneTimeSetUpAttribute()]
         public virtual void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restore", "A short summary of the feature", ProgrammingLanguage.CSharp, featureTags);
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restore Directory", "A short summary of the feature", ProgrammingLanguage.CSharp, featureTags);
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -73,69 +73,42 @@ namespace Arius.Core.BehaviorTests2.Features
             testRunner.CollectScenarioErrors();
         }
         
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Restore a directory with one file")]
-        [NUnit.Framework.CategoryAttribute("tag1")]
-        public void RestoreADirectoryWithOneFile()
+        public virtual void FeatureBackground()
         {
-            string[] tagsOfScenario = new string[] {
-                    "tag1"};
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Restore a directory with one file", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 5
+    #line hidden
+            TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
+                        "RelativeName",
+                        "Size",
+                        "SourceRelativeName"});
+            table1.AddRow(new string[] {
+                        "dir1\\wouter.txt",
+                        "15 KB",
+                        ""});
+            table1.AddRow(new string[] {
+                        "dir2\\joke.pdf",
+                        "BELOW_ARCHIVE_TIER_LIMIT",
+                        ""});
+            table1.AddRow(new string[] {
+                        "taxes.doc",
+                        "",
+                        "dir1\\wouter.txt"});
 #line 6
-this.ScenarioInitialize(scenarioInfo);
+        testRunner.Given("the following local files are archived to Cool tier:", ((string)(null)), table1, "Given ");
 #line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-#line 7
- testRunner.Given("a local file \"r1.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Cool " +
-                        "tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
-#line hidden
-#line 8
- testRunner.When("restored", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 9
- testRunner.Then("all files are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Synchronize and download a file")]
-        public void SynchronizeAndDownloadAFile()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize and download a file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 16
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-            }
-            this.ScenarioCleanup();
         }
         
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("Synchronize and download a directory")]
+        [NUnit.Framework.CategoryAttribute("tag1")]
         public void SynchronizeAndDownloadADirectory()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "tag1"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize and download a directory", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 19
-this.ScenarioInitialize(scenarioInfo);
+#line 13
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -144,48 +117,18 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-                TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
-                            "RelativeName",
-                            "Size"});
-                table1.AddRow(new string[] {
-                            "dir1\\wouter.txt",
-                            "15 KB"});
-                table1.AddRow(new string[] {
-                            "dir2\\joke.pdf",
-                            "BELOW_ARCHIVE_TIER_LIMIT"});
-                table1.AddRow(new string[] {
-                            "taxes.doc",
-                            "BELOW_ARCHIVE_TIER_LIMIT"});
-#line 21
-    testRunner.Given("the following local files are archived to Cool tier:", ((string)(null)), table1, "Given ");
+#line 5
+    this.FeatureBackground();
 #line hidden
-#line 26
- testRunner.When("restored", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 15
+        testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 27
- testRunner.Then("all files are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 16
+     testRunner.When("restore --synchronize --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Synchronize a file")]
-        public void SynchronizeAFile()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize a file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 29
-this.ScenarioInitialize(scenarioInfo);
+#line 17
+        testRunner.Then("all BinaryFiles and PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
             }
             this.ScenarioCleanup();
         }
@@ -197,8 +140,8 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize a directory", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 32
-this.ScenarioInitialize(scenarioInfo);
+#line 20
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -207,27 +150,18 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("Download a file")]
-        public void DownloadAFile()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Download a file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 35
-this.ScenarioInitialize(scenarioInfo);
+#line 5
+    this.FeatureBackground();
 #line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
+#line 22
+        testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 23
+        testRunner.When("restore --synchronize --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 24
+        testRunner.Then("all PointerFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
             }
             this.ScenarioCleanup();
         }
@@ -239,8 +173,8 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Download a directory", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 38
-this.ScenarioInitialize(scenarioInfo);
+#line 27
+    this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
             {
@@ -249,6 +183,9 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
+#line 5
+    this.FeatureBackground();
+#line hidden
             }
             this.ScenarioCleanup();
         }

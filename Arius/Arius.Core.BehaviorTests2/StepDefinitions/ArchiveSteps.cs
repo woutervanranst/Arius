@@ -6,6 +6,7 @@ using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using BoDi;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using System;
@@ -41,11 +42,24 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var files = table.CreateSet<FileTableEntry>().ToList();
 
             foreach (var f in files)
-                CreateFile(f.RelativeName, f.Size);
+            {
+                if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName))
+                {
+                    // Create a new file
+                    CreateFile(f.RelativeName, f.Size);
+                }
+                else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
+                {
+                    // Duplicate a file
+                    DuplicateFile(f.RelativeName, f.SourceRelativeName);
+                }
+                else
+                    throw new ArgumentException();
+            }
 
             await Arius.ArchiveCommandAsync(tier);
         }
-        record FileTableEntry(string RelativeName, string Size);
+        record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
         private static void CreateFile(string relativeName, string size)
         {
             var sizeInBytes = size switch
@@ -64,10 +78,23 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             };
 
             if (FileSystem.Exists(FileSystem.ArchiveDirectory, relativeName))
+            {
                 if (FileSystem.Length(FileSystem.ArchiveDirectory, relativeName) != sizeInBytes)
                     throw new ArgumentException("File already exists and is of different size");
+                
+                // Reuse the file that already exists
+                return;
+            }
+            else
+                FileSystem.CreateFile(relativeName, sizeInBytes);
+        }
+        private static void DuplicateFile(string relativeName, string sourceRelativeName)
+        {
+            if (FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName).Exists)
+                return;
 
-            FileSystem.CreateFile(relativeName, sizeInBytes);
+            var bfi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, sourceRelativeName);
+            bfi.CopyTo(Path.Combine(FileSystem.ArchiveDirectory.FullName, relativeName));
         }
 
         [When("archived to the {word} tier")]
@@ -80,10 +107,16 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
         [When(@"BinaryFile {string} and its PointerFile are deleted")]
-        public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, true);
+        public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName)
+        {
+            DeleteFiles(binaryRelativeName, deleteBinaryFile: true, deletePointerFile: true);
+        }
 
         [When(@"BinaryFile {string} is deleted")]
-        public void BinaryFileIsDeleted(string binaryRelativeName) => DeleteFiles(binaryRelativeName, true, false);
+        public void BinaryFileIsDeleted(string binaryRelativeName)
+        {
+            DeleteFiles(binaryRelativeName, deleteBinaryFile: true, deletePointerFile: false);
+        }
 
         private void DeleteFiles(string binaryRelativeName, bool deleteBinaryFile, bool deletePointerFile)
         {

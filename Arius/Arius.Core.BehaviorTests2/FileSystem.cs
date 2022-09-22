@@ -58,10 +58,27 @@ namespace Arius.Core.BehaviorTests2
 
         
 
-        public static void RestoreDirectoryEqualToArchiveDirectory()
+        public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
         {
-            var archiveFiles = ArchiveDirectory.GetAllFileInfos();
-            var restoredFiles = RestoreDirectory.GetAllFileInfos();
+            IEnumerable<FileInfo> archiveFiles, restoredFiles;
+
+            if (compareBinaryFile && comparePointerFile)
+            {
+                archiveFiles = ArchiveDirectory.GetAllFileInfos();
+                restoredFiles = RestoreDirectory.GetAllFileInfos();
+            }
+            else if (compareBinaryFile)
+            {
+                archiveFiles = ArchiveDirectory.GetBinaryFileInfos();
+                restoredFiles = RestoreDirectory.GetBinaryFileInfos();
+            }
+            else if (comparePointerFile)
+            {
+                archiveFiles = ArchiveDirectory.GetPointerFileInfos();
+                restoredFiles = RestoreDirectory.GetPointerFileInfos();
+            }
+            else
+                throw new ArgumentException();
 
             archiveFiles.SequenceEqual(restoredFiles, new FileComparer()).Should().BeTrue();
         }

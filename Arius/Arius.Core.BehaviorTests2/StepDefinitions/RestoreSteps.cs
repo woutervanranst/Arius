@@ -24,17 +24,43 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
         }
 
-        [When("restored")]
-        public async Task WhenRestored()
+        [Given("a clean restore directory")]
+        public void GivenACleanRestoreDirectory()
+        {
+            FileSystem.RestoreDirectory.Clear();
+        }
+
+
+        [When("restore --synchronize --download --keepPointers")]
+        public async Task WhenRestore_Synchronize_Download_KeepPointers()
         {
             await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: true);
         }
-
-        [Then("all files are restored successfully")]
-        public void ThenAllFilesAreRestoreedSuccessfully()
+        [When("restore --synchronize --keepPointers")]
+        public async Task WhenRestore_Synchronize_KeepPointers()
         {
-            FileSystem.RestoreDirectoryEqualToArchiveDirectory();
+            await Arius.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: true);
         }
+
+
+
+        [Then("all BinaryFiles and PointerFiles are restored successfully")]
+        public void ThenAllBinaryFilesAndPointerFilesAreRestoredSuccessfully()
+        {
+            FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: true);
+        }
+        [Then("all PointerFiles are restored succesfully")]
+        public void ThenAllPointerFilesAreRestoredSuccesfully()
+        {
+            FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: false, comparePointerFile: true);
+        }
+        [Then("all BinaryFiles are restored succesfully")]
+        public void ThenAllBinaryFilesAreRestoredSuccesfully()
+        {
+            FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: false);
+        }
+
+
 
 
 
