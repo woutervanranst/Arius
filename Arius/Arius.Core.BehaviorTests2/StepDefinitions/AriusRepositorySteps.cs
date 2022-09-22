@@ -21,15 +21,5 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         public AriusRepositorySteps(ScenarioContext sc) : base(sc)
         {
         }
-
-        [Then("{int} additional Chunk(s) and Manifest(s)")]
-        public void ThenAdditionalChunksAndManifests(int x)
-        {
-            var rs0 = Arius.Stats.SkipLast(1).Last();
-            var rs1 = Arius.Stats.Last();
-
-            (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
-            (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
-        }
     }
 }
