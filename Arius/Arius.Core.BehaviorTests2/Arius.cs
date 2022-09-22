@@ -172,6 +172,10 @@ namespace Arius.Core.BehaviorTests2
 
         public static async Task RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
         {
+            await RestoreCommandAsyc(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
+        }
+        public static async Task RestoreCommandAsyc(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
+        {
             var sp = new ServiceCollection()
                 .AddAriusCoreCommands()
                 .AddLogging()
@@ -186,7 +190,7 @@ namespace Arius.Core.BehaviorTests2
                 Passphrase = options.Passphrase,
                 Download = download,
                 KeepPointers = keepPointers,
-                Path = FileSystem.RestoreDirectory,
+                Path = path,
                 PointInTimeUtc = DateTime.UtcNow,
                 Synchronize = synchronize
             };
