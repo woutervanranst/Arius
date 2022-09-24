@@ -227,7 +227,10 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 }
 
                 if (restored)
+                {
+                    RestoredFromOnlineTier = true;
                     binary = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+                }
 
                 if (!restoredBinaries[pf.Hash].Task.IsCompleted)
                 {
@@ -251,10 +254,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
             //TODO what if chunk does not exist?
 
-            //// For unit testing purposes
-            //internal static bool ChunkRestoredFromLocal { get; set; } = false;
-            //internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
-            //internal static bool ChunkStartedHydration { get; set; } = false;
+
         }
 
         var targetBinary = pointerService.GetBinaryFileInfo(pf);
@@ -264,6 +264,8 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             
             //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
             logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.Hash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
+            RestoredFromLocal = true;
+
             await using (var ss = await binary.OpenReadAsync())
             {
                 targetBinary.Directory.Create();
@@ -278,4 +280,9 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         if (!options.KeepPointers)
             pf.Delete();
     }
+
+    // For unit testing purposes
+    internal static bool RestoredFromLocal { get; set; } = false;
+    internal static bool RestoredFromOnlineTier { get; set; } = false;
+    internal static bool StartedHydration { get; set; } = false;
 }

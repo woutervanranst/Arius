@@ -56,6 +56,20 @@ namespace Arius.Core.BehaviorTests2
         }
 
 
+
+
+
+        public static void CopyArchiveBinaryFileToRestoreDirectory(string relativeBinaryFile)
+        {
+            var apf = GetPointerFile(ArchiveDirectory, relativeBinaryFile);
+            var apfi = new FileInfo(apf.FullName);
+
+            apfi.CopyTo(ArchiveDirectory, RestoreDirectory);
+        }
+
+
+
+
         
 
         public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
@@ -83,6 +97,18 @@ namespace Arius.Core.BehaviorTests2
             archiveFiles.SequenceEqual(restoredFiles, new FileComparer()).Should().BeTrue();
         }
 
+        public static void RestoreBinaryFileEqualToArchiveBinaryFile(string relativeBinaryFile)
+        {
+            var afi = GetFileInfo(ArchiveDirectory, relativeBinaryFile);
+            var rfi = GetFileInfo(RestoreDirectory, relativeBinaryFile);
+
+            new FileComparer().Equals(afi, rfi);
+
+        }
+
+
+
+
 
 
 
@@ -105,6 +131,5 @@ namespace Arius.Core.BehaviorTests2
                 return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
             }
         }
-
     }
 }
