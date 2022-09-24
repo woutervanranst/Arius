@@ -25,6 +25,14 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
         }
 
+        [BeforeScenario]
+        public void Reset()
+        {
+            Commands.Restore.DownloadBinaryBlock.RestoredFromOnlineTier = false;
+            Commands.Restore.DownloadBinaryBlock.RestoredFromLocal = false;
+            Commands.Restore.DownloadBinaryBlock.StartedHydration = false;
+        }
+
         [Given("a clean restore directory")]
         public void GivenACleanRestoreDirectory()
         {
@@ -92,6 +100,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: false);
         }
+        [Then("the PointerFile for BinaryFile {string} does not exist")]
+        public void ThenThePointerFileForBinaryFileDoesNotExist(string relativeBinaryFile)
+        {
+            var d = FileSystem.RestoreDirectory;
+            d.GetPointerFileInfos().Where(pfi => pfi.GetRelativeName(d).StartsWith(relativeBinaryFile)).Should().BeEmpty();
+        }
         [Then("no PointerFiles are present")]
         public void ThenNoPointerFilesArePresent()
         {
@@ -114,25 +128,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var d = FileSystem.RestoreDirectory;
             d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
         }
-        [Then("the restore directory is empty")]
-        public void ThenTheRestoreDirectoryIsEmpty()
-        {
-            FileSystem.RestoreDirectory.GetFiles().Should().BeEmpty();
-        }
-
-
-
-
-
-
-
         [Then("the BinaryFile {string} is restored from online tier")]
         public void ThenTheBinaryFileIsRestored(string relativeBinaryFile)
         {
             FileSystem.RestoreBinaryFileEqualToArchiveBinaryFile(relativeBinaryFile);
             Commands.Restore.DownloadBinaryBlock.RestoredFromOnlineTier.Should().BeTrue();
         }
-
         [Then("the BinaryFile {string} is restored from local")]
         public void ThenTheBinaryFileIsRestoredFromLocal(string relativeBinaryFile)
         {
@@ -140,22 +141,52 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             Commands.Restore.DownloadBinaryBlock.RestoredFromLocal.Should().BeTrue();
         }
 
+        //[Then("the restore directory is empty")]
+        //public void ThenTheRestoreDirectoryIsEmpty()
+        //{
+        //    FileSystem.RestoreDirectory.GetFiles().Should().BeEmpty();
+        //}
+
+
+
+
+        [Given("a random PointerFile for BinaryFile {string}")]
+        public void GivenARandomPointerFileForBinaryFile(string relativeBinaryFile)
+        {
+            // Take a real PointerFile
+            var pfi = FileSystem.ArchiveDirectory.GetPointerFileInfos().First();
+            // Build the target filename
+            var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + Models.PointerFile.Extension);
+
+            pfi.CopyTo(pfn);
+        }
+
+        [Given("a random BinaryFile {string}")]
+        public void GivenARandomBinaryFile(string relativeBinaryFile)
+        {
+            var bfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile);
+
+            File.WriteAllText(bfn, "some random binary stuff");
+        }
 
 
 
 
 
-        
 
-        
+
+
+
+
+
         //[Then("the PointerFile for BinaryFile {string} is not present")]
         //public void ThenThePointerFileForBinaryFileIsNotPresent(string relativeBinaryFile)
         //{
         //    FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile).Should().BeNull();
         //}
 
-        
-        
+
+
 
 
 

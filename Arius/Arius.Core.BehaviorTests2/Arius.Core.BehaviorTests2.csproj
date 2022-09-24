@@ -9,6 +9,7 @@
   <ItemGroup>
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Archive.feature.cs" />
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore_Directory - Copy.feature.cs" />
   </ItemGroup>
 
 	<ItemGroup>
@@ -35,10 +36,17 @@
     <Compile Update="Features\Archive.feature.cs">
       <DependentUpon>%(Filename)</DependentUpon>
     </Compile>
+    <Compile Update="Features\Restore_Synchronize.feature.cs">
+      <DependentUpon>Restore_Synchronize.feature</DependentUpon>
+    </Compile>
   </ItemGroup>
 
   <ItemGroup>
     <SpecFlowFeatureFiles Update="Features\Archive.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Restore_Synchronize.feature">
       <Visible>$(UsingMicrosoftNETSdk)</Visible>
       <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
     </SpecFlowFeatureFiles>
