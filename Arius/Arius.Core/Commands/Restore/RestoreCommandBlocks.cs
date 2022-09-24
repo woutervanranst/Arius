@@ -274,5 +274,8 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
         targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
         targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
+
+        if (!options.KeepPointers)
+            pf.Delete();
     }
 }
