@@ -241,7 +241,7 @@ this.FeatureBackground();
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 45
-    testRunner.When("Copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 46
     testRunner.When("restore --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
@@ -289,7 +289,7 @@ this.FeatureBackground();
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 58
-    testRunner.When("Copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 59
     testRunner.When("restore --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");

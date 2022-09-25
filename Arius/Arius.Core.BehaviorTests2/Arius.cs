@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NUnit.Framework;
 using System.ComponentModel;
 using TechTalk.SpecFlow;
 
@@ -123,6 +124,27 @@ namespace Arius.Core.BehaviorTests2
             var pfe = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile
 
             return pfe;
+        }
+
+
+
+
+        public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
+        {
+            var c = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+            return await c.ExistsAsync();
+        }
+
+        public static async Task CopyChunkToRehydrateFolderAndArchiveOriginal(ChunkHash ch)
+        {
+            var source = container.GetBlobClient($"{Repository.ChunkRepository.ChunkFolderName}/{ch}");
+            var target = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+
+            var sourceSasUri = source.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(DateTime.Now.AddMinutes(1)));
+
+            await target.SyncCopyFromUriAsync(sourceSasUri);
+
+            await source.SetAccessTierAsync(AccessTier.Archive);
         }
 
 

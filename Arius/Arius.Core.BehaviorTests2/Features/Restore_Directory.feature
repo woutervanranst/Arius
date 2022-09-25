@@ -42,7 +42,7 @@ Scenario: Selective restore: Download a directory and keep pointers
     Then no PointerFiles are present
     Then no BinaryFiles are present
 
-    When Copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
+    When copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
     When restore --download --keepPointers
     Then only the PointerFile for BinaryFile "dir1\wouter.txt" is present
     Then only the BinaryFile "dir1\wouter.txt" is present
@@ -55,7 +55,7 @@ Scenario: Selective restore: Download a directory and do not keep pointers
     Then no PointerFiles are present
     Then no BinaryFiles are present
 
-    When Copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
+    When copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
     When restore --download
     Then only the BinaryFile "dir1\wouter.txt" is present
     Then no PointerFiles are present
