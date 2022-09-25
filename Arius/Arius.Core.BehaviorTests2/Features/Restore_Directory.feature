@@ -35,6 +35,13 @@ Scenario: Synchronize a directory and do not keep pointers
     Then no BinaryFiles are present
 
 
+Scenario: Synchronize and download a directory and do not keep pointers
+    Given a clean restore directory
+    When restore --synchronize --download
+    Then all BinaryFiles are restored succesfully
+    Then no PointerFiles are present
+
+
 Scenario: Selective restore: Download a directory and keep pointers
     # Restore with NoSynchronize, Download, KeepPointers, Directory
     Given a clean restore directory
@@ -59,8 +66,8 @@ Scenario: Selective restore: Download a directory and do not keep pointers
     When restore --download
     Then only the BinaryFile "dir1\wouter.txt" is present
     Then no PointerFiles are present
-
     
+
 Scenario: Restore without synchronize and without download
     Given a clean restore directory
     When restore expect a ValidationException

@@ -1,20 +1,6 @@
-using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using BoDi;
-using FluentValidation;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using NUnit.Framework;
-using System;
-using System.Text.RegularExpressions;
-using System.Xml;
-using TechTalk.SpecFlow;
-using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
@@ -50,6 +36,11 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             await Arius.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: true);
         }
+        [When("restore --synchronize --download")]
+        public async Task WhenRestore_Synchronize_Download()
+        {
+            await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: false);
+        }
         [When("restore --synchronize")]
         public async Task WhenRestore_Synchronize()
         {
@@ -68,7 +59,10 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [When("restore expect a ValidationException")]
         public async Task WhenRestore()
         {
-            Assert.CatchAsync<ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
+            Func<Task> t = () => Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
+            await t.Should().ThrowAsync<FluentValidation.ValidationException>();
+
+            //Assert.CatchAsync<FluentValidation.ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
         }
 
 
