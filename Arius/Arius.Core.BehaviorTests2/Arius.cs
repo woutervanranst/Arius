@@ -128,26 +128,6 @@ namespace Arius.Core.BehaviorTests2
 
 
 
-
-        public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
-        {
-            var c = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
-            return await c.ExistsAsync();
-        }
-
-        public static async Task CopyChunkToRehydrateFolderAndArchiveOriginal(ChunkHash ch)
-        {
-            var source = container.GetBlobClient($"{Repository.ChunkRepository.ChunkFolderName}/{ch}");
-            var target = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
-
-            var sourceSasUri = source.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(DateTime.Now.AddMinutes(1)));
-
-            await target.SyncCopyFromUriAsync(sourceSasUri);
-
-            await source.SetAccessTierAsync(AccessTier.Archive);
-        }
-
-
         public static async Task ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
         {
             if (purgeRemote)
@@ -232,6 +212,29 @@ namespace Arius.Core.BehaviorTests2
             public string Passphrase { get; init; }
         }
 
+
+        public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
+        {
+            var c = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+            return await c.ExistsAsync();
+        }
+
+        public static async Task CopyChunkToRehydrateFolderAndArchiveOriginal(ChunkHash ch)
+        {
+            var source = container.GetBlobClient($"{Repository.ChunkRepository.ChunkFolderName}/{ch}");
+            var target = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+
+            var sourceSasUri = source.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(DateTime.Now.AddMinutes(1)));
+
+            await target.SyncCopyFromUriAsync(sourceSasUri);
+
+            await source.SetAccessTierAsync(AccessTier.Archive);
+        }
+        public static async Task<bool> RehydrateFolderExists()
+        {
+            var bs = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).ToArrayAsync();
+            return bs.Length > 0;
+        }
 
     }
 }

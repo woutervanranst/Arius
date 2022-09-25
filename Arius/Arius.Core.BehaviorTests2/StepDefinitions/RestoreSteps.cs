@@ -85,11 +85,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
 
-        //[Then("all BinaryFiles and PointerFiles are restored successfully")]
-        //public void ThenAllBinaryFilesAndPointerFilesAreRestoredSuccessfully()
-        //{
-        //    FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: true);
-        //}
         [Then("all PointerFiles are restored succesfully")]
         public void ThenAllPointerFilesAreRestoredSuccesfully()
         {
@@ -106,19 +101,18 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var d = FileSystem.RestoreDirectory;
             d.GetPointerFileInfos().Where(pfi => pfi.GetRelativeName(d).StartsWith(relativeBinaryFile)).Should().BeEmpty();
         }
-        [Then("the BinaryFile {string} does not exist")]
-        public void ThenTheBinaryFileDoesNotExist(string relativeBinaryFile)
-        {
-            var d = FileSystem.RestoreDirectory;
-            d.GetBinaryFileInfos().Should().NotContain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
-        }
         [Then("the BinaryFile {string} exists")]
         public void ThenTheBinaryFileExists(string relativeBinaryFile)
         {
             var d = FileSystem.RestoreDirectory;
             d.GetBinaryFileInfos().Should().Contain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
         }
-
+        [Then("the BinaryFile {string} does not exist")]
+        public void ThenTheBinaryFileDoesNotExist(string relativeBinaryFile)
+        {
+            var d = FileSystem.RestoreDirectory;
+            d.GetBinaryFileInfos().Should().NotContain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
+        }
         [Then("no PointerFiles are present")]
         public void ThenNoPointerFilesArePresent()
         {
@@ -162,8 +156,8 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [Then("the hydration for the chunks of BinaryFile {string} have started")]
         public async Task ThenTheHydrationForTheChunksOfBinaryFileHaveStarted(string relativeBinaryFile)
         {
-            var bf = FileSystem.GetBinaryFile(FileSystem.RestoreDirectory, relativeBinaryFile);
-            var ch = new ChunkHash(bf.Hash); // hack
+            var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
+            var ch = new ChunkHash(pf.Hash); // hack
 
             var e = await Arius.RehydrateChunkExists(ch);
             e.Should().BeTrue();
@@ -173,11 +167,18 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             tier.Should().Be(AccessTier.Archive);
 
-            var bf = FileSystem.GetBinaryFile(FileSystem.ArchiveDirectory, relativeBinaryFile);
-            var ch = new ChunkHash(bf.Hash);
+            var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
+            var ch = new ChunkHash(pf.Hash);
 
             await Arius.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);
         }
+        [Then("the rehydrate folder does not exist")]
+        public async void ThenTheRehydrateFolderDoesNotExist()
+        {
+            var e = await Arius.RehydrateFolderExists();
+            e.Should().BeFalse();
+        }
+
 
 
 

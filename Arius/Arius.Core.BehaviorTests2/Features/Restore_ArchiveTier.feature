@@ -16,10 +16,10 @@ Scenario: Restore a file from archive tier
 Scenario: Restore a file from archive tier after the chunk has been hydrated
 	# Stage
 	Given a local file "File4.txt" of size "ABOVE_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
-	When the chunk of BinaryFile "File4.txt" is copied to the rehydrate folder and the original chunk is moved to the Archive tier
-
 	When copy the PointerFile of BinaryFile "File4.txt" to the restore directory
+	When the chunk of BinaryFile "File4.txt" is copied to the rehydrate folder and the original chunk is moved to the Archive tier
 	When restore --download
+
 	Then the BinaryFile "File4.txt" exists
 	Then the rehydrate folder does not exist
 
