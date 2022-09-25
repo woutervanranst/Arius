@@ -2,6 +2,19 @@
 
 A short summary of the feature
 
+BACKLOG
+* empty dir
+* remote with isdeleted and local present > should be deleted
+* remote with !isdeleted and local not present > should be created
+* also in subdirectories
+* in ariusfile : de verschillende extensions
+* al 1 file lokaal > kopieert de rest
+* directory more than 2 deep without other files
+*  download > local files exist s> don't download all
+* restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
+* restore a seoncd time without any changes
+
+
 Background:
     Given the following local files are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
@@ -75,8 +88,8 @@ Scenario: Restore without synchronize and without download
 
 Scenario: Download a file of which the binary is already restored
     Given a clean restore directory
-    When Copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
-    When Copy the PointerFile of BinaryFile "taxes.doc" to the restore directory
+    When copy the PointerFile of BinaryFile "dir1\wouter.txt" to the restore directory
+    When copy the PointerFile of BinaryFile "taxes.doc" to the restore directory
     When restore --download
     Then the BinaryFile "dir1\wouter.txt" is restored from online tier
     Then the BinaryFile "taxes.doc" is restored from local

@@ -35,7 +35,19 @@ namespace Arius.Core.BehaviorTests2.Features
         public virtual void FeatureSetup()
         {
             testRunner = TechTalk.SpecFlow.TestRunnerManager.GetTestRunner();
-            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restore Directory", "A short summary of the feature", ProgrammingLanguage.CSharp, featureTags);
+            TechTalk.SpecFlow.FeatureInfo featureInfo = new TechTalk.SpecFlow.FeatureInfo(new System.Globalization.CultureInfo("en-US"), "Features", "Restore Directory", @"A short summary of the feature
+
+BACKLOG
+* empty dir
+* remote with isdeleted and local present > should be deleted
+* remote with !isdeleted and local not present > should be created
+* also in subdirectories
+* in ariusfile : de verschillende extensions
+* al 1 file lokaal > kopieert de rest
+* directory more than 2 deep without other files
+*  download > local files exist s> don't download all
+* restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
+* restore a seoncd time without any changes", ProgrammingLanguage.CSharp, featureTags);
             testRunner.OnFeatureStart(featureInfo);
         }
         
@@ -75,7 +87,7 @@ namespace Arius.Core.BehaviorTests2.Features
         
         public virtual void FeatureBackground()
         {
-#line 5
+#line 18
 #line hidden
             TechTalk.SpecFlow.Table table1 = new TechTalk.SpecFlow.Table(new string[] {
                         "RelativeName",
@@ -93,7 +105,7 @@ namespace Arius.Core.BehaviorTests2.Features
                         "taxes.doc",
                         "",
                         "dir1\\wouter.txt"});
-#line 6
+#line 19
     testRunner.Given("the following local files are archived to Cool tier:", ((string)(null)), table1, "Given ");
 #line hidden
         }
@@ -107,7 +119,7 @@ namespace Arius.Core.BehaviorTests2.Features
                     "tag1"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize and download a directory", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 14
+#line 27
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -117,19 +129,19 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 16
+#line 29
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 17
+#line 30
  testRunner.When("restore --synchronize --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 18
+#line 31
     testRunner.Then("all BinaryFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 19
+#line 32
     testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -143,7 +155,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize a directory and keep pointers", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 22
+#line 35
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -153,19 +165,19 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 24
+#line 37
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 25
+#line 38
     testRunner.When("restore --synchronize --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 26
+#line 39
     testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 27
+#line 40
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -179,7 +191,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize a directory and do not keep pointers", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 30
+#line 43
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -189,20 +201,56 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 32
+#line 45
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 33
+#line 46
     testRunner.When("restore --synchronize", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 34
+#line 47
     testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 35
+#line 48
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Synchronize and download a directory and do not keep pointers")]
+        public void SynchronizeAndDownloadADirectoryAndDoNotKeepPointers()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Synchronize and download a directory and do not keep pointers", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 51
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 18
+this.FeatureBackground();
+#line hidden
+#line 52
+    testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 53
+    testRunner.When("restore --synchronize --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 54
+    testRunner.Then("all BinaryFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 55
+    testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -215,7 +263,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Selective restore: Download a directory and keep pointers", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 38
+#line 58
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -225,31 +273,31 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 40
+#line 60
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 41
+#line 61
     testRunner.When("restore --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 42
+#line 62
     testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 43
+#line 63
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 45
+#line 65
     testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 46
+#line 66
     testRunner.When("restore --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 47
+#line 67
     testRunner.Then("only the PointerFile for BinaryFile \"dir1\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 48
+#line 68
     testRunner.Then("only the BinaryFile \"dir1\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -263,7 +311,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Selective restore: Download a directory and do not keep pointers", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 51
+#line 71
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -273,67 +321,31 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 53
+#line 73
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 54
+#line 74
     testRunner.When("restore --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 55
+#line 75
     testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 56
+#line 76
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 58
+#line 78
     testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 59
+#line 79
     testRunner.When("restore --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 60
+#line 80
     testRunner.Then("only the BinaryFile \"dir1\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 61
-    testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-            }
-            this.ScenarioCleanup();
-        }
-        
-        [NUnit.Framework.TestAttribute()]
-        [NUnit.Framework.DescriptionAttribute("ha")]
-        public void Ha()
-        {
-            string[] tagsOfScenario = ((string[])(null));
-            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
-            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("ha", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 63
-this.ScenarioInitialize(scenarioInfo);
-#line hidden
-            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
-            {
-                testRunner.SkipScenario();
-            }
-            else
-            {
-                this.ScenarioStart();
-#line 5
-this.FeatureBackground();
-#line hidden
-#line 64
-    testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
-#line hidden
-#line 65
-    testRunner.When("restore --synchronize --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
-#line hidden
-#line 66
-    testRunner.Then("all BinaryFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
-#line hidden
-#line 67
+#line 81
     testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -347,7 +359,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Restore without synchronize and without download", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 70
+#line 84
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -357,13 +369,13 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 71
+#line 85
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 72
+#line 86
     testRunner.When("restore expect a ValidationException", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
             }
@@ -377,7 +389,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Download a file of which the binary is already restored", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 75
+#line 89
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -387,25 +399,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 5
+#line 18
 this.FeatureBackground();
 #line hidden
-#line 76
+#line 90
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 77
-    testRunner.When("Copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 91
+    testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 78
-    testRunner.When("Copy the PointerFile of BinaryFile \"taxes.doc\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line 92
+    testRunner.When("copy the PointerFile of BinaryFile \"taxes.doc\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 79
+#line 93
     testRunner.When("restore --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 80
+#line 94
     testRunner.Then("the BinaryFile \"dir1\\wouter.txt\" is restored from online tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 81
+#line 95
     testRunner.Then("the BinaryFile \"taxes.doc\" is restored from local", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
