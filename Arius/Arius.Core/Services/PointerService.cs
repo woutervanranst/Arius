@@ -226,6 +226,8 @@ internal class PointerService
     /// <returns></returns>
     public BinaryFile GetBinaryFile(PointerFile pf, bool ensureCorrectHash)
     {
+        ArgumentNullException.ThrowIfNull(pf);
+
         var bfi = new FileInfo(GetBinaryFileFullName(pf));
 
         return GetBinaryFile(pf.Root, bfi, pf.Hash, ensureCorrectHash);
