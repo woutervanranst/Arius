@@ -231,6 +231,8 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                     RestoredFromOnlineTier = true;
                     binary = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
                 }
+                else
+                    chunkRehydrating();
 
                 if (!restoredBinaries[pf.Hash].Task.IsCompleted)
                 {
@@ -284,5 +286,4 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
     // For unit testing purposes
     internal static bool RestoredFromLocal { get; set; } = false;
     internal static bool RestoredFromOnlineTier { get; set; } = false;
-    internal static bool StartedHydration { get; set; } = false;
 }

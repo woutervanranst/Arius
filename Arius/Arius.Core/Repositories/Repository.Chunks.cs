@@ -150,7 +150,7 @@ internal partial class Repository
                 else if (status == null)
                     logger.LogInformation($"Hydration done for '{blobToHydrate.Hash.ToShortString()}'");
                 else
-                    throw new ArgumentException("TODO");
+                    throw new ArgumentException($"BlobClient returned an unknown ArchiveStatus {status}");
             }
         }
 
