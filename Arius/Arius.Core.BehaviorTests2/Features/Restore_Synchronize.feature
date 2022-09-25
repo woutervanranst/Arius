@@ -12,7 +12,7 @@ Scenario: Synchronization removes obsolete pointers but leaves binaryfiles intac
     # The binaryfile is not removed
     Then only the BinaryFile "profile.jpg" is present
     # all pointerfiles that shoud exist, exist
-    Then all PointerFiles are restored succesfully
+    Then all PointerFiles are restored successfully
     # all other pointerfiles are deleted
     Then the PointerFile for BinaryFile "test.txt" does not exist
 

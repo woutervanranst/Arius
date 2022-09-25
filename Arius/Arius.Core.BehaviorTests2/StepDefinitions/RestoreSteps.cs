@@ -79,13 +79,13 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
 
-        [Then("all PointerFiles are restored succesfully")]
-        public void ThenAllPointerFilesAreRestoredSuccesfully()
+        [Then("all PointerFiles are restored successfully")]
+        public void ThenAllPointerFilesAreRestoredsuccessfully()
         {
             FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: false, comparePointerFile: true);
         }
-        [Then("all BinaryFiles are restored succesfully")]
-        public void ThenAllBinaryFilesAreRestoredSuccesfully()
+        [Then("all BinaryFiles are restored successfully")]
+        public void ThenAllBinaryFilesAreRestoredsuccessfully()
         {
             FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: false);
         }

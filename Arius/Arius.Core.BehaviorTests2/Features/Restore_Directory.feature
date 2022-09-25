@@ -15,15 +15,15 @@ Scenario: Synchronize and download a directory
     # Restore with Synchronize, Download, Directory
     Given a clean restore directory
 	When restore --synchronize --download --keepPointers
-    Then all BinaryFiles are restored succesfully
-    Then all PointerFiles are restored succesfully
+    Then all BinaryFiles are restored successfully
+    Then all PointerFiles are restored successfully
 	    
 
 Scenario: Synchronize a directory and keep pointers
     # Restore with Synchronize, NoDownload, Directory
     Given a clean restore directory
     When restore --synchronize --keepPointers
-    Then all PointerFiles are restored succesfully
+    Then all PointerFiles are restored successfully
     Then no BinaryFiles are present
 
 
@@ -31,14 +31,14 @@ Scenario: Synchronize a directory and do not keep pointers
     # Restore with Synchronize, NoDownload, Directory
     Given a clean restore directory
     When restore --synchronize
-    Then all PointerFiles are restored succesfully
+    Then all PointerFiles are restored successfully
     Then no BinaryFiles are present
 
 
 Scenario: Synchronize and download a directory and do not keep pointers
     Given a clean restore directory
     When restore --synchronize --download
-    Then all BinaryFiles are restored succesfully
+    Then all BinaryFiles are restored successfully
     Then no PointerFiles are present
 
 

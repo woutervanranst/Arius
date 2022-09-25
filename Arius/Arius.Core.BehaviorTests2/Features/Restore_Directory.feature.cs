@@ -127,10 +127,10 @@ this.FeatureBackground();
  testRunner.When("restore --synchronize --download --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 18
-    testRunner.Then("all BinaryFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("all BinaryFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 19
-    testRunner.Then("all PointerFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -163,7 +163,7 @@ this.FeatureBackground();
     testRunner.When("restore --synchronize --keepPointers", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 26
-    testRunner.Then("all PointerFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 27
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
@@ -199,7 +199,7 @@ this.FeatureBackground();
     testRunner.When("restore --synchronize", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 34
-    testRunner.Then("all PointerFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("all PointerFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 35
     testRunner.Then("no BinaryFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
@@ -331,7 +331,7 @@ this.FeatureBackground();
     testRunner.When("restore --synchronize --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 66
-    testRunner.Then("all BinaryFiles are restored succesfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("all BinaryFiles are restored successfully", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
 #line 67
     testRunner.Then("no PointerFiles are present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
