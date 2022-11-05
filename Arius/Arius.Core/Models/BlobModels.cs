@@ -65,7 +65,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     public abstract Task<bool> SetAccessTierPerPolicyAsync(AccessTier tier);
     internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)
     {
-        const long oneMegaByte = 1024 * 1024;
+        const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
 
         if (targetAccessTier == AccessTier.Archive && 
             length <= oneMegaByte)

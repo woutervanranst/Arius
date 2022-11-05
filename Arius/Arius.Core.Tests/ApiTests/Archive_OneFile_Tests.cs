@@ -17,14 +17,6 @@ namespace Arius.Core.Tests.ApiTests;
 
 class Archive_OneFile_Tests : TestBase
 {
-    protected override void BeforeEachTest()
-    {
-        base.BeforeEachTest();
-
-        ArchiveTestDirectory.Clear();
-    }
-
-
     [Test, Order(1)]
     public async Task Archive_OneFileCoolTier_Success()
     {
@@ -33,8 +25,8 @@ class Archive_OneFile_Tests : TestBase
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
-        AccessTier tier = AccessTier.Cool;
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
+        var tier = AccessTier.Cool;
         await ArchiveCommand(tier);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
@@ -43,8 +35,9 @@ class Archive_OneFile_Tests : TestBase
         //1 additional Manifest exists
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
         //1 additional PointerFileEntry exists
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
+        //The ArchiveTestDirectory contains exactly one file
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Length);
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
         //PointerFile is created
@@ -62,6 +55,45 @@ class Archive_OneFile_Tests : TestBase
         Assert.AreEqual(bfi.LastWriteTimeUtc, pfe.LastWriteTimeUtc);
     }
 
+    [Test]
+    public async Task Archive_OneFileArchiveTier_Success()
+    {
+        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
+            return;
+
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out _);
+
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi, sizeInBytes: 1024 * 1024 + 1); // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync) 
+        AccessTier tier = AccessTier.Archive;
+        await ArchiveCommand(tier);
+
+        RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out _);
+        //1 additional chunk was uploaded
+        Assert.AreEqual(chunkBlobItemCount0 + 1, chunkBlobItemCount1);
+        //1 additional Manifest exists
+        Assert.AreEqual(binaryCount0 + 1, binaryCount1);
+        //1 additional PointerFileEntry exists
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
+        Assert.AreEqual(1, currentPfeWithoutDeleted1.Length);
+
+        GetPointerInfo(repo, bfi, out var pf, out var pfe);
+        //PointerFile is created
+        Assert.IsNotNull(pf);
+        //The chunk is in the appropriate tier
+        var ch = (await repo.Binaries.GetChunkHashesAsync(pf.Hash)).Single();
+        var c = repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: false);
+        Assert.AreEqual(tier, c.AccessTier);
+        //There is no hydrated chunk
+        c = repo.Chunks.GetChunkBlobByHash(c.Hash, requireHydrated: true);
+        Assert.IsNull(c);
+        //There is a matching PointerFileEntry
+        Assert.IsNotNull(pfe);
+        //The PointerFileEntry is not marked as deleted
+        Assert.IsFalse(pfe.IsDeleted);
+        //The Creation- and LastWriteTime match
+        Assert.AreEqual(bfi.CreationTimeUtc, pfe.CreationTimeUtc);
+        Assert.AreEqual(bfi.LastWriteTimeUtc, pfe.LastWriteTimeUtc);
+    }
 
     [Test]
     public async Task Archive_DeleteUndelete_Success()
@@ -69,7 +101,8 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        string key = nameof(Archive_DeleteUndelete_Success);
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi, key); 
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -82,9 +115,9 @@ class Archive_OneFile_Tests : TestBase
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // The current archive is cleared
-        Assert.AreEqual(currentPfeWithoutDeleted1.Count(), 0);
+        Assert.AreEqual(currentPfeWithoutDeleted1.Length, 0);
         // One additional PointerFileEntry marking it as deleted
-        Assert.AreEqual(allPfes0.Count() + 1, allPfes1.Count());
+        Assert.AreEqual(allPfes0.Length + 1, allPfes1.Length);
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount1);
         // Manifests have not changed
@@ -96,20 +129,19 @@ class Archive_OneFile_Tests : TestBase
 
 
         // UNDELETE
-        _ = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out _, key);
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount2, out var binaryCount2, out var currentPfeWithDeleted2, out var currentPfeWithoutDeleted2, out var allPfes2);
         // The current archive again has one file
-        Assert.AreEqual(currentPfeWithoutDeleted2.Count(), 1);
+        Assert.AreEqual(currentPfeWithoutDeleted2.Length, 1);
         // One additinoal PointerFileEntry marking it as existing
-        Assert.AreEqual(allPfes1.Count() + 1, allPfes2.Count());
+        Assert.AreEqual(allPfes1.Length + 1, allPfes2.Length);
         // Chunks have not changed
         Assert.AreEqual(chunkBlobItemCount0, chunkBlobItemCount2);
         // Manifests have not changed
         Assert.AreEqual(binaryCount0, binaryCount2);
     }
-
 
     [Test]
     public async Task Archive_DuplicateBinaryFile_Success()
@@ -117,7 +149,7 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         await ArchiveCommand();
 
         RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
@@ -137,7 +169,7 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created
         Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
         GetPointerInfo(repo, bfi2, out var pf2, out var pfe2);
@@ -158,12 +190,8 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
-        //await ArchiveCommand(); <-- the only difference
-
-        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
-
-        // Add a duplicate of the BinaryFile
+        // Stage two binaries, duplicates
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         var bfi2 = bfi1.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi1.Name}");
         // With slightly modified datetime
         bfi2.CreationTimeUtc += TimeSpan.FromSeconds(-10); //Put it in the past for Linux
@@ -171,6 +199,12 @@ class Archive_OneFile_Tests : TestBase
 
         await ArchiveCommand();
 
+        RepoStats(out _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
+
+        // Add a third duplicate
+        var bfi3 = bfi2.CopyTo(ArchiveTestDirectory, $"Duplicate of {bfi2.Name}");
+
+        await ArchiveCommand();
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
         // No additional chunks were uploaded
@@ -178,19 +212,19 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created
         Assert.AreEqual(binaryCount1, binaryCount0);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
-        GetPointerInfo(repo, bfi2, out var pf2, out var pfe2);
+        GetPointerInfo(repo, bfi3, out var pf3, out var pfe3);
         // A new PointerFile is created
-        Assert.IsTrue(File.Exists(pf2.FullName));
+        Assert.IsTrue(File.Exists(pf3.FullName));
         // A PointerFileEntry with the matching relativeName exists
-        Assert.IsNotNull(pfe2);
+        Assert.IsNotNull(pfe3);
         // The PointerFileEntry is not marked as deleted
-        Assert.IsFalse(pfe2.IsDeleted);
+        Assert.IsFalse(pfe3.IsDeleted);
         // The Creation- and LastWriteTimeUtc match
-        Assert.AreEqual(bfi2.CreationTimeUtc, pfe2.CreationTimeUtc);
-        Assert.AreEqual(bfi2.LastWriteTimeUtc, pfe2.LastWriteTimeUtc);
+        Assert.AreEqual(bfi3.CreationTimeUtc, pfe3.CreationTimeUtc);
+        Assert.AreEqual(bfi3.LastWriteTimeUtc, pfe3.LastWriteTimeUtc);
     }
 
     [Test]
@@ -199,7 +233,7 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi1 = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi1);
         await ArchiveCommand();
 
 
@@ -223,7 +257,7 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // 1 addtl PointerFileEntry is created
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length);
 
 
         GetPointerInfo(pfi2, out var pf2, out var pfe2);
@@ -248,7 +282,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename BinaryFile and PointerFile -- this is like a 'move'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand();
 
 
@@ -269,9 +303,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // No net increase in current PointerFileEntries
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length, currentPfeWithoutDeleted1.Length);
 
         var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
@@ -297,7 +331,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename BinaryFile without renaming the PointerFile -- this is like a 'duplicate'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand();
 
 
@@ -318,9 +352,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // One additional PointerFileEntry
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count() + 1, currentPfeWithoutDeleted1.Count()); //* CHANGED
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length + 1, currentPfeWithoutDeleted1.Length); //* CHANGED
 
         var pfi1_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi1_Relativename_Original);
@@ -344,7 +378,7 @@ class Archive_OneFile_Tests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         // Ensure the BinaryFile exists
         Assert.IsTrue(File.Exists(bfi.FullName));
 
@@ -369,7 +403,7 @@ class Archive_OneFile_Tests : TestBase
 
         // Rename PointerFile that no longer has a BinaryFile -- this is like a 'move'
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand(removeLocal: true);
 
 
@@ -392,9 +426,9 @@ class Archive_OneFile_Tests : TestBase
         // No additional ManifestHash is created (ie just 1)
         Assert.AreEqual(binaryCount0, binaryCount1);
         // One additional PointerFileEntry (the deleted one)
-        Assert.AreEqual(currentPfeWithDeleted0.Count() + 1, currentPfeWithDeleted1.Count());
+        Assert.AreEqual(currentPfeWithDeleted0.Length + 1, currentPfeWithDeleted1.Length);
         // No net increase in current PointerFileEntries
-        Assert.AreEqual(currentPfeWithoutDeleted0.Count(), currentPfeWithoutDeleted1.Count());
+        Assert.AreEqual(currentPfeWithoutDeleted0.Length, currentPfeWithoutDeleted1.Length);
 
         var pfi_Relativename_Original = Path.GetRelativePath(ArchiveTestDirectory.FullName, pfi_FullName_Original);
         var originalPfe = currentPfeWithDeleted1.SingleOrDefault(pfe => pfe.RelativeName == pfi_Relativename_Original);
@@ -425,32 +459,35 @@ class Archive_OneFile_Tests : TestBase
         var e = ae!.InnerExceptions.Single().InnerException;
         Assert.IsInstanceOf<ArgumentException>(e);
         Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
-
-        File.Delete(fn);
     }
 
-    [Test]
-    public async Task Archive_NonMatchingPointer_Exception()
+    [Test, Combinatorial]
+    public async Task Archive_NonMatchingPointer_Exception([Values(true, false)] bool matchLastWriteTime)
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        //// Scenario 1 - garbage in the pointerfile (not a v1 pointer, not a sha hash)
-        //var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
-        //await File.WriteAllTextAsync(fn, "kaka");
+        // Stage a situation with a binary and a pointer
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
+        await ArchiveCommand();
+        var ps = GetPointerService();
+        var pf = ps.GetPointerFile(bfi);
+        // But the Pointer does not match
+        File.WriteAllLines(pf.FullName, new[] { "{\"BinaryHash\":\"aaaaaaaaaaaaa7da82bfb533db099d2e843ee5f03efa8657e9da1aca63396f4c\"}" });
+        
+        if (matchLastWriteTime)
+            File.SetLastWriteTimeUtc(pf.FullName, File.GetLastWriteTimeUtc(bfi.FullName));
 
-        //var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
-        //var e = ae!.InnerExceptions.Single().InnerException;
-        //Assert.IsInstanceOf<ArgumentException>(e);
-        //Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
+        var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+        var e = ae!.InnerExceptions.Single().InnerException;
+        Assert.IsInstanceOf<InvalidOperationException>(e);
 
-        //File.Delete(fn);
-
-
-        if (DateTime.Now > TestSetup.UnitTestGracePeriod)
-            throw new NotImplementedException();
-
-        // expected throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+        if (matchLastWriteTime)
+            // LastWriteTime matches - Arius assumes the pointer belongs to the binaryfile but the hash doesnt match
+            Assert.IsTrue(e.Message.Contains("is not valid for the BinaryFile"));
+        else
+            // LastWriteTime does not match - Arius assumes this modified file, but can't find the binary anywhere
+            Assert.IsTrue(e.Message.Contains("exists on disk but no corresponding binary exists either locally or remotely"));
     }
 
     [Test]

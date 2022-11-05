@@ -16,7 +16,7 @@
     <PackageReference Include="Arius.Core" Version="2.0.1230.727" />
 	<!--<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />-->
 
-    <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.2.1" />
+    <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.3.1" />
     <!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />

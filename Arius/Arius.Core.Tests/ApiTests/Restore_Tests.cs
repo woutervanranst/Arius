@@ -93,7 +93,8 @@ class Restore_Tests : TestBase
             return;
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         var pf1 = ArchiveTestDirectory.GetPointerFileInfos().First();
         var pf2 = ArchiveTestDirectory.GetPointerFileInfos().Skip(1).First();
@@ -124,7 +125,8 @@ class Restore_Tests : TestBase
         // Selective restore
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         Assert.IsTrue(TestSetup.RestoreTestDirectory.IsEmpty());
 
@@ -184,7 +186,8 @@ class Restore_Tests : TestBase
         // Scenario: restore a single file
 
         //Archive the full directory so that only pointers remain
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: true);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         // 1. synchronize and do not download Directory: Restore_SynchronizeNoDownloadDirectory_PointerFilesSynchronized +  Restore_FullSourceDirectory_OnlyPointers
         // 2.1 synchronize and do not fownload file -- invalidoperaiton
@@ -224,21 +227,22 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: true);
 
         // Copy the pointer and the chunk to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
         var r_pfi = a_pfi.CopyTo(RestoreTestDirectory);
             
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var a_pf = ps.GetPointerFile(a_pfi);
         var a_bf = ps.GetBinaryFile(a_pf, false);
 
-        var restoreTempDir = GetServices().GetRequiredService<TempDirectoryAppSettings>().GetRestoreTempDirectory(RestoreTestDirectory);
+        var restoreTempDir = GetRestoreTempDirectory(RestoreTestDirectory);
 
         var a_bfi = new FileInfo(a_bf.FullName);
-        throw new NotImplementedException();
-        //a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
+        a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}");
+        // NOTE when fixing sep22: could not find ChunkFile anymore - this was the original line. a_bfi.CopyTo(restoreTempDir, $"{a_bf.Hash}{ChunkFile.Extension}");
 
 
         // Restore
@@ -270,7 +274,8 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(removeLocal: false);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(removeLocal: false);
 
         // Copy the pointer to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
@@ -288,7 +293,7 @@ class Restore_Tests : TestBase
         //Assert.IsFalse(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
         // the BinaryFile is restored
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
         var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
         Assert.IsNotNull(r_bfi);
@@ -307,7 +312,9 @@ class Restore_Tests : TestBase
 
 
         // Ensure stuff is archived
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, removeLocal: false, tier: AccessTier.Archive);
+        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
+        await ArchiveCommand(purgeRemote: true, removeLocal: false, tier: AccessTier.Archive);
+
 
         // Copy the pointer to the restore directory
         var a_pfi = ArchiveTestDirectory.GetPointerFileInfos().First();
@@ -325,7 +332,7 @@ class Restore_Tests : TestBase
         //Assert.IsTrue(Commands.Restore.DownloadChunksForBinaryBlock.ChunkStartedHydration);
 
         // the BinaryFile is NOT restored
-        var ps = GetServices().GetRequiredService<PointerService>();
+        var ps = GetPointerService();
         var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
         var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
         Assert.IsNull(r_bfi);
@@ -338,30 +345,5 @@ class Restore_Tests : TestBase
             return;
     }
 
-    [Test]
-    public async Task Restore_DedupedFile_Success()
-    {
-        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-            return;
-
-        EnsureArchiveTestDirectoryFileInfo();
-        await ArchiveCommand(dedup: true);
-
-        await RestoreCommand(RestoreTestDirectory.FullName, true, true, true);
-
-        // the BinaryFile is restored
-        var ps = GetServices().GetRequiredService<PointerService>();
-        var r_pfi = RestoreTestDirectory.GetPointerFileInfos().Single();
-        var r_pf = ps.GetPointerFile(RestoreTestDirectory, r_pfi);
-        var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
-        Assert.IsNotNull(r_bfi);
-    }
-
-    [Test]
-    public async Task Restore_DedupedDirectory_Success()
-    {
-        await Archive_Directory_Tests.EnsureFullDirectoryArchived(purgeRemote: true, dedup: true, removeLocal: false);
-
-        await RestoreCommand(RestoreTestDirectory.FullName, true, true);
-    }
+    
 }

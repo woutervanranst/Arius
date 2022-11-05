@@ -40,7 +40,7 @@ class BinaryRepositoryTests : TestBase
         Assert.IsFalse(TestSetup.Container.GetBlobClient(repo.Binaries.GetChunkListBlobName(bh)).Exists());
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
-        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
+        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
         Assert.AreEqual(chs, repo.Binaries.GetChunkHashesAsync(bh).Result);
@@ -61,7 +61,7 @@ class BinaryRepositoryTests : TestBase
         Assert.IsTrue(TestSetup.Container.GetBlobClient(repo.Binaries.GetChunkListBlobName(bh)).Exists());
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
-        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
+        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
         Assert.AreEqual(chs, repo.Binaries.GetChunkHashesAsync(bh).Result);
@@ -109,7 +109,7 @@ class BinaryRepositoryTests : TestBase
         Assert.AreNotEqual(lmd, bc.GetProperties().Value.ETag);
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
-        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
+        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
         Assert.AreEqual(chs, repo.Binaries.GetChunkHashesAsync(bh).Result);
@@ -132,7 +132,7 @@ class BinaryRepositoryTests : TestBase
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
-        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
+        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
         Assert.AreEqual(chs, repo.Binaries.GetChunkHashesAsync(bh).Result);
@@ -157,7 +157,7 @@ class BinaryRepositoryTests : TestBase
         await bc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "string" });
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
-        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Count()));
+        repo.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we get an exception
         Assert.CatchAsync<InvalidOperationException>(async () => await repo.Binaries.GetChunkHashesAsync(bh));

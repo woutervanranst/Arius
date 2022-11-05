@@ -43,7 +43,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
-        var pointerService = executionServices.GetRequiredService<PointerService>();
 
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });

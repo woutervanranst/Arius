@@ -35,9 +35,8 @@ class ByteBoundaryChunkerTests : TestBase
             return;
 
         //Create the HashValueProvider and the Chunker
-        var services = GetServices();
-        var hvp = services.GetRequiredService<IHashValueProvider>();
-        var logger = services.GetRequiredService<ILogger<ByteBoundaryChunker>>();
+        var hvp = GetHashValueProvider();
+        var logger = GetLogger<ByteBoundaryChunker>();
 
         // SCENARIO 1: the buffer is larger than the stream -- Chunk a small stream with no minimum chunk size
         var chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: 0);

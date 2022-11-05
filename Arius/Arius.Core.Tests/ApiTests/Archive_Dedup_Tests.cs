@@ -4,13 +4,14 @@ using Arius.Core.Tests.Extensions;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.ApiTests;
 
-class Dedup_Tests : TestBase
+class Archive_Dedup_Tests : TestBase
 {
     [Test]
     public async Task Archive_OneFile_Dedup_Success()
@@ -19,20 +20,19 @@ class Dedup_Tests : TestBase
             return;
 
         await TestSetup.PurgeRemote(); //purge the remote in case non-deduped files exist
-        ArchiveTestDirectory.Clear();
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-        var bfi = EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
         await ArchiveCommand(dedup: true);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
 
         GetPointerInfo(repo, bfi, out var pf, out var pfe);
-        var p = await repo.Binaries.GetPropertiesAsync(pf.Hash);
+        var binaryProperties = await repo.Binaries.GetPropertiesAsync(pf.Hash);
 
-        Assert.IsTrue(p.ChunkCount > 1);
-        Assert.AreEqual(chunkBlobItemCount0 + p.ChunkCount, chunkBlobItemCount1, p.ChunkCount.ToString());
+        Assert.IsTrue(binaryProperties.ChunkCount > 1);
+        Assert.AreEqual(chunkBlobItemCount0 + binaryProperties.ChunkCount, chunkBlobItemCount1, binaryProperties.ChunkCount.ToString());
         Assert.AreEqual(binaryCount0 + 1, binaryCount1);
     }
 
@@ -47,18 +47,23 @@ class Dedup_Tests : TestBase
 
         RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
 
-        var bfis = EnsureArchiveTestDirectoryFileInfos();
+        TestSetup.StageArchiveTestDirectory(out var bfi1, TestSetup.SourceFilesType.File1);
+        TestSetup.StageArchiveTestDirectory(out var bfi2, TestSetup.SourceFilesType.File2);
+        TestSetup.StageArchiveTestDirectory(out var bfi4, TestSetup.SourceFilesType.File4WithSpace);
+        //TestSetup.StageArchiveTestDirectory(out FileInfo[] bfis);
+        await ArchiveCommand(dedup: true);
+
+        TestSetup.StageArchiveTestDirectory(out var bfi_deduped, TestSetup.SourceFilesType.File5Deduplicated);
         await ArchiveCommand(dedup: true);
 
         RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
 
-        GetPointerInfo(repo, bfis[0], out var pf0, out var pfe0);
+        GetPointerInfo(repo, bfi1, out var pf0, out var pfe0);
         var ch0 = await repo.Binaries.GetChunkHashesAsync(pf0.Hash);
 
-        GetPointerInfo(repo, bfis[1], out var pf1, out var pfe1);
+        GetPointerInfo(repo, bfi2, out var pf1, out var pfe1);
         var ch1 = await repo.Binaries.GetChunkHashesAsync(pf1.Hash);
 
-        var bfi_deduped = bfis.Single(fi => fi.Name.Contains("deduplicated file"));
         GetPointerInfo(repo, bfi_deduped, out var pf5, out var pfe5);
         var ch5 = await repo.Binaries.GetChunkHashesAsync(pf5.Hash);
         var ch5_UniqueChunks = ch5.Except(ch0).Except(ch1).ToArray();

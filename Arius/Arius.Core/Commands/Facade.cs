@@ -40,7 +40,7 @@ public static class ServiceCollectionExtensions
     /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
     /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
     /// </summary>
-    public static IServiceCollection AddAriusCore(this IServiceCollection services)
+    public static IServiceCollection AddAriusCoreCommands(this IServiceCollection services)
 
     {
         //services.AddOptions<LibraryOptions>()
@@ -128,13 +128,10 @@ public class Facade //: IFacade
     //{
     //}
 
-    public Facade(ILoggerFactory loggerFactory,
-        IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+    public Facade(ILoggerFactory loggerFactory, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
     {
-        if (loggerFactory is null)
-            throw new ArgumentNullException(nameof(loggerFactory));
-        if (tempDirectoryAppSettings is null)
-            throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentNullException.ThrowIfNull(tempDirectoryAppSettings);
 
         this.loggerFactory = loggerFactory;
         this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
