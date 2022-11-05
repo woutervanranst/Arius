@@ -10,7 +10,7 @@
 </Query>
 
 var accountName = "vanranst";
-var accountKey = "T4ctVN5uZpuqBPvTLqYH+tPInz/rT3BDrBrdmlAYnXnip8BedNkxZxYv13kCBqeu1FERjUqRqGSNEoLyg2iE+A==";
+var accountKey = "...";
 var connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
 
 var logContainerName = "$logs";
@@ -36,10 +36,10 @@ foreach (var logName in logs)
 		.Where(l => l.Count() >=2 && l[2] == "GetBlobProperties");
 	var blobs = lines
 		.Where(l => l.Count() >= 11 && l[11]
-		.StartsWith("\"" + "https://vanranst.blob.core.windows.net:443/synologybackup/synology_1.hbk/Pool"))
+		.StartsWith("\"" + "https://....blob.core.windows.net:443/synologybackup/synology_1.hbk/Pool"))
 		.Select(l => l[11])
 		.Where(l => l.Contains("bucket"))
-		.Select(l => l.Replace("https://vanranst.blob.core.windows.net:443/synologybackup/", "").TrimStart('"').TrimEnd('"'));
+		.Select(l => l.Replace("https://....blob.core.windows.net:443/synologybackup/", "").TrimStart('"').TrimEnd('"'));
 	
 	foreach (var blobName in blobs)
 	{
