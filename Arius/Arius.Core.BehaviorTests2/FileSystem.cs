@@ -60,7 +60,6 @@ namespace Arius.Core.BehaviorTests2
 
 
 
-
         public static void CopyArchiveBinaryFileToRestoreDirectory(string relativeBinaryFile)
         {
             var apf = GetPointerFile(ArchiveDirectory, relativeBinaryFile);

@@ -16,6 +16,11 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [StepArgumentTransformation]
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
+        [Given(@"a BinaryFile {string} of size {string}")]
+        public void GivenABinaryFileOfSize(string binaryRelativeName, string size)
+        {
+            CreateFile(binaryRelativeName, size);
+        }
 
         [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
         public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryRelativeName, string size, AccessTier tier)
@@ -95,7 +100,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
         
         [When("archived to the {word} tier")]
-        public async Task WhenArchivedToTheCoolTier(AccessTier tier)
+        public async Task WhenArchivedToTheTier(AccessTier tier)
         {
             await Arius.ArchiveCommandAsync(tier);
         }
