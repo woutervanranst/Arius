@@ -43,15 +43,15 @@ Scenario: Undelete a file
 	Then 0 additional Chunks and Manifests
 	
 
-#Scenario: Archive a duplicate file that was already archived
-#	Given a BinaryFile "File3.txt" of size "1 KB" is archived to the "Cool" tier
-#	When archived to the Cool tier
-#	# Add the duplicate file
-#	Given a local folder with BinaryFile File301 duplicate of BinaryFile File300
-#	When archived to the Cool tier
-#	Then BinaryFile File300 has a PointerFile and the PointerFileEntry is marked as exists
-#	Then BinaryFile File301 has a PointerFile and the PointerFileEntry is marked as exists
-#	Then 0 additional Chunks and Manifests
+Scenario: Archive a duplicate file that was already archived
+	Given a BinaryFile "File3.txt" of size "1 KB" is archived to the Cool tier
+	Then 1 additional Chunks and Manifests
+	# Add the duplicate file
+	Given a BinaryFile "File31.txt" duplicate of BinaryFile "File3.txt"
+	When archived to the Cool tier
+	Then 0 additional Chunks and Manifests
+	Then BinaryFile "File3.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	Then BinaryFile "File31.txt" has a PointerFile and the PointerFileEntry is marked as exists
 #	
 #
 #Scenario: Archive two duplicate files

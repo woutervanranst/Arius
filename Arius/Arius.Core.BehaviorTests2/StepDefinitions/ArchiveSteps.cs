@@ -1,18 +1,6 @@
-using Arius.Core.Commands;
 using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using BoDi;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
-using System;
 using System.Text.RegularExpressions;
-using System.Xml;
-using TechTalk.SpecFlow;
 using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
@@ -30,9 +18,9 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
 
         [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
-        public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryFileName, string size, AccessTier tier)
+        public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryRelativeName, string size, AccessTier tier)
         {
-            CreateFile(binaryFileName, size);
+            CreateFile(binaryRelativeName, size);
 
             await Arius.ArchiveCommandAsync(tier);
         }
@@ -61,6 +49,13 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             await Arius.ArchiveCommandAsync(tier);
         }
         record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
+
+        [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
+        public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
+        {
+            DuplicateFile(binaryRelativeName, sourceBinaryRelativeName);
+        }
+
         private static void CreateFile(string relativeName, string size)
         {
             var sizeInBytes = size switch
@@ -73,7 +68,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     // see https://stackoverflow.com/a/3513858
                     // see https://codereview.stackexchange.com/a/67506
                     int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
-                    => size0,
+                    => size0 * 1024,
                 _ =>
                     throw new ArgumentOutOfRangeException()
             };
