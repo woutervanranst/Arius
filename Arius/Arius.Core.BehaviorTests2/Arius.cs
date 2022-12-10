@@ -230,8 +230,6 @@ namespace Arius.Core.BehaviorTests2
             var source = container.GetBlobClient($"{Repository.ChunkRepository.ChunkFolderName}/{ch}");
             var target = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
 
-            //var sourceSasUri = source.GenerateSasUri(Azure.Storage.Sas.BlobSasPermissions.Read, new DateTimeOffset(DateTime.Now.AddMinutes(1)));
-            //await target.SyncCopyFromUriAsync(sourceSasUri);
             var t = await target.StartCopyFromUriAsync(source.Uri);
             await t.WaitForCompletionAsync();
 
@@ -239,8 +237,8 @@ namespace Arius.Core.BehaviorTests2
         }
         public static async Task<bool> RehydrateFolderExists()
         {
-            var bs = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).ToArrayAsync();
-            return bs.Length > 0;
+            var n = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).CountAsync();
+            return n > 0;
         }
 
     }
