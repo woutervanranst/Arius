@@ -93,7 +93,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 7
- testRunner.Given("a local file \"File3.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Ar" +
+ testRunner.Given("a BinaryFile \"File3.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Ar" +
                         "chive tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 8
@@ -130,7 +130,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 18
- testRunner.Given("a local file \"File4.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
+ testRunner.Given("a BinaryFile \"File4.txt\" of size \"ABOVE_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
                         "ol tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 19

@@ -40,11 +40,10 @@ namespace Arius.Core.BehaviorTests2.Features
 
 // Cucumber Expressions: https://docs.specflow.org/projects/specflow/en/latest/Bindings/Cucumber-Expressions.html
 // TODO: Living Documentation
-//TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
+// TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
 
 /*
 	PRINCIPLES
-
 		No checks on 'total' pointerfileentries, chunks, ... --> test on additinoal ones
 */", ProgrammingLanguage.CSharp, featureTags);
             testRunner.OnFeatureStart(featureInfo);
@@ -107,7 +106,7 @@ namespace Arius.Core.BehaviorTests2.Features
             argumentsOfScenario.Add("ActualTier", actualTier);
             argumentsOfScenario.Add("HydratedStatus", hydratedStatus);
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive one file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 17
+#line 16
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -117,16 +116,16 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 18
- testRunner.Given(string.Format("a local file \"{0}\" of size \"{1}\" is archived to the {2} tier", relativeName, size, toTier), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line 17
+ testRunner.Given(string.Format("a BinaryFile \"{0}\" of size \"{1}\" is archived to the {2} tier", relativeName, size, toTier), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 19
+#line 18
  testRunner.Then("1 additional Chunk and Manifest", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 20
+#line 19
  testRunner.Then(string.Format("BinaryFile \"{0}\" has a PointerFile and the PointerFileEntry is marked as exists", relativeName), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 21
+#line 20
  testRunner.Then(string.Format("the Chunks for BinaryFile \"{0}\" are in the {1} tier and are {2}", relativeName, actualTier, hydratedStatus), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -140,7 +139,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Undelete a file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 31
+#line 30
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -150,37 +149,37 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 33
- testRunner.Given("a local file \"File2.txt\" of size \"BELOW_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
+#line 32
+ testRunner.Given("a BinaryFile \"File2.txt\" of size \"BELOW_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
                         "ol tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 34
+#line 33
  testRunner.Then("BinaryFile \"File2.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
                         "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 36
+#line 35
  testRunner.When("BinaryFile \"File2.txt\" and its PointerFile are deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 37
+#line 36
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 38
+#line 37
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 39
+#line 38
  testRunner.Then("the PointerFileEntry for BinaryFile \"File2.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 41
+#line 40
  testRunner.When("BinaryFile \"File2.txt\" is undeleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 42
+#line 41
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 43
+#line 42
  testRunner.Then("BinaryFile \"File2.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
                         "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 44
+#line 43
  testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }

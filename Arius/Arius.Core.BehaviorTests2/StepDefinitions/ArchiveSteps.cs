@@ -29,15 +29,15 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
 
-        [Given(@"a local file {string} of size {string} is archived to the {word} tier")]
-        public async Task GivenALocalFileOfSizeIsArchivedTo(string relativeName, string size, AccessTier tier)
+        [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
+        public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryFileName, string size, AccessTier tier)
         {
-            CreateFile(relativeName, size);
+            CreateFile(binaryFileName, size);
 
             await Arius.ArchiveCommandAsync(tier);
         }
         
-        [Given(@"the following local files are archived to {word} tier:")]
+        [Given(@"the following BinaryFiles are archived to {word} tier:")]
         public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
         {
             var files = table.CreateSet<FileTableEntry>().ToList();

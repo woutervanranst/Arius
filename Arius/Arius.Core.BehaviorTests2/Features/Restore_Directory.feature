@@ -10,13 +10,13 @@ BACKLOG
 * in ariusfile : de verschillende extensions
 * al 1 file lokaal > kopieert de rest
 * directory more than 2 deep without other files
-*  download > local files exist s> don't download all
+*  download > BinaryFiles exist s> don't download all
 * restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
 * restore a seoncd time without any changes
 
 
 Background:
-    Given the following local files are archived to Cool tier:
+    Given the following BinaryFiles are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
 		| dir1\\wouter.txt | 15 KB                    |                    |
 		| dir2\\joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |                    |

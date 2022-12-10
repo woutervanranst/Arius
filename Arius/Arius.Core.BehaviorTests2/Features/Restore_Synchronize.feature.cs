@@ -91,7 +91,7 @@ this.ScenarioInitialize(scenarioInfo);
             {
                 this.ScenarioStart();
 #line 6
-    testRunner.Given("a local file \"File2.txt\" of size \"BELOW_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
+    testRunner.Given("a BinaryFile \"File2.txt\" of size \"BELOW_ARCHIVE_TIER_LIMIT\" is archived to the Co" +
                         "ol tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 7

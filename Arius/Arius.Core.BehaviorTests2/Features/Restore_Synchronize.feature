@@ -3,7 +3,7 @@
 Test the --synchronize flag of the restore command
 
 Scenario: Synchronization removes obsolete pointers but leaves binaryfiles intact
-    Given a local file "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
+    Given a BinaryFile "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
     Given a clean restore directory
     Given a random PointerFile for BinaryFile "test.txt"
     Given a random BinaryFile "profile.jpg"

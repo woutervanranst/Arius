@@ -14,7 +14,7 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @mytag
 Scenario Outline: Archive one file
-	Given a local file "<RelativeName>" of size "<Size>" is archived to the <ToTier> tier
+	Given a BinaryFile "<RelativeName>" of size "<Size>" is archived to the <ToTier> tier
 	Then 1 additional Chunk and Manifest
 	Then BinaryFile "<RelativeName>" has a PointerFile and the PointerFileEntry is marked as exists
 	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus>
@@ -29,7 +29,7 @@ Scenario Outline: Archive one file
 
 Scenario: Undelete a file
 	# Archive initial file
-	Given a local file "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
+	Given a BinaryFile "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
 	Then BinaryFile "File2.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	# Delete, then archive
 	When BinaryFile "File2.txt" and its PointerFile are deleted
@@ -44,8 +44,7 @@ Scenario: Undelete a file
 	
 
 #Scenario: Archive a duplicate file that was already archived
-#	Given a remote archive
-#	Given a local folder with BinaryFile File300
+#	Given a BinaryFile "File3.txt" of size "1 KB" is archived to the "Cool" tier
 #	When archived to the Cool tier
 #	# Add the duplicate file
 #	Given a local folder with BinaryFile File301 duplicate of BinaryFile File300
