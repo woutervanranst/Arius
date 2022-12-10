@@ -5,11 +5,10 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 // Cucumber Expressions: https://docs.specflow.org/projects/specflow/en/latest/Bindings/Cucumber-Expressions.html
 // TODO: Living Documentation
-//TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
+// TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
 
 /*
 	PRINCIPLES
-
 		No checks on 'total' pointerfileentries, chunks, ... --> test on additinoal ones
 */
 

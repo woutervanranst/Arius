@@ -1,34 +1,5 @@
 ﻿Feature: Archive
 
-Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.feature)
-***Further read***: **[Learn more about how to generate Living Documentation](https://docs.specflow.org/projects/specflow-livingdoc/en/latest/LivingDocGenerator/Generating-Documentation.html)**
-
-// Cucumber Expressions: https://docs.specflow.org/projects/specflow/en/latest/Bindings/Cucumber-Expressions.html
-// TODO: Living Documentation
-//TODO: with SpecFlow v4 - CucumberExpressions.SpecFlow.3-9 is no longer needed as nuget
-
-/*
-	PRINCIPLES
-
-		No checks on 'total' pointerfileentries, chunks, ... --> test on additinoal ones
-*/
-
-@mytag
-Scenario Outline: Archive one file
-	Given a remote archive
-	Given a local folder with BinaryFile <FILE> of size <SIZE>
-	When archived to the <TO_TIER> tier
-	Then 1 additional Chunk and Manifest
-	Then BinaryFile <FILE> has a PointerFile and the PointerFileEntry is marked as exists
-	Then the Chunks for BinaryFile <FILE> are in the <ACTUAL_TIER> tier and are <HYDRATED_STATUS>
-
-	Examples:
-		| FILE    | SIZE                     | TO_TIER | ACTUAL_TIER | HYDRATED_STATUS |
-		| File100 | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
-		| File101 | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool        | HYDRATED        |
-		| File102 | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool        | HYDRATED        |
-		| File103 | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive     | NOT_HYDRATED    |
-
 
 #Scenario: Archive one file to the Archive tier
 #	Given a remote archive

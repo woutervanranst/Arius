@@ -5,7 +5,6 @@ using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
-
     [Binding]
     class RestoreSteps : TestBase
     {
@@ -20,6 +19,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             Commands.Restore.DownloadBinaryBlock.RestoredFromLocal = false;
         }
 
+    
         [Given("a clean restore directory")]
         public void GivenACleanRestoreDirectory()
         {
@@ -66,20 +66,13 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             //Assert.CatchAsync<FluentValidation.ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
         }
 
-
-
-
         [When("copy the PointerFile of BinaryFile {string} to the restore directory")]
         public void WhenCopyThePointerFileOfToTheRestoreDirectory(string relativeBinaryFile)
         {
             FileSystem.CopyArchiveBinaryFileToRestoreDirectory(relativeBinaryFile);
         }
 
-
-
-
-
-
+        
         [Then("all PointerFiles are restored successfully")]
         public void ThenAllPointerFilesAreRestoredsuccessfully()
         {
@@ -90,12 +83,14 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             FileSystem.RestoreDirectoryEqualToArchiveDirectory(compareBinaryFile: true, comparePointerFile: false);
         }
+        
         [Then("the PointerFile for BinaryFile {string} does not exist")]
         public void ThenThePointerFileForBinaryFileDoesNotExist(string relativeBinaryFile)
         {
             var d = FileSystem.RestoreDirectory;
             d.GetPointerFileInfos().Where(pfi => pfi.GetRelativeName(d).StartsWith(relativeBinaryFile)).Should().BeEmpty();
         }
+
         [Then("the BinaryFile {string} exists")]
         public void ThenTheBinaryFileExists(string relativeBinaryFile)
         {
@@ -108,6 +103,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var d = FileSystem.RestoreDirectory;
             d.GetBinaryFileInfos().Should().NotContain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
         }
+        
         [Then("no PointerFiles are present")]
         public void ThenNoPointerFilesArePresent()
         {
@@ -118,6 +114,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             FileSystem.RestoreDirectory.GetBinaryFileInfos().Should().BeEmpty();
         }
+        
         [Then("only the PointerFile for BinaryFile {string} is present")]
         public void ThenOnlyThePointerFileForBinaryFileIsPresent(string relativeBinaryFile)
         {
@@ -130,6 +127,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var d = FileSystem.RestoreDirectory;
             d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
         }
+        
         [Then("the BinaryFile {string} is restored from online tier")]
         public void ThenTheBinaryFileIsRestored(string relativeBinaryFile)
         {
@@ -143,11 +141,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             Commands.Restore.DownloadBinaryBlock.RestoredFromLocal.Should().BeTrue();
         }
 
-
-
-
-
-
         [Then("the hydration for the chunks of BinaryFile {string} have started")]
         public async Task ThenTheHydrationForTheChunksOfBinaryFileHaveStarted(string relativeBinaryFile)
         {
@@ -157,6 +150,8 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             var e = await Arius.RehydrateChunkExists(ch);
             e.Should().BeTrue();
         }
+        
+        
         [When("the chunk of BinaryFile {string} is copied to the rehydrate folder and the original chunk is moved to the {word} tier")]
         public async Task WhenTheChunkOfBinaryFileIsCopiedToTheRehydrateFolderAndTheOriginalChunkIsMovedToTheArchiveTier(string relativeBinaryFile, AccessTier tier)
         {

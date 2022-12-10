@@ -17,7 +17,6 @@ using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
 {
-
     [Binding]
     class ArchiveSteps : TestBase
     {
@@ -25,6 +24,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
         }
 
+        
         [StepArgumentTransformation]
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
