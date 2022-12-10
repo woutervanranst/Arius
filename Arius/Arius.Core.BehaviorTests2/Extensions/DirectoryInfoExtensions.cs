@@ -1,4 +1,4 @@
-﻿namespace Arius.Core.BehaviorTests2.StepDefinitions
+﻿namespace Arius.Core.BehaviorTests2.Extensions
 {
     static class DirectoryInfoExtensions
     {

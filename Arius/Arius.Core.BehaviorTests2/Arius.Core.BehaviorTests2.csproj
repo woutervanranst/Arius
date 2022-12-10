@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Support\**" />
+    <EmbeddedResource Remove="Support\**" />
+    <None Remove="Support\**" />
+    <SpecFlowFeatureFiles Remove="Support\**" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Support\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Archive.feature.cs" />
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore - Copy.feature.cs" />
     <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore_Directory - Copy.feature.cs" />
@@ -25,7 +33,6 @@
 
   <ItemGroup>
     <Folder Include="Drivers\" />
-    <Folder Include="Support\" />
   </ItemGroup>
 
   <ItemGroup>

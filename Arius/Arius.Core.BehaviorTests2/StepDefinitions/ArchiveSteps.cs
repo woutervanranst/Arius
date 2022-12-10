@@ -36,6 +36,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
 
             await Arius.ArchiveCommandAsync(tier);
         }
+        
         [Given(@"the following local files are archived to {word} tier:")]
         public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
         {
@@ -97,14 +98,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             bfi.CopyTo(Path.Combine(FileSystem.ArchiveDirectory.FullName, relativeName));
         }
 
+        
         [When("archived to the {word} tier")]
         public async Task WhenArchivedToTheCoolTier(AccessTier tier)
         {
             await Arius.ArchiveCommandAsync(tier);
         }
-
-
-
 
         [When(@"BinaryFile {string} and its PointerFile are deleted")]
         public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName)
@@ -117,7 +116,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             DeleteFiles(binaryRelativeName, deleteBinaryFile: true, deletePointerFile: false);
         }
-
         private void DeleteFiles(string binaryRelativeName, bool deleteBinaryFile, bool deletePointerFile)
         {
             var bfi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, binaryRelativeName);
@@ -145,9 +143,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             bfi.Delete();
         }
 
-
-
-
+        
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
@@ -158,20 +154,15 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
         }
 
-
-
-
-
-
         [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]
         public async Task ThenBinaryFileHasAPointerFileAndThePointerFileEntryIsMarkedAsExists(string binaryRelativeName)
         {
-            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, true);
+            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: true);
         }
         [Then("the PointerFileEntry for BinaryFile {string} is marked as deleted")]
         public async Task ThenThePointerFileEntryForIsMarkedAsDeleted(string binaryRelativeName)
         {
-            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, false);
+            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: false);
         }
         private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
         {
@@ -199,11 +190,6 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     fi.Exists.Should().BeFalse();
             }
         }
-        
-
-
-
-
 
         [Then(@"the Chunks for BinaryFile {string} are in the {word} tier and are {word}")]
         public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus)
@@ -228,12 +214,5 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     throw new NotImplementedException();
             }
         }
-
-
-
-
-
-
-       
     }
 }

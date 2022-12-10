@@ -1,3 +1,4 @@
+using Arius.Core.BehaviorTests2.Extensions;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Azure.Storage.Blobs.Models;
