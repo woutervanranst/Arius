@@ -53,7 +53,7 @@ Scenario: Archive a duplicate file that was already archived
 	Then BinaryFile "File30.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	Then BinaryFile "File31.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	
-
+@archive @file @duplicate
 Scenario: Archive duplicate files
 	Given a BinaryFile "File40.txt" of size "1 KB"
 	Given a BinaryFile "File41.txt" duplicate of BinaryFile "File40.txt"
@@ -66,19 +66,16 @@ Scenario: Archive duplicate files
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
 	Then BinaryFile "File42.txt" has a PointerFile and the PointerFileEntry is marked as exists
-#
-#
-#Scenario: Archive a duplicate PointerFile
-#	Given a remote archive
-#	Given a local folder with BinaryFile File500
-#	When archived to the Cool tier
-#
-#	Given a duplicate PointerFile Pointer501 of the Pointer of BinaryFile File500
-#	When archived to the Cool tier
-#
-#	Then 0 additional Chunks and Manifests
-#	Then BinaryFile File500 has a PointerFile and the PointerFileEntry is marked as exists
-#	Then the PointerFileEntry for PointerFile Pointer501 is marked as exists
+
+
+Scenario: Archive a duplicate PointerFile
+	Given a BinaryFile "File50.txt" of size "1 KB" is archived to the Cool tier
+	Given a Pointer of BinaryFile "File51.txt" duplicate of the Pointer of BinaryFile "File50.txt"
+	When archived to the Cool tier
+
+	Then 0 additional Chunks and Manifests
+	Then BinaryFile "File50.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	Then a PointerFileEntry for a BinaryFile "File51.txt" is marked as exists
 #	
 #
 #Scenario: Rename BinaryFile with PointerFile

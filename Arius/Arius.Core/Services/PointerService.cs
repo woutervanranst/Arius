@@ -211,9 +211,9 @@ internal class PointerService
         return OpenPointerFile(root, pfi);
     }
 
-    private static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
-    private static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
-    private static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
+    internal static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
+    internal static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
+    internal static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
 
 

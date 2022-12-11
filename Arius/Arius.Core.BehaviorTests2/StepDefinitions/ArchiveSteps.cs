@@ -1,4 +1,5 @@
 using Arius.Core.Extensions;
+using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using System.Text.RegularExpressions;
 using TechTalk.SpecFlow.Assist;
@@ -19,13 +20,13 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [Given(@"a BinaryFile {string} of size {string}")]
         public void GivenABinaryFileOfSize(string binaryRelativeName, string size)
         {
-            CreateFile(binaryRelativeName, size);
+            FileSystem.CreateBinaryFile(binaryRelativeName, size);
         }
 
         [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
         public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryRelativeName, string size, AccessTier tier)
         {
-            CreateFile(binaryRelativeName, size);
+            FileSystem.CreateBinaryFile(binaryRelativeName, size);
 
             await Arius.ArchiveCommandAsync(tier);
         }
@@ -40,12 +41,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                 if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName))
                 {
                     // Create a new file
-                    CreateFile(f.RelativeName, f.Size);
+                    FileSystem.CreateBinaryFile(f.RelativeName, f.Size);
                 }
                 else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
                 {
                     // Duplicate a file
-                    DuplicateFile(f.RelativeName, f.SourceRelativeName);
+                    FileSystem.DuplicateBinaryFile(f.RelativeName, f.SourceRelativeName);
                 }
                 else
                     throw new ArgumentException();
@@ -58,47 +59,16 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
         public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
         {
-            DuplicateFile(binaryRelativeName, sourceBinaryRelativeName);
+            FileSystem.DuplicateBinaryFile(binaryRelativeName, sourceBinaryRelativeName);
         }
 
-        private static void CreateFile(string relativeName, string size)
+        [Given(@"a Pointer of BinaryFile {word} duplicate of the Pointer of BinaryFile {word}")]
+        private static void GivenAPointerFileDuplicateOfThePointerOfBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
         {
-            var sizeInBytes = size switch
-            {
-                "BELOW_ARCHIVE_TIER_LIMIT"
-                    => 12 * 1024 + 1, // 12 KB
-                "ABOVE_ARCHIVE_TIER_LIMIT"
-                    => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
-                _ when
-                    // see https://stackoverflow.com/a/3513858
-                    // see https://codereview.stackexchange.com/a/67506
-                    int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
-                    => size0 * 1024,
-                _ =>
-                    throw new ArgumentOutOfRangeException()
-            };
-
-            if (FileSystem.Exists(FileSystem.ArchiveDirectory, relativeName))
-            {
-                if (FileSystem.Length(FileSystem.ArchiveDirectory, relativeName) != sizeInBytes)
-                    throw new ArgumentException("File already exists and is of different size");
-                
-                // Reuse the file that already exists
-                return;
-            }
-            else
-                FileSystem.CreateFile(relativeName, sizeInBytes);
-        }
-        private static void DuplicateFile(string relativeName, string sourceRelativeName)
-        {
-            if (FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName).Exists)
-                return;
-
-            var bfi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, sourceRelativeName);
-            bfi.CopyTo(Path.Combine(FileSystem.ArchiveDirectory.FullName, relativeName));
+            FileSystem.DuplicatePointerFile(relativeBinaryName, sourceRelativeBinaryName);
         }
 
-        
+
         [When("archived to the {word} tier")]
         public async Task WhenArchivedToTheTier(AccessTier tier)
         {
@@ -115,6 +85,11 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         public void BinaryFileIsDeleted(string binaryRelativeName)
         {
             DeleteFiles(binaryRelativeName, deleteBinaryFile: true, deletePointerFile: false);
+        }
+        [When("BinaryFile {string} is undeleted")]
+        public void WhenBinaryFileIsUndeleted(string binaryRelativeName)
+        {
+            UndeleteFile(binaryRelativeName);
         }
         private void DeleteFiles(string binaryRelativeName, bool deleteBinaryFile, bool deletePointerFile)
         {
@@ -134,16 +109,13 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                 pfi.Delete();
             }
         }
-
-        [When("BinaryFile {string} is undeleted")]
-        public void WhenBinaryFileIsUndeleted(string binaryRelativeName)
+        private void UndeleteFile(string binaryRelativeName)
         {
             var bfi = (FileInfo)scenarioContext[binaryRelativeName];
             bfi.CopyTo(FileSystem.TempDirectory, FileSystem.ArchiveDirectory, true);
             bfi.Delete();
         }
 
-        
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
@@ -164,6 +136,17 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: false);
         }
+        [Then(@"a PointerFileEntry for a BinaryFile {word} is marked as exists")]
+        public async Task ThenThePointerFileEntryForAPointerOfBinaryFileIsMarkedAsExists(string binaryRelativeName)
+        {
+            await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: true);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="relativeName">Relative Name of the PointerFile or BinaryFile</param>
+        /// <param name="shouldExist">Whether the PointerFile and PointerFileEntry should exist</param>
+        /// <returns></returns>
         private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
         {
             var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
@@ -175,8 +158,9 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                 pf.Should().NotBeNull();
                 pfe.IsDeleted.Should().BeFalse();
 
-                if (!fi.IsPointerFile())
+                if (fi.Exists && !fi.IsPointerFile())
                 {
+                    // Check that the timestamps match the BinaryFile
                     fi.CreationTimeUtc.Should().Be(pfe.CreationTimeUtc);
                     fi.LastWriteTimeUtc.Should().Be(pfe.LastWriteTimeUtc);
                 }
@@ -214,5 +198,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
                     throw new NotImplementedException();
             }
         }
+
+        
     }
 }

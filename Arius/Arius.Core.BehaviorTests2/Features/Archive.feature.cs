@@ -246,9 +246,15 @@ this.ScenarioInitialize(scenarioInfo);
         
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("Archive duplicate files")]
+        [NUnit.Framework.CategoryAttribute("archive")]
+        [NUnit.Framework.CategoryAttribute("file")]
+        [NUnit.Framework.CategoryAttribute("duplicate")]
         public void ArchiveDuplicateFiles()
         {
-            string[] tagsOfScenario = ((string[])(null));
+            string[] tagsOfScenario = new string[] {
+                    "archive",
+                    "file",
+                    "duplicate"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive duplicate files", null, tagsOfScenario, argumentsOfScenario, featureTags);
 #line 57
@@ -293,6 +299,47 @@ this.ScenarioInitialize(scenarioInfo);
 #line 68
  testRunner.Then("BinaryFile \"File42.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Archive a duplicate PointerFile")]
+        public void ArchiveADuplicatePointerFile()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive a duplicate PointerFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 71
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 72
+ testRunner.Given("a BinaryFile \"File50.txt\" of size \"1 KB\" is archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 73
+ testRunner.Given("a Pointer of BinaryFile \"File51.txt\" duplicate of the Pointer of BinaryFile \"File" +
+                        "50.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 74
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 76
+ testRunner.Then("0 additional Chunks and Manifests", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 77
+ testRunner.Then("BinaryFile \"File50.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
+                        "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 78
+ testRunner.Then("a PointerFileEntry for a BinaryFile \"File51.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();

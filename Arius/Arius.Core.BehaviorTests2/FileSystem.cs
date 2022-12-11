@@ -3,6 +3,7 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.RegularExpressions;
 using TechTalk.SpecFlow;
 
 namespace Arius.Core.BehaviorTests2
@@ -41,20 +42,66 @@ namespace Arius.Core.BehaviorTests2
         public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.PointerService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
         public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
         public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
-        public static void CreateFile(string relativeName, int sizeInBytes)
+
+        public static void CreateBinaryFile(string relativeName, string size)
         {
-            var fileName = GetFileName(ArchiveDirectory, relativeName);
+            var sizeInBytes = size switch
+            {
+                "BELOW_ARCHIVE_TIER_LIMIT"
+                    => 12 * 1024 + 1, // 12 KB
+                "ABOVE_ARCHIVE_TIER_LIMIT"
+                    => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
+                _ when
+                    // see https://stackoverflow.com/a/3513858
+                    // see https://codereview.stackexchange.com/a/67506
+                    int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
+                    => size0 * 1024,
+                _ =>
+                    throw new ArgumentOutOfRangeException()
+            };
 
-            // https://stackoverflow.com/q/4432178/1582323
-            var f = new FileInfo(fileName);
-            if (!f.Directory.Exists)
-                f.Directory.Create();
+            if (Exists(ArchiveDirectory, relativeName))
+            {
+                if (Length(ArchiveDirectory, relativeName) != sizeInBytes)
+                    throw new ArgumentException("File already exists and is of different size");
 
-            byte[] data = new byte[sizeInBytes];
-            var rng = new Random();
-            rng.NextBytes(data);
-            File.WriteAllBytes(fileName, data);
+                // Reuse the file that already exists
+                return;
+            }
+            else
+            {
+                var fileName = GetFileName(ArchiveDirectory, relativeName);
+                
+                // https://stackoverflow.com/q/4432178/1582323
+                var f = new FileInfo(fileName);
+                if (!f.Directory.Exists)
+                    f.Directory.Create();
+
+                var data = new byte[sizeInBytes];
+                var rng = new Random();
+                rng.NextBytes(data);
+                File.WriteAllBytes(fileName, data);
+            }
         }
+
+        public static void DuplicateBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
+        {
+            if (GetFileInfo(ArchiveDirectory, relativeBinaryName).Exists)
+                return;
+
+            var bfi = GetFileInfo(ArchiveDirectory, sourceRelativeBinaryName);
+            bfi.CopyTo(Path.Combine(ArchiveDirectory.FullName, relativeBinaryName));
+        }
+
+        public static void DuplicatePointerFile(string relativeBinaryName, string sourceRelativeBinaryName)
+        {
+            var pf0 = GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName);
+            var pfi0 = new FileInfo(pf0.FullName);
+
+            var pfn1 = Path.Combine(ArchiveDirectory.FullName, PointerService.GetPointerFileFullName(relativeBinaryName));
+            pfi0.CopyTo(pfn1);
+        }
+
 
 
 
