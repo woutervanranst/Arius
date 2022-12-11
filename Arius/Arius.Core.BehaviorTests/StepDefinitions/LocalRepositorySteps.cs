@@ -5,7 +5,6 @@ using System;
 using System.Diagnostics;
 using TechTalk.SpecFlow;
 using Arius.Core.Extensions;
-using Arius.Core.BehaviorTests.Extensions;
 using Arius.Core.Repositories;
 using static Arius.Core.BehaviorTests.StepDefinitions.ScenarioContextExtensions;
 using Arius.Core.Models;

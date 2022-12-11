@@ -7,10 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Drivers\**" />
     <Compile Remove="Support\**" />
+    <EmbeddedResource Remove="Drivers\**" />
     <EmbeddedResource Remove="Support\**" />
+    <None Remove="Drivers\**" />
     <None Remove="Support\**" />
+    <SpecFlowFeatureFiles Remove="Drivers\**" />
     <SpecFlowFeatureFiles Remove="Support\**" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Drivers\**" />
     <SpecFlowObsoleteCodeBehindFiles Remove="Support\**" />
   </ItemGroup>
 
@@ -32,10 +37,7 @@
 	</ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Drivers\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\Arius.Core.Tests.Extensions\Arius.Core.Tests.Extensions.csproj" />
     <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
   </ItemGroup>
 

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Configuration;
-using Arius.Core.Extensions;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;

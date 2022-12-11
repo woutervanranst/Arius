@@ -1,8 +1,6 @@
-﻿using System.IO;
+﻿namespace Arius.Core.Tests.Extensions;
 
-namespace Arius.Core.Tests.Extensions;
-
-static class DirectoryInfoExtensions
+public static class DirectoryInfoExtensions
 {
     /// <summary>
     /// Empty the directory
