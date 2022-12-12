@@ -86,19 +86,18 @@ Scenario: Rename BinaryFile with PointerFile
 	Then 0 additional Chunk and Manifest
 	Then the PointerFileEntry for BinaryFile "File60.txt" is marked as deleted
 	Then a PointerFileEntry for a BinaryFile "subdir 1\File61.txt" is marked as exists
-#
-#
-#Scenario: Rename BinaryFile only
-#	Given a remote archive
-#	Given a local folder with BinaryFile File7
-#	When archived to the Cool tier
-#
-#	When BinaryFile File7 is renamed and moved to a subdirectory
-#	When archived to the Cool tier
-#
-#	Then 0 additional Chunks and Manifests
-#	Then BinaryFile File7 has a PointerFile and the PointerFileEntry is marked as exists
-#	Then the PointerFile at the old location exists and the PointerFileEntry is marked as exists
+
+
+Scenario: Rename BinaryFile only
+	Given a BinaryFile "File70.txt" of size "1 KB" is archived to the Cool tier
+	When BinaryFile "File70.txt" is moved to "subdir 2\File71.txt" 
+	When archived to the Cool tier
+
+	Then 0 additional Chunks and Manifests
+	Then a PointerFileEntry for a BinaryFile "File70.txt" is marked as exists
+	Then a PointerFileEntry for a BinaryFile "subdir 2\File71.txt" is marked as exists
+	#Then BinaryFile File7 has a PointerFile and the PointerFileEntry is marked as exists
+	#Then the PointerFile at the old location exists and the PointerFileEntry is marked as exists
 #
 #Scenario: Archive with RemoveLocal
 #	Given a remote archive

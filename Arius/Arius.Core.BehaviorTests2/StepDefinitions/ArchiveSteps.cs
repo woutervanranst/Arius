@@ -114,6 +114,11 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             bfi.Delete();
         }
 
+        [When("BinaryFile {string} is moved to {string}")]
+        public void WhenBinaryFileIsMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
+        {
+            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, movePointer: false);
+        }
         [When("BinaryFile {string} and its PointerFile are moved to {string}")]
         public void WhenBinaryFileAndItsPointerFileAreMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
         {
