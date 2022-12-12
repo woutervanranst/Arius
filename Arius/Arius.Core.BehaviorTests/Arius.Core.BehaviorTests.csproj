@@ -7,38 +7,59 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Drivers\**" />
     <Compile Remove="Support\**" />
+    <EmbeddedResource Remove="Drivers\**" />
     <EmbeddedResource Remove="Support\**" />
+    <None Remove="Drivers\**" />
     <None Remove="Support\**" />
+    <SpecFlowFeatureFiles Remove="Drivers\**" />
     <SpecFlowFeatureFiles Remove="Support\**" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Drivers\**" />
     <SpecFlowObsoleteCodeBehindFiles Remove="Support\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Calculator - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Archive.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore - Copy.feature.cs" />
+    <SpecFlowObsoleteCodeBehindFiles Remove="Features\Restore_Directory - Copy.feature.cs" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CucumberExpressions.SpecFlow.3-9" Version="1.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.1" />
-    <PackageReference Include="SpecFlow.Plus.LivingDocPlugin" Version="3.9.57" />
-    <PackageReference Include="SpecFlow.NUnit" Version="3.9.74" />
-    <PackageReference Include="nunit" Version="3.13.3" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
-    <PackageReference Include="FluentAssertions" Version="6.7.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="CucumberExpressions.SpecFlow.3-9" Version="1.0.7" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="7.0.0" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.0" />
+		<PackageReference Include="SpecFlow.Plus.LivingDocPlugin" Version="3.9.57" />
+		<PackageReference Include="SpecFlow.NUnit" Version="3.9.74" />
+		<PackageReference Include="nunit" Version="3.13.3" />
+		<PackageReference Include="NUnit3TestAdapter" Version="4.3.1" />
+		<PackageReference Include="FluentAssertions" Version="6.8.0" />
+	</ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Drivers\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\Arius.Core.Tests.Extensions\Arius.Core.Tests.Extensions.csproj" />
     <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Features\Archive.feature.cs">
+      <DependentUpon>%(Filename)</DependentUpon>
+    </Compile>
+    <Compile Update="Features\Restore_Synchronize.feature.cs">
+      <DependentUpon>Restore_Synchronize.feature</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
     <SpecFlowFeatureFiles Update="Features\Archive.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Restore_Synchronize.feature">
+      <Visible>$(UsingMicrosoftNETSdk)</Visible>
+      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
+    </SpecFlowFeatureFiles>
+    <SpecFlowFeatureFiles Update="Features\Restore_File.feature">
       <Visible>$(UsingMicrosoftNETSdk)</Visible>
       <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
     </SpecFlowFeatureFiles>

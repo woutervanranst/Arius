@@ -1,7 +1,7 @@
 using Arius.Core.Models;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.BehaviorTests2.StepDefinitions
+namespace Arius.Core.BehaviorTests.StepDefinitions
 {
     [Binding]
     class RestoreSteps : TestBase

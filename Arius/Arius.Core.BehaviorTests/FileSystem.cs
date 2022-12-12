@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Text.RegularExpressions;
 using TechTalk.SpecFlow;
 
-namespace Arius.Core.BehaviorTests2
+namespace Arius.Core.BehaviorTests
 {
     [Binding]
     static class FileSystem

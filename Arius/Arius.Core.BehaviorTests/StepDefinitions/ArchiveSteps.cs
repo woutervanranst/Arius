@@ -1,7 +1,7 @@
 using Azure.Storage.Blobs.Models;
 using TechTalk.SpecFlow.Assist;
 
-namespace Arius.Core.BehaviorTests2.StepDefinitions
+namespace Arius.Core.BehaviorTests.StepDefinitions
 {
     [Binding]
     class ArchiveSteps : TestBase

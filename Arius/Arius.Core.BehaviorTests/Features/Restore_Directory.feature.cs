@@ -10,7 +10,7 @@
 // ------------------------------------------------------------------------------
 #region Designer generated code
 #pragma warning disable
-namespace Arius.Core.BehaviorTests2.Features
+namespace Arius.Core.BehaviorTests.Features
 {
     using TechTalk.SpecFlow;
     using System;

@@ -16,7 +16,7 @@ using NUnit.Framework;
 using System.ComponentModel;
 using TechTalk.SpecFlow;
 
-namespace Arius.Core.BehaviorTests2
+namespace Arius.Core.BehaviorTests
 {
     [Binding]
     static class Arius
