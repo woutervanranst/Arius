@@ -102,6 +102,23 @@ namespace Arius.Core.BehaviorTests2
             pfi0.CopyTo(pfn1);
         }
 
+        public static void Move(string sourceRelativeBinaryName, string targetRelativeBinaryName, bool movePointer)
+        {
+            var bfi0 = GetFileInfo(ArchiveDirectory, sourceRelativeBinaryName);
+            var bfi1 = GetFileInfo(ArchiveDirectory, targetRelativeBinaryName);
+
+            bfi1.Directory.Create();
+            bfi0.MoveTo(bfi1.FullName);
+
+            if (movePointer)
+            {
+                var pfi0 = new FileInfo(GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName).FullName);
+                var pfi1 = PointerService.GetPointerFileFullName(bfi1); // construct the new name based on the path of the binary
+                
+                pfi0.MoveTo(pfi1);
+            }
+        }
+
 
 
 

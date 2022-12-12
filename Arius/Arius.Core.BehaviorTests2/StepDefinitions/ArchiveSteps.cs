@@ -1,7 +1,4 @@
-using Arius.Core.Extensions;
-using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
-using System.Text.RegularExpressions;
 using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests2.StepDefinitions
@@ -17,6 +14,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         [StepArgumentTransformation]
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
+        
         [Given(@"a BinaryFile {string} of size {string}")]
         public void GivenABinaryFileOfSize(string binaryRelativeName, string size)
         {
@@ -116,6 +114,12 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
             bfi.Delete();
         }
 
+        [When("BinaryFile {string} and its PointerFile are moved to {string}")]
+        public void WhenBinaryFileAndItsPointerFileAreMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
+        {
+            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, movePointer: true);
+        }
+
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
@@ -136,7 +140,7 @@ namespace Arius.Core.BehaviorTests2.StepDefinitions
         {
             await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: false);
         }
-        [Then(@"a PointerFileEntry for a BinaryFile {word} is marked as exists")]
+        [Then(@"a PointerFileEntry for a BinaryFile {string} is marked as exists")]
         public async Task ThenThePointerFileEntryForAPointerOfBinaryFileIsMarkedAsExists(string binaryRelativeName)
         {
             await CheckPointerFileAndPointerFileEntry(binaryRelativeName, shouldExist: true);

@@ -212,11 +212,11 @@ internal class PointerService
     }
 
     internal static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
+    internal static string GetPointerFileFullName(FileInfo binaryFileInfo) => GetPointerFileFullName(binaryFileInfo.FullName);
     internal static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
     internal static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
-
-
+    
     /// <summary>
     /// Get the local BinaryFile for this pointer if it exists.
     /// If it does not exist, return null.
@@ -261,9 +261,7 @@ internal class PointerService
     private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
     private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
     private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
-
-
-
+    
     public FileInfo GetBinaryFileInfo(PointerFile pf)
     {
         return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
