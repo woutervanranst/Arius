@@ -103,17 +103,15 @@ Scenario: Archive with RemoveLocal
 
 	Then BinaryFile "File8.txt" no longer exists
 	Then BinaryFile "File8.txt" has a PointerFile and the PointerFileEntry is marked as exists
-	#Then a PointerFileEntry for a BinaryFile "File8.txt" is marked as exists
-	#Then BinaryFile File8 has a PointerFile and the PointerFileEntry is marked as exists
-#
-#Scenario: Rename PointerFile that no longer has a BinaryFile
-#	Given a remote archive
-#	Given a local folder with BinaryFile File9
-#	When archived to the Cool tier with option RemoveLocal
-#
-#	When the PointerFile for BinaryFile File9 is renamed and moved to a subdirectory
-#	When archived to the Cool tier
-#
-#	Then the PointerFile at the old location no longer exist and the PointerFileEntry is marked as deleted
-#	#Then the PointerFile for BinaryFile File9 exists and the PointerFileEntry is marked as exists
-#	#Then THE POINTERFILE AT THE NEW LOCATION EXISTS
+
+	
+Scenario: Rename PointerFile that no longer has a BinaryFile
+	Given a BinaryFile "File90.txt" of size "1 KB" is archived to the Cool tier with option RemoveLocal
+
+	When the PointerFile for BinaryFile "File90.txt" is moved to "subdir 2\File91.txt"
+	When archived to the Cool tier
+
+	Then the PointerFileEntry for BinaryFile "File90.txt" is marked as deleted
+		# NOTE these two steps do the same thing -- probably they can be refactored/merged to be more explicit on the intent of the BinaryFile existing 
+	Then a PointerFileEntry for a BinaryFile "subdir 2\File91.txt" is marked as exists
+	Then BinaryFile "subdir 2\File91.txt" has a PointerFile and the PointerFileEntry is marked as exists

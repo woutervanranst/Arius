@@ -102,13 +102,15 @@ namespace Arius.Core.BehaviorTests
             pfi0.CopyTo(pfn1);
         }
 
-        public static void Move(string sourceRelativeBinaryName, string targetRelativeBinaryName, bool movePointer)
+        public static void Move(string sourceRelativeBinaryName, string targetRelativeBinaryName, bool moveBinary, bool movePointer)
         {
             var bfi0 = GetFileInfo(ArchiveDirectory, sourceRelativeBinaryName);
             var bfi1 = GetFileInfo(ArchiveDirectory, targetRelativeBinaryName);
 
             bfi1.Directory.Create();
-            bfi0.MoveTo(bfi1.FullName);
+            
+            if (moveBinary)
+                bfi0.MoveTo(bfi1.FullName);
 
             if (movePointer)
             {

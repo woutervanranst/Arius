@@ -125,15 +125,20 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [When("BinaryFile {string} is moved to {string}")]
         public void WhenBinaryFileIsMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
         {
-            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, movePointer: false);
+            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, moveBinary: true, movePointer: false);
         }
         [When("BinaryFile {string} and its PointerFile are moved to {string}")]
         public void WhenBinaryFileAndItsPointerFileAreMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
         {
-            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, movePointer: true);
+            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, moveBinary: true, movePointer: true);
         }
-       
+        [When("the PointerFile for BinaryFile {string} is moved to {string}")]
+        public void WhenThePointerFileForBinaryFileIsMovedTo(string sourceRelativeBinaryName, string targetRelativeBinaryName)
+        {
+            FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, moveBinary: false, movePointer: true);
+        }
 
+        
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
         {
