@@ -22,13 +22,21 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         }
 
         [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
-        public async Task GivenALocalFileOfSizeIsArchivedTo(string binaryRelativeName, string size, AccessTier tier)
+        public async Task GivenALocalFileOfSizeIsArchivedToTier(string binaryRelativeName, string size, AccessTier tier)
         {
             FileSystem.CreateBinaryFile(binaryRelativeName, size);
 
             await Arius.ArchiveCommandAsync(tier);
         }
-        
+
+        [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier with option RemoveLocal")]
+        public async Task GivenALocalFileOfSizeIsArchivedToTierWithOptionRemoveLocal(string binaryRelativeName, string size, AccessTier tier)
+        {
+            FileSystem.CreateBinaryFile(binaryRelativeName, size);
+
+            await Arius.ArchiveCommandAsync(tier, removeLocal: true);
+        }
+
         [Given(@"the following BinaryFiles are archived to {word} tier:")]
         public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
         {
@@ -124,6 +132,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         {
             FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, movePointer: true);
         }
+       
 
         [Then("{int} additional Chunk(s) and Manifest(s)")]
         public void ThenAdditionalChunksAndManifests(int x)
@@ -133,6 +142,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
 
             (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
             (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
+        }
+
+        [Then("BinaryFile {string} no longer exists")]
+        public void ThenBinaryFileFileNoLongerExists(string binaryRelativeName)
+        {
+            var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, binaryRelativeName);
+            fi.Exists.Should().BeFalse();
         }
 
         [Then("BinaryFile {string} has a PointerFile and the PointerFileEntry is marked as exists")]

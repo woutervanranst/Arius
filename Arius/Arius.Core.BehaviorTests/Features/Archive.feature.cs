@@ -422,6 +422,38 @@ this.ScenarioInitialize(scenarioInfo);
             }
             this.ScenarioCleanup();
         }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("Archive with RemoveLocal")]
+        public void ArchiveWithRemoveLocal()
+        {
+            string[] tagsOfScenario = ((string[])(null));
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive with RemoveLocal", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 101
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 102
+ testRunner.Given("a BinaryFile \"File8.txt\" of size \"1 KB\" is archived to the Cool tier with option " +
+                        "RemoveLocal", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 104
+ testRunner.Then("BinaryFile \"File8.txt\" no longer exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 105
+ testRunner.Then("BinaryFile \"File8.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
+                        "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
     }
 }
 #pragma warning restore
