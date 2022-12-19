@@ -1,4 +1,4 @@
-﻿Feature: Archive
+﻿Feature: Archive File
 
 Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.feature)
 ***Further read***: **[Learn more about how to generate Living Documentation](https://docs.specflow.org/projects/specflow-livingdoc/en/latest/LivingDocGenerator/Generating-Documentation.html)**
@@ -66,6 +66,7 @@ Scenario: Archive duplicate files
 	When archived to the Cool tier
 	Then 0 additional Chunks and Manifests
 	Then BinaryFile "File42.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	# Then 1 additional pointerfileentry
 
 
 Scenario: Archive a duplicate PointerFile
@@ -115,3 +116,61 @@ Scenario: Rename PointerFile that no longer has a BinaryFile
 		# NOTE these two steps do the same thing -- probably they can be refactored/merged to be more explicit on the intent of the BinaryFile existing 
 	Then a PointerFileEntry for a BinaryFile "subdir 2\File91.txt" is marked as exists
 	Then BinaryFile "subdir 2\File91.txt" has a PointerFile and the PointerFileEntry is marked as exists
+
+
+@todo
+Scenario: Corrupt Pointer
+	#// garbage in the pointerfile (not a v1 pointer, not a sha hash)
+	#var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
+	#await File.WriteAllTextAsync(fn, "kaka");
+	#
+	#var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+	#var e = ae!.InnerExceptions.Single().InnerException;
+	#Assert.IsInstanceOf<ArgumentException>(e);
+	#Assert.IsTrue(e.Message.Contains("not a valid PointerFile"));
+
+@todo
+Scenario: Non Matching Pointer
+#	// Stage a situation with a binary and a pointer
+#    TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
+#    await ArchiveCommand();
+#    var ps = GetPointerService();
+#    var pf = ps.GetPointerFile(bfi);
+#    // But the Pointer does not match
+#    File.WriteAllLines(pf.FullName, new[] { "{\"BinaryHash\":\"aaaaaaaaaaaaa7da82bfb533db099d2e843ee5f03efa8657e9da1aca63396f4c\"}" });
+#        
+#    if (matchLastWriteTime)
+#        File.SetLastWriteTimeUtc(pf.FullName, File.GetLastWriteTimeUtc(bfi.FullName));
+#
+#    var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+#    var e = ae!.InnerExceptions.Single().InnerException;
+#    Assert.IsInstanceOf<InvalidOperationException>(e);
+#
+#    if (matchLastWriteTime)
+#        // LastWriteTime matches - Arius assumes the pointer belongs to the binaryfile but the hash doesnt match
+#        Assert.IsTrue(e.Message.Contains("is not valid for the BinaryFile"));
+#    else
+#        // LastWriteTime does not match - Arius assumes this modified file, but can't find the binary anywhere
+#        Assert.IsTrue(e.Message.Contains("exists on disk but no corresponding binary exists either locally or remotely"));
+
+@todo
+Scenario: Stale Pointer
+#	//Create a 'stale' PointerFile that does not have a corresponding binary in the local or remote repository
+#    var fn = Path.Combine(ArchiveTestDirectory.FullName, "fakepointer.pointer.arius");
+#    await File.WriteAllTextAsync(fn, "{\"BinaryHash\":\"467bb39560918cea81c42dd922bb9aa71f20642fdff4f40ee83e3fade36f02be\"}");
+#
+#    var ae = Assert.CatchAsync<AggregateException>(async () => await ArchiveCommand());
+#    var e = ae!.InnerExceptions.Single().InnerException;
+#    Assert.IsInstanceOf<InvalidOperationException>(e);
+#    Assert.IsTrue(e.Message.Contains("no corresponding binary exists either locally or remotely"));
+#
+#    File.Delete(fn);
+
+@todo
+Scenario: Update DateTime of a File or Pointer
+
+@todo
+Scenario: Delete a Pointer, archive, pointer is recreated
+
+@todo
+Scenario: Modify a binary with/without fasthash

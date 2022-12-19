@@ -2,7 +2,7 @@
 
 A short summary of the feature
 
-BACKLOG
+TODO / BACKLOG
 * empty dir
 * remote with isdeleted and local present > should be deleted
 * remote with !isdeleted and local not present > should be created
@@ -13,6 +13,7 @@ BACKLOG
 *  download > BinaryFiles exist s> don't download all
 * restore naar directory waar al andere bestanden (binaries) instaan -< are not touched (dan moet ge maa rnaar ne lege restoren)
 * restore a seoncd time without any changes
+* dedup / chunks weg
 
 
 Background:
