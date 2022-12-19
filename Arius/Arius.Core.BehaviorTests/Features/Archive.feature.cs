@@ -485,10 +485,10 @@ this.ScenarioInitialize(scenarioInfo);
 #line 114
  testRunner.Then("the PointerFileEntry for BinaryFile \"File90.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 115
+#line 116
  testRunner.Then("a PointerFileEntry for a BinaryFile \"subdir 2\\File91.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 116
+#line 117
  testRunner.Then("BinaryFile \"subdir 2\\File91.txt\" has a PointerFile and the PointerFileEntry is ma" +
                         "rked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
