@@ -12,7 +12,7 @@ namespace Arius.Core.Tests.UnitTests;
 class CryptoTests : TestBase
 {
     [Test]
-    public async Task EncryptAndDecrypt_String_Equal()
+    public void EncryptAndDecrypt_String_Equal()
     {
         var original = "hahahahaha";
         var passphrase = "mypassword";
@@ -23,7 +23,7 @@ class CryptoTests : TestBase
         Assert.AreEqual(original, decrypted);
     }
 
-
+    
 
     [Test]
     public async Task EncryptAndDecrypt_File_Equal()
