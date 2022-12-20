@@ -32,7 +32,7 @@ jobs:
       run: dotnet build Arius.Core -c Release
     
     - name: Test
-      run: dotnet test -c Release --no-build
+      run: dotnet test Arius.Core.BehaviorTests Arius.Core.Tests -c Release --no-build
 
     # - name: Test
     #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
