@@ -14,7 +14,13 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [StepArgumentTransformation]
         public static AccessTier TierTransform(string tier) => (AccessTier)tier;
 
-        
+
+        [Given("a clean archive directory")]
+        public void GivenACleanRestoreDirectory()
+        {
+            FileSystem.ArchiveDirectory.Clear();
+        }
+
         [Given(@"a BinaryFile {string} of size {string}")]
         public void GivenABinaryFileOfSize(string binaryRelativeName, string size)
         {
@@ -229,6 +235,33 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             }
         }
 
-        
+
+
+
+
+        [Given("a random PointerFile for BinaryFile {string}")]
+        public void GivenARandomPointerFileForBinaryFile(string relativeBinaryFile)
+        {
+            // Take a real PointerFile
+            var pfi = FileSystem.ArchiveDirectory.GetPointerFileInfos().First();
+            // Build the target filename
+            var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + Models.PointerFile.Extension);
+
+            pfi.CopyTo(pfn);
+        }
+
+        [Given("a random BinaryFile {string}")]
+        public void GivenARandomBinaryFile(string relativeBinaryFile)
+        {
+            var bfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile);
+
+            File.WriteAllText(bfn, "some random binary stuff");
+        }
+
+        //[Then("the PointerFile for BinaryFile {string} is not present")]
+        //public void ThenThePointerFileForBinaryFileIsNotPresent(string relativeBinaryFile)
+        //{
+        //    FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile).Should().BeNull();
+        //}
     }
 }

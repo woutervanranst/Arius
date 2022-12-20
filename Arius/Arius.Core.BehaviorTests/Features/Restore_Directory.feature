@@ -17,6 +17,7 @@ TODO / BACKLOG
 
 
 Background:
+    Given a clean archive directory
     Given the following BinaryFiles are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
 		| dir1\\wouter.txt | 15 KB                    |                    |
