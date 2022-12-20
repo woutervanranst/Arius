@@ -2,8 +2,7 @@
 
 A short summary of the feature
 
-@tag1
-Scenario: Restore a file from archive tier
+Scenario: B_Restore a file from archive tier
 	Given a BinaryFile "File3.txt" of size "ABOVE_ARCHIVE_TIER_LIMIT" is archived to the Archive tier
 	When copy the PointerFile of BinaryFile "File3.txt" to the restore directory
     When restore --download
@@ -13,7 +12,9 @@ Scenario: Restore a file from archive tier
 	Then the BinaryFile "File3.txt" does not exist
 
 
-Scenario: Restore a file from archive tier after the chunk has been hydrated
+	# NOTE the A_ and B_ name are to (workaround) determine the order of execution.
+	# Currently, the behavior of Arius is undefined when running a restore operation while a previous restore operation still has a rehydrate ongoing
+Scenario: A_Restore a file from archive tier after the chunk has been hydrated
 	# Stage
 	Given a BinaryFile "File4.txt" of size "ABOVE_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
 	When copy the PointerFile of BinaryFile "File4.txt" to the restore directory
