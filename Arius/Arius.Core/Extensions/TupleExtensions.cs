@@ -10,7 +10,6 @@ public static class TupleExtensions
 {
     // https://github.com/gitextensions/gitextensions/blob/master/GitCommands/DeconstructionExtensions.cs
 
-
     /// <summary>
     /// Supports C# 7 deconstruction of <see cref="KeyValuePair{TKey,TValue}"/>.
     /// </summary>
