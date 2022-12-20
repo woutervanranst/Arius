@@ -153,7 +153,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
         [When("the chunk of BinaryFile {string} is copied to the rehydrate folder and the original chunk is moved to the {word} tier")]
         public async Task WhenTheChunkOfBinaryFileIsCopiedToTheRehydrateFolderAndTheOriginalChunkIsMovedToTheArchiveTier(string relativeBinaryFile, AccessTier tier)
         {
-            tier.Should().Be(AccessTier.Archive);
+            tier.Should().Be(AccessTier.Archive); // other tiers are not supported in this step
 
             var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
             var ch = new ChunkHash(pf.Hash);
