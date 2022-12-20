@@ -46,7 +46,7 @@ namespace Arius.Core.BehaviorTests
             await AddRepoStat();
         }
         
-        private const string TestContainerNamePrefix = "unittest";
+        private const string TestContainerNamePrefix = "behaviortest";
         private record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
         private static RepositoryOptions options;
         private static BlobContainerClient container;
@@ -240,6 +240,5 @@ namespace Arius.Core.BehaviorTests
             var n = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).CountAsync();
             return n > 0;
         }
-
     }
 }
