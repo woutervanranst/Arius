@@ -31,8 +31,16 @@ jobs:
     - name: Build
       run: dotnet build Arius.Core -c Release
     
-    #- name: Test
-    #  run: dotnet test Arius.Core.Tests -c Release --no-build
+    - name: Test
+      run: dotnet test -c Release --no-build
+
+    # - name: Test
+    #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
+    #   #run: dotnet test -l "console;verbosity=detailed" # -v normal
+    #   # continue-on-error: true
+    #   env:
+    #     ARIUS_ACCOUNT_NAME: ariusci
+    #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
     
     - name: Pack
       run: dotnet pack Arius.Core -c Release --no-build --output .
