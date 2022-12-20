@@ -161,7 +161,7 @@ namespace Arius.Core.BehaviorTests.StepDefinitions
             await Arius.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);
         }
         [Then("the rehydrate folder does not exist")]
-        public async void ThenTheRehydrateFolderDoesNotExist()
+        public async Task ThenTheRehydrateFolderDoesNotExist()
         {
             var e = await Arius.RehydrateFolderExists();
             e.Should().BeFalse();
