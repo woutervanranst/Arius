@@ -54,12 +54,13 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
             
             // Validate Path
             RuleFor(o => o.Path)
-                .NotEmpty()
                 .Custom((path, context) =>
                 {
-                    if (path is not DirectoryInfo)
+                    if (path is null)
+                        context.AddFailure("Path is not specified");
+                    else if (path is not DirectoryInfo)
                         context.AddFailure("Path must be a directory");
-                    if (!path.Exists)
+                    else if (!path.Exists)
                         context.AddFailure($"Directory {path} does not exist.");
                 });
 
