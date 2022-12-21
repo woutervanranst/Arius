@@ -30,6 +30,8 @@
     <Copyright>Blue Software</Copyright>
 
     <TieredCompilation>false</TieredCompilation>
+
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 </Project>

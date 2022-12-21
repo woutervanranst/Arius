@@ -1,4 +1,5 @@
 using System;
+using System.CommandLine.Builder;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -16,6 +18,37 @@ using Spectre.Console.Cli;
 namespace Arius.Cli;
 
 public static class Program
+{
+    public static async Task<int> Main(string[] args)
+    {
+
+    }
+
+    private CommandLineBuilder GetCommandLineBuilder(DateTime versionUtc)
+    {
+        var root = new System.CommandLine.RootCommand
+        {
+            ArchiveCliCommand.GetCommand(),
+        };
+        root.Description = "Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.";
+
+        return new CommandLineBuilder(root);
+    }
+
+    internal static class ArchiveCliCommand
+    {
+        public static System.CommandLine.Command GetCommand()
+        {
+            var command = new System.CommandLine.Command(
+                name: "archive",
+                description: "Archive to blob");
+
+            return command;
+        }
+    }
+
+
+public static class Program2
 {
     [ThreadStatic]
     public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
@@ -31,8 +64,14 @@ public static class Program
         var config = new ConfigurationBuilder()
             .AddJsonFile($"appsettings.json", true, true)
             //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
-            //.AddEnvironmentVariables();//
+            .AddEnvironmentVariables()
             .Build();
+        
+        
+        
+        
+
+
 
         var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
         var versionUtc = DateTime.UtcNow;

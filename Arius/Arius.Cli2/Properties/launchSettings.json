@@ -1,0 +1,20 @@
+{
+  "profiles": {
+    "archive without anything": {
+      "commandName": "Project",
+      "commandLineArgs": "archive"
+    },
+    "archive with args": {
+      "commandName": "Project",
+      "commandLineArgs": "archive C:\\Users\\Woute\\Documents -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
+    },
+    "restore with args": {
+      "commandName": "Project",
+      "commandLineArgs": "restore C:\\Users\\Wouter\\Documents\\Test2 -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --synchronize --download"
+    },
+    "restore BIG": {
+      "commandName": "Project",
+      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archivededup --synchronize"
+    }
+  }
+}
