@@ -35,12 +35,20 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
     private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
     IServiceProvider ICommand<IArchiveCommandOptions>.Services => executionServices.Services;
+
+    public ValidationResult Validate(IArchiveCommandOptions options)
+    {
+        var validator = new IArchiveCommandOptions.Validator();
+        return validator.Validate(options);
+    }
     
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
-        var validator = new IArchiveCommandOptions.Validator();
-        await validator.ValidateAndThrowAsync(options);
+        var v = Validate(options);
+        if (!v.IsValid)
+            throw new ValidationException(v.Errors);
 
+        
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
 
