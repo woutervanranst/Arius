@@ -67,9 +67,9 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
     {
-        var x = archiveCommand.Validate(settings);
-        if (!x.IsValid)
-            return ValidationResult.Error(x.ToString());
+        var r = archiveCommand.Validate(settings);
+        if (!r.IsValid)
+            return ValidationResult.Error(r.ToString());
         
         return ValidationResult.Success();
     }
