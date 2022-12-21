@@ -1,23 +1,11 @@
-﻿using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
+﻿using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
-using Arius.Core.Extensions;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Arius.Core.Services.Chunkers;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Arius.Core.Commands.Rehydrate;
 
 /*
@@ -33,7 +21,6 @@ using Arius.Core.Commands.Rehydrate;
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 [assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
-[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests2")]
 
 namespace Arius.Core.Commands;
 
