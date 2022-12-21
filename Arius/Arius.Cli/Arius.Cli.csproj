@@ -4,15 +4,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net7.0</TargetFramework>
 	<AssemblyName>arius</AssemblyName>
-	<PackageLicenseFile>LICENSE</PackageLicenseFile>
-	<Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\LICENSE">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
     <None Include="..\.dockerignore" Link=".dockerignore">
       <DependentUpon>$(DockerDefaultDockerfile)</DependentUpon>
     </None>
@@ -23,14 +17,12 @@
 	<!--<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />-->
 
     <PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.3.1" />
-
-    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="7.0.0" />
     <!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
     <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" />
 
-    <PackageReference Include="Spectre.Console" Version="0.45.0" />
+    <PackageReference Include="Spectre.Console" Version="0.43.0" />
 
     <!-- For AddCustomFormatter Logger-->
 	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
@@ -38,8 +30,6 @@
     
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
-    <PackageReference Include="Spectre.Console.Cli" Version="0.45.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
 
