@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text.RegularExpressions;
 using TechTalk.SpecFlow;
