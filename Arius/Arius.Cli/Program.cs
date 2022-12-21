@@ -1,10 +1,13 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
@@ -13,25 +16,82 @@ using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
+[assembly: InternalsVisibleTo("Arius.Cli.Tests")]
+
 namespace Arius.Cli;
 
-public static class Program
+public class Program
 {
-    [ThreadStatic]
-    public static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
-
     public static async Task<int> Main(string[] args)
     {
+        return await new Program().Main(args, sc => sc.AddAriusCoreCommands());
+    }
+
+    internal static Program Instance { get; set; }
+
+    [ThreadStatic]
+    internal static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
+    
+    internal CommandSettings ParsedOptions { get; set; }
+
+    internal Exception e;
+
+    
+
+    internal async Task<int> Main(string[] args, Action<IServiceCollection> ariusCoreCommandsProvider)
+    {
+        Instance = this;
+        
         AnsiConsole.Write(
             new FigletText(FigletFont.Default, "Arius")
                 .LeftAligned()
                 .Color(Color.Blue));
 
+        var services3 = new ServiceCollection()
+            .AddLogging();
+        ariusCoreCommandsProvider(services3);
+        var registrar3 = new TypeRegistrar(services3);
+
+        var app2 = new CommandApp(registrar3);
+        app2.Configure(config =>
+        {
+            config.SetApplicationName("arius");
+            
+            config.AddCommand<ArchiveCliCommand>("archive");
+
+            config.SetInterceptor(new CommandInterceptor());
+
+            config.SetExceptionHandler(ex =>
+            {
+                e = ex;
+            });
+
+            //config.PropagateExceptions();
+        });
+
+        var r2 = app2.Run(args);
+
+        return r2;
+
+        //var services2 = new ServiceCollection()
+        //    .AddAriusCoreCommands()
+        //    .AddLogging()
+        //    .BuildServiceProvider();
+
+
+        //if (ParsedOptions is ArchiveCommandOptions o)
+        //{
+        //    var c = services2.GetRequiredService<Arius.Core.Commands.ICommand<IArchiveCommandOptions>>();
+        //    var rr = await c.ExecuteAsync(o);
+        //}
+
+        
+
         // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
         var config = new ConfigurationBuilder()
             .AddJsonFile($"appsettings.json", true, true)
             //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
-            //.AddEnvironmentVariables();//
+            //.AddEnvironmentVariables();
             .Build();
 
         var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
@@ -71,12 +131,11 @@ public static class Program
             });
 
         var registrar = new TypeRegistrar(services);
-        var parsedOptionsProvider = new ParsedOptionsProvider();
 
         var app = new CommandApp(registrar);
         app.Configure(config =>
         {
-            config.SetInterceptor(new CommandInterceptor(parsedOptionsProvider));
+            config.SetInterceptor(new CommandInterceptor());
 
             config.SetApplicationName("arius");
 
@@ -102,8 +161,8 @@ public static class Program
             });
 
             config.AddCommand<ArchiveCliCommand>("archive");
-            config.AddCommand<RestoreCliCommand>("restore");
-            config.AddCommand<RehydrateCliCommand>("rehydrate");
+            //config.AddCommand<RestoreCliCommand>("restore");
+            //config.AddCommand<RehydrateCliCommand>("rehydrate");
         });
 
         var r = await app.RunAsync(args);
@@ -123,28 +182,32 @@ public static class Program
         //    });
         
 
-        var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
-            .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
-            .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
+
+
         
-        var ro = (IRepositoryOptions)parsedOptionsProvider.Options;
-        var commandName = parsedOptionsProvider.Options switch
-        {
-            ArchiveCliCommand.ArchiveCommandOptions => "archive",
-            RestoreCliCommand.RestoreCommandOptions => "restore",
-            RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
-            _ => throw new NotImplementedException()
-        };
 
-        foreach (var logfile in logfiles)
-        {
-            // prepend the container name to the log
-            logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{ro.Container}-")));
+        //var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
+        //    .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
+        //    .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
+        
+        //var ro = (IRepositoryOptions)parsedOptionsProvider.Options;
+        //var commandName = parsedOptionsProvider.Options switch
+        //{
+        //    ArchiveCliCommand.ArchiveCommandOptions => "archive",
+        //    //RestoreCliCommand.RestoreCommandOptions => "restore",
+        //    //RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
+        //    _ => throw new NotImplementedException()
+        //};
 
-            AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
-            await logfile.CompressAsync(deleteOriginal: true);
-            AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
-        }
+        //foreach (var logfile in logfiles)
+        //{
+        //    // prepend the container name to the log
+        //    logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{ro.Container}-")));
+
+        //    AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
+        //    await logfile.CompressAsync(deleteOriginal: true);
+        //    AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
+        //}
 
         return r;
     }

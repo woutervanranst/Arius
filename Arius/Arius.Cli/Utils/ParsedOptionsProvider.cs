@@ -1,8 +1,8 @@
-using Spectre.Console.Cli;
+//using Spectre.Console.Cli;
 
-namespace Arius.Cli.Utils;
+//namespace Arius.Cli.Utils;
 
-internal class ParsedOptionsProvider
-{
-    public CommandSettings Options { get; set; }
-}
+//internal class ParsedOptionsProvider
+//{
+//    public CommandSettings Options { get; set; }
+//}

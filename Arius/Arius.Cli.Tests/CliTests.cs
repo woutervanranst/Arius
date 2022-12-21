@@ -1,7 +1,11 @@
 ﻿using Arius.Cli;
 using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
+using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
+using Spectre.Console.Cli;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,7 +46,10 @@ class CliTests
     {
         var args = "archive";
 
-        var r = await Arius.Cli.Program.Main(args.Split(' '));
+        var r = await Program.Main(args.Split(' '));
+
+        r.Should().Be(-1);
+        Program.Instance.e.Should().BeOfType<CommandRuntimeException>();
 
         //Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
         //Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required argument missing for command: archive"));
@@ -77,20 +84,33 @@ class CliTests
     //}
 
 
-    //[Test]
-    //public async Task Cli_ArchiveCommandWithParameters_FacadeCalled()
-    //{
-    //    CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd);
+    [Test]
+    public async Task Cli_ArchiveCommandWithParameters_FacadeCalled()
+    {
+        CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd);
 
-    //    Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, DateTime.UtcNow);
+        var r = await (new Program().Main(cmd.Split(' '), sc => AddMockedAriusCoreCommands(sc)));
 
-    //    var r = await ExecuteMainWithMockedFacade(cmd, expr);
+        //Expression<Func<IFacade, Core.Commands.ICommand>> expr = (m) => m.CreateArchiveCommand(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, DateTime.UtcNow);
 
-    //    Assert.AreEqual(0, Environment.ExitCode);
+        //var r = await ExecuteMainWithMockedFacade(cmd, expr);
 
-    //    r.MockFacade.Verify(expr, Times.Exactly(1));
-    //    r.MockFacade.VerifyNoOtherCalls();
-    //}
+        //Assert.AreEqual(0, Environment.ExitCode);
+
+        //r.MockFacade.Verify(expr, Times.Exactly(1));
+        //r.MockFacade.VerifyNoOtherCalls();
+    }
+
+    private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services)
+    {
+        var kak = new Mock<Arius.Core.Commands.ICommand<IArchiveCommandOptions>>();
+        //kak.Setup(m => m.ser).Returns(null);
+        var kkk = kak.Object;
+        services
+            .AddSingleton(kkk);
+        return services;
+    }
+
 
     //[Test]
     //public async Task Cli_RestoreCommandWithParameters_FacadeCalled()
@@ -200,29 +220,29 @@ class CliTests
     //          $"{path}";
     //}
 
-    //private static void CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd)
-    //{
-    //    accountName = "ha";
-    //    accountKey = "ha";
-    //    passphrase = "3";
-    //    container = "h";
-    //    fastHash = false;
-    //    removeLocal = false;
-    //    tier = "cool";
-    //    dedup = false;
-    //    path = "he";
+    private static void CreateArchiveCommand(out string accountName, out string accountKey, out string passphrase, out bool fastHash, out string container, out bool removeLocal, out string tier, out bool dedup, out string path, out string cmd)
+    {
+        accountName = "ha";
+        accountKey = "ha";
+        passphrase = "3";
+        container = "h";
+        fastHash = false;
+        removeLocal = false;
+        tier = "cool";
+        dedup = false;
+        path = ".";
 
-    //    cmd = "archive " +
-    //          $"-n {accountName} " +
-    //          $"-k {accountKey} " +
-    //          $"-p {passphrase} " +
-    //          $"-c {container} " +
-    //          $"{(removeLocal ? "--remove-local " : "")}" +
-    //          $"--tier {tier.ToString().ToLower()} " +
-    //          $"{(dedup ? "--dedup " : "")}" +
-    //          $"{(fastHash ? "--fasthash" : "")}" +
-    //          $"{path}";
-    //}
+        cmd = "archive " +
+              $"-n {accountName} " +
+              $"-k {accountKey} " +
+              $"-p {passphrase} " +
+              $"-c {container} " +
+              $"{(removeLocal ? "--remove-local " : "")}" +
+              $"--tier {tier.ToString().ToLower()} " +
+              $"{(dedup ? "--dedup " : "")}" +
+              $"{(fastHash ? "--fasthash" : "")}" +
+              $"{path}";
+    }
 
 
     //private static async Task<(Mock<IFacade> MockFacade, InvocationContext InvocationContext)> ExecuteMainWithMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
