@@ -22,13 +22,13 @@ internal class CommandInterceptor : ICommandInterceptor
             if (string.IsNullOrEmpty(o.AccountName))
             {
                 // AccountName was not set in the command line, so we try to get it from the environment variable
-                o.AccountName = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"); //TODO check https://github.com/spectreconsole/spectre.console/issues/539
+                o.AccountName = Environment.GetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName); //TODO check https://github.com/spectreconsole/spectre.console/issues/539
             }
 
             if (string.IsNullOrEmpty(o.AccountKey))
             {
                 // AccountKey was not set in the command line, so we try to get it from the environment variable
-                o.AccountKey = Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY");
+                o.AccountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
             }
         }
         

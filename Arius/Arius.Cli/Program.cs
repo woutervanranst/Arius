@@ -22,6 +22,9 @@ namespace Arius.Cli;
 
 public class Program
 {
+    internal const string AriusAccountNameEnvironmentVariableName = "ARIUS_ACCOUNT_NAME";
+    internal const string AriusAccountKeyEnvironmentVariableName = "ARIUS_ACCOUNT_KEY";
+    
     public static async Task<int> Main(string[] args)
     {
         return await new Program().Main(args, sc => sc.AddAriusCoreCommands());

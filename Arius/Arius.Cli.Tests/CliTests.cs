@@ -90,10 +90,15 @@ class CliTests
 
 
     [Test]
-    public async Task Cli_ArchiveCommandWithParameters_FacadeCalled()
+    public async Task Cli_ArchiveCommandWithParameters_CommandCalled()
     {
         var aco = new ArchiveCommandOptions();
 
+        await ExecuteMockedArchiveCommand(aco);
+    }
+
+    private async Task<Program> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
+    {
         // Create Mock
         var validateReturnMock = new Mock<ValidationResult>();
         validateReturnMock.Setup(m => m.IsValid).Returns(true);
@@ -105,13 +110,38 @@ class CliTests
         archiveCommandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
         archiveCommandMock.Setup(executeAsyncExpr).Verifiable();
 
-        var r = await new Program().Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object));
+        // Run Arius
+        var p = new Program();
+        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object));
 
+        // Assert
         r.Should().Be(0);
 
         //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
         archiveCommandMock.Verify(executeAsyncExpr, Times.Exactly(1));
         //archiveCommandMock.VerifyNoOtherCalls();
+
+        return p;
+    }
+
+    [Test]
+    public async Task Cli_ArchiveCommandWithoutAccountNameAndAccountKey_EnviornmentVariablesUsed()
+    {
+        var aco = new ArchiveCommandOptions { AccountName = null, AccountKey = null };
+        
+        var accountName = "haha1";
+        var accountKey = "haha2";
+        Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
+        Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
+
+        var p = await ExecuteMockedArchiveCommand(aco);
+
+        var po = (IArchiveCommandOptions)p.ParsedOptions;
+
+        po.AccountName.Should().Be(accountName);
+        po.AccountKey.Should().Be(accountKey);
+
+
     }
 
     private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, Arius.Core.Commands.ICommand<IArchiveCommandOptions> m)
@@ -245,16 +275,24 @@ class CliTests
 
         public override string ToString()
         {
-            return "archive " +
-              $"-n {AccountName} " +
-              $"-k {AccountKey} " +
+            var sb = new StringBuilder("archive ");
+
+            if (AccountName is not null)
+                sb.Append($"-n {AccountName} ");
+
+            if (AccountKey is not null)
+                sb.Append($"-k {AccountKey} ");
+
+            sb.Append(
               $"-p {Passphrase} " +
               $"-c {Container} " +
               $"{(RemoveLocal ? "--remove-local " : "")}" +
               $"--tier {Tier.ToString().ToLower()} " +
               $"{(Dedup ? "--dedup " : "")}" +
               $"{(FastHash ? "--fasthash" : "")}" +
-              $"{Path}";
+              $"{Path}");
+
+            return sb.ToString();
         }
     }
 
