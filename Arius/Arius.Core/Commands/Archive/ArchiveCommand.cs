@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using System.Threading.Channels;
 using Arius.Core.Extensions;
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace Arius.Core.Commands.Archive;
 
