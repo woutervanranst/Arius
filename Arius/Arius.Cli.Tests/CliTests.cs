@@ -32,18 +32,15 @@ namespace Arius.Cli.Tests;
 
 class CliTests
 {
-    //[Test]
-    //public async Task Cli_NoCommand_ParseErrorResult()
-    //{
-    //    var args = "";
+    [Test]
+    public async Task Cli_NoCommand_NoError()
+    {
+        var args = "";
 
-    //    var p = new Program();
-    //    await p.Main(args.Split(' '));
+        var r = await Program.Main(args.Split(' '));
 
-    //    Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
-    //    Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required command was not provided."));
-    //    Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
-    //}
+        r.Should().Be(0);
+    }
 
 
     [Test]
@@ -140,15 +137,11 @@ class CliTests
 
         po.AccountName.Should().Be(accountName);
         po.AccountKey.Should().Be(accountKey);
-
-
     }
 
-    private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, Arius.Core.Commands.ICommand<IArchiveCommandOptions> m)
-    {
-        services.AddSingleton(m);
-        return services;
-    }
+
+
+
 
 
 
@@ -238,27 +231,13 @@ class CliTests
     //     */
     //}
 
-    //private static void CreateRestoreCommand(out string accountName, out string accountKey, out string container, out string passphrase, out bool synchronize, out bool download, out bool keepPointers, out string path, out string cmd)
-    //{
-    //    accountName = "ha";
-    //    accountKey = "ha";
-    //    container = "h";
-    //    passphrase = "3";
-    //    synchronize = false;
-    //    download = false;
-    //    keepPointers = false;
-    //    path = "he";
+    
 
-    //    cmd = "restore " +
-    //          $"-n {accountName} " +
-    //          $"-k {accountKey} " +
-    //          $"-p {passphrase} " +
-    //          $"-c {container} " +
-    //          $"{(synchronize ? "--synchronize " : "")}" +
-    //          $"{(download ? "--download " : "")}" +
-    //          $"{(keepPointers ? "--keep-pointers " : "")}" +
-    //          $"{path}";
-    //}
+    private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, Arius.Core.Commands.ICommand<IArchiveCommandOptions> m)
+    {
+        services.AddSingleton(m);
+        return services;
+    }
 
     private class ArchiveCommandOptions : IArchiveCommandOptions
     {
@@ -295,6 +274,28 @@ class CliTests
             return sb.ToString();
         }
     }
+
+    //private static void CreateRestoreCommand(out string accountName, out string accountKey, out string container, out string passphrase, out bool synchronize, out bool download, out bool keepPointers, out string path, out string cmd)
+    //{
+    //    accountName = "ha";
+    //    accountKey = "ha";
+    //    container = "h";
+    //    passphrase = "3";
+    //    synchronize = false;
+    //    download = false;
+    //    keepPointers = false;
+    //    path = "he";
+
+    //    cmd = "restore " +
+    //          $"-n {accountName} " +
+    //          $"-k {accountKey} " +
+    //          $"-p {passphrase} " +
+    //          $"-c {container} " +
+    //          $"{(synchronize ? "--synchronize " : "")}" +
+    //          $"{(download ? "--download " : "")}" +
+    //          $"{(keepPointers ? "--keep-pointers " : "")}" +
+    //          $"{path}";
+    //}
 
     //private static async Task<(Mock<IFacade> MockFacade, InvocationContext InvocationContext)> ExecuteMainWithMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
     //{
