@@ -48,7 +48,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [Description("Local path")]
         [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
         [CommandArgument(0, "[PATH]")] //Path is really mandatory but is not passed explicitly when running in Docker - so the Spectre.Console.Cli.CommandValidator.ValidateRequiredParameters fails
-        public DirectoryInfo? Path { get; init; }
+        public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
 
         public DateTime VersionUtc { get; init; }
 

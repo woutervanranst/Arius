@@ -63,12 +63,12 @@ internal abstract class RepositoryOptions : CommandSettings //, IRepositoryOptio
 
     [Description("Blob Account Name")]
     [CommandOption("-n|--accountname <ACCOUNT_NAME>")]
-    public required string AccountName { get; set; }
+    public required string AccountName { get; set; } // set - not init because it needs to be (re)set in the Interceptor
 
     [Description("Blob Account Key")]
     [CommandOption("-k|--accountkey <ACCOUNT_KEY>")]
     [ObfuscateInLog]
-    public string AccountKey { get; set; }
+    public string AccountKey { get; set; } // set - not init because it needs to be (re)set in the Interceptor
 
     [Description("Blob Container Name")]
     [CommandOption("-c|--container <CONTAINER>")]

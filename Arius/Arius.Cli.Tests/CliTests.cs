@@ -94,7 +94,57 @@ class CliTests
         await ExecuteMockedArchiveCommand(aco);
     }
 
-    private async Task<Program> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
+    [Test]
+    public async Task Cli_ArchiveCommandWithoutAccountNameAndAccountKey_EnviornmentVariablesUsed()
+    {
+        var aco = new ArchiveCommandOptions { AccountName = null, AccountKey = null };
+
+        var accountName = "haha1";
+        var accountKey = "haha2";
+        Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
+        Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
+
+        var po = await ExecuteMockedArchiveCommand(aco);
+
+        po.AccountName.Should().Be(accountName);
+        po.AccountKey.Should().Be(accountKey);
+    }
+
+    [Test]
+    public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore")] string command)
+    {
+        var aco = new ArchiveCommandOptions { Path = new DirectoryInfo(".") };
+        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+
+        Func<Task> t = async () =>
+        {
+            if (command == "archive")
+                await ExecuteMockedArchiveCommand(aco);
+            else
+                throw new NotImplementedException();
+        };
+        await t.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore")] string command)
+    {
+        var aco = new ArchiveCommandOptions { Path = null };
+        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+
+        if (command == "archive")
+        {
+            var po = await ExecuteMockedArchiveCommand(aco);
+
+            po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
+        }
+        else
+            throw new NotImplementedException();
+    }
+
+
+
+    private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
     {
         // Create Mock
         var validateReturnMock = new Mock<ValidationResult>();
@@ -111,36 +161,22 @@ class CliTests
         var p = new Program();
         var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object));
 
-        // Assert
-        r.Should().Be(0);
+        if (r == 0)
+        {
+            p.e.Should().BeNull();
+        }
+        else
+        {
+            p.e.Should().NotBeNull();
+            throw p.e;
+        }
 
         //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
         archiveCommandMock.Verify(executeAsyncExpr, Times.Exactly(1));
         //archiveCommandMock.VerifyNoOtherCalls();
 
-        return p;
+        return (IArchiveCommandOptions)p.ParsedOptions;
     }
-
-    [Test]
-    public async Task Cli_ArchiveCommandWithoutAccountNameAndAccountKey_EnviornmentVariablesUsed()
-    {
-        var aco = new ArchiveCommandOptions { AccountName = null, AccountKey = null };
-        
-        var accountName = "haha1";
-        var accountKey = "haha2";
-        Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
-        Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
-
-        var p = await ExecuteMockedArchiveCommand(aco);
-
-        var po = (IArchiveCommandOptions)p.ParsedOptions;
-
-        po.AccountName.Should().Be(accountName);
-        po.AccountKey.Should().Be(accountKey);
-    }
-
-
-
 
 
 
@@ -231,7 +267,7 @@ class CliTests
     //     */
     //}
 
-    
+
 
     private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, Arius.Core.Commands.ICommand<IArchiveCommandOptions> m)
     {
