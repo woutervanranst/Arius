@@ -10,7 +10,7 @@ using Arius.Core.Commands.Rehydrate;
 
 /*
  * This is required for the Arius.Cli.Tests module
- * Specifically, the Moq framework cannot initialize ICommand, which has 'internal IServiceProvider Services { get; }' if it cannot see the internals
+ * Specifically, the Moq framework cannot initialize ICommand, which has '**internal** IServiceProvider Services { get; }' if it cannot see the internals
  * See https://stackoverflow.com/a/28235222/1582323
  */
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
