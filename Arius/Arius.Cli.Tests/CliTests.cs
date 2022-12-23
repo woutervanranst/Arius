@@ -153,6 +153,10 @@ class CliTests
             throw new NotImplementedException();
     }
 
+    private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
+    {
+        return await ExecuteMockedCommand<IArchiveCommandOptions>(aco);
+    }
 
     private async Task<T> ExecuteMockedCommand<T>(T aco) where T : ICommandOptions
     {
@@ -160,27 +164,16 @@ class CliTests
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
         validateReturnMock.Setup(m => m.IsValid).Returns(true);
 
-        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, FluentValidation.Results.ValidationResult>> archiveValidateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
-        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, Task<int>>> archiveExecuteAsyncExpr = m => m.ExecuteAsync(It.IsAny<IArchiveCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<IArchiveCommandOptions>());
 
-        var archiveCommandMock = new Mock<Core.Commands.ICommand<IArchiveCommandOptions>>();
-        archiveCommandMock.Setup(archiveValidateExpr).Returns(validateReturnMock.Object);
-        archiveCommandMock.Setup(archiveExecuteAsyncExpr).Verifiable();
-
-
-
-        Expression<Func<Core.Commands.ICommand<IRestoreCommandOptions>, FluentValidation.Results.ValidationResult>> restoreValidateExpr = m => m.Validate(It.IsAny<IRestoreCommandOptions>());
-        Expression<Func<Core.Commands.ICommand<IRestoreCommandOptions>, Task<int>>> restoreExecuteAsyncExpr = m => m.ExecuteAsync(It.IsAny<IRestoreCommandOptions>());
-
-        var restoreCommandMock = new Mock<Core.Commands.ICommand<IRestoreCommandOptions>>();
-        restoreCommandMock.Setup(restoreValidateExpr).Returns(validateReturnMock.Object);
-        restoreCommandMock.Setup(restoreExecuteAsyncExpr).Verifiable();
-
-
+        var commandMock = new Mock<Core.Commands.ICommand<IArchiveCommandOptions>>();
+        commandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
+        commandMock.Setup(executeAsyncExpr).Verifiable();
 
         // Run Arius
         var p = new Program();
-        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object, restoreCommandMock.Object));
+        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, commandMock.Object));
 
         if (r == 0)
         {
@@ -193,7 +186,7 @@ class CliTests
         }
 
         //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
-        archiveCommandMock.Verify(archiveExecuteAsyncExpr, Times.Exactly(1));
+        commandMock.Verify(executeAsyncExpr, Times.Exactly(1));
         //archiveCommandMock.VerifyNoOtherCalls();
 
         return (T)p.ParsedOptions;
@@ -291,11 +284,9 @@ class CliTests
 
 
     private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, 
-        Arius.Core.Commands.ICommand<IArchiveCommandOptions> a,
-        Arius.Core.Commands.ICommand<IRestoreCommandOptions> b)
+        Arius.Core.Commands.ICommand<IArchiveCommandOptions> a)
     {
         services.AddSingleton(a);
-        services.AddSingleton(b);
         
         return services;
     }
