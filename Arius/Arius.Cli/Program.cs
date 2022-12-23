@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
 using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.Configuration;
@@ -25,11 +24,6 @@ public class Program
     internal const string AriusAccountNameEnvironmentVariableName = "ARIUS_ACCOUNT_NAME";
     internal const string AriusAccountKeyEnvironmentVariableName = "ARIUS_ACCOUNT_KEY";
     
-    public static async Task<int> Main(string[] args)
-    {
-        return await new Program().Main(args, sc => sc.AddAriusCoreCommands());
-    }
-
     internal static Program? Instance { get; set; }
 
     [ThreadStatic]
@@ -39,7 +33,10 @@ public class Program
 
     internal Exception? e;
 
-    
+    public static async Task<int> Main(string[] args)
+    {
+        return await new Program().Main(args, sc => sc.AddAriusCoreCommands());
+    }
 
     internal async Task<int> Main(string[] args, Action<IServiceCollection> ariusCoreCommandsProvider)
     {
@@ -49,6 +46,13 @@ public class Program
             new FigletText(FigletFont.Default, "Arius")
                 .LeftAligned()
                 .Color(Color.Blue));
+
+        // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
+        var config = new ConfigurationBuilder()
+            .AddJsonFile($"appsettings.json", true, true)
+            //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
+            //.AddEnvironmentVariables()
+            .Build();
 
         var services3 = new ServiceCollection()
             .AddLogging();
@@ -66,22 +70,27 @@ public class Program
 
             config.SetInterceptor(new CommandInterceptor());
 
-            config.SetExceptionHandler(ex =>
+            config.SetExceptionHandler(e =>
             {
-                e = ex;
+                this.e = e;
 
-                switch (ex)
+                var logger = services3.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Main");
+                logger.LogError(e);
+
+                switch (e)
                 {
-                    case CommandParseException e:
-                        AnsiConsole.Write(e.Pretty);
+                    case CommandParseException cpe:
+                        AnsiConsole.Write(cpe.Pretty);
                         break;
-                    case CommandRuntimeException e: // occurs when ValidationResult.Error is returned in Validate()
-                        AnsiConsole.Write("Command error: " + e.Message);
-                        break;
+                    //case CommandRuntimeException cre: // occurs when ValidationResult.Error is returned in Validate()
+                    //    AnsiConsole.WriteLine("Command error: " + cre.Message);
+                    //    break;
                     default:
-                        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                        AnsiConsole.Write(new Markup($"[bold red]Error:[/] {e.Message}"));
                         break;
                 }
+
+                AnsiConsole.WriteLine();
             });
 
             //config.PropagateExceptions();
@@ -91,26 +100,7 @@ public class Program
 
         return r2;
 
-        //var services2 = new ServiceCollection()
-        //    .AddAriusCoreCommands()
-        //    .AddLogging()
-        //    .BuildServiceProvider();
-
-
-        //if (ParsedOptions is ArchiveCommandOptions o)
-        //{
-        //    var c = services2.GetRequiredService<Arius.Core.Commands.ICommand<IArchiveCommandOptions>>();
-        //    var rr = await c.ExecuteAsync(o);
-        //}
-
         
-
-        // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
-        var config = new ConfigurationBuilder()
-            .AddJsonFile($"appsettings.json", true, true)
-            //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
-            //.AddEnvironmentVariables();
-            .Build();
 
         var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
         var versionUtc = DateTime.UtcNow;

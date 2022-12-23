@@ -61,6 +61,7 @@ class CliTests
         r.Should().Be(-1);
         Program.Instance.e.Should().BeOfType<CommandRuntimeException>();
         consoleText.Should().Contain("Command error:");
+        consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 
     [Test]
@@ -75,7 +76,8 @@ class CliTests
 
         r.Should().Be(-1);
         Program.Instance.e.Should().BeOfType<CommandParseException>();
-        consoleText.Should().Contain("Error: Unknown command");
+        consoleText.Should().Contain("Error: ");
+        consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 
 
@@ -109,12 +111,12 @@ class CliTests
         if (command == "archive")
         {
             var o = new MockedArchiveCommandOptions { AccountName = null, AccountKey = null };
-            po = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+            (_, po) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
         }
         else if (command == "restore")
         {
             var o = new MockedRestoreCommandOptions { AccountName = null, AccountKey = null };
-            po = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+            (_, po) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
         }
         else
             throw new NotImplementedException();
@@ -124,29 +126,42 @@ class CliTests
     }
 
     [Test]
+    public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore", "rehydrate")] string command)
+    {
+        var o = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, Container = null, Path = new DirectoryInfo(".") };
+        await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+    }
+
+    [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore", "rehydrate")] string command)
     {
         try
         {
             Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
 
-            Func<Task> t = async () =>
-            {
-                if (command == "archive")
-                {
-                    var o = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") };
-                    await ExecuteMockedCommand<IArchiveCommandOptions>(o);
-                }
-                else if (command == "restore")
-                {
-                    var o = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") };
-                    await ExecuteMockedCommand<IRestoreCommandOptions>(o);
-                }
-                else
-                    throw new NotImplementedException();
-            };
+            AnsiConsole.Record();
 
-            await t.Should().ThrowAsync<InvalidOperationException>();
+            int r;
+
+            if (command == "archive")
+            {
+                var o = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") };
+                (r, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+            }
+            else if (command == "restore")
+            {
+                var o = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") };
+                (r, _) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+            }
+            else
+                throw new NotImplementedException();
+
+            var consoleText = AnsiConsole.ExportText();
+
+            r.Should().Be(-1);
+            Program.Instance.e.Should().BeOfType<InvalidOperationException>();
+            consoleText.Should().Contain("Error: ");
+            consoleText.Should().NotContain("at "); // no stack trace in the output
         }
         finally
         {
@@ -164,13 +179,13 @@ class CliTests
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
-                var po = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+                var (_, po) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
                 po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
             }
             else if (command == "restore")
             {
                 var o = new MockedRestoreCommandOptions { Path = null };
-                var po = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+                var (_, po) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
                 po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
             }
             else
@@ -183,7 +198,9 @@ class CliTests
     }
 
 
-    private async Task<T> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
+
+
+    private async Task<(int, T)> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
     {
         // Create Mock
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
@@ -203,18 +220,15 @@ class CliTests
         if (r == 0)
         {
             p.e.Should().BeNull();
+
+            //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
+            commandMock.Verify(executeAsyncExpr, Times.Exactly(1));
+            //archiveCommandMock.VerifyNoOtherCalls();
         }
         else
-        {
             p.e.Should().NotBeNull();
-            throw p.e;
-        }
 
-        //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
-        commandMock.Verify(executeAsyncExpr, Times.Exactly(1));
-        //archiveCommandMock.VerifyNoOtherCalls();
-
-        return (T)p.ParsedOptions;
+        return (r, (T)p.ParsedOptions);
     }
     private IServiceCollection AddMockedAriusCoreCommands<T>(IServiceCollection services, Core.Commands.ICommand<T> a) where T : class, ICommandOptions
     {
@@ -246,14 +260,25 @@ class CliTests
             if (AccountKey is not null)
                 sb.Append($"-k {AccountKey} ");
 
-            sb.Append(
-              $"-p {Passphrase} " +
-              $"-c {Container} " +
-              $"{(RemoveLocal ? "--remove-local " : "")}" +
-              $"--tier {Tier.ToString().ToLower()} " +
-              $"{(Dedup ? "--dedup " : "")}" +
-              $"{(FastHash ? "--fasthash" : "")}" +
-              $"{Path}");
+            if (Passphrase is not null)
+                sb.Append($"-p {Passphrase} ");
+
+            if (Container is not null)
+                sb.Append($"-c {Container} ");
+
+            if (RemoveLocal)
+                sb.Append("--remove-local ");
+
+            sb.Append($"--tier {Tier.ToString().ToLower()} ");
+
+            if (Dedup)
+                sb.Append("--dedup ");
+
+            if (FastHash)
+                sb.Append("--fasthash");
+
+            if (Path is not null)
+                sb.Append($"{Path}");
 
             return sb.ToString();
         }
