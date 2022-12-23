@@ -61,6 +61,8 @@ public class Program
             config.SetApplicationName("arius");
             
             config.AddCommand<ArchiveCliCommand>("archive");
+            config.AddCommand<RestoreCliCommand>("restore");
+            //config.AddCommand<RehydrateCliCommand>("rehydrate");
 
             config.SetInterceptor(new CommandInterceptor());
 

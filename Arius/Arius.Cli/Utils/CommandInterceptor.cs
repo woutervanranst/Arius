@@ -4,6 +4,7 @@ using Spectre.Console.Cli;
 using System;
 using System.IO;
 using static Arius.Cli.Commands.ArchiveCliCommand;
+using static Arius.Cli.Commands.RestoreCliCommand;
 
 namespace Arius.Cli.Utils;
 
@@ -41,6 +42,16 @@ internal class CommandInterceptor : ICommandInterceptor
                     throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
 
                 o2.Path = new DirectoryInfo("/archive"); //when runnning in a docker container
+            }
+        }
+        else if (options is RestoreCommandOptions o3)
+        {
+            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            {
+                if (o3.Path is not null)
+                    throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
+
+                o3.Path = new DirectoryInfo("/archive"); //when runnning in a docker container
             }
         }
         else

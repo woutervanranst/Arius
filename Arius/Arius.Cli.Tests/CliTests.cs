@@ -1,6 +1,7 @@
 ﻿using Arius.Cli;
 using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.Restore;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
 using FluentAssertions.Common;
@@ -13,6 +14,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -91,9 +93,14 @@ class CliTests
 
 
     [Test]
-    public async Task Cli_ArchiveCommandWithParameters_CommandCalled()
+    public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore", "rehydrate")] string command)
     {
-        var aco = new ArchiveCommandOptions();
+        ICommandOptions aco = command switch
+        {
+            "archive" => new MockedArchiveCommandOptions(),
+            "restore" => new MockedRestoreCommandOptions(),
+            _ => throw new NotImplementedException()
+        };
 
         await ExecuteMockedCommand(aco);
     }
@@ -101,7 +108,7 @@ class CliTests
     [Test]
     public async Task Cli_ArchiveCommandWithoutAccountNameAndAccountKey_EnviornmentVariablesUsed()
     {
-        var aco = new ArchiveCommandOptions { AccountName = null, AccountKey = null };
+        var aco = new MockedArchiveCommandOptions { AccountName = null, AccountKey = null };
 
         var accountName = "haha1";
         var accountKey = "haha2";
@@ -117,7 +124,7 @@ class CliTests
     [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore")] string command)
     {
-        var aco = new ArchiveCommandOptions { Path = new DirectoryInfo(".") };
+        var aco = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") };
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
 
         Func<Task> t = async () =>
@@ -133,7 +140,7 @@ class CliTests
     [Test]
     public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore")] string command)
     {
-        var aco = new ArchiveCommandOptions { Path = null };
+        var aco = new MockedArchiveCommandOptions { Path = null };
         Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
 
         if (command == "archive")
@@ -153,16 +160,27 @@ class CliTests
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
         validateReturnMock.Setup(m => m.IsValid).Returns(true);
 
-        Expression<Func<Core.Commands.ICommand<T>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<T>());
-        Expression<Func<Core.Commands.ICommand<T>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<T>());
+        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, FluentValidation.Results.ValidationResult>> archiveValidateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, Task<int>>> archiveExecuteAsyncExpr = m => m.ExecuteAsync(It.IsAny<IArchiveCommandOptions>());
 
-        var archiveCommandMock = new Mock<Core.Commands.ICommand<T>>();
-        archiveCommandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
-        archiveCommandMock.Setup(executeAsyncExpr).Verifiable();
+        var archiveCommandMock = new Mock<Core.Commands.ICommand<IArchiveCommandOptions>>();
+        archiveCommandMock.Setup(archiveValidateExpr).Returns(validateReturnMock.Object);
+        archiveCommandMock.Setup(archiveExecuteAsyncExpr).Verifiable();
+
+
+
+        Expression<Func<Core.Commands.ICommand<IRestoreCommandOptions>, FluentValidation.Results.ValidationResult>> restoreValidateExpr = m => m.Validate(It.IsAny<IRestoreCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<IRestoreCommandOptions>, Task<int>>> restoreExecuteAsyncExpr = m => m.ExecuteAsync(It.IsAny<IRestoreCommandOptions>());
+
+        var restoreCommandMock = new Mock<Core.Commands.ICommand<IRestoreCommandOptions>>();
+        restoreCommandMock.Setup(restoreValidateExpr).Returns(validateReturnMock.Object);
+        restoreCommandMock.Setup(restoreExecuteAsyncExpr).Verifiable();
+
+
 
         // Run Arius
         var p = new Program();
-        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object));
+        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, archiveCommandMock.Object, restoreCommandMock.Object));
 
         if (r == 0)
         {
@@ -175,7 +193,7 @@ class CliTests
         }
 
         //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
-        archiveCommandMock.Verify(executeAsyncExpr, Times.Exactly(1));
+        archiveCommandMock.Verify(archiveExecuteAsyncExpr, Times.Exactly(1));
         //archiveCommandMock.VerifyNoOtherCalls();
 
         return (T)p.ParsedOptions;
@@ -272,13 +290,17 @@ class CliTests
 
 
 
-    private IServiceCollection AddMockedAriusCoreCommands<T>(IServiceCollection services, Arius.Core.Commands.ICommand<T> m) where T : ICommandOptions
+    private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, 
+        Arius.Core.Commands.ICommand<IArchiveCommandOptions> a,
+        Arius.Core.Commands.ICommand<IRestoreCommandOptions> b)
     {
-        services.AddSingleton(m);
+        services.AddSingleton(a);
+        services.AddSingleton(b);
+        
         return services;
     }
 
-    private class ArchiveCommandOptions : IArchiveCommandOptions
+    private class MockedArchiveCommandOptions : IArchiveCommandOptions
     {
         public string AccountName { get; init; } = "an";
         public string AccountKey { get; init; } = "ak";
@@ -288,7 +310,7 @@ class CliTests
         public bool RemoveLocal { get; init; } = false;
         public AccessTier Tier { get; init; } = AccessTier.Cool;
         public bool Dedup { get; init; } = false;
-        public DirectoryInfo Path { get; init; } = new DirectoryInfo(".");
+        public DirectoryInfo? Path { get; init; } = new DirectoryInfo(".");
         public DateTime VersionUtc { get; init; } = DateTime.UtcNow;
 
         public override string ToString()
@@ -314,61 +336,37 @@ class CliTests
         }
     }
 
-    //private static void CreateRestoreCommand(out string accountName, out string accountKey, out string container, out string passphrase, out bool synchronize, out bool download, out bool keepPointers, out string path, out string cmd)
-    //{
-    //    accountName = "ha";
-    //    accountKey = "ha";
-    //    container = "h";
-    //    passphrase = "3";
-    //    synchronize = false;
-    //    download = false;
-    //    keepPointers = false;
-    //    path = "he";
+    private class MockedRestoreCommandOptions : IRestoreCommandOptions
+    {
+        public string AccountName { get; init; } = "an";
+        public string AccountKey { get; init; } = "ak";
+        public string Container { get; init; } = "c";
+        public string Passphrase { get; init; } = "pp";
+        public bool Synchronize { get; init; } = false;
+        public bool Download { get; init; } = false;
+        public bool KeepPointers { get; init; } = false;
+        public DirectoryInfo? Path { get; init; } = new DirectoryInfo(".");
+        public DateTime? PointInTimeUtc { get; init; }
 
-    //    cmd = "restore " +
-    //          $"-n {accountName} " +
-    //          $"-k {accountKey} " +
-    //          $"-p {passphrase} " +
-    //          $"-c {container} " +
-    //          $"{(synchronize ? "--synchronize " : "")}" +
-    //          $"{(download ? "--download " : "")}" +
-    //          $"{(keepPointers ? "--keep-pointers " : "")}" +
-    //          $"{path}";
-    //}
+        public override string ToString()
+        {
+            var sb = new StringBuilder("restore ");
 
-    //private static async Task<(Mock<IFacade> MockFacade, InvocationContext InvocationContext)> ExecuteMainWithMockedFacade(string args, Expression<Func<IFacade, Core.Commands.ICommand>> mockedFacadeMethod = null)
-    //{
-    //    Expression<Func<ICommand, Task<int>>> executeExpression = (c) => c.Execute();
-    //    var mcb = new Mock<ICommand>();
-    //    mcb
-    //        .Setup(executeExpression)
-    //        .Returns(Task.FromResult(0))
-    //        .Verifiable();
+            if (AccountName is not null)
+                sb.Append($"-n {AccountName} ");
 
-    //    var mfb = new Mock<IFacade>();
+            if (AccountKey is not null)
+                sb.Append($"-k {AccountKey} ");
 
-    //    if (mockedFacadeMethod is not null)
-    //    {
-    //        mfb.Setup(mockedFacadeMethod)
-    //            .Returns(mcb.Object)
-    //            .Verifiable();
-    //    }
+            sb.Append(
+                $"-p {Passphrase} " +
+                $"-c {Container} " +
+                $"{(Synchronize ? "--synchronize " : "")}" +
+                $"{(Download ? "--download " : "")}" +
+                $"{(KeepPointers ? "--keep-pointers " : "")}" +
+                $"{Path}");
 
-    //    var mf = mfb.Object;
-
-    //    //Environment.SetEnvironmentVariable(ConsoleHostedService.CommandLineEnvironmentVariableName, cmd);
-
-    //    //Action<IConfigurationBuilder> bla = (b) =>
-    //    //{
-    //    //    b.AddInMemoryCollection(new Dictionary<string, string> {
-    //    //            { "TempDir:TempDirectoryName", ".ariustemp2" }
-    //    //        });
-    //    //};
-
-    //    var p = new Program();
-    //    await p.Main(args.Split(' '), facade: mf);
-    //    mcb.Verify(executeExpression, Times.Exactly(1));
-
-    //    return (mfb, p.InvocationContext);
-    //}
+            return sb.ToString();
+        }
+    }
 }
