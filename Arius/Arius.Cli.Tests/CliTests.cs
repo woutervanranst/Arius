@@ -95,23 +95,18 @@ class CliTests
     [Test]
     public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore", "rehydrate")] string command)
     {
-        //ICommandOptions aco = command switch
-        //{
-        //    "archive" => new MockedArchiveCommandOptions(),
-        //    "restore" => new MockedRestoreCommandOptions(),
-        //    _ => throw new NotImplementedException()
-        //};
-
         if (command == "archive")
         {
             var aco = new MockedArchiveCommandOptions();
-            await ExecuteMockedArchiveCommand(aco);
+            await ExecuteMockedCommand<IArchiveCommandOptions>(aco);
         }
         else if (command == "restore")
         {
             var rco = new MockedRestoreCommandOptions();
-            await ExecuteMockedRestoreCommand(rco);
+            await ExecuteMockedCommand<IRestoreCommandOptions>(rco);
         }
+        else
+            throw new NotImplementedException();
     }
 
     [Test]
@@ -162,10 +157,10 @@ class CliTests
             throw new NotImplementedException();
     }
 
-    private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
-    {
-        return await ExecuteMockedCommand<IArchiveCommandOptions>(aco);
-    }
+    //private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
+    //{
+    //    return await ExecuteMockedCommand<IArchiveCommandOptions>(aco);
+    //}
 
     private async Task<T> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
     {
