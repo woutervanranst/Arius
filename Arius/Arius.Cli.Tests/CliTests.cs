@@ -95,14 +95,23 @@ class CliTests
     [Test]
     public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore", "rehydrate")] string command)
     {
-        ICommandOptions aco = command switch
-        {
-            "archive" => new MockedArchiveCommandOptions(),
-            "restore" => new MockedRestoreCommandOptions(),
-            _ => throw new NotImplementedException()
-        };
+        //ICommandOptions aco = command switch
+        //{
+        //    "archive" => new MockedArchiveCommandOptions(),
+        //    "restore" => new MockedRestoreCommandOptions(),
+        //    _ => throw new NotImplementedException()
+        //};
 
-        await ExecuteMockedCommand(aco);
+        if (command == "archive")
+        {
+            var aco = new MockedArchiveCommandOptions();
+            await ExecuteMockedArchiveCommand(aco);
+        }
+        else if (command == "restore")
+        {
+            var rco = new MockedRestoreCommandOptions();
+            await ExecuteMockedRestoreCommand(rco);
+        }
     }
 
     [Test]
@@ -158,22 +167,22 @@ class CliTests
         return await ExecuteMockedCommand<IArchiveCommandOptions>(aco);
     }
 
-    private async Task<T> ExecuteMockedCommand<T>(T aco) where T : ICommandOptions
+    private async Task<T> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
     {
         // Create Mock
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
         validateReturnMock.Setup(m => m.IsValid).Returns(true);
 
-        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
-        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<IArchiveCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<T>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<T>());
+        Expression<Func<Core.Commands.ICommand<T>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<T>());
 
-        var commandMock = new Mock<Core.Commands.ICommand<IArchiveCommandOptions>>();
+        var commandMock = new Mock<Core.Commands.ICommand<T>>();
         commandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
         commandMock.Setup(executeAsyncExpr).Verifiable();
 
         // Run Arius
         var p = new Program();
-        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands(sc, commandMock.Object));
+        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands<T>(sc, commandMock.Object));
 
         if (r == 0)
         {
@@ -283,10 +292,9 @@ class CliTests
 
 
 
-    private IServiceCollection AddMockedAriusCoreCommands(IServiceCollection services, 
-        Arius.Core.Commands.ICommand<IArchiveCommandOptions> a)
+    private IServiceCollection AddMockedAriusCoreCommands<T>(IServiceCollection services, Core.Commands.ICommand<T> a) where T : class, ICommandOptions
     {
-        services.AddSingleton(a);
+        services.AddSingleton<Core.Commands.ICommand<T>>(a);
         
         return services;
     }
