@@ -30,14 +30,14 @@ public class Program
         return await new Program().Main(args, sc => sc.AddAriusCoreCommands());
     }
 
-    internal static Program Instance { get; set; }
+    internal static Program? Instance { get; set; }
 
     [ThreadStatic]
     internal static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
     
-    internal CommandSettings ParsedOptions { get; set; }
+    internal Spectre.Console.Cli.CommandSettings? ParsedOptions { get; set; }
 
-    internal Exception e;
+    internal Exception? e;
 
     
 
@@ -67,6 +67,19 @@ public class Program
             config.SetExceptionHandler(ex =>
             {
                 e = ex;
+
+                switch (ex)
+                {
+                    case CommandParseException e:
+                        AnsiConsole.Write(e.Pretty);
+                        break;
+                    case CommandRuntimeException e: // occurs when ValidationResult.Error is returned in Validate()
+                        AnsiConsole.Write("Command error: " + e.Message);
+                        break;
+                    default:
+                        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
+                        break;
+                }
             });
 
             //config.PropagateExceptions();
