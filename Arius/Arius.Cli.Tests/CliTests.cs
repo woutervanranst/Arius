@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
+using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
 using System.Collections.Generic;
@@ -33,29 +34,32 @@ namespace Arius.Cli.Tests;
 class CliTests
 {
     [Test]
-    public async Task Cli_NoCommand_NoError()
+    public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
-        var args = "";
+        AnsiConsole.Record();
 
+        var args = "";
         var r = await Program.Main(args.Split(' '));
 
+        var consoleText = AnsiConsole.ExportText();
+
         r.Should().Be(0);
+        consoleText.Should().ContainAll("USAGE", "COMMANDS", "archive", "restore", "rehydrate");
     }
 
 
     [Test]
-    public async Task Cli_ArchiveCommandWithoutParameters_ParseErrorResult()
+    public async Task Cli_CommandWithoutParameters_ParseErrorResult([Values("archive", "restore", "rehydrate")] string command)
     {
-        var args = "archive";
+        AnsiConsole.Record();
 
-        var r = await Program.Main(args.Split(' '));
+        var r = await Program.Main(command.Split(' '));
+
+        var consoleText = AnsiConsole.ExportText();
 
         r.Should().Be(-1);
         Program.Instance.e.Should().BeOfType<CommandRuntimeException>();
-
-        //Assert.IsInstanceOf<ParseErrorResult>(p.InvocationContext.InvocationResult);
-        //Assert.AreEqual(1, p.InvocationContext.ParseResult.Errors.Count(pe => pe.Message == "Required argument missing for command: archive"));
-        //Assert.AreEqual((int)Program.ExitCode.ERROR, Environment.ExitCode);
+        consoleText.Should().Contain("Command error:");
     }
 
     //[Test]
@@ -146,10 +150,10 @@ class CliTests
     private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
     {
         // Create Mock
-        var validateReturnMock = new Mock<ValidationResult>();
+        var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
         validateReturnMock.Setup(m => m.IsValid).Returns(true);
 
-        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, ValidationResult>> validateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
+        Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<IArchiveCommandOptions>());
         Expression<Func<Core.Commands.ICommand<IArchiveCommandOptions>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<IArchiveCommandOptions>());
 
         var archiveCommandMock = new Mock<Core.Commands.ICommand<IArchiveCommandOptions>>();
