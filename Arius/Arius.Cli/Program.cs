@@ -35,7 +35,7 @@ public class Program
     [ThreadStatic]
     internal static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
     
-    internal Spectre.Console.Cli.CommandSettings? ParsedOptions { get; set; }
+    internal ICommandOptions? ParsedOptions { get; set; }
 
     internal Exception? e;
 

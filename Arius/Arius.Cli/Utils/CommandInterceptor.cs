@@ -1,4 +1,5 @@
 using Arius.Cli.Commands;
+using Arius.Core.Commands;
 using Spectre.Console.Cli;
 using System;
 using System.IO;
@@ -75,7 +76,7 @@ internal class CommandInterceptor : ICommandInterceptor
         this.context = context;
         this.options = options;
 
-        Program.Instance.ParsedOptions = options;
+        Program.Instance.ParsedOptions = (ICommandOptions)options;
 
         //if (settings is LogCommandSettings logSettings)
         //{
