@@ -47,6 +47,31 @@ internal class CommandInterceptor : ICommandInterceptor
             throw new NotImplementedException();
         }
 
+        //    // 2. Try to load from config file
+        //    // TODO Test precedence: Environment Variable < Settings < Cli
+        //    var c = PersistedRepositoryConfigReader.LoadSettings(path, passphrase);
+        //    if (c != default)
+        //    {
+        //        AccountName ??= c.accountName; // if the CLI option is not specified, AccountName will be null
+        //        AccountKey ??= c.accountKey;
+        //        Container ??= c.container;
+
+        //        logger.LogDebug("Loaded options from configfile");
+        //    }
+        //    else
+        //        logger.LogDebug("Could not load options from file");
+
+        //    //// Save the Config
+        //    //if (Path is DirectoryInfo di)
+        //    //{
+        //    //    logger.LogDebug("Saving options");
+        //    //    PersistedRepositoryConfigReader.SaveSettings(logger, this, di);
+        //    //}
+        //    //else
+        //    //{
+        //    //    logger.LogDebug("Path is not a directory, not saving options");
+        //    //}
+
         this.context = context;
         this.options = options;
 

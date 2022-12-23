@@ -143,7 +143,6 @@ class CliTests
     }
 
 
-
     private async Task<IArchiveCommandOptions> ExecuteMockedArchiveCommand(IArchiveCommandOptions aco)
     {
         // Create Mock
