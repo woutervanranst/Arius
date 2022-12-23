@@ -1,13 +1,10 @@
 using System;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Arius.Cli.Utils;
 using Arius.Core.Commands.Archive;
-using Arius.Core.Extensions;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -51,18 +48,6 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
 
         public DateTime VersionUtc { get; init; }
-
-        //public override ValidationResult Validate()
-        //{
-        //    var validTiers = new[] { AccessTier.Hot, AccessTier.Cool, AccessTier.Archive };
-        //    if (!validTiers.Contains(Tier))
-        //        return ValidationResult.Error($"'{Tier}' is not a valid tier");
-
-        //    //if (!Path.Exists)
-        //    //    return ValidationResult.Error($"{Path} does not exist");
-
-        //    return base.Validate();
-        //}
     }
 
     public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
