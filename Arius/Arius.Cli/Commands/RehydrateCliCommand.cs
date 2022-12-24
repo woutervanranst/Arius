@@ -26,30 +26,30 @@ namespace Arius.Cli.Commands;
  *
  */
 
-internal class RehydrateCliCommand : AsyncCommand<RehydrateCliCommand.RehydrateCommandOptions>
-{
-    public RehydrateCliCommand(IAnsiConsole console,
-        ILogger<RehydrateCliCommand> logger,
-        AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand)
-    {
-        this.rehydrateCommand = rehydrateCommand;
+//internal class RehydrateCliCommand : AsyncCommand<RehydrateCliCommand.RehydrateCommandOptions>
+//{
+//    public RehydrateCliCommand(IAnsiConsole console,
+//        ILogger<RehydrateCliCommand> logger,
+//        AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand)
+//    {
+//        this.rehydrateCommand = rehydrateCommand;
 
-        logger.LogDebug("{0} initialized", nameof(RestoreCliCommand));
-    }
+//        logger.LogDebug("{0} initialized", nameof(RestoreCliCommand));
+//    }
 
-    private readonly AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand;
+//    private readonly AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand;
 
-    internal class RehydrateCommandOptions : RepositoryOptions, IRehydrateCommandOptions
-    {
-        public RehydrateCommandOptions(ILogger<RepositoryOptions> logger, string accountName, string accountKey, string container, string passphrase) : base(logger, accountName, accountKey, container, passphrase, null)
-        {
-        }
-    }
+//    internal class RehydrateCommandOptions : RepositoryOptions, IRehydrateCommandOptions
+//    {
+//        //public RehydrateCommandOptions(ILogger<RepositoryOptions> logger, string accountName, string accountKey, string container, string passphrase) : base(logger, accountName, accountKey, container, passphrase, null)
+//        //{
+//        //}
+//    }
 
     
 
-    public override async Task<int> ExecuteAsync(CommandContext context, RehydrateCommandOptions options)
-    {
-        return await rehydrateCommand.ExecuteAsync(options);
-    }
-}
+//    public override async Task<int> ExecuteAsync(CommandContext context, RehydrateCommandOptions options)
+//    {
+//        return await rehydrateCommand.ExecuteAsync(options);
+//    }
+//}
