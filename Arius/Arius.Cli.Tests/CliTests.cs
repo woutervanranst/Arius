@@ -6,7 +6,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
-using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
 using System.IO;
