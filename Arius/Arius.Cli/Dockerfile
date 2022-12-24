@@ -2,13 +2,13 @@
 # docker build . -t arius2 --build-arg GITHUB_USER=wouter.vanranst@gmail.com --build-arg GITHUB_TOKEN=....
 
 # https://hub.docker.com/_/microsoft-dotnet-runtime/
-FROM mcr.microsoft.com/dotnet/runtime:6.0 AS base
+FROM mcr.microsoft.com/dotnet/runtime:7.0 AS base
 # RUN apt-get update
 WORKDIR /app
 
 
 # https://hub.docker.com/_/microsoft-dotnet-sdk/
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 ARG GITHUB_USER
 ARG GITHUB_TOKEN
 WORKDIR /src
