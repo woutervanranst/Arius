@@ -1,22 +1,15 @@
-﻿using Arius.Cli;
-using Arius.Core.Commands;
+﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
-using FluentAssertions.Common;
-using FluentValidation.Results;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,41 +31,41 @@ class CliTests
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
-        AnsiConsole.Record();
+        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "";
         var r = await Program.Main(args.Split(' '));
 
-        var consoleText = AnsiConsole.ExportText();
+        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(0);
-        consoleText.Should().ContainAll("USAGE", "COMMANDS", "archive", "restore", "rehydrate");
+        consoleText.Should().ContainAll("USAGE", "COMMANDS", "archive", "restore"/*, "rehydrate"*/);
     }
 
     [Test]
-    public async Task Cli_CommandWithoutParameters_RuntimeException([Values("archive", "restore", "rehydrate")] string command)
+    public async Task Cli_CommandWithoutParameters_RuntimeException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        AnsiConsole.Record();
+        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main(command.Split(' '));
 
-        var consoleText = AnsiConsole.ExportText();
+        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         Program.Instance.e.Should().BeOfType<CommandRuntimeException>();
-        consoleText.Should().Contain("Command error:");
+        consoleText.Should().Contain("Error:");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 
     [Test]
     public async Task Cli_NonExistingCommand_ParseException()
     {
-        AnsiConsole.Record();
+        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "unexistingcommand";
         var r = await Program.Main(args.Split(' '));
 
-        var consoleText = AnsiConsole.ExportText();
+        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         Program.Instance.e.Should().BeOfType<CommandParseException>();
@@ -82,7 +75,7 @@ class CliTests
 
 
     [Test]
-    public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore", "rehydrate")] string command)
+    public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         if (command == "archive")
         {
@@ -99,7 +92,7 @@ class CliTests
     }
 
     [Test]
-    public async Task Cli_CommandWithoutAccountNameAndAccountKey_EnvironmentVariablesUsed([Values("archive", "restore", "rehydrate")] string command)
+    public async Task Cli_CommandWithoutAccountNameAndAccountKey_EnvironmentVariablesUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         var accountName = "haha1";
         var accountKey = "haha2";
@@ -125,21 +118,46 @@ class CliTests
         po.AccountKey.Should().Be(accountKey);
     }
 
-    [Test]
-    public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore", "rehydrate")] string command)
-    {
-        var o = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, Container = null, Path = new DirectoryInfo(".") };
-        await ExecuteMockedCommand<IArchiveCommandOptions>(o);
-    }
+    //// Cant really test this because Arius.Core is a mock
+    //[Test]
+    //public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore", "rehydrate")] string command)
+    //{
+    //    // Remove AccountKey from Env Variables
+    //    var accountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
+    //    Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, null);
+
+    //    AnsiConsole.Record();
+
+    //    int r;
+
+    //    if (command == "archive")
+    //    {
+    //        var o = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, Container = null, Path = new DirectoryInfo(".") };
+    //        (r, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+    //    }
+    //    else
+    //        throw new NotImplementedException();
+
+    //    var consoleText = AnsiConsole.ExportText();
+
+    //    r.Should().Be(-1);
+    //    Program.Instance.e.Should().BeOfType<InvalidOperationException>();
+    //    consoleText.Should().Contain("Error: ");
+    //    consoleText.Should().NotContain("at "); // no stack trace in the output
+
+    //    // Put it back
+    //    Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
+    //}
 
     [Test]
-    public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore", "rehydrate")] string command)
+    public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         try
         {
             Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
 
-            AnsiConsole.Record();
+            Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+            //AnsiConsole.Record();
 
             int r;
 
@@ -156,7 +174,7 @@ class CliTests
             else
                 throw new NotImplementedException();
 
-            var consoleText = AnsiConsole.ExportText();
+            var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText(); // AnsiConsole.ExportText();
 
             r.Should().Be(-1);
             Program.Instance.e.Should().BeOfType<InvalidOperationException>();
@@ -170,7 +188,7 @@ class CliTests
     }
 
     [Test]
-    public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore", "rehydrate")] string command)
+    public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         try
         {
