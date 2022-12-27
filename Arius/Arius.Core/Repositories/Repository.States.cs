@@ -141,11 +141,11 @@ internal partial class Repository
                 p = Path.Combine("/logs", p);
             if (new FileInfo(p).Directory.Exists)
             {
-                logger.LogDebug($"Moved vacuumed db to {p}");
+                logger.LogInformation($"Moved vacuumed db to {p}");
                 File.Move(vacuumedDbPath, p);
             }
             else
-                logger.LogDebug("Vacuumed db was not moved because the destination directory does not exist");
+                logger.LogInformation($"Vacuumed db was not moved because the destination directory of {p} does not exist");
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
         }
