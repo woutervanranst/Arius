@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Arius.Core.Commands;
-using Arius.Core.Extensions;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 
@@ -30,7 +26,7 @@ internal partial class Repository
             this.repo = parent;
             this.container = container;
             this.passphrase = passphrase;
-            
+
             // download latest state asynchronously
             dbPathTask = Task.Run(GetLastestStateDbAsync);
         }
@@ -83,7 +79,7 @@ internal partial class Repository
             if (!File.Exists(dbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            return new (await dbPathTask, HasChanges);
+            return new(await dbPathTask, HasChanges);
         }
 
         private void HasChanges(int numChanges)
@@ -136,9 +132,20 @@ internal partial class Repository
 
             //Delete the original database
             await db.Database.EnsureDeletedAsync();
-            var p = Path.Combine("logs", $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite"); //TODO remove the "logs" magic string
+            var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
+            if (new DirectoryInfo("logs").Exists) //TODO remove the "logs" magic string
+                // Not running in container
+                p = Path.Combine("logs", p);
+            else if (new DirectoryInfo("/logs").Exists) //TODO remove the "logs" magic string
+                // Running in container
+                p = Path.Combine("/logs", p);
             if (new FileInfo(p).Directory.Exists)
+            {
+                logger.LogDebug($"Moved vacuumed db to {p}");
                 File.Move(vacuumedDbPath, p);
+            }
+            else
+                logger.LogDebug("Vacuumed db was not moved because the destination directory does not exist");
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
         }
