@@ -33,7 +33,7 @@ class CliTests
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "";
-        var r = await Program.Main(args.Split(' '));
+        var (r, _, _) = Program.InternalMain(args.Split(' '));
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
@@ -46,12 +46,12 @@ class CliTests
     {
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
-        var r = await Program.Main(command.Split(' '));
+        var (r, _, e) = Program.InternalMain(command.Split(' '));
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
-        Program.Instance.e.Should().BeOfType<CommandRuntimeException>();
+        e.Should().BeOfType<CommandRuntimeException>();
         consoleText.Should().Contain("Error:");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
@@ -62,12 +62,12 @@ class CliTests
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "unexistingcommand";
-        var r = await Program.Main(args.Split(' '));
+        var (r, _, e) = Program.InternalMain(args.Split(' '));
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
-        Program.Instance.e.Should().BeOfType<CommandParseException>();
+        e.Should().BeOfType<CommandParseException>();
         consoleText.Should().Contain("Error: ");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
@@ -98,17 +98,17 @@ class CliTests
         Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
         Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
 
-        IRepositoryOptions po;
+        IRepositoryOptions? po;
 
         if (command == "archive")
         {
             var o = new MockedArchiveCommandOptions { AccountName = null, AccountKey = null };
-            (_, po) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+            (_, po, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
         }
         else if (command == "restore")
         {
             var o = new MockedRestoreCommandOptions { AccountName = null, AccountKey = null };
-            (_, po) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+            (_, po, _) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
         }
         else
             throw new NotImplementedException();
@@ -122,6 +122,8 @@ class CliTests
     // TEst DB is part of logging
 
     // TEst overflow file for logigng
+
+    // Errors should be logged in Core, not in CLI
 
 
 
@@ -164,19 +166,19 @@ class CliTests
             Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
 
             Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
-            //AnsiConsole.Record();
 
             int r;
+            Exception? e;
 
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") };
-                (r, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+                (r, _, e) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
             }
             else if (command == "restore")
             {
                 var o = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") };
-                (r, _) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+                (r, _, e) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
             }
             else
                 throw new NotImplementedException();
@@ -184,7 +186,7 @@ class CliTests
             var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText(); // AnsiConsole.ExportText();
 
             r.Should().Be(-1);
-            Program.Instance.e.Should().BeOfType<InvalidOperationException>();
+            e.Should().BeOfType<InvalidOperationException>();
             consoleText.Should().Contain("Error: ");
             consoleText.Should().NotContain("at "); // no stack trace in the output
         }
@@ -204,13 +206,13 @@ class CliTests
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
-                var (_, po) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+                var (_, po, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
                 po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
             }
             else if (command == "restore")
             {
                 var o = new MockedRestoreCommandOptions { Path = null };
-                var (_, po) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+                var (_, po, _) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
                 po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
             }
             else
@@ -225,7 +227,7 @@ class CliTests
 
 
 
-    private async Task<(int, T)> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
+    private async Task<(int ExitCode, T? ParsedOptions, Exception? Exception)> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
     {
         // Create Mock
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
@@ -239,21 +241,20 @@ class CliTests
         commandMock.Setup(executeAsyncExpr).Verifiable();
 
         // Run Arius
-        var p = new Program();
-        var r = await p.Main(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands<T>(sc, commandMock.Object));
+        var (r, po, e) = Program.InternalMain(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands<T>(sc, commandMock.Object));
 
         if (r == 0)
         {
-            p.e.Should().BeNull();
+            e.Should().BeNull();
 
             //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
             commandMock.Verify(executeAsyncExpr, Times.Exactly(1));
             //archiveCommandMock.VerifyNoOtherCalls();
         }
         else
-            p.e.Should().NotBeNull();
+            e.Should().NotBeNull();
 
-        return (r, (T)p.ParsedOptions);
+        return (r, (T?)po, e);
     }
     private IServiceCollection AddMockedAriusCoreCommands<T>(IServiceCollection services, Core.Commands.ICommand<T> a) where T : class, ICommandOptions
     {

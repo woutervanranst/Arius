@@ -4,7 +4,9 @@ using System.IO;
 using System.Threading.Tasks;
 using Arius.Cli.Utils;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Extensions;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -12,11 +14,14 @@ namespace Arius.Cli.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(Arius.Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand)
+    public ArchiveCliCommand(ILogger<ArchiveCliCommand> logger, 
+        Arius.Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand)
     {
+        this.logger = logger;
         this.archiveCommand = archiveCommand;
     }
 
+    private readonly ILogger<ArchiveCliCommand> logger;
     private Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand;
 
     internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
@@ -47,7 +52,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         [CommandArgument(0, "[PATH]")] //Path is really mandatory but is not passed explicitly when running in Docker - so the Spectre.Console.Cli.CommandValidator.ValidateRequiredParameters fails
         public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
 
-        public DateTime VersionUtc { get; init; }
+        public DateTime VersionUtc { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
     public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
@@ -61,13 +66,22 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     public override async Task<int> ExecuteAsync(CommandContext context, ArchiveCommandOptions options)
     {
-        //Program.ParsedOptions = options;
+        try
+        {
+            logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
+
+            logger.LogProperties(options);
+
+            await archiveCommand.ExecuteAsync(options);
+        }
+        catch (Exception e)
+        {
+            // Logging needs to happen here or otherwise https://github.com/adams85/filelogger/issues/15#issuecomment-927122196
+            logger.LogError(e);
+
+            throw;
+        }
         
-        //logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
-
-        //logger.LogProperties(options);
-
-        await archiveCommand.ExecuteAsync(options);
 
         //console.WriteLine();
         //console.Write(new Rule("[red]Summary[/]"));

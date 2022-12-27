@@ -10,10 +10,12 @@ namespace Arius.Cli.Utils;
 
 internal class CommandInterceptor : ICommandInterceptor
 {
-    //public static readonly LoggingLevelSwitch LogLevel = new();
+    public CommandInterceptor(DateTime versionUtc)
+    {
+        this.versionUtc = versionUtc;
+    }
 
-    private CommandContext context;
-    private CommandSettings options;
+    private readonly DateTime versionUtc;
 
     public void Intercept(CommandContext context, CommandSettings options)
     {
@@ -43,6 +45,8 @@ internal class CommandInterceptor : ICommandInterceptor
 
                 o2.Path = new DirectoryInfo("/archive"); //when runnning in a docker container
             }
+
+            o2.VersionUtc = versionUtc;
         }
         else if (options is RestoreCommandOptions o3)
         {
@@ -84,17 +88,10 @@ internal class CommandInterceptor : ICommandInterceptor
         //    //    logger.LogDebug("Path is not a directory, not saving options");
         //    //}
 
-        this.context = context;
-        this.options = options;
-
-        Program.Instance.ParsedOptions = (ICommandOptions)options;
-
-        //if (settings is LogCommandSettings logSettings)
-        //{
-        //    LoggingEnricher.Path = logSettings.LogFile ?? "application.log";
-        //    //LogLevel.MinimumLevel = logSettings.LogLevel;
-        //}
+        ParsedOptions = (ICommandOptions)options;
     }
+
+    public ICommandOptions? ParsedOptions { get; private set; }
 
     //public string CommandName => context.Name;
 }
