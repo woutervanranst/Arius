@@ -25,7 +25,7 @@ namespace Arius.Cli.Tests;
  *
  */
 
-class CliTests
+class UnitTests
 {
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
