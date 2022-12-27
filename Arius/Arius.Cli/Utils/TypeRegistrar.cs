@@ -4,7 +4,7 @@ using Spectre.Console.Cli;
 
 namespace Arius.Cli.Utils;
 
-public sealed class TypeRegistrar : ITypeRegistrar
+internal sealed class TypeRegistrar : ITypeRegistrar
 {
     public TypeRegistrar(IServiceCollection builder)
     {
@@ -31,9 +31,7 @@ public sealed class TypeRegistrar : ITypeRegistrar
     public void RegisterLazy(Type service, Func<object> func)
     {
         if (func is null)
-        {
             throw new ArgumentNullException(nameof(func));
-        }
 
         builder.AddSingleton(service, _ => func());
     }

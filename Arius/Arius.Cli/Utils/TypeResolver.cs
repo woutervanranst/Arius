@@ -3,7 +3,7 @@ using Spectre.Console.Cli;
 
 namespace Arius.Cli.Utils;
 
-public sealed class TypeResolver : ITypeResolver, IDisposable
+internal sealed class TypeResolver : ITypeResolver, IDisposable
 {
     private readonly IServiceProvider provider;
 
