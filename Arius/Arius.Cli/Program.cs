@@ -29,6 +29,7 @@ public class Program
     [ThreadStatic]
     internal static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
     
+    
     internal ICommandOptions? ParsedOptions { get; set; }
 
     internal Exception? e;
@@ -38,77 +39,67 @@ public class Program
         return await new Program().Main(args, sc => sc.AddAriusCoreCommands());
     }
 
-    internal async Task<int> Main(string[] args, Action<IServiceCollection> ariusCoreCommandsProvider)
+    internal async Task<int> Main(string[] args, Action<IServiceCollection> addAriusCoreCommandsProvider)
     {
         Instance = this;
         
+        WriteFiglet();
+
+        IConfigurationRoot config = BuildConfiguration();
+
+        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
+        var versionUtc = DateTime.UtcNow;
+        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
+
+        IServiceCollection services = BuildServiceCollection(addAriusCoreCommandsProvider, config, logFileName);
+
+        var registrar = new TypeRegistrar(services);
+
+        var app = new CommandApp(registrar);
+        ConfigureServices(app, services);
+
+        var r = app.Run(args);
+        await FinalizeLog(logPath, versionUtc);
+
+        return r;
+
+        // See https://github.com/spectreconsole/spectre.console/discussions/162
+        //return await AnsiConsole.Progress()
+        //    .Columns(new ProgressColumn[]
+        //    {
+        //        new TaskDescriptionColumn(),
+        //        new SpinnerColumn()
+        //    })
+        //    .StartAsync(async context =>
+        //    {
+        //        var t0 = context.AddTask("archive");
+
+        //        return await app.RunAsync(args);
+        //    });
+    }
+
+    private static void WriteFiglet()
+    {
         AnsiConsole.Write(
             new FigletText(FigletFont.Default, "Arius")
                 .LeftAligned()
                 .Color(Color.Blue));
+    }
 
+    private static IConfigurationRoot BuildConfiguration()
+    {
         // Read config from appsettings.json -- https://stackoverflow.com/a/69057809/1582323
         var config = new ConfigurationBuilder()
             .AddJsonFile($"appsettings.json", true, true)
             //.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}.json", optional: true)//To specify environment
             //.AddEnvironmentVariables()
             .Build();
+        return config;
+    }
 
-        var services3 = new ServiceCollection()
-            .AddLogging();
-        ariusCoreCommandsProvider(services3);
-        var registrar3 = new TypeRegistrar(services3);
-
-        var app2 = new CommandApp(registrar3);
-        app2.Configure(config =>
-        {
-            config.SetApplicationName("arius");
-            
-            config.AddCommand<ArchiveCliCommand>("archive");
-            config.AddCommand<RestoreCliCommand>("restore");
-            //config.AddCommand<RehydrateCliCommand>("rehydrate");
-
-            config.SetInterceptor(new CommandInterceptor());
-
-            config.SetExceptionHandler(e =>
-            {
-                this.e = e;
-
-                var logger = services3.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Main");
-                logger.LogError(e);
-
-                switch (e)
-                {
-                    case CommandParseException cpe:
-                        AnsiConsole.Write(cpe.Pretty);
-                        break;
-                    //case CommandRuntimeException cre: // occurs when ValidationResult.Error is returned in Validate()
-                    //    AnsiConsole.WriteLine("Command error: " + cre.Message);
-                    //    break;
-                    default:
-                        AnsiConsole.Write(new Markup($"[bold red]Error:[/] {e.Message}"));
-                        break;
-                }
-
-                AnsiConsole.WriteLine();
-            });
-
-            //config.PropagateExceptions();
-        });
-
-        var r2 = app2.Run(args);
-
-        return r2;
-
-        
-
-        var logPath = new DirectoryInfo(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" && Directory.Exists("/logs") ? "/logs" : AppContext.BaseDirectory);
-        var versionUtc = DateTime.UtcNow;
-        var logFileName = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.log";
-        
-        var services = new ServiceCollection()
-            .AddAriusCoreCommands()
-            .AddSingleton(new StateVersion(versionUtc))
+    private static IServiceCollection BuildServiceCollection(Action<IServiceCollection> addAriusCoreCommandsProvider, IConfigurationRoot config, string logFileName)
+    {
+        var sc = new ServiceCollection()
             //.AddSingleton<IConfigurationRoot>(config);
             .AddLogging(builder =>
             {
@@ -129,94 +120,88 @@ public class Program
                     {
                         config.GetSection("Logging").Bind("File", options);
 
-                        options.RootPath = logPath.FullName;
+                        options.RootPath = new FileInfo(logFileName).Directory.FullName;
 
                         options.Files = new[] { new LogFileOptions { Path = logFileName } };
 
                         options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
+
+                        //options.FileAccessMode = LogFileAccessMode.OpenTemporarily;
                     });
                 }
             });
+        addAriusCoreCommandsProvider(sc);
+        return sc;
+    }
 
-        var registrar = new TypeRegistrar(services);
-
-        var app = new CommandApp(registrar);
+    private static void ConfigureServices(CommandApp app, IServiceCollection services)
+    {
         app.Configure(config =>
         {
-            config.SetInterceptor(new CommandInterceptor());
-
             config.SetApplicationName("arius");
 
-            config.SetExceptionHandler(ex =>
+            config.AddCommand<ArchiveCliCommand>("archive");
+            config.AddCommand<RestoreCliCommand>("restore");
+            //config.AddCommand<RehydrateCliCommand>("rehydrate");
+
+            config.SetInterceptor(new CommandInterceptor());
+
+            config.SetExceptionHandler(e =>
             {
-                var logger = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("Main");
-                logger.LogError(ex);
-
-                switch (ex)
-                {
-                    case CommandParseException e:
-                        AnsiConsole.Write(e.Pretty);
-                        break;
-                    case CommandRuntimeException e: // occurs when ValidationResult.Error is returned in Validate()
-                        AnsiConsole.Write(e.Message);
-                        break;
-                    default:
-                        AnsiConsole.WriteException(ex, ExceptionFormats.ShortenEverything);
-                        break;
-                }
-
-                return -1;
+                HandleError(services, e);
             });
 
-            config.AddCommand<ArchiveCliCommand>("archive");
-            //config.AddCommand<RestoreCliCommand>("restore");
-            //config.AddCommand<RehydrateCliCommand>("rehydrate");
+            //config.PropagateExceptions();
         });
+    }
 
-        var r = await app.RunAsync(args);
+    private static void HandleError(IServiceCollection services, Exception e)
+    {
+        Program.Instance.e = e;
 
-        // See https://github.com/spectreconsole/spectre.console/discussions/162
-        //return await AnsiConsole.Progress()
-        //    .Columns(new ProgressColumn[]
-        //    {
-        //        new TaskDescriptionColumn(),
-        //        new SpinnerColumn()
-        //    })
-        //    .StartAsync(async context =>
-        //    {
-        //        var t0 = context.AddTask("archive");
+        //var logger = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("CliMainExceptionLog");
+        //logger.LogError(e);
 
-        //        return await app.RunAsync(args);
-        //    });
-        
+        switch (e)
+        {
+            case CommandParseException cpe:
+                AnsiConsole.Write(cpe.Pretty);
+                break;
+            //case CommandRuntimeException cre: // occurs when ValidationResult.Error is returned in Validate()
+            //    AnsiConsole.WriteLine("Command error: " + cre.Message);
+            //    break;
+            default:
+                AnsiConsole.Write(new Markup($"[bold red]Error:[/] {e.Message}\nSee log for more information."));
+                break;
+        }
 
+        AnsiConsole.WriteLine();
+    }
 
+    private static async Task FinalizeLog(DirectoryInfo logPath, DateTime versionUtc)
+    {
+        var commandName = Program.Instance.ParsedOptions switch
+        {
+            ArchiveCliCommand.ArchiveCommandOptions => "archive",
+            RestoreCliCommand.RestoreCommandOptions => "restore",
+            // RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
+            _ => throw new NotImplementedException()
+        };
 
-        
+        var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
+            .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
+            .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
 
-        //var logfiles = new[] { logPath, new DirectoryInfo(AppContext.BaseDirectory) }
-        //    .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}.*"))
-        //    .DistinctBy(fi => fi.FullName); //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
-        
-        //var ro = (IRepositoryOptions)parsedOptionsProvider.Options;
-        //var commandName = parsedOptionsProvider.Options switch
-        //{
-        //    ArchiveCliCommand.ArchiveCommandOptions => "archive",
-        //    //RestoreCliCommand.RestoreCommandOptions => "restore",
-        //    //RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
-        //    _ => throw new NotImplementedException()
-        //};
+        var containerName = ((IRepositoryOptions)Program.Instance.ParsedOptions).Container;
 
-        //foreach (var logfile in logfiles)
-        //{
-        //    // prepend the container name to the log
-        //    logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{ro.Container}-")));
+        foreach (var logfile in logfiles)
+        {
+            // prepend the container name to the log
+            logfile.MoveTo(Path.Combine(logPath.FullName, logfile.Name.Replace("arius-", $"arius-{commandName}-{containerName}-")));
 
-        //    AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
-        //    await logfile.CompressAsync(deleteOriginal: true);
-        //    AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
-        //}
-
-        return r;
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}...");
+            await logfile.CompressAsync(deleteOriginal: true);
+            AnsiConsole.WriteLine($"Compressing {logfile.Name}... done");
+        }
     }
 }

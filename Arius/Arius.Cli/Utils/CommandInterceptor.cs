@@ -96,5 +96,5 @@ internal class CommandInterceptor : ICommandInterceptor
         //}
     }
 
-    public string CommandName => context.Name;
+    //public string CommandName => context.Name;
 }
