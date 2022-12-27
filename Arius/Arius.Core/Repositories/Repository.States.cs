@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
@@ -29,9 +30,9 @@ internal partial class Repository
             this.repo = parent;
             this.container = container;
             this.passphrase = passphrase;
-
-            // download latest state
-            dbPathTask = Task.Run(async () => await GetLastestStateDbAsync());
+            
+            // download latest state asynchronously
+            dbPathTask = Task.Run(GetLastestStateDbAsync);
         }
 
         private readonly ILogger<StateRepository> logger;
@@ -123,12 +124,6 @@ internal partial class Repository
             await bbc.SetAccessTierAsync(AccessTier.Cool);
             await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
-            //Delete the original database and the compressed file
-            await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite");
-
-            logger.LogInformation($"State upload succesful into '{blobName}'");
-
             // Move the previous states to Archive storage
             await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
                                         .OrderBy(bi => bi.Name)
@@ -138,6 +133,14 @@ internal partial class Repository
                 var bc = container.GetBlobClient(bi.Name);
                 await bc.SetAccessTierAsync(AccessTier.Archive);
             }
+
+            //Delete the original database
+            await db.Database.EnsureDeletedAsync();
+            var p = Path.Combine("logs", $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite"); //TODO remove the "logs" magic string
+            if (new FileInfo(p).Directory.Exists)
+                File.Move(vacuumedDbPath, p);
+
+            logger.LogInformation($"State upload succesful into '{blobName}'");
         }
     }
 }

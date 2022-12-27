@@ -1,16 +1,9 @@
-﻿using Arius.Core.Configuration;
-using Arius.Core.Models;
+﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Threading.Channels;
 using Arius.Core.Extensions;
@@ -32,7 +25,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ArchiveCommand> logger;
     private readonly ArchiveCommandStatistics stats;
-
     private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
     IServiceProvider ICommand<IArchiveCommandOptions>.Services => executionServices.Services;
@@ -49,7 +41,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         if (!v.IsValid)
             throw new ValidationException(v.Errors);
 
-        
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
 
