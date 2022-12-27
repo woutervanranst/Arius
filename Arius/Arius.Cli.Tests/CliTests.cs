@@ -117,6 +117,14 @@ class CliTests
         po.AccountKey.Should().Be(accountKey);
     }
 
+    //  Test Logging in Container
+
+    // TEst DB is part of logging
+
+    // TEst overflow file for logigng
+
+
+
     //// Cant really test this because Arius.Core is a mock
     //[Test]
     //public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore", "rehydrate")] string command)
