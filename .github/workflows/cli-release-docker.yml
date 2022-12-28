@@ -38,7 +38,9 @@ jobs:
       run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'
 
     - name: Run Arius.Cli.Tests
-      run: dotnet test Arius.Cli.Tests -c Release
+      run: |
+        mkdir /logs
+        dotnet test Arius.Cli.Tests -c Release
 
     - name: Publish
       run: dotnet publish Arius.Cli -c Release -o ./artifacts #Deploy only Arius project, not the tests

@@ -27,6 +27,8 @@ namespace Arius.Cli.Tests;
 
 internal class UnitTests
 {
+    private const string RUNNING_IN_CONTAINER = "DOTNET_RUNNING_IN_CONTAINER";
+    
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
@@ -170,7 +172,7 @@ internal class UnitTests
     public void CreateLogsDirectory()
     {
         // Create the /logs folder for unit testing purposes
-        if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true")
+        if (Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) != "true")
         {
             var logs = new DirectoryInfo("/logs");
             logs.Create();
@@ -180,9 +182,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
+        string ric = "false";
         try
         {
-            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+            ric = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER);
+            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "true");
             
             Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
@@ -211,7 +215,7 @@ internal class UnitTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "false");
+            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
 
@@ -220,7 +224,7 @@ internal class UnitTests
     {
         try
         {
-            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "true");
 
             if (command == "archive")
             {
@@ -239,7 +243,7 @@ internal class UnitTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "false");
+            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "false");
         }
     }
 
