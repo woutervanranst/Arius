@@ -172,6 +172,7 @@ internal class UnitTests
     public void CreateLogsDirectory()
     {
         // Create the /logs folder for unit testing purposes
+        // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
         if (Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) != "true")
         {
             var logs = new DirectoryInfo("/logs");
@@ -222,8 +223,10 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
+        string ric = "false";
         try
         {
+            ric = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER);
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "true");
 
             if (command == "archive")
@@ -243,7 +246,7 @@ internal class UnitTests
         }
         finally
         {
-            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "false");
+            Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
 
