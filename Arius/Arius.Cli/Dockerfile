@@ -1,5 +1,9 @@
 # Local build:  
-# docker build . -t arius2 --build-arg GITHUB_USER=wouter.vanranst@gmail.com --build-arg GITHUB_TOKEN=....
+# docker build . -t arius --build-arg GITHUB_USER=wouter.vanranst@gmail.com --build-arg GITHUB_TOKEN=....
+
+# Local Run --> IN CMD (not WSL)
+#	For WSL Volume Mount > check 'Enable integration with additional distros'
+
 
 # https://hub.docker.com/_/microsoft-dotnet-runtime/
 FROM mcr.microsoft.com/dotnet/runtime:7.0 AS base
