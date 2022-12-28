@@ -134,19 +134,7 @@ internal partial class Repository
             await db.Database.EnsureDeletedAsync();
 
             var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
-            //if (new DirectoryInfo("logs").Exists) //TODO remove the "logs" magic string
-            //    // Not running in container
-            //    p = Path.Combine("logs", p);
-            //else if (new DirectoryInfo("/logs").Exists) //TODO remove the "logs" magic string
-            //    // Running in container
-            //    p = Path.Combine("/logs", p);
-            //if (new FileInfo(p).Directory.Exists)
-            //{
-            //    logger.LogInformation($"Moved vacuumed db to {p}");
             File.Move(vacuumedDbPath, p);
-            //}
-            //else
-            //    logger.LogInformation($"Vacuumed db was not moved because the destination directory of {p} does not exist");
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
         }
