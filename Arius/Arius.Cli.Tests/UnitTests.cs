@@ -25,7 +25,7 @@ namespace Arius.Cli.Tests;
  *
  */
 
-class UnitTests
+internal class UnitTests
 {
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
@@ -52,7 +52,7 @@ class UnitTests
 
         r.Should().Be(-1);
         e.Should().BeOfType<CommandRuntimeException>();
-        consoleText.Should().Contain("Error:");
+        consoleText.Should().Contain("Command error:");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 
@@ -125,6 +125,14 @@ class UnitTests
 
     // Errors should be logged in Core, not in CLI
 
+    // "arius" -> no logs
+
+    // "arius archive" -> no logs
+
+    // "arius archive -n aa" --> no logs, specify path
+
+    // "arius archive -n aa ." + Key in env variable --> logs
+
 
 
     //// Cant really test this because Arius.Core is a mock
@@ -158,13 +166,24 @@ class UnitTests
     //    Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
     //}
 
+    [OneTimeSetUp]
+    public void CreateLogsDirectory()
+    {
+        // Create the /logs folder for unit testing purposes
+        if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") != "true")
+        {
+            var logs = new DirectoryInfo("/logs");
+            logs.Create();
+        }
+    }
+
     [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         try
         {
             Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
-
+            
             Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
             int r;
