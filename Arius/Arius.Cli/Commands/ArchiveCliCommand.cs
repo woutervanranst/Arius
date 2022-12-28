@@ -76,7 +76,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         }
         catch (Exception e)
         {
-            // Logging needs to happen here or otherwise https://github.com/adams85/filelogger/issues/15#issuecomment-927122196
+            // Logging needs to happen here (not in the error handler of the Main method) or otherwise https://github.com/adams85/filelogger/issues/15#issuecomment-927122196
             logger.LogError(e);
 
             throw;
