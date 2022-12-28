@@ -187,37 +187,56 @@ public class Program
                 .Color(Color.Blue));
     }
 
-    private static async Task FinalizeLog(ICommandOptions? po, string logDirectory, DateTime versionUtc)
+    private static async Task FinalizeLog(ICommandOptions? po, string logDirectoryPath, DateTime versionUtc)
     {
+        var logDirectory = new DirectoryInfo(logDirectoryPath);
+        var lfs = new[] { logDirectory, new DirectoryInfo(AppContext.BaseDirectory) }
+            .SelectMany(di => di.GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}*.*"))
+            .DistinctBy(fi => fi.FullName) //a bit h4x0r -- in Docker container, the DB is written to the AppContext.BaseDirectory but the log to /logs
+            .ToArray();
+        
+        if (!lfs.Any()) // If there are no log files, return early
+            return;
+
         AnsiConsole.Write($"Compressing logs... ");
 
-        var commandName = po switch
-        {
-            ArchiveCliCommand.ArchiveCommandOptions => "archive",
-            RestoreCliCommand.RestoreCommandOptions => "restore",
-            // RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
-            _ => throw new NotImplementedException()
-        };
-
-        var ld = new DirectoryInfo(logDirectory);
-        var lfs = ld
-            .GetFiles($"arius-{versionUtc.ToString("o").Replace(":", "-")}*.*")
-            .ToArray();
-
-        var tarDir = ld.CreateSubdirectory(Path.GetRandomFileName());
+        var tarDir = logDirectory.CreateSubdirectory(Path.GetRandomFileName());
         foreach (var lf in lfs)
             lf.MoveTo(Path.Combine(tarDir.FullName, lf.Name));
 
-        var containerName = ((IRepositoryOptions)po).Container;
-
         var tarFile = new FileInfo(Path.Combine(ld.FullName, $"arius-{commandName}-{containerName}-{versionUtc.ToString("o").Replace(":", "-")}.tar"));
         
-        TarFile.CreateFromDirectory(tarDir.FullName, tarFile.FullName, false);
-
+        var tarfi = GetTarFileInfo(po, versionUtc, logDirectory);
+        TarFile.CreateFromDirectory(tarDir.FullName, tarfi.FullName, false);
         tarDir.Delete(recursive: true);
 
-        await tarFile.CompressAsync(deleteOriginal: true);
-     
-        AnsiConsole.WriteLine($"done");
+        await tarfi.CompressAsync(deleteOriginal: true);
+
+        AnsiConsole.WriteLine($"done: {tarfi.FullName}.gzip");
+
+        static FileInfo GetTarFileInfo(ICommandOptions? po, DateTime versionUtc, DirectoryInfo logDirectory)
+        {
+            var tarFileNameBuilder = new StringBuilder("arius-");
+            if (GetCommandName(po) is var commandName && commandName is not null)
+                tarFileNameBuilder.Append($"{commandName}-");
+            if (GetContainerName(po) is var containerName && containerName is not null)
+                tarFileNameBuilder.Append($"{containerName}-");
+            tarFileNameBuilder.Append($"{versionUtc.ToString("o").Replace(":", "-")}.tar");
+            
+            var tarFile = new FileInfo(Path.Combine(logDirectory.FullName, tarFileNameBuilder.ToString()));
+            
+            return tarFile;
+
+            static string? GetCommandName(ICommandOptions? po) => po switch
+            {
+                ArchiveCliCommand.ArchiveCommandOptions => "archive",
+                RestoreCliCommand.RestoreCommandOptions => "restore",
+                // RehydrateCliCommand.RehydrateCommandOptions => "rehydrate",
+                null => null,
+                _ => throw new NotImplementedException()
+            };
+
+            static string? GetContainerName(ICommandOptions? po) => ((IRepositoryOptions?)po)?.Container;
+        }
     }
 }
