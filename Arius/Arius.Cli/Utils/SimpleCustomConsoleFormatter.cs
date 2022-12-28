@@ -16,21 +16,22 @@ public static class ConsoleLoggerExtensions
         this ILoggingBuilder builder,
         Action<SimpleConsoleFormatterOptions> configure) =>
         builder.AddConsole(options => options.FormatterName = "customName")
-            .AddConsoleFormatter<SimpleConsoleWithManagedThreadIdConsoleFormatter, SimpleConsoleFormatterOptions>(configure);
+            .AddConsoleFormatter<SimpleCustomConsoleFormatter, SimpleConsoleFormatterOptions>(configure);
 }
 
 /// <summary>
-/// For of https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Logging.Console/src/SimpleConsoleFormatter.cs
-/// to also display the ManagedThreadId
+/// Fork of https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Logging.Console/src/SimpleConsoleFormatter.cs
+///     Customized to also display the ManagedThreadId
+///     And removed the Exception Stack Trace
 /// </summary>
-public sealed class SimpleConsoleWithManagedThreadIdConsoleFormatter : ConsoleFormatter, IDisposable
+public sealed class SimpleCustomConsoleFormatter : ConsoleFormatter, IDisposable
 {
     private const string LoglevelPadding = ": ";
     private static readonly string _messagePadding = new string(' ', GetLogLevelString(LogLevel.Information).Length + LoglevelPadding.Length);
     private static readonly string _newLineWithMessagePadding = Environment.NewLine + _messagePadding;
     private IDisposable _optionsReloadToken;
 
-    public SimpleConsoleWithManagedThreadIdConsoleFormatter(IOptionsMonitor<SimpleConsoleFormatterOptions> options)
+    public SimpleCustomConsoleFormatter(IOptionsMonitor<SimpleConsoleFormatterOptions> options)
         : base("customName")
     {
         ReloadLoggerOptions(options.CurrentValue);
@@ -119,7 +120,8 @@ public sealed class SimpleConsoleWithManagedThreadIdConsoleFormatter : ConsoleFo
         if (exception != null)
         {
             // exception message
-            WriteMessage(textWriter, exception.ToString(), singleLine);
+            WriteMessage(textWriter, "Stack trace omitted in Console. See log file.", singleLine);
+            //WriteMessage(textWriter, exception.ToString(), singleLine);
         }
         if (singleLine)
         {
