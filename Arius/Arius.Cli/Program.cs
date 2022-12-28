@@ -203,8 +203,6 @@ public class Program
         var tarDir = logDirectory.CreateSubdirectory(Path.GetRandomFileName());
         foreach (var lf in lfs)
             lf.MoveTo(Path.Combine(tarDir.FullName, lf.Name));
-
-        var tarFile = new FileInfo(Path.Combine(ld.FullName, $"arius-{commandName}-{containerName}-{versionUtc.ToString("o").Replace(":", "-")}.tar"));
         
         var tarfi = GetTarFileInfo(po, versionUtc, logDirectory);
         TarFile.CreateFromDirectory(tarDir.FullName, tarfi.FullName, false);
