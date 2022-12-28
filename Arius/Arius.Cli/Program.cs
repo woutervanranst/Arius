@@ -16,6 +16,7 @@ using System.Formats.Tar;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks;
 
 [assembly: InternalsVisibleTo("Arius.Cli.Tests")]
@@ -68,11 +69,11 @@ public class Program
                 case CommandParseException cpe:
                     AnsiConsole.Write(cpe.Pretty);
                     break;
-                //case CommandRuntimeException cre: // occurs when ValidationResult.Error is returned in Validate()
-                //    AnsiConsole.WriteLine("Command error: " + cre.Message);
-                //    break;
+                case CommandRuntimeException cre: // occurs when ValidationResult.Error is returned in Validate()
+                    AnsiConsole.Write(new Markup($"[bold red]Command error:[/] {cre.Message}"));
+                    break;
                 default:
-                    AnsiConsole.Write(new Markup($"[bold red]Error:[/] {e.Message}\nSee file log for more information."));
+                    AnsiConsole.Write(new Markup($"\n[bold red]Runtime Error:[/] {e.Message} See log file for more information."));
                     break;
             }
 
