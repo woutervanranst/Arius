@@ -139,7 +139,8 @@ public class Program
                     options.Files = new[] { new LogFileOptions 
                     { 
                         Path = $"arius-{versionUtc.ToString("o").Replace(":", "-")}-<counter>.log", 
-                        CounterFormat = "00" 
+                        CounterFormat = "00",
+                        MaxFileSize = 1024 * 1024 * 100 // 100 MB max file size
                     } };
 
                     options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
