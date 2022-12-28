@@ -90,8 +90,8 @@ arius archive <path>
 
 ```
 docker run
-  -v <path>:/archive
- [-v <logpath>:/logs]
+  -v <absolute_path_to_archive>:/archive
+ [-v <absolute_path_to_logs>:/logs]
   ghcr.io/woutervanranst/arius:latest
 
   archive
@@ -125,8 +125,8 @@ arius restore <path>
 
 ```
 docker run
-  -v <path>:/archive
- [-v <logpath>:/logs]
+  -v <absolute_path_to_archive>:/archive
+ [-v <absolute_path_to_logs>:/logs]
   ghcr.io/woutervanranst/arius:latest
 
   restore
