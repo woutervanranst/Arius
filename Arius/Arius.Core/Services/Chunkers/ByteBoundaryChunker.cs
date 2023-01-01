@@ -62,6 +62,8 @@ internal class ByteBoundaryChunker : Chunker
             if (bytesRead < size)
                 ro = ro.Slice(0, offset + bytesRead /*size*/);
 
+            // TODO Optimize the creation of chunk by already taking the MinChunkSize: chunkBytes[MinChunkSize..] and then looking after that
+
             // check if we can find our search bytes in the buffer
             var i = ro.IndexOf(Delimiter); //NOTE: this has very low complexity vs reading byte per byte, ref https://stackoverflow.com/questions/51864673/c-sharp-readonlyspanchar-vs-substring-for-string-dissection
             if (i > -1 &&  // we found something
@@ -104,6 +106,11 @@ internal class ByteBoundaryChunker : Chunker
         }
     }
 
+    /// <summary>
+    /// Reconsitute the chunk based on subchunks
+    /// </summary>
+    /// <param name="subChunks"></param>
+    /// <returns></returns>
     private static byte[] GetChunk(List<byte[]> subChunks)
     {
         byte[] chunk = new byte[subChunks.Sum(sc => sc.Length)];

@@ -75,7 +75,7 @@ internal partial class ArchiveCommand
                         if (fi.IsPointerFile())
                         {
                             // PointerFile
-                            logger.LogDebug($"Found PointerFile '{pf.RelativeName}'");
+                            logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.Hash))
@@ -91,7 +91,7 @@ internal partial class ArchiveCommand
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
 
-                            logger.LogDebug($"Found BinaryFile '{bf.RelativeName}'");
+                            logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
                             if (pf is not null)
@@ -210,8 +210,10 @@ internal partial class ArchiveCommand
             *   2.3. [At the start of the run] the Binary did not yet exist remotely, and upload has completed --> continue
             */
 
-            if (!options.RemoveLocal) //if we're removing the binaries after, this is not a >0 change in the delta.
-                stats.AddLocalRepositoryStatistic(deltaFiles: 1, deltaSize: bf.Length);
+            if (options.RemoveLocal) // NOTE THIS BLOCK CAN BE DELETED IF THE ARCHIVE STATISTICS FUNCIONALITY WORKS FINE
+                stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //Do not add -1 it here, it is set in DeleteBinaryFilesBlock after successful deletion
+            else
+                stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //if we're keeping the local binaries, there are no deltas due to the archive operation
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
             var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
@@ -453,7 +455,16 @@ internal partial class ArchiveCommand
             if (targetAccessTier != AccessTier.Archive)
                 return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
 
-            await repo.Chunks.SetAllAccessTierAsync(targetAccessTier, maxDegreeOfParallelism);
+            var blobsNotInTier = repo.Chunks.GetAllChunkBlobs().Where(cbb => cbb.AccessTier != targetAccessTier);
+
+            await Parallel.ForEachAsync(blobsNotInTier,
+                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                async (cbb, ct) =>
+                {
+                    var updated = await cbb.SetAccessTierPerPolicyAsync(targetAccessTier);
+                    if (updated)
+                        logger.LogInformation($"Set acces tier to '{targetAccessTier.ToString()}' for chunk '{cbb.Hash.ToShortString()}'");
+                });
         }
     }
 }

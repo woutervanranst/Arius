@@ -76,6 +76,8 @@ internal partial class Repository
         {
             await using var db = await repo.States.GetCurrentStateDbContextAsync();
 
+            pfe = ToPlatformNeutral(pfe);
+
             var lastVersion = await db.PointerFileEntries
                 .Where(pfe0 => pfe.RelativeName.Equals(pfe0.RelativeName))
                 .OrderBy(pfe0 => pfe0.VersionUtc)
@@ -153,6 +155,7 @@ internal partial class Repository
                 .ToAsyncEnumerable() //TODO ParallelEnumerable? //remove this and the dependency on Linq.Async?
                 .Where(c => c.Any())
                 .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last())
+                .Select(pfe => ToPlatformSpecific(pfe))
                 .ToArrayAsync();
 
             return r;
@@ -160,12 +163,19 @@ internal partial class Repository
 
         /// <summary>
         /// Get All PointerFileEntries
+        /// DO NOT USE?
+        /// TODO REMOVE ME
         /// </summary>
         /// <returns></returns>
         internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
         {
             await using var db = await repo.States.GetCurrentStateDbContextAsync();
             return await db.PointerFileEntries.ToArrayAsync(); //TODO to TEST suite?
+        }
+        internal async Task<int> CountAsync()
+        {
+            await using var db = await repo.States.GetCurrentStateDbContextAsync();
+            return await db.PointerFileEntries.CountAsync();
         }
 
 
@@ -213,7 +223,32 @@ internal partial class Repository
                 .OrderBy(version => version)
                 .Select(pfe => DateTime.SpecifyKind(pfe, DateTimeKind.Utc))
                 .ToArrayAsync();
+        }
+
+
+
+        private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
+        private static PointerFileEntry ToPlatformNeutral(PointerFileEntry platformSpecific)
+        {
+            if (platformSpecific is null)
+                return null;
+
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformSpecific;
             
+            return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
+        }
+        private static PointerFileEntry ToPlatformSpecific(PointerFileEntry platformNeutral)
+        {
+            // TODO UNIT TEST for linux pointers (already done if run in the github runner?
+
+            if (platformNeutral is null)
+                return null;
+
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformNeutral;
+
+            return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
         }
     }
 }

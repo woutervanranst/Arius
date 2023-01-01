@@ -1,0 +1,8 @@
+﻿See https://stackoverflow.com/a/71063198/1582323
+
+In Nuget Config
+Top right, click Gear
+Add Package source "https://nuget.pkg.github.com/woutervanranst/index.json"
+Generate GH PAT with package:read
+username woutervanranst
+password PAT

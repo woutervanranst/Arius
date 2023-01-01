@@ -57,7 +57,24 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     public override ChunkHash Hash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
-    public abstract Task SetAccessTierAsync(AccessTier tier);
+
+    /// <summary>
+    /// Sets the AccessTier of the Blob according to the policy and the target access tier
+    /// </summary>
+    /// <returns>The tier has been updated</returns>
+    public abstract Task<bool> SetAccessTierPerPolicyAsync(AccessTier tier);
+    internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)
+    {
+        const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
+
+        if (targetAccessTier == AccessTier.Archive && 
+            length <= oneMegaByte)
+        {
+            return AccessTier.Cool; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+        }
+
+        return targetAccessTier;
+    }
         
     public abstract Task<Stream> OpenReadAsync();
     public abstract Task<Stream> OpenWriteAsync();
@@ -85,7 +102,19 @@ internal class ChunkBlobItem : ChunkBlobBase
 
     public override long Length => bi.Properties.ContentLength!.Value;
     public override AccessTier AccessTier => bi.Properties.AccessTier!.Value;
-    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bcc.GetBlobClient(bi.Name).SetAccessTierAsync(accessTier);
+    public override async Task<bool> SetAccessTierPerPolicyAsync(AccessTier accessTier)
+    {
+        accessTier = GetPolicyAccessTier(accessTier, Length);
+
+        if (accessTier == AccessTier)
+            return false;
+
+        await bcc.GetBlobClient(bi.Name).SetAccessTierAsync(accessTier);
+        return true;
+
+        //TODO UNIT TEST
+    }
+
     public override string FullName => bi.Name;
 
     public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
@@ -125,7 +154,18 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
         _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
     };
 
-    public override async Task SetAccessTierAsync(AccessTier accessTier) => await bbc.SetAccessTierAsync(accessTier);
+    public override async Task<bool> SetAccessTierPerPolicyAsync(AccessTier accessTier)
+    {
+        accessTier = GetPolicyAccessTier(accessTier, Length);
+
+        if (accessTier == AccessTier)
+            return false;
+
+        await bbc.SetAccessTierAsync(accessTier);
+        return true;
+
+        //TODO UNIT TEST
+    }
 
     public override string FullName => bbc.Name;
 

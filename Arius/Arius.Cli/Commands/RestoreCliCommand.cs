@@ -1,41 +1,30 @@
+using Arius.Cli.Utils;
+using Arius.Core.Commands.Restore;
+using Arius.Core.Extensions;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Spectre.Console.Cli;
 using System;
 using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
-using Arius.Cli.Utils;
-using Arius.Core.Commands.Restore;
-using Microsoft.Extensions.Logging;
-using Spectre.Console;
-using Spectre.Console.Cli;
-using AriusCoreCommand = Arius.Core.Commands; //there is a conflict between Spectre.Console.Cli.ICommand and Arius.Core.Commands.ICommand
 
 namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(IAnsiConsole console, 
-        ILogger<RestoreCliCommand> logger, 
-        AriusCoreCommand.ICommand<IRestoreCommandOptions> restoreCommand)
+    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, 
+        Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand)
     {
-        this.console = console;
         this.logger = logger;
         this.restoreCommand = restoreCommand;
-
-        logger.LogDebug("{0} initialized", nameof(RestoreCliCommand));
     }
 
-    private readonly IAnsiConsole console;
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly AriusCoreCommand.ICommand<IRestoreCommandOptions> restoreCommand;
-
+    private readonly Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand;
 
     internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
     {
-        public RestoreCommandOptions(ILogger<RestoreCommandOptions> logger, string accountName, string accountKey, string container, string passphrase, DirectoryInfo path)
-            : base(logger, accountName, accountKey, container, passphrase, path)
-        {
-        }
-
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
         [CommandOption("-s|--synchronize")]
         [DefaultValue(false)]
@@ -48,7 +37,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
         [Description("Keep pointer files after downloading content files")]
         [CommandOption("--keep-pointers")]
-        [DefaultValue(true)] //TODO there is no way of turning this off
+        [DefaultValue(true)] //TODO there is no way of turning this off, see https://github.com/spectreconsole/spectre.console/issues/193#issuecomment-973816640
         public bool KeepPointers { get; init; }
 
         //[Description("")]
@@ -57,40 +46,35 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
         [Description("Local path")]
         [TypeConverter(typeof(StringToDirectoryInfoTypeConverter))]
-        [CommandArgument(0, "<PATH>")]
-        public new DirectoryInfo Path => (DirectoryInfo)base.Path;
-
-        public override ValidationResult Validate()
-        {
-            if (!Path.Exists)
-                return ValidationResult.Error($"{Path} does not exist");
-
-            return base.Validate();
-        }
+        [CommandArgument(0, "[PATH]")] //Path is really mandatory but is not passed explicitly when running in Docker - so the Spectre.Console.Cli.CommandValidator.ValidateRequiredParameters fails
+        public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
     public override ValidationResult Validate(CommandContext context, RestoreCommandOptions settings)
     {
-        /*
-         * For a reason unknown to me, the Validate on the ArchiveCommandOptions SHOULD be called as part of the override but they are not
-         * Hence calling it manually
-         * See https://github.com/spectreconsole/spectre.console/discussions/217 for a working example
-         */
+        var r = restoreCommand.Validate(settings);
+        if (!r.IsValid)
+            return ValidationResult.Error(r.ToString());
 
-        var v = settings.Validate();
-
-        if (!v.Successful)
-            return v;
-
-        return base.Validate(context, settings);
+        return ValidationResult.Success();
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)
     {
-        logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.Container}' to '{options.Path}'");
+        try
+        {
+            logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.Container}' to '{options.Path}'");
 
-        logger.LogProperties(options);
+            logger.LogProperties(options);
 
-        return await restoreCommand.ExecuteAsync(options);
+            return await restoreCommand.ExecuteAsync(options);
+        }
+        catch (Exception e)
+        {
+            // Logging needs to happen here (not in the error handler of the Main method) or otherwise https://github.com/adams85/filelogger/issues/15#issuecomment-927122196
+            logger.LogError(e);
+
+            throw;
+        }
     }
 }

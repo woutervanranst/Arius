@@ -1,20 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Arius.Core.Commands.Rehydrate;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using AriusCoreCommand = Arius.Core.Commands; //there is a conflict between Spectre.Console.Cli.ICommand and Arius.Core.Commands.ICommand
 
 namespace Arius.Cli.Commands;
 
 /* When adding a new Command:
  *  Arius.Core
- *      in Facade.AddAriusCore:         .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
+ *      in Facade.AddAriusCoreCommands:         .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
  *      options:                        public interface IRehydrateCommandOptions : IRepositoryOptions
  *      a new Command:                  internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
  *
@@ -28,25 +22,29 @@ namespace Arius.Cli.Commands;
 
 internal class RehydrateCliCommand : AsyncCommand<RehydrateCliCommand.RehydrateCommandOptions>
 {
-    public RehydrateCliCommand(IAnsiConsole console,
-        ILogger<RehydrateCliCommand> logger,
-        AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand)
+    public RehydrateCliCommand(ILogger<RehydrateCliCommand> logger,
+        Arius.Core.Commands.ICommand<IRehydrateCommandOptions> rehydrateCommand)
     {
         this.rehydrateCommand = rehydrateCommand;
 
         logger.LogDebug("{0} initialized", nameof(RestoreCliCommand));
     }
 
-    private readonly AriusCoreCommand.ICommand<IRehydrateCommandOptions> rehydrateCommand;
+    private readonly Arius.Core.Commands.ICommand<IRehydrateCommandOptions> rehydrateCommand;
 
     internal class RehydrateCommandOptions : RepositoryOptions, IRehydrateCommandOptions
     {
-        public RehydrateCommandOptions(ILogger<RepositoryOptions> logger, string accountName, string accountKey, string container, string passphrase) : base(logger, accountName, accountKey, container, passphrase, null)
-        {
-        }
+        // No special requirements
     }
 
-    
+    public override ValidationResult Validate(CommandContext context, RehydrateCommandOptions settings)
+    {
+        var r = rehydrateCommand.Validate(settings);
+        if (!r.IsValid)
+            return ValidationResult.Error(r.ToString());
+
+        return ValidationResult.Success();
+    }
 
     public override async Task<int> ExecuteAsync(CommandContext context, RehydrateCommandOptions options)
     {

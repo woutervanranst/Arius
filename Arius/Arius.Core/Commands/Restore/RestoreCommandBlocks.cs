@@ -47,10 +47,10 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     {
         if (synchronize)
         {
-            if (source is not DirectoryInfo)
+            if (source is not DirectoryInfo di)
                 throw new ArgumentException($"The synchronize flag is only valid for directories");
 
-            await SynchronizeThenIndex((DirectoryInfo)source);
+            await SynchronizeThenIndex(di);
         }
         else
         {
@@ -227,7 +227,12 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 }
 
                 if (restored)
+                {
+                    RestoredFromOnlineTier = true;
                     binary = pointerService.GetBinaryFile(pf, ensureCorrectHash: true);
+                }
+                else
+                    chunkRehydrating();
 
                 if (!restoredBinaries[pf.Hash].Task.IsCompleted)
                 {
@@ -251,32 +256,34 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
             //TODO what if chunk does not exist?
 
-            //// For unit testing purposes
-            //internal static bool ChunkRestoredFromLocal { get; set; } = false;
-            //internal static bool ChunkRestoredFromOnlineTier { get; set; } = false;
-            //internal static bool ChunkStartedHydration { get; set; } = false;
+
         }
 
         var targetBinary = pointerService.GetBinaryFileInfo(pf);
         if (!targetBinary.Exists)
         {
             //TODO ensure this path is tested
-
+            
             //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
             logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.Hash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
+            RestoredFromLocal = true;
+
             await using (var ss = await binary.OpenReadAsync())
             {
                 targetBinary.Directory.Create();
                 await using var ts = File.OpenWrite(targetBinary.FullName);
                 await ss.CopyToAsync(ts); // File.Copy keeps the file locked when we re setting CreationTime and LastWriteTime
             }
-
-
-            targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
-            targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
-
-            //File.SetCreationTimeUtc(bfi.FullName, File.GetCreationTimeUtc(pf.FullName));
-            //File.SetLastWriteTimeUtc(bfi.FullName, File.GetLastWriteTimeUtc(pf.FullName));
         }
+
+        targetBinary.CreationTimeUtc = File.GetCreationTimeUtc(pf.FullName);
+        targetBinary.LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName);
+
+        if (!options.KeepPointers)
+            pf.Delete();
     }
+
+    // For unit testing purposes
+    internal static bool RestoredFromLocal { get; set; } = false;
+    internal static bool RestoredFromOnlineTier { get; set; } = false;
 }

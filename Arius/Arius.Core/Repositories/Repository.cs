@@ -3,7 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
+using Arius.Core.Extensions;
 using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;
@@ -19,6 +19,22 @@ internal partial class Repository
     {
         var logger = loggerFactory.CreateLogger<Repository>();
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
+        
+        try
+        {
+            // Check the credentials with a short Retry interval
+            var c = new BlobContainerClient(connectionString, blobContainerName: options.Container, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
+            c.Exists();
+            //TODO test with wrong accountname, accountkey
+        }
+        catch (AggregateException e)
+        {
+            logger.LogError(e);
+
+            var msg = e.InnerExceptions.Select(ee => ee.Message).Distinct().Join();
+            throw new ArgumentException("Cannot connect to blob container. Double check AccountName and AccountKey or network connectivity?");
+        }
+
         var container = new BlobContainerClient(
             connectionString, 
             blobContainerName: options.Container,
@@ -57,7 +73,7 @@ internal partial class Repository
     {
         var binaryCount = await Binaries.CountAsync();
         var binariesSize = await Binaries.TotalIncrementalLengthAsync();
-        var currentPointerFileEntryCount = (await PointerFileEntries.GetPointerFileEntriesAsync()/*.GetCurrentEntriesAsync(false)*/).Count();
+        var currentPointerFileEntryCount = await PointerFileEntries.CountAsync();
 
         return (binaryCount, binariesSize, currentPointerFileEntryCount);
     }

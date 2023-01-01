@@ -19,7 +19,7 @@ class ChunkRepositoryTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        EnsureArchiveTestDirectoryFileInfo();
+        TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
         var repo = GetRepository();
@@ -39,14 +39,5 @@ class ChunkRepositoryTests : TestBase
         var cb = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
 
         Assert.IsNull(cb);
-    }
-
-    [Test]
-    public void CopyUnitTestsFromBinaryRepositoryTests()
-    {
-        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-            return;
-
-        throw new NotImplementedException();
     }
 }

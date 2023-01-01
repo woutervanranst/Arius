@@ -211,12 +211,12 @@ internal class PointerService
         return OpenPointerFile(root, pfi);
     }
 
-    private static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
-    private static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
-    private static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
+    internal static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
+    internal static string GetPointerFileFullName(FileInfo binaryFileInfo) => GetPointerFileFullName(binaryFileInfo.FullName);
+    internal static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
+    internal static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
 
-
-
+    
     /// <summary>
     /// Get the local BinaryFile for this pointer if it exists.
     /// If it does not exist, return null.
@@ -226,6 +226,8 @@ internal class PointerService
     /// <returns></returns>
     public BinaryFile GetBinaryFile(PointerFile pf, bool ensureCorrectHash)
     {
+        ArgumentNullException.ThrowIfNull(pf);
+
         var bfi = new FileInfo(GetBinaryFileFullName(pf));
 
         return GetBinaryFile(pf.Root, bfi, pf.Hash, ensureCorrectHash);
@@ -259,9 +261,7 @@ internal class PointerService
     private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
     private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
     private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
-
-
-
+    
     public FileInfo GetBinaryFileInfo(PointerFile pf)
     {
         return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));

@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Arius.Core.Extensions;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 
@@ -30,8 +27,8 @@ internal partial class Repository
             this.container = container;
             this.passphrase = passphrase;
 
-            // download latest state
-            dbPathTask = Task.Run(async () => await GetLastestStateDbAsync());
+            // download latest state asynchronously
+            dbPathTask = Task.Run(GetLastestStateDbAsync);
         }
 
         private readonly ILogger<StateRepository> logger;
@@ -49,13 +46,13 @@ internal partial class Repository
                 .OrderBy(n => n)
                 .LastOrDefaultAsync();
 
-            var localDbPath = Path.GetTempFileName();
+            var localDbPath = Path.GetTempFileName(); //TODO write this to the /log directory so it is outside of the container in case of a crash
             if (lastStateBlobName is null)
             {
                 await using var db = new AriusDbContext(localDbPath, HasChanges);
                 await db.Database.EnsureCreatedAsync();
 
-                logger.LogInformation("Created new state database");
+                logger.LogInformation($"Created new state database to '{localDbPath}'");
             }
             else
             {
@@ -63,7 +60,7 @@ internal partial class Repository
                 await using var ts = File.OpenWrite(localDbPath);
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}'");
+                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}' to '{localDbPath}'");
             }
 
             return localDbPath;
@@ -82,7 +79,7 @@ internal partial class Repository
             if (!File.Exists(dbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            return new (await dbPathTask, HasChanges);
+            return new(await dbPathTask, HasChanges);
         }
 
         private void HasChanges(int numChanges)
@@ -123,12 +120,6 @@ internal partial class Repository
             await bbc.SetAccessTierAsync(AccessTier.Cool);
             await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
-            //Delete the original database and the compressed file
-            await db.Database.EnsureDeletedAsync();
-            File.Move(vacuumedDbPath, $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite");
-
-            logger.LogInformation($"State upload succesful into '{blobName}'");
-
             // Move the previous states to Archive storage
             await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
                                         .OrderBy(bi => bi.Name)
@@ -138,6 +129,14 @@ internal partial class Repository
                 var bc = container.GetBlobClient(bi.Name);
                 await bc.SetAccessTierAsync(AccessTier.Archive);
             }
+
+            //Delete the original database
+            await db.Database.EnsureDeletedAsync();
+
+            var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
+            File.Move(vacuumedDbPath, p);
+
+            logger.LogInformation($"State upload succesful into '{blobName}'");
         }
     }
 }

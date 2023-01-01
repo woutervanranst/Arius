@@ -1,28 +1,16 @@
-﻿using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
+﻿using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Configuration;
-using Arius.Core.Extensions;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Arius.Core.Services.Chunkers;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Arius.Core.Commands.Rehydrate;
 
 /*
  * This is required for the Arius.Cli.Tests module
- * Specifically, the Moq framework cannot initialize ICommand, which has 'internal IServiceProvider Services { get; }' if it cannot see the internals
+ * Specifically, the Moq framework cannot initialize ICommand, which has '**internal** IServiceProvider Services { get; }' if it cannot see the internals
  * See https://stackoverflow.com/a/28235222/1582323
  */
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
@@ -31,6 +19,8 @@ using Arius.Core.Commands.Rehydrate;
  * This is required to test the internals of the Arius.Core assembly
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
+[assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
+[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
 namespace Arius.Core.Commands;
 
@@ -40,7 +30,7 @@ public static class ServiceCollectionExtensions
     /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
     /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
     /// </summary>
-    public static IServiceCollection AddAriusCore(this IServiceCollection services)
+    public static IServiceCollection AddAriusCoreCommands(this IServiceCollection services)
 
     {
         //services.AddOptions<LibraryOptions>()
@@ -128,13 +118,10 @@ public class Facade //: IFacade
     //{
     //}
 
-    public Facade(ILoggerFactory loggerFactory,
-        IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+    public Facade(ILoggerFactory loggerFactory, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
     {
-        if (loggerFactory is null)
-            throw new ArgumentNullException(nameof(loggerFactory));
-        if (tempDirectoryAppSettings is null)
-            throw new ArgumentNullException(nameof(tempDirectoryAppSettings));
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentNullException.ThrowIfNull(tempDirectoryAppSettings);
 
         this.loggerFactory = loggerFactory;
         this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;

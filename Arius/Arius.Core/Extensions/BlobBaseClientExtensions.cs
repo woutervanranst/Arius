@@ -13,6 +13,23 @@ namespace Arius.Core.Extensions;
 
 internal static class BlobBaseClientExtensions
 {
+    //public static async Task SetAccessTierPerPolicyAsync(this BlobBaseClient client, long blobLength, AccessTier tier)
+    //{
+    //    const long oneMegaByte = 1024 * 1024;
+
+    //    if (tier == AccessTier.Archive)
+    //    {
+    //        if (blobLength <= oneMegaByte)
+    //        {
+    //            tier = AccessTier.Cool; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+    //        }
+    //    }
+
+    //    //TODO test this, also for the UpdateTierBlock
+
+    //    await client.SetAccessTierAsync(tier);
+    //}
+
     //public static async Task SetMetadataTagAsync(this BlobBaseClient c, string tag)
     //{
     //    await c.SetMetadataAsync(new Dictionary<string, string> { { tag, null } });

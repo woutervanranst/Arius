@@ -16,13 +16,13 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
     DateTime VersionUtc { get; }
 
 
-    int IndexBlock_Parallelism => Environment.ProcessorCount * 2; //index AND hash options
+    int IndexBlock_Parallelism => Environment.ProcessorCount * 8; //index AND hash options. A low count doesnt achieve a high throughput when there are a lot of small files
 
     int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
     int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
     int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    int TransferChunked_ParallelChunkTransfers => 128 * 2;
+    int TransferChunked_ParallelChunkTransfers => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
 
     int PointersToCreate_BufferSize => 1000;
 
@@ -38,6 +38,8 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
 
     int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
+    int UpdateTierBlock_Parallelism => 10;
+
 
 #pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
     internal class Validator : AbstractValidator<IArchiveCommandOptions>
@@ -52,12 +54,13 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
             
             // Validate Path
             RuleFor(o => o.Path)
-                .NotEmpty()
                 .Custom((path, context) =>
                 {
-                    if (path is not DirectoryInfo)
+                    if (path is null)
+                        context.AddFailure("Path is not specified");
+                    else if (path is not DirectoryInfo)
                         context.AddFailure("Path must be a directory");
-                    if (!path.Exists)
+                    else if (!path.Exists)
                         context.AddFailure($"Directory {path} does not exist.");
                 });
 

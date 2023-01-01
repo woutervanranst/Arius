@@ -2,7 +2,11 @@
   "profiles": {
     "archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\Wouter\\Documents\\Test -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
+      "commandLineArgs": "archive"
+    },
+    "archive with args": {
+      "commandName": "Project",
+      "commandLineArgs": "archive C:\\Users\\Woute\\Documents -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
     },
     "restore": {
       "commandName": "Project",

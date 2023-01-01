@@ -1,20 +1,14 @@
-﻿using Arius.Core.Configuration;
-using Arius.Core.Models;
+﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Threading.Channels;
 using Arius.Core.Extensions;
 using FluentValidation;
+using FluentValidation.Results;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -31,19 +25,24 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
     private readonly ILoggerFactory loggerFactory;
     private readonly ILogger<ArchiveCommand> logger;
     private readonly ArchiveCommandStatistics stats;
-
     private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
     IServiceProvider ICommand<IArchiveCommandOptions>.Services => executionServices.Services;
+
+    public ValidationResult Validate(IArchiveCommandOptions options)
+    {
+        var validator = new IArchiveCommandOptions.Validator();
+        return validator.Validate(options);
+    }
     
     public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
     {
-        var validator = new IArchiveCommandOptions.Validator();
-        await validator.ValidateAndThrowAsync(options);
+        var v = Validate(options);
+        if (!v.IsValid)
+            throw new ValidationException(v.Errors);
 
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
-        var pointerService = executionServices.GetRequiredService<PointerService>();
 
         var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
@@ -157,7 +156,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
 
         var updateTierBlock = new UpdateTierBlock(this,
             sourceFunc: () => repo,
-            maxDegreeOfParallelism: 10,
+            maxDegreeOfParallelism: options.UpdateTierBlock_Parallelism,
             onCompleted: () => { });
         var updateTierTask = updateTierBlock.GetTask;
 

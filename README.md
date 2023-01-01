@@ -52,12 +52,12 @@ Why Arius?
 - I do not want to open a separate application to see what is in my offline backups.
 - Arius creates 'pointers' of <1KB each on the local hard drive. That way, the Search in Windows Explorer makes them visible.
 
-**Scenario 3**
+**Scenario 3: encryption**
 
 - I want client side encryption (because of \<reasons>).
 - Arius uses AES256 / openssl compatible encryption.
 
-**Scenario 4**
+**Scenario 4: deduplication**
 
 - I have OCD and do not want to store duplicate files/parts of files twice.
 - Arius deduplicates on file level by default, and can optionally 'chunk' files into multiple parts and deduplicate on these.
@@ -103,8 +103,8 @@ arius archive <path>
 
 ```
 docker run
-  -v <path>:/archive
- [-v <logpath>:/logs]
+  -v <absolute_path_to_archive>:/archive
+ [-v <absolute_path_to_logs>:/logs]
   ghcr.io/woutervanranst/arius:latest
 
   archive
@@ -138,8 +138,8 @@ arius restore <path>
 
 ```
 docker run
-  -v <path>:/archive
- [-v <logpath>:/logs]
+  -v <absolute_path_to_archive>:/archive
+ [-v <absolute_path_to_logs>:/logs]
   ghcr.io/woutervanranst/arius:latest
 
   restore

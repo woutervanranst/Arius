@@ -12,6 +12,7 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -32,10 +33,17 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
 
     IServiceProvider ICommand<IRestoreCommandOptions>.Services => executionServices.Services;
 
-    public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
+    public ValidationResult Validate(IRestoreCommandOptions options)
     {
         var validator = new IRestoreCommandOptions.Validator();
-        await validator.ValidateAndThrowAsync(options);
+        return validator.Validate(options);
+    }
+
+    public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
+    {
+        var v = Validate(options);
+        if (!v.IsValid)
+            throw new ValidationException(v.Errors);
 
         executionServices = ExecutionServiceProvider<IRestoreCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();

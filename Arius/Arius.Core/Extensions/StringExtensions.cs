@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Arius.Core.Extensions;
 
@@ -35,5 +36,18 @@ public static class StringExtensions
             return str;
 
         return str.Substring(0, Math.Min(str.Length, length));
+    }
+
+    /// <summary>
+    /// Joins an array of strings
+    /// </summary>
+    /// <param name="strings">Array of strings</param>
+    /// <param name="separator">Optionally the separator. If not specified: Environment.NewLine</param>
+    /// <returns></returns>
+    public static string Join(this IEnumerable<string> strings, string separator = null)
+    {
+        separator ??= Environment.NewLine;
+
+        return string.Join(separator, strings);
     }
 }

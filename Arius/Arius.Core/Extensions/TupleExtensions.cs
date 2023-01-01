@@ -1,15 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions;
 
 public static class TupleExtensions
 {
     // https://github.com/gitextensions/gitextensions/blob/master/GitCommands/DeconstructionExtensions.cs
-
 
     /// <summary>
     /// Supports C# 7 deconstruction of <see cref="KeyValuePair{TKey,TValue}"/>.
