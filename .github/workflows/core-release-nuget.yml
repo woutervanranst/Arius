@@ -39,7 +39,6 @@ jobs:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
-
     # - name: Test
     #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
     #   #run: dotnet test -l "console;verbosity=detailed" # -v normal
