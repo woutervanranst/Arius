@@ -12,6 +12,10 @@
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\..\Documents\GitHub\woutervanranst\utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
 	<!--See https://stackoverflow.com/a/68067278 -->
     <VersionMajor>2</VersionMajor>

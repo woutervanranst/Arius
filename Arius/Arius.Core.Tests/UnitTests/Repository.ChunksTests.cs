@@ -1,8 +1,4 @@
 ﻿using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Arius.Core.Tests;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using System;
 using System.IO;

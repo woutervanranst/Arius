@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli", "Arius.Cli\Ariu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.BehaviorTests", "Arius.Core.BehaviorTests\Arius.Core.BehaviorTests.csproj", "{06124932-B052-4E61-9DFE-45216A034B96}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests.Extensions", "Arius.Core.Tests.Extensions\Arius.Core.Tests.Extensions.csproj", "{5681B152-4156-4565-B6F9-84586F1809AC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WouterVanRanst.Utils", "..\..\..\..\Documents\GitHub\woutervanranst\utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj", "{C1F54FD1-F7FF-41B0-BFE4-9058E5EE2A89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,10 +47,10 @@ Global
 		{06124932-B052-4E61-9DFE-45216A034B96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06124932-B052-4E61-9DFE-45216A034B96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06124932-B052-4E61-9DFE-45216A034B96}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5681B152-4156-4565-B6F9-84586F1809AC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5681B152-4156-4565-B6F9-84586F1809AC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5681B152-4156-4565-B6F9-84586F1809AC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5681B152-4156-4565-B6F9-84586F1809AC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1F54FD1-F7FF-41B0-BFE4-9058E5EE2A89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1F54FD1-F7FF-41B0-BFE4-9058E5EE2A89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1F54FD1-F7FF-41B0-BFE4-9058E5EE2A89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1F54FD1-F7FF-41B0-BFE4-9058E5EE2A89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

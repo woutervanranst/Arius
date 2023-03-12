@@ -1,10 +1,6 @@
-using System;
 using System.ComponentModel;
-using System.IO;
 using Arius.Cli.Utils;
 using Arius.Core.Commands;
-using Microsoft.Extensions.Logging;
-using Spectre.Console;
 using Spectre.Console.Cli;
 
 namespace Arius.Cli.Commands;

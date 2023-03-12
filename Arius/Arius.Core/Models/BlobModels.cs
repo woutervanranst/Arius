@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;

@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,23 +8,6 @@ namespace Arius.Core.Extensions;
 
 static class DirectoryInfoExtensions
 {
-    public static FileInfo[] TryGetFiles(this DirectoryInfo d, string searchPattern)
-    {
-        try
-        {
-            return d.GetFiles(searchPattern, SearchOption.AllDirectories);
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Array.Empty<FileInfo>();
-        }
-        catch (DirectoryNotFoundException)
-        {
-            return Array.Empty<FileInfo>();
-        }
-    }
-
-
     public static void DeleteEmptySubdirectories(this DirectoryInfo parentDirectory, bool includeSelf = false)
     {
         DeleteEmptySubdirectories(parentDirectory.FullName);

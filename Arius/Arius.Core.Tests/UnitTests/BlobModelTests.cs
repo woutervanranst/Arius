@@ -1,8 +1,5 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Tests;
-using Arius.Core.Tests.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.IO;

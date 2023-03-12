@@ -3,7 +3,6 @@ using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Models;

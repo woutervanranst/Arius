@@ -1,11 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using System.Text.Json;
-using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
-using Arius.Core.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services;

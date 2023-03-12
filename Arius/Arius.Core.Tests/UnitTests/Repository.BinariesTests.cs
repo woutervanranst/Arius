@@ -1,9 +1,5 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Arius.Core.Tests;
+﻿using Arius.Core.Models;
 using Azure.Storage.Blobs.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using MockQueryable.Moq;
 using Moq;
 using NUnit.Framework;
@@ -32,7 +28,7 @@ class BinaryRepositoryTests : TestBase
         var repo = GetRepository();
 
         var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = new ChunkHash(bh).SingleToArray();
+        var chs = new ChunkHash(bh).AsArray();
 
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 

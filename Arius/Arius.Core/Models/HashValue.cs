@@ -1,7 +1,4 @@
-﻿using Arius.Core.Extensions;
-using System;
-
-namespace Arius.Core.Models;
+﻿namespace Arius.Core.Models;
 
 internal abstract record Hash
 {

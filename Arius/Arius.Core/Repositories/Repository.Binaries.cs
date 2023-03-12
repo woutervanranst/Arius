@@ -2,13 +2,11 @@
 using Azure;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
@@ -182,7 +180,7 @@ internal partial class Repository
         {
             var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 
-            return (((IChunk)bf).Hash.SingleToArray(), length, length);
+            return (((IChunk)bf).Hash.AsArray(), length, length);
         }
 
         // --- BINARY DOWNLOAD ------------------------------------------------
@@ -430,7 +428,7 @@ internal partial class Repository
             logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
 
             if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
-                return new ChunkHash(bh).SingleToArray();
+                return new ChunkHash(bh).AsArray();
 
             var chs = default(ChunkHash[]);
 

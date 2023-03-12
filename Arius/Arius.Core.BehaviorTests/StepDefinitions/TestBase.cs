@@ -1,15 +1,12 @@
-﻿using Arius.Core.Models;
+﻿namespace Arius.Core.BehaviorTests.StepDefinitions;
 
-namespace Arius.Core.BehaviorTests.StepDefinitions
+[Binding]
+class TestBase
 {
-    [Binding]
-    class TestBase
+    public TestBase(ScenarioContext sc)
     {
-        public TestBase(ScenarioContext sc)
-        {
-            scenarioContext = sc;
-        }
-
-        protected readonly ScenarioContext scenarioContext;
+        scenarioContext = sc;
     }
+
+    protected readonly ScenarioContext scenarioContext;
 }

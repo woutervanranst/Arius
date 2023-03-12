@@ -2,7 +2,6 @@
 using FluentValidation;
 using System;
 using System.IO;
-using Arius.Core.Services;
 
 namespace Arius.Core.Commands.Archive;
 

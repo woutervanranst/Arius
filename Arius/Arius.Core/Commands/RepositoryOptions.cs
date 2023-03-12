@@ -1,8 +1,5 @@
-﻿
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using FluentValidation;
-using System;
+﻿using FluentValidation;
+
 namespace Arius.Core.Commands;
 
 public interface IRepositoryOptions : ICommandOptions // the interface is public, the implementation is internal

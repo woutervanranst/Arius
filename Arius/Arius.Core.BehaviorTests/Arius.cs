@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
-using Arius.Core.Configuration;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
@@ -9,19 +8,13 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NUnit.Framework;
-using System.ComponentModel;
-using TechTalk.SpecFlow;
 
 namespace Arius.Core.BehaviorTests
 {
     [Binding]
     static class Arius
     {
-        
         [BeforeTestRun(Order = 1)]
         private static async Task ClassInit()
         {
