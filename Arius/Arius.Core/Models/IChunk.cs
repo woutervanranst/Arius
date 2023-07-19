@@ -11,10 +11,6 @@ internal interface IChunk
     Task<Stream> OpenWriteAsync();
 }
 
-internal interface IChunkFile : IFile, IChunk //TODO REMOVE?
-{
-}
-
 internal record MemoryChunk : IChunk
 {
     public MemoryChunk(byte[] chunk, ChunkHash ch) //TODO quid memory allocation??

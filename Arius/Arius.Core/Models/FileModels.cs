@@ -3,80 +3,41 @@ using System.IO;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Models;
-//public interface IAriusEntry
-//{
-//    /// <summary>
-//    /// Path relative to the root
-//    /// </summary>
-//    public string RelativePath { get; }
 
-//    /// <summary>
-//    /// Name (without path but with Extension) of the (equivalent) BinaryFile (eg. 'myFile.bmp')
-//    /// </summary>
-//    public string ContentName { get; }
-//}
-
-//internal interface IWithHashValue
-//{
-//    public Hash Hash { get; }
-//}
-
-//internal interface IAriusEntryWithHash : IAriusEntry //, IWithHashValue
-//{
-//}
-internal interface IFile
+internal abstract class RelativeFileBase
 {
+    protected readonly FileInfo fi;
+
+    protected RelativeFileBase(DirectoryInfo root, FileInfo fi)
+    {
+        this.fi = fi;
+        Root = root;
+    }
+
     /// <summary>
     /// Full Name (with path and extension)
     /// </summary>
-    public string FullName { get; }
+    public string FullName => fi.FullName;
 
     /// <summary>
     /// Name (with extension, without path)
     /// </summary>
-    public string Name { get; }
+    public string Name => fi.Name;
 
     /// <summary>
     /// The Directory where this File resides
     /// </summary>
-    DirectoryInfo Directory { get; }
+    public DirectoryInfo Directory => fi.Directory;
 
     /// <summary>
     /// Length (in bytes) of the File
     /// </summary>
-    public long Length { get; }
+    public long Length => fi.Length;
 
     /// <summary>
     /// Delete the File
     /// </summary>
-    public void Delete();
-}
-
-/// <inheritdoc/>
-internal abstract class FileBase : IFile
-{
-    protected FileBase(FileInfo fi)
-    {
-        this.fi = fi;
-    }
-    protected readonly FileInfo fi;
-
-    public string FullName => fi.FullName;
-    public string Name => fi.Name;
-    public DirectoryInfo Directory => fi.Directory;
-    public long Length => fi.Length;
     public void Delete() => fi.Delete();
-
-    public abstract Hash Hash { get; }
-}
-
-/// <inheritdoc/>
-internal abstract class RelativeFileBase : FileBase
-{
-    protected RelativeFileBase(DirectoryInfo root, FileInfo fi) : base(fi)
-    {
-        Root = root;
-    }
 
     public DirectoryInfo Root { get; }
 
@@ -89,6 +50,9 @@ internal abstract class RelativeFileBase : FileBase
     /// Relative File Path (directory)
     /// </summary>
     public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
+
+    public abstract Hash Hash { get; }
+
     public override string ToString() => RelativeName;
 }
 
@@ -114,7 +78,7 @@ internal class PointerFile : RelativeFileBase
 }
 
 /// <inheritdoc cref="RelativeFileBase" />
-internal class BinaryFile : RelativeFileBase, IChunkFile, IChunk
+internal class BinaryFile : RelativeFileBase, IChunk
 {
     public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
     {
