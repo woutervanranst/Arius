@@ -257,7 +257,7 @@ internal class PointerService
 
     private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
     private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
-    private static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
+    public static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
     
     public FileInfo GetBinaryFileInfo(PointerFile pf)
     {
