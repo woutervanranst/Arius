@@ -48,7 +48,7 @@ internal static class StopwatchExtensions
     /// <param name="length">Length (in bytes)</param>
     /// <param name="action"></param>
     /// <returns></returns>
-    public async static Task<(double MBps, double Mbps, double seconds)> GetSpeedAsync(this Stopwatch sw, long length, Func<Task> action)
+    public static async Task<(double MBps, double Mbps, double seconds)> GetSpeedAsync(this Stopwatch sw, long length, Func<Task> action)
     {
         sw.Restart();
         sw.Start();
