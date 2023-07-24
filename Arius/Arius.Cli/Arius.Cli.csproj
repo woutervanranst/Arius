@@ -14,8 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Arius.Core" Version="2.0.2043.621" />
-	<!--<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />-->
+    <!--<PackageReference Include="Arius.Core" Version="2.0.2043.621" />-->
+	<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
 
 	<PackageReference Include="Spectre.Console" Version="0.45.0" />
 	<PackageReference Include="Spectre.Console.Cli" Version="0.45.0" />
