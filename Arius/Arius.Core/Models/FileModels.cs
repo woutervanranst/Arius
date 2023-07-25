@@ -4,86 +4,96 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Models;
 
-internal abstract class FileBase
+internal abstract record FileBase
 {
-    protected readonly FileInfo fi;
-
-    protected FileBase(DirectoryInfo root, FileInfo fi)
+    protected FileBase(string fullName, string relativeName, BinaryHash hash)
     {
-        this.fi = fi;
-        Root = root;
+        FullName     = fullName;
+        RelativeName = relativeName;
+        Name         = Path.GetFileName(relativeName);
+        BinaryHash   = hash;
     }
 
     /// <summary>
     /// Full Name (with path and extension)
     /// </summary>
-    public string FullName => fi.FullName;
-
-    /// <summary>
-    /// Name (with extension, without path)
-    /// </summary>
-    public string Name => fi.Name;
-
-    /// <summary>
-    /// Delete the File
-    /// </summary>
-    public void Delete() => fi.Delete();
-
-    public DirectoryInfo Root { get; }
+    public string FullName { get; }
 
     /// <summary>
     /// Relative File Name (with extention)
     /// </summary>
-    public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
+    public string RelativeName { get; }
 
     /// <summary>
-    /// Relative File Path (directory)
+    /// Name (with extension, without path)
     /// </summary>
-    public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
+    public string Name { get; }
 
-    public abstract Hash BinaryHash { get; }
+    /// <summary>
+    /// The hash of the binary
+    /// </summary>
+    public BinaryHash BinaryHash { get; }
+
+    /// <summary>
+    /// The creation time of the file in UTC
+    /// </summary>
+    public DateTime CreationTimeUtc => File.GetCreationTimeUtc(FullName);
+    /// <summary>
+    /// The last time the file was written to in UTC
+    /// </summary>
+    public DateTime LastWriteTimeUtc => File.GetLastWriteTimeUtc(FullName);
+
+
+    /// <summary>
+    /// Delete the File, if it exists
+    /// </summary>
+    public void Delete() => File.Delete(FullName);
+
+    public bool Exists() => File.Exists(FullName);
+
 
     public override string ToString() => $"'{RelativeName}' ({BinaryHash.ToShortString()})";
 }
 
 /// <inheritdoc/>
-internal class PointerFile : FileBase
+internal record PointerFile : FileBase
 {
     public static readonly string Extension = ".pointer.arius";
 
-    //public PointerFile(FileInfo fi) : this(fi.Directory, fi)
-    //{
-    //  DO NOT IMPLEMENT THIS, IT WILL CAUSE CONFUSION & BUGS & INVALID ARCHIVES
-    //}
+    //private readonly Lazy<BinaryFile> binaryFile;
 
-    /// <summary>
-    /// Create a new PointerFile with the given root and the given BinaryHash
-    /// </summary>
-    public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
+    public PointerFile(string fullName, string relativeName, BinaryHash hash) : base(fullName, relativeName, hash)
     {
-        BinaryHash = binaryHash;
+        //binaryFile = new Lazy<BinaryFile>(new BinaryFile(rootPath, FileService.GetBinaryFileFullName(relativeName), hash));
     }
 
-    public override BinaryHash BinaryHash { get; }
+    //public BinaryFile BinaryFile => binaryFile.Value;
 }
 
 /// <inheritdoc cref="FileBase" />
-internal class BinaryFile : FileBase, IChunk
+internal record BinaryFile : FileBase, IChunk
 {
-    public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
+    //private readonly Lazy<PointerFile> pointerFile;
+
+    public BinaryFile(string fullName, string relativeName, BinaryHash hash) : base(fullName, relativeName, hash)
     {
-        BinaryHash = hash;
+        //pointerFile = new Lazy<PointerFile>(new PointerFile(rootPath, FileService.GetPointerFileFullName(relativeName), hash));
     }
 
-    public override BinaryHash BinaryHash { get; }
 
+    /// <summary>
+    /// The ChunkHash of this BinaryFile, should it be used as a Chunk
+    /// </summary>
     public ChunkHash ChunkHash => BinaryHash;
+
+
+    //public PointerFile PointerFile => pointerFile.Value;
 
     /// <summary>
     /// Length (in bytes) of the File
     /// </summary>
-    public long Length => fi.Length;
+    public long Length => FileExtensions.Length(FullName);
 
-    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
+    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
     //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 }
