@@ -235,7 +235,7 @@ abstract class TestBase
     {
         var ps = GetFileService();
 
-        pf = ps.GetPointerFile(fi);
+        pf = ps.GetPointerFile(fi.Directory, fi);
 
         var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
         pfe = repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
