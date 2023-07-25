@@ -143,7 +143,7 @@ class RestoreSteps : TestBase
     public async Task ThenTheHydrationForTheChunksOfBinaryFileHaveStarted(string relativeBinaryFile)
     {
         var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
-        var ch = new ChunkHash(pf.Hash); // hack
+        var ch = (ChunkHash)pf.Hash; // hack
 
         var e = await Arius.RehydrateChunkExists(ch);
         e.Should().BeTrue();
@@ -156,7 +156,7 @@ class RestoreSteps : TestBase
         tier.Should().Be(AccessTier.Archive); // other tiers are not supported in this step
 
         var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
-        var ch = new ChunkHash(pf.Hash);
+        var ch = (ChunkHash)pf.Hash;
 
         await Arius.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);
     }

@@ -428,7 +428,7 @@ internal partial class Repository
             logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
 
             if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
-                return new ChunkHash(bh).AsArray();
+                return ((ChunkHash)bh).AsArray();
 
             var chs = default(ChunkHash[]);
 

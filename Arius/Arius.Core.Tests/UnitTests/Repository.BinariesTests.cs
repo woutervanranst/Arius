@@ -28,7 +28,7 @@ class BinaryRepositoryTests : TestBase
         var repo = GetRepository();
 
         var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = new ChunkHash(bh).AsArray();
+        var chs = ((ChunkHash)bh).AsArray();
 
         await repo.Binaries.CreateChunkHashListAsync(bh, chs);
 
