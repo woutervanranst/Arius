@@ -9,15 +9,14 @@ namespace Arius.Core.Services;
 
 internal class PointerService
 {
+    private readonly ILogger<PointerService> logger;
+    private readonly IHashValueProvider      hvp;
+
     public PointerService(ILogger<PointerService> logger, IHashValueProvider hvp)
     {
         this.logger = logger;
         this.hvp = hvp;
     }
-
-    private readonly ILogger<PointerService> logger;
-    private readonly IHashValueProvider hvp;
-
 
     /// <summary>
     /// Create a pointer from a BinaryFile
