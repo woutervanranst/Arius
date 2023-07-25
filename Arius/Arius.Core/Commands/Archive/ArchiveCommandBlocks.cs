@@ -23,7 +23,7 @@ internal partial class ArchiveCommand
     {
         private readonly ArchiveCommandStatistics                                  stats;
         private readonly bool                                                      fastHash;
-        private readonly PointerService                                            pointerService;
+        private readonly FileService                                               fileService;
         private readonly Repository                                                repo;
         private readonly IHashValueProvider                                        hvp;
         private readonly int                                                       maxDegreeOfParallelism;
@@ -46,7 +46,7 @@ internal partial class ArchiveCommand
         {
             this.stats          = command.stats;
             this.fastHash       = command.executionServices.Options.FastHash;
-            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            this.fileService = command.executionServices.GetRequiredService<FileService>();
             this.repo           = command.executionServices.GetRequiredService<Repository>();
             this.hvp            = command.executionServices.GetRequiredService<IHashValueProvider>();
 
@@ -68,7 +68,7 @@ internal partial class ArchiveCommand
                 {
                     try
                     { 
-                        var pf = pointerService.GetPointerFile(root, fi);
+                        var pf = fileService.GetPointerFile(root, fi);
 
                         if (fi.IsPointerFile())
                         {
@@ -277,13 +277,13 @@ internal partial class ArchiveCommand
                     onCompleted: onCompleted)
         {
             this.stats = command.stats;
-            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            this.fileService = command.executionServices.GetRequiredService<FileService>();
             this.onSuccesfullyBackedUp = onSuccesfullyBackedUp;
             this.onPointerFileCreated = onPointerFileCreated;
         }
 
         private readonly ArchiveCommandStatistics stats;
-        private readonly PointerService pointerService;
+        private readonly FileService fileService;
         private readonly Func<BinaryFile, Task> onSuccesfullyBackedUp;
         private readonly Func<PointerFile, Task> onPointerFileCreated;
 
@@ -291,7 +291,7 @@ internal partial class ArchiveCommand
         {
             logger.LogDebug($"Creating pointer for {bf}...");
 
-            var (created, pf) = pointerService.CreatePointerFileIfNotExists(bf);
+            var (created, pf) = fileService.CreatePointerFileIfNotExists(bf);
 
             logger.LogInformation($"Creating pointer for {bf}... done");
             if (created)
@@ -401,7 +401,7 @@ internal partial class ArchiveCommand
         {
             this.stats = command.stats;
             this.repo = command.executionServices.GetRequiredService<Repository>();
-            this.pointerService = command.executionServices.GetRequiredService<PointerService>();
+            this.fileService = command.executionServices.GetRequiredService<FileService>();
             
             this.root = root;
             this.versionUtc = versionUtc;
@@ -409,7 +409,7 @@ internal partial class ArchiveCommand
 
         private readonly ArchiveCommandStatistics stats;
         private readonly Repository repo;
-        private readonly PointerService pointerService;
+        private readonly FileService fileService;
 
         private readonly DirectoryInfo root;
         private readonly DateTime versionUtc;
@@ -417,8 +417,8 @@ internal partial class ArchiveCommand
         protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe, CancellationToken ct)
         {
             if (!pfe.IsDeleted &&
-                pointerService.GetPointerFile(root, pfe) is null &&
-                pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+                fileService.GetPointerFile(root, pfe) is null &&
+                fileService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe}' no longer exists locally, marking entry as deleted");
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);

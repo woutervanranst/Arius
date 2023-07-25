@@ -34,8 +34,8 @@ static class FileSystem
 
     private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
     public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
-    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.PointerService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
-    public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.PointerService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
+    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.fileService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
+    public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.fileService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 
@@ -94,7 +94,7 @@ static class FileSystem
         var pf0 = GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName);
         var pfi0 = new FileInfo(pf0.FullName);
 
-        var pfn1 = Path.Combine(ArchiveDirectory.FullName, PointerService.GetPointerFileFullName(relativeBinaryName));
+        var pfn1 = Path.Combine(ArchiveDirectory.FullName, FileService.GetPointerFileFullName(relativeBinaryName));
         pfi0.CopyTo(pfn1);
     }
 
@@ -111,7 +111,7 @@ static class FileSystem
         if (movePointer)
         {
             var pfi0 = new FileInfo(GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName).FullName);
-            var pfi1 = PointerService.GetPointerFileFullName(bfi1); // construct the new name based on the path of the binary
+            var pfi1 = FileService.GetPointerFileFullName(bfi1); // construct the new name based on the path of the binary
                 
             pfi0.MoveTo(pfi1);
         }

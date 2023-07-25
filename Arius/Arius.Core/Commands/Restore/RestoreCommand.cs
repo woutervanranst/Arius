@@ -40,7 +40,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
 
         executionServices = ExecutionServiceProvider<IRestoreCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
-        var pointerService = executionServices.GetRequiredService<PointerService>();
+        var pointerService = executionServices.GetRequiredService<FileService>();
 
 
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
@@ -51,7 +51,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,
             synchronize: options.Synchronize,
             repo: repo,
-            pointerService: pointerService,
+            fileService: pointerService,
             onIndexedPointerFile: async arg =>
             {
                 if (!options.Download)
@@ -72,7 +72,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
             loggerFactory: loggerFactory,
             sourceFunc: () => binariesToDownload,
             maxDegreeOfParallelism: options.DownloadBinaryBlock_Parallelism,
-            pointerService: pointerService,
+            fileService: pointerService,
             options: options,
             repo: repo,
             chunkRehydrating: () =>

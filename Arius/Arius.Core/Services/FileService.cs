@@ -7,12 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services;
 
-internal class PointerService
+internal class FileService
 {
-    private readonly ILogger<PointerService> logger;
+    private readonly ILogger<FileService> logger;
     private readonly IHashValueProvider      hvp;
 
-    public PointerService(ILogger<PointerService> logger, IHashValueProvider hvp)
+    public FileService(ILogger<FileService> logger, IHashValueProvider hvp)
     {
         this.logger = logger;
         this.hvp = hvp;

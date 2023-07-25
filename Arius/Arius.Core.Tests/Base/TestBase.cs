@@ -75,7 +75,7 @@ abstract class TestBase
     }
 
     protected Repository GetRepository() => GetExecutionServices().GetRequiredService<Repository>();
-    protected PointerService GetPointerService() => GetExecutionServices().GetRequiredService<PointerService>();
+    protected FileService GetFileService() => GetExecutionServices().GetRequiredService<FileService>();
     protected IHashValueProvider GetHashValueProvider() => GetExecutionServices().GetRequiredService<IHashValueProvider>();
     protected ILogger<T> GetLogger<T>() => GetExecutionServices().GetRequiredService<ILogger<T>>();
     protected DirectoryInfo GetRestoreTempDirectory(DirectoryInfo root) => GetExecutionServices().GetRequiredService<Configuration.TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
@@ -233,7 +233,7 @@ abstract class TestBase
     /// </summary>
     protected void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
     {
-        var ps = GetPointerService();
+        var ps = GetFileService();
 
         pf = ps.GetPointerFile(fi);
 
