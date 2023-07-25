@@ -42,7 +42,7 @@ internal partial class Repository
         {
             var pfe = new PointerFileEntry()
             {
-                BinaryHash = pf.Hash,
+                BinaryHash = pf.BinaryHash,
                 RelativeName = pf.RelativeName,
                 VersionUtc = versionUtc,
                 IsDeleted = false,

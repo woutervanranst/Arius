@@ -28,7 +28,7 @@ internal class PointerService
         return CreatePointerFileIfNotExists(
             target: target,
             root: bf.Root,
-            binaryHash: bf.Hash,
+            binaryHash: bf.BinaryHash,
             creationTimeUtc: File.GetCreationTimeUtc(bf.FullName),
             lastWriteTimeUtc: File.GetLastWriteTimeUtc(bf.FullName));
     }
@@ -80,7 +80,7 @@ internal class PointerService
             var pf = OpenPointerFile(root, target);
 
             //Check whether the contents of the PointerFile are correct / is it a valid PointerFile / does the hash it refer to match the binaryHash (eg. not in the case of 0 bytes or ...)
-            if (!pf.Hash.Equals(binaryHash))
+            if (!pf.BinaryHash.Equals(binaryHash))
             {
                 //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
 
@@ -226,7 +226,7 @@ internal class PointerService
 
         var bfi = new FileInfo(GetBinaryFileFullName(pf));
 
-        return GetBinaryFile(pf.Root, bfi, pf.Hash, ensureCorrectHash);
+        return GetBinaryFile(pf.Root, bfi, pf.BinaryHash, ensureCorrectHash);
     }
 
     public BinaryFile GetBinaryFile(DirectoryInfo root, PointerFileEntry pfe, bool ensureCorrectHash)

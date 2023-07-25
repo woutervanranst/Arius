@@ -163,7 +163,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         if (binary is not null)
         {
             // 1. The Binary is already restored
-            restoredBinaries.AddOrUpdate(binary.Hash,
+            restoredBinaries.AddOrUpdate(binary.BinaryHash,
                 addValueFactory: _ =>
                 {
                     logger.LogInformation($"Binary '{binary.RelativeName}' already restored.");
@@ -184,12 +184,12 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                     if (tcs.Task.IsCompleted)
                     {
                         // 3.1 + 3.2: BinaryFile already restored, no need to update the tcs
-                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is already restored in '{binary.RelativeName}'");
+                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.BinaryHash.ToShortString()}') is already restored in '{binary.RelativeName}'");
                     }
                     else
                     {
                         // 3.3
-                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.Hash.ToShortString()}') is being downloaded but we encountered a local duplicate ({binary.RelativeName}). Using that one.");
+                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.BinaryHash.ToShortString()}') is being downloaded but we encountered a local duplicate ({binary.RelativeName}). Using that one.");
                         // TODO cancel the ongoing download and use tcs.Task.Result as BinaryFile to copy to pf
 
                         tcs.SetResult(binary);
@@ -202,20 +202,20 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         {
             // 2. The Binary is not yet restored
 
-            var binaryToDownload = restoredBinaries.TryAdd(pf.Hash, new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously));
+            var binaryToDownload = restoredBinaries.TryAdd(pf.BinaryHash, new TaskCompletionSource<BinaryFile>(TaskCreationOptions.RunContinuationsAsynchronously));
             if (binaryToDownload)
             {
                 // 2.1 Download not yet started --> start download
-                logger.LogDebug($"Starting download for Binary '{pf.Hash.ToShortString()}' ('{pf.RelativeName}')");
+                logger.LogDebug($"Starting download for Binary '{pf.BinaryHash.ToShortString()}' ('{pf.RelativeName}')");
 
                 bool restored;
                 try
                 {
-                    restored = await repo.Binaries.TryDownloadAsync(pf.Hash, pointerService.GetBinaryFileInfo(pf), options);
+                    restored = await repo.Binaries.TryDownloadAsync(pf.BinaryHash, pointerService.GetBinaryFileInfo(pf), options);
                 }
                 catch (Exception e)
                 {
-                    var e2 = new InvalidOperationException($"Could not restore binary ({pf.Hash}) for {pf.RelativeName}. Delete the PointerFile, disable synchronize and try again to restore without this binary.", e);
+                    var e2 = new InvalidOperationException($"Could not restore binary ({pf.BinaryHash}) for {pf.RelativeName}. Delete the PointerFile, disable synchronize and try again to restore without this binary.", e);
                     logger.LogError(e2);
 
                     throw e2;
@@ -229,9 +229,9 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 else
                     chunkRehydrating();
 
-                if (!restoredBinaries[pf.Hash].Task.IsCompleted)
+                if (!restoredBinaries[pf.BinaryHash].Task.IsCompleted)
                 {
-                    restoredBinaries[pf.Hash].SetResult(binary); //also set in case of null (ie not restored because still in Archive tier)
+                    restoredBinaries[pf.BinaryHash].SetResult(binary); //also set in case of null (ie not restored because still in Archive tier)
                 }
                 else
                 {
@@ -242,7 +242,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             else
             {
                 // 2.2 Download ongoing --> wait for it
-                binary = await restoredBinaries[pf.Hash].Task;
+                binary = await restoredBinaries[pf.BinaryHash].Task;
             }
 
             if (binary is null)
@@ -260,7 +260,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             //TODO ensure this path is tested
             
             //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
-            logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.Hash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
+            logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.BinaryHash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
             RestoredFromLocal = true;
 
             await using (var ss = await binary.OpenReadAsync())

@@ -34,7 +34,7 @@ internal abstract class BlobBase //: IWithHashValue
     /// <summary>
     /// The Hash of this blob
     /// </summary>
-    public abstract Hash Hash { get; }
+    public abstract Hash ChunkHash { get; }
 
     private const char BlobFolderSeparatorChar = '/';
 }
@@ -53,7 +53,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
 
 
     public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-    public override ChunkHash Hash => new(Name);
+    public override ChunkHash ChunkHash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
 

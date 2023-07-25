@@ -75,7 +75,7 @@ internal partial class ArchiveCommand
                             logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
-                            if (await repo.Binaries.ExistsAsync(pf.Hash))
+                            if (await repo.Binaries.ExistsAsync(pf.BinaryHash))
                                 // The pointer points to an existing binary
                                 await onIndexedPointerFile(pf);
                             else
@@ -93,7 +93,7 @@ internal partial class ArchiveCommand
 
                             if (pf is not null)
                             {
-                                if (pf.Hash != bh)
+                                if (pf.BinaryHash != bh)
                                     throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
                                 if (!await repo.Binaries.ExistsAsync(bh)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
@@ -133,7 +133,7 @@ internal partial class ArchiveCommand
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                 async (pf, ct) =>
                 {
-                    if (!binariesThatWillBeUploaded.Contains(pf.Hash)) //TODO test: create a pointer that points to a nonexisting binary
+                    if (!binariesThatWillBeUploaded.Contains(pf.BinaryHash)) //TODO test: create a pointer that points to a nonexisting binary
                         throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
 
                     await onIndexedPointerFile(pf);
@@ -145,7 +145,7 @@ internal partial class ArchiveCommand
             if (fastHash && pf is not null)
             {
                 //A corresponding PointerFile exists and FastHash is TRUE
-                binaryHash = pf.Hash; //use the hash from the pointerfile
+                binaryHash = pf.BinaryHash; //use the hash from the pointerfile
 
                 logger.LogInformation($"Found BinaryFile '{pf.RelativeName}' with hash '{binaryHash.ToShortString()}' (fasthash)");
             }
@@ -213,7 +213,7 @@ internal partial class ArchiveCommand
                 stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //if we're keeping the local binaries, there are no deltas due to the archive operation
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.Hash, async (_) => await repo.Binaries.ExistsAsync(bf.Hash)); //TODO since this is now backed by a database, we do not need to cache this locally?
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.BinaryHash, async (_) => await repo.Binaries.ExistsAsync(bf.BinaryHash)); //TODO since this is now backed by a database, we do not need to cache this locally?
             if (binaryExistsRemote)
             {
                 // 1 Exists remote
@@ -226,7 +226,7 @@ internal partial class ArchiveCommand
                 /* TryAdd returns true if the new value was added
                  * ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
                  */
-                var binaryToUpload = uploadingBinaries.TryAdd(bf.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                var binaryToUpload = uploadingBinaries.TryAdd(bf.BinaryHash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                 if (binaryToUpload)
                 {
                     // 2.1 Does not yet exist remote and not yet being created --> upload
@@ -236,11 +236,11 @@ internal partial class ArchiveCommand
 
                     stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bp.IncrementalLength);
 
-                    uploadingBinaries[bf.Hash].SetResult();
+                    uploadingBinaries[bf.BinaryHash].SetResult();
                 }
                 else
                 {
-                    var t = uploadingBinaries[bf.Hash].Task;
+                    var t = uploadingBinaries[bf.BinaryHash].Task;
                     if (!t.IsCompleted)
                     {
                         // 2.2 Did not exist remote but is being created
@@ -460,7 +460,7 @@ internal partial class ArchiveCommand
                 {
                     var updated = await cbb.SetAccessTierPerPolicyAsync(targetAccessTier);
                     if (updated)
-                        logger.LogInformation($"Set acces tier to '{targetAccessTier.ToString()}' for chunk '{cbb.Hash.ToShortString()}'");
+                        logger.LogInformation($"Set acces tier to '{targetAccessTier.ToString()}' for chunk '{cbb.ChunkHash.ToShortString()}'");
                 });
         }
     }

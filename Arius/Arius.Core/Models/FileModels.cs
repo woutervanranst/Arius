@@ -41,7 +41,7 @@ internal abstract class FileBase
     /// </summary>
     public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
 
-    public abstract Hash Hash { get; }
+    public abstract Hash BinaryHash { get; }
 
     public override string ToString() => RelativeName;
 }
@@ -61,10 +61,10 @@ internal class PointerFile : FileBase
     /// </summary>
     public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
     {
-        Hash = binaryHash;
+        BinaryHash = binaryHash;
     }
 
-    public override BinaryHash Hash { get; }
+    public override BinaryHash BinaryHash { get; }
 }
 
 /// <inheritdoc cref="FileBase" />
@@ -72,12 +72,12 @@ internal class BinaryFile : FileBase, IChunk
 {
     public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
     {
-        Hash = hash;
+        BinaryHash = hash;
     }
 
-    public override BinaryHash Hash { get; }
+    public override BinaryHash BinaryHash { get; }
 
-    ChunkHash IChunk.Hash => Hash;
+    public ChunkHash ChunkHash => BinaryHash;
 
     /// <summary>
     /// Length (in bytes) of the File
@@ -89,6 +89,6 @@ internal class BinaryFile : FileBase, IChunk
 
     public override string ToString()
     {
-        return $"'{Name}' ('{Hash.ToShortString()}')";
+        return $"'{Name}' ('{BinaryHash.ToShortString()}')";
     }
 }
