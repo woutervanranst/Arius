@@ -90,7 +90,7 @@ internal class BinaryFile : RelativeFileBase, IChunk
     ChunkHash IChunk.Hash => new (Hash);
 
     public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
-    public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override string ToString()
     {
