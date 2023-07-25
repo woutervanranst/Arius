@@ -20,6 +20,17 @@ internal partial class ArchiveCommand
 {
     private class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
+        private readonly ArchiveCommandStatistics                                  stats;
+        private readonly bool                                                      fastHash;
+        private readonly PointerService                                            pointerService;
+        private readonly Repository                                                repo;
+        private readonly IHashValueProvider                                        hvp;
+        private readonly int                                                       maxDegreeOfParallelism;
+        private readonly TaskCompletionSource                                      binaryFileUploadCompletedTaskCompletionSource;
+        private readonly Func<PointerFile, Task>                                   onIndexedPointerFile;
+        private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
+        private readonly Action                                                    onBinaryFileIndexCompleted;
+
         public IndexBlock(ArchiveCommand command,
             Func<DirectoryInfo> sourceFunc,
             int maxDegreeOfParallelism,
@@ -32,29 +43,18 @@ internal partial class ArchiveCommand
                 sourceFunc: sourceFunc, 
                 onCompleted: onCompleted)
         {
-            this.stats = command.stats;
-            this.fastHash = command.executionServices.Options.FastHash;
+            this.stats          = command.stats;
+            this.fastHash       = command.executionServices.Options.FastHash;
             this.pointerService = command.executionServices.GetRequiredService<PointerService>();
-            this.repo = command.executionServices.GetRequiredService<Repository>();
-            this.hvp = command.executionServices.GetRequiredService<IHashValueProvider>();
+            this.repo           = command.executionServices.GetRequiredService<Repository>();
+            this.hvp            = command.executionServices.GetRequiredService<IHashValueProvider>();
 
-            this.maxDegreeOfParallelism = maxDegreeOfParallelism;
+            this.maxDegreeOfParallelism                        = maxDegreeOfParallelism;
             this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
-            this.onIndexedPointerFile = onIndexedPointerFile;
-            this.onIndexedBinaryFile = onIndexedBinaryFile;
-            this.onBinaryFileIndexCompleted = onBinaryFileIndexCompleted;
+            this.onIndexedPointerFile                          = onIndexedPointerFile;
+            this.onIndexedBinaryFile                           = onIndexedBinaryFile;
+            this.onBinaryFileIndexCompleted                    = onBinaryFileIndexCompleted;
         }
-
-        private readonly ArchiveCommandStatistics stats;
-        private readonly bool fastHash;
-        private readonly PointerService pointerService;
-        private readonly Repository repo;
-        private readonly IHashValueProvider hvp;
-        private readonly int maxDegreeOfParallelism;
-        private readonly TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource;
-        private readonly Func<PointerFile, Task> onIndexedPointerFile;
-        private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
-        private readonly Action onBinaryFileIndexCompleted;
 
         protected override async Task TaskBodyImplAsync(DirectoryInfo root)
         {
