@@ -34,8 +34,8 @@ static class FileSystem
 
     private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
     public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
-    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.fileService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
-    public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.fileService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
+    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
+    public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 

@@ -46,7 +46,7 @@ static class Arius
     internal static string ContainerName { get; private set; }
     internal static IServiceProvider GetServiceProvider() => ExecutionServiceProvider<RepositoryOptions>.BuildServiceProvider(NullLoggerFactory.Instance, options).Services;
     internal static Repository GetRepository() => GetServiceProvider().GetRequiredService<Repository>();
-    internal static Lazy<FileService> fileService = new(() => GetServiceProvider().GetRequiredService<FileService>());
+    internal static Lazy<FileService> FileService = new(() => GetServiceProvider().GetRequiredService<FileService>());
     //private static Lazy<Facade> facade = new(() =>
     //{
     //    var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
