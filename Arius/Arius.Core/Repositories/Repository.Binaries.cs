@@ -180,7 +180,7 @@ internal partial class Repository
         {
             var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 
-            return (((IChunk)bf).ChunkHash.AsArray(), length, length);
+            return (bf.ChunkHash.AsArray(), length, length);
         }
 
         // --- BINARY DOWNLOAD ------------------------------------------------
