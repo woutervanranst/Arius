@@ -34,7 +34,7 @@ internal abstract class BlobBase //: IWithHashValue
     /// <summary>
     /// The Hash of this blob
     /// </summary>
-    public abstract Hash ChunkHash { get; }
+    public abstract ChunkHash ChunkHash { get; }
 
     private const char BlobFolderSeparatorChar = '/';
 }
