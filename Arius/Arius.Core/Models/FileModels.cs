@@ -4,11 +4,11 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Models;
 
-internal abstract class RelativeFileBase
+internal abstract class FileBase
 {
     protected readonly FileInfo fi;
 
-    protected RelativeFileBase(DirectoryInfo root, FileInfo fi)
+    protected FileBase(DirectoryInfo root, FileInfo fi)
     {
         this.fi = fi;
         Root = root;
@@ -57,7 +57,7 @@ internal abstract class RelativeFileBase
 }
 
 /// <inheritdoc/>
-internal class PointerFile : RelativeFileBase
+internal class PointerFile : FileBase
 {
     public static readonly string Extension = ".pointer.arius";
 
@@ -77,8 +77,8 @@ internal class PointerFile : RelativeFileBase
     public override BinaryHash Hash { get; }
 }
 
-/// <inheritdoc cref="RelativeFileBase" />
-internal class BinaryFile : RelativeFileBase, IChunk
+/// <inheritdoc cref="FileBase" />
+internal class BinaryFile : FileBase, IChunk
 {
     public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
     {
