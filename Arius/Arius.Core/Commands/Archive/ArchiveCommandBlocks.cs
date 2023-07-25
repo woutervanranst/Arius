@@ -72,7 +72,7 @@ internal partial class ArchiveCommand
                         if (fi.IsPointerFile())
                         {
                             // PointerFile
-                            logger.LogInformation($"Found PointerFile '{pf.RelativeName}'");
+                            logger.LogInformation($"Found PointerFile {pf}");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
                             if (await repo.Binaries.ExistsAsync(pf.BinaryHash))
@@ -88,24 +88,24 @@ internal partial class ArchiveCommand
                             var bh = GetBinaryHash(root, fi, pf);
                             var bf = new BinaryFile(root, fi, bh);
 
-                            logger.LogInformation($"Found BinaryFile '{bf.RelativeName}'");
+                            logger.LogInformation($"Found BinaryFile {bf}");
                             stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
                             if (pf is not null)
                             {
                                 if (pf.BinaryHash != bh)
-                                    throw new InvalidOperationException($"The PointerFile '{pf.FullName}' is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+                                    throw new InvalidOperationException($"The PointerFile {pf} is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
                                 if (!await repo.Binaries.ExistsAsync(bh)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
                                 {
-                                    logger.LogWarning($"BinaryFile '{bf.RelativeName}' has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
+                                    logger.LogWarning($"BinaryFile {bf} has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
                                     await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                                 }
                                 else
                                 {
                                     //An equivalent PointerFile already exists and is already being sent through the pipe to have a PointerFileEntry be created - skip.
 
-                                    logger.LogInformation($"BinaryFile '{bf.RelativeName}' already has a PointerFile that is being processed. Skipping BinaryFile.");
+                                    logger.LogInformation($"BinaryFile {bf} already has a PointerFile that is being processed. Skipping BinaryFile.");
                                     await onIndexedBinaryFile((bf, AlreadyBackedUp: true));
                                 }
                             }
@@ -147,7 +147,7 @@ internal partial class ArchiveCommand
                 //A corresponding PointerFile exists and FastHash is TRUE
                 binaryHash = pf.BinaryHash; //use the hash from the pointerfile
 
-                logger.LogInformation($"Found BinaryFile '{pf.RelativeName}' with hash '{binaryHash.ToShortString()}' (fasthash)");
+                logger.LogInformation($"Found BinaryFile {pf} (fasthash)");
             }
             else
             {
@@ -288,11 +288,11 @@ internal partial class ArchiveCommand
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
         {
-            logger.LogDebug($"Creating pointer for '{bf.RelativeName}'...");
+            logger.LogDebug($"Creating pointer for {bf}...");
 
             var (created, pf) = pointerService.CreatePointerFileIfNotExists(bf);
 
-            logger.LogInformation($"Creating pointer for '{bf.RelativeName}'... done");
+            logger.LogInformation($"Creating pointer for {bf}... done");
             if (created)
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: 1);
 
@@ -324,23 +324,23 @@ internal partial class ArchiveCommand
 
         protected override async Task ForEachBodyImplAsync(PointerFile pointerFile, CancellationToken ct)
         {
-            logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'...");
+            logger.LogDebug($"Upserting PointerFile entry for {pointerFile}...");
 
             var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
 
             switch (r)
             {
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.Inserted:
-                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted entry.");
+                    logger.LogInformation($"Upserting PointerFile entry for {pointerFile}... done. Inserted entry.");
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1);
                     break;
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
                     // TODO IS THIS EVER HIT?? I dont think so - the deleted entry is created in CreateDeletedPointerFileEntryForDeletedPointerFilesBlock
-                    logger.LogInformation($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. Inserted 'deleted' entry.");
+                    logger.LogInformation($"Upserting PointerFile entry for {pointerFile}... done. Inserted 'deleted' entry.");
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
                     break;
                 case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
-                    logger.LogDebug($"Upserting PointerFile entry for '{pointerFile.RelativeName}'... done. No change made, latest entry was up to date.");
+                    logger.LogDebug($"Upserting PointerFile entry for {pointerFile}... done. No change made, latest entry was up to date.");
                     break;
                 default:
                     throw new NotImplementedException();
@@ -371,12 +371,12 @@ internal partial class ArchiveCommand
         { 
             if (File.Exists(bf.FullName))
             {
-                logger.LogDebug($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'...");
+                logger.LogDebug($"RemoveLocal flag is set - Deleting binary {bf}...");
                 stats.AddLocalRepositoryStatistic(deltaFiles: -1, deltaSize: bf.Length * -1); //NOTE this is before the Delete() call because bf.Length does not work on an unexisting file //TODO test icw  
 
                 bf.Delete();
 
-                logger.LogInformation($"RemoveLocal flag is set - Deleting binary '{bf.RelativeName}'... done");
+                logger.LogInformation($"RemoveLocal flag is set - Deleting binary {bf}... done");
             }
 
             return Task.CompletedTask;
@@ -419,7 +419,7 @@ internal partial class ArchiveCommand
                 pointerService.GetPointerFile(root, pfe) is null &&
                 pointerService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
-                logger.LogInformation($"The pointer or binary for '{pfe.RelativeName}' no longer exists locally, marking entry as deleted");
+                logger.LogInformation($"The pointer or binary for '{pfe}' no longer exists locally, marking entry as deleted");
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);
                 stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
 

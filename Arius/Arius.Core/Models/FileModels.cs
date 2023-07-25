@@ -43,7 +43,7 @@ internal abstract class FileBase
 
     public abstract Hash BinaryHash { get; }
 
-    public override string ToString() => RelativeName;
+    public override string ToString() => $"'{RelativeName}' ({BinaryHash.ToShortString()})";
 }
 
 /// <inheritdoc/>
@@ -86,9 +86,4 @@ internal class BinaryFile : FileBase, IChunk
 
     public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
     //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
-
-    public override string ToString()
-    {
-        return $"'{Name}' ('{BinaryHash.ToShortString()}')";
-    }
 }
