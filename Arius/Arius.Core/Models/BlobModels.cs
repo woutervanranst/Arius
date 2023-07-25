@@ -76,7 +76,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     }
         
     public abstract Task<Stream> OpenReadAsync();
-    public abstract Task<Stream> OpenWriteAsync();
+    //public abstract Task<Stream> OpenWriteAsync();
         
     /// <summary>
     ///  The URI to this blob
@@ -117,7 +117,7 @@ internal class ChunkBlobItem : ChunkBlobBase
     public override string FullName => bi.Name;
 
     public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
-    public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    //public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override Uri Uri => throw new NotImplementedException();
 }
@@ -169,7 +169,7 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
     public override string FullName => bbc.Name;
 
     public override Task<Stream> OpenReadAsync() => bbc.OpenReadAsync();
-    public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    //public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override Uri Uri => bbc.Uri;
 }
