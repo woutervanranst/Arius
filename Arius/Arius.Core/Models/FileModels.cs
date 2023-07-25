@@ -24,8 +24,6 @@ internal abstract class FileBase
     /// </summary>
     public string Name => fi.Name;
 
-
-
     /// <summary>
     /// Delete the File
     /// </summary>
@@ -86,7 +84,7 @@ internal class BinaryFile : FileBase, IChunk
     /// </summary>
     public long Length => fi.Length;
 
-    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
+    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
     //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override string ToString()
