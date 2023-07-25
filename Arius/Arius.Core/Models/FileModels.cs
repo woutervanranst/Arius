@@ -24,15 +24,7 @@ internal abstract class FileBase
     /// </summary>
     public string Name => fi.Name;
 
-    /// <summary>
-    /// The Directory where this File resides
-    /// </summary>
-    public DirectoryInfo Directory => fi.Directory;
 
-    /// <summary>
-    /// Length (in bytes) of the File
-    /// </summary>
-    public long Length => fi.Length;
 
     /// <summary>
     /// Delete the File
@@ -88,6 +80,11 @@ internal class BinaryFile : FileBase, IChunk
     public override BinaryHash Hash { get; }
 
     ChunkHash IChunk.Hash => Hash;
+
+    /// <summary>
+    /// Length (in bytes) of the File
+    /// </summary>
+    public long Length => fi.Length;
 
     public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
     //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
