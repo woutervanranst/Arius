@@ -20,6 +20,7 @@ internal class ExecutionServiceProvider<TOptions> where TOptions : IRepositoryOp
                 .AddLogging()
 
                 .AddSingleton<FileService>()
+                .AddSingleton<FileSystemService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
                 .AddSingleton<Repository>()
 

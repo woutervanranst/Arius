@@ -6,7 +6,7 @@
     },
     "archive with args": {
       "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\Woute\\Documents -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool --remove-local"
+      "commandLineArgs": "archive C:\\Users\\woute\\Documents\\AriusTest -n %ARIUS_ACCOUNT_NAME% -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool"
     },
     "restore": {
       "commandName": "Project",
@@ -16,6 +16,5 @@
       "commandName": "Project",
       "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archivededup --synchronize"
     }
-
   }
 }

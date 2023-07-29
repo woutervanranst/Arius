@@ -20,22 +20,25 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
        int maxDegreeOfParallelism,
        bool synchronize,
        Repository repo,
+       FileSystemService fileSystemService,
        FileService fileService,
        Func<PointerFile, Task> onIndexedPointerFile,
        Action onCompleted)
        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: onCompleted)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-        this.synchronize = synchronize;
-        this.repo = repo;
-        this.fileService = fileService;
-        this.onIndexedPointerFile = onIndexedPointerFile;
+        this.synchronize            = synchronize;
+        this.repo                   = repo;
+        this.fileSystemService      = fileSystemService;
+        this.fileService            = fileService;
+        this.onIndexedPointerFile   = onIndexedPointerFile;
     }
 
-    private readonly int maxDegreeOfParallelism;
-    private readonly bool synchronize;
-    private readonly Repository repo;
-    private readonly FileService fileService;
+    private readonly int                     maxDegreeOfParallelism;
+    private readonly bool                    synchronize;
+    private readonly Repository              repo;
+    private readonly FileSystemService       fileSystemService;
+    private readonly FileService             fileService;
     private readonly Func<PointerFile, Task> onIndexedPointerFile;
 
     protected override async Task TaskBodyImplAsync(FileSystemInfo source)
@@ -88,7 +91,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     {
         var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
 
-        Parallel.ForEach(root.GetPointerFileInfos(),
+        Parallel.ForEach(fileSystemService.GetPointerFileInfos(root),
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             (pfi) =>
             {
@@ -110,14 +113,14 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
         if (source is DirectoryInfo root)
             await ProcessPointersInDirectory(root);
         else if (source is FileInfo fi && fi.IsPointerFile())
-            await onIndexedPointerFile(fileService.GetPointerFile(fi.Directory, fi)); //TODO test dit in non root
+            await onIndexedPointerFile(fileService.GetExistingPointerFile(fi.Directory, FileSystemService.GetPointerFileInfo(fi))); //TODO test dit in non root
         else
             throw new InvalidOperationException($"Argument {source} is not valid");
     }
 
     private async Task ProcessPointersInDirectory(DirectoryInfo root)
     {
-        var pfs = root.GetPointerFileInfos().Select(fi => fileService.GetPointerFile(root, fi));
+        var pfs = fileSystemService.GetPointerFileInfos(root).Select(pfi => fileService.GetExistingPointerFile(root, pfi));
 
         foreach (var pf in pfs)
             await onIndexedPointerFile(pf);
@@ -159,7 +162,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
          * 3.   We encounter a restored BinaryFile while we are downloading the same binary?????????????????????????????????????????????????????????
          */
 
-        var binary = fileService.GetBinaryFile(pf, ensureCorrectHash: true);
+        var binary = await fileService.GetExistingBinaryFileAsync(pf, assertHash: true);
         if (binary is not null)
         {
             // 1. The Binary is already restored
@@ -211,7 +214,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 bool restored;
                 try
                 {
-                    restored = await repo.Binaries.TryDownloadAsync(pf.BinaryHash, fileService.GetBinaryFileInfo(pf), options);
+                    restored = await repo.Binaries.TryDownloadAsync(pf.BinaryHash, FileSystemService.GetBinaryFileInfo(pf), options);
                 }
                 catch (Exception e)
                 {
@@ -224,7 +227,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 if (restored)
                 {
                     RestoredFromOnlineTier = true;
-                    binary = fileService.GetBinaryFile(pf, ensureCorrectHash: true);
+                    binary = await fileService.GetExistingBinaryFileAsync(pf, assertHash: true);
                 }
                 else
                     chunkRehydrating();
@@ -254,7 +257,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
         }
 
-        var targetBinary = fileService.GetBinaryFileInfo(pf);
+        var targetBinary = FileSystemService.GetBinaryFileInfo(pf);
         if (!targetBinary.Exists)
         {
             //TODO ensure this path is tested

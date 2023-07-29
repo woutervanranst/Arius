@@ -24,6 +24,7 @@ internal partial class ArchiveCommand
         private readonly ArchiveCommandStatistics                                  stats;
         private readonly bool                                                      fastHash;
         private readonly FileService                                               fileService;
+        private readonly FileSystemService                                         fileSystemService;
         private readonly Repository                                                repo;
         private readonly IHashValueProvider                                        hvp;
         private readonly int                                                       maxDegreeOfParallelism;
@@ -44,11 +45,12 @@ internal partial class ArchiveCommand
                 sourceFunc: sourceFunc, 
                 onCompleted: onCompleted)
         {
-            this.stats          = command.stats;
-            this.fastHash       = command.executionServices.Options.FastHash;
-            this.fileService = command.executionServices.GetRequiredService<FileService>();
-            this.repo           = command.executionServices.GetRequiredService<Repository>();
-            this.hvp            = command.executionServices.GetRequiredService<IHashValueProvider>();
+            this.stats             = command.stats;
+            this.fastHash          = command.executionServices.Options.FastHash;
+            this.fileService       = command.executionServices.GetRequiredService<FileService>();
+            this.fileSystemService = command.executionServices.GetRequiredService<FileSystemService>();
+            this.repo              = command.executionServices.GetRequiredService<Repository>();
+            this.hvp               = command.executionServices.GetRequiredService<IHashValueProvider>();
 
             this.maxDegreeOfParallelism                        = maxDegreeOfParallelism;
             this.binaryFileUploadCompletedTaskCompletionSource = binaryFileUploadCompletedTaskCompletionSource;
@@ -62,17 +64,17 @@ internal partial class ArchiveCommand
             var latentPointers = new ConcurrentQueue<PointerFile>();
             var binariesThatWillBeUploaded = new ConcurrentHashSet<BinaryHash>();
 
-            await Parallel.ForEachAsync(root.GetAllFileInfos(logger),
+            await Parallel.ForEachAsync(fileSystemService.GetAllFileInfos(root),
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                 async (fi, ct) =>
                 {
                     try
-                    { 
-                        var pf = fileService.GetPointerFile(root, fi);
-
-                        if (fi.IsPointerFile())
+                    {
+                        if (fi is PointerFileInfo pfi)
                         {
                             // PointerFile
+                            var pf = fileService.GetExistingPointerFile(root, pfi);
+                            
                             logger.LogInformation($"Found PointerFile {pf}");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
@@ -83,23 +85,23 @@ internal partial class ArchiveCommand
                                 // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
                                 latentPointers.Enqueue(pf);
                         }
-                        else
+                        else if (fi is BinaryFileInfo bfi)
                         {
                             // BinaryFile
-                            var bh = GetBinaryHash(root, fi, pf);
-                            var bf = new BinaryFile(root, fi, bh);
+                            var bf = await fileService.GetExistingBinaryFileAsync(root, bfi, fastHash);
 
                             logger.LogInformation($"Found BinaryFile {bf}");
                             stats.AddLocalRepositoryStatistic(beforeFiles: 1, beforeSize: bf.Length);
 
+                            var pf = fileService.GetExistingPointerFile(bf);
                             if (pf is not null)
                             {
-                                if (pf.BinaryHash != bh)
+                                if (pf.BinaryHash != bf.BinaryHash)
                                     throw new InvalidOperationException($"The PointerFile {pf} is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-                                if (!await repo.Binaries.ExistsAsync(bh)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
+                                if (!await repo.Binaries.ExistsAsync(bf.BinaryHash)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
                                 {
-                                    logger.LogWarning($"BinaryFile {bf} has a PointerFile that points to a nonexisting (remote) Binary ('{bh.ToShortString()}'). Uploading binary again.");
+                                    logger.LogWarning($"BinaryFile {bf} has a PointerFile that points to a nonexisting (remote) Binary ('{bf.BinaryHash.ToShortString()}'). Uploading binary again.");
                                     await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                                 }
                                 else
@@ -116,8 +118,10 @@ internal partial class ArchiveCommand
                                 await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
                             }
 
-                            binariesThatWillBeUploaded.Add(bh);
+                            binariesThatWillBeUploaded.Add(bf.BinaryHash);
                         }
+                        else
+                            throw new NotImplementedException();
                     }
                     catch (IOException e) when (e.Message.Contains("virus"))
                     {
@@ -139,31 +143,6 @@ internal partial class ArchiveCommand
 
                     await onIndexedPointerFile(pf);
                 });
-        }
-        private BinaryHash GetBinaryHash(DirectoryInfo root, FileInfo fi, PointerFile pf)
-        {
-            BinaryHash binaryHash = default;
-            if (fastHash && pf is not null)
-            {
-                //A corresponding PointerFile exists and FastHash is TRUE
-                binaryHash = pf.BinaryHash; //use the hash from the pointerfile
-
-                logger.LogInformation($"Found BinaryFile {pf} (fasthash)");
-            }
-            else
-            {
-                var rn = fi.GetRelativeName(root);
-
-                logger.LogInformation($"Found BinaryFile '{rn}'. Hashing...");
-
-                var (MBps, _, seconds) = new Stopwatch().GetSpeed(fi.Length, () =>
-                    binaryHash = hvp.GetBinaryHash(fi));
-
-                logger.LogInformation($"Found BinaryFile '{rn}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{binaryHash.ToShortString()}'");
-            }
-
-            return binaryHash;
-            // 
         }
     }
 
@@ -417,8 +396,8 @@ internal partial class ArchiveCommand
         protected override async Task ForEachBodyImplAsync(PointerFileEntry pfe, CancellationToken ct)
         {
             if (!pfe.IsDeleted &&
-                fileService.GetPointerFile(root, pfe) is null &&
-                fileService.GetBinaryFile(root, pfe, ensureCorrectHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
+                fileService.GetExistingPointerFile(root, pfe) is null &&
+                await fileService.GetExistingBinaryFileAsync(root, pfe, assertHash: false) is null) //PointerFileEntry is marked as exists and there is no PointerFile and there is no BinaryFile (only on PointerFile may not work since it may still be in the pipeline to be created)
             {
                 logger.LogInformation($"The pointer or binary for '{pfe}' no longer exists locally, marking entry as deleted");
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);

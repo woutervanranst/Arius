@@ -190,7 +190,7 @@ internal partial class Repository
         /// Start hydration for the chunks if required.
         /// Returns null if the Binary is not yet hydrated
         /// </summary>
-        public async Task<bool> TryDownloadAsync(BinaryHash bh, FileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
+        public async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
         {
             var chs = await GetChunkHashesAsync(bh);
             var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
@@ -219,7 +219,7 @@ internal partial class Repository
                 var p = await GetPropertiesAsync(bh);
                 var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
                 {
-                    await using var ts = target.OpenWrite();
+                    await using var ts = target.OpenWrite(); // TODO add async 
                     
                     // Faster version but more code
                     //if (chunks.Length == 1)

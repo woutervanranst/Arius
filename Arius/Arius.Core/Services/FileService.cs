@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -10,256 +12,242 @@ namespace Arius.Core.Services;
 internal class FileService
 {
     private readonly ILogger<FileService> logger;
-    private readonly IHashValueProvider      hvp;
+    private readonly IHashValueProvider   hvp;
 
     public FileService(ILogger<FileService> logger, IHashValueProvider hvp)
     {
         this.logger = logger;
-        this.hvp = hvp;
+        this.hvp    = hvp;
     }
 
+    // --------- GetExistingPointerFile ---------
+
     /// <summary>
-    /// Create a pointer from a BinaryFile
+    /// Return the EXISTING PointerFile for the given BinaryFileInfo.
+    /// If the PointerFile does not exist, returns NULL.
     /// </summary>
-    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(BinaryFile bf)
+    public PointerFile GetExistingPointerFile(DirectoryInfo root, BinaryFileInfo bfi)
     {
-        var target = new FileInfo(GetPointerFileFullName(bf));
-
-        return CreatePointerFileIfNotExists(
-            target: target,
-            root: bf.Root,
-            binaryHash: bf.BinaryHash,
-            creationTimeUtc: File.GetCreationTimeUtc(bf.FullName),
-            lastWriteTimeUtc: File.GetLastWriteTimeUtc(bf.FullName));
+        return GetExistingPointerFile(root, FileSystemService.GetPointerFileInfo(bfi));
     }
-
     /// <summary>
-    /// Create a pointer from a PointerFileEntry
-    /// </summary>
-    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileEntry pfe)
-    {
-        var target = new FileInfo(Path.Combine(root.FullName, pfe.RelativeName));
-
-        return CreatePointerFileIfNotExists(
-            target: target,
-            root: root,
-            binaryHash: pfe.BinaryHash,
-            creationTimeUtc: pfe.CreationTimeUtc!.Value,
-            lastWriteTimeUtc: pfe.LastWriteTimeUtc!.Value);
-    }
-
-    private (bool created, PointerFile pf) CreatePointerFileIfNotExists(FileInfo target, DirectoryInfo root, BinaryHash binaryHash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
-    {
-        if (!target.Exists)
-        {
-            // Create the PointerFile
-            if (!target.Directory!.Exists) target.Directory.Create();
-
-            var pfc = new PointerFileContents { BinaryHash = binaryHash.Value };
-            var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
-            
-            if (target.Directory is var d && !d.Exists) d.Create();
-            using var s = target.OpenWrite();
-            s.Write(json);
-            s.Close();
-            //File.WriteAllBytes(target.FullName, json); //TODO bug in netcore6rc1 - WriteAllBytes keeps the file open?
-
-            //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
-            //pointerFileInfo.CreationTimeUtc = creationTimeUtc;
-            //pointerFileInfo.LastWriteTimeUtc = lastWriteTimeUtc;
-            File.SetCreationTimeUtc(target.FullName, creationTimeUtc);
-            File.SetLastWriteTimeUtc(target.FullName, lastWriteTimeUtc);
-
-            logger.LogInformation($"Created PointerFile '{target.GetRelativeName(root)}'");
-
-            return (true, new PointerFile(root, target, binaryHash));
-        }
-        else
-        {
-            // The PointerFile exists
-            var pf = OpenPointerFile(root, target);
-
-            //Check whether the contents of the PointerFile are correct / is it a valid PointerFile / does the hash it refer to match the binaryHash (eg. not in the case of 0 bytes or ...)
-            if (!pf.BinaryHash.Equals(binaryHash))
-            {
-                //throw new ApplicationException($"The PointerFile {pf.RelativeName} is out of sync. Delete the file and restart the operation."); //TODO TEST
-
-                //Graceful - Recreate the pointer
-                logger.LogWarning($"The PointerFile {pf.RelativeName} is broken. Overwriting");
-                target.Delete();
-                (_, pf) = CreatePointerFileIfNotExists(target, root, binaryHash, creationTimeUtc, lastWriteTimeUtc);
-            }
-
-            return (false, pf);
-        }
-    }
-
-    private struct PointerFileContents
-    {
-        public string BinaryHash { get; init; }
-    }
-
-
-
-    /// <summary>
-    /// Get the PointerFile for the given FileInfo assuming it is in the root.
-    /// If the FileInfo is for a PointerFile, return the PointerFile.
-    /// If the FileInfo is for a BinaryFile, return the equivalent (in name and LastWriteTime) PointerFile, if it exists.
-    /// If it does not exist, return null.
-    /// </summary>
-    public PointerFile GetPointerFile(FileInfo fi) => GetPointerFile(fi.Directory, fi);
-
-    /// <summary>
-    /// Get the PointerFile for the given FileInfo with the given root.
-    /// If the FileInfo is for a PointerFile, return the PointerFile.
-    /// If the FileInfo is for a BinaryFile, return the equivalent (in name and LastWriteTime) PointerFile, if it exists.
-    /// If it does not exist, return null.
-    /// </summary>
-    public PointerFile GetPointerFile(DirectoryInfo root, FileInfo fi)
-    {
-        if (fi.IsPointerFile())
-        {
-            return OpenPointerFile(root, fi);
-        }
-        else
-        {
-            var pfi = new FileInfo(GetPointerFileFullName(fi.FullName));
-
-            if (!pfi.Exists)
-                return null; // if the PointerFile does not exist, return null
-
-            if (File.Exists(fi.FullName) && pfi.LastWriteTimeUtc != fi.LastWriteTimeUtc) // TODO PointerComparer instead?
-                return null; // if the BinaryFile exists but the LastWriteTime does not match, return null
-
-            return OpenPointerFile(root, pfi);
-        }
-    }
-
-    /// <summary>
-    /// Get the equivalent (in name and LastWriteTime) PointerFile if it exists.
-    /// If it does not exist, return null.
-    /// </summary>
-    /// <returns></returns>
-    public PointerFile GetPointerFile(BinaryFile bf)
-    {
-        var pfi = new FileInfo(GetPointerFileFullName(bf));
-
-        if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
-            return null;
-
-        return OpenPointerFile(bf.Root, pfi);
-    }
-
-    private PointerFile OpenPointerFile(DirectoryInfo root, FileInfo pointerFileInfo)
-    {
-        if (!pointerFileInfo.IsPointerFile())
-            throw new ArgumentException($"'{pointerFileInfo.FullName}' is not a valid PointerFile");
-
-        var bytes = File.ReadAllBytes(pointerFileInfo.FullName);
-        PointerFileContents pfc;
-        try
-        {
-            pfc = JsonSerializer.Deserialize<PointerFileContents>(bytes);
-        }
-        catch (JsonException e)
-        {
-            // is this a v1 PointerFile?
-            if (new BinaryHash(File.ReadAllText(pointerFileInfo.FullName)) is var bh2 && hvp.IsValid(bh2))
-            {
-                // Upgrade v1
-                logger.LogInformation($"Upgrading v1 PointerFile '{pointerFileInfo.FullName}'");
-                var cr = pointerFileInfo.CreationTimeUtc;
-                var lw = pointerFileInfo.LastWriteTimeUtc;
-                pointerFileInfo.Delete();
-                CreatePointerFileIfNotExists(pointerFileInfo, root, bh2, cr, lw);
-                return new PointerFile(root, pointerFileInfo, bh2);
-            }
-            else
-            {
-                var e2 = new ArgumentException($"'{pointerFileInfo.FullName}' is not a valid PointerFile", e);
-                logger.LogError(e2);
-                
-                throw e2;
-            }
-        }
-
-        var bh = new BinaryHash(pfc.BinaryHash);
-
-        if (!hvp.IsValid(bh))
-            throw new ArgumentException($"'{pointerFileInfo.FullName}' is not a valid PointerFile");
-
-        return new PointerFile(root, pointerFileInfo, bh);
-    }
-
-    /// <summary>
-    /// Get the PointerFile corresponding to the PointerFileEntry, if it exists.
+    /// Return the EXISTING PointerFile Get the PointerFile corresponding to the PointerFileEntry, if it exists.
     /// If it does not, return null
     /// </summary>
     /// <param name="pfe"></param>
     /// <returns></returns>
-    public PointerFile GetPointerFile(DirectoryInfo root, PointerFileEntry pfe)
+    public PointerFile GetExistingPointerFile(DirectoryInfo root, PointerFileEntry pfe)
     {
-        var pfi = new FileInfo(GetPointerFileFullName(root, pfe));
-
+        return GetExistingPointerFile(root, FileSystemService.GetPointerFileInfo(root, pfe));
+    }
+    /// <summary>
+    /// Return the EXISTING PointerFile for the PointerFileInfo.
+    /// If the PointerFile does not exist, returns NULL.
+    /// </summary>
+    public PointerFile GetExistingPointerFile(DirectoryInfo root, PointerFileInfo pfi)
+    {
         if (!pfi.Exists) //TODO check op LastWriteTimeUtc ook?
             return null;
-            
-        return OpenPointerFile(root, pfi);
+
+        var bh = ReadPointerFile(pfi.FullName);
+        
+        return new PointerFile(root, pfi, bh);
     }
-
-    internal static string GetPointerFileFullName(BinaryFile bf) => GetPointerFileFullName(bf.FullName);
-    internal static string GetPointerFileFullName(FileInfo binaryFileInfo) => GetPointerFileFullName(binaryFileInfo.FullName);
-    internal static string GetPointerFileFullName(string binaryFileFullName) => $"{binaryFileFullName}{PointerFile.Extension}";
-    internal static string GetPointerFileFullName(DirectoryInfo root, PointerFileEntry pfe) => Path.Combine(root.FullName, pfe.RelativeName);
-
-    
     /// <summary>
-    /// Get the local BinaryFile for this pointer if it exists.
-    /// If it does not exist, return null.
+    /// Return the EXISTING equivalent (in Name and LastWriteTime) PointerFile for the BinaryFile.
+    /// If it does not exist, return NULL.
     /// </summary>
-    /// <param name="pf"></param>
-    /// <param name="ensureCorrectHash">If we find an existing BinaryFile, calculate the hash and ensure it is correct</param>
-    /// <returns></returns>
-    public BinaryFile GetBinaryFile(PointerFile pf, bool ensureCorrectHash)
+    public PointerFile GetExistingPointerFile(BinaryFile bf)
     {
-        ArgumentNullException.ThrowIfNull(pf);
+        var pfi = FileSystemService.GetPointerFileInfo(bf);
 
-        var bfi = new FileInfo(GetBinaryFileFullName(pf));
+        if (!pfi.Exists || pfi.LastWriteTimeUtc != File.GetLastWriteTimeUtc(bf.FullName))
+            return null;
 
-        return GetBinaryFile(pf.Root, bfi, pf.BinaryHash, ensureCorrectHash);
+        return new PointerFile(bf.Root, pfi, bf.BinaryHash);
     }
+    
 
-    public BinaryFile GetBinaryFile(DirectoryInfo root, PointerFileEntry pfe, bool ensureCorrectHash)
-    {
-        var bfi = new FileInfo(GetBinaryFileFullname(root, pfe));
-
-        return GetBinaryFile(root, bfi, pfe.BinaryHash, ensureCorrectHash);
-    }
-
-    private BinaryFile GetBinaryFile(DirectoryInfo root, FileInfo bfi, BinaryHash binaryHash, bool ensureCorrectHash)
+    /// <summary>
+    /// Return the EXISTING BinaryFile for the given BinaryFileInfo.
+    /// If a corresponing PointerFile is present and the `fastHash` option is specified, use the hash of the PointerFile for speed
+    /// If the BinaryFile does not exist, returns NULL
+    /// </summary>
+    public async Task<BinaryFile> GetExistingBinaryFileAsync(DirectoryInfo root, BinaryFileInfo bfi, bool fastHash)
     {
         if (!bfi.Exists)
             return null;
 
-        if (ensureCorrectHash)
+        var relativeName = Path.GetRelativePath(root.FullName, bfi.FullName);
+        var bh = await GetPointerFileHash();
+        return new BinaryFile(root, bfi, bh);
+
+
+        async Task<BinaryHash> GetPointerFileHash()
         {
-            var bh2 = hvp.GetBinaryHash(bfi.FullName);
-            if (binaryHash != bh2)
+            BinaryHash hash = default;
+            if (fastHash)
             {
-                logger.LogWarning($"Hash of {bfi.FullName}: '{bh2}'. Should be: '{binaryHash}'");
-                throw new InvalidOperationException($"The existing BinaryFile {bfi.FullName} is out of sync (invalid hash) with the PointerFile. Delete the BinaryFile and try again. If the file is intact, was it archived with fasthash and another password?");
+                var pfFullName = bfi.PointerFileFullName;
+
+                if (File.Exists(pfFullName))
+                {
+                    // We are doing FastHash and the PointerFile exists
+                    hash = ReadPointerFile(pfFullName);
+
+                    logger.LogInformation($"Found PointerFile for BinaryFile '{relativeName}' using fasthash '{hash.ToShortString()}'");
+
+                    return hash;
+                }
             }
+
+            logger.LogInformation($"Found BinaryFile '{relativeName}'. Hashing...");
+
+            var (MBps, _, seconds) = await new Stopwatch().GetSpeedAsync(bfi.Length, async () =>
+                hash = await hvp.GetBinaryHashAsync(bfi.FullName));
+
+            logger.LogInformation($"Found BinaryFile '{relativeName}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{hash.ToShortString()}'");
+
+            return hash;
+        }
+    }
+    
+    /// <summary>
+    /// Return the EXISTING BinaryFile that corresponds with the given PointerFile
+    /// If the BinaryFile does not exist, return NULL
+    /// 
+    /// If `assertHash` is true, ensure the hash of the BinaryFile matches.
+    /// If the hash does not match, throws an InvalidOperationException
+    /// </summary>
+    /// <param name="pf"></param>
+    /// <param name="assertHash"></param>
+    /// <returns></returns>
+    public async Task<BinaryFile> GetExistingBinaryFileAsync(PointerFile pf, bool assertHash)
+    {
+        var bfi = FileSystemService.GetBinaryFileInfo(pf);
+
+        return await GetExistingBinaryFileAsync(pf.Root, bfi, pf.BinaryHash, assertHash);
+    }
+
+    public async Task<BinaryFile> GetExistingBinaryFileAsync(DirectoryInfo root, PointerFileEntry pfe, bool assertHash)
+    {
+        var bfi = FileSystemService.GetBinaryFileInfo(root, pfe);
+
+        return await GetExistingBinaryFileAsync(root, bfi, pfe.BinaryHash, assertHash);
+    }
+
+    /// <summary>
+    /// Return the EXISTING BinaryFile for the given BinaryFileInfo
+    /// If the BinaryFile does not exist, return NULL
+    ///
+    /// If an `assertHash` is true, ensure the hash of the BinaryFile matches.
+    /// If the hash does not match, throws an InvalidOperationException
+    /// </summary>
+    private async Task<BinaryFile> GetExistingBinaryFileAsync(DirectoryInfo root, BinaryFileInfo bfi, BinaryHash hash, bool assertHash)
+    {
+        if (!bfi.Exists)
+            return null;
+
+        if (assertHash)
+        {
+            var bfh = await hvp.GetBinaryHashAsync(bfi);
+            if (bfh != hash)
+                throw new InvalidOperationException($"The existing BinaryFile {bfi} is out of sync (invalid hash) with the PointerFile. The hash of the BinaryFile is '{bfh.ToShortString()}' and the expected hash is '{hash.ToShortString()}. Delete the BinaryFile and try again. If the file is intact, was it archived with fasthash and another password?");
         }
 
-        return new BinaryFile(root, bfi, binaryHash);
+        return new BinaryFile(root, bfi, hash);
     }
 
-    private static string GetBinaryFileFullname(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileFullName(GetPointerFileFullName(root, pfe));
-    private static string GetBinaryFileFullName(PointerFile pf) => GetBinaryFileFullName(pf.FullName);
-    public static string GetBinaryFileFullName(string pointerFileFullName) => pointerFileFullName.TrimEnd(PointerFile.Extension);
-    
-    public FileInfo GetBinaryFileInfo(PointerFile pf)
+
+    // -------- Create PointerFile ---------
+
+    /// <summary>
+    /// Create the PointerFile for this BinaryFile
+    /// If it exists, ensure it is correct
+    /// If it does not exist, create it
+    /// </summary>
+    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(BinaryFile bf)
     {
-        return new FileInfo(pf.FullName.TrimEnd(PointerFile.Extension));
+        var pfi = FileSystemService.GetPointerFileInfo(bf);
+
+        return CreatePointerFileIfNotExists(bf.Root, pfi, bf.BinaryHash, bf.CreationTimeUtc, bf.LastWriteTimeUtc);
     }
+    /// <summary>
+    /// Create the PointerFile for this PointerFileEntry
+    /// If it exists, ensure it is correct
+    /// If it does not exist, create it
+    /// </summary>
+    public (bool created, PointerFile pf) CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileEntry pfe)
+    {
+        var pfi = FileSystemService.GetPointerFileInfo(root, pfe);
+
+        return CreatePointerFileIfNotExists(root, pfi, pfe.BinaryHash, pfe.CreationTimeUtc!.Value, pfe.LastWriteTimeUtc!.Value);
+    }
+    private (bool created, PointerFile pf) CreatePointerFileIfNotExists(DirectoryInfo root, PointerFileInfo pfi, BinaryHash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+    {
+        if (pfi.Exists)
+        {
+            // If the PointerFile exists, ensure it is correct
+            var bh = ReadPointerFile(pfi.FullName);
+
+            if (bh != hash)
+            {
+                // TODO is this path tested?
+                logger.LogWarning($"The PointerFile {pfi} is broken. Overwriting");
+                pfi.Delete();
+                return CreatePointerFileIfNotExists(root, pfi, hash, creationTimeUtc, lastWriteTimeUtc);
+            }
+
+            return (false, GetExistingPointerFile(root, pfi));
+        }
+        else
+        {
+            // If the PointerFile does not exist, create it
+            WritePointerFile(pfi, hash, creationTimeUtc, lastWriteTimeUtc);
+
+            return (true, GetExistingPointerFile(root, pfi));
+        }
+    }
+    
+    
+    // -------- Read/Write PointerFile ---------
+    private BinaryHash ReadPointerFile(string pfFullName)
+    {
+        if (!File.Exists(pfFullName))
+            throw new ArgumentException($"'{pfFullName}' does not exist");
+
+        try
+        {
+            var pfc = JsonSerializer.Deserialize<PointerFileContents>(File.ReadAllBytes(pfFullName)); // TODO refactor to async - BUT THIS CASCASES ALL THE WAY UP
+            var bh  = new BinaryHash(pfc.BinaryHash);
+
+            if (!hvp.IsValid(bh))
+                throw new ArgumentException($"'{pfFullName}' is not a valid PointerFile");
+
+            return bh;
+        }
+        catch (JsonException e)
+        {
+            throw new ArgumentException($"'{pfFullName}' is not a valid PointerFile", e);
+        }
+    }
+    private void WritePointerFile(PointerFileInfo pfi, BinaryHash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+    {
+        pfi.Directory.CreateIfNotExists();
+
+        var pfc  = new PointerFileContents(hash.Value);
+        var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
+
+        //using var s = pfi.OpenWrite();
+        //s.Write(json);
+        //s.Close();
+        File.WriteAllBytes(pfi.FullName, json); //TODO bug in netcore6rc1 - WriteAllBytes keeps the file open?
+        //TODO to Async but this cascades all the way up
+
+        pfi.CreationTimeUtc = creationTimeUtc;
+        pfi.LastWriteTimeUtc = lastWriteTimeUtc;
+
+        logger.LogInformation($"Created PointerFile '{pfi.FullName}'");
+    }
+    private record PointerFileContents(string BinaryHash);
 }

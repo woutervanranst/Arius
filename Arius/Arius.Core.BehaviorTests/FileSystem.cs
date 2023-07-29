@@ -1,6 +1,8 @@
-﻿using Arius.Core.Models;
+﻿using System.Diagnostics;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.BehaviorTests;
 
@@ -34,8 +36,8 @@ static class FileSystem
 
     private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
     public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
-    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetPointerFile(root, GetFileInfo(root, relativeName));
-    public static BinaryFile GetBinaryFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetBinaryFile(GetPointerFile(root, relativeName), true);
+    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetExistingPointerFile(root, FileSystemService.GetPointerFileInfo(Path.Combine(root.FullName, relativeName)));
+    public static async Task<BinaryFile> GetBinaryFileAsync(DirectoryInfo root, string relativeName) => await Arius.FileService.Value.GetExistingBinaryFileAsync(GetPointerFile(root, relativeName), true);
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 
@@ -94,7 +96,7 @@ static class FileSystem
         var pf0 = GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName);
         var pfi0 = new FileInfo(pf0.FullName);
 
-        var pfn1 = Path.Combine(ArchiveDirectory.FullName, FileService.GetPointerFileFullName(relativeBinaryName));
+        var pfn1 = Path.Combine(ArchiveDirectory.FullName, BinaryFileInfo.GetPointerFileName(relativeBinaryName));
         pfi0.CopyTo(pfn1);
     }
 
@@ -111,14 +113,11 @@ static class FileSystem
         if (movePointer)
         {
             var pfi0 = new FileInfo(GetPointerFile(ArchiveDirectory, sourceRelativeBinaryName).FullName);
-            var pfi1 = FileService.GetPointerFileFullName(bfi1); // construct the new name based on the path of the binary
+            var pfi1 = BinaryFileInfo.GetPointerFileName(bfi1.FullName); // construct the new name based on the path of the binary
                 
             pfi0.MoveTo(pfi1);
         }
     }
-
-
-
 
 
 
@@ -132,32 +131,30 @@ static class FileSystem
 
 
 
-
-        
-
     public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
     {
-        IEnumerable<FileInfo> archiveFiles, restoredFiles;
+        IEnumerable<FileInfoBase> archiveFiles, restoredFiles;
+        var fsf = new FileSystemService(new NullLogger<FileSystemService>());
 
         if (compareBinaryFile && comparePointerFile)
         {
-            archiveFiles = ArchiveDirectory.GetAllFileInfos();
-            restoredFiles = RestoreDirectory.GetAllFileInfos();
+            archiveFiles  = fsf.GetAllFileInfos(ArchiveDirectory);
+            restoredFiles = fsf.GetAllFileInfos(RestoreDirectory);
         }
         else if (compareBinaryFile)
         {
-            archiveFiles = ArchiveDirectory.GetBinaryFileInfos();
-            restoredFiles = RestoreDirectory.GetBinaryFileInfos();
+            archiveFiles  = fsf.GetBinaryFileInfos(ArchiveDirectory);
+            restoredFiles = fsf.GetBinaryFileInfos(RestoreDirectory);
         }
         else if (comparePointerFile)
         {
-            archiveFiles = ArchiveDirectory.GetPointerFileInfos();
-            restoredFiles = RestoreDirectory.GetPointerFileInfos();
+            archiveFiles  = fsf.GetPointerFileInfos(ArchiveDirectory);
+            restoredFiles = fsf.GetPointerFileInfos(RestoreDirectory);
         }
         else
             throw new ArgumentException();
 
-        archiveFiles.SequenceEqual(restoredFiles, new FileComparer()).Should().BeTrue();
+        archiveFiles.SequenceEqual(restoredFiles, new FileInfoBaseComparer()).Should().BeTrue();
     }
 
     public static void RestoreBinaryFileEqualToArchiveBinaryFile(string relativeBinaryFile)
@@ -165,20 +162,20 @@ static class FileSystem
         var afi = GetFileInfo(ArchiveDirectory, relativeBinaryFile);
         var rfi = GetFileInfo(RestoreDirectory, relativeBinaryFile);
 
-        new FileComparer().Equals(afi, rfi);
+        new FileInfoComparer().Equals(afi, rfi);
 
     }
 
 
 
+    private static readonly FileSystemService            fileSystemService = new FileSystemService(new NullLogger<FileSystemService>());
+    public static IEnumerable<BinaryFileInfo>  GetBinaryFileInfos(this DirectoryInfo di)  => fileSystemService.GetBinaryFileInfos(di);
+    public static IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
 
 
-
-
-
-    private class FileComparer : IEqualityComparer<FileInfo>
+    private class FileInfoComparer : IEqualityComparer<FileInfo>
     {
-        public FileComparer() { }
+        private readonly SHA256Hasher hasher = new(NullLogger<SHA256Hasher>.Instance);
 
         public bool Equals(FileInfo x, FileInfo y)
         {
@@ -186,12 +183,30 @@ static class FileSystem
                    x.Length == y.Length &&
                    x.CreationTimeUtc == y.CreationTimeUtc &&
                    x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   SHA256Hasher.GetHashValue(x.FullName, "").Equals(SHA256Hasher.GetHashValue(y.FullName, ""));
+                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
         }
 
         public int GetHashCode(FileInfo obj)
         {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, SHA256Hasher.GetHashValue(obj.FullName, ""));
+            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
+        }
+    }
+    private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
+    {
+        private readonly SHA256Hasher hasher = new(NullLogger<SHA256Hasher>.Instance);
+
+        public bool Equals(FileInfoBase x, FileInfoBase y)
+        {
+            return x.Name == y.Name &&
+                   x.Length == y.Length &&
+                   x.CreationTimeUtc == y.CreationTimeUtc &&
+                   x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
+                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
+        }
+
+        public int GetHashCode(FileInfoBase obj)
+        {
+            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
         }
     }
 }
