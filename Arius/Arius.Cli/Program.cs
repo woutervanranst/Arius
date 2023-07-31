@@ -1,7 +1,7 @@
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
 using Arius.Core.Commands;
-using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -235,7 +235,7 @@ public class Program
                 _ => throw new NotImplementedException()
             };
 
-            static string? GetContainerName(ICommandOptions? po) => ((IRepositoryOptions?)po)?.ContainerName;
+            static string? GetContainerName(ICommandOptions? po) => ((Core.Commands.IRepositoryOptions?)po)?.ContainerName;
         }
     }
 }
