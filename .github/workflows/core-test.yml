@@ -15,10 +15,11 @@ jobs:
         working-directory: ./Arius
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-        with:
-          submoules: recursive
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Check out WouterVanRanst.Utils
+        run: git submodule update --init --recursive
 
       #- name: Setup Prereqs
       #  run: |
