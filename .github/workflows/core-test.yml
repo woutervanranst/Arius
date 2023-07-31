@@ -21,6 +21,10 @@ jobs:
       - name: Check out WouterVanRanst.Utils
         run: git submodule update --init --recursive
 
+      #   # For SSH / debug        
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
       #- name: Setup Prereqs
       #  run: |
       #    sudo apt-get update
@@ -46,6 +50,4 @@ jobs:
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
           
-      #   # For SSH / debug        
-      # - name: Setup tmate session
-      #   uses: mxschmitt/action-tmate@v3
+
