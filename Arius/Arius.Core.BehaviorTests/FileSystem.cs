@@ -168,7 +168,7 @@ static class FileSystem
 
 
 
-    private static readonly FileSystemService            fileSystemService = new FileSystemService(new NullLogger<FileSystemService>());
+    private static readonly FileSystemService fileSystemService = new FileSystemService(new NullLogger<FileSystemService>());
     public static IEnumerable<BinaryFileInfo>  GetBinaryFileInfos(this DirectoryInfo di)  => fileSystemService.GetBinaryFileInfos(di);
     public static IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
 
