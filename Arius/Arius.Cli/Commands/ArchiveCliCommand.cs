@@ -74,7 +74,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     {
         try
         {
-            logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
+            logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.ContainerName}'");
 
             logger.LogProperties(options);
 

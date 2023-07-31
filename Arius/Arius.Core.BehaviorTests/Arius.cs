@@ -41,7 +41,7 @@ static class Arius
     }
         
     private const string TestContainerNamePrefix = "behaviortest";
-    private record RepositoryOptions(string AccountName, string AccountKey, string Container, string Passphrase) : IRepositoryOptions;
+    private record RepositoryOptions(string AccountName, string AccountKey, string ContainerName, string Passphrase) : IRepositoryOptions;
     private static RepositoryOptions options;
     private static BlobContainerClient container;
     internal static string ContainerName { get; private set; }
@@ -137,7 +137,7 @@ static class Arius
         {
             AccountName = options.AccountName,
             AccountKey = options.AccountKey,
-            Container = options.Container,
+            ContainerName = options.ContainerName,
             Dedup = dedup,
             FastHash = fastHash,
             Passphrase = options.Passphrase,
@@ -155,7 +155,7 @@ static class Arius
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
-        public string Container { get; init; }
+        public string ContainerName { get; init; }
         public string Passphrase { get; init; }
         public bool FastHash { get; init; }
         public bool RemoveLocal { get; init; }
@@ -182,7 +182,7 @@ static class Arius
         {
             AccountName = options.AccountName,
             AccountKey = options.AccountKey,
-            Container = options.Container,
+            ContainerName = options.ContainerName,
             Passphrase = options.Passphrase,
             Download = download,
             KeepPointers = keepPointers,
@@ -202,7 +202,7 @@ static class Arius
         public DirectoryInfo Path { get; init; }
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
-        public string Container { get; init; }
+        public string ContainerName { get; init; }
         public string Passphrase { get; init; }
     }
 

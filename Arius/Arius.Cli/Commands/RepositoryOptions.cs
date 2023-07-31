@@ -18,7 +18,7 @@ internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
 
     [Description("Blob Container Name")]
     [CommandOption("-c|--container <CONTAINER>")]
-    public string Container { get; init; }
+    public string ContainerName { get; init; }
 
     [Description("Passphrase")]
     [CommandOption("-p|--passphrase <PASSPHRASE>")]

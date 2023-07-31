@@ -293,7 +293,7 @@ internal class UnitTests
     {
         public string AccountName { get; init; } = "an";
         public string AccountKey { get; init; } = "ak";
-        public string Container { get; init; } = "c";
+        public string ContainerName { get; init; } = "c";
         public string Passphrase { get; init; } = "pp";
         public bool FastHash { get; init; } = false;
         public bool RemoveLocal { get; init; } = false;
@@ -315,8 +315,8 @@ internal class UnitTests
             if (Passphrase is not null)
                 sb.Append($"-p {Passphrase} ");
 
-            if (Container is not null)
-                sb.Append($"-c {Container} ");
+            if (ContainerName is not null)
+                sb.Append($"-c {ContainerName} ");
 
             if (RemoveLocal)
                 sb.Append("--remove-local ");
@@ -340,7 +340,7 @@ internal class UnitTests
     {
         public string AccountName { get; init; } = "an";
         public string AccountKey { get; init; } = "ak";
-        public string Container { get; init; } = "c";
+        public string ContainerName { get; init; } = "c";
         public string Passphrase { get; init; } = "pp";
         public bool Synchronize { get; init; } = false;
         public bool Download { get; init; } = false;
@@ -360,7 +360,7 @@ internal class UnitTests
 
             sb.Append(
                 $"-p {Passphrase} " +
-                $"-c {Container} " +
+                $"-c {ContainerName} " +
                 $"{(Synchronize ? "--synchronize " : "")}" +
                 $"{(Download ? "--download " : "")}" +
                 $"{(KeepPointers ? "--keep-pointers " : "")}" +

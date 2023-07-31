@@ -235,7 +235,7 @@ public class Program
                 _ => throw new NotImplementedException()
             };
 
-            static string? GetContainerName(ICommandOptions? po) => ((IRepositoryOptions?)po)?.Container;
+            static string? GetContainerName(ICommandOptions? po) => ((IRepositoryOptions?)po)?.ContainerName;
         }
     }
 }

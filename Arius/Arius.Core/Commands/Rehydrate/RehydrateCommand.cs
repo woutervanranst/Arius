@@ -28,7 +28,7 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
     public async Task<int> ExecuteAsync(IRehydrateCommandOptions options)
     {
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-        var container = new BlobContainerClient(connectionString, blobContainerName: options.Container);
+        var container = new BlobContainerClient(connectionString, blobContainerName: options.ContainerName);
 
         var archivedBlobs = await container.GetBlobsAsync(prefix: "chunks")
             .Where(bi => bi.Properties.AccessTier == AccessTier.Archive &&

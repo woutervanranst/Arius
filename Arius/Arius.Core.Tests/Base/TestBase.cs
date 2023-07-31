@@ -56,7 +56,7 @@ abstract class TestBase
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
-        public string Container { get; init; }
+        public string ContainerName { get; init; }
         public string Passphrase { get; init; }
     }
 
@@ -66,7 +66,7 @@ abstract class TestBase
         {
             AccountName = TestSetup.AccountName,
             AccountKey = TestSetup.AccountKey,
-            Container = TestSetup.Container.Name,
+            ContainerName = TestSetup.Container.Name,
             Passphrase = TestSetup.Passphrase
         };
 
@@ -88,7 +88,7 @@ abstract class TestBase
     {
         public string AccountName { get; init; }
         public string AccountKey { get; init; }
-        public string Container { get; init; }
+        public string ContainerName { get; init; }
         public string Passphrase { get; init; }
         public bool FastHash { get; init; }
         public bool RemoveLocal { get; init; }
@@ -120,7 +120,7 @@ abstract class TestBase
         {
             AccountName = TestSetup.AccountName,
             AccountKey = TestSetup.AccountKey,
-            Container = TestSetup.Container.Name,
+            ContainerName = TestSetup.Container.Name,
             Dedup = dedup,
             FastHash = fastHash,
             Passphrase = TestSetup.Passphrase,

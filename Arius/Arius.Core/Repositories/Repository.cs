@@ -23,7 +23,7 @@ internal partial class Repository
         try
         {
             // Check the credentials with a short Retry interval
-            var c = new BlobContainerClient(connectionString, blobContainerName: options.Container, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
+            var c = new BlobContainerClient(connectionString, blobContainerName: options.ContainerName, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
             c.Exists();
             //TODO test with wrong accountname, accountkey
         }
@@ -37,7 +37,7 @@ internal partial class Repository
 
         var container = new BlobContainerClient(
             connectionString, 
-            blobContainerName: options.Container,
+            blobContainerName: options.ContainerName,
             /* 
              * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
              *      -- this is a throttling error most likely, hence specifiying exponential backoff
@@ -56,7 +56,7 @@ internal partial class Repository
 
         var r0 = container.CreateIfNotExists(PublicAccessType.None);
         if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
-            logger.LogInformation($"Created container {options.Container}... ");
+            logger.LogInformation($"Created container {options.ContainerName}... ");
 
         Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
         Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);

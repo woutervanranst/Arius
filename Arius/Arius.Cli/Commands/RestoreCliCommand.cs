@@ -63,7 +63,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
     {
         try
         {
-            logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.Container}' to '{options.Path}'");
+            logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.ContainerName}' to '{options.Path}'");
 
             logger.LogProperties(options);
 

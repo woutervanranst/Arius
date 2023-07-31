@@ -6,7 +6,7 @@ public interface IRepositoryOptions : ICommandOptions // the interface is public
 {
     string AccountName { get; }
     string AccountKey { get; }
-    string Container { get; }
+    string ContainerName { get; }
     string Passphrase { get; }
 
 #pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
@@ -17,7 +17,7 @@ public interface IRepositoryOptions : ICommandOptions // the interface is public
         {
             RuleFor(o => o.AccountName).NotEmpty();
             RuleFor(o => o.AccountKey).NotEmpty();
-            RuleFor(o => o.Container).NotEmpty();
+            RuleFor(o => o.ContainerName).NotEmpty();
             RuleFor(o => o.Passphrase).NotEmpty();
         }
     }
