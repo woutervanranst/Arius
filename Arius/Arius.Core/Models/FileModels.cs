@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Services;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Arius.Core.Models;
 

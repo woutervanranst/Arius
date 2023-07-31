@@ -18,26 +18,8 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: true # Check out WouterVanRanst.Utils
 
-      #- name: Check out WouterVanRanst.Utils
-      #  run: git submodule update --init --recursive
-
-      #   # For SSH / debug        
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-
-      #- name: Setup Prereqs
-      #  run: |
-      #    sudo apt-get update
-      #    sudo apt-get install -y \
-      #      wget \
-      #      tar \
-      #      p7zip-full
-      #    wget https://aka.ms/downloadazcopy-v10-linux
-      #    tar -xvf downloadazcopy-v10-linux
-      #    sudo cp ./azcopy_linux_amd64_*/azcopy /usr/bin/
-      
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v1
         with:
