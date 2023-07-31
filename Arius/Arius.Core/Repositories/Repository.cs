@@ -4,6 +4,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;

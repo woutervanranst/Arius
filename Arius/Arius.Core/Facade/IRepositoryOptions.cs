@@ -3,11 +3,49 @@ using FluentValidation;
 
 namespace Arius.Core.Facade;
 
-public interface IRepositoryOptions : ICommandOptions // the interface is public, the implementation is internal
+internal interface IStorageAccountOptions
 {
     string AccountName { get; }
-    string AccountKey { get; }
+    string AccountKey  { get; }
+}
+
+internal record StorageAccountOptions : IStorageAccountOptions
+{
+    public StorageAccountOptions(string accountName, string accountKey)
+    {
+        this.AccountName = accountName;
+        this.AccountKey  = accountKey;
+    }
+
+    public string AccountName { get; }
+    public string AccountKey  { get; }
+}
+
+
+
+internal interface IContainerOptions : IStorageAccountOptions
+{
     string ContainerName { get; }
+}
+
+internal record ContainerOptions : IContainerOptions
+{
+    public ContainerOptions(IStorageAccountOptions storageAccountOptions, string containerName)
+    {
+        this.AccountName   = storageAccountOptions.AccountName;
+        this.AccountKey    = storageAccountOptions.AccountKey;
+        this.ContainerName = containerName;
+    }
+
+    public string AccountName   { get; }
+    public string AccountKey    { get; }
+    public string ContainerName { get; }
+}
+
+
+
+internal interface IRepositoryOptions : IContainerOptions, ICommandOptions // TODO remove ICommandOptions
+{
     string Passphrase { get; }
 
 #pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
@@ -22,4 +60,20 @@ public interface IRepositoryOptions : ICommandOptions // the interface is public
             RuleFor(o => o.Passphrase).NotEmpty();
         }
     }
+}
+
+internal record RepositoryOptions : IRepositoryOptions
+{
+    public RepositoryOptions(IContainerOptions containerOptions, string passphrase)
+    {
+        AccountName   = containerOptions.AccountName;
+        AccountKey    = containerOptions.AccountKey;
+        ContainerName = containerOptions.ContainerName;
+        Passphrase    = passphrase;
+    }
+
+    public string AccountName   { get; }
+    public string AccountKey    { get; }
+    public string ContainerName { get; }
+    public string Passphrase    { get; }
 }

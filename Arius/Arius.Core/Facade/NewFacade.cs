@@ -43,23 +43,9 @@ public class NewFacade
     }
 }
 
-internal interface IStorageAccountOptions
-{
-    string AccountName { get; }
-    string AccountKey  { get; }
-}
 
-internal record StorageAccountOptions : IStorageAccountOptions
-{
-    public StorageAccountOptions(string accountName, string accountKey)
-    {
-        this.AccountName = accountName;
-        this.AccountKey  = accountKey;
-    }
 
-    public string AccountName { get; }
-    public string AccountKey  { get; }
-}
+
 
 public class StorageAccountFacade
 {
@@ -92,24 +78,7 @@ public class StorageAccountFacade
 
 
 
-internal interface IContainerOptions : IStorageAccountOptions
-{
-    string ContainerName { get; }
-}
 
-internal record ContainerOptions : IContainerOptions
-{
-    public ContainerOptions(IStorageAccountOptions storageAccountOptions, string containerName)
-    {
-        this.AccountName   = storageAccountOptions.AccountName;
-        this.AccountKey    = storageAccountOptions.AccountKey;
-        this.ContainerName = containerName;
-    }
-
-    public string AccountName   { get; }
-    public string AccountKey    { get; }
-    public string ContainerName { get; }
-}
 
 public class ContainerFacade
 {
@@ -131,26 +100,7 @@ public class ContainerFacade
 
 
 
-internal interface IRepositoryOptions2 : IContainerOptions
-{
-    string Passphrase { get; }
-}
 
-internal record RepositoryOptions : IRepositoryOptions2
-{
-    public RepositoryOptions(IContainerOptions containerOptions, string passphrase)
-    {
-        AccountName   = containerOptions.AccountName;
-        AccountKey    = containerOptions.AccountKey;
-        ContainerName = containerOptions.ContainerName;
-        Passphrase    = passphrase;
-    }
-
-    public string AccountName { get; }
-    public string AccountKey  { get; }
-    public string ContainerName   { get; }
-    public string Passphrase  { get; }
-}
 
 internal interface IArchiveCommandOptions2
 {
@@ -198,9 +148,17 @@ public class RepositoryFacade
         throw new NotImplementedException();
     }
 
-    public async Task<int> ExecuteArchiveCommand(IArchiveCommandOptions options, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc)
+    public async Task<int> ExecuteArchiveCommand(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
     {
-        var                                            aco = new ArchiveCommandOptions(this.options, fastHash, removeLocal, tier, dedup, root, versionUtc);
+        if (tier == default)
+            tier = AccessTier.Cold;
+
+        if (versionUtc == default)
+            versionUtc = DateTime.UtcNow;
+
+
+        var aco = new ArchiveCommandOptions(this.options, fastHash, removeLocal, tier, dedup, root, versionUtc);
+
         Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand;
 
         return await archiveCommand.ExecuteAsync(options);

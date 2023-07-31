@@ -1,4 +1,5 @@
 ﻿using System;
+using Arius.Core.Facade;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;

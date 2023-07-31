@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
