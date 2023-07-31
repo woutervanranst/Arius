@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\..\Documents\GitHub\woutervanranst\utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+    <ProjectReference Include="..\..\..\utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
