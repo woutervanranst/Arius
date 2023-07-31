@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Commands;
 using Arius.Core.Configuration;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,7 @@ internal static class TestSetup
     public static string AccountName { get; set; }
     public static string AccountKey { get; set; }
 
-    public static Facade Facade { get; set; }
+    public static Facade.Facade Facade { get; set; }
 
     private static DirectoryInfo unitTestRoot;
     public static DirectoryInfo SourceFolder { get; private set; }
@@ -78,7 +77,7 @@ internal static class TestSetup
             RestoreTempDirectoryName = ".ariusrestore"
         });
 
-        Facade = new Facade(loggerFactory, tempDirectoryAppSettings);
+        Facade = new Facade.Facade(loggerFactory, tempDirectoryAppSettings);
     }
 
 

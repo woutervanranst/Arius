@@ -12,6 +12,7 @@ using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using Arius.Core.Facade;
 
 namespace Arius.Core.Tests;
 

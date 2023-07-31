@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Runtime.CompilerServices;
 using Arius.Core.Commands.Rehydrate;
+using Arius.Core.Commands;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -22,7 +23,7 @@ using Arius.Core.Commands.Rehydrate;
 [assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
-namespace Arius.Core.Commands;
+namespace Arius.Core.Facade;
 
 public static class ServiceCollectionExtensions
 {
@@ -169,7 +170,7 @@ public class Facade //: IFacade
     //internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
     //{
     //    var options = new RepositoryOptions(accountName, accountKey, container, passphrase);
-            
+
     //    return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
     //}
 
