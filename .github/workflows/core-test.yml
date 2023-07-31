@@ -18,15 +18,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v1
 
-      - name: Clone WouterVanRanst.Utils # so it resolves relative to the arius.core.csproj file
-        run: |
-          mkdir -p utils/src
-          git clone https://github.com/woutervanranst/utils.git utils/src/WouterVanRanst.Utils
-          ls
-          pushd utils/src/WouterVanRanst.Utils
-          git checkout main
-          popd
-          
       #- name: Setup Prereqs
       #  run: |
       #    sudo apt-get update
