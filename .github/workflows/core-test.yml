@@ -17,9 +17,11 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v2
+        with:
+          submodules: true
 
-      - name: Check out WouterVanRanst.Utils
-        run: git submodule update --init --recursive
+      #- name: Check out WouterVanRanst.Utils
+      #  run: git submodule update --init --recursive
 
       #   # For SSH / debug        
       - name: Setup tmate session
