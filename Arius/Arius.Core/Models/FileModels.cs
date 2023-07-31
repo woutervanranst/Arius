@@ -17,7 +17,7 @@ internal abstract record FileBase
         Root         = root;
         RelativeName = Path.GetRelativePath(root.FullName, fib.FullName);
         BinaryHash   = hash;
-    } 
+    }
 
     /// <summary>
     /// The root for this FileBase
