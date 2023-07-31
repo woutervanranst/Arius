@@ -24,7 +24,7 @@ jobs:
           git clone https://github.com/woutervanranst/utils.git utils/src/WouterVanRanst.Utils
           ls
           pushd utils/src/WouterVanRanst.Utils
-          git checkout <branch_name> # Replace <branch_name> with the branch or commit you want to use (e.g., main, master, or a specific commit hash)
+          git checkout main
           popd
           
       #- name: Setup Prereqs
