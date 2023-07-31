@@ -185,7 +185,7 @@ public class Facade //: IFacade
     //        .AddSingleton<RestoreCommand>()
 
     //        //Add Services
-    //        .AddSingleton<PointerService>()
+    //        .AddSingleton<FileService>()
     //        .AddSingleton<IHashValueProvider, SHA256Hasher>()
     //        .AddSingleton<Repository>()
 

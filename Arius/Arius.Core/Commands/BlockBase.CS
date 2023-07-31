@@ -126,7 +126,7 @@ internal abstract class TaskBlockBase<TSource> : TaskBlockBase
         });
     }
 
-    protected override sealed Task TaskBodyImplAsync() => throw new NotImplementedException();
+    protected sealed override Task TaskBodyImplAsync() => throw new NotImplementedException();
     protected abstract Task TaskBodyImplAsync(TSource source);
 }
 

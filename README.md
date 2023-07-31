@@ -318,7 +318,14 @@ Conclusions:
 Conclusions:
 - General purpose files are much better suited for deduplication and offer a significant increase in space reduction compared to gzip
 
+# Technical Documentation
+
+## Arius Core Classes
+
+TODO https://github.com/jonashackt/plantuml-markdown
 
 # Attributions
 
 Arius Icon by [Freepik](https://www.flaticon.com/free-icon/iceberg_2055379?related_id=2055379).
+
+Many thanks to [ReSharper[](https://www.jetbrains.com/community/opensource/#support) and [PostSharp](https://www.postsharp.net/metalama/pricing) for their open source generosity.

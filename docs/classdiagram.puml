@@ -1,0 +1,76 @@
+@startuml
+
+abstract class FileBase{
+    +BinaryHash: Hash
+}
+
+class PointerFile{
+}
+
+class BinaryFile{
+}
+
+
+interface IChunk{
+    +ChunkHash: ChunkHash
+}
+
+class MemoryChunk {
+}
+
+class Hash {
+ -Value: string
+ +ToString()
+ +ToShortString()
+}
+
+class ChunkHash {
+}
+
+class BinaryHash {
+}
+
+
+abstract class BlobBase {
+ - ChunkHash : ChunkHash
+}
+
+abstract class ChunkBlobBase {
+}
+class ChunkBlobItem {
+}
+class ChunkBlobBaseClient {
+}
+
+abstract class FileInfoBase{
+}
+class PointerFileInfo{
+}
+class BinaryFileInfo{
+}
+
+
+FileBase <|-- PointerFile
+
+FileBase <|-- BinaryFile
+BinaryFile..u|>IChunk
+
+IChunk <|.. MemoryChunk
+
+ChunkBlobBase -u-|> BlobBase
+ChunkBlobBase .u.|> IChunk
+ChunkBlobItem -u-* ChunkBlobBase : "is a"
+ChunkBlobBaseClient -u-* ChunkBlobBase : "is a"
+
+ChunkHash -r-|> Hash
+BinaryHash -r-|> ChunkHash
+
+FileBase -u-o BinaryHash : "has a"
+IChunk -u-o ChunkHash : "has a"
+BlobBase -u-o ChunkHash : "has a"
+
+
+FileInfoBase<|-- PointerFileInfo
+FileInfoBase<|-- BinaryFileInfo
+
+@enduml

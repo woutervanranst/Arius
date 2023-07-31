@@ -161,8 +161,7 @@ internal static class TestSetup
         // https://stackoverflow.com/q/4432178/1582323
 
         var f = new FileInfo(fileFullName);
-        if (!f.Directory.Exists)
-            f.Directory.Create();
+        f.Directory.CreateIfNotExists();
 
         byte[] data = new byte[sizeInBytes];
         var rng = new Random();

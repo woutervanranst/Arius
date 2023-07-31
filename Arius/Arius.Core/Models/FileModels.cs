@@ -1,99 +1,110 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Services;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Arius.Core.Models;
 
-internal abstract class RelativeFileBase
+internal abstract record FileBase
 {
-    protected readonly FileInfo fi;
+    private readonly FileInfoBase fib;
 
-    protected RelativeFileBase(DirectoryInfo root, FileInfo fi)
+    protected FileBase(DirectoryInfo root, FileInfoBase fib, BinaryHash hash)
     {
-        this.fi = fi;
-        Root = root;
+        this.fib     = fib;
+
+        Root         = root;
+        RelativeName = Path.GetRelativePath(root.FullName, fib.FullName);
+        BinaryHash   = hash;
     }
+
+    /// <summary>
+    /// The root for this FileBase
+    /// </summary>
+    public DirectoryInfo Root { get; }
 
     /// <summary>
     /// Full Name (with path and extension)
     /// </summary>
-    public string FullName => fi.FullName;
-
-    /// <summary>
-    /// Name (with extension, without path)
-    /// </summary>
-    public string Name => fi.Name;
-
-    /// <summary>
-    /// The Directory where this File resides
-    /// </summary>
-    public DirectoryInfo Directory => fi.Directory;
-
-    /// <summary>
-    /// Length (in bytes) of the File
-    /// </summary>
-    public long Length => fi.Length;
-
-    /// <summary>
-    /// Delete the File
-    /// </summary>
-    public void Delete() => fi.Delete();
-
-    public DirectoryInfo Root { get; }
+    public string FullName => fib.FullName;
 
     /// <summary>
     /// Relative File Name (with extention)
     /// </summary>
-    public string RelativeName => Path.GetRelativePath(Root.FullName, fi.FullName);
+    public string RelativeName { get; }
 
     /// <summary>
-    /// Relative File Path (directory)
+    /// Name (with extension, without path)
     /// </summary>
-    public string RelativePath => Path.GetRelativePath(Root.FullName, fi.DirectoryName);
+    public string Name => fib.Name;
 
-    public abstract Hash Hash { get; }
+    /// <summary>
+    /// The hash of the binary
+    /// </summary>
+    public BinaryHash BinaryHash { get; }
 
-    public override string ToString() => RelativeName;
+    /// <summary>
+    /// The creation time of the file in UTC
+    /// </summary>
+    public DateTime CreationTimeUtc => fib.CreationTimeUtc;
+
+    /// <summary>
+    /// The last time the file was written to in UTC
+    /// </summary>
+    public DateTime LastWriteTimeUtc => fib.LastWriteTimeUtc;
+
+
+    /// <summary>
+    /// Delete the File, if it exists
+    /// </summary>
+    public void Delete() => fib.Delete();
+
+    public bool Exists() => fib.Exists;
+
+
+    public sealed override string ToString() => $"'{RelativeName}' ({BinaryHash.ToShortString()})"; // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
 }
 
 /// <inheritdoc/>
-internal class PointerFile : RelativeFileBase
+internal record PointerFile : FileBase
 {
     public static readonly string Extension = ".pointer.arius";
 
-    //public PointerFile(FileInfo fi) : this(fi.Directory, fi)
-    //{
-    //  DO NOT IMPLEMENT THIS, IT WILL CAUSE CONFUSION & BUGS & INVALID ARCHIVES
-    //}
+    //private readonly Lazy<BinaryFile> binaryFile;
 
-    /// <summary>
-    /// Create a new PointerFile with the given root and the given BinaryHash
-    /// </summary>
-    public PointerFile(DirectoryInfo root, FileInfo fi, BinaryHash binaryHash) : base(root, fi)
+    public PointerFile(DirectoryInfo root, PointerFileInfo pfi, BinaryHash hash) : base(root, pfi, hash)
     {
-        Hash = binaryHash;
+        //binaryFile = new Lazy<BinaryFile>(new BinaryFile(rootPath, FileService.GetBinaryFileFullName(relativeName), hash));
     }
 
-    public override BinaryHash Hash { get; }
+    //public BinaryFile BinaryFile => binaryFile.Value;
 }
 
-/// <inheritdoc cref="RelativeFileBase" />
-internal class BinaryFile : RelativeFileBase, IChunk
+/// <inheritdoc cref="FileBase" />
+internal record BinaryFile : FileBase, IChunk
 {
-    public BinaryFile(DirectoryInfo root, FileInfo fi, BinaryHash hash) : base(root, fi) 
+    //private readonly Lazy<PointerFile> pointerFile;
+
+    public BinaryFile(DirectoryInfo root, BinaryFileInfo bfi, BinaryHash hash) : base(root, bfi, hash)
     {
-        Hash = hash;
+        //pointerFile = new Lazy<PointerFile>(new PointerFile(rootPath, FileService.GetPointerFileFullName(relativeName), hash));
     }
 
-    public override BinaryHash Hash { get; }
 
-    ChunkHash IChunk.Hash => new (Hash);
+    /// <summary>
+    /// The ChunkHash of this BinaryFile, should it be used as a Chunk
+    /// </summary>
+    public ChunkHash ChunkHash => BinaryHash;
 
-    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)base.fi.OpenRead());
+
+    //public PointerFile PointerFile => pointerFile.Value;
+
+    /// <summary>
+    /// Length (in bytes) of the File
+    /// </summary>
+    public long Length => FileExtensions.Length(FullName);
+
+    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
     //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
-
-    public override string ToString()
-    {
-        return $"'{Name}' ('{Hash.ToShortString()}')";
-    }
 }

@@ -75,7 +75,7 @@ abstract class TestBase
     }
 
     protected Repository GetRepository() => GetExecutionServices().GetRequiredService<Repository>();
-    protected PointerService GetPointerService() => GetExecutionServices().GetRequiredService<PointerService>();
+    protected FileService GetFileService() => GetExecutionServices().GetRequiredService<FileService>();
     protected IHashValueProvider GetHashValueProvider() => GetExecutionServices().GetRequiredService<IHashValueProvider>();
     protected ILogger<T> GetLogger<T>() => GetExecutionServices().GetRequiredService<ILogger<T>>();
     protected DirectoryInfo GetRestoreTempDirectory(DirectoryInfo root) => GetExecutionServices().GetRequiredService<Configuration.TempDirectoryAppSettings>().GetRestoreTempDirectory(root);
@@ -222,24 +222,24 @@ abstract class TestBase
     }
 
 
-    /// <summary>
-    /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
-    /// FileInfo fi can either be a PointerFile or a BinaryFile
-    /// </summary>
-    protected void GetPointerInfo(FileInfo fi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), fi, out pf, out pfe);
-    /// <summary>
-    /// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
-    /// FileInfo fi can either be a PointerFile or a BinaryFile
-    /// </summary>
-    protected void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
-    {
-        var ps = GetPointerService();
+    ///// <summary>
+    ///// Get the PoiinterFile and the PointerFileEntry for the given FileInfo fi.
+    ///// FileInfo fi can either be a PointerFile or a BinaryFile
+    ///// </summary>
+    //protected void GetPointerInfo(FileInfo fi, out PointerFile pf, out PointerFileEntry pfe) => GetPointerInfo(GetRepository(), fi, out pf, out pfe);
+    ///// <summary>
+    ///// Get the PointerFile and the PointerFileEntry for the given FileInfo fi.
+    ///// FileInfo fi can either be a PointerFile or a BinaryFile
+    ///// </summary>
+    //protected void GetPointerInfo(Repository repo, FileInfo fi, out PointerFile pf, out PointerFileEntry pfe)
+    //{
+    //    var fs = GetFileService();
 
-        pf = ps.GetPointerFile(fi);
+    //    pf = fs.GetExistingPointerFile(fi.Directory, FileSystemService.GetFileInfo(fi));
 
-        var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
-        pfe = repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
-    }
+    //    var a_rn = Path.GetRelativePath(ArchiveTestDirectory.FullName, fi.FullName);
+    //    pfe = repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true).Result.SingleOrDefault(r => r.RelativeName.StartsWith(a_rn));
+    //}
 
 
     protected static DirectoryInfo SourceFolder => TestSetup.SourceFolder;

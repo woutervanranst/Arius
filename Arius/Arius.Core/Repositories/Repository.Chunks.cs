@@ -122,7 +122,7 @@ internal partial class Repository
 
         public async Task HydrateAsync(ChunkBlobBase blobToHydrate)
         {
-            logger.LogDebug($"Checking hydration for chunk {blobToHydrate.Hash.ToShortString()}");
+            logger.LogDebug($"Checking hydration for chunk {blobToHydrate.ChunkHash.ToShortString()}");
 
             if (blobToHydrate.AccessTier == AccessTier.Hot ||
                 blobToHydrate.AccessTier == AccessTier.Cool)
@@ -137,7 +137,7 @@ internal partial class Repository
                     blobToHydrate.Uri,
                     new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
-                logger.LogInformation($"Hydration started for '{blobToHydrate.Hash.ToShortString()}'");
+                logger.LogInformation($"Hydration started for '{blobToHydrate.ChunkHash.ToShortString()}'");
             }
             else
             {
@@ -146,9 +146,9 @@ internal partial class Repository
 
                 var status = (await hydratedItem.GetPropertiesAsync()).Value.ArchiveStatus;
                 if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
-                    logger.LogInformation($"Hydration pending for '{blobToHydrate.Hash.ToShortString()}'");
+                    logger.LogInformation($"Hydration pending for '{blobToHydrate.ChunkHash.ToShortString()}'");
                 else if (status == null)
-                    logger.LogInformation($"Hydration done for '{blobToHydrate.Hash.ToShortString()}'");
+                    logger.LogInformation($"Hydration done for '{blobToHydrate.ChunkHash.ToShortString()}'");
                 else
                     throw new ArgumentException($"BlobClient returned an unknown ArchiveStatus {status}");
             }
@@ -177,9 +177,9 @@ internal partial class Repository
         /// <returns>Returns the length of the uploaded stream.</returns>
         internal async Task<long> UploadAsync(IChunk chunk, AccessTier tier)
         {
-            logger.LogDebug($"Uploading Chunk '{chunk.Hash.ToShortString()}'...");
+            logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'...");
 
-            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.Hash));
+            var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.ChunkHash));
 
         RestartUpload:
 
@@ -200,7 +200,7 @@ internal partial class Repository
                 // Set access tier per policy
                 await bbc.SetAccessTierAsync(ChunkBlobBase.GetPolicyAccessTier(tier, length)); //TODO Unit test this: smaller blocks are not put into archive tier
 
-                logger.LogInformation($"Uploading Chunk '{chunk.Hash.ToShortString()}'... done");
+                logger.LogInformation($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'... done");
 
                 return length;
             }
@@ -212,7 +212,7 @@ internal partial class Repository
                     var p = (await bbc.GetPropertiesAsync()).Value;
                     if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
                     {
-                        logger.LogWarning($"Corrupt chunk {chunk.Hash}. Deleting and uploading again");
+                        logger.LogWarning($"Corrupt chunk {chunk.ChunkHash}. Deleting and uploading again");
                         await bbc.DeleteAsync();
 
                         goto RestartUpload;
@@ -221,20 +221,20 @@ internal partial class Repository
                     {
                         // graceful handling if the chunk is already uploaded but it does not yet exist in the database
                         //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
-                        logger.LogWarning($"A valid Chunk '{chunk.Hash}' already existsted, perhaps in a previous/crashed run?");
+                        logger.LogWarning($"A valid Chunk '{chunk.ChunkHash}' already existsted, perhaps in a previous/crashed run?");
 
                         return p.ContentLength;
                     }
                 }
                 catch (Exception e)
                 {
-                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.Hash}");
+                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.ChunkHash}");
                     throw;
                 }
             }
             catch (Exception e)
             {
-                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.Hash}. Deleting...", e);
+                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.ChunkHash}. Deleting...", e);
                 logger.LogError(e2); //TODO test this in a unit test
                 await bbc.DeleteAsync();
                 logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");

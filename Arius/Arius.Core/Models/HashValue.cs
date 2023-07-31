@@ -10,7 +10,7 @@ internal abstract record Hash
 
     public string Value { get; private set; } // private setter is needed for EF Core https://stackoverflow.com/a/57473609/1582323
 
-    public override string ToString() => Value;
+    public sealed override string ToString() => Value; // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
 
     /// <summary>
     /// Print the first 8 characters of the value
@@ -54,27 +54,28 @@ internal abstract record Hash
     //}
 }
 
-internal record BinaryHash : Hash
-{
-    public BinaryHash(string value) : base(value)
-    {
-    }
-#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
-    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
-    public override string ToString() => base.ToString();
-#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
-}
 internal record ChunkHash : Hash
 {
     public ChunkHash(string value) : base(value)
     {
     }
-    public ChunkHash(BinaryHash binaryHash) : base(binaryHash.Value)
-    { 
-    }
-#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
-    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
-    public override string ToString() => base.ToString();
-#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
+    //public ChunkHash(BinaryHash binaryHash) : base(binaryHash.Value)
+    //{
+    //}
+//#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
+//    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
+//    public override string ToString() => base.ToString(); // todo this can be overcome with making the public method 'sealed'
+//#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
 
+}
+
+internal record BinaryHash : ChunkHash // every BinaryHash is a ChunkHash
+{
+    public BinaryHash(string value) : base(value)
+    {
+    }
+//#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
+//    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
+//    public override string ToString() => base.ToString(); // todo this can be overcome with making the public method 'sealed'
+//#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
 }
