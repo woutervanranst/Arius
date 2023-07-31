@@ -322,10 +322,10 @@ Conclusions:
 
 ## Arius Core Classes
 
-TODO https://github.com/jonashackt/plantuml-markdown
+![your-UML-diagram-name](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/classdiagram.puml)
 
 # Attributions
 
 Arius Icon by [Freepik](https://www.flaticon.com/free-icon/iceberg_2055379?related_id=2055379).
 
-Many thanks to [ReSharper[](https://www.jetbrains.com/community/opensource/#support) and [PostSharp](https://www.postsharp.net/metalama/pricing) for their open source generosity.
+Many thanks to [ReSharper](https://www.jetbrains.com/community/opensource/#support) and [PostSharp](https://www.postsharp.net/metalama/pricing) for their open source generosity.
