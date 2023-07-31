@@ -21,10 +21,10 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         this.stats = statisticsProvider;
     }
 
-    private readonly ILoggerFactory loggerFactory;
-    private readonly ILogger<ArchiveCommand> logger;
-    private readonly ArchiveCommandStatistics stats;
-    private ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
+    private readonly ILoggerFactory                                   loggerFactory;
+    private readonly ILogger<ArchiveCommand>                          logger;
+    private readonly ArchiveCommandStatistics                         stats;
+    private          ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
 
     IServiceProvider ICommand<IArchiveCommandOptions>.Services => executionServices.Services;
 

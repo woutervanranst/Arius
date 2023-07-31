@@ -15,8 +15,15 @@ jobs:
         working-directory: ./Arius
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Check out WouterVanRanst.Utils
+        run: git submodule update --init --recursive
+
+      #   # For SSH / debug        
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       #- name: Setup Prereqs
       #  run: |
@@ -43,6 +50,4 @@ jobs:
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
           
-      #   # For SSH / debug        
-      # - name: Setup tmate session
-      #   uses: mxschmitt/action-tmate@v3
+

@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-    - name: Check out code
+    - name: Check out Arius repo
       uses: actions/checkout@v2
 
     - name: Setup .NET Core

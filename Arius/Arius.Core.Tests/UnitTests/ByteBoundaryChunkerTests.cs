@@ -101,7 +101,7 @@ class ByteBoundaryChunkerTests : TestBase
         var original = Path.Combine(TestSetup.ArchiveTestDirectory.FullName, "dedupfile1.xyz");
         int sizeInKB = 1024 * 5;
         CreateRandomDedupableFile(original, sizeInKB / 10 * 1024, 10);
-        var fi_original = new FileInfo(original);
+        var fi_original = new BinaryFileInfo(original);
         var h = hvp.GetBinaryHash(fi_original);
         var bf = new BinaryFile(fi_original.Directory, fi_original, h);
         return bf;

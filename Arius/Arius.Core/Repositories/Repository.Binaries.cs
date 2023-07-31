@@ -1,27 +1,27 @@
-﻿using Arius.Core.Models;
-using Azure;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.EntityFrameworkCore;
 using Azure.Storage.Blobs.Specialized;
-using System.IO.Compression;
-using System.Net;
-using Arius.Core.Commands.Restore;
-using Arius.Core.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 
@@ -55,7 +55,7 @@ internal partial class Repository
         /// </summary>
         public async Task<BinaryProperties> UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
-            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
 
             // Upload the Binary
             var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
@@ -66,10 +66,10 @@ internal partial class Repository
                     return await UploadBinaryAsSingleChunkAsync(bf, options);
             });
 
-            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.Hash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
             // Create the ChunkList
-            await CreateChunkHashListAsync(bf.Hash, chs);
+            await CreateChunkHashListAsync(bf.BinaryHash, chs);
 
             // Create the BinaryMetadata
             return await CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
@@ -98,7 +98,7 @@ internal partial class Repository
                     foreach (var chunk in chunker.Chunk(binaryFileStream))
                     {
                         await chunksToUpload.Writer.WriteAsync(chunk);
-                        chs.Add(chunk.Hash);
+                        chs.Add(chunk.ChunkHash);
                     }
                 });
 
@@ -123,40 +123,40 @@ internal partial class Repository
                 async (chunk, cancellationToken) =>
                 {
                     var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
-                    logger.LogDebug($"Starting chunk upload '{chunk.Hash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
+                    logger.LogDebug($"Starting chunk upload '{chunk.ChunkHash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
 
-                    if (await repo.Chunks.ExistsAsync(chunk.Hash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    if (await repo.Chunks.ExistsAsync(chunk.ChunkHash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
-                        logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' already exists. No need to upload.");
+                        logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' already exists. No need to upload.");
 
-                        var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
+                        var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, 0);
                     }
                     else
                     {
-                        var toUpload = uploadingChunks.TryAdd(chunk.Hash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                        var toUpload = uploadingChunks.TryAdd(chunk.ChunkHash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
                         if (toUpload)
                         {
                             // 2 Does not yet exist remote and not yet being created --> upload
-                            logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely. To upload.");
+                            logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' does not exist remotely. To upload.");
 
                             var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, length);
 
-                            uploadingChunks[chunk.Hash].SetResult();
+                            uploadingChunks[chunk.ChunkHash].SetResult();
                         }
                         else
                         {
                             // 3 Does not exist remote but is being created by another thread
-                            logger.LogDebug($"Chunk with hash '{chunk.Hash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
+                            logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
 
-                            await uploadingChunks[chunk.Hash].Task;
+                            await uploadingChunks[chunk.ChunkHash].Task;
 
-                            var length = repo.Chunks.GetChunkBlobByHash(chunk.Hash, false).Length;
+                            var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
@@ -180,7 +180,7 @@ internal partial class Repository
         {
             var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 
-            return (((IChunk)bf).Hash.AsArray(), length, length);
+            return (bf.ChunkHash.AsArray(), length, length);
         }
 
         // --- BINARY DOWNLOAD ------------------------------------------------
@@ -190,7 +190,7 @@ internal partial class Repository
         /// Start hydration for the chunks if required.
         /// Returns null if the Binary is not yet hydrated
         /// </summary>
-        public async Task<bool> TryDownloadAsync(BinaryHash bh, FileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
+        public async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
         {
             var chs = await GetChunkHashesAsync(bh);
             var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
@@ -219,7 +219,7 @@ internal partial class Repository
                 var p = await GetPropertiesAsync(bh);
                 var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
                 {
-                    await using var ts = target.OpenWrite();
+                    await using var ts = target.OpenWrite(); // TODO add async 
                     
                     // Faster version but more code
                     //if (chunks.Length == 1)
@@ -283,7 +283,7 @@ internal partial class Repository
         {
             var bp = new BinaryProperties()
             {
-                Hash = bf.Hash,
+                Hash = bf.BinaryHash,
                 OriginalLength = bf.Length,
                 ArchivedLength = archivedLength,
                 IncrementalLength = incrementalLength,
@@ -428,7 +428,7 @@ internal partial class Repository
             logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
 
             if ((await GetPropertiesAsync(bh)).ChunkCount == 1)
-                return new ChunkHash(bh).AsArray();
+                return ((ChunkHash)bh).AsArray();
 
             var chs = default(ChunkHash[]);
 

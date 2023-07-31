@@ -34,7 +34,7 @@ internal abstract class BlobBase //: IWithHashValue
     /// <summary>
     /// The Hash of this blob
     /// </summary>
-    public abstract Hash Hash { get; }
+    public abstract ChunkHash ChunkHash { get; }
 
     private const char BlobFolderSeparatorChar = '/';
 }
@@ -53,7 +53,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
 
 
     public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
-    public override ChunkHash Hash => new(Name);
+    public override ChunkHash ChunkHash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
 
@@ -76,7 +76,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     }
         
     public abstract Task<Stream> OpenReadAsync();
-    public abstract Task<Stream> OpenWriteAsync();
+    //public abstract Task<Stream> OpenWriteAsync();
         
     /// <summary>
     ///  The URI to this blob
@@ -84,6 +84,9 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     public abstract Uri Uri { get; }
 }
 
+/// <summary>
+/// Adapter for a ChunkBlob when we have a BlobItem
+/// </summary>
 internal class ChunkBlobItem : ChunkBlobBase
 {
     /// <summary>
@@ -117,11 +120,14 @@ internal class ChunkBlobItem : ChunkBlobBase
     public override string FullName => bi.Name;
 
     public override Task<Stream> OpenReadAsync() => throw new NotImplementedException();
-    public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    //public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override Uri Uri => throw new NotImplementedException();
 }
 
+/// <summary>
+/// Adapter for a ChunkBlob when we have a BlobBaseClient
+/// </summary>
 internal class ChunkBlobBaseClient : ChunkBlobBase
 {
     /// <summary>
@@ -169,7 +175,7 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
     public override string FullName => bbc.Name;
 
     public override Task<Stream> OpenReadAsync() => bbc.OpenReadAsync();
-    public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    //public override Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
 
     public override Uri Uri => bbc.Uri;
 }

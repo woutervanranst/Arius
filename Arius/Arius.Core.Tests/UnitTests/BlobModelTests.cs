@@ -27,7 +27,7 @@ class BlobModelTests : TestBase
         var repo = GetRepository();
 
         var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
-        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.Hash, false) as ChunkBlobBaseClient;
+        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 
@@ -39,7 +39,7 @@ class BlobModelTests : TestBase
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
 
-        Assert.AreEqual(cb1.Hash, cb2.Hash);
+        Assert.AreEqual(cb1.ChunkHash, cb2.ChunkHash);
 
         Assert.AreEqual(cb1.Length, cb2.Length);
         Assert.IsTrue(cb1.Length > 0);

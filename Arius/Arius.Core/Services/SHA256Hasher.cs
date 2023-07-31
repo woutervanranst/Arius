@@ -13,10 +13,12 @@ namespace Arius.Core.Services;
 
 internal interface IHashValueProvider
 {
-    BinaryHash       GetBinaryHash(FileInfo      bfi);
-    Task<BinaryHash> GetBinaryHashAsync(FileInfo bfi);
-    BinaryHash GetBinaryHash(string binaryFileFullName);
-    Task<BinaryHash> GetBinaryHashAsync(string binaryFileFullName);
+    BinaryHash             GetBinaryHash(BinaryFileInfo bfi) => GetBinaryHash(bfi.FullName);
+    BinaryHash             GetBinaryHash(FileInfo bfi)       => GetBinaryHash(bfi.FullName);
+    BinaryHash             GetBinaryHash(string binaryFileFullName);
+    async Task<BinaryHash> GetBinaryHashAsync(BinaryFileInfo bfi) => await GetBinaryHashAsync(bfi.FullName);
+    async Task<BinaryHash> GetBinaryHashAsync(FileInfo bfi)       => await GetBinaryHashAsync(bfi.FullName);
+    Task<BinaryHash>       GetBinaryHashAsync(string binaryFileFullName);
 
     ChunkHash GetChunkHash(string fullName);
     ChunkHash GetChunkHash(byte[] buffer);
@@ -26,22 +28,33 @@ internal interface IHashValueProvider
 
 internal partial class SHA256Hasher : IHashValueProvider
 {
-    public SHA256Hasher(ILogger<SHA256Hasher> logger, IRepositoryOptions options)
+    public SHA256Hasher(ILogger<SHA256Hasher> logger, IRepositoryOptions options) 
+        : this(logger, options.Passphrase)
     {
-        this.logger = logger;
-        salt = options.Passphrase;
+    }
+    public SHA256Hasher(ILogger<SHA256Hasher> logger, string salt)
+        : this(logger, Encoding.ASCII.GetBytes(salt))
+    {
+    }
+    public SHA256Hasher(ILogger<SHA256Hasher> logger, byte[] salt)
+    {
+        this.logger    = logger;
+        this.saltBytes = salt;
+    }
+    public SHA256Hasher(ILogger<SHA256Hasher> logger)
+    {
+        this.logger    = logger;
+        this.saltBytes = Array.Empty<byte>();
     }
 
-    private readonly string salt;
+    private readonly byte[] saltBytes;
     private readonly ILogger<SHA256Hasher> logger;
 
-    public BinaryHash GetBinaryHash(FileInfo bfi)                               => GetBinaryHash(bfi.FullName);
-    public async Task<BinaryHash> GetBinaryHashAsync(FileInfo bfi)              => await GetBinaryHashAsync(bfi.FullName);
-    public BinaryHash GetBinaryHash(string binaryFileFullName)                  => new(GetHashValue(binaryFileFullName, salt));
-    public async Task<BinaryHash> GetBinaryHashAsync(string binaryFileFullName) => new(await GetHashValueAsync(binaryFileFullName, salt));
+    public       BinaryHash       GetBinaryHash(string binaryFileFullName)      => new(GetHashValue(binaryFileFullName));
+    public async Task<BinaryHash> GetBinaryHashAsync(string binaryFileFullName) => new(await GetHashValueAsync(binaryFileFullName));
 
-    public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName, salt));
-    public ChunkHash GetChunkHash(byte[] buffer) => new(GetHashValue(buffer, salt));
+    public ChunkHash GetChunkHash(string fullName) => new(GetHashValue(fullName));
+    public ChunkHash GetChunkHash(byte[] buffer) => new(GetHashValue(buffer));
         
     //TODO what with in place update of binary file (hash changed)?
     // TODO what with lastmodifieddate changed but not hash?
@@ -84,58 +97,28 @@ internal partial class SHA256Hasher : IHashValueProvider
     private static partial Regex SHA265WordRegex(); //https://stackoverflow.com/a/6630280/1582323 with A-F removed since we do .ToLower() in BytesToString
 
 
-    internal static string GetHashValue(string fullName, string salt)
+    internal string GetHashValue(string fullName)
     {
-        using var fs = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize:4096, useAsync: true);
-
-        return GetHashValue(fs, salt);
-    }
-    internal static async Task<string> GetHashValueAsync(string fullName, string salt)
-    {
-        await using var fs = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
-
-        return await GetHashValueAsync(fs, salt);
-    }
-
-
-    private static string GetHashValue(Stream stream, string salt) // todo remove?
-    {
-        var saltBytes = Encoding.ASCII.GetBytes(salt);
         using var saltStream = new MemoryStream(saltBytes);
+        using var fs         = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, fs });
 
-        using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
-        using var sha256 = SHA256.Create(); //not thread safe so create a new instance each time
-
-        var hash = sha256.ComputeHash(saltedStream);
-
-        return BytesToString(hash);
+        return saltedStream.CalculateSHA256Hash();
     }
-    private static async Task<string> GetHashValueAsync(Stream stream, string salt)
+    internal async Task<string> GetHashValueAsync(string fullName)
     {
-        var saltBytes = Encoding.ASCII.GetBytes(salt);
-        using var saltStream = new MemoryStream(saltBytes);
+        using var       saltStream = new MemoryStream(saltBytes);
+        await using var fs         = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        await using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, fs });
 
-        await using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
-
-        var hash = await SHA256.HashDataAsync(saltedStream);
-
-        return BytesToString(hash);
+        return await saltedStream.CalculateSHA256HashAsync();
     }
-
-    
-    private static string GetHashValue(byte[] bytes, string salt)
+    private string GetHashValue(byte[] bytes)
     {
-        var saltBytes = Encoding.ASCII.GetBytes(salt);
-        using var saltStream = new MemoryStream(saltBytes);
+        using var saltStream   = new MemoryStream(saltBytes);
+        using var s            = new MemoryStream(bytes);
+        using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, s });
 
-        using var stream = new MemoryStream(bytes);
-
-        using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, stream });
-
-        var hash = SHA256.HashData(saltedStream);
-
-        return BytesToString(hash);
+        return saltedStream.CalculateSHA256Hash();
     }
-
-    private static string BytesToString(byte[] ba) => Convert.ToHexString(ba).ToLower();
 }

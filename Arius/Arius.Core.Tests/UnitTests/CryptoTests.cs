@@ -1,13 +1,21 @@
-﻿using Arius.Core.Services;
+﻿using System;
+using Arius.Core.Services;
 using NUnit.Framework;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging.Abstractions;
 using WouterVanRanst.Utils;
 
 namespace Arius.Core.Tests.UnitTests;
 
 class CryptoTests : TestBase
 {
+    private readonly SHA256Hasher hasher;
+    public CryptoTests()
+    {
+        hasher = new SHA256Hasher(NullLogger<SHA256Hasher>.Instance, Array.Empty<byte>());
+    }
+
     [Test]
     public void EncryptAndDecrypt_String_Equal()
     {
@@ -50,8 +58,8 @@ class CryptoTests : TestBase
                 }
             }
 
-            var h1 = SHA256Hasher.GetHashValue(sourceFile.FullName, string.Empty);
-            var h2 = SHA256Hasher.GetHashValue(decFile, string.Empty);
+            var h1 = await hasher.GetHashValueAsync(sourceFile.FullName);
+            var h2 = await hasher.GetHashValueAsync(decFile);
 
             Assert.AreEqual(h1, h2);
         }
@@ -66,7 +74,7 @@ class CryptoTests : TestBase
     public async Task DecryptWithOpenSsl_File_Equal()
     {
         // Ensure compatibility with openssl
-        var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl"); //add 'C:\Program Files\OpenSSL-Win64\bin' to the PATH
+        var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl"); //add 'C:\Program Files\OpenSSL-Win64\bin' to the PATH - install https://wiki.openssl.org/index.php/Binaries
         var gzip = ExternalProcess.FindFullName("gzip.exe", "gzip"); //add 'C:\Program Files\Git\usr\bin\' to the PATH
 
         var encFile = Path.GetTempFileName();
@@ -89,8 +97,8 @@ class CryptoTests : TestBase
             ExternalProcess.RunSimpleProcess(openssl, $"enc -d -aes-256-cbc -in {encFile} -out {decFile}.gz -pass pass:\"{passphrase}\" -pbkdf2");
             ExternalProcess.RunSimpleProcess(gzip, $"-d \"{decFile}.gz\" -f"); //-f for overwrite
 
-            var h1 = SHA256Hasher.GetHashValue(sourceFile.FullName, string.Empty);
-            var h2 = SHA256Hasher.GetHashValue(decFile, string.Empty);
+            var h1 = await hasher.GetHashValueAsync(sourceFile.FullName);
+            var h2 = await hasher.GetHashValueAsync(decFile);
 
             Assert.AreEqual(h1, h2);
         }
