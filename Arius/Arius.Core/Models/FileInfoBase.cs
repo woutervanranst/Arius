@@ -11,7 +11,7 @@ internal abstract record FileInfoBase
     protected FileInfoBase(FileInfo fi)
     {
         this.fi = fi;
-    }
+    } 
 
     public string        FullName  => fi.FullName;
     public string        Name      => fi.Name;
