@@ -1,0 +1,34 @@
+@startuml
+object Repository
+object ChunkList
+object Chunk
+object State
+object PointerFileEntry
+object BinaryHash
+object ChunkHash
+object FileBase
+object PointerFile
+object BinaryFile
+
+Repository --o ChunkList : "has many"
+Repository --o Chunk : "has many"
+Repository --o State : "has many"
+
+ChunkList --o ChunkHash : "contains multiple"
+ChunkHash -- Chunk : "refers to"
+
+State --o PointerFileEntry : "contains multiple"
+
+PointerFileEntry --o BinaryHash : "refers to a"
+
+ChunkList --o BinaryHash : "has a"
+
+PointerFile -u-* FileBase : "is a"
+BinaryFile -u-* FileBase : "is a"
+
+FileBase -u-o BinaryHash : "has a"
+
+BinaryFile --o ChunkHash : "has a"
+
+BinaryHash --* ChunkHash : "is a"
+@enduml

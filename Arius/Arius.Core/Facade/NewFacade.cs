@@ -91,10 +91,10 @@ public class ContainerFacade
         this.ccontainerOptions = co;
     }
 
-    public RepositoryFacade ForRepository(string passphrase)
+    public async Task<RepositoryFacade> ForRepositoryAsync(string passphrase)
     {
         var ro = new RepositoryOptions(ccontainerOptions, passphrase);
-        return new RepositoryFacade(loggerFactory, ro);
+        return await RepositoryFacade.CreateAsync(loggerFactory, ro);
     }
 }
 
@@ -102,45 +102,24 @@ public class ContainerFacade
 
 
 
-internal interface IArchiveCommandOptions2
-{
-    bool          FastHash    { get; }
-    bool          RemoveLocal { get; }
-    AccessTier    Tier        { get; }
-    bool          Dedup       { get; }
-    DirectoryInfo Path        { get; }
-    DateTime      VersionUtc  { get; }
-}
 
-internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions2
-{
-    public ArchiveCommandOptions(RepositoryOptions repositoryOptions, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc) : base(repositoryOptions)
-    {
-        this.FastHash    = fastHash;
-        this.RemoveLocal = removeLocal;
-        this.Tier        = tier;
-        this.Dedup       = dedup;
-        this.Path        = root; // TODO rename to Root
-        this.VersionUtc  = versionUtc;
-    }
 
-    public bool          FastHash    { get; }
-    public bool          RemoveLocal { get; }
-    public AccessTier    Tier        { get; }
-    public bool          Dedup       { get; }
-    public DirectoryInfo Path        { get; }
-    public DateTime      VersionUtc  { get; }
-}
+
 
 public class RepositoryFacade
 {
     private readonly ILoggerFactory    loggerFactory;
     private readonly RepositoryOptions options;
 
-    internal RepositoryFacade(ILoggerFactory loggerFactory, RepositoryOptions options)
+    private RepositoryFacade(ILoggerFactory loggerFactory, RepositoryOptions options)
     {
         this.loggerFactory = loggerFactory;
         this.options       = options;
+    }
+
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
+    {
+
     }
 
     public IAsyncEnumerable<string> GetVersions()
@@ -156,11 +135,12 @@ public class RepositoryFacade
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-
         var aco = new ArchiveCommandOptions(this.options, fastHash, removeLocal, tier, dedup, root, versionUtc);
 
-        Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand;
+        var sp = new ArchiveCommandStatistics();
 
-        return await archiveCommand.ExecuteAsync(options);
+        var cmd = new ArchiveCommand(loggerFactory, sp);
+
+        return await cmd.ExecuteAsync(aco);
     }
 }

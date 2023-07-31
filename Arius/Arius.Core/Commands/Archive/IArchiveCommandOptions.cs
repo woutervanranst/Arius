@@ -6,14 +6,14 @@ using Arius.Core.Facade;
 
 namespace Arius.Core.Commands.Archive;
 
-public interface IArchiveCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
+internal interface IArchiveCommandOptions : IRepositoryOptions
 {
-    bool FastHash { get; }
-    bool RemoveLocal { get; }
-    AccessTier Tier { get; }
-    bool Dedup { get; }
-    DirectoryInfo Path { get; }
-    DateTime VersionUtc { get; }
+    bool          FastHash    { get; }
+    bool          RemoveLocal { get; }
+    AccessTier    Tier        { get; }
+    bool          Dedup       { get; }
+    DirectoryInfo Path        { get; }
+    DateTime      VersionUtc  { get; }
 
 
     int IndexBlock_Parallelism => Environment.ProcessorCount * 8; //index AND hash options. A low count doesnt achieve a high throughput when there are a lot of small files
@@ -21,8 +21,8 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
     int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
     int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
-    int TransferChunked_ChunkBufferSize => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    int TransferChunked_ParallelChunkTransfers => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
+    int TransferChunked_ChunkBufferSize             => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
+    int TransferChunked_ParallelChunkTransfers      => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
 
     int PointersToCreate_BufferSize => 1000;
 
@@ -72,4 +72,24 @@ public interface IArchiveCommandOptions : IRepositoryOptions // the interface is
                     tier == AccessTier.Archive);
         }
     }
+}
+
+internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
+{
+    public ArchiveCommandOptions(RepositoryOptions repositoryOptions, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc) : base(repositoryOptions)
+    {
+        this.FastHash    = fastHash;
+        this.RemoveLocal = removeLocal;
+        this.Tier        = tier;
+        this.Dedup       = dedup;
+        this.Path        = root; // TODO rename to Root
+        this.VersionUtc  = versionUtc;
+    }
+
+    public bool          FastHash    { get; }
+    public bool          RemoveLocal { get; }
+    public AccessTier    Tier        { get; }
+    public bool          Dedup       { get; }
+    public DirectoryInfo Path        { get; }
+    public DateTime      VersionUtc  { get; }
 }

@@ -11,13 +11,12 @@ using FluentValidation.Results;
 
 namespace Arius.Core.Commands.Archive;
 
-internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This class is internal but the interface is public for use in the Facade
+internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
 {
-    public ArchiveCommand(ILoggerFactory loggerFactory, ILogger<ArchiveCommand> logger, 
-        ArchiveCommandStatistics statisticsProvider)
+    public ArchiveCommand(ILoggerFactory loggerFactory, ArchiveCommandStatistics statisticsProvider)
     {
         this.loggerFactory = loggerFactory;
-        this.logger = logger;
+        this.logger = loggerFactory.CreateLogger<ArchiveCommand>();
         this.stats = statisticsProvider;
     }
 
@@ -43,10 +42,10 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions> //This 
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
         var repo = executionServices.GetRequiredService<Repository>();
 
-        var binariesToUpload = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
-        var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize){  FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
-        var binariesToDelete = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
-        var binaryFileUploadCompleted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var binariesToUpload           = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode            = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binariesToDelete           = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode            = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binaryFileUploadCompleted  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
 
         // Get statistics of before the run

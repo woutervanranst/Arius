@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Arius.Core.Commands;
 using Arius.Core.Extensions;
 using Arius.Core.Facade;
 using Arius.Core.Services.Chunkers;
@@ -59,10 +58,10 @@ internal partial class Repository
         if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
             logger.LogInformation($"Created container {options.ContainerName}... ");
 
-        Binaries = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
-        Chunks = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
+        Binaries           = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
+        Chunks             = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
         PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
-        States = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
+        States             = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
     }
 
     private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
