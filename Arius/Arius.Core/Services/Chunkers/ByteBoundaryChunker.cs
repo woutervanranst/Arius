@@ -101,13 +101,11 @@ internal class ByteBoundaryChunker : Chunker
     /// <summary>
     /// Reconsitute the chunk based on subchunks
     /// </summary>
-    /// <param name="subChunks"></param>
-    /// <returns></returns>
     private static byte[] GetChunk(List<byte[]> subChunks)
     {
-        byte[] chunk = new byte[subChunks.Sum(sc => sc.Length)];
+        var chunk = new byte[subChunks.Sum(sc => sc.Length)];
 
-        int destinationIndex = 0;
+        var destinationIndex = 0;
 
         foreach (var subChunk in subChunks)
         {
