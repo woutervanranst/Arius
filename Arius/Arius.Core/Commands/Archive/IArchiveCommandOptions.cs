@@ -3,6 +3,7 @@ using FluentValidation;
 using System;
 using System.IO;
 using Arius.Core.Facade;
+using Arius.Core.Repositories;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -76,7 +77,7 @@ internal interface IArchiveCommandOptions : IRepositoryOptions
 
 internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
 {
-    public ArchiveCommandOptions(RepositoryOptions repositoryOptions, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc) : base(repositoryOptions)
+    public ArchiveCommandOptions(Repository repo, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc) : base(repo.Options)
     {
         this.FastHash    = fastHash;
         this.RemoveLocal = removeLocal;

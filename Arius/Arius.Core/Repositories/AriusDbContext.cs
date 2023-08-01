@@ -97,7 +97,7 @@ internal partial class Repository
 
         public async Task SaveAsync(DateTime versionUtc)
         {
-            if (hasChanges)
+            if (!hasChanges)
             {
                 logger.LogInformation("No changes made in this version, skipping upload.");
                 return;
@@ -108,8 +108,8 @@ internal partial class Repository
             await using var db = GetContext();
             await db.Database.ExecuteSqlRawAsync($"VACUUM main INTO '{vacuumedDbPath}';"); //https://www.sqlitetutorial.net/sqlite-vacuum/
 
-            var originalLength = FileExtensions.Length(localDbPath);
-            var vacuumedlength = FileExtensions.Length(vacuumedDbPath);
+            var originalLength = new FileInfo(localDbPath).Length;
+            var vacuumedlength = new FileInfo(vacuumedDbPath).Length;
 
             if (originalLength != vacuumedlength)
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");

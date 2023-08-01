@@ -23,7 +23,7 @@ internal class ExecutionServiceProvider<TOptions> where TOptions : IRepositoryOp
                 .AddSingleton<FileService>()
                 .AddSingleton<FileSystemService>()
                 .AddSingleton<IHashValueProvider, SHA256Hasher>()
-                .AddSingleton<Repository>()
+                //.AddSingleton<Repository>()
 
                 .AddSingleton<Chunker, ByteBoundaryChunker>()
 

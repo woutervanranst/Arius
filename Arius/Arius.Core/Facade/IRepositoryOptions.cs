@@ -86,6 +86,13 @@ internal interface IRepositoryOptions : IStorageAccountOptions, ICommandOptions 
 
 internal record RepositoryOptions : IRepositoryOptions
 {
+    public RepositoryOptions(IRepositoryOptions repositoryOptions)
+    {
+        AccountName   = repositoryOptions.AccountName;
+        AccountKey    = repositoryOptions.AccountKey;
+        ContainerName = repositoryOptions.ContainerName;
+        Passphrase    = repositoryOptions.Passphrase;
+    }
     public RepositoryOptions(IStorageAccountOptions containerOptions, string containerName, string passphrase)
     {
         AccountName   = containerOptions.AccountName;

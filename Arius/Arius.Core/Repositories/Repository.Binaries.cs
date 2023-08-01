@@ -30,22 +30,20 @@ internal partial class Repository
 
     internal class BinaryRepository
     {
-        internal BinaryRepository(ILogger<BinaryRepository> logger,
-            Repository parent,
-            BlobContainerClient container,
-            Chunker chunker)
+        private readonly ILogger<Repository>                                   logger;
+        private readonly Repository                                            repo;
+        private readonly Chunker                                               chunker;
+        private readonly BlobContainerClient                                   container;
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
+
+        internal BinaryRepository(Repository parent, BlobContainerClient container, Chunker chunker)
         {
-            this.logger = logger;
+            this.logger = parent.logger;
             this.repo = parent;
             this.chunker = chunker;
             this.container = container;
         }
 
-        private readonly ILogger<BinaryRepository> logger;
-        private readonly Repository repo;
-        private readonly Chunker chunker;
-        private readonly BlobContainerClient container;
-        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource> uploadingChunks = new();
 
         // --- BINARY UPLOAD ------------------------------------------------
 

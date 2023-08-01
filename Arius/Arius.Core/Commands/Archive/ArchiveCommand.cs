@@ -13,14 +13,16 @@ namespace Arius.Core.Commands.Archive;
 
 internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
 {
-    public ArchiveCommand(ILoggerFactory loggerFactory, ArchiveCommandStatistics statisticsProvider)
+    public ArchiveCommand(ILoggerFactory loggerFactory, Repository repo, ArchiveCommandStatistics statisticsProvider)
     {
         this.loggerFactory = loggerFactory;
-        this.logger = loggerFactory.CreateLogger<ArchiveCommand>();
-        this.stats = statisticsProvider;
+        this.repo          = repo;
+        this.logger        = loggerFactory.CreateLogger<ArchiveCommand>();
+        this.stats         = statisticsProvider;
     }
 
     private readonly ILoggerFactory                                   loggerFactory;
+    private readonly Repository                                       repo;
     private readonly ILogger<ArchiveCommand>                          logger;
     private readonly ArchiveCommandStatistics                         stats;
     private          ExecutionServiceProvider<IArchiveCommandOptions> executionServices;
@@ -40,7 +42,6 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
             throw new ValidationException(v.Errors);
 
         executionServices = ExecutionServiceProvider<IArchiveCommandOptions>.BuildServiceProvider(loggerFactory, options);
-        var repo = executionServices.GetRequiredService<Repository>();
 
         var binariesToUpload           = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode            = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
         var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });

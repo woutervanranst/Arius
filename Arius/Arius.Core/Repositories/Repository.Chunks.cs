@@ -24,18 +24,17 @@ internal partial class Repository
         internal const string ChunkFolderName = "chunks";
         internal const string RehydratedChunkFolderName = "chunks-rehydrated";
 
-        internal ChunkRepository(ILogger<ChunkRepository> logger, Repository parent, BlobContainerClient container, string passphrase)
+        private readonly ILogger<Repository> logger;
+        private readonly BlobContainerClient container;
+        private readonly string              passphrase;
+
+        internal ChunkRepository(Repository parent, BlobContainerClient container, string passphrase)
         {
-            this.logger = logger;
-            this.repo = parent;
+            this.logger = parent.logger;
             this.container = container;
             this.passphrase = passphrase;
         }
 
-        private readonly ILogger<ChunkRepository> logger;
-        private readonly Repository repo;
-        private readonly BlobContainerClient container;
-        private readonly string passphrase;
 
         // GET
 

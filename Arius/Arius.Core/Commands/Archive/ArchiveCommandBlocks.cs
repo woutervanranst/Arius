@@ -47,7 +47,7 @@ internal partial class ArchiveCommand
             this.fastHash          = command.executionServices.Options.FastHash;
             this.fileService       = command.executionServices.GetRequiredService<FileService>();
             this.fileSystemService = command.executionServices.GetRequiredService<FileSystemService>();
-            this.repo              = command.executionServices.GetRequiredService<Repository>();
+            this.repo              = command.repo;
             this.hvp               = command.executionServices.GetRequiredService<IHashValueProvider>();
 
             this.maxDegreeOfParallelism                        = maxDegreeOfParallelism;
@@ -157,8 +157,8 @@ internal partial class ArchiveCommand
                     maxDegreeOfParallelism: maxDegreeOfParallelism, 
                     onCompleted: onCompleted)
         {
-            this.stats = command.stats;
-            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.stats   = command.stats;
+            this.repo    = command.repo;
             this.options = command.executionServices.Options;
 
             this.onBinaryExists = onBinaryExists;
@@ -291,8 +291,8 @@ internal partial class ArchiveCommand
                     maxDegreeOfParallelism: maxDegreeOfParallelism, 
                     onCompleted: onCompleted)
         {
-            this.stats = command.stats;
-            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.stats      = command.stats;
+            this.repo       = command.repo;
             this.versionUtc = command.executionServices.Options.VersionUtc;
         }
 
@@ -376,8 +376,8 @@ internal partial class ArchiveCommand
                     maxDegreeOfParallelism, 
                     onCompleted: onCompleted)
         {
-            this.stats = command.stats;
-            this.repo = command.executionServices.GetRequiredService<Repository>();
+            this.stats       = command.stats;
+            this.repo        = command.repo;
             this.fileService = command.executionServices.GetRequiredService<FileService>();
             
             this.root = root;
@@ -417,8 +417,8 @@ internal partial class ArchiveCommand
                     onCompleted: onCompleted)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-            this.repo = command.executionServices.GetRequiredService<Repository>();
-            this.targetAccessTier = command.executionServices.Options.Tier;
+            this.repo                   = command.repo;
+            this.targetAccessTier       = command.executionServices.Options.Tier;
         }
 
         private readonly int maxDegreeOfParallelism;

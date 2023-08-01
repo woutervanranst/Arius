@@ -26,14 +26,14 @@ internal partial class Repository
         internal const string ChunkFolderName = "chunks";
         internal const string RehydratedChunkFolderName = "chunks-rehydrated";
 
-        internal PointerFileEntryRepository(ILogger<PointerFileEntryRepository> logger, Repository parent)
+        private readonly ILogger<Repository> logger;
+        private readonly Repository          repo;
+
+        internal PointerFileEntryRepository(Repository parent)
         {
-            this.logger = logger;
+            this.logger = parent.logger;
             this.repo = parent;
         }
-
-        private readonly ILogger<PointerFileEntryRepository> logger;
-        private readonly Repository repo;
 
         /// <summary>
         /// Create a PointerFileEntry for the given PointerFile and the given version

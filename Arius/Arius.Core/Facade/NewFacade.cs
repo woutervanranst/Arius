@@ -59,23 +59,23 @@ public class StorageAccountFacade
 
 public class RepositoryFacade
 {
-    private readonly ILoggerFactory    loggerFactory;
-    private readonly RepositoryOptions options;
+    private readonly ILoggerFactory     loggerFactory;
+    private readonly Repository         repo;
 
-    private RepositoryFacade(ILoggerFactory loggerFactory, RepositoryOptions options)
+    private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
     {
         this.loggerFactory = loggerFactory;
-        this.options       = options;
+        this.repo          = repo;
     }
 
-    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, IRepositoryOptions options)
     {
-        var r = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
+        var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
             .WithOptions(options)
             .WithLatestStateDatabase()
             .BuildAsync();
 
-        return new RepositoryFacade(loggerFactory, options);
+        return new RepositoryFacade(loggerFactory, repo);
     }
 
     public IAsyncEnumerable<string> GetVersions()
@@ -91,13 +91,13 @@ public class RepositoryFacade
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(this.options, fastHash, removeLocal, tier, dedup, root, versionUtc);
+        var aco = new ArchiveCommandOptions(repo, fastHash, removeLocal, tier, dedup, root, versionUtc);
 
         //TODO IArchiveCommandOptions.Validator
 
         var sp = new ArchiveCommandStatistics();
 
-        var cmd = new ArchiveCommand(loggerFactory, sp);
+        var cmd = new ArchiveCommand(loggerFactory, repo, sp);
 
         return await cmd.ExecuteAsync(aco);
     }

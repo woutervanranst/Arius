@@ -9,6 +9,9 @@ using System;
 using System.IO;
 using System.Net;
 using System.Threading.Tasks;
+using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Repositories;
 
@@ -62,11 +65,7 @@ internal class RepositoryBuilder
         // Initialize the DbContextFactory (ie. download the state from blob)
         await dbContextFactory.LoadAsync();
 
-
-        return new Repository(logger, dbContextFactory);
-
-
-
+        return new Repository(logger, options, dbContextFactory, container);
     }
 
     private static BlobClientOptions GetExponentialBackoffOptions()
@@ -100,15 +99,23 @@ internal partial class Repository
     private readonly IAriusDbContextFactory dbContextFactory;
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, IAriusDbContextFactory dbContextFactory)
+    public Repository(ILogger<Repository> logger, IRepositoryOptions options, IAriusDbContextFactory dbContextFactory, BlobContainerClient container)
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;
+        this.Options          = options;
 
-        Binaries           = null; // new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
-        Chunks             = null; //new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
-        PointerFileEntries = null; //new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
+        // !!!!!!!!!!!!!! TODO THIS NEEDS TO BE REFACTORED !!!!!!!!!!!!!
+        if (DateTime.Now.Day > 1)
+            throw new NotImplementedException();
+        var chunker = new ByteBoundaryChunker(new NullLogger<ByteBoundaryChunker>(), new SHA256Hasher(options));
+
+        Binaries           = new(this, container, chunker);
+        Chunks             = new(this, container, options.Passphrase);
+        PointerFileEntries = new(this);
     }
+
+    public IRepositoryOptions Options { get; }
 
     // --------- STATES ---------
 
