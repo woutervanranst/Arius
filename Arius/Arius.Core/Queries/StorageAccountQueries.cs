@@ -19,7 +19,7 @@ internal class StorageAccountQueries
         this.logger  = logger;
         this.options = options;
 
-        this.blobServiceClient = new BlobServiceClient(new Uri($"https://{options.AccountName}.blob.core.windows.net/"), new StorageSharedKeyCredential(options.AccountName, options.AccountKey));
+        this.blobServiceClient = options.GetBlobServiceClient();
     }
 
     public IAsyncEnumerable<string> GetContainerNamesAsync()
