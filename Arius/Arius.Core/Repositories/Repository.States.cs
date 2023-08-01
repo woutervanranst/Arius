@@ -20,9 +20,9 @@ internal partial class Repository
     {
         internal const string StateDbsFolderName = "states";
 
-        public StateRepository(ILogger<StateRepository> logger, Repository parent, BlobContainerClient container, string passphrase)
+        public StateRepository(Repository parent, BlobContainerClient container, string passphrase)
         {
-            this.logger = logger;
+            this.logger = parent.logger;
             this.repo = parent;
             this.container = container;
             this.passphrase = passphrase;
@@ -31,12 +31,12 @@ internal partial class Repository
             dbPathTask = Task.Run(GetLastestStateDbAsync);
         }
 
-        private readonly ILogger<StateRepository> logger;
-        private readonly Repository repo;
+        private readonly ILogger<Repository> logger;
+        private readonly Repository          repo;
         private readonly BlobContainerClient container;
-        private readonly string passphrase;
-        private readonly Task<string> dbPathTask;
-        private bool hasChanges;
+        private readonly string              passphrase;
+        private readonly Task<string>        dbPathTask;
+        private          bool                hasChanges;
 
 
         private async Task<string> GetLastestStateDbAsync()
