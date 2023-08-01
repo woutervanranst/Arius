@@ -1,5 +1,8 @@
 ﻿using Arius.Core.Commands;
+using Azure.Storage;
+using Azure.Storage.Blobs;
 using FluentValidation;
+using System;
 
 namespace Arius.Core.Facade;
 
@@ -19,6 +22,21 @@ internal record StorageAccountOptions : IStorageAccountOptions
 
     public string AccountName { get; }
     public string AccountKey  { get; }
+}
+
+internal static class StorageAccountOptionsExtensions
+{
+    public static BlobServiceClient GetBlobServiceClient(this IStorageAccountOptions storageAccount)
+    {
+        return new BlobServiceClient(new Uri($"https://{storageAccount.AccountName}.blob.core.windows.net/"), 
+            new StorageSharedKeyCredential(storageAccount.AccountName, storageAccount.AccountKey));
+    }
+    public static BlobServiceClient GetBlobServiceClient(this IStorageAccountOptions storageAccount, BlobClientOptions options)
+    {
+        return new BlobServiceClient(new Uri($"https://{storageAccount.AccountName}.blob.core.windows.net/"),
+            new StorageSharedKeyCredential(storageAccount.AccountName, storageAccount.AccountKey),
+            options);
+    }
 }
 
 
@@ -41,6 +59,20 @@ internal record ContainerOptions : IContainerOptions
     public string AccountKey    { get; }
     public string ContainerName { get; }
 }
+
+internal static class ContainerOptionsExtensions
+{
+    public static BlobContainerClient GetBlobContainerClient(this IContainerOptions container)
+    {
+        return container.GetBlobServiceClient().GetBlobContainerClient(container.ContainerName);
+    }
+
+    public static BlobContainerClient GetBlobContainerClient(this IContainerOptions container, BlobClientOptions options)
+    {
+        return container.GetBlobServiceClient(options).GetBlobContainerClient(container.ContainerName);
+    }
+}
+
 
 
 
