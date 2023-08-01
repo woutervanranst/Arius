@@ -18,12 +18,11 @@ internal partial class Repository
     public Repository(ILoggerFactory loggerFactory, IRepositoryOptions options, Chunker chunker)
     {
         var logger = loggerFactory.CreateLogger<Repository>();
-        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
         
         try
         {
             // Check the credentials with a short Retry interval
-            var c = new BlobContainerClient(connectionString, blobContainerName: options.ContainerName, options: new BlobClientOptions() { Retry = { MaxRetries = 2 } });
+            var c = options.GetBlobContainerClient(new BlobClientOptions { Retry = { MaxRetries = 2 } });
             c.Exists();
             //TODO test with wrong accountname, accountkey
         }
@@ -35,24 +34,23 @@ internal partial class Repository
             throw new ArgumentException("Cannot connect to blob container. Double check AccountName and AccountKey or network connectivity?");
         }
 
-        var container = new BlobContainerClient(
-            connectionString, 
-            blobContainerName: options.ContainerName,
-            /* 
-             * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
-             *      -- this is a throttling error most likely, hence specifiying exponential backoff
-             *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
-             */
-            options: new BlobClientOptions()
+        /* 
+         * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
+         *      -- this is a throttling error most likely, hence specifiying exponential backoff
+         *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
+         */
+        var bco = new BlobClientOptions()
+        {
+            Retry =
             {
-                Retry =
-                {
-                    Delay = TimeSpan.FromSeconds(2),        //The delay between retry attempts for a fixed approach or the delay on which to base calculations for a backoff-based approach
-                    MaxRetries = 10,                         //The maximum number of retry attempts before giving up
-                    Mode = RetryMode.Exponential,           //The approach to use for calculating retry delays
-                    MaxDelay = TimeSpan.FromSeconds(120)     //The maximum permissible delay between retry attempts
-                }
-            });
+                Delay      = TimeSpan.FromSeconds(2),  //The delay between retry attempts for a fixed approach or the delay on which to base calculations for a backoff-based approach
+                MaxRetries = 10,                       //The maximum number of retry attempts before giving up
+                Mode       = RetryMode.Exponential,    //The approach to use for calculating retry delays
+                MaxDelay   = TimeSpan.FromSeconds(120) //The maximum permissible delay between retry attempts
+            }
+        };
+
+        var container = options.GetBlobContainerClient(bco);
 
         var r0 = container.CreateIfNotExists(PublicAccessType.None);
         if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
