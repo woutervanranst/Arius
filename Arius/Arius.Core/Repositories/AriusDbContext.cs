@@ -56,7 +56,7 @@ internal partial class Repository
 
         public async Task LoadAsync()
         {
-            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{Repository.StateRepository.StateDbsFolderName}/")
+            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{Repository.StateDbsFolderName}/")
                 .Select(bi => bi.Name)
                 .OrderBy(n => n)
                 .LastOrDefaultAsync();
@@ -114,7 +114,7 @@ internal partial class Repository
             if (originalLength != vacuumedlength)
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
 
-            var blobName = $"{Repository.StateRepository.StateDbsFolderName}/{versionUtc:s}";
+            var blobName = $"{Repository.StateDbsFolderName}/{versionUtc:s}";
             var bbc = container.GetBlockBlobClient(blobName);
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
@@ -126,7 +126,7 @@ internal partial class Repository
             await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
             // Move the previous states to Archive storage
-            await foreach (var bi in container.GetBlobsAsync(prefix: $"{Repository.StateRepository.StateDbsFolderName}/")
+            await foreach (var bi in container.GetBlobsAsync(prefix: $"{Repository.StateDbsFolderName}/")
                                         .OrderBy(bi => bi.Name)
                                         .SkipLast(2)
                                         .Where(bi => bi.Properties.AccessTier != AccessTier.Archive))

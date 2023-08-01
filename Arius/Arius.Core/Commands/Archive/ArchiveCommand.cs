@@ -184,7 +184,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         stats.lastVersion = vs.Last();
 
         // save the state in any case even in case of errors otherwise the info on BinaryProperties is lost
-        await repo.States.CommitToBlobStorageAsync(options.VersionUtc);
+        await repo.SaveStateToRepository(options.VersionUtc);
 
         if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
             && ts.Any())

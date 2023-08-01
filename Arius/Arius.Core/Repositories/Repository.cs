@@ -59,17 +59,15 @@ internal class RepositoryBuilder
         if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
             logger.LogInformation($"Created container {options.ContainerName}... ");
 
-        // Create the StateRepository
+        // Initialize the DbContextFactory (ie. download the state from blob)
         await dbContextFactory.LoadAsync();
-        var states = new Repository.StateRepository(dbContextFactory);
 
 
-        return new Repository(logger, states);
+        return new Repository(logger, dbContextFactory);
 
 
 
     }
-
 
     private static BlobClientOptions GetExponentialBackoffOptions()
     {
@@ -89,7 +87,6 @@ internal class RepositoryBuilder
             }
         };
     }
-
 }
 
 
@@ -99,17 +96,29 @@ internal class RepositoryBuilder
 
 internal partial class Repository
 {
-    private readonly ILogger<Repository> logger;
+    private readonly ILogger<Repository>    logger;
+    private readonly IAriusDbContextFactory dbContextFactory;
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, StateRepository states)
+    public Repository(ILogger<Repository> logger, IAriusDbContextFactory dbContextFactory)
     {
-        this.logger = logger;
+        this.logger           = logger;
+        this.dbContextFactory = dbContextFactory;
 
         Binaries           = null; // new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
         Chunks             = null; //new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
         PointerFileEntries = null; //new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
-        States             = states;
+    }
+
+    // --------- STATES ---------
+
+    internal const string StateDbsFolderName = "states";
+
+    private AriusDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
+
+    public async Task SaveStateToRepository(DateTime versionUtc)
+    {
+        await dbContextFactory.SaveAsync(versionUtc);
     }
 
 
@@ -159,6 +168,8 @@ internal partial class Repository
     //    PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
     //    States             = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
     //}
+
+    // --------- OTHER HELPERS ---------
 
     private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
     {
