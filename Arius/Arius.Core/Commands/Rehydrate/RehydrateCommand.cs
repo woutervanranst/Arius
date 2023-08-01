@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace Arius.Core.Commands.Rehydrate;
 
 
-public interface IRehydrateCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
+internal interface IRehydrateCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
 {
 }
 

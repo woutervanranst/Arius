@@ -5,6 +5,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PostSharp.Constraints;
 using System;
 using System.IO;
 using System.Linq;
@@ -20,123 +21,20 @@ internal partial class Repository
     {
         internal const string StateDbsFolderName = "states";
 
-        public StateRepository(Repository parent, BlobContainerClient container, string passphrase)
-        {
-            this.logger = parent.logger;
-            this.repo = parent;
-            this.container = container;
-            this.passphrase = passphrase;
+        private readonly IAriusDbContextFactory dbContextFactory;
 
-            // download latest state asynchronously
-            dbPathTask = Task.Run(GetLastestStateDbAsync);
+
+        [ComponentInternal(typeof(RepositoryBuilder))]
+        public StateRepository(IAriusDbContextFactory dbContextFactory)
+        {
+            this.dbContextFactory = dbContextFactory;
         }
 
-        private readonly ILogger<Repository> logger;
-        private readonly Repository          repo;
-        private readonly BlobContainerClient container;
-        private readonly string              passphrase;
-        private readonly Task<string>        dbPathTask;
-        private          bool                hasChanges;
-
-
-        private async Task<string> GetLastestStateDbAsync()
-        {
-            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
-                .Select(bi => bi.Name)
-                .OrderBy(n => n)
-                .LastOrDefaultAsync();
-
-            var localDbPath = Path.GetTempFileName(); //TODO write this to the /log directory so it is outside of the container in case of a crash
-            if (lastStateBlobName is null)
-            {
-                await using var db = new AriusDbContext(localDbPath, HasChanges);
-                await db.Database.EnsureCreatedAsync();
-
-                logger.LogInformation($"Created new state database to '{localDbPath}'");
-            }
-            else
-            {
-                await using var ss = await container.GetBlobClient(lastStateBlobName).OpenReadAsync();
-                await using var ts = File.OpenWrite(localDbPath);
-                await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
-
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}' to '{localDbPath}'");
-            }
-
-            return localDbPath;
-        }
-
-        internal void SetMockedDbContext(AriusDbContext mockedContext) => this.mockedContext = mockedContext;
-        private AriusDbContext mockedContext;
-
-
-        internal async Task<AriusDbContext> GetCurrentStateDbContextAsync()
-        {
-            if (mockedContext is not null)
-                return mockedContext;
-
-            var dbPath = await dbPathTask;
-            if (!File.Exists(dbPath))
-                throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
-
-            return new(await dbPathTask, HasChanges);
-        }
-
-        private void HasChanges(int numChanges)
-        {
-            if (numChanges > 0)
-                hasChanges = true;
-
-            logger.LogDebug($"{numChanges} state entries written to the database");
-        }
+        internal AriusDbContext GetAriusDbContext() => dbContextFactory.GetContext();
 
         internal async Task CommitToBlobStorageAsync(DateTime versionUtc)
         {
-            if (!hasChanges)
-            {
-                logger.LogInformation("No changes made in this version, skipping upload.");
-                return;
-            }
-
-            var vacuumedDbPath = Path.GetTempFileName();
-
-            await using var db = await GetCurrentStateDbContextAsync();
-            await db.Database.ExecuteSqlRawAsync($"VACUUM main INTO '{vacuumedDbPath}';"); //https://www.sqlitetutorial.net/sqlite-vacuum/
-
-            var originalLength = new FileInfo(await dbPathTask).Length;
-            var vacuumedlength = new FileInfo(vacuumedDbPath).Length;
-
-            if (originalLength != vacuumedlength)
-                logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
-
-            var blobName = $"{StateDbsFolderName}/{versionUtc:s}";
-            var bbc = container.GetBlockBlobClient(blobName);
-            await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
-            {
-                await using var ts = await bbc.OpenWriteAsync(overwrite: true);
-                await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
-            }
-
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
-
-            // Move the previous states to Archive storage
-            await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
-                                        .OrderBy(bi => bi.Name)
-                                        .SkipLast(2)
-                                        .Where(bi => bi.Properties.AccessTier != AccessTier.Archive))
-            {
-                var bc = container.GetBlobClient(bi.Name);
-                await bc.SetAccessTierAsync(AccessTier.Archive);
-            }
-
-            //Delete the original database
-            await db.Database.EnsureDeletedAsync();
-
-            var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
-            File.Move(vacuumedDbPath, p);
-
-            logger.LogInformation($"State upload succesful into '{blobName}'");
+            await dbContextFactory.SaveAsync(versionUtc);
         }
     }
 }

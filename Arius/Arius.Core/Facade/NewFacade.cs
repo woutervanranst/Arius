@@ -1,30 +1,14 @@
-﻿using System;
+﻿using Arius.Core.Commands.Archive;
+using Arius.Core.Queries;
+using Arius.Core.Repositories;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
-using Arius.Core.Queries;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Facade;
-
-public static class Kak
-{
-    public static async Task x()
-    {
-        var f = new NewFacade(NullLoggerFactory.Instance);
-
-
-        var cn = await saf.GetContainerNamesAsync().FirstAsync();
-
-        var caf = saf.ForContainer(cn);
-    }
-}
 
 public class NewFacade
 {
@@ -42,8 +26,6 @@ public class NewFacade
         return new StorageAccountFacade(loggerFactory, storageAccountOptions);
     }
 }
-
-
 
 
 
@@ -66,43 +48,12 @@ public class StorageAccountFacade
         return saq.GetContainerNamesAsync();
     }
 
-    public ContainerFacade ForContainer(string containerName)
+    public async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase)
     {
-        var co  = new ContainerOptions(storageAccountOptions, containerName);
-
-        return new ContainerFacade(loggerFactory, co);
-    }
-}
-
-
-
-
-
-
-
-public class ContainerFacade
-{
-    private readonly ILoggerFactory   loggerFactory;
-    private readonly ContainerOptions ccontainerOptions;
-
-    internal ContainerFacade(ILoggerFactory loggerFactory, ContainerOptions co)
-    {
-        this.loggerFactory     = loggerFactory;
-        this.ccontainerOptions = co;
-    }
-
-    public async Task<RepositoryFacade> ForRepositoryAsync(string passphrase)
-    {
-        var ro = new RepositoryOptions(ccontainerOptions, passphrase);
+        var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
         return await RepositoryFacade.CreateAsync(loggerFactory, ro);
     }
 }
-
-
-
-
-
-
 
 
 
@@ -119,7 +70,12 @@ public class RepositoryFacade
 
     internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
     {
+        var r = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
+            .WithOptions(options)
+            .WithLatestStateDatabase()
+            .BuildAsync();
 
+        return new RepositoryFacade(loggerFactory, options);
     }
 
     public IAsyncEnumerable<string> GetVersions()
@@ -127,7 +83,7 @@ public class RepositoryFacade
         throw new NotImplementedException();
     }
 
-    public async Task<int> ExecuteArchiveCommand(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    public async Task<int> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
     {
         if (tier == default)
             tier = AccessTier.Cold;
@@ -136,6 +92,8 @@ public class RepositoryFacade
             versionUtc = DateTime.UtcNow;
 
         var aco = new ArchiveCommandOptions(this.options, fastHash, removeLocal, tier, dedup, root, versionUtc);
+
+        //TODO IArchiveCommandOptions.Validator
 
         var sp = new ArchiveCommandStatistics();
 

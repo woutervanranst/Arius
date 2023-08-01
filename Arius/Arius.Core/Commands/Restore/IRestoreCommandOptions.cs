@@ -5,7 +5,7 @@ using Arius.Core.Facade;
 
 namespace Arius.Core.Commands.Restore;
 
-public interface IRestoreCommandOptions : IRepositoryOptions
+internal interface IRestoreCommandOptions : IRepositoryOptions
 {
     bool Synchronize { get; }
     bool Download { get; }

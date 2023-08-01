@@ -1,45 +1,84 @@
-﻿using System;
-using System.Linq;
-using System.Net;
-using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Facade;
-using Arius.Core.Services.Chunkers;
+﻿using Arius.Core.Facade;
 using Azure;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using PostSharp.Constraints;
+using System;
+using System.IO;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 
-internal partial class Repository
+internal class RepositoryBuilder
 {
-    public Repository(ILoggerFactory loggerFactory, IRepositoryOptions options, Chunker chunker)
+    private readonly ILogger<Repository> logger;
+    public RepositoryBuilder(ILogger<Repository> logger)
     {
-        var logger = loggerFactory.CreateLogger<Repository>();
+        this.logger = logger;
+    }
+
+    private IRepositoryOptions  options   = default;
+    private BlobContainerClient container = default;
+    public RepositoryBuilder WithOptions(IRepositoryOptions options)
+    {
+        this.options = options;
+
+        // Get the Blob Container Client
+        container = options.GetBlobContainerClient(GetExponentialBackoffOptions());
+
+        return this;
+    }
+
+
+    private Repository.IAriusDbContextFactory dbContextFactory;
+    public RepositoryBuilder WithLatestStateDatabase()
+    {
+        dbContextFactory = new Repository.AriusDbContextFactory(logger, container, options.Passphrase);
         
-        try
-        {
-            // Check the credentials with a short Retry interval
-            var c = options.GetBlobContainerClient(new BlobClientOptions { Retry = { MaxRetries = 2 } });
-            c.Exists();
-            //TODO test with wrong accountname, accountkey
-        }
-        catch (AggregateException e)
-        {
-            logger.LogError(e);
+        return this;
+    }
 
-            var msg = e.InnerExceptions.Select(ee => ee.Message).Distinct().Join();
-            throw new ArgumentException("Cannot connect to blob container. Double check AccountName and AccountKey or network connectivity?");
-        }
+    public RepositoryBuilder WithMockedDatabase(Repository.AriusDbContext mockedContext)
+    {
+        dbContextFactory = new Repository.AriusDbContextMockedFactory(mockedContext);
 
+        return this;
+    }
+
+    public async Task<Repository> BuildAsync()
+    {
+        if (options == default(IRepositoryOptions))
+            throw new ArgumentException("Options not set");
+        
+
+        // Ensure the Blob Container exists
+        var r = await container.CreateIfNotExistsAsync(PublicAccessType.None);
+        if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+            logger.LogInformation($"Created container {options.ContainerName}... ");
+
+        // Create the StateRepository
+        await dbContextFactory.LoadAsync();
+        var states = new Repository.StateRepository(dbContextFactory);
+
+
+        return new Repository(logger, states);
+
+
+
+    }
+
+
+    private static BlobClientOptions GetExponentialBackoffOptions()
+    {
         /* 
          * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
          *      -- this is a throttling error most likely, hence specifiying exponential backoff
          *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
          */
-        var bco = new BlobClientOptions()
+        return new BlobClientOptions()
         {
             Retry =
             {
@@ -49,18 +88,77 @@ internal partial class Repository
                 MaxDelay   = TimeSpan.FromSeconds(120) //The maximum permissible delay between retry attempts
             }
         };
-
-        var container = options.GetBlobContainerClient(bco);
-
-        var r0 = container.CreateIfNotExists(PublicAccessType.None);
-        if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
-            logger.LogInformation($"Created container {options.ContainerName}... ");
-
-        Binaries           = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
-        Chunks             = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
-        PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
-        States             = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
     }
+
+}
+
+
+
+
+
+
+internal partial class Repository
+{
+    private readonly ILogger<Repository> logger;
+
+    [ComponentInternal(typeof(RepositoryBuilder))]
+    public Repository(ILogger<Repository> logger, StateRepository states)
+    {
+        this.logger = logger;
+
+        Binaries           = null; // new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
+        Chunks             = null; //new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
+        PointerFileEntries = null; //new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
+        States             = states;
+    }
+
+
+    //public Repository(ILoggerFactory loggerFactory, IRepositoryOptions options, Chunker chunker)
+    //{
+    //    var logger = loggerFactory.CreateLogger<Repository>();
+
+    //    try
+    //    {
+    //        // Check the credentials with a short Retry interval
+    //        var c = options.GetBlobContainerClient(new BlobClientOptions { Retry = { MaxRetries = 2 } });
+    //        c.Exists();
+    //        //TODO test with wrong accountname, accountkey
+    //    }
+    //    catch (AggregateException e)
+    //    {
+    //        logger.LogError(e);
+
+    //        var msg = e.InnerExceptions.Select(ee => ee.Message).Distinct().Join();
+    //        throw new ArgumentException("Cannot connect to blob container. Double check AccountName and AccountKey or network connectivity?");
+    //    }
+
+    //    /* 
+    //     * RequestFailedException: The condition specified using HTTP conditional header(s) is not met.
+    //     *      -- this is a throttling error most likely, hence specifiying exponential backoff
+    //     *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
+    //     */
+    //    var bco = new BlobClientOptions()
+    //    {
+    //        Retry =
+    //        {
+    //            Delay      = TimeSpan.FromSeconds(2),  //The delay between retry attempts for a fixed approach or the delay on which to base calculations for a backoff-based approach
+    //            MaxRetries = 10,                       //The maximum number of retry attempts before giving up
+    //            Mode       = RetryMode.Exponential,    //The approach to use for calculating retry delays
+    //            MaxDelay   = TimeSpan.FromSeconds(120) //The maximum permissible delay between retry attempts
+    //        }
+    //    };
+
+    //    var container = options.GetBlobContainerClient(bco);
+
+    //    var r0 = container.CreateIfNotExists(PublicAccessType.None);
+    //    if (r0 is not null && r0.GetRawResponse().Status == (int)HttpStatusCode.Created)
+    //        logger.LogInformation($"Created container {options.ContainerName}... ");
+
+    //    Binaries           = new(loggerFactory.CreateLogger<BinaryRepository>(), this, container, chunker);
+    //    Chunks             = new(loggerFactory.CreateLogger<ChunkRepository>(), this, container, options.Passphrase);
+    //    PointerFileEntries = new(loggerFactory.CreateLogger<PointerFileEntryRepository>(), this);
+    //    States             = new(loggerFactory.CreateLogger<StateRepository>(), this, container, options.Passphrase);
+    //}
 
     private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
     {
