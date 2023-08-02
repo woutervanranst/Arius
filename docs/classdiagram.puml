@@ -2,7 +2,7 @@
 
 ' --- MODELS
 
-rectangle "use FileService" as FileService{
+rectangle "use FileService" as FileServiceGroup {
     abstract class FileBase{
         +BinaryHash: Hash
     }
@@ -30,14 +30,35 @@ abstract class ChunkBlobBase
 class ChunkBlobItem
 class ChunkBlobBaseClient
 
-rectangle "use FileSystemService" as FileSystemService {
+class FileInfo
+rectangle "use FileSystemService" as FileSystemServiceGroup {
     abstract class FileInfoBase
     class PointerFileInfo {
         BinaryFileFullName : string
         {static} GetBinaryFileName(pointerFileName) : string
     }
-    class BinaryFileInfo
+    class BinaryFileInfo {
+        PointerFileFullName : string
+        {static} GetPointerFileName(binaryFileName) : string
+    }
 }
+
+class FileSystemService {
+    + GetAllFileInfos(DirectoryInfo) : FileInfoBase[]
+    + GetBinaryFileInfos(DirectoryInfo) : BinaryFileInfo[]
+    + GetPointerFileInfos(DirectoryInfo) : PointerFileInfo[]
+
+    + {static} GetPointerFileInfo(...) : PointerFileInfo
+    + {static} GetBinaryFileInfo(...) : BinaryFileInfo
+}
+
+class FileService {
+    + GetExistingPointerFile(...) : PointerFile
+    + GetExistingBinaryFile(...) : BinaryFile
+
+    + CreatePointerFileIfNotExists(...) : PointerFile
+}
+
 
 ' --- OPERATIONS 
 class Facade {
@@ -133,5 +154,7 @@ ArchiveCommandOptions --> Repository : "initialized using a"
 
 ArchiveCommand -- ArchiveCommandOptions
 
-FileSystemService -u- FileService : "built with"
+FileSystemServiceGroup -u- FileServiceGroup : "built with"
+
+FileInfoBase -l- FileInfo : "encapsulates"
 @enduml
