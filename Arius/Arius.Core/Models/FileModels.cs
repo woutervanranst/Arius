@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Services;
+using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Models;
 
@@ -9,7 +10,7 @@ internal abstract record FileBase
 {
     private readonly FileInfoBase fib;
 
-    protected FileBase(DirectoryInfo root, FileInfoBase fib, BinaryHash hash)
+    protected FileBase([Required] DirectoryInfo root, [Required] FileInfoBase fib, [Required] BinaryHash hash)
     {
         this.fib     = fib;
 

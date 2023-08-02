@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using PostSharp.Constraints;
 
 namespace Arius.Core.Facade;
 
@@ -76,6 +77,7 @@ public class RepositoryFacade
         this.loggerFactory = loggerFactory;
     }
 
+    [ComponentInternal(typeof(StorageAccountFacade))]
     internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, IRepositoryOptions options)
     {
         var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
