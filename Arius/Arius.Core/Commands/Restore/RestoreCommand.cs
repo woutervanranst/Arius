@@ -11,20 +11,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is internal but the interface is public for use in the Facade
+internal class RestoreCommand : ICommand<IRestoreCommandOptions>
 {
-    public RestoreCommand(ILoggerFactory loggerFactory, ILogger<RestoreCommand> logger)
+    public RestoreCommand(ILoggerFactory loggerFactory, Repository repo)
     {
         this.loggerFactory = loggerFactory;
-        this.logger = logger;
+        this.repo          = repo;
+        this.logger        = loggerFactory.CreateLogger<RestoreCommand>();
     }
 
-    private readonly ILoggerFactory loggerFactory;
+    private readonly ILoggerFactory          loggerFactory;
+    private readonly Repository              repo;
     private readonly ILogger<RestoreCommand> logger;
-
-    private ExecutionServiceProvider<IRestoreCommandOptions> executionServices;
-
-    IServiceProvider ICommand<IRestoreCommandOptions>.Services => executionServices.Services;
 
     public ValidationResult Validate(IRestoreCommandOptions options)
     {
@@ -38,10 +36,9 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions> //This class is
         if (!v.IsValid)
             throw new ValidationException(v.Errors);
 
-        executionServices = ExecutionServiceProvider<IRestoreCommandOptions>.BuildServiceProvider(loggerFactory, options);
-        var repo              = executionServices.GetRequiredService<Repository>();
-        var fileService       = executionServices.GetRequiredService<FileService>();
-        var fileSystemService = executionServices.GetRequiredService<FileSystemService>();
+        var hashValueProvider = new SHA256Hasher(options);
+        var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
+        var fileSystemService = new FileSystemService(loggerFactory.CreateLogger<FileSystemService>());
 
 
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();

@@ -9,11 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Rehydrate;
 
-
-internal interface IRehydrateCommandOptions : IRepositoryOptions // the interface is public, the implementation internal
-{
-}
-
 internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
 {
     public RehydrateCommand(ILogger<RehydrateCommand> logger)
@@ -21,22 +16,18 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
         this.logger = logger;
     }
 
-    private IServiceProvider services;
     private readonly ILogger<RehydrateCommand> logger;
-
-    IServiceProvider ICommand<IRehydrateCommandOptions>.Services => services;
 
     public async Task<int> ExecuteAsync(IRehydrateCommandOptions options)
     {
-        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-        var container = new BlobContainerClient(connectionString, blobContainerName: options.ContainerName);
+        var container = options.GetBlobContainerClient();
 
         var archivedBlobs = await container.GetBlobsAsync(prefix: "chunks")
             .Where(bi => bi.Properties.AccessTier == AccessTier.Archive &&
                          bi.Properties.ArchiveStatus == null) //not RehydratePendingToCool
             .ToArrayAsync();
 
-        var size = archivedBlobs.Sum(bi => bi.Properties.ContentLength);
+        var size  = archivedBlobs.Sum(bi => bi.Properties.ContentLength);
         var count = archivedBlobs.Count();
 
         logger.LogInformation("Estimated price as per https://azure.microsoft.com/en-us/pricing/details/storage/blobs/ (North Europe -- Read Operations, All other Operations)");
