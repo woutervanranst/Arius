@@ -1,6 +1,6 @@
 ﻿using Arius.Core.Repositories;
 
-namespace Arius.Core.BehaviorTests.StepDefinitions;
+namespace Arius.Core.BehaviorTests;
 
 [Binding]
 class TestBase
