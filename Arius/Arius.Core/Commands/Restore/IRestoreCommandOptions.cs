@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using Arius.Core.Facade;
+using Arius.Core.Repositories;
 
 namespace Arius.Core.Commands.Restore;
 
@@ -39,4 +40,22 @@ internal interface IRestoreCommandOptions : IRepositoryOptions
                 });
         }
     }
+}
+
+internal record RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
+{
+    public RestoreCommandOptions(Repository repo, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(repo.Options)
+    {
+        this.Synchronize    = synchronize;
+        this.Download       = download;
+        this.KeepPointers   = keepPointers;
+        this.PointInTimeUtc = pointInTimeUtc;
+        this.Path           = root;
+    }
+
+    public bool          Synchronize    { get; }
+    public bool          Download       { get; }
+    public bool          KeepPointers   { get; }
+    public DateTime?     PointInTimeUtc { get; }
+    public DirectoryInfo Path           { get; }
 }

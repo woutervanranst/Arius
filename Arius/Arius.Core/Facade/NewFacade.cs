@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Commands.Restore;
 using PostSharp.Constraints;
 
 namespace Arius.Core.Facade;
@@ -111,7 +112,7 @@ public class RepositoryFacade : IDisposable
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(Repository, fastHash, removeLocal, tier, dedup, root, versionUtc);
+        var aco = new ArchiveCommandOptions(Repository, root, fastHash, removeLocal, tier, dedup, versionUtc);
 
         //TODO IArchiveCommandOptions.Validator
 
@@ -124,7 +125,16 @@ public class RepositoryFacade : IDisposable
 
     public async Task<int> ExecuteRestoreCommandAsyc(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
     {
-        throw new NotImplementedException();
+        if (pointInTimeUtc == default)
+            pointInTimeUtc = DateTime.UtcNow;
+
+        var rco = new RestoreCommandOptions(Repository, root, synchronize, download, keepPointers, pointInTimeUtc);
+
+        // TODO IREstoreCommandOptions.Validator
+
+        var cmd = new RestoreCommand(loggerFactory, Repository);
+
+        return await cmd.ExecuteAsync(rco);
     }
 
 

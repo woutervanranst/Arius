@@ -77,7 +77,7 @@ internal interface IArchiveCommandOptions : IRepositoryOptions
 
 internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
 {
-    public ArchiveCommandOptions(Repository repo, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DirectoryInfo root, DateTime versionUtc) : base(repo.Options)
+    public ArchiveCommandOptions(Repository repo, DirectoryInfo root, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DateTime versionUtc) : base(repo.Options)
     {
         this.FastHash    = fastHash;
         this.RemoveLocal = removeLocal;

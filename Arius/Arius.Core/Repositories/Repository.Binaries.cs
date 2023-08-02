@@ -76,8 +76,6 @@ internal partial class Repository
         /// <summary>
         /// Chunk the BinaryFile then upload all the chunks in parallel
         /// </summary>
-        /// <param name="bf"></param>
-        /// <returns></returns>
         private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf, IArchiveCommandOptions options)
         {
             var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
