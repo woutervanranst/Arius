@@ -23,11 +23,10 @@ class ByteBoundaryChunkerTests : TestBase
             return;
 
         //Create the HashValueProvider and the Chunker
-        var hvp = GetHashValueProvider();
-        var logger = GetLogger<ByteBoundaryChunker>();
+        var hvp    = new SHA256Hasher();
 
         // SCENARIO 1: the buffer is larger than the stream -- Chunk a small stream with no minimum chunk size
-        var chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: 0);
+        var chunker = new ByteBoundaryChunker(hvp, minChunkSize: 0);
         var smallByteArray = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3, 0, 0, 5, 6, 7, 0, 0, 1, 2, 3 };
         var smallStream = new MemoryStream(smallByteArray);
         var chunks = chunker.Chunk(smallStream).ToArray();
@@ -45,7 +44,7 @@ class ByteBoundaryChunkerTests : TestBase
         //Chunk it
         using var bfs = File.OpenRead(bf.FullName);
         const int MIN_CHUNK_SIZE = 1024;
-        chunker = new ByteBoundaryChunker(logger, hvp, minChunkSize: MIN_CHUNK_SIZE);
+        chunker = new ByteBoundaryChunker(hvp, minChunkSize: MIN_CHUNK_SIZE);
         chunks = chunker.Chunk(bfs).ToArray();
 
         // the chunker actually chunked something

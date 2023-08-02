@@ -106,9 +106,9 @@ internal partial class Repository
         this.Options          = options;
 
         // !!!!!!!!!!!!!! TODO THIS NEEDS TO BE REFACTORED !!!!!!!!!!!!!
-        if (DateTime.Now.Day > 1)
+        if (DateTime.Now.Day > 2)
             throw new NotImplementedException();
-        var chunker = new ByteBoundaryChunker(new NullLogger<ByteBoundaryChunker>(), new SHA256Hasher(options));
+        var chunker = new ByteBoundaryChunker(new SHA256Hasher(options));
 
         Binaries           = new(this, container, chunker);
         Chunks             = new(this, container, options.Passphrase);

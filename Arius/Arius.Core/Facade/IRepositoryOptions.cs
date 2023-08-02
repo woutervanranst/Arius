@@ -41,30 +41,6 @@ internal static class StorageAccountOptionsExtensions
 
 
 
-//internal interface IContainerOptions : IStorageAccountOptions
-//{
-//    string ContainerName { get; }
-//}
-
-//internal record ContainerOptions : IContainerOptions
-//{
-//    public ContainerOptions(IStorageAccountOptions storageAccountOptions, string containerName)
-//    {
-//        this.AccountName   = storageAccountOptions.AccountName;
-//        this.AccountKey    = storageAccountOptions.AccountKey;
-//        this.ContainerName = containerName;
-//    }
-
-//    public string AccountName   { get; }
-//    public string AccountKey    { get; }
-//    public string ContainerName { get; }
-//}
-
-
-
-
-
-
 internal interface IRepositoryOptions : IStorageAccountOptions, ICommandOptions // TODO make interface INTERNAL // TODO remove ICommandOptions 
 {
     string ContainerName { get; }
@@ -107,7 +83,7 @@ internal record RepositoryOptions : IRepositoryOptions
     public string Passphrase    { get; }
 }
 
-internal static class ContainerOptionsExtensions
+internal static class RepositoryOptionsExtensions
 {
     public static BlobContainerClient GetBlobContainerClient(this IRepositoryOptions container)
     {
