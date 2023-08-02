@@ -1,5 +1,57 @@
 @startuml
-object Repository
+
+class Facade {
+ + ForStorageAccount(name, key)
+}
+
+class StorageAccountFacade {
+ + GetContainerNames()
+ + ForRepositoryAsync(container, passphrase)
+}
+
+class RepositoryFacade {
+ + GetVersions()
+ + ExecuteArchiveCommand()
+}
+
+class Repository {
+
+}
+
+Facade --> StorageAccountFacade : "creates a"
+StorageAccountFacade --> RepositoryFacade : "creates a"
+RepositoryFacade --o Repository : "has a"
+
+class StorageAccountOptions {
+ - AccountName
+ - AccountKey
+}
+
+class RepositoryOptions {
+ - ContainerName
+ - Passphrase
+}
+
+class ArchiveCommandOptions {
+ - FastHash
+ - RemoveLocal
+ - Tier
+ - Dedup
+ - Path
+ - VersionUtc
+ + init(Repository)
+}
+
+RepositoryOptions -u-|> StorageAccountOptions
+ArchiveCommandOptions -u-|> RepositoryOptions 
+ArchiveCommandOptions --> Repository : "initialized using a"
+
+class ArchiveCommand {
+ + Execute(ArchiveCommandOptions)
+}
+
+ArchiveCommand -- ArchiveCommandOptions
+
 object ChunkList
 object Chunk
 object State
@@ -31,4 +83,6 @@ FileBase -u-o BinaryHash : "has a"
 BinaryFile --o ChunkHash : "has a"
 
 BinaryHash --* ChunkHash : "is a"
+
+
 @enduml

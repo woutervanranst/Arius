@@ -88,6 +88,8 @@ public class RepositoryFacade
         return new RepositoryFacade(loggerFactory, repo);
     }
 
+    internal Repository Repository { get; }
+
     public IAsyncEnumerable<string> GetVersions()
     {
         throw new NotImplementedException();

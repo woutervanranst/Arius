@@ -1,15 +1,12 @@
 ﻿using Arius.Core.Models;
+using Arius.Core.Repositories;
+using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
-using MockQueryable.Moq;
-using Moq;
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
 
 namespace Arius.Core.Tests.UnitTests;
 
