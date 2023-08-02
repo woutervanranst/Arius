@@ -16,38 +16,38 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal interface IAriusDbContextFactory
+    internal interface IAriusDbContextFactory : IDisposable
     {
         Task LoadAsync();
         AriusDbContext GetContext();
         Task SaveAsync(DateTime versionUtc);
     }
 
-    internal class AriusDbContextMockedFactory : IAriusDbContextFactory
-    {
-        private readonly AriusDbContext mockedContext;
+    //internal class AriusDbContextMockedFactory : IAriusDbContextFactory
+    //{
+    //    private readonly AriusDbContext mockedContext;
 
-        public AriusDbContextMockedFactory(AriusDbContext mockedContext)
-        {
-            this.mockedContext = mockedContext;
-        }
+    //    public AriusDbContextMockedFactory(AriusDbContext mockedContext)
+    //    {
+    //        this.mockedContext = mockedContext;
+    //    }
 
-        public Task LoadAsync() => Task.CompletedTask;
-        public AriusDbContext GetContext() => mockedContext;
-        public Task SaveAsync(DateTime versionUtc) => Task.CompletedTask;
-    }
+    //    public Task LoadAsync() => Task.CompletedTask;
+    //    public AriusDbContext GetContext() => mockedContext;
+    //    public Task SaveAsync(DateTime versionUtc) => Task.CompletedTask;
+    //}
 
     internal class AriusDbContextFactory : IAriusDbContextFactory
     {
-        private readonly ILogger logger;
+        private readonly ILogger             logger;
         private readonly BlobContainerClient container;
-        private readonly string passphrase;
-        private readonly string localDbPath;
+        private readonly string              passphrase;
+        private readonly string              localDbPath;
 
         public AriusDbContextFactory(ILogger logger, BlobContainerClient container, string passphrase)
         {
-            this.logger = logger;
-            this.container = container;
+            this.logger     = logger;
+            this.container  = container;
             this.passphrase = passphrase;
 
             localDbPath = Path.GetTempFileName(); //TODO write this to the /log directory so it is outside of the container in case of a crash
@@ -71,7 +71,7 @@ internal partial class Repository
             else
             {
                 await using var ss = await container.GetBlobClient(lastStateBlobName).OpenReadAsync();
-                await using var ts = File.OpenWrite(localDbPath);
+                await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
                 logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}' to '{localDbPath}'");
@@ -87,6 +87,7 @@ internal partial class Repository
         }
 
         private bool hasChanges = false;
+
         private void HasChanges(int numChanges)
         {
             if (numChanges > 0)
@@ -136,12 +137,36 @@ internal partial class Repository
             }
 
             //Delete the original database
-            await db.Database.EnsureDeletedAsync();
+            //await db.Database.EnsureDeletedAsync(); -- we re deleting the temp db when we dispose the Repository, to enable long lived Facades
 
             var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
             File.Move(vacuumedDbPath, p);
 
             logger.LogInformation($"State upload succesful into '{blobName}'");
+        }
+
+        // --------- FINALIZER ---------
+        // See https://learn.microsoft.com/en-us/dotnet/standard/garbage-collection/implementing-dispose#implement-the-dispose-pattern
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~AriusDbContextFactory()
+        {
+            Dispose(false); // this is weird but according to the best practice
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Delete the temporary db
+                using var db = GetContext();
+                db.Database.EnsureDeleted();
+            }
         }
     }
 

@@ -49,6 +49,14 @@ public class StorageAccountFacade
         return saq.GetContainerNamesAsync();
     }
 
+    /// <summary>
+    /// RECOMMEND TO CALL .Dispose() ON THE FACADE OR
+    /// IN A USING BLOCK
+    /// TO DELETE THE TEMPORARY DB
+    /// </summary>
+    /// <param name="containerName"></param>
+    /// <param name="passphrase"></param>
+    /// <returns></returns>
     public async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase)
     {
         var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
@@ -67,7 +75,7 @@ public class StorageAccountFacade
 
 
 
-public class RepositoryFacade
+public class RepositoryFacade : IDisposable
 {
     private readonly ILoggerFactory loggerFactory;
 
@@ -112,5 +120,30 @@ public class RepositoryFacade
         var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
 
         return await cmd.ExecuteAsync(aco);
+    }
+
+    public async Task<int> ExecuteRestoreCommandAsyc(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
+    {
+        throw new NotImplementedException();
+    }
+
+
+    // --------- FINALIZER ---------
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    ~RepositoryFacade()
+    {
+        Dispose(false);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+            Repository.Dispose();
     }
 }

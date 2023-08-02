@@ -1,8 +1,7 @@
-﻿using Arius.Core.Models;
-using System;
+﻿using System;
 using System.IO;
 
-namespace Arius.Core.Services;
+namespace Arius.Core.Models;
 
 internal abstract record FileInfoBase
 {

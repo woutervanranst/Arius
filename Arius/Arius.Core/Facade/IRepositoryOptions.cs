@@ -77,6 +77,14 @@ internal record RepositoryOptions : IRepositoryOptions
         Passphrase    = passphrase;
     }
 
+    public RepositoryOptions(string accountName, string accountKey, string containerName, string passphrase)
+    {
+        AccountName   = accountName;
+        AccountKey    = accountKey;
+        ContainerName = containerName;
+        Passphrase    = passphrase;
+    }
+
     public string AccountName   { get; }
     public string AccountKey    { get; }
     public string ContainerName { get; }

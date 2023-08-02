@@ -42,12 +42,12 @@ internal class RepositoryBuilder
         return this;
     }
 
-    public RepositoryBuilder WithMockedDatabase(Repository.AriusDbContext mockedContext)
-    {
-        dbContextFactory = new Repository.AriusDbContextMockedFactory(mockedContext);
+    //public RepositoryBuilder WithMockedDatabase(Repository.AriusDbContext mockedContext)
+    //{
+    //    dbContextFactory = new Repository.AriusDbContextMockedFactory(mockedContext);
 
-        return this;
-    }
+    //    return this;
+    //}
 
     public async Task<Repository> BuildAsync()
     {
@@ -91,7 +91,7 @@ internal class RepositoryBuilder
 
 
 
-internal partial class Repository
+internal partial class Repository : IDisposable
 {
     private readonly ILogger<Repository>    logger;
     private readonly IAriusDbContextFactory dbContextFactory;
@@ -188,5 +188,24 @@ internal partial class Repository
         var currentPointerFileEntryCount = await PointerFileEntries.CountAsync();
 
         return (binaryCount, binariesSize, currentPointerFileEntryCount);
+    }
+
+
+    // --------- FINALIZER ---------
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    ~Repository()
+    {
+        Dispose(false);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+            dbContextFactory.Dispose();
     }
 }

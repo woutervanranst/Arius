@@ -91,27 +91,6 @@ public static class ServiceCollectionExtensions
 //}
 
 
-// TODO implement library as DI
-// https://docs.microsoft.com/en-us/dotnet/core/extensions/options-library-authors#parameterless
-//public static class AriusCoreExtensions
-//{
-//    public static IServiceCollection AddMyLibraryService(this IServiceCollection services)
-//    {
-//        //services.AddOptions<LibraryOptions>()
-//        //    .Configure(options =>
-//        //    {
-//        //        // Specify default option values
-//        //    });
-
-//        //// Register lib services here...
-//        //// services.AddScoped<ILibraryService, DefaultLibraryService>();
-
-//        //return services;
-
-//        throw new NotImplementedException();
-//    }
-//}
-
 
 public class Facade //: IFacade
 {
