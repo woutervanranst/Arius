@@ -18,11 +18,9 @@ class ChunkRepositoryTests : TestBase
         TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
-        var repo = GetRepository();
+        var cb1 = await Repository.Chunks.GetAllChunkBlobs().FirstAsync();
 
-        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync();
-
-        var cb2 = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, cb1.Name);
+        var cb2 = Repository.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, cb1.Name);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
     }
@@ -30,9 +28,7 @@ class ChunkRepositoryTests : TestBase
     [Test]
     public void GetChunkBlobByName_NotExisting_Null()
     {
-        var repo = GetRepository();
-
-        var cb = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
+        var cb = Repository.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
 
         Assert.IsNull(cb);
     }

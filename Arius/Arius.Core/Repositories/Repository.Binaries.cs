@@ -66,7 +66,7 @@ internal partial class Repository
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
             // Create the ChunkList
-            await CreateChunkHashListAsync(bf.BinaryHash, chs);
+            await CreateChunkListAsync(bf.BinaryHash, chs);
 
             // Create the BinaryMetadata
             return await CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
@@ -189,7 +189,7 @@ internal partial class Repository
         /// </summary>
         public async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
         {
-            var chs = await GetChunkHashesAsync(bh);
+            var chs = await GetChunkListAsync(bh);
             var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
 
             var chunksToHydrate = chunks
@@ -276,7 +276,7 @@ internal partial class Repository
 
         // --- BINARY PROPERTIES ------------------------------------------------
 
-        private async Task<BinaryProperties> CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
+        internal async Task<BinaryProperties> CreatePropertiesAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount)
         {
             var bp = new BinaryProperties()
             {
@@ -351,7 +351,7 @@ internal partial class Repository
 
         // --- CHUNKLIST ------------------------------------------------
 
-        internal async Task CreateChunkHashListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
+        internal async Task CreateChunkListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
         {
             /* When writing to blob
              * Logging
@@ -420,7 +420,7 @@ internal partial class Repository
             }
         }
 
-        internal async Task<ChunkHash[]> GetChunkHashesAsync(BinaryHash bh)
+        internal async Task<ChunkHash[]> GetChunkListAsync(BinaryHash bh)
         {
             logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
 

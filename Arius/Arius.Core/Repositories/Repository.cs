@@ -1,4 +1,6 @@
 ﻿using Arius.Core.Facade;
+using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;
 using Azure.Storage.Blobs;
@@ -6,12 +8,8 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using System;
-using System.IO;
 using System.Net;
 using System.Threading.Tasks;
-using Arius.Core.Services;
-using Arius.Core.Services.Chunkers;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.Repositories;
 

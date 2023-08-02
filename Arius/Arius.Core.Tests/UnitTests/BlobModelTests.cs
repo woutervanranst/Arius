@@ -24,10 +24,8 @@ class BlobModelTests : TestBase
         TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
-        var repo = GetRepository();
-
-        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
-        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
+        var cb1 = await Repository.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
+        var cb2 = Repository.Chunks.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 

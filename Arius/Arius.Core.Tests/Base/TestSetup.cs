@@ -4,8 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Configuration;
+using Arius.Core.Facade;
+using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NUnit.Framework;
 
@@ -16,27 +19,26 @@ internal static class TestSetup
 {
     public static readonly DateTime UnitTestGracePeriod = new(2022, 1, 1);
 
-    public const string Passphrase = "myPassphrase";
+    public const  string Passphrase              = "myPassphrase";
     private const string TestContainerNamePrefix = "unittest";
 
     public static string AccountName { get; set; }
-    public static string AccountKey { get; set; }
+    public static string AccountKey  { get; set; }
 
-    public static Facade.Facade Facade { get; set; }
+    public static Facade.Facade    Facade           { get; set; }
+    public static RepositoryFacade RepositoryFacade { get; set; }
 
     private static DirectoryInfo unitTestRoot;
-    public static DirectoryInfo SourceFolder { get; private set; }
-    public static DirectoryInfo ArchiveTestDirectory { get; private set; }
-    public static DirectoryInfo RestoreTestDirectory { get; private set; }
+    public static  DirectoryInfo SourceFolder         { get; private set; }
+    public static  DirectoryInfo ArchiveTestDirectory { get; private set; }
+    public static  DirectoryInfo RestoreTestDirectory { get; private set; }
 
-
-    private static BlobServiceClient blobService;
-    public static BlobContainerClient Container { get; private set; }
-    //private static TableServiceClient tableService;
+    private static BlobServiceClient   blobService;
+    public static  BlobContainerClient Container { get; private set; }
 
 
     [OneTimeSetUp]
-    public static void OneTimeSetup()
+    public static async Task OneTimeSetup()
     {
         // Executes once before the test run. (Optional)
         
@@ -78,18 +80,17 @@ internal static class TestSetup
         });
 
         Facade = new Facade.Facade(loggerFactory, tempDirectoryAppSettings);
+        
+        RepositoryFacade = await new NewFacade(NullLoggerFactory.Instance)
+            .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)
+            .ForRepositoryAsync(TestSetup.Container.Name, TestSetup.Passphrase);
     }
 
+    
 
 
     public class SourceFilesType
     {
-        //public static string File1 = "FILE1";
-        //public static string File2 = "FILE2";
-        //public static string File3Large = "FILE3";
-        //public static string File4WithSpace = "FILE4";
-        //public static string File5Deduplicated = "FILE5";
-
         private SourceFilesType(string value)
         {
             Value = value ?? throw new ArgumentNullException(nameof(value));
@@ -97,17 +98,17 @@ internal static class TestSetup
         public string Value { get; }
 
 
-        private const string File1Value = "FILE1";
-        private const string File2Value = "FILE2";
-        private const string File3LargeValue = "FILE3";
-        private const string File4WithSpaceValue = "FILE4";
-        private const string File5DeduplicatedValue = "FILE5";
+        private const string FILE1_VALUE = "FILE1";
+        private const string FILE2_VALUE = "FILE2";
+        private const string FILE3_LARGE_VALUE = "FILE3";
+        private const string FILE4_WITH_SPACE_VALUE = "FILE4";
+        private const string FILE_5DEDUPLICATED_VALUE = "FILE5";
 
-        public static SourceFilesType File1 { get; } = new SourceFilesType(File1Value);
-        public static SourceFilesType File2 { get; } = new SourceFilesType(File2Value);
-        public static SourceFilesType File3Large { get; } = new SourceFilesType(File3LargeValue);
-        public static SourceFilesType File4WithSpace { get; } = new SourceFilesType(File4WithSpaceValue);
-        public static SourceFilesType File5Deduplicated { get; } = new SourceFilesType(File5DeduplicatedValue);
+        public static SourceFilesType File1 { get; } = new SourceFilesType(FILE1_VALUE);
+        public static SourceFilesType File2 { get; } = new SourceFilesType(FILE2_VALUE);
+        public static SourceFilesType File3Large { get; } = new SourceFilesType(FILE3_LARGE_VALUE);
+        public static SourceFilesType File4WithSpace { get; } = new SourceFilesType(FILE4_WITH_SPACE_VALUE);
+        public static SourceFilesType File5Deduplicated { get; } = new SourceFilesType(FILE_5DEDUPLICATED_VALUE);
     }
 
     private static void PrestageSourceFolder()
@@ -173,6 +174,8 @@ internal static class TestSetup
     [OneTimeTearDown]
     public static async Task OneTimeTearDown()
     {
+        // TODO delete SQLite file?
+
         // Delete local temp
         foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TestContainerNamePrefix}*"))
             d.Delete(true);

@@ -53,19 +53,27 @@ public class StorageAccountFacade
         var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
         return await RepositoryFacade.CreateAsync(loggerFactory, ro);
     }
+
+    /// <summary>
+    /// FOR UNIT TESTING PURPOSES ONLY
+    /// </summary>
+    internal async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase, Repository.AriusDbContext mockedContext)
+    {
+        var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
+        return await RepositoryFacade.CreateAsync(loggerFactory, ro);
+    }
 }
 
 
 
 public class RepositoryFacade
 {
-    private readonly ILoggerFactory     loggerFactory;
-    private readonly Repository         repo;
+    private readonly ILoggerFactory loggerFactory;
 
     private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
     {
+        Repository          = repo;
         this.loggerFactory = loggerFactory;
-        this.repo          = repo;
     }
 
     internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, IRepositoryOptions options)
@@ -91,13 +99,13 @@ public class RepositoryFacade
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(repo, fastHash, removeLocal, tier, dedup, root, versionUtc);
+        var aco = new ArchiveCommandOptions(Repository, fastHash, removeLocal, tier, dedup, root, versionUtc);
 
         //TODO IArchiveCommandOptions.Validator
 
         var sp = new ArchiveCommandStatistics();
 
-        var cmd = new ArchiveCommand(loggerFactory, repo, sp);
+        var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
 
         return await cmd.ExecuteAsync(aco);
     }
