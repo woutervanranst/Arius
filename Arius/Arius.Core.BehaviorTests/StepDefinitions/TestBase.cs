@@ -1,4 +1,6 @@
-﻿namespace Arius.Core.BehaviorTests.StepDefinitions;
+﻿using Arius.Core.Repositories;
+
+namespace Arius.Core.BehaviorTests.StepDefinitions;
 
 [Binding]
 class TestBase
@@ -9,4 +11,6 @@ class TestBase
     }
 
     protected readonly ScenarioContext scenarioContext;
+
+    protected Repository Repository => TestSetup.Repository;
 }

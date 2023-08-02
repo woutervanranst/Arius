@@ -28,37 +28,37 @@ class RestoreSteps : TestBase
     [When("restore --synchronize --download --keepPointers")]
     public async Task WhenRestore_Synchronize_Download_KeepPointers()
     {
-        await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: true);
+        await TestSetup.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: true);
     }
     [When("restore --synchronize --keepPointers")]
     public async Task WhenRestore_Synchronize_KeepPointers()
     {
-        await Arius.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: true);
+        await TestSetup.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: true);
     }
     [When("restore --synchronize --download")]
     public async Task WhenRestore_Synchronize_Download()
     {
-        await Arius.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: false);
+        await TestSetup.RestoreCommandAsyc(synchronize: true, download: true, keepPointers: false);
     }
     [When("restore --synchronize")]
     public async Task WhenRestore_Synchronize()
     {
-        await Arius.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: false);
+        await TestSetup.RestoreCommandAsyc(synchronize: true, download: false, keepPointers: false);
     }
     [When("restore --download")]
     public async Task WhenRestore_Download()
     {
-        await Arius.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: false);
+        await TestSetup.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: false);
     }
     [When("restore --download --keepPointers")]
     public async Task WhenRestore_Download_KeepPointers()
     {
-        await Arius.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: true);
+        await TestSetup.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: true);
     }
     [When("restore expect a ValidationException")]
     public async Task WhenRestore()
     {
-        Func<Task> t = () => Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
+        Func<Task> t = () => TestSetup.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
         await t.Should().ThrowAsync<FluentValidation.ValidationException>();
 
         //Assert.CatchAsync<FluentValidation.ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
@@ -145,7 +145,7 @@ class RestoreSteps : TestBase
         var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
         var ch = (ChunkHash)pf.BinaryHash; // hack
 
-        var e = await Arius.RehydrateChunkExists(ch);
+        var e = await TestSetup.RehydrateChunkExists(ch);
         e.Should().BeTrue();
     }
         
@@ -158,12 +158,12 @@ class RestoreSteps : TestBase
         var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
         var ch = (ChunkHash)pf.BinaryHash;
 
-        await Arius.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);
+        await TestSetup.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);
     }
     [Then("the rehydrate folder does not exist")]
     public async Task ThenTheRehydrateFolderDoesNotExist()
     {
-        var e = await Arius.RehydrateFolderExists();
+        var e = await TestSetup.RehydrateFolderExists();
         e.Should().BeFalse();
     }
 }

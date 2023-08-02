@@ -12,18 +12,18 @@ static class FileSystem
     [BeforeTestRun(Order = 2)] //run after the RemoteRepository is initialized, and the BlobContainerClient is available for DI
     private static void ClassInit()
     {
-        root = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
-        runRoot = root.CreateSubdirectory(Arius.ContainerName);
+        root             = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "arius"));
+        runRoot          = root.CreateSubdirectory(TestSetup.Repository.Options.ContainerName);
         ArchiveDirectory = runRoot.CreateSubdirectory("archive");
         RestoreDirectory = runRoot.CreateSubdirectory("restore");
-        TempDirectory = runRoot.CreateSubdirectory("temp");
+        TempDirectory    = runRoot.CreateSubdirectory("temp");
     }
 
     private static DirectoryInfo root;
     private static DirectoryInfo runRoot;
-    public static DirectoryInfo ArchiveDirectory { get; private set; }
-    public static DirectoryInfo RestoreDirectory { get; private set; }
-    public static DirectoryInfo TempDirectory { get; private set; }
+    public static  DirectoryInfo ArchiveDirectory { get; private set; }
+    public static  DirectoryInfo RestoreDirectory { get; private set; }
+    public static  DirectoryInfo TempDirectory    { get; private set; }
 
     [AfterTestRun]
     private static void ClassCleanup()
@@ -35,9 +35,9 @@ static class FileSystem
 
 
     private static string GetFileName(DirectoryInfo root, string relativeName) => Path.Combine(root.FullName, relativeName);
-    public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName));
-    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => Arius.FileService.Value.GetExistingPointerFile(root, FileSystemService.GetPointerFileInfo(Path.Combine(root.FullName, relativeName)));
-    public static async Task<BinaryFile> GetBinaryFileAsync(DirectoryInfo root, string relativeName) => await Arius.FileService.Value.GetExistingBinaryFileAsync(GetPointerFile(root, relativeName), true);
+    public static FileInfo GetFileInfo(DirectoryInfo root, string relativeName) => new (GetFileName(root, relativeName));
+    public static PointerFile GetPointerFile(DirectoryInfo root, string relativeName) => TestSetup.FileService.GetExistingPointerFile(root, FileSystemService.GetPointerFileInfo(Path.Combine(root.FullName, relativeName)));
+    public static async Task<BinaryFile> GetBinaryFileAsync(DirectoryInfo root, string relativeName) => await TestSetup.FileService.GetExistingBinaryFileAsync(GetPointerFile(root, relativeName), true);
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 
@@ -168,14 +168,14 @@ static class FileSystem
 
 
 
-    private static readonly FileSystemService fileSystemService = new FileSystemService(new NullLogger<FileSystemService>());
-    public static IEnumerable<BinaryFileInfo>  GetBinaryFileInfos(this DirectoryInfo di)  => fileSystemService.GetBinaryFileInfos(di);
-    public static IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
+    private static readonly FileSystemService            fileSystemService = new FileSystemService(new NullLogger<FileSystemService>());
+    public static           IEnumerable<BinaryFileInfo>  GetBinaryFileInfos(this DirectoryInfo di)  => fileSystemService.GetBinaryFileInfos(di);
+    public static           IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
 
 
     private class FileInfoComparer : IEqualityComparer<FileInfo>
     {
-        private readonly SHA256Hasher hasher = new(NullLogger<SHA256Hasher>.Instance);
+        private readonly SHA256Hasher hasher = new();
 
         public bool Equals(FileInfo x, FileInfo y)
         {
@@ -193,7 +193,7 @@ static class FileSystem
     }
     private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
     {
-        private readonly SHA256Hasher hasher = new(NullLogger<SHA256Hasher>.Instance);
+        private readonly SHA256Hasher hasher = new();
 
         public bool Equals(FileInfoBase x, FileInfoBase y)
         {
