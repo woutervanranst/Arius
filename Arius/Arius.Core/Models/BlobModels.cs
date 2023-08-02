@@ -52,7 +52,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
     }
 
 
-    public bool Downloadable => AccessTier == AccessTier.Hot || AccessTier == AccessTier.Cool;
+    public bool Downloadable => AccessTier != AccessTier.Archive;
     public override ChunkHash ChunkHash => new(Name);
 
     public abstract AccessTier AccessTier { get; }
@@ -69,7 +69,7 @@ internal abstract class ChunkBlobBase : BlobBase, IChunk
         if (targetAccessTier == AccessTier.Archive && 
             length <= oneMegaByte)
         {
-            return AccessTier.Cool; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+            return AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
         }
 
         return targetAccessTier;
@@ -153,10 +153,11 @@ internal class ChunkBlobBaseClient : ChunkBlobBase
 
     public override AccessTier AccessTier => props.AccessTier switch
     {
-        "Hot" => AccessTier.Hot,
-        "Cool" => AccessTier.Cool,
+        "Hot"     => AccessTier.Hot,
+        "Cool"    => AccessTier.Cool,
+        "Cold"    => AccessTier.Cold,
         "Archive" => AccessTier.Archive,
-        _ => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier}"),
+        _         => throw new ArgumentException($"AccessTier not an expected value (is: {props.AccessTier})"),
     };
 
     public override async Task<bool> SetAccessTierPerPolicyAsync(AccessTier accessTier)

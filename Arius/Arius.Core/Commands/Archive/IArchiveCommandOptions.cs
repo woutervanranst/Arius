@@ -70,6 +70,7 @@ internal interface IArchiveCommandOptions : IRepositoryOptions
                 .Must(tier =>
                     tier == AccessTier.Hot ||
                     tier == AccessTier.Cool ||
+                    tier == AccessTier.Cold ||
                     tier == AccessTier.Archive);
         }
     }
