@@ -18,14 +18,17 @@ public class NewFacade
     public NewFacade(ILoggerFactory loggerFactory)
     {
         this.loggerFactory = loggerFactory;
+
+        //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+        //    {
+        //        TempDirectoryName = ".ariustemp",
+        //        RestoreTempDirectoryName = ".ariusrestore"
+        //    });
     }
 
-    public StorageAccountFacade ForStorageAccount(string storageAccountName, string storageAccountKey)
-    {
-        var storageAccountOptions = new StorageAccountOptions(storageAccountName, storageAccountKey);
 
-        return new StorageAccountFacade(loggerFactory, storageAccountOptions);
-    }
+    public   StorageAccountFacade ForStorageAccount(string storageAccountName, string storageAccountKey) => ForStorageAccount(new StorageAccountOptions(storageAccountName, storageAccountKey));
+    internal StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)        => new(loggerFactory, storageAccountOptions);
 }
 
 
@@ -57,11 +60,8 @@ public class StorageAccountFacade
     /// <param name="containerName"></param>
     /// <param name="passphrase"></param>
     /// <returns></returns>
-    public async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase)
-    {
-        var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
-        return await RepositoryFacade.CreateAsync(loggerFactory, ro);
-    }
+    public   async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    internal async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
     /// <summary>
     /// FOR UNIT TESTING PURPOSES ONLY
