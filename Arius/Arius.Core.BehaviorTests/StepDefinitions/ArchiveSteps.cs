@@ -67,7 +67,7 @@ class ArchiveSteps : TestBase
 
         await TestSetup.ArchiveCommandAsync(tier);
     }
-    record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
+    private record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
 
     [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
     public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Arius.Core.BehaviorTests;
 
 [Binding]
-static class TestSetup
+internal static class TestSetup
 {
     private const string TEST_CONTAINER_NAME_PREFIX = "behaviortest";
 
@@ -60,37 +60,10 @@ static class TestSetup
     }
         
     
-    internal static RepositoryFacade Facade { get; private set; }
-
+    internal static RepositoryFacade Facade      { get; private set; }
+    internal static FileService      FileService { get; private set; }
+    
     internal static Repository Repository => Facade.Repository;
-
-    internal static FileService FileService { get; private set; }
-    
-    
-    [AfterTestRun]
-    private static async Task ClassCleanup()
-    {
-        await PurgeRemote(false);
-        Facade.Dispose();
-    }
-
-    private static async Task PurgeRemote(bool leaveContainer = false)
-    {
-        if (leaveContainer)
-        {
-            // Delete all blobs in the container but leave the container
-            await foreach (var bi in container.GetBlobsAsync())
-                await container.DeleteBlobAsync(bi.Name);
-        }
-        else
-        {
-            // Delete all containers
-            var blobService = container.GetParentBlobServiceClient();
-            foreach (var bci in blobService.GetBlobContainers(prefix: TEST_CONTAINER_NAME_PREFIX))
-                await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
-        }
-
-    }
 
 
     [BeforeScenario]
@@ -99,6 +72,15 @@ static class TestSetup
         BlockBase.Reset();
     }
 
+    [AfterTestRun]
+    private static async Task ClassCleanup()
+    {
+        await PurgeRemoteAsync(false);
+        Facade.Dispose();
+    }
+    
+
+    // --------- REPOSTATS ---------
 
     private static async Task AddRepoStat()
     {
@@ -116,6 +98,8 @@ static class TestSetup
     public static List<AriusRepositoryStats> Stats { get; } = new();
 
 
+    // --------- POINTERFILEENRY HELPERS ---------
+
     /// <summary>
     /// Get the PointerFileEntry associated with this PointerFile or BinaryFile
     /// </summary>
@@ -130,11 +114,12 @@ static class TestSetup
     }
 
 
+    // --------- COMMANDS ---------
 
     public static async Task ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (purgeRemote)
-            await PurgeRemote(true);
+            await PurgeRemoteAsync(true);
 
         await Facade.ExecuteArchiveCommandAsync(FileSystem.ArchiveDirectory, fastHash, removeLocal, tier, dedup, DateTime.UtcNow);
 
@@ -151,6 +136,25 @@ static class TestSetup
         await Facade.ExecuteRestoreCommandAsyc(path, synchronize, download, keepPointers, DateTime.UtcNow);
     }
 
+
+    // --------- BLOB HELPERS ---------
+
+    private static async Task PurgeRemoteAsync(bool leaveContainer = false)
+    {
+        if (leaveContainer)
+        {
+            // Delete all blobs in the container but leave the container
+            await foreach (var bi in container.GetBlobsAsync())
+                await container.DeleteBlobAsync(bi.Name);
+        }
+        else
+        {
+            // Delete all containers
+            var blobService = container.GetParentBlobServiceClient();
+            foreach (var bci in blobService.GetBlobContainers(prefix: TestSetup.TEST_CONTAINER_NAME_PREFIX))
+                await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
+        }
+    }
 
     public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
     {
@@ -174,6 +178,7 @@ static class TestSetup
 
         await source.SetAccessTierAsync(AccessTier.Archive);
     }
+
     public static async Task<bool> RehydrateFolderExists()
     {
         var n = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).CountAsync();
