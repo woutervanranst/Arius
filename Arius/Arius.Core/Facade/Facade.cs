@@ -25,73 +25,6 @@ using Arius.Core.Commands;
 
 namespace Arius.Core.Facade;
 
-public static class ServiceCollectionExtensions
-{
-    /// <summary>
-    /// Registers an <see cref="ICommand{IArchiveCommandOptions}" /> instance
-    /// Registers an <see cref="ICommand{IRestoreCommandOptions}" /> instance
-    /// </summary>
-    public static IServiceCollection AddAriusCoreCommands(this IServiceCollection services)
-
-    {
-        //services.AddOptions<LibraryOptions>()
-        //    .Configure(options =>
-        //    {
-        //        // Specify default option values
-        //    });
-
-        // Register lib services here...
-        services
-            .AddSingleton<ICommand<IArchiveCommandOptions>, ArchiveCommand>()
-            .AddSingleton<ArchiveCommandStatistics>()
-
-            .AddSingleton<ICommand<IRestoreCommandOptions>, RestoreCommand>()
-            .AddSingleton<ICommand<IRehydrateCommandOptions>, RehydrateCommand>();
-
-
-
-        return services;
-
-        // Add Options
-        //    sc
-        //        .AddSingleton(tempDirectoryAppSettings);
-
-        //    //Add the options for the Services & Repositories
-        //    foreach (var type in options.GetType().GetInterfaces())
-        //        sc.AddSingleton(type, options);
-
-        //    sc.AddSingleton<T>(options);
-
-        //    sc
-        //        .AddSingleton<ILoggerFactory>(loggerFactory)
-        //        .AddLogging();
-
-        //    return sc.BuildServiceProvider();
-    }
-}
-
-//public interface IFacade2 // the interface is public, the class is internal
-//{
-//    ICommand CreateArchiveCommand(IArchiveCommandOptions options);
-//}
-
-//internal class Facade2 : IFacade2
-//{
-//    public ICommand CreateArchiveCommand(IArchiveCommandOptions options)
-//    {
-//        throw new NotImplementedException();
-//    }
-//}
-
-//public interface IFacade //Interface used mainly for injecting a mock facade in unit testing
-//{
-//    ICommand<IArchiveCommandOptions> CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc);
-//    ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc);
-//    ICommand CreateDedupEvalCommand(string path);
-//}
-
-
-
 public class Facade //: IFacade
 {
     //internal interface IOptions // Used for DI in the facade
@@ -152,43 +85,6 @@ public class Facade //: IFacade
 
     //    return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
     //}
-
-
-    //private static ServiceProvider CreateServiceProvider<T>(ILoggerFactory loggerFactory, TempDirectoryAppSettings tempDirectoryAppSettings, T options) where T : class, Facade.IOptions
-    //{
-    //    var sc = new ServiceCollection();
-
-    //    sc
-    //        //Add Commmands
-    //        //.AddSingleton<DedupEvalCommand>()
-    //        .AddSingleton<ArchiveCommand>()
-    //        .AddSingleton<RestoreCommand>()
-
-    //        //Add Services
-    //        .AddSingleton<FileService>()
-    //        .AddSingleton<IHashValueProvider, SHA256Hasher>()
-    //        .AddSingleton<Repository>()
-
-    //        // Add Chunkers
-    //        .AddSingleton<Chunker, ByteBoundaryChunker>();
-
-    //    // Add Options
-    //    sc
-    //        .AddSingleton(tempDirectoryAppSettings);
-
-    //    //Add the options for the Services & Repositories
-    //    foreach (var type in options.GetType().GetInterfaces())
-    //        sc.AddSingleton(type, options);
-
-    //    sc.AddSingleton<T>(options);
-
-    //    sc
-    //        .AddSingleton<ILoggerFactory>(loggerFactory)
-    //        .AddLogging();
-
-    //    return sc.BuildServiceProvider();
-    //}
-}
 
 
 

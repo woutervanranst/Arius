@@ -8,22 +8,22 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Facade;
 
 namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, 
-        Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand)
+    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, LoggerFactory loggerFactory)
     {
-        this.logger = logger;
-        this.restoreCommand = restoreCommand;
+        this.logger        = logger;
+        this.loggerFactory = loggerFactory;
     }
 
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand;
+    private readonly LoggerFactory              loggerFactory;
 
-    internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
+    internal class RestoreCommandOptions : RepositoryOptions
     {
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
         [CommandOption("-s|--synchronize")]
@@ -67,7 +67,14 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
             logger.LogProperties(options);
 
-            return await restoreCommand.ExecuteAsync(options);
+            using var rf = await new NewFacade(loggerFactory)
+                .ForStorageAccount(options.AccountName, options.AccountKey)
+                .ForRepositoryAsync(options.ContainerName, options.Passphrase);
+
+            if (options.PointInTimeUtc.HasValue)
+                return await rf.ExecuteRestoreCommandAsyc(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
+            else
+                return await rf.ExecuteRestoreCommandAsyc(options.Path, options.Synchronize, options.Download, options.KeepPointers);
         }
         catch (Exception e)
         {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Arius.Cli.Utils;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -16,21 +17,18 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 {
     public ArchiveCliCommand(IAnsiConsole console,
         ILogger<ArchiveCliCommand> logger,
-        ArchiveCommandStatistics statisticsProvider,
-        Arius.Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand)
+        LoggerFactory loggerFactory)
     {
-        this.console = console;
-        this.logger = logger;
-        this.statisticsProvider = statisticsProvider;
-        this.archiveCommand = archiveCommand;
+        this.console            = console;
+        this.logger             = logger;
+        this.loggerFactory      = loggerFactory;
     }
 
-    private readonly IAnsiConsole console;
+    private readonly IAnsiConsole               console;
     private readonly ILogger<ArchiveCliCommand> logger;
-    private readonly ArchiveCommandStatistics statisticsProvider;
-    private Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand;
+    private readonly LoggerFactory              loggerFactory;
 
-    internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
+    internal class ArchiveCommandOptions : RepositoryOptions
     {
         [Description("Storage tier to use (hot|cool|archive)")]
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
@@ -78,14 +76,16 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
             logger.LogProperties(options);
 
-            await archiveCommand.ExecuteAsync(options);
+            using var rf = await new NewFacade(loggerFactory)
+                .ForStorageAccount(options.AccountName, options.AccountKey)
+                .ForRepositoryAsync(options.ContainerName, options.Passphrase);
+
+            var (_, s) = await rf.ExecuteArchiveCommandAsync(options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
 
             console.WriteLine();
             console.Write(new Rule("[red]Summary[/]"));
 
             // Create summary table
-            var s = (ArchiveCommandStatistics)statisticsProvider;
-
             var table = new Table()
                 .AddColumn("")
                 .AddColumn("")

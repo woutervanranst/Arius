@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
 using PostSharp.Constraints;
 
@@ -104,7 +105,7 @@ public class RepositoryFacade : IDisposable
         throw new NotImplementedException();
     }
 
-    public async Task<int> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    public async Task<(int, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
     {
         if (tier == default)
             tier = AccessTier.Cold;
@@ -120,7 +121,9 @@ public class RepositoryFacade : IDisposable
 
         var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
 
-        return await cmd.ExecuteAsync(aco);
+        var r = await cmd.ExecuteAsync(aco);
+
+        return (r, sp);
     }
 
     public async Task<int> ExecuteRestoreCommandAsyc(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
@@ -133,6 +136,15 @@ public class RepositoryFacade : IDisposable
         // TODO IREstoreCommandOptions.Validator
 
         var cmd = new RestoreCommand(loggerFactory, Repository);
+
+        return await cmd.ExecuteAsync(rco);
+    }
+
+    public async Task<int> ExecuteRehydrateCommandAsync()
+    {
+        var rco = new RehydrateCommandOptions(Repository);
+
+        var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
 
         return await cmd.ExecuteAsync(rco);
     }

@@ -1,12 +1,10 @@
-using System.ComponentModel;
 using Arius.Cli.Utils;
-using Arius.Core.Commands;
-using Arius.Core.Facade;
 using Spectre.Console.Cli;
+using System.ComponentModel;
 
 namespace Arius.Cli.Commands;
 
-internal abstract class RepositoryOptions : CommandSettings, IRepositoryOptions
+internal abstract class RepositoryOptions : CommandSettings
 {
     [Description("Blob Account Name")]
     [CommandOption("-n|--accountname <ACCOUNT_NAME>")]

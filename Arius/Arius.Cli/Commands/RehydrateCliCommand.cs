@@ -22,17 +22,12 @@ namespace Arius.Cli.Commands;
 
 internal class RehydrateCliCommand : AsyncCommand<RehydrateCliCommand.RehydrateCommandOptions>
 {
-    public RehydrateCliCommand(ILogger<RehydrateCliCommand> logger,
-        Arius.Core.Commands.ICommand<IRehydrateCommandOptions> rehydrateCommand)
+    public RehydrateCliCommand(ILogger<RehydrateCliCommand> logger)
     {
-        this.rehydrateCommand = rehydrateCommand;
-
         logger.LogDebug("{0} initialized", nameof(RestoreCliCommand));
     }
 
-    private readonly Arius.Core.Commands.ICommand<IRehydrateCommandOptions> rehydrateCommand;
-
-    internal class RehydrateCommandOptions : RepositoryOptions, IRehydrateCommandOptions
+    internal class RehydrateCommandOptions : RepositoryOptions
     {
         // No special requirements
     }

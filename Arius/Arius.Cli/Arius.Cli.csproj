@@ -22,7 +22,7 @@
 
     
     <!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
-	<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.3.1" />
+	<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.4.0" />
 	<PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" />
 	<PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />
@@ -32,7 +32,7 @@
 	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
 	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
 
-	<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
 	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
   </ItemGroup>
