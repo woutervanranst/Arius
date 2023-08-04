@@ -12,6 +12,22 @@ using Arius.Core.Commands.Restore;
 using FluentValidation.Results;
 using PostSharp.Constraints;
 using PostSharp.Patterns.Contracts;
+using System.Runtime.CompilerServices;
+
+/*
+ * This is required for the Arius.Cli.Tests module
+ * Specifically, the Moq framework cannot initialize ICommand, which has '**internal** IServiceProvider Services { get; }' if it cannot see the internals
+ * See https://stackoverflow.com/a/28235222/1582323
+ */
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+[assembly: InternalsVisibleTo("Arius.Cli.Tests")]
+
+/*
+ * This is required to test the internals of the Arius.Core assembly
+ */
+[assembly: InternalsVisibleTo("Arius.Core.Tests")]
+[assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
+[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
 namespace Arius.Core.Facade;
 
@@ -19,6 +35,10 @@ public class NewFacade
 {
     private readonly ILoggerFactory    loggerFactory;
 
+    [ComponentInternal("Arius.Cli.Tests")]
+    internal NewFacade()
+    {
+    }
     public NewFacade(ILoggerFactory loggerFactory)
     {
         this.loggerFactory = loggerFactory;
@@ -31,10 +51,9 @@ public class NewFacade
     }
 
 
-    public   StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
-    internal StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
+    public   virtual StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
+    internal virtual StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
 }
-
 
 
 public class StorageAccountFacade
@@ -42,6 +61,10 @@ public class StorageAccountFacade
     private readonly ILoggerFactory        loggerFactory;
     private readonly IStorageAccountOptions storageAccountOptions;
 
+    [ComponentInternal("Arius.Cli.Tests")]
+    internal StorageAccountFacade()
+    {
+    }
     internal StorageAccountFacade(ILoggerFactory loggerFactory, IStorageAccountOptions options)
     {
         this.loggerFactory         = loggerFactory;
@@ -64,8 +87,8 @@ public class StorageAccountFacade
     /// <param name="containerName"></param>
     /// <param name="passphrase"></param>
     /// <returns></returns>
-    public   async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
-    internal async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
+    public   virtual async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    internal virtual async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
     ///// <summary>
     ///// FOR UNIT TESTING PURPOSES ONLY
@@ -83,6 +106,10 @@ public class RepositoryFacade : IDisposable
 {
     private readonly ILoggerFactory loggerFactory;
 
+    [ComponentInternal("Arius.Cli.Tests")]
+    internal RepositoryFacade()
+    {
+    }
     private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
     {
         Repository          = repo;
@@ -113,7 +140,7 @@ public class RepositoryFacade : IDisposable
         return v.Validate(new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc));
     }
 
-    public async Task<(int, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    public virtual async Task<(int, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
     {
         if (tier == default)
             tier = AccessTier.Cold;
@@ -169,7 +196,8 @@ public class RepositoryFacade : IDisposable
         Dispose(false);
     }
 
-    protected virtual void Dispose(bool disposing)
+    [ComponentInternal("Arius.Cli.Tests")] // should be protected
+    internal virtual void Dispose(bool disposing)
     {
         if (disposing)
             Repository.Dispose();

@@ -2,19 +2,7 @@
 using System;
 using System.Runtime.CompilerServices;
 
-/*
- * This is required for the Arius.Cli.Tests module
- * Specifically, the Moq framework cannot initialize ICommand, which has '**internal** IServiceProvider Services { get; }' if it cannot see the internals
- * See https://stackoverflow.com/a/28235222/1582323
- */
-[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
 
-/*
- * This is required to test the internals of the Arius.Core assembly
- */
-[assembly: InternalsVisibleTo("Arius.Core.Tests")]
-[assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
-[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
 namespace Arius.Core.Facade;
 

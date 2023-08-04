@@ -20,6 +20,7 @@ namespace Arius.Core.Repositories;
 internal class RepositoryBuilder
 {
     private readonly ILogger<Repository> logger;
+
     public RepositoryBuilder(ILogger<Repository> logger)
     {
         this.logger = logger;
@@ -99,6 +100,11 @@ internal partial class Repository : IDisposable
 {
     private readonly ILogger<Repository>    logger;
     private readonly IAriusDbContextFactory dbContextFactory;
+
+    [ComponentInternal("Arius.Cli.Tests")]
+    public Repository()
+    {
+    }
 
     [ComponentInternal(typeof(RepositoryBuilder))]
     public Repository(ILogger<Repository> logger, IRepositoryOptions options, IAriusDbContextFactory dbContextFactory, BlobContainerClient container)

@@ -6,13 +6,11 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using NUnit.Framework;
-using Spectre.Console.Cli;
 using System;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using Arius.Core.Facade;
 
 namespace Arius.Cli.Tests;
 
@@ -28,8 +26,6 @@ namespace Arius.Cli.Tests;
 
 internal class UnitTests
 {
-    private const string RUNNING_IN_CONTAINER = "DOTNET_RUNNING_IN_CONTAINER";
-    
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
@@ -90,15 +86,25 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
+        var (facade, _, repositoryFacade, executeArchiveCommand, executeRestoreCommandExpr, dispose) = GetMocks();
+
         if (command == "archive")
         {
-            var o = new MockedArchiveCommandOptions();
-            await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+            command = new MockedArchiveCommandOptions().ToString();
+            await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+
+            repositoryFacade.Verify(executeArchiveCommand, Times.Exactly(1));
+            repositoryFacade.Verify(dispose, Times.Exactly(1));
+            repositoryFacade.VerifyNoOtherCalls();
         }
         else if (command == "restore")
         {
-            var o = new MockedRestoreCommandOptions();
-            await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+            command = new MockedRestoreCommandOptions().ToString();
+            await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+
+            repositoryFacade.Verify(executeRestoreCommandExpr, Times.Exactly(1));
+            repositoryFacade.Verify(dispose, Times.Exactly(1));
+            repositoryFacade.VerifyNoOtherCalls();
         }
         else
             throw new NotImplementedException();
@@ -182,6 +188,10 @@ internal class UnitTests
 
     [OneTimeSetUp]
     public void CreateLogsDirectory()
+    private (Mock<NewFacade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock, 
+        Expression<Func<RepositoryFacade, Task<(int, ArchiveCommandStatistics)>>> ExecuteArchiveCommandExpr,
+        Expression<Func<RepositoryFacade, Task<int>>> ExecuteRestoreCommandExpr,
+        Expression<Action<RepositoryFacade>> DisposeExpr) GetMocks()
     {
         // Create the /logs folder for unit testing purposes
         // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
@@ -191,6 +201,9 @@ internal class UnitTests
             logs.Create();
         }
     }
+        // Mock IStorageAccountOptions
+        var mockStorageAccountOptions = new Mock<IStorageAccountOptions>();
+        // Add setup for methods as required.
 
     [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
@@ -231,6 +244,10 @@ internal class UnitTests
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
+        
+        // Mock IRepositoryOptions
+        var mockRepositoryOptions = new Mock<IRepositoryOptions>();
+        // Add setup for methods as required.
 
     [Test]
     public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
@@ -261,22 +278,41 @@ internal class UnitTests
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
+        
+        // Mock Repository
+        var mockRepository = new Mock<Repository>();
+        // Add setup for methods as required.
 
 
+        // Mock RepositoryFacade
+        var mockRepositoryFacade = new Mock<RepositoryFacade>();
+        //mockRepositoryFacade.Setup(x => x.GetVersions()).Returns(new List<string> { "v1", "v2" }.ToAsyncEnumerable());
 
+        Expression<Func<RepositoryFacade, Task<(int, ArchiveCommandStatistics)>>> executeArchiveCommandAsyncExpr = x => x.ExecuteArchiveCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<AccessTier>(), It.IsAny<bool>(), It.IsAny<DateTime>());
+        mockRepositoryFacade.Setup(executeArchiveCommandAsyncExpr)
+            .ReturnsAsync((1, new ArchiveCommandStatistics()))
+            .Verifiable();
 
     private async Task<(int ExitCode, T? ParsedOptions, Exception? Exception)> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
     {
         // Create Mock
         var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
-        validateReturnMock.Setup(m => m.IsValid).Returns(true);
+        Expression<Func<RepositoryFacade, Task<int>>> executeRestoreCommandAsyncExpr = x => x.ExecuteRestoreCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>());
+        mockRepositoryFacade.Setup(executeRestoreCommandAsyncExpr)
+            .ReturnsAsync(1)
+            .Verifiable();
 
         Expression<Func<Core.Commands.ICommand<T>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<T>());
         Expression<Func<Core.Commands.ICommand<T>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<T>());
+        //mockRepositoryFacade.Setup(x => x.ExecuteRehydrateCommandAsync())
+        //    .ReturnsAsync(1);
 
         var commandMock = new Mock<Core.Commands.ICommand<T>>();
         commandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
         commandMock.Setup(executeAsyncExpr).Verifiable();
+        Expression<Action<RepositoryFacade>> disposeExpr = x => x.Dispose(It.IsAny<bool>());
+        mockRepositoryFacade.Setup(disposeExpr)
+            .Verifiable();
 
         // Run Arius
         var (r, po, e) = Program.InternalMain(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands<T>(sc, commandMock.Object));
@@ -284,6 +320,11 @@ internal class UnitTests
         if (r == 0)
         {
             e.Should().BeNull();
+        // Mock StorageAccountFacade
+        var mockStorageAccountFacade = new Mock<StorageAccountFacade>();
+        //mockStorageAccountFacade.Setup(x => x.GetContainerNamesAsync()).ReturnsAsync(new List<string> { "test1", "test2" }.ToAsyncEnumerable());
+        mockStorageAccountFacade.Setup(x => x.ForRepositoryAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(mockRepositoryFacade.Object);
+        //mockStorageAccountFacade.Setup(x => x.ForRepositoryAsync(It.IsAny<IRepositoryOptions>())).ReturnsAsync(mockRepositoryFacade.Object);
 
             //archiveCommandMock.Verify(validateExpr, Times.Exactly(1));
             commandMock.Verify(executeAsyncExpr, Times.Exactly(1));
@@ -291,6 +332,10 @@ internal class UnitTests
         }
         else
             e.Should().NotBeNull();
+        // Mock NewFacade
+        var mockNewFacade = new Mock<NewFacade>();
+        mockNewFacade.Setup(x => x.ForStorageAccount(It.IsAny<string>(), It.IsAny<string>())).Returns(mockStorageAccountFacade.Object);
+        //mockNewFacade.Setup(x => x.ForStorageAccount(It.IsAny<IStorageAccountOptions>())).Returns(mockStorageAccountFacade.Object);
 
         return (r, (T?)po, e);
     }
@@ -299,6 +344,10 @@ internal class UnitTests
         services.AddSingleton(a);
         
         return services;
+        // Now you can use mockNewFacade.Object in your unit tests
+
+        return (mockNewFacade, mockStorageAccountFacade, mockRepositoryFacade, 
+            executeArchiveCommandAsyncExpr, executeRestoreCommandAsyncExpr, disposeExpr);
     }
 
     private class MockedArchiveCommandOptions : IArchiveCommandOptions
