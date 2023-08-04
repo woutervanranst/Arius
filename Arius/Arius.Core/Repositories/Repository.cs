@@ -8,8 +8,12 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Arius.Core.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.Repositories;
 
@@ -124,6 +128,28 @@ internal partial class Repository : IDisposable
     public async Task SaveStateToRepository(DateTime versionUtc)
     {
         await dbContextFactory.SaveAsync(versionUtc);
+    }
+
+    // --------- BLA ---------
+
+    public async IAsyncEnumerable<(PointerFileEntry PointerFileEntry, BinaryProperties BinaryProperties)> GetPointerFileEntriesWithBinaryPropertiesAsync(string relativeNamePrefix)
+    {
+        throw new NotImplementedException();
+
+        // TODO: use db.PointerFileEntries.Include(e => e.BinaryProperties)
+        // EF Core Migrations
+
+        await using var db = GetAriusDbContext();
+
+        var r = db.PointerFileEntries.Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase))
+            .Select(pfe => new
+            {
+                PointerFileEntry = pfe, 
+                BinaryProperty = db.BinaryProperties.Single(bp => pfe.BinaryHash == bp.Hash)
+            }).AsAsyncEnumerable();
+
+        await foreach (var x in r)
+            yield return (x.PointerFileEntry, x.BinaryProperty);
     }
 
 

@@ -167,11 +167,18 @@ internal partial class Repository
         /// TODO REMOVE ME
         /// </summary>
         /// <returns></returns>
-        internal async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAsync()
+        internal async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync()
         {
             await using var db = repo.GetAriusDbContext();
-            return await db.PointerFileEntries.ToArrayAsync(); //TODO to TEST suite?
+            await foreach (var pfe in db.PointerFileEntries.AsAsyncEnumerable())
+                yield return pfe;
         }
+
+        internal IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(string relativeNamePrefix)
+        {
+            return GetPointerFileEntriesAsync().Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase));
+        }
+
         internal async Task<int> CountAsync()
         {
             await using var db = repo.GetAriusDbContext();
