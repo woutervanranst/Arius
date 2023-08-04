@@ -88,6 +88,16 @@ internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOption
         this.VersionUtc  = versionUtc;
     }
 
+    public ArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DateTime versionUtc) : base(accountName, accountKey, containerName, passphrase)
+    {
+        this.FastHash    = fastHash;
+        this.RemoveLocal = removeLocal;
+        this.Tier        = tier;
+        this.Dedup       = dedup;
+        this.Path        = root;
+        this.VersionUtc  = versionUtc;
+    }
+
     public bool          FastHash    { get; }
     public bool          RemoveLocal { get; }
     public AccessTier    Tier        { get; }

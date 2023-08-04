@@ -9,7 +9,9 @@ using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
+using FluentValidation.Results;
 using PostSharp.Constraints;
+using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Facade;
 
@@ -29,8 +31,16 @@ public class NewFacade
     }
 
 
-    public   StorageAccountFacade ForStorageAccount(string storageAccountName, string storageAccountKey) => ForStorageAccount(new StorageAccountOptions(storageAccountName, storageAccountKey));
-    internal StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)        => new(loggerFactory, storageAccountOptions);
+    public   StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
+    internal StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
+
+    public ValidationResult ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    {
+        var aco = new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
+
+        var v = new IArchiveCommandOptions.Validator();
+        return v.Validate(aco);
+    }
 }
 
 
@@ -62,17 +72,17 @@ public class StorageAccountFacade
     /// <param name="containerName"></param>
     /// <param name="passphrase"></param>
     /// <returns></returns>
-    public   async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    public   async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
     internal async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
-    /// <summary>
-    /// FOR UNIT TESTING PURPOSES ONLY
-    /// </summary>
-    internal async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase, Repository.AriusDbContext mockedContext)
-    {
-        var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
-        return await RepositoryFacade.CreateAsync(loggerFactory, ro);
-    }
+    ///// <summary>
+    ///// FOR UNIT TESTING PURPOSES ONLY
+    ///// </summary>
+    //internal async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase, Repository.AriusDbContext mockedContext)
+    //{
+    //    var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
+    //    return await RepositoryFacade.CreateAsync(loggerFactory, ro);
+    //}
 }
 
 
@@ -114,8 +124,6 @@ public class RepositoryFacade : IDisposable
             versionUtc = DateTime.UtcNow;
 
         var aco = new ArchiveCommandOptions(Repository, root, fastHash, removeLocal, tier, dedup, versionUtc);
-
-        //TODO IArchiveCommandOptions.Validator
 
         var sp = new ArchiveCommandStatistics();
 
