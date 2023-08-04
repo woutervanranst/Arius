@@ -35,8 +35,7 @@ internal class UnitTests
     {
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
-        var args = "";
-        var (r, _, _) = Program.InternalMain(args.Split(' '));
+        var r = await Program.Main(Array.Empty<string>());
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
@@ -49,14 +48,27 @@ internal class UnitTests
     {
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
-        var (r, _, e) = Program.InternalMain(command.Split(' '));
+        var r = await Program.Main(command.AsArray());
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
-        e.Should().BeOfType<CommandRuntimeException>();
         consoleText.Should().Contain("Command error:");
         consoleText.Should().NotContain("at "); // no stack trace in the output
+    }
+
+    [Test]
+    public async Task Cli_CommandExplanation_OK([Values("archive", "restore" /*, "rehydrate"*/)] string command)
+    {
+        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+
+        var r = await Program.Main($"{command} -h".Split(' '));
+
+        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
+
+        r.Should().Be(0);
+        consoleText.Should().Contain($"arius {command} [PATH] [OPTIONS]");
+        consoleText.Should().Contain("-h, --help");
     }
 
     [Test]
@@ -65,13 +77,12 @@ internal class UnitTests
         Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "unexistingcommand";
-        var (r, _, e) = Program.InternalMain(args.Split(' '));
+        var r = await Program.Main(args.Split(' '));
 
         var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
-        e.Should().BeOfType<CommandParseException>();
-        consoleText.Should().Contain("Error: ");
+        consoleText.Should().Contain("Error: Unknown command");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 

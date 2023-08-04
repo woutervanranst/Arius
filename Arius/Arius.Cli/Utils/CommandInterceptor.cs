@@ -88,10 +88,10 @@ internal class CommandInterceptor : ICommandInterceptor
         //    //    logger.LogDebug("Path is not a directory, not saving options");
         //    //}
 
-        ParsedOptions = (ICommandOptions)options;
+        //ParsedOptions = (ICommandOptions)options;
     }
 
-    public ICommandOptions? ParsedOptions { get; private set; }
+    //public ICommandOptions? ParsedOptions { get; private set; }
 
     //public string CommandName => context.Name;
 }

@@ -13,11 +13,10 @@ namespace Arius.Cli.Utils;
 
 public static class ConsoleLoggerExtensions
 {
-    public static ILoggingBuilder AddCustomFormatter(
-        this ILoggingBuilder builder,
-        Action<SimpleConsoleFormatterOptions> configure) =>
-        builder.AddConsole(options => options.FormatterName = "customName")
-            .AddConsoleFormatter<SimpleCustomConsoleFormatter, SimpleConsoleFormatterOptions>(configure);
+    public static ILoggingBuilder AddCustomFormatter(this ILoggingBuilder builder) => AddCustomFormatter(builder, options => { });
+
+    public static ILoggingBuilder AddCustomFormatter(this ILoggingBuilder builder, Action<SimpleConsoleFormatterOptions> configure) =>
+        builder.AddConsole(options => options.FormatterName = "customName").AddConsoleFormatter<SimpleCustomConsoleFormatter, SimpleConsoleFormatterOptions>(configure);
 }
 
 /// <summary>
@@ -27,10 +26,10 @@ public static class ConsoleLoggerExtensions
 /// </summary>
 public sealed class SimpleCustomConsoleFormatter : ConsoleFormatter, IDisposable
 {
-    private const string LoglevelPadding = ": ";
-    private static readonly string _messagePadding = new string(' ', GetLogLevelString(LogLevel.Information).Length + LoglevelPadding.Length);
-    private static readonly string _newLineWithMessagePadding = Environment.NewLine + _messagePadding;
-    private IDisposable _optionsReloadToken;
+    private const           string      LoglevelPadding            = ": ";
+    private static readonly string      _messagePadding            = new (' ', GetLogLevelString(LogLevel.Information).Length + LoglevelPadding.Length);
+    private static readonly string      _newLineWithMessagePadding = Environment.NewLine + _messagePadding;
+    private                 IDisposable _optionsReloadToken;
 
     public SimpleCustomConsoleFormatter(IOptionsMonitor<SimpleConsoleFormatterOptions> options)
         : base("customName")

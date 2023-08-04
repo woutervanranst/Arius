@@ -15,22 +15,20 @@ namespace Arius.Cli.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console,
-        ILogger<ArchiveCliCommand> logger,
-        LoggerFactory loggerFactory)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, NewFacade facade)
     {
-        this.console            = console;
-        this.logger             = logger;
-        this.loggerFactory      = loggerFactory;
+        this.console = console;
+        this.logger  = logger;
+        this.facade  = facade;
     }
 
     private readonly IAnsiConsole               console;
     private readonly ILogger<ArchiveCliCommand> logger;
-    private readonly LoggerFactory              loggerFactory;
+    private readonly NewFacade                  facade;
 
     internal class ArchiveCommandOptions : RepositoryOptions
     {
-        [Description("Storage tier to use (hot|cool|archive)")]
+        [Description("Storage tier to use (hot|cool|cold|archive)")]
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
@@ -59,12 +57,12 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         public DateTime VersionUtc { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
-    public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
+    public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions options)
     {
-        var r = archiveCommand.Validate(settings);
+        var r = facade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
         if (!r.IsValid)
             return ValidationResult.Error(r.ToString());
-        
+
         return ValidationResult.Success();
     }
 
@@ -76,7 +74,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
             logger.LogProperties(options);
 
-            using var rf = await new NewFacade(loggerFactory)
+            using var rf = await facade
                 .ForStorageAccount(options.AccountName, options.AccountKey)
                 .ForRepositoryAsync(options.ContainerName, options.Passphrase);
 
