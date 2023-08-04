@@ -132,7 +132,7 @@ public class RepositoryFacade : IDisposable
         return (r, sp);
     }
 
-    public async Task<int> ExecuteRestoreCommandAsyc(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
+    public virtual async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
     {
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
