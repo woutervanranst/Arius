@@ -27,24 +27,18 @@ namespace Arius.Core.Facade;
 
 public class Facade //: IFacade
 {
-    //internal interface IOptions // Used for DI in the facade
-    //{
-    //}
-
-    public Facade(ILoggerFactory loggerFactory, IOptions<TempDirectoryAppSettings> tempDirectoryAppSettings)
+    public Facade(ILoggerFactory loggerFactory)
     {
         ArgumentNullException.ThrowIfNull(loggerFactory);
-        ArgumentNullException.ThrowIfNull(tempDirectoryAppSettings);
 
-        this.loggerFactory = loggerFactory;
-        this.tempDirectoryAppSettings = tempDirectoryAppSettings.Value;
+        this.loggerFactory            = loggerFactory;
     }
 
-    private readonly ILoggerFactory loggerFactory;
-    private readonly TempDirectoryAppSettings tempDirectoryAppSettings;
+    private readonly ILoggerFactory           loggerFactory;
+}
 
 
-    //public ICommand CreateDedupEvalCommand(string path)
+//public ICommand CreateDedupEvalCommand(string path)
     //{
     //    var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
 
