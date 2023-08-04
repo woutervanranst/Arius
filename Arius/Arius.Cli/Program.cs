@@ -1,6 +1,7 @@
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
 using Karambolo.Extensions.Logging.File;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -11,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Arius.Core.Facade;
 using WouterVanRanst.Utils.Extensions;
 
 [assembly: InternalsVisibleTo("Arius.Cli.Tests")]
@@ -21,12 +23,16 @@ public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
+        return await Main(args, null);
+    }
+    internal static async Task<int> Main(string[] args, Action<IServiceCollection> configureServices)
+    {
         try
         {
             WriteAriusFiglet();
 
             // See https://github.com/patriksvensson/spectre.console-di-sample from https://github.com/spectreconsole/spectre.console/discussions/380#discussioncomment-2214455
-            return await CreateHostBuilder()
+            return await CreateHostBuilder(configureServices)
                 .Build()
                 .RunAsync(args);
         }
@@ -105,7 +111,7 @@ public static class Program
     [ThreadStatic]
     internal static readonly bool IsMainThread = true; //https://stackoverflow.com/a/55205660/1582323
 
-    private static IHostBuilder CreateHostBuilder()
+    private static IHostBuilder CreateHostBuilder(Action<IServiceCollection> configureServices = null)
     {
         return Host.CreateDefaultBuilder()
             .ConfigureLogging(logging =>
@@ -137,6 +143,9 @@ public static class Program
             .ConfigureServices(services =>
             {
                 // Register services here
+                services.AddSingleton<NewFacade>();
+
+                configureServices?.Invoke(services);
 
                 // Add command line
                 services.AddCommandLine(config =>

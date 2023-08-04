@@ -59,7 +59,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions options)
     {
-        var r = facade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
+        var r = RepositoryFacade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
         if (!r.IsValid)
             return ValidationResult.Error(r.ToString());
 
