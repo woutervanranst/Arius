@@ -62,11 +62,11 @@ internal partial class ArchiveCommand
 
             await Parallel.ForEachAsync(fileSystemService.GetAllFileInfos(root),
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                async (fi, ct) =>
+                async (fib, ct) =>
                 {
                     try
                     {
-                        if (fi is PointerFileInfo pfi)
+                        if (fib is PointerFileInfo pfi)
                         {
                             // PointerFile
                             var pf = fileService.GetExistingPointerFile(root, pfi);
@@ -81,7 +81,7 @@ internal partial class ArchiveCommand
                                 // The pointer does not have a binary (yet) -- this is an edge case eg when re-uploading an entire archive
                                 latentPointers.Enqueue(pf);
                         }
-                        else if (fi is BinaryFileInfo bfi)
+                        else if (fib is BinaryFileInfo bfi)
                         {
                             // BinaryFile
                             var bf = await fileService.GetExistingBinaryFileAsync(root, bfi, fastHash);
@@ -121,7 +121,7 @@ internal partial class ArchiveCommand
                     }
                     catch (IOException e) when (e.Message.Contains("virus"))
                     {
-                        logger.LogWarning($"Could not back up '{fi.FullName}' because '{e.Message}'");
+                        logger.LogWarning($"Could not back up '{fib.FullName}' because '{e.Message}'");
                     }
                 });
 
