@@ -1,6 +1,7 @@
-﻿using Arius.Core.Commands;
-using Arius.Core.Commands.Archive;
+﻿using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
+using Arius.Core.Facade;
+using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,6 +12,7 @@ using System.IO;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Tests;
 
@@ -94,8 +96,7 @@ internal class UnitTests
             await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
 
             repositoryFacade.Verify(executeArchiveCommand, Times.Exactly(1));
-            repositoryFacade.Verify(dispose, Times.Exactly(1));
-            repositoryFacade.VerifyNoOtherCalls();
+            
         }
         else if (command == "restore")
         {
@@ -103,11 +104,12 @@ internal class UnitTests
             await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
 
             repositoryFacade.Verify(executeRestoreCommandExpr, Times.Exactly(1));
-            repositoryFacade.Verify(dispose, Times.Exactly(1));
-            repositoryFacade.VerifyNoOtherCalls();
         }
         else
             throw new NotImplementedException();
+
+        repositoryFacade.Verify(dispose, Times.Exactly(1));
+        repositoryFacade.VerifyNoOtherCalls();
     }
 
     [Test]
