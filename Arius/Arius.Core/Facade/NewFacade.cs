@@ -35,7 +35,7 @@ public class NewFacade
 {
     private readonly ILoggerFactory    loggerFactory;
 
-    [ComponentInternal("Arius.Cli.Tests")]
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     internal NewFacade()
     {
     }
@@ -61,7 +61,7 @@ public class StorageAccountFacade
     private readonly ILoggerFactory        loggerFactory;
     private readonly IStorageAccountOptions storageAccountOptions;
 
-    [ComponentInternal("Arius.Cli.Tests")]
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     internal StorageAccountFacade()
     {
     }
@@ -106,7 +106,7 @@ public class RepositoryFacade : IDisposable
 {
     private readonly ILoggerFactory loggerFactory;
 
-    [ComponentInternal("Arius.Cli.Tests")]
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     internal RepositoryFacade()
     {
     }

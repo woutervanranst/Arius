@@ -101,7 +101,7 @@ internal partial class Repository : IDisposable
     private readonly ILogger<Repository>    logger;
     private readonly IAriusDbContextFactory dbContextFactory;
 
-    [ComponentInternal("Arius.Cli.Tests")]
+    [ComponentInternal("Arius.Cli.Tests")]  // added only for Moq
     public Repository()
     {
     }
