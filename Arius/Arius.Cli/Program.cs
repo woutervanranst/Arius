@@ -143,7 +143,7 @@ public static class Program
             .ConfigureServices(services =>
             {
                 // Register services here
-                services.AddSingleton<NewFacade>();
+                services.AddSingleton<Facade>();
 
                 configureServices?.Invoke(services);
 

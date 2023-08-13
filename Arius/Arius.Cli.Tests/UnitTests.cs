@@ -122,14 +122,14 @@ internal class UnitTests
         if (command == "archive")
         {
             command = new MockedArchiveCommandOptions().ToString();
-            await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
 
             repositoryFacade.Verify(executeArchiveCommand, Times.Once());
         }
         else if (command == "restore")
         {
             command = new MockedRestoreCommandOptions { Synchronize = true }.ToString();
-            await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
 
             repositoryFacade.Verify(executeRestoreCommandExpr, Times.Once());
         }
@@ -157,7 +157,7 @@ internal class UnitTests
         else
             throw new NotImplementedException();
 
-        await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+        await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
         facade.Verify(x => x.ForStorageAccount(accountName, accountKey), Times.Once);
     }
 
@@ -245,13 +245,13 @@ internal class UnitTests
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
-                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade.Object));
                 repositoryFacade.Verify(x => x.ExecuteArchiveCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<AccessTier>(), It.IsAny<bool>(), It.IsAny<DateTime>()), Times.Once);
             }
             else if (command == "restore")
             {
                 var o = new MockedRestoreCommandOptions { Path = null, Synchronize = true };
-                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade.Object));
                 repositoryFacade.Verify(x => x.ExecuteRestoreCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>()));
             }
             else
@@ -263,7 +263,7 @@ internal class UnitTests
         }
     }
 
-    private (Mock<NewFacade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock,
+    private (Mock<Facade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock,
         dynamic ForStorageAccountExpr, dynamic ForRepositoryAsyncExpr,
         dynamic ExecuteArchiveCommandExpr, dynamic ExecuteRestoreCommandExpr, dynamic DisposeExpr) GetMocks()
     {
@@ -316,8 +316,8 @@ internal class UnitTests
         //mockStorageAccountFacade.Setup(x => x.ForRepositoryAsync(It.IsAny<IRepositoryOptions>())).ReturnsAsync(mockRepositoryFacade.Object);
 
         // Mock NewFacade
-        var mockNewFacade = new Mock<NewFacade>();
-        Expression<Func<NewFacade, StorageAccountFacade>> forStorageAccountExpr = x => x.ForStorageAccount(It.IsAny<string>(), It.IsAny<string>());
+        var mockNewFacade = new Mock<Facade>();
+        Expression<Func<Facade, StorageAccountFacade>> forStorageAccountExpr = x => x.ForStorageAccount(It.IsAny<string>(), It.IsAny<string>());
         mockNewFacade.Setup(forStorageAccountExpr)
             //.Callback<string, string>((an, ak) => (passedAccountName, passedAccountKey) = (an, ak))
             .Returns(mockStorageAccountFacade.Object)

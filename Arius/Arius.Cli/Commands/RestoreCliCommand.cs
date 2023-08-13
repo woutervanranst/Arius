@@ -13,14 +13,14 @@ namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, NewFacade facade)
+    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, Facade facade)
     {
         this.logger = logger;
         this.facade = facade;
     }
 
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly NewFacade                  facade;
+    private readonly Facade                  facade;
 
     internal class RestoreCommandOptions : RepositoryOptions
     {

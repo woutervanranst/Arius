@@ -26,7 +26,7 @@ internal static class TestSetup
         var blobService = options.GetBlobServiceClient();
         container = await blobService.CreateBlobContainerAsync(options.ContainerName);
 
-        Facade = await new NewFacade(NullLoggerFactory.Instance)
+        Facade = await new Facade.Facade(NullLoggerFactory.Instance)
             .ForStorageAccount(options)
             .ForRepositoryAsync(options);
 

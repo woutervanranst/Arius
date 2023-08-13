@@ -1,77 +1,227 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Arius.Core.Commands.Archive;
+using Arius.Core.Queries;
+using Arius.Core.Repositories;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using Arius.Core.Commands.Rehydrate;
+using Arius.Core.Commands.Restore;
+using FluentValidation.Results;
+using PostSharp.Constraints;
+using PostSharp.Patterns.Contracts;
 using System.Runtime.CompilerServices;
 
+/*
+ * This is required for the Arius.Cli.Tests module
+ * Specifically, the Moq framework cannot initialize ICommand, which has '**internal** IServiceProvider Services { get; }' if it cannot see the internals
+ * See https://stackoverflow.com/a/28235222/1582323
+ */
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
+[assembly: InternalsVisibleTo("Arius.Cli.Tests")]
 
+/*
+ * This is required to test the internals of the Arius.Core assembly
+ */
+[assembly: InternalsVisibleTo("Arius.Core.Tests")]
+[assembly: InternalsVisibleTo("Arius.Core.Tests.Extensions")]
+[assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
 namespace Arius.Core.Facade;
 
-public class Facade //: IFacade
+public class Facade
 {
+    private readonly ILoggerFactory    loggerFactory;
+
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal Facade()
+    {
+    }
     public Facade(ILoggerFactory loggerFactory)
     {
-        ArgumentNullException.ThrowIfNull(loggerFactory);
+        this.loggerFactory = loggerFactory;
 
-        this.loggerFactory            = loggerFactory;
+        //    var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+        //    {
+        //        TempDirectoryName = ".ariustemp",
+        //        RestoreTempDirectoryName = ".ariusrestore"
+        //    });
     }
 
-    private readonly ILoggerFactory           loggerFactory;
+
+    public   virtual StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
+    internal virtual StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
 }
 
 
-//public ICommand CreateDedupEvalCommand(string path)
+public class StorageAccountFacade
+{
+    private readonly ILoggerFactory        loggerFactory;
+    private readonly IStorageAccountOptions storageAccountOptions;
+
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal StorageAccountFacade()
+    {
+    }
+    internal StorageAccountFacade(ILoggerFactory loggerFactory, IStorageAccountOptions options)
+    {
+        this.loggerFactory         = loggerFactory;
+        this.storageAccountOptions = options;
+    }
+
+    public IAsyncEnumerable<string> GetContainerNamesAsync()
+    {
+        //var saq = services.GetRequiredService<StorageAccountQueries>();
+        var saq = new StorageAccountQueries(loggerFactory.CreateLogger<StorageAccountQueries>(), storageAccountOptions);
+
+        return saq.GetContainerNamesAsync();
+    }
+
+    /// <summary>
+    /// RECOMMEND TO CALL .Dispose() ON THE FACADE OR
+    /// IN A USING BLOCK
+    /// TO DELETE THE TEMPORARY DB
+    /// </summary>
+    /// <param name="containerName"></param>
+    /// <param name="passphrase"></param>
+    /// <returns></returns>
+    public   virtual async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    internal virtual async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
+
+    ///// <summary>
+    ///// FOR UNIT TESTING PURPOSES ONLY
+    ///// </summary>
+    //internal async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase, Repository.AriusDbContext mockedContext)
     //{
-    //    var options = new DedupEvalCommandOptions { Root = new DirectoryInfo(path) };
-
-    //    var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
-
-    //    var dec = sp.GetRequiredService<DedupEvalCommand>();
-
-    //    return dec;
-
+    //    var ro = new RepositoryOptions(storageAccountOptions, containerName, passphrase);
+    //    return await RepositoryFacade.CreateAsync(loggerFactory, ro);
     //}
-    //public ICommand CreateArchiveCommand(string accountName, string accountKey, string passphrase, bool fastHash, string container, bool removeLocal, string tier, bool dedup, string path, DateTime versionUtc)
-    //{
-    //    throw new NotImplementedException();
+}
 
-    //    //var options = new ArchiveCommandOptions(accountName, accountKey, passphrase, fastHash, container, removeLocal, tier, dedup, path, versionUtc);
 
-    //    //var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
 
-    //    //var ac = sp.GetRequiredService<ArchiveCommand>();
+public class RepositoryFacade : IDisposable
+{
+    private readonly ILoggerFactory loggerFactory;
 
-    //    //return ac;
-    //}
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal RepositoryFacade()
+    {
+    }
+    private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
+    {
+        Repository          = repo;
+        this.loggerFactory = loggerFactory;
+    }
 
-    //public ICommand CreateRestoreCommand(string accountName, string accountKey, string container, string passphrase, bool synchronize, bool download, bool keepPointers, string path, DateTime pointInTimeUtc)
-    //{
-    //    var options = new RestoreCommandOptions(accountName, accountKey, container, passphrase, synchronize, download, keepPointers, path, pointInTimeUtc);
+    [ComponentInternal(typeof(StorageAccountFacade))]
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, IRepositoryOptions options)
+    {
+        var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
+            .WithOptions(options)
+            .WithLatestStateDatabase()
+            .BuildAsync();
 
-    //    var sp = CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
+        return new RepositoryFacade(loggerFactory, repo);
+    }
 
-    //    var rc = sp.GetRequiredService<RestoreCommand>();
+    internal Repository Repository { get; }
 
-    //    return rc;
-    //}
+    public IAsyncEnumerable<string> GetVersions()
+    {
+        throw new NotImplementedException();
+    }
 
-    //internal ServiceProvider GetServices(string accountName, string accountKey, string container, string passphrase)
-    //{
-    //    var options = new RepositoryOptions(accountName, accountKey, container, passphrase);
 
-    //    return CreateServiceProvider(loggerFactory, tempDirectoryAppSettings, options);
-    //}
+    // --------- ARCHIVE ---------
+    public static ValidationResult ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    {
+        var v = new IArchiveCommandOptions.Validator();
+        return v.Validate(new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc));
+    }
+
+    public virtual async Task<(int, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    {
+        if (tier == default)
+            tier = AccessTier.Cold;
+
+        if (versionUtc == default)
+            versionUtc = DateTime.UtcNow;
+
+        var aco = new ArchiveCommandOptions(Repository, root, fastHash, removeLocal, tier, dedup, versionUtc);
+
+        var sp = new ArchiveCommandStatistics();
+
+        var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
+
+        var r = await cmd.ExecuteAsync(aco);
+
+        return (r, sp);
+    }
+
+
+    // --------- RESTORE ---------
+    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
+    {
+        var v = new IRestoreCommandOptions.Validator();
+        return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
+    }
+
+    public virtual async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
+    {
+        if (pointInTimeUtc == default)
+            pointInTimeUtc = DateTime.UtcNow;
+
+        var rco = new RestoreCommandOptions(Repository, root, synchronize, download, keepPointers, pointInTimeUtc);
+
+        // TODO IREstoreCommandOptions.Validator
+
+        var cmd = new RestoreCommand(loggerFactory, Repository);
+
+        return await cmd.ExecuteAsync(rco);
+    }
+
+    // --------- REHYDRATE ---------
+
+    public async Task<int> ExecuteRehydrateCommandAsync()
+    {
+        throw new NotImplementedException();
+
+        var rco = new RehydrateCommandOptions(Repository);
+
+        var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
+
+        return await cmd.ExecuteAsync(rco);
+    }
+
+
+    // --------- FINALIZER ---------
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    ~RepositoryFacade()
+    {
+        Dispose(false);
+    }
+
+    [ComponentInternal("Arius.Cli.Tests")] // should be protected
+    internal virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+            Repository.Dispose();
+    }
+}
 
 
 
 //public class Facade
 //{
-//    public Facade(ILoggerFactory loggerFactory)
-//    {
-//        this.loggerFactory = loggerFactory;
-//    }
-
-//    private readonly ILoggerFactory loggerFactory;
-
 //    public async IAsyncEnumerable<IAriusEntry> GetLocalEntries(DirectoryInfo di)
 //    {
 //        var block = new IndexDirectoryBlockProvider(loggerFactory.CreateLogger<IndexDirectoryBlockProvider>()).GetBlock();
@@ -130,38 +280,6 @@ public class Facade //: IFacade
 //    }
 
 //    public IEnumerable<ContainerFacade> Containers { get; init; }
-//}
-
-//public class ContainerFacade
-//{
-//    internal ContainerFacade(string accountName, string accountKey, string containerName, ILoggerFactory loggerFactory)
-//    {
-//        if (string.IsNullOrEmpty(accountName))
-//            throw new ArgumentException($"'{nameof(accountName)}' cannot be null or empty", nameof(accountName));
-//        if (string.IsNullOrEmpty(accountKey))
-//            throw new ArgumentException($"'{nameof(accountKey)}' cannot be null or empty", nameof(accountKey));
-//        if (string.IsNullOrEmpty(containerName))
-//            throw new ArgumentException($"'{nameof(containerName)}' cannot be null or empty", nameof(containerName));
-//        if (loggerFactory is null)
-//            throw new ArgumentException($"'{nameof(loggerFactory)}' cannot be null or empty", nameof(loggerFactory));
-
-//        this.accountName = accountName;
-//        this.accountKey = accountKey;
-//        this.containerName = containerName;
-//        this.loggerFactory = loggerFactory;
-//    }
-
-//    private readonly string accountName;
-//    private readonly string accountKey;
-//    private readonly string containerName;
-//    private readonly ILoggerFactory loggerFactory;
-
-//    public string Name => containerName;
-
-//    public AzureRepositoryFacade GetAzureRepositoryFacade(string passphrase)
-//    {
-//        return new AzureRepositoryFacade(accountName, accountKey, containerName, passphrase, loggerFactory);
-//    }
 //}
 
 //public class AzureRepositoryFacade

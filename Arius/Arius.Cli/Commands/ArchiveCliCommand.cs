@@ -15,7 +15,7 @@ namespace Arius.Cli.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, NewFacade facade)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, Facade facade)
     {
         this.console = console;
         this.logger  = logger;
@@ -24,7 +24,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     private readonly IAnsiConsole               console;
     private readonly ILogger<ArchiveCliCommand> logger;
-    private readonly NewFacade                  facade;
+    private readonly Facade                  facade;
 
     internal class ArchiveCommandOptions : RepositoryOptions
     {

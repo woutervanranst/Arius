@@ -67,7 +67,7 @@ internal static class TestSetup
         blobService = new BlobServiceClient(connectionString);
         Container = await blobService.CreateBlobContainerAsync(containerName);
 
-        
+
         // Initialize Facade
         //var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
@@ -78,8 +78,8 @@ internal static class TestSetup
         //});
 
         //Facade = new Facade.Facade(loggerFactory);
-        
-        RepositoryFacade = await new NewFacade(NullLoggerFactory.Instance)
+
+        RepositoryFacade = await new Facade.Facade(NullLoggerFactory.Instance)
             .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)
             .ForRepositoryAsync(TestSetup.Container.Name, TestSetup.Passphrase);
     }
