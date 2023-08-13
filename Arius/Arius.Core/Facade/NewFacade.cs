@@ -134,6 +134,8 @@ public class RepositoryFacade : IDisposable
         throw new NotImplementedException();
     }
 
+
+    // --------- ARCHIVE ---------
     public static ValidationResult ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
     {
         var v = new IArchiveCommandOptions.Validator();
@@ -159,6 +161,14 @@ public class RepositoryFacade : IDisposable
         return (r, sp);
     }
 
+
+    // --------- RESTORE ---------
+    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
+    {
+        var v = new IRestoreCommandOptions.Validator();
+        return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
+    }
+
     public virtual async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
     {
         if (pointInTimeUtc == default)
@@ -173,8 +183,12 @@ public class RepositoryFacade : IDisposable
         return await cmd.ExecuteAsync(rco);
     }
 
+    // --------- REHYDRATE ---------
+
     public async Task<int> ExecuteRehydrateCommandAsync()
     {
+        throw new NotImplementedException();
+
         var rco = new RehydrateCommandOptions(Repository);
 
         var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());

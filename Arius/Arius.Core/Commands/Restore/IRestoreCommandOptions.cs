@@ -52,6 +52,14 @@ internal record RestoreCommandOptions : RepositoryOptions, IRestoreCommandOption
         this.PointInTimeUtc = pointInTimeUtc;
         this.Path           = root;
     }
+    public RestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(accountName, accountKey, containerName, passphrase)
+    {
+        this.Synchronize    = synchronize;
+        this.Download       = download;
+        this.KeepPointers   = keepPointers;
+        this.PointInTimeUtc = pointInTimeUtc;
+        this.Path           = root;
+    }
 
     public bool          Synchronize    { get; }
     public bool          Download       { get; }

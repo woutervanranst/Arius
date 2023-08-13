@@ -87,7 +87,6 @@ internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOption
         this.Path        = root; // TODO rename to Root
         this.VersionUtc  = versionUtc;
     }
-
     public ArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DateTime versionUtc) : base(accountName, accountKey, containerName, passphrase)
     {
         this.FastHash    = fastHash;
