@@ -155,7 +155,7 @@ internal partial class ArchiveCommand
             Action onCompleted,
 
             IArchiveCommandOptions options,
-            IHashValueProvider hvp,
+            IHashValueProvider hashValueProvider,
             Func<BinaryFile, Task> onBinaryExists)
                 : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
@@ -163,7 +163,7 @@ internal partial class ArchiveCommand
             this.repo    = command.repo;
             this.options = options;
 
-            chunker = new ByteBoundaryChunker(hvp);
+            chunker = new ByteBoundaryChunker(hashValueProvider);
 
             this.onBinaryExists = onBinaryExists;
         }
@@ -216,7 +216,7 @@ internal partial class ArchiveCommand
                     // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
 
-                    var bp = await UploadAsync(bf, options);
+                    var bp = await UploadAsync(bf);
 
                     stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bp.IncrementalLength);
 
@@ -246,7 +246,7 @@ internal partial class ArchiveCommand
         /// <summary>
         /// Upload the given BinaryFile with the specified options
         /// </summary>
-        private async Task<BinaryProperties> UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
+        private async Task<BinaryProperties> UploadAsync(BinaryFile bf)
         {
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
 
@@ -254,9 +254,9 @@ internal partial class ArchiveCommand
             var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
             {
                 if (options.Dedup)
-                    return await UploadChunkedBinaryAsync(bf, options);
+                    return await UploadChunkedBinaryAsync(bf);
                 else
-                    return await UploadBinaryAsSingleChunkAsync(bf, options);
+                    return await UploadBinaryAsSingleChunkAsync(bf);
             });
 
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
@@ -272,7 +272,7 @@ internal partial class ArchiveCommand
         /// <summary>
         /// Chunk the BinaryFile then upload all the chunks in parallel
         /// </summary>
-        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf, IArchiveCommandOptions options)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
             var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
             var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
@@ -367,7 +367,7 @@ internal partial class ArchiveCommand
         /// <summary>
         /// Upload one single BinaryFile
         /// </summary>
-        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf, IArchiveCommandOptions options)
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf)
         {
             var length = await repo.Chunks.UploadAsync(bf, options.Tier);
 

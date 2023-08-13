@@ -99,6 +99,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
                 binaryFileUploadCompleted.SetResult(); //B411
             }, 
             options: options, 
+            hashValueProvider: hashValueProvider,
             onBinaryExists: async bf =>
             {
                 await pointersToCreate.Writer.WriteAsync(bf); //B403
