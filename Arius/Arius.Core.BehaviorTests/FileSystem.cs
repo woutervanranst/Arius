@@ -175,7 +175,7 @@ static class FileSystem
 
     private class FileInfoComparer : IEqualityComparer<FileInfo>
     {
-        private readonly SHA256Hasher hasher = new();
+        private readonly SHA256Hasher hasher = new("somesalt");
 
         public bool Equals(FileInfo x, FileInfo y)
         {
@@ -193,7 +193,7 @@ static class FileSystem
     }
     private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
     {
-        private readonly SHA256Hasher hasher = new();
+        private readonly SHA256Hasher hasher = new("somesalt");
 
         public bool Equals(FileInfoBase x, FileInfoBase y)
         {

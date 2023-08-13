@@ -33,7 +33,7 @@ internal static class TestSetup
         var sp = new ServiceCollection()
             .AddLogging()
             .AddSingleton<FileService>()
-            .AddSingleton<IHashValueProvider, SHA256Hasher>()
+            .AddSingleton<IHashValueProvider>(new SHA256Hasher("somesalt"))
             .BuildServiceProvider();
 
         FileService = sp.GetRequiredService<FileService>();
