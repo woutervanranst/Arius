@@ -23,7 +23,7 @@ class ByteBoundaryChunkerTests : TestBase
             return;
 
         //Create the HashValueProvider and the Chunker
-        var hvp    = new SHA256Hasher();
+        var hvp = new SHA256Hasher("bla");
 
         // SCENARIO 1: the buffer is larger than the stream -- Chunk a small stream with no minimum chunk size
         var chunker = new ByteBoundaryChunker(hvp, minChunkSize: 0);

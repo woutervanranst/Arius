@@ -13,7 +13,7 @@ class CryptoTests : TestBase
     private readonly SHA256Hasher hasher;
     public CryptoTests()
     {
-        hasher = new SHA256Hasher();
+        hasher = new SHA256Hasher("bla");
     }
 
     [Test]
