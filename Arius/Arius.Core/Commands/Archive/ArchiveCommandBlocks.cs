@@ -253,7 +253,7 @@ internal partial class ArchiveCommand
             // Upload the Binary
             var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
             {
-                if (options.Dedup) // TODO rewrite as strategy pattern?
+                if (options.Dedup)
                     return await UploadChunkedBinaryAsync(bf, options);
                 else
                     return await UploadBinaryAsSingleChunkAsync(bf, options);
