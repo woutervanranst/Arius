@@ -89,7 +89,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions>
         if (!chunkRehydrating)
         {
             logger.LogInformation("All binaries restored, deleting temporary hydration folder, if applicable");
-            await repo.DeleteHydrateFolderAsync();
+            await repo.DeleteHydratedChunksFolderAsync();
         }
         else
         {
