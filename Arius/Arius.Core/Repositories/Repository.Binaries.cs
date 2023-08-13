@@ -364,7 +364,7 @@ internal partial class Repository
             if (chunkHashes.Length == 1)
                 return; //do not create a ChunkList for only one ChunkHash
 
-            BlockBlobClient bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+            var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
 
         RestartUpload:
 
