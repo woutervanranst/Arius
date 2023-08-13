@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Configuration;
 using Arius.Core.Facade;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs;
@@ -25,7 +24,6 @@ internal static class TestSetup
     public static string AccountName { get; set; }
     public static string AccountKey  { get; set; }
 
-    public static Facade.Facade    Facade           { get; set; }
     public static RepositoryFacade RepositoryFacade { get; set; }
 
     private static DirectoryInfo unitTestRoot;
@@ -67,19 +65,19 @@ internal static class TestSetup
         // Create new blob container
         var connectionString = $"DefaultEndpointsProtocol=https;AccountName={AccountName};AccountKey={AccountKey};EndpointSuffix=core.windows.net";
         blobService = new BlobServiceClient(connectionString);
-        Container = blobService.CreateBlobContainer(containerName);
+        Container = await blobService.CreateBlobContainerAsync(containerName);
 
         
         // Initialize Facade
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
+        //var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
 
-        var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-        {
-            TempDirectoryName = ".ariustemp",
-            RestoreTempDirectoryName = ".ariusrestore"
-        });
+        //var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
+        //{
+        //    TempDirectoryName = ".ariustemp",
+        //    RestoreTempDirectoryName = ".ariusrestore"
+        //});
 
-        Facade = new Facade.Facade(loggerFactory, tempDirectoryAppSettings);
+        //Facade = new Facade.Facade(loggerFactory);
         
         RepositoryFacade = await new NewFacade(NullLoggerFactory.Instance)
             .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)

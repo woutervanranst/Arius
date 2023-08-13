@@ -11,7 +11,6 @@ using System.IO;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
-using Spectre.Console;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Tests;
@@ -30,9 +29,7 @@ namespace Arius.Cli.Tests;
  * "arius archive -n aa" --> no logs, specify path
  * "arius archive -n aa ." + Key in env variable --> logs
  *
- */
-
-/* Archive file
+ * Archive file
  * Archive with directory exists
  * archive with directory not exists
  * archive with invalid tier

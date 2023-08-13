@@ -114,7 +114,7 @@ internal partial class Repository : IDisposable
         this.Options          = options;
 
         // !!!!!!!!!!!!!! TODO THIS NEEDS TO BE REFACTORED !!!!!!!!!!!!!
-        if (DateTime.Now.Day > 2)
+        if (DateTime.Now.Day > 13)
             throw new NotImplementedException();
         var chunker = new ByteBoundaryChunker(new SHA256Hasher(options));
 

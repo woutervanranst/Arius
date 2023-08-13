@@ -107,22 +107,23 @@ abstract class TestBase
     }
 
 
-    protected void RepoStats(out Repository repo,
-        out int chunkBlobItemCount,
-        out int binaryCount,
-        out PointerFileEntry[] currentPfeWithDeleted, out PointerFileEntry[] currentPfeWithoutDeleted,
-        out PointerFileEntry[] allPfes)
-    {
-        repo = Repository;
+    //protected void RepoStats(out Repository repo,
+    //    out int chunkBlobItemCount,
+    //    out int binaryCount,
+    //    out PointerFileEntry[] currentPfeWithDeleted, out PointerFileEntry[] currentPfeWithoutDeleted,
+    //    out PointerFileEntry[] allPfes)
+    //{
+    //    repo = Repository;
 
-        chunkBlobItemCount = Repository.Chunks.GetAllChunkBlobs().CountAsync().Result;
-        binaryCount        = Repository.Binaries.CountAsync().Result;
+    //    chunkBlobItemCount = Repository.Chunks.GetAllChunkBlobs().CountAsync().Result;
+    //    binaryCount        = Repository.Binaries.CountAsync().Result;
 
-        currentPfeWithDeleted    = Repository.PointerFileEntries.GetCurrentEntriesAsync(true).Result.ToArray();
-        currentPfeWithoutDeleted = Repository.PointerFileEntries.GetCurrentEntriesAsync(false).Result.ToArray();
+    //    currentPfeWithDeleted    = Repository.PointerFileEntries.GetCurrentEntriesAsync(true).Result.ToArray();
+    //    currentPfeWithoutDeleted = Repository.PointerFileEntries.GetCurrentEntriesAsync(false).Result.ToArray();
 
-        allPfes = Repository.PointerFileEntries.GetPointerFileEntriesAsync().Result.ToArray();
-    }
+    //    throw new NotImplementedException();
+    //    //allPfes = Repository.PointerFileEntries.GetPointerFileEntriesAsync().Result.ToArray();
+    //}
 
 
     protected static DirectoryInfo SourceFolder         => TestSetup.SourceFolder;

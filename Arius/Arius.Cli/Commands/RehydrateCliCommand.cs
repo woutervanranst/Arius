@@ -1,8 +1,7 @@
-﻿using System.Threading.Tasks;
-using Arius.Core.Commands.Rehydrate;
-using Microsoft.Extensions.Logging;
-using Spectre.Console;
+﻿using Microsoft.Extensions.Logging;
 using Spectre.Console.Cli;
+using System;
+using System.Threading.Tasks;
 
 namespace Arius.Cli.Commands;
 
@@ -32,17 +31,18 @@ internal class RehydrateCliCommand : AsyncCommand<RehydrateCliCommand.RehydrateC
         // No special requirements
     }
 
-    public override ValidationResult Validate(CommandContext context, RehydrateCommandOptions settings)
-    {
-        var r = rehydrateCommand.Validate(settings);
-        if (!r.IsValid)
-            return ValidationResult.Error(r.ToString());
+    //public override ValidationResult Validate(CommandContext context, RehydrateCommandOptions settings)
+    //{
+    //    var r = rehydrateCommand.Validate(settings);
+    //    if (!r.IsValid)
+    //        return ValidationResult.Error(r.ToString());
 
-        return ValidationResult.Success();
-    }
+    //    return ValidationResult.Success();
+    //}
 
     public override async Task<int> ExecuteAsync(CommandContext context, RehydrateCommandOptions options)
     {
-        return await rehydrateCommand.ExecuteAsync(options);
+        throw new NotImplementedException();
+        //return await rehydrateCommand.ExecuteAsync(options);
     }
 }
