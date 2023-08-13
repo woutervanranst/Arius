@@ -1,13 +1,17 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
 using Azure.Storage.Blobs.Models;
 using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
@@ -151,23 +155,29 @@ internal partial class ArchiveCommand
             Action onCompleted,
 
             IArchiveCommandOptions options,
+            IHashValueProvider hvp,
             Func<BinaryFile, Task> onBinaryExists)
                 : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats          = command.stats;
-            this.repo           = command.repo;
-            this.options        = options;
+            this.stats   = command.stats;
+            this.repo    = command.repo;
+            this.options = options;
+
+            chunker = new ByteBoundaryChunker(hvp);
+
             this.onBinaryExists = onBinaryExists;
         }
 
         private readonly ArchiveCommandStatistics stats;
-        private readonly Repository repo;
-        private readonly IArchiveCommandOptions options;
+        private readonly Repository               repo;
+        private readonly IArchiveCommandOptions   options;
+        private readonly Chunker                  chunker;
 
         private readonly Func<BinaryFile, Task> onBinaryExists;
 
-        private readonly ConcurrentDictionary<BinaryHash, Task<bool>> remoteBinaries = new();
+        private readonly ConcurrentDictionary<BinaryHash, Task<bool>>           remoteBinaries    = new();
         private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource> uploadingBinaries = new();
+        private readonly ConcurrentDictionary<ChunkHash, TaskCompletionSource>  uploadingChunks   = new();
 
 
         protected override async Task ForEachBodyImplAsync(BinaryFile bf, CancellationToken ct)
@@ -206,7 +216,7 @@ internal partial class ArchiveCommand
                     // 2.1 Does not yet exist remote and not yet being created --> upload
                     logger.LogInformation($"Binary for {bf} does not exist remotely. To upload and create pointer.");
 
-                    var bp = await repo.Binaries.UploadAsync(bf, options);
+                    var bp = await UploadAsync(bf, options);
 
                     stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: bp.IncrementalLength);
 
@@ -231,6 +241,137 @@ internal partial class ArchiveCommand
             }
 
             await onBinaryExists(bf);
+        }
+
+        /// <summary>
+        /// Upload the given BinaryFile with the specified options
+        /// </summary>
+        private async Task<BinaryProperties> UploadAsync(BinaryFile bf, IArchiveCommandOptions options)
+        {
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}...");
+
+            // Upload the Binary
+            var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
+            {
+                if (options.Dedup) // TODO rewrite as strategy pattern?
+                    return await UploadChunkedBinaryAsync(bf, options);
+                else
+                    return await UploadBinaryAsSingleChunkAsync(bf, options);
+            });
+
+            logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
+
+            // Create the ChunkList
+            await repo.Binaries.CreateChunkListAsync(bf.BinaryHash, chs);
+
+            // Create the BinaryMetadata
+            return await repo.Binaries.CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
+
+        }
+
+        /// <summary>
+        /// Chunk the BinaryFile then upload all the chunks in parallel
+        /// </summary>
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf, IArchiveCommandOptions options)
+        {
+            var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
+            var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
+            var totalLength = 0L;
+            var incrementalLength = 0L;
+
+            // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
+            var chunkTask = Task.Run(async () =>
+            {
+                await using var binaryFileStream = await bf.OpenReadAsync();
+
+                var (MBps, _, seconds) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
+                {
+                    foreach (var chunk in chunker.Chunk(binaryFileStream))
+                    {
+                        await chunksToUpload.Writer.WriteAsync(chunk);
+                        chs.Add(chunk.ChunkHash);
+                    }
+                });
+
+                logger.LogInformation($"Completed chunking of {bf.Name} in {seconds}s at {MBps} MBps");
+
+                chunksToUpload.Writer.Complete();
+            });
+
+            /* Design choice: deliberately keeping the chunk upload IN this block (not in a separate top level block like in v1) 
+             * 1. to effectively limit the number of concurrent files 'in flight' 
+             * 2. to avoid the risk on slow upload connections of filling up the memory entirely*
+             * 3. this code has a nice 'await for binary upload completed' semantics contained within this method - splitting it over multiple blocks would smear it out, as in v1
+             * 4. with a centralized pipe, setting the degree of concurrency is not trivial since, for chunks (~64 KB), it is higher than for full binary files (we dont want to be uploading 128 2GB files in parallel)
+             */
+
+            int degreeOfParallelism = 0;
+
+            await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(),
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = options.TransferChunked_ParallelChunkTransfers
+
+                },
+                async (chunk, cancellationToken) =>
+                {
+                    var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
+                    logger.LogDebug($"Starting chunk upload '{chunk.ChunkHash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
+
+
+                    if (await repo.Chunks.ExistsAsync(chunk.ChunkHash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    {
+                        // 1 Exists remote
+                        logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' already exists. No need to upload.");
+
+                        var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                        Interlocked.Add(ref totalLength, length);
+                        Interlocked.Add(ref incrementalLength, 0);
+                    }
+                    else
+                    {
+                        var toUpload = uploadingChunks.TryAdd(chunk.ChunkHash, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously));
+                        if (toUpload)
+                        {
+                            // 2 Does not yet exist remote and not yet being created --> upload
+                            logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' does not exist remotely. To upload.");
+
+                            var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
+                            Interlocked.Add(ref totalLength, length);
+                            Interlocked.Add(ref incrementalLength, length);
+
+                            uploadingChunks[chunk.ChunkHash].SetResult();
+                        }
+                        else
+                        {
+                            // 3 Does not exist remote but is being created by another thread
+                            logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' does not exist remotely but is already being uploaded. Wait for its creation.");
+
+                            await uploadingChunks[chunk.ChunkHash].Task;
+
+                            var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                            Interlocked.Add(ref totalLength, length);
+                            Interlocked.Add(ref incrementalLength, 0);
+
+                            //TODO Write unit test for this path
+                        }
+                    }
+
+                    Interlocked.Add(ref degreeOfParallelism, -1);
+                });
+            await chunkTask; //this task will always be compete at this point
+
+            return (chs.ToArray(), totalLength, incrementalLength);
+        }
+
+        /// <summary>
+        /// Upload one single BinaryFile
+        /// </summary>
+        private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf, IArchiveCommandOptions options)
+        {
+            var length = await repo.Chunks.UploadAsync(bf, options.Tier);
+
+            return (bf.ChunkHash.AsArray(), length, length);
         }
     }
     

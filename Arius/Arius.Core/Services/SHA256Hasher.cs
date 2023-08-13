@@ -40,10 +40,10 @@ internal partial class SHA256Hasher : IHashValueProvider
     {
         this.saltBytes = salt;
     }
-    public SHA256Hasher()
-    {
-        this.saltBytes = Array.Empty<byte>();
-    }
+    //public SHA256Hasher()
+    //{
+    //    this.saltBytes = Array.Empty<byte>();
+    //}
 
     private readonly byte[] saltBytes;
 

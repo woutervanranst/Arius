@@ -1,15 +1,14 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Threading.Channels;
-using Arius.Core.Extensions;
 using Arius.Core.Services;
 using FluentValidation;
 using FluentValidation.Results;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive;
 

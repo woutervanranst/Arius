@@ -1,10 +1,12 @@
 ﻿using Arius.Core.Facade;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
 using Azure;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using System;
@@ -12,8 +14,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Arius.Core.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.Repositories;
 
@@ -113,12 +113,7 @@ internal partial class Repository : IDisposable
         this.dbContextFactory = dbContextFactory;
         this.Options          = options;
 
-        // !!!!!!!!!!!!!! TODO THIS NEEDS TO BE REFACTORED !!!!!!!!!!!!!
-        if (DateTime.Now.Day > 13)
-            throw new NotImplementedException();
-        var chunker = new ByteBoundaryChunker(new SHA256Hasher(options));
-
-        Binaries           = new(this, container, chunker);
+        Binaries           = new(this, container);
         Chunks             = new(this, container, options.Passphrase);
         PointerFileEntries = new(this);
     }
