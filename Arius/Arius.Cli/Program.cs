@@ -47,7 +47,7 @@ public static class Program
                     AnsiConsole.Write(new Markup($"[bold red]Command error:[/] {cre.Message}"));
                     break;
                 default:
-                    AnsiConsole.Write(new Markup($"\n[bold red]Runtime Error:[/] {e.Message} See log file for more information."));
+                    AnsiConsole.Write(new Markup($"\n[bold red]Runtime Error:[/] {e.Message}. See log file for more information."));
                     break;
             }
 

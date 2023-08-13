@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Facade;
-using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,30 +11,63 @@ using System.IO;
 using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
+using Spectre.Console;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Tests;
 
+
+/* TODO
+ *
+ * Cli_ArchiveCommand_LogContainsDB()
+ * Test Logging in Container
+ *
+ * TEst DB is part of logging
+ * TEst overflow file for logigng
+ * Errors should be logged in Core, not in CLI
+ * "arius" -> no logs
+ * "arius archive" -> no logs
+ * "arius archive -n aa" --> no logs, specify path
+ * "arius archive -n aa ." + Key in env variable --> logs
+ *
+ */
 
 /* Archive file
  * Archive with directory exists
  * archive with directory not exists
  * archive with invalid tier
  * archive without specifying password
- * 
  *
  */
 
 internal class UnitTests
 {
+    private const string RUNNING_IN_CONTAINER = "DOTNET_RUNNING_IN_CONTAINER";
+    private readonly bool IsRunningInContainer = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) == "true";
+
+    [OneTimeSetUp]
+    public void CreateLogsDirectory()
+    {
+        // Create the /logs folder for unit testing purposes
+        // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
+        if (!IsRunningInContainer)
+        {
+            Directory.CreateDirectory("/logs");
+            File.Create(Path.Combine("/logs", "Used_for_Arius_unit_test.txt"));
+        }
+
+        Directory.CreateDirectory("/archive");
+        File.Create(Path.Combine("/archive", "Used_for_Arius_unit_test.txt"));
+    }
+
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
-        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+        Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main(Array.Empty<string>());
 
-        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(0);
         consoleText.Should().ContainAll("USAGE", "COMMANDS", "archive", "restore"/*, "rehydrate"*/);
@@ -44,11 +76,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandWithoutParameters_RuntimeException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+        Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main(command.AsArray());
 
-        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         consoleText.Should().Contain("Command error:");
@@ -58,11 +90,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandExplanation_OK([Values("archive", "restore" /*, "rehydrate"*/)] string command)
     {
-        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+        Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main($"{command} -h".Split(' '));
 
-        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(0);
         consoleText.Should().Contain($"arius {command} [PATH] [OPTIONS]");
@@ -72,12 +104,12 @@ internal class UnitTests
     [Test]
     public async Task Cli_NonExistingCommand_ParseException()
     {
-        Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+        Utils.AnsiConsoleExtensions.StartNewRecording();
 
         var args = "unexistingcommand";
         var r = await Program.Main(args.Split(' '));
 
-        var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         consoleText.Should().Contain("Error: Unknown command");
@@ -99,7 +131,7 @@ internal class UnitTests
         }
         else if (command == "restore")
         {
-            command = new MockedRestoreCommandOptions().ToString();
+            command = new MockedRestoreCommandOptions { Synchronize = true }.ToString();
             await Program.Main(command.Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
 
             repositoryFacade.Verify(executeRestoreCommandExpr, Times.Once());
@@ -119,14 +151,12 @@ internal class UnitTests
         Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
         Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
 
-        var (facade, _, repositoryFacade, forStorageAccountExpr, _,executeArchiveCommand, executeRestoreCommandExpr, dispose) = GetMocks();
-
-        //IRepositoryOptions? po;
+        var (facade, _, _, _, _, _, _, _) = GetMocks();
 
         if (command == "archive")
-            command = new MockedArchiveCommandOptions() { AccountName = null, AccountKey = null }.ToString();
+            command = new MockedArchiveCommandOptions { AccountName = null, AccountKey = null }.ToString();
         else if (command == "restore")
-            command = new MockedRestoreCommandOptions() { AccountName = null, AccountKey = null }.ToString();
+            command = new MockedRestoreCommandOptions { AccountName = null, AccountKey = null, Synchronize = true }.ToString();
         else
             throw new NotImplementedException();
 
@@ -134,73 +164,35 @@ internal class UnitTests
         facade.Verify(x => x.ForStorageAccount(accountName, accountKey), Times.Once);
     }
 
-    //  Test Logging in Container
-
-    // TEst DB is part of logging
-
-    // TEst overflow file for logigng
-
-    // Errors should be logged in Core, not in CLI
-
-    // "arius" -> no logs
-
-    // "arius archive" -> no logs
-
-    // "arius archive -n aa" --> no logs, specify path
-
-    // "arius archive -n aa ." + Key in env variable --> logs
-
-
-
-    //// Cant really test this because Arius.Core is a mock
-    //[Test]
-    //public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore", "rehydrate")] string command)
-    //{
-    //    // Remove AccountKey from Env Variables
-    //    var accountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
-    //    Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, null);
-
-    //    AnsiConsole.Record();
-
-    //    int r;
-
-    //    if (command == "archive")
-    //    {
-    //        var o = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, Container = null, Path = new DirectoryInfo(".") };
-    //        (r, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
-    //    }
-    //    else
-    //        throw new NotImplementedException();
-
-    //    var consoleText = AnsiConsole.ExportText();
-
-    //    r.Should().Be(-1);
-    //    Program.Instance.e.Should().BeOfType<InvalidOperationException>();
-    //    consoleText.Should().Contain("Error: ");
-    //    consoleText.Should().NotContain("at "); // no stack trace in the output
-
-    //    // Put it back
-    //    Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
-    //}
-
-    [OneTimeSetUp]
-    public void CreateLogsDirectory()
-    private (Mock<NewFacade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock, 
-        Expression<Func<RepositoryFacade, Task<(int, ArchiveCommandStatistics)>>> ExecuteArchiveCommandExpr,
-        Expression<Func<RepositoryFacade, Task<int>>> ExecuteRestoreCommandExpr,
-        Expression<Action<RepositoryFacade>> DisposeExpr) GetMocks()
+    [Test]
+    public async Task Cli_CommandPartialArguments_Error([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        // Create the /logs folder for unit testing purposes
-        // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
-        if (Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) != "true")
-        {
-            var logs = new DirectoryInfo("/logs");
-            logs.Create();
-        }
+        // Remove AccountKey from Env Variables
+        var accountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
+        Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, null);
+
+        Utils.AnsiConsoleExtensions.StartNewRecording();
+
+        int r;
+
+        if (command == "archive")
+            command = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null, Path = new DirectoryInfo(".") }.ToString();
+        else if (command == "restore")
+            command = new MockedRestoreCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null, Path = new DirectoryInfo("."), Synchronize = true }.ToString();
+        else
+            throw new NotImplementedException();
+
+        r = await Program.Main(command.Split(' '));
+        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+
+        r.Should().Be(-1);
+        //Program.Instance.e.Should().BeOfType<InvalidOperationException>();
+        consoleText.Should().Contain("Runtime Error: The parameter 'accountKey' is required.");
+        consoleText.Should().NotContain("at "); // no stack trace in the output
+
+        // Put it back
+        Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
     }
-        // Mock IStorageAccountOptions
-        var mockStorageAccountOptions = new Mock<IStorageAccountOptions>();
-        // Add setup for methods as required.
 
     [Test]
     public async Task Cli_CommandRunningInContainerPathSpecified_InvalidOperationException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
@@ -210,29 +202,29 @@ internal class UnitTests
         {
             ric = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER);
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "true");
-            
-            Arius.Cli.Utils.AnsiConsoleExtensions.StartNewRecording();
+
+            Utils.AnsiConsoleExtensions.StartNewRecording();
 
             int r;
-            Exception? e;
+            //Exception? e;
 
             if (command == "archive")
             {
-                var o = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") };
-                (r, _, e) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
+                command = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") }.ToString();
+                r       = await Program.Main(command.Split(' '));
             }
             else if (command == "restore")
             {
-                var o = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") };
-                (r, _, e) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
+                command = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") }.ToString();
+                r       = await Program.Main(command.Split(' '));
             }
             else
                 throw new NotImplementedException();
 
-            var consoleText = Arius.Cli.Utils.AnsiConsoleExtensions.ExportNewText(); // AnsiConsole.ExportText();
+            var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
             r.Should().Be(-1);
-            e.Should().BeOfType<InvalidOperationException>();
+            //e.Should().BeOfType<InvalidOperationException>();
             consoleText.Should().Contain("Error: ");
             consoleText.Should().NotContain("at "); // no stack trace in the output
         }
@@ -241,14 +233,12 @@ internal class UnitTests
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
-        
-        // Mock IRepositoryOptions
-        var mockRepositoryOptions = new Mock<IRepositoryOptions>();
-        // Add setup for methods as required.
 
     [Test]
     public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
+        var (facade, _, repositoryFacade, _, _, executeArchiveCommand, executeRestoreCommandExpr, dispose) = GetMocks();
+
         string ric = "false";
         try
         {
@@ -258,14 +248,14 @@ internal class UnitTests
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
-                var (_, po, _) = await ExecuteMockedCommand<IArchiveCommandOptions>(o);
-                po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+                repositoryFacade.Verify(x => x.ExecuteArchiveCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<AccessTier>(), It.IsAny<bool>(), It.IsAny<DateTime>()), Times.Once);
             }
             else if (command == "restore")
             {
-                var o = new MockedRestoreCommandOptions { Path = null };
-                var (_, po, _) = await ExecuteMockedCommand<IRestoreCommandOptions>(o);
-                po.Path.FullName.Should().Be(new DirectoryInfo("/archive").FullName);
+                var o = new MockedRestoreCommandOptions { Path = null, Synchronize = true };
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<NewFacade>(facade.Object));
+                repositoryFacade.Verify(x => x.ExecuteRestoreCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>()));
             }
             else
                 throw new NotImplementedException();
@@ -275,10 +265,24 @@ internal class UnitTests
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, ric);
         }
     }
+
+    private (Mock<NewFacade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock,
+        dynamic ForStorageAccountExpr, dynamic ForRepositoryAsyncExpr,
+        dynamic ExecuteArchiveCommandExpr, dynamic ExecuteRestoreCommandExpr, dynamic DisposeExpr) GetMocks()
+    {
+        //// Mock IStorageAccountOptions
+        //var mockStorageAccountOptions = new Mock<IStorageAccountOptions>();
+        //// Add setup for methods as required.
+
         
-        // Mock Repository
-        var mockRepository = new Mock<Repository>();
-        // Add setup for methods as required.
+        //// Mock IRepositoryOptions
+        //var mockRepositoryOptions = new Mock<IRepositoryOptions>();
+        //// Add setup for methods as required.
+
+        
+        //// Mock Repository
+        //var mockRepository = new Mock<Repository>();
+        //// Add setup for methods as required.
 
 
         // Mock RepositoryFacade
@@ -290,33 +294,19 @@ internal class UnitTests
             .ReturnsAsync((1, new ArchiveCommandStatistics()))
             .Verifiable();
 
-    private async Task<(int ExitCode, T? ParsedOptions, Exception? Exception)> ExecuteMockedCommand<T>(T aco) where T : class, ICommandOptions
-    {
-        // Create Mock
-        var validateReturnMock = new Mock<FluentValidation.Results.ValidationResult>();
         Expression<Func<RepositoryFacade, Task<int>>> executeRestoreCommandAsyncExpr = x => x.ExecuteRestoreCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>());
         mockRepositoryFacade.Setup(executeRestoreCommandAsyncExpr)
             .ReturnsAsync(1)
             .Verifiable();
 
-        Expression<Func<Core.Commands.ICommand<T>, FluentValidation.Results.ValidationResult>> validateExpr = m => m.Validate(It.IsAny<T>());
-        Expression<Func<Core.Commands.ICommand<T>, Task<int>>> executeAsyncExpr = m => m.ExecuteAsync(It.IsAny<T>());
         //mockRepositoryFacade.Setup(x => x.ExecuteRehydrateCommandAsync())
         //    .ReturnsAsync(1);
 
-        var commandMock = new Mock<Core.Commands.ICommand<T>>();
-        commandMock.Setup(validateExpr).Returns(validateReturnMock.Object);
-        commandMock.Setup(executeAsyncExpr).Verifiable();
         Expression<Action<RepositoryFacade>> disposeExpr = x => x.Dispose(It.IsAny<bool>());
         mockRepositoryFacade.Setup(disposeExpr)
             .Verifiable();
+        
 
-        // Run Arius
-        var (r, po, e) = Program.InternalMain(aco.ToString().Split(' '), sc => AddMockedAriusCoreCommands<T>(sc, commandMock.Object));
-
-        if (r == 0)
-        {
-            e.Should().BeNull();
         // Mock StorageAccountFacade
         var mockStorageAccountFacade = new Mock<StorageAccountFacade>();
         //mockStorageAccountFacade.Setup(x => x.GetContainerNamesAsync()).ReturnsAsync(new List<string> { "test1", "test2" }.ToAsyncEnumerable());
@@ -344,6 +334,7 @@ internal class UnitTests
             forStorageAccountExpr, forRepositoryAsyncExpr,
             executeArchiveCommandAsyncExpr, executeRestoreCommandAsyncExpr, disposeExpr);
     }
+
 
     private class MockedArchiveCommandOptions : IArchiveCommandOptions
     {
@@ -388,7 +379,7 @@ internal class UnitTests
             if (Path is not null)
                 sb.Append($"{Path}");
 
-            return sb.ToString();
+            return sb.ToString().Trim();
         }
     }
 
@@ -422,7 +413,7 @@ internal class UnitTests
                 $"{(KeepPointers ? "--keep-pointers " : "")}" +
                 $"{Path}");
 
-            return sb.ToString();
+            return sb.ToString().Trim();
         }
     }
 }

@@ -1,6 +1,6 @@
 using Arius.Cli.Utils;
-using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -8,20 +8,19 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
-using Arius.Core.Facade;
 
 namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, LoggerFactory loggerFactory)
+    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, NewFacade facade)
     {
-        this.logger        = logger;
-        this.loggerFactory = loggerFactory;
+        this.logger = logger;
+        this.facade = facade;
     }
 
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly LoggerFactory              loggerFactory;
+    private readonly NewFacade                  facade;
 
     internal class RestoreCommandOptions : RepositoryOptions
     {
@@ -50,9 +49,9 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
-    public override ValidationResult Validate(CommandContext context, RestoreCommandOptions settings)
+    public override ValidationResult Validate(CommandContext context, RestoreCommandOptions options)
     {
-        var r = restoreCommand.Validate(settings);
+        var r = RepositoryFacade.ValidateRestoreCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc);
         if (!r.IsValid)
             return ValidationResult.Error(r.ToString());
 
@@ -64,17 +63,16 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         try
         {
             logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.ContainerName}' to '{options.Path}'");
-
             logger.LogProperties(options);
 
-            using var rf = await new NewFacade(loggerFactory)
+            using var rf = await facade
                 .ForStorageAccount(options.AccountName, options.AccountKey)
                 .ForRepositoryAsync(options.ContainerName, options.Passphrase);
 
             if (options.PointInTimeUtc.HasValue)
-                return await rf.ExecuteRestoreCommandAsyc(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
+                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
             else
-                return await rf.ExecuteRestoreCommandAsyc(options.Path, options.Synchronize, options.Download, options.KeepPointers);
+                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers);
         }
         catch (Exception e)
         {
