@@ -217,14 +217,14 @@ class ArchiveSteps : TestBase
     {
         var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
 
-        var chs = await Repository.Binaries.GetChunkListAsync(pfe.BinaryHash);
+        var chs = await Repository.GetChunkListAsync(pfe.BinaryHash);
 
         foreach (var ch in chs)
         {
-            var ch0 = Repository.Chunks.GetChunkBlobByHash(ch, false);
+            var ch0 = Repository.GetChunkBlobByHash(ch, false);
             ch0.AccessTier.Should().Be(tier);
 
-            var ch1 = Repository.Chunks.GetChunkBlobByHash(ch, true);
+            var ch1 = Repository.GetChunkBlobByHash(ch, true);
             if (hydratedStatus == "HYDRATED")
                 ch1.Should().NotBeNull();
             else if (hydratedStatus == "NOT_HYDRATED")

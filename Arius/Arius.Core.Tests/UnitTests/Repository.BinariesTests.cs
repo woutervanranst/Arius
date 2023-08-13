@@ -155,7 +155,7 @@ class BinaryRepositoryTests : TestBase
         var bfi = new BinaryFileInfo(f);
         var bf  = new BinaryFile(new DirectoryInfo(Path.GetTempPath()), bfi, bh);
 
-        await Repository.Binaries.CreatePropertiesAsync(bf, 0, 0, chunkCount);
+        await Repository.Binaries.CreateBinaryPropertiesAsync(bf, 0, 0, chunkCount);
     }
 
     //private static Repositories.Repository.AriusDbContext GetMockedContextWithBinaryProperty(BinaryHash bh, int chunkCount)

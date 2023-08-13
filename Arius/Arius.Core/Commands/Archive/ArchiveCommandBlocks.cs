@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
+using Azure;
 using Azure.Storage.Blobs.Models;
 using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
@@ -78,7 +81,7 @@ internal partial class ArchiveCommand
                             logger.LogInformation($"Found PointerFile {pf}");
                             stats.AddLocalRepositoryStatistic(beforePointerFiles: 1);
 
-                            if (await repo.Binaries.ExistsAsync(pf.BinaryHash))
+                            if (await repo.BinaryExistsAsync(pf.BinaryHash))
                                 // The pointer points to an existing binary
                                 await onIndexedPointerFile(pf);
                             else
@@ -99,7 +102,7 @@ internal partial class ArchiveCommand
                                 if (pf.BinaryHash != bf.BinaryHash)
                                     throw new InvalidOperationException($"The PointerFile {pf} is not valid for the BinaryFile '{bf.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-                                if (!await repo.Binaries.ExistsAsync(bf.BinaryHash)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
+                                if (!await repo.BinaryExistsAsync(bf.BinaryHash)) //TODO this is a choke point for large state files -- the hashing could already go ahead?
                                 {
                                     logger.LogWarning($"BinaryFile {bf} has a PointerFile that points to a nonexisting (remote) Binary ('{bf.BinaryHash.ToShortString()}'). Uploading binary again.");
                                     await onIndexedBinaryFile((bf, AlreadyBackedUp: false));
@@ -157,7 +160,7 @@ internal partial class ArchiveCommand
             IArchiveCommandOptions options,
             IHashValueProvider hashValueProvider,
             Func<BinaryFile, Task> onBinaryExists)
-                : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+            : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
             this.stats   = command.stats;
             this.repo    = command.repo;
@@ -197,7 +200,7 @@ internal partial class ArchiveCommand
                 stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //if we're keeping the local binaries, there are no deltas due to the archive operation
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.BinaryHash, async (_) => await repo.Binaries.ExistsAsync(bf.BinaryHash)); //TODO since this is now backed by a database, we do not need to cache this locally?
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.BinaryHash, async (_) => await repo.BinaryExistsAsync(bf.BinaryHash)); //TODO since this is now backed by a database, we do not need to cache this locally?
             if (binaryExistsRemote)
             {
                 // 1 Exists remote
@@ -262,10 +265,10 @@ internal partial class ArchiveCommand
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash.ToShortString()}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
 
             // Create the ChunkList
-            await repo.Binaries.CreateChunkListAsync(bf.BinaryHash, chs);
+            await repo.CreateChunkListAsync(bf.BinaryHash, chs);
 
             // Create the BinaryMetadata
-            return await repo.Binaries.CreatePropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
+            return await repo.CreateBinaryPropertiesAsync(bf, totalLength, incrementalLength, chs.Length);
 
         }
 
@@ -274,9 +277,9 @@ internal partial class ArchiveCommand
         /// </summary>
         private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadChunkedBinaryAsync(BinaryFile bf)
         {
-            var chunksToUpload = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
-            var chs = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
-            var totalLength = 0L;
+            var chunksToUpload    = Channel.CreateBounded<IChunk>(new BoundedChannelOptions(options.TransferChunked_ChunkBufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false }); //limit the capacity of the collection -- backpressure
+            var chs               = new List<ChunkHash>(); //ChunkHashes for this BinaryFile
+            var totalLength       = 0L;
             var incrementalLength = 0L;
 
             // Design choice: deliberately splitting the chunking section (which cannot be parallelized since we need the chunks in order) and the upload section (which can be paralellelized)
@@ -319,12 +322,12 @@ internal partial class ArchiveCommand
                     logger.LogDebug($"Starting chunk upload '{chunk.ChunkHash.ToShortString()}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
 
-                    if (await repo.Chunks.ExistsAsync(chunk.ChunkHash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    if (await repo.ChunkExistsAsync(chunk.ChunkHash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
                     {
                         // 1 Exists remote
                         logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' already exists. No need to upload.");
 
-                        var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                        var length = repo.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, 0);
                     }
@@ -349,7 +352,7 @@ internal partial class ArchiveCommand
 
                             await uploadingChunks[chunk.ChunkHash].Task;
 
-                            var length = repo.Chunks.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                            var length = repo.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
@@ -374,7 +377,8 @@ internal partial class ArchiveCommand
             return (bf.ChunkHash.AsArray(), length, length);
         }
     }
-    
+
+
 
     private class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
     {
@@ -438,20 +442,20 @@ internal partial class ArchiveCommand
         {
             logger.LogDebug($"Upserting PointerFile entry for {pointerFile}...");
 
-            var r = await repo.PointerFileEntries.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
+            var r = await repo.CreatePointerFileEntryIfNotExistsAsync(pointerFile, versionUtc);
 
             switch (r)
             {
-                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.Inserted:
+                case Repository.CreatePointerFileEntryResult.Inserted:
                     logger.LogInformation($"Upserting PointerFile entry for {pointerFile}... done. Inserted entry.");
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1);
                     break;
-                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.InsertedDeleted:
+                case Repository.CreatePointerFileEntryResult.InsertedDeleted:
                     // TODO IS THIS EVER HIT?? I dont think so - the deleted entry is created in CreateDeletedPointerFileEntryForDeletedPointerFilesBlock
                     logger.LogInformation($"Upserting PointerFile entry for {pointerFile}... done. Inserted 'deleted' entry.");
                     stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
                     break;
-                case Repository.PointerFileEntryRepository.CreatePointerFileEntryResult.NoChange:
+                case Repository.CreatePointerFileEntryResult.NoChange:
                     logger.LogDebug($"Upserting PointerFile entry for {pointerFile}... done. No change made, latest entry was up to date.");
                     break;
                 default:
@@ -525,7 +529,7 @@ internal partial class ArchiveCommand
                 stats.AddLocalRepositoryStatistic(deltaPointerFiles: -1);
                 stats.AddRemoteRepositoryStatistic(deltaPointerFileEntries: 1); //note this is PLUS 1 since we re adding an entry really
 
-                await repo.PointerFileEntries.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
+                await repo.CreateDeletedPointerFileEntryAsync(pfe, versionUtc);
             }
         }
     }
@@ -557,7 +561,7 @@ internal partial class ArchiveCommand
             if (targetAccessTier != AccessTier.Archive)
                 return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
 
-            var blobsNotInTier = repo.Chunks.GetAllChunkBlobs().Where(cbb => cbb.AccessTier != targetAccessTier);
+            var blobsNotInTier = repo.GetAllChunkBlobs().Where(cbb => cbb.AccessTier != targetAccessTier);
 
             await Parallel.ForEachAsync(blobsNotInTier,
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
@@ -570,3 +574,4 @@ internal partial class ArchiveCommand
         }
     }
 }
+    

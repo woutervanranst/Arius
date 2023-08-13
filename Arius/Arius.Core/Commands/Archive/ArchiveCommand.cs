@@ -148,7 +148,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
             sourceFunc: async () =>
             {
                 var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
-                var pfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: false))
+                var pfes = (await repo.GetCurrentPointerFileEntriesAsync(includeDeleted: false))
                     .Where(pfe => pfe.VersionUtc < options.VersionUtc); // that were not created in the current run (those are assumed to be up to date)
                 await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
                 return pointerFileEntriesToCheckForDeletedPointers;
@@ -176,7 +176,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
             afterBinaries: endStats.binaryCount,
             afterSize: endStats.binariesSize,
             afterPointerFileEntries: endStats.currentPointerFileEntryCount);
-        var vs = (await repo.PointerFileEntries.GetVersionsAsync()).ToArray();
+        var vs = (await repo.GetVersionsAsync()).ToArray();
         stats.versionCount = vs.Length;
         stats.lastVersion = vs.Last();
 

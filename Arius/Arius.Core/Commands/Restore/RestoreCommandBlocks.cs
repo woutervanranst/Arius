@@ -59,7 +59,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
 
     private async Task SynchronizeThenIndex(DirectoryInfo root)
     {
-        var currentPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: false)).ToArray();
+        var currentPfes = (await repo.GetCurrentPointerFileEntriesAsync(includeDeleted: false)).ToArray();
 
         logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
 
@@ -294,12 +294,12 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
     /// </summary>
     private async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
     {
-        var chs = await repo.Binaries.GetChunkListAsync(bh);
-        var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.Chunks.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
+        var chs = await repo.GetChunkListAsync(bh);
+        var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
 
         var chunksToHydrate = chunks
             .Where(c => c.ChunkBlob is null)
-            .Select(c => repo.Chunks.GetChunkBlobByHash(c.ChunkHash, requireHydrated: false));
+            .Select(c => repo.GetChunkBlobByHash(c.ChunkHash, requireHydrated: false));
         if (chunksToHydrate.Any())
         {
             chunksToHydrate = chunksToHydrate.ToArray();
@@ -309,7 +309,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             if (rehydrateIfNeeded)
                 foreach (var c in chunksToHydrate)
                     //hydrate this chunk
-                    await repo.Chunks.HydrateAsync(c);
+                    await repo.HydrateChunkAsync(c);
 
             return false;
         }
@@ -318,7 +318,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             //All chunks are hydrated  so we can restore the Binary
             logger.LogInformation($"Downloading Binary '{bh.ToShortString()}' from {chunks.Length} chunk(s)...");
 
-            var p = await repo.Binaries.GetPropertiesAsync(bh);
+            var p = await repo.GetBinaryPropertiesAsync(bh);
             var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
             {
                 await using var ts = target.OpenWrite(); // TODO add async 

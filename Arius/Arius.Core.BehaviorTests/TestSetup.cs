@@ -84,8 +84,8 @@ internal static class TestSetup
 
     private static async Task AddRepoStat()
     {
-        var chunkCount = await Repository.Chunks.GetAllChunkBlobs().CountAsync();
-        var binaryCount = await Repository.Binaries.CountAsync();
+        var chunkCount = await Repository.GetAllChunkBlobs().CountAsync();
+        var binaryCount = await Repository.CountBinariesAsync();
 
         //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
         //var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
@@ -107,7 +107,7 @@ internal static class TestSetup
     /// <returns></returns>
     public static async Task<PointerFileEntry?> GetPointerFileEntryAsync(string relativeName)
     {
-        var pfes = await Repository.PointerFileEntries.GetCurrentEntriesAsync(includeDeleted: true);
+        var pfes = await Repository.GetCurrentPointerFileEntriesAsync(includeDeleted: true);
         var pfe  = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile
 
         return pfe;
@@ -158,7 +158,7 @@ internal static class TestSetup
 
     public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
     {
-        var c = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+        var c = container.GetBlobClient($"{Repository.RehydratedChunkFolderName}/{ch}");
 
         var p = await c.GetPropertiesAsync();
         var s = p.Value.ArchiveStatus;
@@ -170,8 +170,8 @@ internal static class TestSetup
 
     public static async Task CopyChunkToRehydrateFolderAndArchiveOriginal(ChunkHash ch)
     {
-        var source = container.GetBlobClient($"{Repository.ChunkRepository.ChunkFolderName}/{ch}");
-        var target = container.GetBlobClient($"{Repository.ChunkRepository.RehydratedChunkFolderName}/{ch}");
+        var source = container.GetBlobClient($"{Repository.ChunkFolderName}/{ch}");
+        var target = container.GetBlobClient($"{Repository.RehydratedChunkFolderName}/{ch}");
 
         var t = await target.StartCopyFromUriAsync(source.Uri);
         await t.WaitForCompletionAsync();
@@ -181,7 +181,7 @@ internal static class TestSetup
 
     public static async Task<bool> RehydrateFolderExists()
     {
-        var n = await container.GetBlobsAsync(prefix: Repository.ChunkRepository.RehydratedChunkFolderName).CountAsync();
+        var n = await container.GetBlobsAsync(prefix: Repository.RehydratedChunkFolderName).CountAsync();
         return n > 0;
     }
 }
