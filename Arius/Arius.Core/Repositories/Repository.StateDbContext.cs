@@ -16,10 +16,10 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal interface IAriusDbContextFactory : IDisposable
+    internal interface IStateDbContextFactory : IDisposable
     {
         Task LoadAsync();
-        AriusDbContext GetContext();
+        StateDbContext GetContext();
         Task SaveAsync(DateTime versionUtc);
     }
 
@@ -37,14 +37,14 @@ internal partial class Repository
     //    public Task SaveAsync(DateTime versionUtc) => Task.CompletedTask;
     //}
 
-    internal class AriusDbContextFactory : IAriusDbContextFactory
+    internal class StateDbContextFactory : IStateDbContextFactory
     {
         private readonly ILogger             logger;
         private readonly BlobContainerClient container;
         private readonly string              passphrase;
         private readonly string              localDbPath;
 
-        public AriusDbContextFactory(ILogger logger, BlobContainerClient container, string passphrase)
+        public StateDbContextFactory(ILogger logger, BlobContainerClient container, string passphrase)
         {
             this.logger     = logger;
             this.container  = container;
@@ -63,7 +63,7 @@ internal partial class Repository
 
             if (lastStateBlobName is null)
             {
-                await using var db = new AriusDbContext(localDbPath);
+                await using var db = new StateDbContext(localDbPath);
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");
@@ -78,12 +78,12 @@ internal partial class Repository
             }
         }
 
-        public AriusDbContext GetContext()
+        public StateDbContext GetContext()
         {
             if (!File.Exists(localDbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            return new AriusDbContext(localDbPath, HasChanges);
+            return new StateDbContext(localDbPath, HasChanges);
         }
 
         private bool hasChanges = false;
@@ -154,7 +154,7 @@ internal partial class Repository
             GC.SuppressFinalize(this);
         }
 
-        ~AriusDbContextFactory()
+        ~StateDbContextFactory()
         {
             Dispose(false); // this is weird but according to the best practice
         }
@@ -170,7 +170,7 @@ internal partial class Repository
         }
     }
 
-    internal class AriusDbContext : DbContext
+    internal class StateDbContext : DbContext
     {
         public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
         public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
@@ -181,13 +181,13 @@ internal partial class Repository
         /// <summary>
         /// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
         /// </summary>
-        internal AriusDbContext()
+        internal StateDbContext()
         { 
         }
-        internal AriusDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
+        internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
         {
         }
-        internal AriusDbContext(string dbPath, Action<int> hasChanges)
+        internal StateDbContext(string dbPath, Action<int> hasChanges)
         {
             this.dbPath     = dbPath;
             this.hasChanges = hasChanges;
