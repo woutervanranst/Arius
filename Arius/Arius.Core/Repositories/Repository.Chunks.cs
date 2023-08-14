@@ -148,7 +148,7 @@ internal partial class Repository
     /// <returns>Returns the length of the uploaded stream.</returns>
     internal async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
     {
-        if (DateTime.UtcNow.Day > 13)
+        if (DateTime.UtcNow.Day > 14)
             throw new NotImplementedException("KAKPIS");
 
         logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'...");

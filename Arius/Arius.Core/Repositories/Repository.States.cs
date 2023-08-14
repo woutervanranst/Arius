@@ -8,9 +8,9 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
-
     internal const string StateDbsFolderName = "states";
+
+    private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
 
     private StateDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
 
@@ -20,8 +20,6 @@ internal partial class Repository
     }
 
 
-    
-
     internal class StateDbContext : DbContext
     {
         public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
@@ -30,12 +28,12 @@ internal partial class Repository
         private readonly string      dbPath;
         private readonly Action<int> hasChanges;
 
-        /// <summary>
-        /// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
-        /// </summary>
-        internal StateDbContext()
-        { 
-        }
+        ///// <summary>
+        ///// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
+        ///// </summary>
+        //internal StateDbContext()
+        //{ 
+        //}
         internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
         {
         }
