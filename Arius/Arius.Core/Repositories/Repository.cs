@@ -22,7 +22,7 @@ namespace Arius.Core.Repositories;
 internal partial class Repository : IDisposable
 {
     private readonly ILogger<Repository>    logger;
-    private readonly IAriusDbContextFactory dbContextFactory;
+    private readonly IStateDbContextFactory dbContextFactory;
     private readonly BlobContainerClient    container;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
@@ -31,7 +31,7 @@ internal partial class Repository : IDisposable
     }
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, IRepositoryOptions options, IAriusDbContextFactory dbContextFactory, BlobContainerClient container)
+    public Repository(ILogger<Repository> logger, IRepositoryOptions options, IStateDbContextFactory dbContextFactory, BlobContainerClient container)
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;
@@ -46,9 +46,9 @@ internal partial class Repository : IDisposable
     internal const string StateDbsFolderName = "states";
 
 
-    dit moet gemerged worden met AriusDbContext
+    //dit moet gemerged worden met AriusDbContext
 
-    private AriusDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
+    private StateDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
 
     public async Task SaveStateToRepository(DateTime versionUtc)
     {
@@ -81,9 +81,9 @@ internal partial class Repository : IDisposable
     // --------- OTHER HELPERS ---------
 
     private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-    {
-        OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
-    };
+        {
+            OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
+        };
 
     public async Task<(int binaryCount, long binariesSize, int currentPointerFileEntryCount)> GetStats()
     {
