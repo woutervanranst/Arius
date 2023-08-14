@@ -1,14 +1,15 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Services;
+using Azure;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
-using Azure;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using System;
+using Arius.Core.Extensions;
 
 namespace Arius.Core.Repositories;
 
@@ -59,6 +60,7 @@ internal partial class Repository
 
     private string GetChunkBlobName(string folder, ChunkHash chunkHash) => GetChunkBlobFullName(folder, chunkHash.Value);
     private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
+
 
     ///// <summary>
     ///// Get a ChunkBlobBase in the given folder with the given name.
