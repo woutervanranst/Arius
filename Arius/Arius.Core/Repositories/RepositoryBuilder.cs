@@ -20,6 +20,7 @@ internal class RepositoryBuilder
 
     private IRepositoryOptions  options   = default;
     private BlobContainerClient container = default;
+
     public RepositoryBuilder WithOptions(IRepositoryOptions options)
     {
         this.options = options;
@@ -31,10 +32,10 @@ internal class RepositoryBuilder
     }
 
 
-    private Repository.IAriusDbContextFactory dbContextFactory;
+    private Repository.IStateDbContextFactory dbContextFactory;
     public RepositoryBuilder WithLatestStateDatabase()
     {
-        dbContextFactory = new Repository.AriusDbContextFactory(logger, container, options.Passphrase);
+        dbContextFactory = new Repository.StateDbContextFactory(logger, container, options.Passphrase);
         
         return this;
     }
