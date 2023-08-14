@@ -18,7 +18,8 @@ internal partial class Repository
 {
     private const string ChunkListsFolderName = "chunklists";
     private const string JsonGzipContentType  = "application/json+gzip";
-    internal      string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
+
+    internal static string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
 
     internal async Task CreateChunkListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
     {

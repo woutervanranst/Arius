@@ -58,7 +58,7 @@ internal partial class Repository
     /// </summary>
     private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
 
         pfe = ToPlatformNeutral(pfe);
 
@@ -132,7 +132,7 @@ internal partial class Repository
     {
         //TODO an exception here is swallowed
 
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         var r = await db.PointerFileEntries.AsParallel()
             .GroupBy(pfe => pfe.RelativeName)
             .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc))
@@ -165,7 +165,7 @@ internal partial class Repository
 
     internal async Task<int> CountPointerFileEntriesAsync()
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         return await db.PointerFileEntries.CountAsync();
     }
 
@@ -207,7 +207,7 @@ internal partial class Repository
     /// <returns></returns>
     public async Task<IEnumerable<DateTime>> GetVersionsAsync()
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         return await db.PointerFileEntries
             .Select(pfe => pfe.VersionUtc)
             .Distinct()

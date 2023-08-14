@@ -12,7 +12,7 @@ internal partial class Repository
     /// <returns></returns>
     public async Task<int> CountBinariesAsync()
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         return await db.BinaryProperties.CountAsync();
         //return await db.PointerFileEntries
         //    .Select(pfe => pfe.BinaryHash)
@@ -22,13 +22,13 @@ internal partial class Repository
 
     public async Task<bool> BinaryExistsAsync(BinaryHash bh)
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         return await db.BinaryProperties.AnyAsync(bp => bp.Hash == bh);
     }
 
     public async Task<long> TotalBinaryIncrementalLengthAsync()
     {
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         return await db.BinaryProperties.SumAsync(bp => bp.IncrementalLength);
     }
 }

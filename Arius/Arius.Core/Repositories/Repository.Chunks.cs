@@ -1,4 +1,5 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure;
 using Azure.Storage.Blobs.Models;
@@ -9,18 +10,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
 
 namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal const string ChunkFolderName = "chunks";
-    internal const string RehydratedChunkFolderName = "chunks-rehydrated";
+    internal const string ChunksFolderName = "chunks";
+    internal const string RehydratedChunksFolderName = "chunks-rehydrated";
 
     public IAsyncEnumerable<ChunkBlobBase> GetAllChunkBlobs()
     {
-        return container.GetBlobsAsync(prefix: $"{ChunkFolderName}/")
+        return container.GetBlobsAsync(prefix: $"{ChunksFolderName}/")
             .Select(bi => ChunkBlobBase.GetChunkBlob(container, bi));
     }
 
@@ -31,7 +31,7 @@ internal partial class Repository
     /// </summary>
     public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
     {
-        var blobName = GetChunkBlobName(ChunkFolderName, chunkHash);
+        var blobName = GetChunkBlobName(ChunksFolderName, chunkHash);
         var cb1 = GetChunkBlobByName(blobName);
 
         if (cb1 is null)
@@ -45,7 +45,7 @@ internal partial class Repository
         if (requireHydrated && cb1.Downloadable)
             return cb1;
 
-        blobName = GetChunkBlobName(RehydratedChunkFolderName, chunkHash);
+        blobName = GetChunkBlobName(RehydratedChunksFolderName, chunkHash);
         var cb2 = GetChunkBlobByName(blobName);
 
         if (cb2 is null || !cb2.Downloadable)
@@ -94,7 +94,7 @@ internal partial class Repository
 
     public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
     {
-        return await container.GetBlobClient(GetChunkBlobName(ChunkFolderName, chunkHash)).ExistsAsync();
+        return await container.GetBlobClient(GetChunkBlobName(ChunksFolderName, chunkHash)).ExistsAsync();
     }
 
     public async Task HydrateChunkAsync(ChunkBlobBase blobToHydrate)
@@ -105,7 +105,7 @@ internal partial class Repository
             blobToHydrate.AccessTier == AccessTier.Cool)
             throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-        var hydratedItem = container.GetBlobClient($"{RehydratedChunkFolderName}/{blobToHydrate.Name}");
+        var hydratedItem = container.GetBlobClient($"{RehydratedChunksFolderName}/{blobToHydrate.Name}");
 
         if (!await hydratedItem.ExistsAsync())
         {
@@ -135,7 +135,7 @@ internal partial class Repository
     {
         logger.LogInformation("Deleting temporary hydration folder");
 
-        await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunkFolderName))
+        await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunksFolderName))
         {
             var bc = container.GetBlobClient(bi.Name);
             await bc.DeleteAsync();
@@ -153,7 +153,7 @@ internal partial class Repository
 
         logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'...");
 
-        var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunkFolderName, chunk.ChunkHash));
+        var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunksFolderName, chunk.ChunkHash));
 
     RestartUpload:
 

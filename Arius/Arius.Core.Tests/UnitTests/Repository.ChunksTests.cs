@@ -20,7 +20,7 @@ class ChunkRepositoryTests : TestBase
 
         var cb1 = await Repository.GetAllChunkBlobs().FirstAsync();
 
-        var cb2 = Repository.GetChunkBlobByName(Repository.ChunkFolderName, cb1.Name);
+        var cb2 = Repository.GetChunkBlobByName(Repository.ChunksFolderName, cb1.Name);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
     }
@@ -28,7 +28,7 @@ class ChunkRepositoryTests : TestBase
     [Test]
     public void GetChunkBlobByName_NotExisting_Null()
     {
-        var cb = Repository.GetChunkBlobByName(Repository.ChunkFolderName, "idonotexist");
+        var cb = Repository.GetChunkBlobByName(Repository.ChunksFolderName, "idonotexist");
 
         Assert.IsNull(cb);
     }

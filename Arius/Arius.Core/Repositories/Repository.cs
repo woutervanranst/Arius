@@ -49,7 +49,7 @@ internal partial class Repository : IDisposable
         // TODO: use db.PointerFileEntries.Include(e => e.BinaryProperties)
         // EF Core Migrations
 
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
 
         var r = db.PointerFileEntries.Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase))
             .Select(pfe => new

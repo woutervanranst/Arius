@@ -32,7 +32,7 @@ class BlobModelTests : TestBase
         Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
         Assert.AreEqual(cb1.Folder, cb2.Folder);
-        Assert.AreEqual(cb1.Folder, Repository.ChunkFolderName);
+        Assert.AreEqual(cb1.Folder, Repository.ChunksFolderName);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory

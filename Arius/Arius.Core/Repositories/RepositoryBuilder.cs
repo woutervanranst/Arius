@@ -1,18 +1,11 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Facade;
-using Arius.Core.Services;
+﻿using Arius.Core.Facade;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using static Arius.Core.Repositories.Repository;
+using System;
+using System.Net;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 

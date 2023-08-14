@@ -8,11 +8,11 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
+    private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
 
-    private StateDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
+    private StateDbContext GetStateDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
 
-    public async Task SaveStateToRepository(DateTime versionUtc) => await dbContextFactory.SaveAsync(versionUtc);
+    public async Task SaveStateToRepositoryAsync(DateTime versionUtc) => await dbContextFactory.SaveAsync(versionUtc);
 
 
     internal class StateDbContext : DbContext

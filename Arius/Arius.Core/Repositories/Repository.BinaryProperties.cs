@@ -18,7 +18,7 @@ internal partial class Repository
             ChunkCount        = chunkCount
         };
 
-        await using var db = GetAriusDbContext();
+        await using var db = GetStateDbContext();
         await db.BinaryProperties.AddAsync(bp);
         await db.SaveChangesAsync();
 
@@ -29,7 +29,7 @@ internal partial class Repository
     {
         try
         {
-            await using var db = GetAriusDbContext();
+            await using var db = GetStateDbContext();
             return db.BinaryProperties.Single(bp => bp.Hash == bh);
         }
         catch (InvalidOperationException e) when (e.Message == "Sequence contains no elements")
