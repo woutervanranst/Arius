@@ -24,15 +24,15 @@ class BlobModelTests : TestBase
         TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
-        var cb1 = await Repository.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
-        var cb2 = Repository.Chunks.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
+        var cb1 = await Repository.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
+        var cb2 = Repository.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 
         Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
 
         Assert.AreEqual(cb1.Folder, cb2.Folder);
-        Assert.AreEqual(cb1.Folder, Repository.ChunkRepository.ChunkFolderName);
+        Assert.AreEqual(cb1.Folder, Repository.ChunkFolderName);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory
