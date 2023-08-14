@@ -22,7 +22,6 @@ namespace Arius.Core.Repositories;
 internal partial class Repository : IDisposable
 {
     private readonly ILogger<Repository>    logger;
-    private readonly IStateDbContextFactory dbContextFactory;
     private readonly BlobContainerClient    container;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
@@ -31,7 +30,7 @@ internal partial class Repository : IDisposable
     }
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, IRepositoryOptions options, IStateDbContextFactory dbContextFactory, BlobContainerClient container)
+    public Repository(ILogger<Repository> logger, IRepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainerClient container)
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;
@@ -40,20 +39,6 @@ internal partial class Repository : IDisposable
     }
 
     public IRepositoryOptions Options { get; }
-
-    // --------- STATES ---------
-
-    internal const string StateDbsFolderName = "states";
-
-
-    //dit moet gemerged worden met AriusDbContext
-
-    private StateDbContext GetAriusDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
-
-    public async Task SaveStateToRepository(DateTime versionUtc)
-    {
-        await dbContextFactory.SaveAsync(versionUtc);
-    }
 
     // --------- BLA ---------
 
