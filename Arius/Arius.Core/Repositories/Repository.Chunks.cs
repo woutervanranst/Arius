@@ -62,14 +62,14 @@ internal partial class Repository
     private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
 
 
-    ///// <summary>
-    ///// Get a ChunkBlobBase in the given folder with the given name.
-    ///// Return null if it doesn't exist.
-    ///// </summary>
-    ///// <param name="folder"></param>
-    ///// <param name="name"></param>
-    ///// <returns></returns>
-    //internal ChunkBlobBase GetChunkBlobByName(string folder, string name) => GetChunkBlobByName(GetChunkBlobFullName(folder, name));
+    /// <summary>
+    /// Get a ChunkBlobBase in the given folder with the given name.
+    /// Return null if it doesn't exist.
+    /// </summary>
+    /// <param name="folder"></param>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    internal ChunkBlobBase GetChunkBlobByName(string folder, string name) => GetChunkBlobByName(GetChunkBlobFullName(folder, name));
 
     //internal ChunkBlobBase GetChunkBlobByName(BlobItem bi) => GetChunkBlobByName(bi.Name);
 
