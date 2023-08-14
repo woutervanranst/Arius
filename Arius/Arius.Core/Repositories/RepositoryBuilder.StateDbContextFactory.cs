@@ -37,6 +37,8 @@ internal partial class RepositoryBuilder
 
     private class StateDbContextFactory : IStateDbContextFactory
     {
+        private const string StateDbsFolderName = "states";
+        
         private readonly ILogger             logger;
         private readonly BlobContainerClient container;
         private readonly string              passphrase;
@@ -54,13 +56,14 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{Repository.StateDbsFolderName}/")
+            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
                 .Select(bi => bi.Name)
                 .OrderBy(n => n)
                 .LastOrDefaultAsync();
 
             if (lastStateBlobName is null)
             {
+                // Create new DB
                 await using var db = new Repository.StateDbContext(localDbPath);
                 await db.Database.EnsureCreatedAsync();
 
@@ -68,6 +71,7 @@ internal partial class RepositoryBuilder
             }
             else
             {
+                // Load existing DB
                 await using var ss = await container.GetBlobClient(lastStateBlobName).OpenReadAsync();
                 await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
@@ -113,7 +117,7 @@ internal partial class RepositoryBuilder
             if (originalLength != vacuumedlength)
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
 
-            var blobName = $"{Repository.StateDbsFolderName}/{versionUtc:s}";
+            var blobName = $"{StateDbsFolderName}/{versionUtc:s}";
             var bbc = container.GetBlockBlobClient(blobName);
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
@@ -125,7 +129,7 @@ internal partial class RepositoryBuilder
             await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
 
             // Move the previous states to Archive storage
-            await foreach (var bi in container.GetBlobsAsync(prefix: $"{Repository.StateDbsFolderName}/")
+            await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
                                .OrderBy(bi => bi.Name)
                                .SkipLast(2)
                                .Where(bi => bi.Properties.AccessTier != AccessTier.Archive))
