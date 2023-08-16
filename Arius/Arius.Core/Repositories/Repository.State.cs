@@ -56,12 +56,6 @@ internal partial class Repository
         {
             base.OnModelCreating(modelBuilder);
 
-            var removePointerFileExtensionConverter = new ValueConverter<string, string>(
-                v => v.RemovePrefix(PointerFile.Extension), // Convert from Model to Provider (code to db)
-                v => $"{v}{PointerFile.Extension}" // Convert from Provider to Model (db to code)
-            );
-
-
             var bme = modelBuilder.Entity<BinaryProperties>(builder =>
             {
                 builder.Property(bm => bm.Hash)
@@ -83,15 +77,13 @@ internal partial class Repository
                     .HasConversion(bh => bh.Value, value => new BinaryHash(value));
 
                 builder.Property(pfe => pfe.RelativeName)
-                    .HasConversion(removePointerFileExtensionConverter);
+                    .HasConversion(new RemovePointerFileExtensionConverter());
 
                 builder.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
 
                 builder.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
                 builder.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
-
-                //builder.HasOne<BinaryMetadata>(pfe => pfe.)
             });
         }
 
@@ -107,6 +99,16 @@ internal partial class Repository
             var numChanges = await base.SaveChangesAsync(cancellationToken);
             hasChanges(numChanges);
             return numChanges;
+        }
+
+        internal class RemovePointerFileExtensionConverter : ValueConverter<string, string>
+        {
+            public RemovePointerFileExtensionConverter()
+                : base(
+                    v => v.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
+                    v => $"{v}{PointerFile.Extension}") // Convert from Provider to Model (db to code)
+            {
+            }
         }
     }
 }
