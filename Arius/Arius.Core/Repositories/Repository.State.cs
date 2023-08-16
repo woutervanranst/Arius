@@ -24,12 +24,12 @@ internal partial class Repository
         private readonly string      dbPath;
         private readonly Action<int> hasChanges;
 
-        /// <summary>
-        /// Required for EF Migrations (potentially also Moq, UnitTests but not sure)
-        /// </summary>
-        public StateDbContext()
-        {
-        }
+        ///// <summary>
+        ///// Required for EF Migrations (potentially also Moq, UnitTests but not sure)
+        ///// </summary>
+        //public StateDbContext()
+        //{
+        //}
         internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
         {
         }
