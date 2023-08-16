@@ -2,6 +2,7 @@
 using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Services;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
