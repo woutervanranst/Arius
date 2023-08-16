@@ -124,7 +124,7 @@ internal partial class RepositoryBuilder
                 await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
             }
 
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
+            await b.SetAccessTierAsync(AccessTier.Cold);
             await b.SetContentTypeAsync(CryptoService.ContentType);
 
             // Move the previous states to Archive storage
