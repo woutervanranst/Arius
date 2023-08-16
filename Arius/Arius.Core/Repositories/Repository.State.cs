@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Arius.Core.Repositories;
 
@@ -23,9 +24,9 @@ internal partial class Repository
         private readonly string      dbPath;
         private readonly Action<int> hasChanges;
 
-        ///// <summary>
-        ///// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
-        ///// </summary>
+        /// <summary>
+        /// Required for EF Migrations (potentially also Moq, UnitTests but not sure)
+        /// </summary>
         public StateDbContext()
         {
         }
@@ -55,6 +56,12 @@ internal partial class Repository
         {
             base.OnModelCreating(modelBuilder);
 
+            var removePointerFileExtensionConverter = new ValueConverter<string, string>(
+                v => v.RemovePrefix(PointerFile.Extension), // Convert from Model to Provider (code to db)
+                v => $"{v}{PointerFile.Extension}" // Convert from Provider to Model (db to code)
+            );
+
+
             var bme = modelBuilder.Entity<BinaryProperties>(builder =>
             {
                 builder.Property(bm => bm.Hash)
@@ -69,11 +76,14 @@ internal partial class Repository
 
             });
 
-            var pfee = modelBuilder.Entity<PointerFileEntry>(builder =>
+            var pfes = modelBuilder.Entity<PointerFileEntry>(builder =>
             {
                 builder.Property(pfe => pfe.BinaryHash)
                     .HasColumnName("BinaryHash")
                     .HasConversion(bh => bh.Value, value => new BinaryHash(value));
+
+                builder.Property(pfe => pfe.RelativeName)
+                    .HasConversion(removePointerFileExtensionConverter);
 
                 builder.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
 
