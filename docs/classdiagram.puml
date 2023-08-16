@@ -23,15 +23,7 @@ class Hash {
 class ChunkHash
 class BinaryHash
 
-abstract class BlobBase {
- - ChunkHash : ChunkHash
-}
-abstract class ChunkBlobBase
-class ChunkBlobItem
-class ChunkBlobBaseClient
-
-class FileInfo
-rectangle "use FileSystemService" as FileSystemServiceGroup {
+rectangle "Encapsulates FileInfo\nuse FileSystemService" as FileSystemServiceGroup {
     abstract class FileInfoBase
     class PointerFileInfo {
         BinaryFileFullName : string
@@ -73,6 +65,8 @@ class StorageAccountFacade {
 class RepositoryFacade {
  + GetVersions()
  + ExecuteArchiveCommand()
+
+ + {static} ValidateArchiveCommandOptions(...)
 }
 
 class Repository
@@ -86,6 +80,48 @@ class RepositoryOptions {
  - ContainerName
  - Passphrase
 }
+
+
+
+rectangle "Encapsulates Blobs" {
+
+    class BlobContainer {
+        + CreateIfNotExists()
+    }
+
+    class BlobContainerFolder {
+        + GetBlobEntriesAsync() : BlobEntry[]
+        + GetBlobAsync(BlobEntry)
+        + GetBlobAsync(string)
+        + DeleteBlobAsync(BlobEntry)
+    }
+
+    class BlobEntry
+    class Blob {
+        + SetAccessTierAsync()
+    }
+
+    class ChunkBlobContainerFolder {
+        + GetBlobAsync(ChunkHash)
+    }
+    class ChunkBlobEntry {
+        - ChunkHash
+    }
+    class ChunkBlob {
+        - ChunkHash
+    }
+}
+
+BlobContainer --o BlobContainerFolder : "has many"
+
+BlobContainerFolder --o Blob : "contains many"
+ChunkBlobContainerFolder --o ChunkBlob : "contains many"
+
+ChunkBlobContainerFolder -u-|> BlobContainerFolder : "is a"
+ChunkBlobEntry -u-|> BlobEntry : "is a"
+ChunkBlob -u-|> Blob : "is a"
+
+ChunkBlob -u-|> IChunk : "is a"
 
 class ArchiveCommandOptions {
  - FastHash
@@ -128,16 +164,10 @@ BinaryFile..u|>IChunk
 
 IChunk <|.. MemoryChunk
 
-ChunkBlobBase -u-|> BlobBase
-ChunkBlobBase .u.|> IChunk
-ChunkBlobItem -u-* ChunkBlobBase : "is a"
-ChunkBlobBaseClient -u-* ChunkBlobBase : "is a"
-
 ChunkHash -r-|> Hash
 BinaryHash -r-|> ChunkHash : "is a"
 
 IChunk -u-o ChunkHash : "has a"
-BlobBase -u-o ChunkHash : "has a"
 
 
 FileInfoBase<|-- PointerFileInfo
@@ -156,5 +186,4 @@ ArchiveCommand -- ArchiveCommandOptions
 
 FileSystemServiceGroup -u- FileServiceGroup : "built with"
 
-FileInfoBase -l- FileInfo : "encapsulates"
 @enduml
