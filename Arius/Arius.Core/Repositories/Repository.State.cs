@@ -26,9 +26,9 @@ internal partial class Repository
         ///// <summary>
         ///// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
         ///// </summary>
-        //internal StateDbContext()
-        //{ 
-        //}
+        public StateDbContext()
+        {
+        }
         internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
         {
         }
