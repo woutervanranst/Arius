@@ -81,11 +81,15 @@ class RepositoryOptions {
  - Passphrase
 }
 
-
+' -- BLOBS
 
 rectangle "Encapsulates Blobs" {
 
     class BlobContainer {
+        - States : BlobContainerFolder
+        - ChunkLists : BlobContainerFolder
+        - Chunks : ChunkBlobContainerFolder
+        - RehydratedChunks : ChunkBlobContainerFolder
         + CreateIfNotExists()
     }
 
@@ -112,17 +116,6 @@ rectangle "Encapsulates Blobs" {
     }
 }
 
-BlobContainer --o BlobContainerFolder : "has many"
-
-BlobContainerFolder --o Blob : "contains many"
-ChunkBlobContainerFolder --o ChunkBlob : "contains many"
-
-ChunkBlobContainerFolder -u-|> BlobContainerFolder : "is a"
-ChunkBlobEntry -u-|> BlobEntry : "is a"
-ChunkBlob -u-|> Blob : "is a"
-
-ChunkBlob -u-|> IChunk : "is a"
-
 class ArchiveCommandOptions {
  - FastHash
  - RemoveLocal
@@ -135,6 +128,18 @@ class ArchiveCommandOptions {
 
 class ArchiveCommand {
  + Execute(ArchiveCommandOptions)
+}
+
+class RestoreCommandOptions {
+    - Synchronize
+    - Download
+    - KeepPointers
+    - PointInTimeUtc
+    + ctor(Repository, ...)
+}
+
+class RestoreCommand {
+    + Execute(RestoreCommandOptions)
 }
 
 
@@ -178,12 +183,32 @@ Facade --> StorageAccountFacade : "creates a"
 StorageAccountFacade --> RepositoryFacade : "creates a"
 RepositoryFacade --o Repository : "has a"
 
-RepositoryOptions -u-|> StorageAccountOptions
-ArchiveCommandOptions -u-|> RepositoryOptions 
+RepositoryOptions -u-|> StorageAccountOptions : "is a"
+
+ArchiveCommandOptions -u-|> RepositoryOptions : "is a"
 ArchiveCommandOptions --> Repository : "initialized using a"
 
-ArchiveCommand -- ArchiveCommandOptions
+ArchiveCommand -- ArchiveCommandOptions : "uses"
+
+RestoreCommandOptions -u-|> RepositoryOptions : "is a"
+RestoreCommandOptions --> Repository : "initialized using a"
+
+RestoreCommand -- RestoreCommandOptions : "uses"
+
 
 FileSystemServiceGroup -u- FileServiceGroup : "built with"
+
+' --- BLOB RELATIONSHIPS
+
+BlobContainer --o BlobContainerFolder : "has many"
+
+BlobContainerFolder --o Blob : "contains many"
+ChunkBlobContainerFolder --o ChunkBlob : "contains many"
+
+ChunkBlobContainerFolder -u-|> BlobContainerFolder : "is a"
+ChunkBlobEntry -u-|> BlobEntry : "is a"
+ChunkBlob -u-|> Blob : "is a"
+
+ChunkBlob -u-|> IChunk : "is a"
 
 @enduml
