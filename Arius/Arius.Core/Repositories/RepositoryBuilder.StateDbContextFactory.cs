@@ -121,7 +121,7 @@ internal partial class RepositoryBuilder
             var b = await container.States.GetBlobAsync($"{versionUtc:s}");
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
-                await using var ts = await b.OpenWriteAsync(overwrite: true);
+                await using var ts = await b.OpenWriteAsync(throwOnExists: false); //the throwOnExists: false is a hack for the unit tests, they run in rapid  succession and the DateTimeNowUtc is the same
                 await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
             }
 

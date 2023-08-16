@@ -40,9 +40,22 @@ internal class Blob
 
     public async Task<Stream> OpenReadAsync() => await client.OpenReadAsync();
 
-    public async Task<Stream> OpenWriteAsync(bool overwrite)                                    => await client.OpenWriteAsync(overwrite);
-    public async Task<Stream> OpenWriteAsync(bool overwrite, BlockBlobOpenWriteOptions options) => await client.OpenWriteAsync(overwrite, options);
+    /// <summary>
+    /// Open the blob for writing.
+    /// </summary>
+    /// <param name="throwOnExists">If specified, and the blob already exists, a RequestFailedException with Status HttpStatusCode.Conflict is thrown</param>
+    public async Task<Stream> OpenWriteAsync(bool throwOnExists = true)
+    {
+        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
 
+        if (throwOnExists) 
+            return await client.OpenWriteAsync(overwrite: true, options: new BlockBlobOpenWriteOptions()
+            {
+                OpenConditions = new BlobRequestConditions() { IfNoneMatch = new ETag("*")} // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+            } );
+        else
+            return await client.OpenWriteAsync(overwrite: true);
+    }
 
     public AccessTier? AccessTier => properties.AccessTier;
 

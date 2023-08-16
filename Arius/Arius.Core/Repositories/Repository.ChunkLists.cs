@@ -38,7 +38,7 @@ internal partial class Repository
 
         try
         {
-            using (var ts = await bbc.OpenWriteAsync(overwrite: true, options: ThrowOnExistOptions)) //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+            using (var ts = await bbc.OpenWriteAsync())
             {
                 using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
                 await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));

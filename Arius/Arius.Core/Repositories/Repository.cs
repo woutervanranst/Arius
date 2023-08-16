@@ -59,11 +59,6 @@ internal partial class Repository : IDisposable
 
     // --------- OTHER HELPERS ---------
 
-    private static readonly BlockBlobOpenWriteOptions ThrowOnExistOptions = new() // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-        {
-            OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }
-        };
-
     public async Task<(int binaryCount, long binariesSize, int currentPointerFileEntryCount)> GetStats()
     {
         var binaryCount                  = await CountBinariesAsync();
@@ -72,7 +67,6 @@ internal partial class Repository : IDisposable
 
         return (binaryCount, binariesSize, currentPointerFileEntryCount);
     }
-
 
     // --------- FINALIZER ---------
     public void Dispose()
