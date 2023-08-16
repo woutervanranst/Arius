@@ -256,7 +256,7 @@ internal partial class ArchiveCommand
             // Upload the Binary
             var (MBps, Mbps, seconds, chs, totalLength, incrementalLength) = await new Stopwatch().GetSpeedAsync(bf.Length, async () =>
             {
-                if (options.Dedup)
+                if (options.Dedup) // TODO rewrite as strategy pattern?
                     return await UploadChunkedBinaryAsync(bf);
                 else
                     return await UploadBinaryAsSingleChunkAsync(bf);
@@ -339,7 +339,7 @@ internal partial class ArchiveCommand
                             // 2 Does not yet exist remote and not yet being created --> upload
                             logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' does not exist remotely. To upload.");
 
-                            var length = await repo.Chunks.UploadAsync(chunk, options.Tier);
+                            var length = await UploadChunkAsync(chunk, options.Tier);
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, length);
 
@@ -372,10 +372,83 @@ internal partial class ArchiveCommand
         /// </summary>
         private async Task<(ChunkHash[], long totalLength, long incrementalLength)> UploadBinaryAsSingleChunkAsync(BinaryFile bf)
         {
-            var length = await repo.Chunks.UploadAsync(bf, options.Tier);
+            var length = await UploadChunkAsync(bf, options.Tier);
 
             return (bf.ChunkHash.AsArray(), length, length);
         }
+
+        /// <summary>
+        /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
+        /// </summary>
+        /// <returns>Returns the length of the uploaded stream.</returns>
+        private async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
+        {
+            logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash}'...");
+
+            var bbc = await repo.GetChunkBlobAsync(chunk.ChunkHash);
+
+        RestartUpload:
+
+            try
+            {
+                // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
+
+                long length;
+                await using (var ts = await bbc.OpenWriteAsync())
+                {
+                    await using var ss = await chunk.OpenReadAsync();
+                    await CryptoService.CompressAndEncryptAsync(ss, ts, options.Passphrase);
+                    length = ts.Position;
+                }
+
+                await bbc.SetContentTypeAsync(CryptoService.ContentType); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
+
+                // Set access tier per policy
+                await bbc.SetAccessTierAsync(ChunkBlob.GetPolicyAccessTier(tier, length));
+
+                logger.LogInformation($"Uploading Chunk '{chunk.ChunkHash}'... done");
+
+                return length;
+            }
+            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict /*409*/) //icw ThrowOnExistOptions. In case of hot/cool, throws a 409+BlobAlreadyExists. In case of archive, throws a 409+BlobArchived
+            {
+                // The blob already exists
+                try
+                {
+                    if (bbc.ContentType != CryptoService.ContentType || bbc.Length == 0)
+                    {
+                        logger.LogWarning($"Corrupt chunk {chunk.ChunkHash}. Deleting and uploading again");
+                        await bbc.DeleteAsync();
+
+                        goto RestartUpload;
+                    }
+                    else
+                    {
+                        // graceful handling if the chunk is already uploaded but it does not yet exist in the database
+                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
+                        logger.LogWarning($"A valid Chunk '{chunk.ChunkHash}' already existsted, perhaps in a previous/crashed run?");
+
+                        return bbc.Length;
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.ChunkHash}");
+                    throw;
+                }
+            }
+            catch (Exception e)
+            {
+                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.ChunkHash}. Deleting...", e);
+                logger.LogError(e2); //TODO test this in a unit test
+                await bbc.DeleteAsync();
+                logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
+
+                throw e2;
+            }
+        }
+
+        
     }
 
 

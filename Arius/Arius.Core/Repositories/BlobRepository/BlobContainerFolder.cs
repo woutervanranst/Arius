@@ -25,7 +25,7 @@ internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where
     /// <summary>
     /// List all existing blobs
     /// </summary>
-    public virtual IAsyncEnumerable<TEntry> GetBlobEntriesAsync()
+    public virtual IAsyncEnumerable<TEntry> GetBlobEntriesAsync() // TODO do we still need this (if we have the DB) and can we do away with the BlobEntry etc?
     {
         return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => CreateEntry(bi));
     }
