@@ -30,7 +30,8 @@ internal abstract record FileInfoBase
         set => File.SetLastWriteTimeUtc(FullName, value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
     }
 
-    public FileStream OpenWrite() => fi.OpenWrite(); // Todo add async 
+    public FileStream OpenWrite()      => fi.OpenWrite();
+    public FileStream OpenWriteAsync() => new FileStream(fi.FullName, FileMode.CreateNew, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true);
 
     public void CopyTo(string destFileName) => fi.CopyTo(destFileName);
 }
