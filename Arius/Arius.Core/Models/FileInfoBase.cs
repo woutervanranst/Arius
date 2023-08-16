@@ -50,7 +50,7 @@ internal record PointerFileInfo : FileInfoBase
 
     public string BinaryFileFullName => GetBinaryFileName(fi.FullName);
 
-    public static string GetBinaryFileName(string pointerFileName) => pointerFileName.TrimEnd(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase);
+    public static string GetBinaryFileName(string pointerFileName) => pointerFileName.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase);
 }
 
 
