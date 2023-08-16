@@ -78,17 +78,19 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
     /// Get an (existing or not existing) Blob
     /// Check whether the blob exists through the Exists property
     /// </summary>
-    public virtual async Task<TBlob> GetBlobAsync<T>(TEntry entry)
+    public Task<TBlob> GetBlobAsync(TEntry entry) => GetBlobAsync<TBlob>(entry);
+    protected virtual Task<TBlob> GetBlobAsync<T>(TEntry entry)
     {
         var p = new Properties(entry);
-        return await Task.FromResult((TBlob)new AzureBlob(container.GetBlockBlobClient(entry.FullName), p));
+        return Task.FromResult((TBlob)new AzureBlob(container.GetBlockBlobClient(entry.FullName), p));
     }
 
     /// <summary>
     /// Get an (existing or not existing) Blob
     /// Check whether the blob exists through the Exists property
     /// </summary>
-    public virtual async Task<TBlob> GetBlobAsync<T>(string name)
+    public async Task<TBlob> GetBlobAsync(string name) => await GetBlobAsync<TBlob>(name);
+    protected virtual async Task<TBlob> GetBlobAsync<T>(string name)
     {
         var bbc = container.GetBlockBlobClient(GetBlobFullName(name));
 
