@@ -55,8 +55,8 @@ internal class AzureContainer
 
 internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry where TBlob : AzureBlob
 {
-    protected readonly BlobContainerClient container;
-    protected readonly string              folderName;
+    private readonly BlobContainerClient container;
+    private readonly string              folderName;
 
     public AzureContainerFolder(BlobContainerClient container, string folderName)
     {
@@ -71,8 +71,9 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
     /// </summary>
     public virtual IAsyncEnumerable<TEntry> GetBlobEntriesAsync()
     {
-        return container.GetBlobsAsync(prefix: GetBlobFullName("")).Select(bi => (TEntry)new AzureBlobEntry(bi));
+        return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => CreateEntry(bi));
     }
+    protected virtual TEntry CreateEntry(BlobItem bi) => (TEntry)new AzureBlobEntry(bi);
 
     /// <summary>
     /// Get an (existing or not existing) Blob
@@ -109,30 +110,10 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
         }
     }
 
-    //protected virtual T CreateAzureBlob<T>(BlockBlobClient client, Properties properties) where T : AzureBlob
-    //{
-    //    return (T)new AzureBlob(client, properties);
-    //}
-    protected virtual AzureBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
+    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
     {
-        return new AzureBlob(client, properties);
+        return (TBlob)new AzureBlob(client, properties);
     }
-
-
-
-    ///// <summary>
-    ///// Get an existing blob. If it does not exist, returns null
-    ///// </summary>
-    //public virtual async Task<TBlob?> GetExistingBlobAsync(TEntry entry) => await GetBlobAsync<TBlob>(entry); // this can point to GetBlobAsync since if it has a BlobItem it exists (as it originates from the LIST operation)
-    //public virtual async Task<TBlob?> GetExistingBlobAsync(string name) => await GetExistingBlobAsync<TBlob>(name);
-    //protected async Task<T?> GetExistingBlobAsync<T>(string name) where T : TBlob
-    //{
-    //    var b = await GetBlobAsync<T>(name);
-    //    if (b.Exists)
-    //        return b;
-    //    else
-    //        return null;
-    //}
 
     public async Task<Azure.Response> DeleteBlobAsync(AzureBlobEntry entry) => await container.DeleteBlobAsync(entry.FullName);
 }
@@ -304,31 +285,11 @@ internal class AzureChunkContainerFolder : AzureContainerFolder<AzureChunkContai
     {
     }
 
-    public override IAsyncEnumerable<AzureChunkBlobEntry> GetBlobEntriesAsync()
-    {
-        return container.GetBlobsAsync(prefix: GetBlobFullName("")).Select(bi => new AzureChunkBlobEntry(bi));
-    }
+    protected override AzureChunkBlobEntry CreateEntry(BlobItem bi) => new(bi);
 
     public          async Task<AzureChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<AzureChunkBlob>(chunkHash.Value);
 
-    protected override AzureBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
-    {
-        return new AzureChunkBlob(client, properties);
-    }
-    //public override       Task<AzureChunkBlob> GetBlobAsync<T>(AzureChunkBlobEntry entry)
-    //{
-    //    return base.GetBlobAsync<T>(entry);
-    //}
-
-    //public override async Task<AzureChunkBlob> GetBlobAsync(string name)               => (AzureChunkBlob)await base.GetBlobAsync<AzureChunkBlob>(name);
-
-    //protected override AzureBlob CreateAzureBlob<T>(BlockBlobClient client, Properties properties)
-    //{
-    //    return new AzureChunkBlob(client, properties);
-    //}
-
-    //public async          Task<AzureChunkBlob?> GetExistingBlobAsync(ChunkHash chunkHash) => await base.GetExistingBlobAsync(chunkHash.Value);
-    //public override async Task<AzureChunkBlob?> GetExistingBlobAsync(string name)         => await base.GetExistingBlobAsync(name);
+    protected override AzureChunkBlob CreateAzureBlob(BlockBlobClient client, Properties properties) => new AzureChunkBlob(client, properties);
 
 
     internal record AzureChunkBlobEntry : AzureBlobEntry
