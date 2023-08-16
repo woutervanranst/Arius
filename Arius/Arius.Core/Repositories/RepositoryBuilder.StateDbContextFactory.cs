@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Repositories.BlobRepository;
+using Microsoft.Data.Sqlite;
 
 namespace Arius.Core.Repositories;
 
@@ -71,11 +72,27 @@ internal partial class RepositoryBuilder
             {
                 // Load existing DB
                 var lastStateBlob = await container.States.GetBlobAsync(lastStateBlobEntry);
-                await using var ss = await lastStateBlob.OpenReadAsync();
-                await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
-                await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                await using (var ss = await lastStateBlob.OpenReadAsync())
+                {
+                    await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
+                    await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                    logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                }
+
+                await using var con = new SqliteConnection($"Data Source={localDbPath}");
+                await con.OpenAsync();
+
+                await using var cmd     = con.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type == 'table' and name == 'BinaryProperties'";
+                var             version = (long)cmd.ExecuteScalar();
+
+                if (version == 1)
+                {
+                    // this is a V2 database
+                    throw new NotImplementedException();
+                }
+
             }
         }
 
