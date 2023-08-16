@@ -35,17 +35,15 @@ internal partial class RepositoryBuilder
     //    public Task SaveAsync(DateTime versionUtc) => Task.CompletedTask;
     //}
 
-    private class StateDbContextFactory : IStateDbContextFactory
+    private sealed class StateDbContextFactory : IStateDbContextFactory
     {
-        private const string StateDbsFolderName = "states";
-        
-        private readonly ILogger             logger;
-        private readonly BlobContainerClient container;
-        private readonly string              passphrase;
+        private readonly ILogger       logger;
+        private readonly BlobContainer container;
+        private readonly string        passphrase;
 
-        private readonly string              localDbPath;
+        private readonly string localDbPath;
 
-        public StateDbContextFactory(ILogger logger, BlobContainerClient container, string passphrase)
+        public StateDbContextFactory(ILogger logger, BlobContainer container, string passphrase)
         {
             this.logger     = logger;
             this.container  = container;
@@ -56,12 +54,11 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
-                .Select(bi => bi.Name)
-                .OrderBy(n => n)
+            var lastStateBlobEntry = await container.States.GetBlobEntriesAsync()
+                .OrderBy(b => b.FullName)
                 .LastOrDefaultAsync();
 
-            if (lastStateBlobName is null)
+            if (lastStateBlobEntry is null)
             {
                 // Create new DB
                 await using var db = new Repository.StateDbContext(localDbPath);
@@ -72,11 +69,12 @@ internal partial class RepositoryBuilder
             else
             {
                 // Load existing DB
-                await using var ss = await container.GetBlobClient(lastStateBlobName).OpenReadAsync();
+                var lastStateBlob = await container.States.GetBlobAsync(lastStateBlobEntry);
+                await using var ss = await lastStateBlob.OpenReadAsync();
                 await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
                 await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobName}' to '{localDbPath}'");
+                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
             }
         }
 
@@ -106,6 +104,7 @@ internal partial class RepositoryBuilder
                 return;
             }
 
+            // Compact the db
             var vacuumedDbPath = Path.GetTempFileName();
 
             await using var db = GetContext();
@@ -117,25 +116,25 @@ internal partial class RepositoryBuilder
             if (originalLength != vacuumedlength)
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
 
-            var blobName = $"{StateDbsFolderName}/{versionUtc:s}";
-            var bbc = container.GetBlockBlobClient(blobName);
+            // Upload the db
+            var b = await container.States.GetBlobAsync($"{versionUtc:s}");
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
-                await using var ts = await bbc.OpenWriteAsync(overwrite: true);
+                await using var ts = await b.OpenWriteAsync(overwrite: true);
                 await CryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
             }
 
             await bbc.SetAccessTierAsync(AccessTier.Cool);
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
+            await b.SetContentTypeAsync(CryptoService.ContentType);
 
             // Move the previous states to Archive storage
-            await foreach (var bi in container.GetBlobsAsync(prefix: $"{StateDbsFolderName}/")
-                               .OrderBy(bi => bi.Name)
+            await foreach (var be in container.States.GetBlobEntriesAsync()
+                               .OrderBy(be => be.Name)
                                .SkipLast(2)
-                               .Where(bi => bi.Properties.AccessTier != AccessTier.Archive))
+                               .Where(be => be.AccessTier != AccessTier.Archive))
             {
-                var bc = container.GetBlobClient(bi.Name);
-                await bc.SetAccessTierAsync(AccessTier.Archive);
+                var b0  = await container.States.GetBlobAsync(be);
+                await b0!.SetAccessTierAsync(AccessTier.Archive);
             }
 
             //Delete the original database
@@ -144,7 +143,7 @@ internal partial class RepositoryBuilder
             var p = $"arius-{versionUtc.ToString("o").Replace(":", "-")}.sqlite";
             File.Move(vacuumedDbPath, p);
 
-            logger.LogInformation($"State upload succesful into '{blobName}'");
+            logger.LogInformation($"State upload succesful into '{b}'");
         }
 
         // --------- FINALIZER ---------
@@ -161,7 +160,7 @@ internal partial class RepositoryBuilder
             Dispose(false); // this is weird but according to the best practice
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (disposing)
             {

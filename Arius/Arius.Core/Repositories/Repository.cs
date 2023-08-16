@@ -1,28 +1,21 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Facade;
+﻿using Arius.Core.Facade;
 using Arius.Core.Models;
-using Arius.Core.Services;
 using Azure;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using System;
 using System.Collections.Generic;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 
 internal partial class Repository : IDisposable
 {
-    private readonly ILogger<Repository>    logger;
-    private readonly BlobContainerClient    container;
+    private readonly ILogger<Repository> logger;
+    private readonly BlobContainer      container;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     public Repository()
@@ -30,7 +23,7 @@ internal partial class Repository : IDisposable
     }
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, IRepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainerClient container)
+    public Repository(ILogger<Repository> logger, IRepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainer container)
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;

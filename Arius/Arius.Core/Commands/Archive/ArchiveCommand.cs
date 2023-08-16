@@ -176,7 +176,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
             afterBinaries: endStats.binaryCount,
             afterSize: endStats.binariesSize,
             afterPointerFileEntries: endStats.currentPointerFileEntryCount);
-        var vs = (await repo.GetVersionsAsync()).ToArray();
+        var vs = await repo.GetVersionsAsync().ToArrayAsync();
         stats.versionCount = vs.Length;
         stats.lastVersion = vs.Last();
 

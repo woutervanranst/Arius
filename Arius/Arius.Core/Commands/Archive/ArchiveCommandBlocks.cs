@@ -327,7 +327,7 @@ internal partial class ArchiveCommand
                         // 1 Exists remote
                         logger.LogDebug($"Chunk with hash '{chunk.ChunkHash.ToShortString()}' already exists. No need to upload.");
 
-                        var length = repo.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                        var length = await repo.GetChunkLengthAsync(chunk.ChunkHash);
                         Interlocked.Add(ref totalLength, length);
                         Interlocked.Add(ref incrementalLength, 0);
                     }
@@ -352,7 +352,7 @@ internal partial class ArchiveCommand
 
                             await uploadingChunks[chunk.ChunkHash].Task;
 
-                            var length = repo.GetChunkBlobByHash(chunk.ChunkHash, false).Length;
+                            var length = await repo.GetChunkLengthAsync(chunk.ChunkHash);
                             Interlocked.Add(ref totalLength, length);
                             Interlocked.Add(ref incrementalLength, 0);
 
@@ -565,11 +565,13 @@ internal partial class ArchiveCommand
 
             await Parallel.ForEachAsync(blobsNotInTier,
                 new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                async (cbb, ct) =>
+                async (cbe, ct) =>
                 {
-                    var updated = await cbb.SetAccessTierPerPolicyAsync(targetAccessTier);
+                    var cb = await repo.GetChunkBlobAsync(cbe.ChunkHash);
+                    
+                    var updated = await cb.SetAccessTierAsync(targetAccessTier);
                     if (updated)
-                        logger.LogInformation($"Set acces tier to '{targetAccessTier.ToString()}' for chunk '{cbb.ChunkHash.ToShortString()}'");
+                        logger.LogInformation($"Set acces tier to '{targetAccessTier}' for chunk '{cbe.ChunkHash.ToShortString()}'");
                 });
         }
     }

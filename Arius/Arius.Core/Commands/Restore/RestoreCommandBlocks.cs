@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -294,12 +295,29 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
     /// </summary>
     private async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
     {
-        var chs = await repo.GetChunkListAsync(bh);
-        var chunks = chs.Select(ch => (ChunkHash: ch, ChunkBlob: repo.GetChunkBlobByHash(ch, requireHydrated: true))).ToArray();
+
+        //var chunks = await repo.GetChunkListAsync(bh)
+        //    .SelectAwait(async ch =>
+        //    {
+        //        var hcb = await repo.GetHydratedChunkBlobAsync(ch);
+
+        //        return new
+        //        {
+        //            ChunkHash         = ch,
+        //            HydratedChunkBlob = hcb,
+        //            ArchivedChunkBlob = hcb == null ? await repo.GetChunkBlobAsync(ch) : null
+        //        };
+        //    })
+        //    .ToArrayAsync();
+
+
+        var chunks = await repo.GetChunkListAsync(bh)
+            .SelectAwait(async ch => (ChunkHash: ch, HydratedChunkBlob: await repo.GetHydratedChunkBlobAsync(ch)))
+            .ToArrayAsync();
 
         var chunksToHydrate = chunks
-            .Where(c => c.ChunkBlob is null)
-            .Select(c => repo.GetChunkBlobByHash(c.ChunkHash, requireHydrated: false));
+            .Where(c => c.HydratedChunkBlob is null);
+            //.Select(c => repo.GetChunkBlob(c.ChunkHash));
         if (chunksToHydrate.Any())
         {
             chunksToHydrate = chunksToHydrate.ToArray();
@@ -309,7 +327,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             if (rehydrateIfNeeded)
                 foreach (var c in chunksToHydrate)
                     //hydrate this chunk
-                    await repo.HydrateChunkAsync(c);
+                    await repo.HydrateChunkAsync(c.ChunkHash);
 
             return false;
         }
@@ -321,9 +339,9 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             var p = await repo.GetBinaryPropertiesAsync(bh);
             var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
             {
-                await using var ts = target.OpenWrite(); // TODO add async 
+                await using var ts = target.OpenWriteAsync();
 
-                // Faster version but more code
+                /* Faster version but more code
                 //if (chunks.Length == 1)
                 //{
                 //    await using var cs = await chunks[0].ChunkBlob.OpenReadAsync();
@@ -364,10 +382,11 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
                 //    Task.WaitAll(t0, t1);
                 //}
+                */
 
                 foreach (var (_, cb) in chunks)
                 {
-                    await using var cs = await cb.OpenReadAsync();
+                    await using var cs = await cb!.OpenReadAsync();
                     await CryptoService.DecryptAndDecompressAsync(cs, ts, options.Passphrase);
                 }
             });

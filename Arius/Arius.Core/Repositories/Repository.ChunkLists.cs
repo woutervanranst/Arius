@@ -1,25 +1,21 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Azure;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Azure;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    private const string ChunkListsFolderName = "chunklists";
-    private const string JsonGzipContentType  = "application/json+gzip";
-
-    internal static string GetChunkListBlobName(BinaryHash bh) => $"{ChunkListsFolderName}/{bh.Value}";
+    private const string JSON_GZIP_CONTENT_TYPE  = "application/json+gzip";
 
     internal async Task CreateChunkListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
     {
@@ -31,12 +27,12 @@ internal partial class Repository
          * log
          */
 
-        logger.LogDebug($"Creating ChunkList for '{bh.ToShortString()}'...");
+        logger.LogDebug($"Creating ChunkList for '{bh}'...");
 
         if (chunkHashes.Length == 1)
             return; //do not create a ChunkList for only one ChunkHash
 
-        var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+        var bbc = await container.ChunkLists.GetBlobAsync(bh.Value);
 
         RestartUpload:
 
@@ -49,17 +45,16 @@ internal partial class Repository
             }
 
             await bbc.SetAccessTierAsync(AccessTier.Cool);
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = JsonGzipContentType });
+            await bbc.SetContentTypeAsync(JSON_GZIP_CONTENT_TYPE);
 
-            logger.LogInformation($"Creating ChunkList for '{bh.ToShortString()}'... done with {chunkHashes.Length} chunks");
+            logger.LogInformation($"Creating ChunkList for '{bh}'... done with {chunkHashes.Length} chunks");
         }
         catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
         {
             // The blob already exists
             try
             {
-                var p = (await bbc.GetPropertiesAsync()).Value;
-                if (p.ContentType != JsonGzipContentType || p.ContentLength == 0)
+                if (bbc.ContentType != JSON_GZIP_CONTENT_TYPE || bbc.Length == 0)
                 {
                     logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -68,8 +63,8 @@ internal partial class Repository
                 }
                 else
                 {
-                    // gracful handling if the chunklist already exists
-                    //throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
+                    // gracful handling if the chunklist already exists:
+                    //   throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' already exists");
                     logger.LogWarning($"A valid ChunkList for '{bh}' already existed, perhaps in a previous/crashed run?");
                 }
             }
@@ -81,7 +76,7 @@ internal partial class Repository
         }
         catch (Exception e)
         {
-            var e2 = new InvalidOperationException($"Error when creating ChunkList {bh.ToShortString()}. Deleting...", e);
+            var e2 = new InvalidOperationException($"Error when creating ChunkList {bh}. Deleting...", e);
             logger.LogError(e2);
             await bbc.DeleteAsync();
             logger.LogDebug("Succesfully deleted");
@@ -90,37 +85,36 @@ internal partial class Repository
         }
     }
 
-    internal async Task<ChunkHash[]> GetChunkListAsync(BinaryHash bh)
+    internal async IAsyncEnumerable<ChunkHash> GetChunkListAsync(BinaryHash bh)
     {
-        logger.LogDebug($"Getting ChunkList for '{bh.ToShortString()}'...");
+        logger.LogDebug($"Getting ChunkList for '{bh}'...");
 
         if ((await GetBinaryPropertiesAsync(bh)).ChunkCount == 1)
-            return ((ChunkHash)bh).AsArray();
-
-        var chs = default(ChunkHash[]);
-
-        try
+            yield return bh;
+        else
         {
-            var bbc = container.GetBlockBlobClient(GetChunkListBlobName(bh));
+            var b = await container.ChunkLists.GetBlobAsync(bh.Value);
 
-            if ((await bbc.GetPropertiesAsync()).Value.ContentType != JsonGzipContentType)
-                throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JsonGzipContentType}' ContentType and is potentially corrupt");
+            if (!b.Exists)
+                throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
+            
+            if (b.ContentType != JSON_GZIP_CONTENT_TYPE)
+                throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JSON_GZIP_CONTENT_TYPE}' ContentType and is potentially corrupt");
 
-            using (var ss = await bbc.OpenReadAsync())
+            var i = 0;
+
+            await using var ss  = await b.OpenReadAsync();
+            await using var gzs = new GZipStream(ss, CompressionMode.Decompress);
+            await foreach (var ch in JsonSerializer.DeserializeAsyncEnumerable<string>(gzs))
             {
-                using var gzs = new GZipStream(ss, CompressionMode.Decompress);
-                chs = (await JsonSerializer.DeserializeAsync<IEnumerable<string>>(gzs))
-                    !.Select(chv => new ChunkHash(chv))
-                    .ToArray();
+                if (ch is null)
+                    throw new InvalidOperationException("ChunkHash is null");
 
-                logger.LogInformation($"Getting chunks for binary '{bh.ToShortString()}'... found {chs.Length} chunk(s)");
-
-                return chs;
+                i++;
+                yield return new ChunkHash(ch);
             }
-        }
-        catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
-        {
-            throw new InvalidOperationException($"ChunkList for '{bh.ToShortString()}' does not exist");
+
+            logger.LogInformation($"Getting chunks for binary '{bh}'... found {i} chunks");
         }
     }
 }

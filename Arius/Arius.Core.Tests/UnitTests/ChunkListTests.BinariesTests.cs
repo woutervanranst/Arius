@@ -10,17 +10,18 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.UnitTests;
 
-class BinaryRepositoryTests : TestBase
+class ChunkListTests : TestBase
 {
     [Test]
-    public void GetChunkHashesAsync_InvalidManifestHash_InvalidOperationException()
+    public void GetChunkListAsync_InvalidManifestHash_InvalidOperationException()
     {
-        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(new BinaryHash("idonotexist")));
+        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(new BinaryHash("idonotexist")).ToArrayAsync());
     }
 
+    public static string GetChunkListBlobName(BinaryHash bh) => $"{BlobContainer.CHUNK_LISTS_FOLDER_NAME}/{bh.Value}";
 
     [Test]
-    public async Task CreateChunkHashListAsync_BinaryWithOneChunk_Success()
+    public async Task CreateChunkListAsync_BinaryWithOneChunk_Success()
     {
         var bh = new BinaryHash(Guid.NewGuid().ToString());
         var chs = ((ChunkHash)bh).AsArray();
@@ -28,19 +29,18 @@ class BinaryRepositoryTests : TestBase
         await Repository.CreateChunkListAsync(bh, chs);
 
         // (implementation detail) no chunklist is created
-        Assert.IsFalse(TestSetup.Container.GetBlobClient(Repository.GetChunkListBlobName(bh)).Exists());
+        Assert.IsFalse(await TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh)).ExistsAsync());
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
         await CreateFakeBinaryPropertyAsync(bh, chs.Length);
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
-        Assert.AreEqual(chs, Repository.GetChunkListAsync(bh).Result);
+        Assert.AreEqual(chs, await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
-
     [Test]
-    public async Task CreateChunkHashListAsync_BinaryWithMultipleChunk_Success()
+    public async Task CreateChunkListAsync_BinaryWithMultipleChunk_Success()
     {
         var bh = new BinaryHash(Guid.NewGuid().ToString());
         var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
@@ -48,18 +48,18 @@ class BinaryRepositoryTests : TestBase
         await Repository.CreateChunkListAsync(bh, chs);
 
         // (implementation detail) no chunklist is created
-        Assert.IsTrue(TestSetup.Container.GetBlobClient(Repository.GetChunkListBlobName(bh)).Exists());
+        Assert.IsTrue(await TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh)).ExistsAsync());
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
         await CreateFakeBinaryPropertyAsync(bh, chs.Length);
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
-        Assert.AreEqual(chs, Repository.GetChunkListAsync(bh).Result);
+        Assert.AreEqual(chs, await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
     [Test]
-    public async Task CreateChunkHashListAsync_AlreadyExists_Graceful()
+    public async Task CreateChunkListAsync_AlreadyExists_Graceful()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
@@ -75,7 +75,7 @@ class BinaryRepositoryTests : TestBase
     }
 
     [Test]
-    public async Task CreateChunkHashListAsync_RecreateInvalidZeroLength_Success()
+    public async Task CreateChunkListAsync_RecreateInvalidZeroLength_Success()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
@@ -85,7 +85,7 @@ class BinaryRepositoryTests : TestBase
 
         // simulate an invalid Chunklist
         var ms = new MemoryStream();
-        var bc = TestSetup.Container.GetBlobClient(Repository.GetChunkListBlobName(bh));
+        var bc = TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh));
         bc.Upload(ms);
         var lmd = bc.GetProperties().Value.ETag;
 
@@ -100,18 +100,18 @@ class BinaryRepositoryTests : TestBase
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
-        Assert.AreEqual(chs, Repository.GetChunkListAsync(bh).Result);
+        Assert.AreEqual(chs, await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
     [Test]
-    public async Task CreateChunkHashListAsync_RecreateInvalidNoTag_Success()
+    public async Task CreateChunkListAsync_RecreateInvalidNoTag_Success()
     {
         var bh = new BinaryHash(Guid.NewGuid().ToString());
         var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
 
         // simulate an invalid Chunklist
         var ms = new MemoryStream(new byte[] { 1, 2, 3 });
-        var bc = TestSetup.Container.GetBlobClient(Repository.GetChunkListBlobName(bh));
+        var bc = TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh));
         bc.Upload(ms);
 
         // create the chunkhashlist -- this will delete & recretate
@@ -122,7 +122,7 @@ class BinaryRepositoryTests : TestBase
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
-        Assert.AreEqual(chs, Repository.GetChunkListAsync(bh).Result);
+        Assert.AreEqual(chs, await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
     [Test]
@@ -138,7 +138,7 @@ class BinaryRepositoryTests : TestBase
         await Repository.CreateChunkListAsync(bh, chs);
 
         //remove the tag
-        var bc = TestSetup.Container.GetBlobClient(Repository.GetChunkListBlobName(bh));
+        var bc = TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh));
         await bc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = "string" });
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
@@ -146,7 +146,7 @@ class BinaryRepositoryTests : TestBase
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we get an exception
-        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(bh));
+        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
     private async Task CreateFakeBinaryPropertyAsync(BinaryHash bh, int chunkCount)

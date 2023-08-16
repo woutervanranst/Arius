@@ -178,7 +178,7 @@ internal partial class Repository
     /// <returns></returns>
     private async Task<DateTime> GetVersionAsync(DateTime pointInTimeUtc)
     {
-        var versions = (await GetVersionsAsync()).Reverse();
+        var versions = GetVersionsAsync().Reverse().ToEnumerable(); // TODO huh where does the await go?
 
         // if the pointInTime is a version - return the pointInTime (optimization in case of the GUI dropdown)
         if (versions.Contains(pointInTimeUtc))
@@ -205,15 +205,18 @@ internal partial class Repository
     /// Returns an chronologically ordered list of versions (in universal time) for this repository
     /// </summary>
     /// <returns></returns>
-    public async Task<IEnumerable<DateTime>> GetVersionsAsync()
+    public async IAsyncEnumerable<DateTime> GetVersionsAsync()
     {
         await using var db = GetStateDbContext();
-        return await db.PointerFileEntries
-            .Select(pfe => pfe.VersionUtc)
-            .Distinct()
-            .OrderBy(version => version)
-            .Select(pfe => DateTime.SpecifyKind(pfe, DateTimeKind.Utc))
-            .ToArrayAsync();
+
+        foreach (var dt in db.PointerFileEntries
+                     .Select(pfe => pfe.VersionUtc)
+                     .Distinct()
+                     .OrderBy(version => version)
+                     .Select(pfe => DateTime.SpecifyKind(pfe, DateTimeKind.Utc)))
+        {
+            yield return dt;
+        }
     }
 
 

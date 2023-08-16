@@ -18,15 +18,15 @@ internal partial class RepositoryBuilder
         this.logger = logger;
     }
 
-    private IRepositoryOptions  options   = default;
-    private BlobContainerClient container = default;
+    private IRepositoryOptions options   = default;
+    private BlobContainer      container = default;
 
     public RepositoryBuilder WithOptions(IRepositoryOptions options)
     {
         this.options = options;
 
         // Get the Blob Container Client
-        container = options.GetBlobContainerClient(GetExponentialBackoffOptions());
+        container = new BlobContainer(options.GetBlobContainerClient(GetExponentialBackoffOptions()));
 
         return this;
     }
@@ -54,8 +54,7 @@ internal partial class RepositoryBuilder
         
 
         // Ensure the Blob Container exists
-        var r = await container.CreateIfNotExistsAsync(PublicAccessType.None);
-        if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+        var r = await container.CreateIfNotExistsAsync();
             logger.LogInformation($"Created container {options.ContainerName}... ");
 
         // Initialize the DbContextFactory (ie. download the state from blob)

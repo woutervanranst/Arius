@@ -146,8 +146,8 @@ record BlobProperties
         this.Exists = exists;
     }
     public long?       Length        { get; }
-    public string?     ContentType   { get; }
-    public AccessTier? AccessTier    { get; }
+    public string?     ContentType   { get; set; }
+    public AccessTier? AccessTier    { get; set; }
     public bool        Exists        { get; }
     public string?     ArchiveStatus { get; }
 }
@@ -225,10 +225,23 @@ internal class Blob
 
 
     public AccessTier? AccessTier => properties.AccessTier;
-    public virtual async Task<bool> SetAccessTierAsync(AccessTier accessTier)
+
+    /// <summary>
+    /// Sets the AccessTier of the Blob
+    /// </summary>
+    /// <returns>The tier has been updated</returns>
+    public async Task<bool> SetAccessTierAsync(AccessTier accessTier)
     {
+        if (accessTier == AccessTier)
+            return false; // already in this access tier
+
         await client.SetAccessTierAsync(accessTier);
+
+        properties.AccessTier = accessTier;
+
         return true;
+
+        //TODO Unit test this: smaller blocks are not put into archive tier
     }
 
     //public bool IsDownloadable => Exists && AccessTier != Azure.Storage.Blobs.Models.AccessTier.Archive;
@@ -237,7 +250,12 @@ internal class Blob
 
 
     public string? ContentType => properties.ContentType;
-    public async Task<Azure.Response<BlobInfo>> SetContentTypeAsync(string contentType) => await client.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = contentType });
+    public async Task<Azure.Response<BlobInfo>> SetContentTypeAsync(string contentType)
+    {
+        var r = await client.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = contentType });
+        properties.ContentType = contentType;
+        return r;
+    }
 
 
     public long Length => properties.Length ?? 0;
@@ -305,23 +323,6 @@ internal class ChunkBlob : Blob, IChunk
 {
     public ChunkBlob(BlockBlobClient client, BlobProperties initialProperties) : base(client, initialProperties)
     {
-    }
-
-    /// <summary>
-    /// Sets the AccessTier of the Blob according to the policy and the target access tier
-    /// </summary>
-    /// <returns>The tier has been updated</returns>
-    public override async Task<bool> SetAccessTierAsync(AccessTier accessTier)
-    {
-        accessTier = GetPolicyAccessTier(accessTier, Length);
-
-        if (AccessTier == accessTier)
-            return false; // already in this Access Tier
-
-        await client.SetAccessTierAsync(accessTier);
-        return true;
-
-        //TODO Unit test this: smaller blocks are not put into archive tier
     }
 
     internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)

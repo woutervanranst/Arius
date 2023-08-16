@@ -3,11 +3,9 @@ using Arius.Core.Models;
 using Arius.Core.Services;
 using Azure;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -15,119 +13,111 @@ namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal const string ChunksFolderName = "chunks";
-    internal const string RehydratedChunksFolderName = "chunks-rehydrated";
+    public IAsyncEnumerable<ChunkBlobEntry> GetAllChunkBlobs() => container.Chunks.GetBlobEntriesAsync();
 
-    public IAsyncEnumerable<ChunkBlobBase> GetAllChunkBlobs()
-    {
-        return container.GetBlobsAsync(prefix: $"{ChunksFolderName}/")
-            .Select(bi => ChunkBlobBase.GetChunkBlob(container, bi));
-    }
+    public async Task<ChunkBlob> GetChunkBlobAsync(ChunkHash chunkHash) => await container.Chunks.GetBlobAsync(chunkHash);
 
     /// <summary>
-    /// Get the RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
-    /// If the chunk does not exist, throws an InvalidOperationException
-    /// If requireHydrated is true and the chunk does not exist in cold storage, returns null
+    /// Get a hydrated chunk blob with the specified ChunkHash
+    /// Returns null if no hydrated chunk exists.
     /// </summary>
-    public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
+    public async Task<ChunkBlob?> GetHydratedChunkBlobAsync(ChunkHash chunkHash)
     {
-        var blobName = GetChunkBlobName(ChunksFolderName, chunkHash);
-        var cb1 = GetChunkBlobByName(blobName);
+        var b = await container.Chunks.GetBlobAsync(chunkHash);
 
-        if (cb1 is null)
+        if (!b.Exists)
             throw new InvalidOperationException($"Could not find Chunk {chunkHash.Value}");
 
-        // if we don't need a hydrated chunk, return this one
-        if (!requireHydrated)
-            return cb1;
+        if (b.Hydrated)
+            // the chunk in Chunks is hydrated
+            return b;
 
-        // if we require a hydrated chunk, and this one is hydrated, return this one
-        if (requireHydrated && cb1.Downloadable)
-            return cb1;
+        b = await container.RehydratedChunks.GetBlobAsync(chunkHash);
 
-        blobName = GetChunkBlobName(RehydratedChunksFolderName, chunkHash);
-        var cb2 = GetChunkBlobByName(blobName);
+        if (b.Exists && b.Hydrated)
+            // there is a hydrated chunk in the RehydratedChunks folder
+            return b;
 
-        if (cb2 is null || !cb2.Downloadable)
-        {
-            // no hydrated chunk exists
-            logger.LogDebug($"No hydrated chunk found for {chunkHash}");
-            return null;
-        }
-        else
-            return cb2;
+        // no hydrated chunk exists
+        logger.LogDebug($"No hydrated chunk found for {chunkHash}");
+        return null;
     }
 
-    private string GetChunkBlobName(string folder, ChunkHash chunkHash) => GetChunkBlobFullName(folder, chunkHash.Value);
-    private string GetChunkBlobFullName(string folder, string name) => $"{folder}/{name}";
+    ///// <summary>
+    ///// Get the RemoteEncryptedChunkBlobItem - either from permanent cold storage or from temporary rehydration storage
+    ///// If the chunk does not exist, throws an InvalidOperationException
+    ///// If requireHydrated is true and the chunk does not exist in cold storage, returns null
+    ///// </summary>
+    //public ChunkBlobBase GetChunkBlobByHash(ChunkHash chunkHash, bool requireHydrated)
+    //{
+    //    var blobName = GetChunkBlobName(ChunksFolderName, chunkHash);
+    //    var cb1 = GetChunkBlobByName(blobName);
 
+    //    if (cb1 is null)
+    //        throw new InvalidOperationException($"Could not find Chunk {chunkHash.Value}");
 
-    /// <summary>
-    /// Get a ChunkBlobBase in the given folder with the given name.
-    /// Return null if it doesn't exist.
-    /// </summary>
-    /// <param name="folder"></param>
-    /// <param name="name"></param>
-    /// <returns></returns>
-    internal ChunkBlobBase GetChunkBlobByName(string folder, string name) => GetChunkBlobByName(GetChunkBlobFullName(folder, name));
+    //    // if we don't need a hydrated chunk, return this one
+    //    if (!requireHydrated)
+    //        return cb1;
 
-    //internal ChunkBlobBase GetChunkBlobByName(BlobItem bi) => GetChunkBlobByName(bi.Name);
+    //    // if we require a hydrated chunk, and this one is hydrated, return this one
+    //    if (requireHydrated && cb1.Downloadable)
+    //        return cb1;
 
-    /// <summary>
-    /// Get a ChunkBlobBase by FullName.
-    /// Return null if it doesn't exist.
-    /// </summary>
-    /// <returns></returns>
-    internal ChunkBlobBase GetChunkBlobByName(string blobName)
+    //    blobName = GetChunkBlobName(RehydratedChunksFolderName, chunkHash);
+    //    var cb2 = GetChunkBlobByName(blobName);
+
+    //    if (cb2 is null || !cb2.Downloadable)
+    //    {
+    //        // no hydrated chunk exists
+    //        logger.LogDebug($"No hydrated chunk found for {chunkHash}");
+    //        return null;
+    //    }
+    //    else
+    //        return cb2;
+    //}
+
+    public async Task<long> GetChunkLengthAsync(ChunkHash chunkHash)
     {
-        try
-        {
-            var bc = container.GetBlobClient(blobName);
-            var cb = ChunkBlobBase.GetChunkBlob(bc);
-            return cb;
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
+        var b = await container.Chunks.GetBlobAsync(chunkHash); // TODO make DB-backed
+        return b.Length;
     }
 
     public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
     {
-        return await container.GetBlobClient(GetChunkBlobName(ChunksFolderName, chunkHash)).ExistsAsync();
+        var b = await container.Chunks.GetBlobAsync(chunkHash); // TODO make db backed
+        return b.Exists;
     }
 
-    public async Task HydrateChunkAsync(ChunkBlobBase blobToHydrate)
+    public async Task HydrateChunkAsync(ChunkHash chunkHash)
     {
-        logger.LogDebug($"Checking hydration for chunk {blobToHydrate.ChunkHash.ToShortString()}");
+        logger.LogDebug($"Checking hydration for chunk {chunkHash}");
 
-        if (blobToHydrate.AccessTier == AccessTier.Hot ||
-            blobToHydrate.AccessTier == AccessTier.Cool)
+        var blobToHydrate = await GetChunkBlobAsync(chunkHash);
+
+        if (blobToHydrate.AccessTier != AccessTier.Archive)
             throw new InvalidOperationException($"Calling Hydrate on a blob that is already hydrated ({blobToHydrate.Name})");
 
-        var hydratedItem = container.GetBlobClient($"{RehydratedChunksFolderName}/{blobToHydrate.Name}");
+        var hydratedItem = await container.RehydratedChunks.GetBlobAsync(blobToHydrate.ChunkHash);
 
-        if (!await hydratedItem.ExistsAsync())
+        if (!hydratedItem.Exists)
         {
             //Start hydration
             await hydratedItem.StartCopyFromUriAsync(
                 blobToHydrate.Uri,
                 new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
 
-            logger.LogInformation($"Hydration started for '{blobToHydrate.ChunkHash.ToShortString()}'");
+            logger.LogInformation($"Hydration started for '{blobToHydrate.ChunkHash}'");
         }
         else
         {
             // Get hydration status
             // https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blob-rehydration
 
-            var status = (await hydratedItem.GetPropertiesAsync()).Value.ArchiveStatus;
-            if (status == "rehydrate-pending-to-cool" || status == "rehydrate-pending-to-hot")
-                logger.LogInformation($"Hydration pending for '{blobToHydrate.ChunkHash.ToShortString()}'");
-            else if (status == null)
-                logger.LogInformation($"Hydration done for '{blobToHydrate.ChunkHash.ToShortString()}'");
+            if (hydratedItem.HydrationPending)
+                logger.LogInformation($"Hydration pending for '{blobToHydrate.ChunkHash}'");
             else
-                throw new ArgumentException($"BlobClient returned an unknown ArchiveStatus {status}");
+                logger.LogInformation($"Hydration done for '{blobToHydrate.ChunkHash}'");
         }
     }
 
@@ -135,11 +125,8 @@ internal partial class Repository
     {
         logger.LogInformation("Deleting temporary hydration folder");
 
-        await foreach (var bi in container.GetBlobsAsync(prefix: RehydratedChunksFolderName))
-        {
-            var bc = container.GetBlobClient(bi.Name);
-            await bc.DeleteAsync();
-        }
+        await foreach (var be in container.RehydratedChunks.GetBlobEntriesAsync())
+            await container.RehydratedChunks.DeleteBlobAsync(be);
     }
 
     /// <summary>
@@ -148,12 +135,12 @@ internal partial class Repository
     /// <returns>Returns the length of the uploaded stream.</returns>
     internal async Task<long> UploadChunkAsync(IChunk chunk, AccessTier tier)
     {
-        if (DateTime.UtcNow.Day > 14)
+        if (DateTime.UtcNow.Day > 16)
             throw new NotImplementedException("KAKPIS");
 
-        logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'...");
+        logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash}'...");
 
-        var bbc = container.GetBlockBlobClient(GetChunkBlobName(ChunksFolderName, chunk.ChunkHash));
+        var bbc = await container.Chunks.GetBlobAsync(chunk.ChunkHash);
 
     RestartUpload:
 
@@ -169,12 +156,12 @@ internal partial class Repository
                 length = ts.Position;
             }
 
-            await bbc.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType }); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
+            await bbc.SetContentTypeAsync(CryptoService.ContentType); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
 
             // Set access tier per policy
-            await bbc.SetAccessTierAsync(ChunkBlobBase.GetPolicyAccessTier(tier, length)); //TODO Unit test this: smaller blocks are not put into archive tier
+            await bbc.SetAccessTierAsync(ChunkBlob.GetPolicyAccessTier(tier, length)); 
 
-            logger.LogInformation($"Uploading Chunk '{chunk.ChunkHash.ToShortString()}'... done");
+            logger.LogInformation($"Uploading Chunk '{chunk.ChunkHash}'... done");
 
             return length;
         }
@@ -183,8 +170,7 @@ internal partial class Repository
             // The blob already exists
             try
             {
-                var p = (await bbc.GetPropertiesAsync()).Value;
-                if (p.ContentType != CryptoService.ContentType || p.ContentLength == 0)
+                if (bbc.ContentType != CryptoService.ContentType || bbc.Length == 0)
                 {
                     logger.LogWarning($"Corrupt chunk {chunk.ChunkHash}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -197,7 +183,7 @@ internal partial class Repository
                     //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
                     logger.LogWarning($"A valid Chunk '{chunk.ChunkHash}' already existsted, perhaps in a previous/crashed run?");
 
-                    return p.ContentLength;
+                    return bbc.Length;
                 }
             }
             catch (Exception e)
