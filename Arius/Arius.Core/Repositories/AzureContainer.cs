@@ -110,10 +110,7 @@ internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where
         }
     }
 
-    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, BlobProperties properties)
-    {
-        return (TBlob)new Blob(client, properties);
-    }
+    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, BlobProperties properties) => (TBlob)new Blob(client, properties);
 
     public async Task<Azure.Response> DeleteBlobAsync(BlobEntry entry) => await container.DeleteBlobAsync(entry.FullName);
 }
