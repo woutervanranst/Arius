@@ -21,7 +21,7 @@ jobs:
           submodules: true # Check out WouterVanRanst.Utils
 
       - name: Setup .NET Core
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v1
         with:
           dotnet-version: 8.0.x
           include-prerelease: true
@@ -34,3 +34,4 @@ jobs:
           ARIUS_ACCOUNT_NAME: ariusci
           ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
           
+

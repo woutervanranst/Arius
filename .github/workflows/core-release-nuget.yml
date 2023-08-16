@@ -26,10 +26,9 @@ jobs:
         submodules: true # Check out WouterVanRanst.Utils
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v1
       with:
-        # dotnet-version: 8.0.x
-        dotnet-version: 8.0.100-preview.6.23330.14
+        dotnet-version: 8.0.x
         include-prerelease: true
 
     - name: Build
