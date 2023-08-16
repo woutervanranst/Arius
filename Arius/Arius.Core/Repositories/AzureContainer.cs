@@ -78,19 +78,17 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
     /// Get an (existing or not existing) Blob
     /// Check whether the blob exists through the Exists property
     /// </summary>
-    public virtual async Task<TBlob> GetBlobAsync(TEntry entry) => await GetBlobAsync<TBlob>(entry);
-    protected Task<T> GetBlobAsync<T>(TEntry entry) where T : TBlob
+    public virtual async Task<TBlob> GetBlobAsync<T>(TEntry entry)
     {
         var p = new Properties(entry);
-        return Task.FromResult((T)new AzureBlob(container.GetBlockBlobClient(entry.FullName), p));
+        return await Task.FromResult((TBlob)new AzureBlob(container.GetBlockBlobClient(entry.FullName), p));
     }
 
     /// <summary>
     /// Get an (existing or not existing) Blob
     /// Check whether the blob exists through the Exists property
     /// </summary>
-    public virtual async Task<TBlob> GetBlobAsync(string name) => await GetBlobAsync<TBlob>(name);
-    protected async Task<T> GetBlobAsync<T>(string name) where T : TBlob
+    public virtual async Task<TBlob> GetBlobAsync<T>(string name)
     {
         var bbc = container.GetBlockBlobClient(GetBlobFullName(name));
 
@@ -99,15 +97,25 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
             var bp = await bbc.GetPropertiesAsync();
             var p  = new Properties(bp.Value);
 
-            return (T)Activator.CreateInstance(typeof(T), bbc, p);
+            return (TBlob)CreateAzureBlob(bbc, p);
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
         {
             // Blob does not exist
             var p = new Properties(exists: false);
-            return (T)Activator.CreateInstance(typeof(T), bbc, p);
+            return (TBlob)CreateAzureBlob(bbc, p);
         }
     }
+
+    //protected virtual T CreateAzureBlob<T>(BlockBlobClient client, Properties properties) where T : AzureBlob
+    //{
+    //    return (T)new AzureBlob(client, properties);
+    //}
+    protected virtual AzureBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
+    {
+        return new AzureBlob(client, properties);
+    }
+
 
 
     ///// <summary>
@@ -299,9 +307,23 @@ internal class AzureChunkContainerFolder : AzureContainerFolder<AzureChunkContai
         return container.GetBlobsAsync(prefix: GetBlobFullName("")).Select(bi => new AzureChunkBlobEntry(bi));
     }
 
-    public          async Task<AzureChunkBlob> GetBlobAsync(ChunkHash chunkHash)       => await base.GetBlobAsync<AzureChunkBlob>(chunkHash.Value);
-    public override async Task<AzureChunkBlob> GetBlobAsync(AzureChunkBlobEntry entry) => await base.GetBlobAsync<AzureChunkBlob>(entry);
-    public override async Task<AzureChunkBlob> GetBlobAsync(string name)               => await base.GetBlobAsync<AzureChunkBlob>(name);
+    public          async Task<AzureChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<AzureChunkBlob>(chunkHash.Value);
+
+    protected override AzureBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
+    {
+        return new AzureChunkBlob(client, properties);
+    }
+    //public override       Task<AzureChunkBlob> GetBlobAsync<T>(AzureChunkBlobEntry entry)
+    //{
+    //    return base.GetBlobAsync<T>(entry);
+    //}
+
+    //public override async Task<AzureChunkBlob> GetBlobAsync(string name)               => (AzureChunkBlob)await base.GetBlobAsync<AzureChunkBlob>(name);
+
+    //protected override AzureBlob CreateAzureBlob<T>(BlockBlobClient client, Properties properties)
+    //{
+    //    return new AzureChunkBlob(client, properties);
+    //}
 
     //public async          Task<AzureChunkBlob?> GetExistingBlobAsync(ChunkHash chunkHash) => await base.GetExistingBlobAsync(chunkHash.Value);
     //public override async Task<AzureChunkBlob?> GetExistingBlobAsync(string name)         => await base.GetExistingBlobAsync(name);
