@@ -13,7 +13,7 @@ using Azure;
 
 namespace Arius.Core.Repositories;
 
-internal class AzureContainer
+internal class BlobContainer
 {
     internal const string STATE_DBS_FOLDER_NAME         = "states";
     internal const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
@@ -23,7 +23,7 @@ internal class AzureContainer
 
     private readonly BlobContainerClient container;
 
-    public AzureContainer(BlobContainerClient container)
+    public BlobContainer(BlobContainerClient container)
     {
         this.container = container;
 
@@ -47,18 +47,18 @@ internal class AzureContainer
             return false;
     }
 
-    public AzureContainerFolder<AzureBlobEntry, AzureBlob> States           { get; }
-    public AzureContainerFolder<AzureBlobEntry, AzureBlob> ChunkLists       { get; }
-    public AzureChunkContainerFolder                       Chunks           { get; }
-    public AzureChunkContainerFolder                       RehydratedChunks { get; }
+    public BlobContainerFolder<BlobEntry, Blob> States           { get; }
+    public BlobContainerFolder<BlobEntry, Blob> ChunkLists       { get; }
+    public ChunkBlobContainerFolder                       Chunks           { get; }
+    public ChunkBlobContainerFolder                       RehydratedChunks { get; }
 }
 
-internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry where TBlob : AzureBlob
+internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where TBlob : Blob
 {
     private readonly BlobContainerClient container;
     private readonly string              folderName;
 
-    public AzureContainerFolder(BlobContainerClient container, string folderName)
+    public BlobContainerFolder(BlobContainerClient container, string folderName)
     {
         this.container  = container;
         this.folderName = folderName;
@@ -73,7 +73,7 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
     {
         return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => CreateEntry(bi));
     }
-    protected virtual TEntry CreateEntry(BlobItem bi) => (TEntry)new AzureBlobEntry(bi);
+    protected virtual TEntry CreateEntry(BlobItem bi) => (TEntry)new BlobEntry(bi);
 
     /// <summary>
     /// Get an (existing or not existing) Blob
@@ -82,8 +82,8 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
     public Task<TBlob> GetBlobAsync(TEntry entry) => GetBlobAsync<TBlob>(entry);
     protected virtual Task<TBlob> GetBlobAsync<T>(TEntry entry)
     {
-        var p = new Properties(entry);
-        return Task.FromResult((TBlob)new AzureBlob(container.GetBlockBlobClient(entry.FullName), p));
+        var p = new BlobProperties(entry);
+        return Task.FromResult((TBlob)new Blob(container.GetBlockBlobClient(entry.FullName), p));
     }
 
     /// <summary>
@@ -98,29 +98,29 @@ internal class AzureContainerFolder<TEntry, TBlob> where TEntry : AzureBlobEntry
         try
         {
             var bp = await bbc.GetPropertiesAsync();
-            var p  = new Properties(bp.Value);
+            var p  = new BlobProperties(bp.Value);
 
-            return (TBlob)CreateAzureBlob(bbc, p);
+            return CreateAzureBlob(bbc, p);
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
         {
             // Blob does not exist
-            var p = new Properties(exists: false);
-            return (TBlob)CreateAzureBlob(bbc, p);
+            var p = new BlobProperties(exists: false);
+            return CreateAzureBlob(bbc, p);
         }
     }
 
-    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, Properties properties)
+    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, BlobProperties properties)
     {
-        return (TBlob)new AzureBlob(client, properties);
+        return (TBlob)new Blob(client, properties);
     }
 
-    public async Task<Azure.Response> DeleteBlobAsync(AzureBlobEntry entry) => await container.DeleteBlobAsync(entry.FullName);
+    public async Task<Azure.Response> DeleteBlobAsync(BlobEntry entry) => await container.DeleteBlobAsync(entry.FullName);
 }
 
-record Properties
+record BlobProperties
 {
-    public Properties(AzureBlobEntry be)
+    public BlobProperties(BlobEntry be)
     {
         this.Length        = be.Length;
         this.ContentType   = be.ContentType;
@@ -128,7 +128,7 @@ record Properties
         this.ContentType   = be.ContentType;
         this.ArchiveStatus = be.ArchiveStatus;
     }
-    public Properties(BlobItemProperties bip)
+    public BlobProperties(BlobItemProperties bip)
     {
         this.Length        = bip.ContentLength;
         this.ContentType   = bip.ContentType;
@@ -136,7 +136,7 @@ record Properties
         this.Exists        = true;
         this.ArchiveStatus = bip.ArchiveStatus.ToString();
     }
-    public Properties(BlobProperties bp)
+    public BlobProperties(Azure.Storage.Blobs.Models.BlobProperties bp)
     {
         this.Length        = bp.ContentLength;
         this.ContentType   = bp.ContentType;
@@ -144,7 +144,7 @@ record Properties
         this.Exists        = true;
         this.ArchiveStatus = bp.ArchiveStatus;
     }
-    public Properties(bool exists = false)
+    public BlobProperties(bool exists = false)
     {
         this.Exists = exists;
     }
@@ -157,14 +157,14 @@ record Properties
 
 
 
-internal record AzureBlobEntry
+internal record BlobEntry
 {
-    private readonly Properties properties;
+    private readonly BlobProperties properties;
 
-    public AzureBlobEntry(BlobItem item)
+    public BlobEntry(BlobItem item)
     {
         FullName   = item.Name;
-        properties = new Properties(item.Properties);
+        properties = new BlobProperties(item.Properties);
     }
 
     /// <summary>
@@ -175,12 +175,12 @@ internal record AzureBlobEntry
     /// <summary>
     /// Name (with extension, without path)
     /// </summary>
-    public string Name => FullName.Split(AzureContainer.BLOB_FOLDER_SEPARATOR_CHAR).Last(); //TODO werkt dit met alle soorten repos?
+    public string Name => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).Last(); //TODO werkt dit met alle soorten repos?
 
     /// <summary>
     /// The Folder where this Blob resides
     /// </summary>
-    public string Folder => FullName.Split(AzureContainer.BLOB_FOLDER_SEPARATOR_CHAR).First(); //TODO quid if in the root?
+    public string Folder => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).First(); //TODO quid if in the root?
 
     public long?       Length        => properties.Length;
     public string?     ContentType   => properties.ContentType;
@@ -193,13 +193,13 @@ internal record AzureBlobEntry
     public override string ToString() => FullName;
 }
 
-internal class AzureBlob
+internal class Blob
 {
     protected readonly BlockBlobClient client;
-    private readonly   Properties      properties;
+    private readonly   BlobProperties      properties;
 
-    [ComponentInternal(typeof(AzureContainerFolder<,>))]
-    public AzureBlob(BlockBlobClient client, Properties initialProperties)
+    [ComponentInternal(typeof(BlobContainerFolder<,>))]
+    public Blob(BlockBlobClient client, BlobProperties initialProperties)
     {
         this.client     = client;
         this.properties = initialProperties;
@@ -214,12 +214,12 @@ internal class AzureBlob
     /// <summary>
     /// Name (with extension, without path)
     /// </summary>
-    public string Name => FullName.Split(AzureContainer.BLOB_FOLDER_SEPARATOR_CHAR).Last(); //TODO werkt dit met alle soorten repos?
+    public string Name => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).Last(); //TODO werkt dit met alle soorten repos?
 
     /// <summary>
     /// The Folder where this Blob resides
     /// </summary>
-    public string Folder => FullName.Split(AzureContainer.BLOB_FOLDER_SEPARATOR_CHAR).First(); //TODO quid if in the root?
+    public string Folder => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).First(); //TODO quid if in the root?
 
 
     public async Task<Stream> OpenReadAsync() => await client.OpenReadAsync();
@@ -279,64 +279,66 @@ internal class AzureBlob
     }
 }
 
-internal class AzureChunkContainerFolder : AzureContainerFolder<AzureChunkContainerFolder.AzureChunkBlobEntry, AzureChunkContainerFolder.AzureChunkBlob>
+internal class ChunkBlobContainerFolder : BlobContainerFolder<ChunkBlobEntry, ChunkBlob>
 {
-    public AzureChunkContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
+    public ChunkBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
     {
     }
 
-    protected override AzureChunkBlobEntry CreateEntry(BlobItem bi) => new(bi);
+    protected override ChunkBlobEntry CreateEntry(BlobItem bi) => new ChunkBlobEntry(bi);
 
-    public          async Task<AzureChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<AzureChunkBlob>(chunkHash.Value);
+    public          async Task<ChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<ChunkBlob>(chunkHash.Value);
 
-    protected override AzureChunkBlob CreateAzureBlob(BlockBlobClient client, Properties properties) => new AzureChunkBlob(client, properties);
+    protected override ChunkBlob CreateAzureBlob(BlockBlobClient client, BlobProperties properties) => new ChunkBlob(client, properties);
 
 
-    internal record AzureChunkBlobEntry : AzureBlobEntry
+    
+}
+
+internal record ChunkBlobEntry : BlobEntry
+{
+    public ChunkBlobEntry(BlobItem item) : base(item)
     {
-        public AzureChunkBlobEntry(BlobItem item) : base(item)
-        {
-        }
-
-        public ChunkHash ChunkHash => new(Name);
     }
 
-    internal class AzureChunkBlob : AzureBlob, IChunk
+    public ChunkHash ChunkHash => new(Name);
+}
+
+internal class ChunkBlob : Blob, IChunk
+{
+    public ChunkBlob(BlockBlobClient client, BlobProperties initialProperties) : base(client, initialProperties)
     {
-        public AzureChunkBlob(BlockBlobClient client, Properties initialProperties) : base(client, initialProperties)
-        {
-        }
-
-        /// <summary>
-        /// Sets the AccessTier of the Blob according to the policy and the target access tier
-        /// </summary>
-        /// <returns>The tier has been updated</returns>
-        public override async Task<bool> SetAccessTierAsync(AccessTier accessTier)
-        {
-            accessTier = GetPolicyAccessTier(accessTier, Length);
-
-            if (AccessTier == accessTier)
-                return false; // already in this Access Tier
-
-            await client.SetAccessTierAsync(accessTier);
-            return true;
-
-            //TODO Unit test this: smaller blocks are not put into archive tier
-        }
-
-        internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)
-        {
-            const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
-
-            if (targetAccessTier == Azure.Storage.Blobs.Models.AccessTier.Archive &&
-                length <= oneMegaByte)
-            {
-                return Azure.Storage.Blobs.Models.AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
-            }
-
-            return targetAccessTier;
-        }
-
-        public ChunkHash ChunkHash => new(Name);
     }
+
+    /// <summary>
+    /// Sets the AccessTier of the Blob according to the policy and the target access tier
+    /// </summary>
+    /// <returns>The tier has been updated</returns>
+    public override async Task<bool> SetAccessTierAsync(AccessTier accessTier)
+    {
+        accessTier = GetPolicyAccessTier(accessTier, Length);
+
+        if (AccessTier == accessTier)
+            return false; // already in this Access Tier
+
+        await client.SetAccessTierAsync(accessTier);
+        return true;
+
+        //TODO Unit test this: smaller blocks are not put into archive tier
+    }
+
+    internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)
+    {
+        const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
+
+        if (targetAccessTier == Azure.Storage.Blobs.Models.AccessTier.Archive &&
+            length <= oneMegaByte)
+        {
+            return Azure.Storage.Blobs.Models.AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+        }
+
+        return targetAccessTier;
+    }
+
+    public ChunkHash ChunkHash => new(Name);
 }
