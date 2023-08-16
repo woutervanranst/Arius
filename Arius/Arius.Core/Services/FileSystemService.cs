@@ -19,7 +19,7 @@ internal class FileSystemService
 
     public IEnumerable<FileInfoBase> GetAllFileInfos(DirectoryInfo di)
     {
-        foreach (var fi in di.GetFiles())
+        foreach (var fi in di.EnumerateFiles()) //.GetFiles())  // TODO TEST WITH VIRUS
         {
             if (IsHiddenOrSystem(fi))
                 logger.LogDebug($"Skipping file {fi.FullName} as it is SYSTEM or HIDDEN");
