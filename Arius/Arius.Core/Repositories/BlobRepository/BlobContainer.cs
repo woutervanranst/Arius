@@ -11,7 +11,7 @@ internal class BlobContainer
     internal const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
     internal const string CHUNKS_FOLDER_NAME            = "chunks";
     internal const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
-    internal const char   BLOB_FOLDER_SEPARATOR_CHAR    = '/';
+    //internal const char BLOB_FOLDER_SEPARATOR_CHAR = '/';
 
     private readonly BlobContainerClient container;
 
@@ -41,6 +41,6 @@ internal class BlobContainer
 
     public BlobContainerFolder<BlobEntry, Blob> States           { get; }
     public BlobContainerFolder<BlobEntry, Blob> ChunkLists       { get; }
-    public ChunkBlobContainerFolder                       Chunks           { get; }
-    public ChunkBlobContainerFolder                       RehydratedChunks { get; }
+    public ChunkBlobContainerFolder             Chunks           { get; }
+    public ChunkBlobContainerFolder             RehydratedChunks { get; }
 }

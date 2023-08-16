@@ -22,12 +22,12 @@ internal record BlobEntry
     /// <summary>
     /// Name (with extension, without path)
     /// </summary>
-    public string Name => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).Last(); //TODO werkt dit met alle soorten repos?
+    public string Name => Path.GetFileName(FullName);
 
     /// <summary>
-    /// The Folder where this Blob resides
+    /// The Folder where this Blob resides. If the folder is in the root, returns an empty string.
     /// </summary>
-    public string Folder => FullName.Split(BlobContainer.BLOB_FOLDER_SEPARATOR_CHAR).First(); //TODO quid if in the root?
+    public string Folder => Path.GetDirectoryName(FullName) ?? string.Empty;
 
     public long?       Length        => properties.Length;
     public string?     ContentType   => properties.ContentType;
