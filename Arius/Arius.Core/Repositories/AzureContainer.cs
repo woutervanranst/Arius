@@ -64,7 +64,7 @@ internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where
         this.folderName = folderName;
     }
 
-    protected string GetBlobFullName(string name) => $"{folderName}/{name}";
+    private string GetBlobFullName(string name) => $"{folderName}/{name}";
 
     /// <summary>
     /// List all existing blobs
