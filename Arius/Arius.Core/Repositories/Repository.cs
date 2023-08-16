@@ -15,7 +15,7 @@ namespace Arius.Core.Repositories;
 internal partial class Repository : IDisposable
 {
     private readonly ILogger<Repository> logger;
-    private readonly BlobContainer      container;
+    private readonly BlobContainer       container;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     public Repository()
