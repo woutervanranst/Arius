@@ -1,31 +1,42 @@
-﻿using System;
+﻿using Arius.Core.Models;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Arius.Core.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.Repositories;
 
 internal partial class Repository
 {
-    internal class AriusDbContext : DbContext
+    private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
+
+    private StateDbContext GetStateDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
+
+    public async Task SaveStateToRepositoryAsync(DateTime versionUtc) => await dbContextFactory.SaveAsync(versionUtc);
+
+
+    internal class StateDbContext : DbContext
     {
         public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
         public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
 
-        /// <summary>
-        /// ONLY FOR MOCKING/UNIT TESTING PURPOSES
-        /// </summary>
-        internal AriusDbContext()
-        { 
-        }
-        internal AriusDbContext(string dbPath, Action<int> hasChanges)
+        private readonly string      dbPath;
+        private readonly Action<int> hasChanges;
+
+        ///// <summary>
+        ///// REQUIRED FOR MOQ / UNIT TESTING PURPOSES
+        ///// </summary>
+        //internal StateDbContext()
+        //{ 
+        //}
+        internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
         {
-            this.dbPath = dbPath;
+        }
+        internal StateDbContext(string dbPath, Action<int> hasChanges)
+        {
+            this.dbPath     = dbPath;
             this.hasChanges = hasChanges;
         }
-        private readonly string dbPath;
-        private readonly Action<int> hasChanges;
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -72,6 +83,13 @@ internal partial class Repository
 
                 //builder.HasOne<BinaryMetadata>(pfe => pfe.)
             });
+        }
+
+        public override int SaveChanges()
+        {
+            var numChanges = base.SaveChanges();
+            hasChanges(numChanges);
+            return numChanges;
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())

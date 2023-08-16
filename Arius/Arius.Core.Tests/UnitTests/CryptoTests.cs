@@ -13,7 +13,7 @@ class CryptoTests : TestBase
     private readonly SHA256Hasher hasher;
     public CryptoTests()
     {
-        hasher = new SHA256Hasher(NullLogger<SHA256Hasher>.Instance, Array.Empty<byte>());
+        hasher = new SHA256Hasher("bla");
     }
 
     [Test]

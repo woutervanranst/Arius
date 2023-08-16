@@ -33,8 +33,8 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 7.0.x
-        # include-prerelease: true
+        dotnet-version: 8.0.x
+        include-prerelease: true
         
     - name: Add Arius.Core Github Package Source
       run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'

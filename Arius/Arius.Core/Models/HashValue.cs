@@ -34,24 +34,13 @@ internal abstract record Hash
         return Value.GetHashCode(); // HashCode.Combine(Value);
     }
 
-    //public override bool Equals(object obj)
-    //{
-    //    // If parameter is null return false.
-    //    if (obj == null)
-    //        return false;
+    public virtual bool Equals(Hash? other)
+    {
+        if (other is null)
+            return false;
 
-    //    // If parameter cannot be cast to HashValue return false.
-    //    if (obj is not Hash)
-    //        return false;
-
-    //    // Return true if the fields match:
-    //    return Equals((Hash)obj);
-    //}
-
-    //public virtual bool Equals(Hash obj)
-    //{
-    //    return Value == obj.Value;
-    //}
+        return Value == other.Value;
+    }
 }
 
 internal record ChunkHash : Hash

@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Arius.Core.Services;
+using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Models;
 
@@ -9,7 +10,7 @@ internal abstract record FileBase
 {
     private readonly FileInfoBase fib;
 
-    protected FileBase(DirectoryInfo root, FileInfoBase fib, BinaryHash hash)
+    protected FileBase([Required] DirectoryInfo root, [Required] FileInfoBase fib, [Required] BinaryHash hash)
     {
         this.fib     = fib;
 
@@ -70,24 +71,16 @@ internal record PointerFile : FileBase
 {
     public static readonly string Extension = ".pointer.arius";
 
-    //private readonly Lazy<BinaryFile> binaryFile;
-
     public PointerFile(DirectoryInfo root, PointerFileInfo pfi, BinaryHash hash) : base(root, pfi, hash)
     {
-        //binaryFile = new Lazy<BinaryFile>(new BinaryFile(rootPath, FileService.GetBinaryFileFullName(relativeName), hash));
     }
-
-    //public BinaryFile BinaryFile => binaryFile.Value;
 }
 
 /// <inheritdoc cref="FileBase" />
 internal record BinaryFile : FileBase, IChunk
 {
-    //private readonly Lazy<PointerFile> pointerFile;
-
     public BinaryFile(DirectoryInfo root, BinaryFileInfo bfi, BinaryHash hash) : base(root, bfi, hash)
     {
-        //pointerFile = new Lazy<PointerFile>(new PointerFile(rootPath, FileService.GetPointerFileFullName(relativeName), hash));
     }
 
 
@@ -96,14 +89,10 @@ internal record BinaryFile : FileBase, IChunk
     /// </summary>
     public ChunkHash ChunkHash => BinaryHash;
 
-
-    //public PointerFile PointerFile => pointerFile.Value;
-
     /// <summary>
     /// Length (in bytes) of the File
     /// </summary>
     public long Length => FileExtensions.Length(FullName);
 
-    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true));
-    //public Task<Stream> OpenWriteAsync() => throw new NotImplementedException();
+    public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true)); // TODO read the comments on useAsync and benchmark whether this is actually faster
 }

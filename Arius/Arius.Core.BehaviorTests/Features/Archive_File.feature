@@ -21,9 +21,9 @@ Scenario Outline: Archive one file
 
 	Examples:
 		| RelativeName | Size                     | ToTier  | ActualTier | HydratedStatus |
-		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
-		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cool    | Cool       | HYDRATED       |
-		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cool       | HYDRATED       |
+		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool	| Cool       | HYDRATED       |
+		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cold    | Cold       | HYDRATED       |
+		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cold       | HYDRATED       |
 		| f4 d.txt     | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
 
 @archive @file @undelete

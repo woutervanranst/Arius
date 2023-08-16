@@ -33,7 +33,7 @@ class ArchiveSteps : TestBase
     {
         FileSystem.CreateBinaryFile(binaryRelativeName, size);
 
-        await Arius.ArchiveCommandAsync(tier);
+        await TestSetup.ArchiveCommandAsync(tier);
     }
 
     [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier with option RemoveLocal")]
@@ -41,7 +41,7 @@ class ArchiveSteps : TestBase
     {
         FileSystem.CreateBinaryFile(binaryRelativeName, size);
 
-        await Arius.ArchiveCommandAsync(tier, removeLocal: true);
+        await TestSetup.ArchiveCommandAsync(tier, removeLocal: true);
     }
 
     [Given(@"the following BinaryFiles are archived to {word} tier:")]
@@ -65,9 +65,9 @@ class ArchiveSteps : TestBase
                 throw new ArgumentException();
         }
 
-        await Arius.ArchiveCommandAsync(tier);
+        await TestSetup.ArchiveCommandAsync(tier);
     }
-    record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
+    private record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
 
     [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
     public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
@@ -85,7 +85,7 @@ class ArchiveSteps : TestBase
     [When("archived to the {word} tier")]
     public async Task WhenArchivedToTheTier(AccessTier tier)
     {
-        await Arius.ArchiveCommandAsync(tier);
+        await TestSetup.ArchiveCommandAsync(tier);
     }
 
     [When(@"BinaryFile {string} and its PointerFile are deleted")]
@@ -149,8 +149,8 @@ class ArchiveSteps : TestBase
     [Then("{int} additional Chunk(s) and Manifest(s)")]
     public void ThenAdditionalChunksAndManifests(int x)
     {
-        var rs0 = Arius.Stats.SkipLast(1).Last();
-        var rs1 = Arius.Stats.Last();
+        var rs0 = TestSetup.Stats.SkipLast(1).Last();
+        var rs1 = TestSetup.Stats.Last();
 
         (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
         (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
@@ -188,7 +188,7 @@ class ArchiveSteps : TestBase
     {
         var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
         var pf = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, relativeName);
-        var pfe = await Arius.GetPointerFileEntryAsync(relativeName);
+        var pfe = await TestSetup.GetPointerFileEntryAsync(relativeName);
 
         if (shouldExist)
         {
@@ -215,18 +215,16 @@ class ArchiveSteps : TestBase
     [Then(@"the Chunks for BinaryFile {string} are in the {word} tier and are {word}")]
     public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus)
     {
-        var pfe = await Arius.GetPointerFileEntryAsync(binaryRelativeName);
+        var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
 
-        var repo = Arius.GetRepository();
-
-        var chs = await repo.Binaries.GetChunkHashesAsync(pfe.BinaryHash);
+        var chs = await Repository.GetChunkListAsync(pfe.BinaryHash).ToArrayAsync();
 
         foreach (var ch in chs)
         {
-            var ch0 = repo.Chunks.GetChunkBlobByHash(ch, false);
+            var ch0 = await Repository.GetChunkBlobAsync(ch);
             ch0.AccessTier.Should().Be(tier);
 
-            var ch1 = repo.Chunks.GetChunkBlobByHash(ch, true);
+            var ch1 = await Repository.GetHydratedChunkBlobAsync(ch);
             if (hydratedStatus == "HYDRATED")
                 ch1.Should().NotBeNull();
             else if (hydratedStatus == "NOT_HYDRATED")

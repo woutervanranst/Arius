@@ -10,13 +10,15 @@ namespace Arius.Cli.Utils;
 
 internal class CommandInterceptor : ICommandInterceptor
 {
+    private readonly DateTime versionUtc;
+    private readonly bool     IsRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+
     public CommandInterceptor(DateTime versionUtc)
     {
         this.versionUtc = versionUtc;
     }
 
-    private readonly DateTime versionUtc;
-
+    
     public void Intercept(CommandContext context, CommandSettings options)
     {
         // this is run after parsing the arguments, after the validation inside the CommandSetting but before Command.Validate and Command.Execute
@@ -38,7 +40,7 @@ internal class CommandInterceptor : ICommandInterceptor
 
         if (options is ArchiveCommandOptions o2)
         {
-            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            if (IsRunningInContainer)
             {
                 if (o2.Path is not null)
                     throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
@@ -50,7 +52,7 @@ internal class CommandInterceptor : ICommandInterceptor
         }
         else if (options is RestoreCommandOptions o3)
         {
-            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            if (IsRunningInContainer)
             {
                 if (o3.Path is not null)
                     throw new InvalidOperationException("DOTNET_RUNNING_IN_CONTAINER is true but PATH argument is specified");
@@ -88,10 +90,10 @@ internal class CommandInterceptor : ICommandInterceptor
         //    //    logger.LogDebug("Path is not a directory, not saving options");
         //    //}
 
-        ParsedOptions = (ICommandOptions)options;
+        //ParsedOptions = (ICommandOptions)options;
     }
 
-    public ICommandOptions? ParsedOptions { get; private set; }
+    //public ICommandOptions? ParsedOptions { get; private set; }
 
     //public string CommandName => context.Name;
 }

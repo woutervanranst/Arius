@@ -1,6 +1,6 @@
 using Arius.Cli.Utils;
-using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -13,17 +13,16 @@ namespace Arius.Cli.Commands;
 
 internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommandOptions>
 {
-    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, 
-        Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand)
+    public RestoreCliCommand(ILogger<RestoreCliCommand> logger, Facade facade)
     {
         this.logger = logger;
-        this.restoreCommand = restoreCommand;
+        this.facade = facade;
     }
 
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly Arius.Core.Commands.ICommand<IRestoreCommandOptions> restoreCommand;
+    private readonly Facade                  facade;
 
-    internal class RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
+    internal class RestoreCommandOptions : RepositoryOptions
     {
         [Description("Create pointers on local for every remote file, without actually downloading the files")]
         [CommandOption("-s|--synchronize")]
@@ -50,9 +49,9 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
         public DirectoryInfo? Path { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
-    public override ValidationResult Validate(CommandContext context, RestoreCommandOptions settings)
+    public override ValidationResult Validate(CommandContext context, RestoreCommandOptions options)
     {
-        var r = restoreCommand.Validate(settings);
+        var r = RepositoryFacade.ValidateRestoreCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc);
         if (!r.IsValid)
             return ValidationResult.Error(r.ToString());
 
@@ -63,11 +62,17 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
     {
         try
         {
-            logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.Container}' to '{options.Path}'");
-
+            logger.LogInformation($"Starting {nameof(RestoreCliCommand)} from '{options.AccountName}/{options.ContainerName}' to '{options.Path}'");
             logger.LogProperties(options);
 
-            return await restoreCommand.ExecuteAsync(options);
+            using var rf = await facade
+                .ForStorageAccount(options.AccountName, options.AccountKey)
+                .ForRepositoryAsync(options.ContainerName, options.Passphrase);
+
+            if (options.PointInTimeUtc.HasValue)
+                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
+            else
+                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers);
         }
         catch (Exception e)
         {

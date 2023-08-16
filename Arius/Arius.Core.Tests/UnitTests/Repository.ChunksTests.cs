@@ -4,13 +4,14 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Models;
 
 namespace Arius.Core.Tests.UnitTests;
 
 class ChunkRepositoryTests : TestBase
 {
     [Test]
-    public async Task GetChunkBlobByName_ExistingChunkBlob_ValidChunkBlob()
+    public async Task GetChunkBlob_ExistingChunkBlob_ValidChunkBlob()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
@@ -18,22 +19,20 @@ class ChunkRepositoryTests : TestBase
         TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
-        var repo = GetRepository();
+        var cb1 = await Repository.GetAllChunkBlobs().FirstAsync();
 
-        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync();
-
-        var cb2 = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, cb1.Name);
+        var cb2 = await Repository.GetChunkBlobAsync(cb1.ChunkHash);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
     }
 
     [Test]
-    public void GetChunkBlobByName_NotExisting_Null()
+    public async Task GetChunkBlob_NotExisting_NotNullNotExisting()
     {
-        var repo = GetRepository();
+        var cb = await Repository.GetChunkBlobAsync(new ChunkHash("idonotexist"));
 
-        var cb = repo.Chunks.GetChunkBlobByName(Repository.ChunkRepository.ChunkFolderName, "idonotexist");
-
-        Assert.IsNull(cb);
+        //Assert.IsNull(cb);
+        Assert.IsNotNull(cb);
+        Assert.IsFalse(cb.Exists);
     }
 }

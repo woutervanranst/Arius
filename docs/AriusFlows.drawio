@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2023-07-29T13:40:12.551Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.183" etag="sdeO2Oab3sbWyj7798j5" version="21.6.5" type="device" pages="3">
+<mxfile host="app.diagrams.net" modified="2023-08-16T08:28:53.252Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36 Edg/115.0.1901.203" etag="Pc-MJyBkCFHEd-USvD2y" version="21.6.8" type="device" pages="3">
   <diagram id="ynTLqjROGl6LlpKR909r" name="Archive">
-    <mxGraphModel dx="1147" dy="1074" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="1141" dy="1074" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -395,30 +395,48 @@
     </mxGraphModel>
   </diagram>
   <diagram id="BaWPg6jh-Nt_xsgESAlq" name="Arius.Core Structure">
-    <mxGraphModel dx="1147" dy="1074" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1141" dy="1074" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-2" value="Facade" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-7" value="Arius.Core" style="rounded=0;whiteSpace=wrap;html=1;labelPosition=center;verticalLabelPosition=top;align=center;verticalAlign=bottom;labelBorderColor=none;" vertex="1" parent="1">
+          <mxGeometry x="190" y="450" width="360" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-2" value="Facade" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="200" y="460" width="290" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-3" value="Commands&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-3" value="Commands&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;&lt;br&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="200" y="500" width="290" height="100" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-4" value="Services" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-4" value="Services" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="220" y="610" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-5" value="ArchiveCommand" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-5" value="ArchiveCommand" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="220" y="530" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-6" value="RestoreCommand" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-6" value="RestoreCommand" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="350" y="530" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-7" value="Repository" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-7" value="Repository" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="350" y="610" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="fgNwKuUWd2SH6KaYUkqq-8" value="Models" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="fgNwKuUWd2SH6KaYUkqq-8" value="Models" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="200" y="680" width="290" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-1" value="WouterVanRanst.Utils" style="rounded=0;whiteSpace=wrap;html=1;horizontal=0;" vertex="1" parent="1">
+          <mxGeometry x="500" y="460" width="40" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-2" value="Local File System" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="830" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-3" value="Azure Blob Storage" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="830" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-4" value="Blob Abstractions&lt;br&gt;(BlobContainer etc)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="750" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="CN8PIo0rdMrxQaCpy4Sr-5" value="File System Abstractions&lt;br&gt;(FileInfoBase etc)" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="750" width="140" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

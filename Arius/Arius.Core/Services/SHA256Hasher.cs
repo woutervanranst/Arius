@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Arius.Core.Commands;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Microsoft.Extensions.Logging;
 
@@ -27,27 +28,25 @@ internal interface IHashValueProvider
 
 internal partial class SHA256Hasher : IHashValueProvider
 {
-    public SHA256Hasher(ILogger<SHA256Hasher> logger, IRepositoryOptions options) 
-        : this(logger, options.Passphrase)
+    public SHA256Hasher(IRepositoryOptions options) 
+        : this(options.Passphrase)
     {
     }
-    public SHA256Hasher(ILogger<SHA256Hasher> logger, string salt)
-        : this(logger, Encoding.ASCII.GetBytes(salt))
+    public SHA256Hasher(string salt)
+        : this(Encoding.ASCII.GetBytes(salt))
     {
     }
-    public SHA256Hasher(ILogger<SHA256Hasher> logger, byte[] salt)
+    public SHA256Hasher(byte[] salt)
     {
-        this.logger    = logger;
         this.saltBytes = salt;
     }
-    public SHA256Hasher(ILogger<SHA256Hasher> logger)
-    {
-        this.logger    = logger;
-        this.saltBytes = Array.Empty<byte>();
-    }
+    //public SHA256Hasher() 
+    //{
+    //    // DO NOT IMPLEMENT THIS ONE -- POTENTIAL TO CREATE HASHES WITHOUT SALT UNINTENTIONALLY
+    //    this.saltBytes = Array.Empty<byte>();
+    //}
 
     private readonly byte[] saltBytes;
-    private readonly ILogger<SHA256Hasher> logger;
 
     public       BinaryHash       GetBinaryHash(string binaryFileFullName)      => new(GetHashValue(binaryFileFullName));
     public async Task<BinaryHash> GetBinaryHashAsync(string binaryFileFullName) => new(await GetHashValueAsync(binaryFileFullName));
@@ -98,16 +97,16 @@ internal partial class SHA256Hasher : IHashValueProvider
 
     internal string GetHashValue(string fullName)
     {
-        using var saltStream = new MemoryStream(saltBytes);
-        using var fs         = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        using var saltStream   = new MemoryStream(saltBytes);
+        using var fs           = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
         using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, fs });
 
         return saltedStream.CalculateSHA256Hash();
     }
     internal async Task<string> GetHashValueAsync(string fullName)
     {
-        using var       saltStream = new MemoryStream(saltBytes);
-        await using var fs         = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+        using var       saltStream   = new MemoryStream(saltBytes);
+        await using var fs           = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
         await using var saltedStream = new ConcatenatedStream(new Stream[] { saltStream, fs });
 
         return await saltedStream.CalculateSHA256HashAsync();

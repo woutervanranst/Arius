@@ -9,13 +9,11 @@ namespace Arius.Core.Services.Chunkers;
 
 internal class ByteBoundaryChunker : Chunker
 {
-    public ByteBoundaryChunker(ILogger<ByteBoundaryChunker> logger, 
-        IHashValueProvider hashValueProvider, 
+    public ByteBoundaryChunker(IHashValueProvider hashValueProvider, 
         int bufferSize = 1024 * 24,   // with an average chunk size of 14 KB at 4 KB min size, setting this sufficiently high enough to minimize allocations
         int minChunkSize = 1024 * 4)  // 4 KB minimum (i.o. 1 KB) has better performance characteristics (empirically tested)
         : base(hashValueProvider)
     {
-        this.logger = logger;
         this.bufferSize = bufferSize;
         MinChunkSize = minChunkSize;
         Delimiter = new byte[] { 0, 0 };
@@ -25,7 +23,6 @@ internal class ByteBoundaryChunker : Chunker
     public int MinChunkSize { get; }
 
 
-    private readonly ILogger<ByteBoundaryChunker> logger;
     private readonly int bufferSize;
 
     // ReadOnlySequence<T>.AsStream() -- see https://github.com/AArnott/Nerdbank.Streams/blob/main/doc/AsStream.md#readonlysequencebyte, may come native in .NET 6 https://github.com/dotnet/runtime/issues/27156
@@ -101,13 +98,11 @@ internal class ByteBoundaryChunker : Chunker
     /// <summary>
     /// Reconsitute the chunk based on subchunks
     /// </summary>
-    /// <param name="subChunks"></param>
-    /// <returns></returns>
     private static byte[] GetChunk(List<byte[]> subChunks)
     {
-        byte[] chunk = new byte[subChunks.Sum(sc => sc.Length)];
+        var chunk = new byte[subChunks.Sum(sc => sc.Length)];
 
-        int destinationIndex = 0;
+        var destinationIndex = 0;
 
         foreach (var subChunk in subChunks)
         {

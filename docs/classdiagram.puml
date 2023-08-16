@@ -1,53 +1,165 @@
 @startuml
 
-abstract class FileBase{
-    +BinaryHash: Hash
-}
+' --- MODELS
 
-class PointerFile{
+rectangle "use FileService" as FileServiceGroup {
+    abstract class FileBase{
+        +BinaryHash: Hash
+    }
+    class PointerFile
+    class BinaryFile
 }
-
-class BinaryFile{
-}
-
 
 interface IChunk{
     +ChunkHash: ChunkHash
 }
-
-class MemoryChunk {
-}
+class MemoryChunk
 
 class Hash {
  -Value: string
  +ToString()
  +ToShortString()
 }
+class ChunkHash
+class BinaryHash
 
-class ChunkHash {
-}
-
-class BinaryHash {
-}
-
-
-abstract class BlobBase {
- - ChunkHash : ChunkHash
-}
-
-abstract class ChunkBlobBase {
-}
-class ChunkBlobItem {
-}
-class ChunkBlobBaseClient {
+rectangle "Encapsulates FileInfo\nuse FileSystemService" as FileSystemServiceGroup {
+    abstract class FileInfoBase
+    class PointerFileInfo {
+        BinaryFileFullName : string
+        {static} GetBinaryFileName(pointerFileName) : string
+    }
+    class BinaryFileInfo {
+        PointerFileFullName : string
+        {static} GetPointerFileName(binaryFileName) : string
+    }
 }
 
-abstract class FileInfoBase{
+class FileSystemService {
+    + GetAllFileInfos(DirectoryInfo) : FileInfoBase[]
+    + GetBinaryFileInfos(DirectoryInfo) : BinaryFileInfo[]
+    + GetPointerFileInfos(DirectoryInfo) : PointerFileInfo[]
+
+    + {static} GetPointerFileInfo(...) : PointerFileInfo
+    + {static} GetBinaryFileInfo(...) : BinaryFileInfo
 }
-class PointerFileInfo{
+
+class FileService {
+    + GetExistingPointerFile(...) : PointerFile
+    + GetExistingBinaryFile(...) : BinaryFile
+
+    + CreatePointerFileIfNotExists(...) : PointerFile
 }
-class BinaryFileInfo{
+
+
+' --- OPERATIONS 
+class Facade {
+ + ForStorageAccount(name, key)
 }
+
+class StorageAccountFacade {
+ + GetContainerNames()
+ + ForRepositoryAsync(container, passphrase)
+}
+
+class RepositoryFacade {
+ + GetVersions()
+ + ExecuteArchiveCommand()
+
+ + {static} ValidateArchiveCommandOptions(...)
+}
+
+class Repository
+
+class StorageAccountOptions {
+ - AccountName
+ - AccountKey
+}
+
+class RepositoryOptions {
+ - ContainerName
+ - Passphrase
+}
+
+' -- BLOBS
+
+rectangle "Encapsulates Blobs" {
+
+    class BlobContainer {
+        - States : BlobContainerFolder
+        - ChunkLists : BlobContainerFolder
+        - Chunks : ChunkBlobContainerFolder
+        - RehydratedChunks : ChunkBlobContainerFolder
+        + CreateIfNotExists()
+    }
+
+    class BlobContainerFolder {
+        + GetBlobEntriesAsync() : BlobEntry[]
+        + GetBlobAsync(BlobEntry)
+        + GetBlobAsync(string)
+        + DeleteBlobAsync(BlobEntry)
+    }
+
+    class BlobEntry
+    class Blob {
+        + SetAccessTierAsync()
+    }
+
+    class ChunkBlobContainerFolder {
+        + GetBlobAsync(ChunkHash)
+    }
+    class ChunkBlobEntry {
+        - ChunkHash
+    }
+    class ChunkBlob {
+        - ChunkHash
+    }
+}
+
+class ArchiveCommandOptions {
+ - FastHash
+ - RemoveLocal
+ - Tier
+ - Dedup
+ - Path
+ - VersionUtc
+ + ctor(Repository, ...)
+}
+
+class ArchiveCommand {
+ + Execute(ArchiveCommandOptions)
+}
+
+class RestoreCommandOptions {
+    - Synchronize
+    - Download
+    - KeepPointers
+    - PointInTimeUtc
+    + ctor(Repository, ...)
+}
+
+class RestoreCommand {
+    + Execute(RestoreCommandOptions)
+}
+
+
+' --- MODELS RELATIONSHIPS
+Repository --o ChunkList : "has many"
+Repository --o Chunk : "has many"
+Repository --o State : "has many"
+
+ChunkList --o ChunkHash : "contains multiple"
+ChunkHash -- Chunk : "refers to"
+
+State --o PointerFileEntry : "contains multiple"
+
+PointerFileEntry --o BinaryHash : "refers to a"
+
+ChunkList --o BinaryHash : "has a"
+
+FileBase -u-o BinaryHash : "has a"
+
+BinaryFile --o ChunkHash : "has a"
 
 
 FileBase <|-- PointerFile
@@ -57,20 +169,46 @@ BinaryFile..u|>IChunk
 
 IChunk <|.. MemoryChunk
 
-ChunkBlobBase -u-|> BlobBase
-ChunkBlobBase .u.|> IChunk
-ChunkBlobItem -u-* ChunkBlobBase : "is a"
-ChunkBlobBaseClient -u-* ChunkBlobBase : "is a"
-
 ChunkHash -r-|> Hash
-BinaryHash -r-|> ChunkHash
+BinaryHash -r-|> ChunkHash : "is a"
 
-FileBase -u-o BinaryHash : "has a"
 IChunk -u-o ChunkHash : "has a"
-BlobBase -u-o ChunkHash : "has a"
 
 
 FileInfoBase<|-- PointerFileInfo
 FileInfoBase<|-- BinaryFileInfo
+
+' --- OPERATIONS RELATIONSHIPS
+Facade --> StorageAccountFacade : "creates a"
+StorageAccountFacade --> RepositoryFacade : "creates a"
+RepositoryFacade --o Repository : "has a"
+
+RepositoryOptions -u-|> StorageAccountOptions : "is a"
+
+ArchiveCommandOptions -u-|> RepositoryOptions : "is a"
+ArchiveCommandOptions --> Repository : "initialized using a"
+
+ArchiveCommand -- ArchiveCommandOptions : "uses"
+
+RestoreCommandOptions -u-|> RepositoryOptions : "is a"
+RestoreCommandOptions --> Repository : "initialized using a"
+
+RestoreCommand -- RestoreCommandOptions : "uses"
+
+
+FileSystemServiceGroup -u- FileServiceGroup : "built with"
+
+' --- BLOB RELATIONSHIPS
+
+BlobContainer --o BlobContainerFolder : "has many"
+
+BlobContainerFolder --o Blob : "contains many"
+ChunkBlobContainerFolder --o ChunkBlob : "contains many"
+
+ChunkBlobContainerFolder -u-|> BlobContainerFolder : "is a"
+ChunkBlobEntry -u-|> BlobEntry : "is a"
+ChunkBlob -u-|> Blob : "is a"
+
+ChunkBlob -u-|> IChunk : "is a"
 
 @enduml

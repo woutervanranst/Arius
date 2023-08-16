@@ -63,7 +63,6 @@ internal class FileSystemService
     {
         return (attr & FileAttributes.System) != 0 || (attr & FileAttributes.Hidden) != 0;
     }
-
     private static bool IsIgnoreFile(FileInfo fi)
     {
         var lowercaseFilename = fi.Name.ToLower();

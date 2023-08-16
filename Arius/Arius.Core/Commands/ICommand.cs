@@ -8,9 +8,8 @@ public interface ICommandOptions
 {
 }
 
-public interface ICommand<T> where T : ICommandOptions
+public interface ICommand<T> where T : ICommandOptions // TODO REMOVE INTERFARCE?
 {
-    internal IServiceProvider Services { get; } // TODO move this to ExecutionTelemetry?
     public ValidationResult Validate(T options) => throw new NotImplementedException();
     public Task<int> ExecuteAsync(T options);
 }

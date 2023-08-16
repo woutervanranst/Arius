@@ -5,10 +5,11 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Repositories.BlobRepository;
 
 namespace Arius.Core.Tests.UnitTests;
 
-class BlobModelTests : TestBase
+class ChunkBlobAndChunkBlobEntryTests : TestBase
 {
     protected override void BeforeTestClass()
     {
@@ -16,7 +17,7 @@ class BlobModelTests : TestBase
     }
 
     [Test]
-    public async Task Properties_ChunkBlobBase_Valid()
+    public async Task Properties_ChunkBlobAndChunkBlobEntry_Valid()
     {
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
@@ -24,17 +25,13 @@ class BlobModelTests : TestBase
         TestSetup.StageArchiveTestDirectory(out FileInfo _);
         await EnsureArchiveCommandHasRun();
 
-        var repo = GetRepository();
-
-        var cb1 = await repo.Chunks.GetAllChunkBlobs().FirstAsync() as ChunkBlobItem;
-        var cb2 = repo.Chunks.GetChunkBlobByHash(cb1.ChunkHash, false) as ChunkBlobBaseClient;
+        var cb1 = await Repository.GetAllChunkBlobs().FirstAsync();
+        var cb2 = await Repository.GetChunkBlobAsync(cb1.ChunkHash);
 
         Assert.AreEqual(cb1.AccessTier, cb2.AccessTier);
 
-        Assert.AreEqual(cb1.Downloadable, cb2.Downloadable);
-
         Assert.AreEqual(cb1.Folder, cb2.Folder);
-        Assert.AreEqual(cb1.Folder, Repository.ChunkRepository.ChunkFolderName);
+        Assert.AreEqual(cb1.Folder, BlobContainer.CHUNKS_FOLDER_NAME);
 
         Assert.AreEqual(cb1.FullName, cb2.FullName);
         Assert.IsTrue(cb1.FullName.Contains('/')); //the FullName contains the directory

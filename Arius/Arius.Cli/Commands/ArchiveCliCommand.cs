@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Arius.Cli.Utils;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -14,25 +15,20 @@ namespace Arius.Cli.Commands;
 
 internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommandOptions>
 {
-    public ArchiveCliCommand(IAnsiConsole console,
-        ILogger<ArchiveCliCommand> logger,
-        ArchiveCommandStatistics statisticsProvider,
-        Arius.Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand)
+    public ArchiveCliCommand(IAnsiConsole console, ILogger<ArchiveCliCommand> logger, Facade facade)
     {
         this.console = console;
-        this.logger = logger;
-        this.statisticsProvider = statisticsProvider;
-        this.archiveCommand = archiveCommand;
+        this.logger  = logger;
+        this.facade  = facade;
     }
 
-    private readonly IAnsiConsole console;
+    private readonly IAnsiConsole               console;
     private readonly ILogger<ArchiveCliCommand> logger;
-    private readonly ArchiveCommandStatistics statisticsProvider;
-    private Core.Commands.ICommand<IArchiveCommandOptions> archiveCommand;
+    private readonly Facade                  facade;
 
-    internal class ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
+    internal class ArchiveCommandOptions : RepositoryOptions
     {
-        [Description("Storage tier to use (hot|cool|archive)")]
+        [Description("Storage tier to use (hot|cool|cold|archive)")]
         [TypeConverter(typeof(StringToAccessTierTypeConverter))]
         [CommandOption("-t|--tier <TIER>")]
         [DefaultValue("archive")]
@@ -61,12 +57,12 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
         public DateTime VersionUtc { get; set; } // set - not init because it needs to be (re)set in the Interceptor
     }
 
-    public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions settings)
+    public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions options)
     {
-        var r = archiveCommand.Validate(settings);
+        var r = RepositoryFacade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
         if (!r.IsValid)
             return ValidationResult.Error(r.ToString());
-        
+
         return ValidationResult.Success();
     }
 
@@ -74,18 +70,20 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
     {
         try
         {
-            logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.Container}'");
+            logger.LogInformation($"Starting {nameof(ArchiveCliCommand)} from '{options.Path}' to '{options.AccountName}/{options.ContainerName}'");
 
             logger.LogProperties(options);
 
-            await archiveCommand.ExecuteAsync(options);
+            using var rf = await facade
+                .ForStorageAccount(options.AccountName, options.AccountKey)
+                .ForRepositoryAsync(options.ContainerName, options.Passphrase);
+
+            var (_, s) = await rf.ExecuteArchiveCommandAsync(options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
 
             console.WriteLine();
             console.Write(new Rule("[red]Summary[/]"));
 
             // Create summary table
-            var s = (ArchiveCommandStatistics)statisticsProvider;
-
             var table = new Table()
                 .AddColumn("")
                 .AddColumn("")
