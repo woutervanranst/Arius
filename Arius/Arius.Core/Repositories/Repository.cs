@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Repositories.BlobRepository;
+using Arius.Core.Repositories.StateDb;
 
 namespace Arius.Core.Repositories;
 
@@ -33,6 +34,14 @@ internal partial class Repository : IDisposable
     }
 
     public IRepositoryOptions Options { get; }
+
+    // --------- STATE DB ---------
+
+    private readonly RepositoryBuilder.IStateDbContextFactory dbContextFactory;
+
+    private StateDbContext GetStateDbContext() => dbContextFactory.GetContext(); // note for testing internal - perhaps use the IAriusDbContextFactory directly?
+
+    public async Task SaveStateToRepositoryAsync(DateTime versionUtc) => await dbContextFactory.SaveAsync(versionUtc);
 
     // --------- BLA ---------
 

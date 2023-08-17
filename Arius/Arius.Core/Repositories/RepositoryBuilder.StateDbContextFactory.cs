@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Repositories.BlobRepository;
 using Microsoft.Data.Sqlite;
+using Arius.Core.Repositories.StateDb;
 
 namespace Arius.Core.Repositories;
 
@@ -18,9 +19,9 @@ internal partial class RepositoryBuilder
 {
     internal interface IStateDbContextFactory : IDisposable
     {
-        Task                      LoadAsync();
-        Repository.StateDbContext GetContext();
-        Task                      SaveAsync(DateTime versionUtc);
+        Task           LoadAsync();
+        StateDbContext GetContext();
+        Task           SaveAsync(DateTime versionUtc);
     }
 
     //internal class AriusDbContextMockedFactory : IAriusDbContextFactory
@@ -63,7 +64,7 @@ internal partial class RepositoryBuilder
             if (lastStateBlobEntry is null)
             {
                 // Create new DB
-                await using var db = new Repository.StateDbContext(localDbPath);
+                await using var db = new StateDbContext(localDbPath);
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");
@@ -90,18 +91,19 @@ internal partial class RepositoryBuilder
                 if (version == 1)
                 {
                     // this is a V2 database
+                    // TODO implement migration
                     throw new NotImplementedException();
                 }
 
             }
         }
 
-        public Repository.StateDbContext GetContext()
+        public StateDbContext GetContext()
         {
             if (!File.Exists(localDbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            return new Repository.StateDbContext(localDbPath, HasChanges);
+            return new StateDbContext(localDbPath, HasChanges);
         }
 
         private bool hasChanges = false;
