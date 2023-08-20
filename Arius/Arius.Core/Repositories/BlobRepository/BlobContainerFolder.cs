@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Models;
@@ -79,7 +80,20 @@ internal class ChunkBlobContainerFolder : BlobContainerFolder<ChunkBlobEntry, Ch
 
     protected override ChunkBlobEntry CreateEntry(BlobItem bi) => new ChunkBlobEntry(bi);
 
-    public async Task<ChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<ChunkBlob>(chunkHash.Value);
+    public async Task<ChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<ChunkBlob>(chunkHash.Value.BytesToHexString());
 
     protected override ChunkBlob CreateAzureBlob(BlockBlobClient client, Blob.Properties properties) => new ChunkBlob(client, properties);
+}
+
+internal class ChunkListBlobContainerFolder : BlobContainerFolder<ChunkListBlobEntry, ChunkListBlob>
+{
+    public ChunkListBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
+    {
+    }
+
+    protected override ChunkListBlobEntry CreateEntry(BlobItem bi) => new ChunkListBlobEntry(bi);
+
+    public async Task<ChunkListBlob> GetBlobAsync(BinaryHash chunkHash) => await base.GetBlobAsync<ChunkListBlob>(chunkHash.Value.BytesToHexString());
+
+    protected override ChunkListBlob CreateAzureBlob(BlockBlobClient client, Blob.Properties properties) => new ChunkListBlob(client, properties);
 }

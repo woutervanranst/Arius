@@ -4,6 +4,7 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using PostSharp.Constraints;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -90,6 +91,21 @@ internal class Blob
         return r;
     }
 
+    public long? OriginalLength => properties.OriginalLength;
+
+    public async Task<Azure.Response<BlobInfo>> SetOriginalLength(long length)
+    {
+        var p = (await client.GetPropertiesAsync()).Value;
+        var m = p.Metadata;
+
+        m.Add(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, length.ToString());
+
+        var r = await client.SetMetadataAsync(m);
+
+        return r;
+    }
+    public const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
+
 
     public long Length => properties.Length ?? 0;
 
@@ -130,37 +146,41 @@ internal class Blob
     {
         public Properties(BlobEntry be)
         {
-            this.Length        = be.Length;
-            this.ContentType   = be.ContentType;
-            this.AccessTier    = be.AccessTier;
-            this.ContentType   = be.ContentType;
-            this.ArchiveStatus = be.ArchiveStatus;
+            this.Length         = be.Length;
+            this.OriginalLength = be.OriginalLength;
+            this.ContentType    = be.ContentType;
+            this.AccessTier     = be.AccessTier;
+            this.ContentType    = be.ContentType;
+            this.ArchiveStatus  = be.ArchiveStatus;
         }
         public Properties(BlobItemProperties bip)
         {
-            this.Length        = bip.ContentLength;
-            this.ContentType   = bip.ContentType;
-            this.AccessTier    = bip.AccessTier;
-            this.Exists        = true;
-            this.ArchiveStatus = bip.ArchiveStatus.ToString();
+            this.Length         = bip.ContentLength;
+            this.OriginalLength = null; // we dont have the blob metadata here
+            this.ContentType    = bip.ContentType;
+            this.AccessTier     = bip.AccessTier;
+            this.Exists         = true;
+            this.ArchiveStatus  = bip.ArchiveStatus.ToString();
         }
         public Properties(BlobProperties bp)
         {
-            this.Length        = bp.ContentLength;
-            this.ContentType   = bp.ContentType;
-            this.AccessTier    = bp.AccessTier;
-            this.Exists        = true;
-            this.ArchiveStatus = bp.ArchiveStatus;
+            this.Length         = bp.ContentLength;
+            this.OriginalLength = bp.Metadata.ContainsKey(ORIGINAL_CONTENT_LENGTH_METADATA_KEY) ? long.Parse(bp.Metadata[ORIGINAL_CONTENT_LENGTH_METADATA_KEY]) : null;
+            this.ContentType    = bp.ContentType;
+            this.AccessTier     = bp.AccessTier;
+            this.Exists         = true;
+            this.ArchiveStatus  = bp.ArchiveStatus;
         }
         public Properties(bool exists = false)
         {
             this.Exists = exists;
         }
-        public long?       Length        { get; }
-        public string?     ContentType   { get; set; }
-        public AccessTier? AccessTier    { get; set; }
-        public bool        Exists        { get; }
-        public string?     ArchiveStatus { get; }
+        public long?       Length         { get; }
+        public long?       OriginalLength { get; }
+        public string?     ContentType    { get; set; }
+        public AccessTier? AccessTier     { get; set; }
+        public bool        Exists         { get; }
+        public string?     ArchiveStatus  { get; }
     }
 }
 
@@ -168,6 +188,7 @@ internal class ChunkBlob : Blob, IChunk
 {
     public ChunkBlob(BlockBlobClient client, Properties initialProperties) : base(client, initialProperties)
     {
+        ChunkHash = new ChunkHash(Name.HexStringToBytes());
     }
 
     internal static AccessTier GetPolicyAccessTier(AccessTier targetAccessTier, long length)
@@ -183,5 +204,15 @@ internal class ChunkBlob : Blob, IChunk
         return targetAccessTier;
     }
 
-    public ChunkHash ChunkHash => new(Name);
+    public ChunkHash ChunkHash { get; }
+}
+
+internal class ChunkListBlob : Blob
+{
+    public ChunkListBlob(BlockBlobClient client, Properties initialProperties) : base(client, initialProperties)
+    {
+        BinaryHash = new BinaryHash(Name.HexStringToBytes());
+    }
+
+    public BinaryHash BinaryHash { get; }
 }

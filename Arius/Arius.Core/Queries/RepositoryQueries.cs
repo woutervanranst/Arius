@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Arius.Core.Repositories.StateDb;
 using PostSharp.Patterns.Model;
 
 namespace Arius.Core.Queries;
@@ -44,7 +45,7 @@ internal record QueryFolderResponse : IQueryFolderResponse
     internal BinaryFile       BinaryFile       { get; set; }
     internal PointerFile      PointerFile      { get; set; }
     internal PointerFileEntry PointerFileEntry { get; set; }
-    internal BinaryProperties BinaryProperties { get; set; }
+    internal ChunkEntry BinaryProperties { get; set; }
 
 }
 
@@ -88,20 +89,22 @@ internal class RepositoryQueries
         // Scan the database
         var prefix = Path.GetRelativePath(root.FullName, path.FullName);
 
-        await foreach (var db in repository.GetPointerFileEntriesWithBinaryPropertiesAsync(prefix))
-        {
-            var name = PointerFileInfo.GetBinaryFileName(db.PointerFileEntry.RelativeName);
+        throw new NotImplementedException();
 
-            var result = new QueryFolderResponse(name);
+        //await foreach (var db in repository.GetPointerFileEntriesWithBinaryPropertiesAsync(prefix))
+        //{
+        //    var name = PointerFileInfo.GetBinaryFileName(db.PointerFileEntry.RelativeName);
 
-            if (results.TryAdd(name, result))
-                yield return result;
+        //    var result = new QueryFolderResponse(name);
 
-            result = results[name];
+        //    if (results.TryAdd(name, result))
+        //        yield return result;
 
-            result.PointerFileEntry = db.PointerFileEntry;
-            result.BinaryProperties = db.BinaryProperties;
-        }
+        //    result = results[name];
+
+        //    result.PointerFileEntry = db.PointerFileEntry;
+        //    result.BinaryProperties = db.BinaryProperties;
+        //}
 
 
         async IAsyncEnumerable<(string Name, BinaryFile BinaryFile, PointerFile PointerFile)> GetFileSystemStuffAsync()

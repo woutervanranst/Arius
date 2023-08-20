@@ -194,12 +194,12 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                     if (tcs.Task.IsCompleted)
                     {
                         // 3.1 + 3.2: BinaryFile already restored, no need to update the tcs
-                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.BinaryHash.ToShortString()}') is already restored in '{binary.RelativeName}'");
+                        logger.LogInformation($"No need to restore binary for {pf.RelativeName} ('{pf.BinaryHash}') is already restored in '{binary.RelativeName}'");
                     }
                     else
                     {
                         // 3.3
-                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.BinaryHash.ToShortString()}') is being downloaded but we encountered a local duplicate ({binary.RelativeName}). Using that one.");
+                        logger.LogInformation($"Binary for {pf.RelativeName} ('{pf.BinaryHash}') is being downloaded but we encountered a local duplicate ({binary.RelativeName}). Using that one.");
                         // TODO cancel the ongoing download and use tcs.Task.Result as BinaryFile to copy to pf
 
                         tcs.SetResult(binary);
@@ -216,7 +216,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             if (binaryToDownload)
             {
                 // 2.1 Download not yet started --> start download
-                logger.LogDebug($"Starting download for Binary '{pf.BinaryHash.ToShortString()}' ('{pf.RelativeName}')");
+                logger.LogDebug($"Starting download for Binary '{pf.BinaryHash}' ('{pf.RelativeName}')");
 
                 bool restored;
                 try
@@ -270,7 +270,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
             //TODO ensure this path is tested
             
             //The Binary was already restored in another BinaryFile bf (ie this pf is a duplicate) --> copy the bf to this pf
-            logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.BinaryHash.ToShortString()})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
+            logger.LogInformation($"Restoring '{pf.RelativeName}' '({pf.BinaryHash})' from '{binary.RelativeName}' to '{targetBinary.FullName}'");
             RestoredFromLocal = true;
 
             await using (var ss = await binary.OpenReadAsync())
@@ -322,7 +322,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         {
             chunksToHydrate = chunksToHydrate.ToArray();
             //At least one chunk is not hydrated so the Binary cannot be downloaded
-            logger.LogInformation($"{chunksToHydrate.Count()} chunk(s) for '{bh.ToShortString()}' not hydrated. Cannot yet restore.");
+            logger.LogInformation($"{chunksToHydrate.Count()} chunk(s) for '{bh}' not hydrated. Cannot yet restore.");
 
             if (rehydrateIfNeeded)
                 foreach (var c in chunksToHydrate)
@@ -334,9 +334,9 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         else
         {
             //All chunks are hydrated  so we can restore the Binary
-            logger.LogInformation($"Downloading Binary '{bh.ToShortString()}' from {chunks.Length} chunk(s)...");
+            logger.LogInformation($"Downloading Binary '{bh}' from {chunks.Length} chunk(s)...");
 
-            var p = await repo.GetBinaryPropertiesAsync(bh);
+            var p = await repo.GetChunkEntryAsync(bh);
             var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
             {
                 await using var ts = target.OpenWriteAsync();
@@ -391,7 +391,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 }
             });
 
-            logger.LogInformation($"Downloading Binary '{bh.ToShortString()}' of {p.ArchivedLength.GetBytesReadable()} from {chunks.Length} chunk(s)... Completed in {stats.seconds}s ({stats.MBps} MBps / {stats.Mbps} Mbps)");
+            logger.LogInformation($"Downloading Binary '{bh}' of {p.ArchivedLength.GetBytesReadable()} from {chunks.Length} chunk(s)... Completed in {stats.seconds}s ({stats.MBps} MBps / {stats.Mbps} Mbps)");
 
             return true;
         }

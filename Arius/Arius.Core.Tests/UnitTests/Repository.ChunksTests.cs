@@ -29,7 +29,7 @@ class ChunkRepositoryTests : TestBase
     [Test]
     public async Task GetChunkBlob_NotExisting_NotNullNotExisting()
     {
-        var cb = await Repository.GetChunkBlobAsync(new ChunkHash("idonotexist"));
+        var cb = await Repository.GetChunkBlobAsync(new ChunkHash("idonotexist".StringToBytes()));
 
         //Assert.IsNull(cb);
         Assert.IsNotNull(cb);

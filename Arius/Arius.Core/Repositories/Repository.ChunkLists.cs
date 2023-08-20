@@ -17,7 +17,7 @@ internal partial class Repository
 {
     private const string JSON_GZIP_CONTENT_TYPE  = "application/json+gzip";
 
-    internal async Task CreateChunkListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
+    internal async Task CreateChunkListAsync(BinaryHash bh, IList<ChunkHash> chunkHashes)
     {
         /* When writing to blob
          * Logging
@@ -29,10 +29,10 @@ internal partial class Repository
 
         logger.LogDebug($"Creating ChunkList for '{bh}'...");
 
-        if (chunkHashes.Length == 1)
+        if (chunkHashes.Count == 1)
             return; //do not create a ChunkList for only one ChunkHash
 
-        var bbc = await container.ChunkLists.GetBlobAsync(bh.Value);
+        var bbc = await container.ChunkLists.GetBlobAsync(bh.Value.BytesToHexString());
 
         RestartUpload:
 
@@ -41,13 +41,13 @@ internal partial class Repository
             using (var ts = await bbc.OpenWriteAsync())
             {
                 using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
-                await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));
+                await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value.BytesToHexString()));
             }
 
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
+            await bbc.SetAccessTierAsync(AccessTier.Cold);
             await bbc.SetContentTypeAsync(JSON_GZIP_CONTENT_TYPE);
 
-            logger.LogInformation($"Creating ChunkList for '{bh}'... done with {chunkHashes.Length} chunks");
+            logger.LogInformation($"Creating ChunkList for '{bh}'... done with {chunkHashes.Count} chunks");
         }
         catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
         {
@@ -89,11 +89,11 @@ internal partial class Repository
     {
         logger.LogDebug($"Getting ChunkList for '{bh}'...");
 
-        if ((await GetBinaryPropertiesAsync(bh)).ChunkCount == 1)
+        if ((await GetChunkEntryAsync(bh)).ChunkCount == 1)
             yield return bh;
         else
         {
-            var b = await container.ChunkLists.GetBlobAsync(bh.Value);
+            var b = await container.ChunkLists.GetBlobAsync(bh);
 
             if (!b.Exists)
                 throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
@@ -111,7 +111,7 @@ internal partial class Repository
                     throw new InvalidOperationException("ChunkHash is null");
 
                 i++;
-                yield return new ChunkHash(ch);
+                yield return new ChunkHash(ch.HexStringToBytes());
             }
 
             logger.LogInformation($"Getting chunks for binary '{bh}'... found {i} chunks");

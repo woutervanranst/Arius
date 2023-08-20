@@ -1,16 +1,47 @@
 ﻿using Arius.Core.Models;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.StateDb;
 
+
+internal record PointerFileEntryDto
+{
+    public byte[] BinaryHash   { get; init; }
+    public string RelativeName { get; init; }
+
+    /// <summary>
+    /// Version (in Universal Time)
+    /// </summary>
+    public DateTime VersionUtc { get; init; }
+    public bool      IsDeleted        { get; init; }
+    public DateTime? CreationTimeUtc  { get; init; }
+    public DateTime? LastWriteTimeUtc { get; init; }
+
+    public virtual ChunkEntry Chunk { get; init; }
+}
+
+internal record ChunkEntry
+{
+    public byte[]      Hash              { get; init; }
+    public long        OriginalLength    { get; init; }
+    public long        ArchivedLength    { get; init; }
+    public long        IncrementalLength { get; init; }
+    public int         ChunkCount        { get; init; }
+    public AccessTier? AccessTier        { get; init; } // AcessTier is null for the ChunkEntry of a chunked BinaryFile
+
+    public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
+}
+
 internal class StateDbContext : DbContext
 {
-    public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
-    public virtual DbSet<BinaryProperties> BinaryProperties { get; set; }
+    public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
+    public virtual DbSet<ChunkEntry>    ChunkEntries   { get; set; }
 
     private readonly string dbPath;
     private readonly Action<int> hasChanges;
@@ -47,35 +78,51 @@ internal class StateDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        var bme = modelBuilder.Entity<BinaryProperties>(builder =>
-        {
-            builder.Property(bm => bm.Hash)
-                .HasColumnName("BinaryHash")
-                .HasConversion(bh => bh.Value, value => new BinaryHash(value));
-            //.HasConversion(new MyValueConverter());
+        var cmb = modelBuilder.Entity<ChunkEntry>();
+        cmb.ToTable("ChunkEntries");
+        cmb.HasKey(c => c.Hash);
+        cmb.HasIndex(c => c.Hash).IsUnique();
 
-            builder.HasKey(bm => bm.Hash);
+        //builder.Property(c => c.Hash)
+        //    .HasColumnName("Hash");
+        //.HasConversion(bh => bh.Value, value => new BinaryHash(value));
+        //.HasConversion(new MyValueConverter());
 
-            builder.HasIndex(bm => bm.Hash)
-                .IsUnique();
+        cmb.Property(c => c.AccessTier)
+            .HasConversion(v => v.ToString(), v => (AccessTier)v);
+            //{
+            //    return t.ToString();
 
-        });
+            //    //if (t == AccessTier.Hot)
+            //    //    return 10;
+            //    //if (t == AccessTier.Cool)
+            //    //    return 20;
+            //    //if (t == AccessTier.Cold)
+            //    //    return 30;
+            //    //if (t == AccessTier.Archive)
+            //    //    return 40;
+            //}, t =>
+            //{
+            //    t switch
+            //    {
 
-        var pfes = modelBuilder.Entity<PointerFileEntry>(builder =>
-        {
-            builder.Property(pfe => pfe.BinaryHash)
-                .HasColumnName("BinaryHash")
-                .HasConversion(bh => bh.Value, value => new BinaryHash(value));
+            //    }
+            //});
 
-            builder.Property(pfe => pfe.RelativeName)
-                .HasConversion(new RemovePointerFileExtensionConverter());
+        var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
+        pfemb.ToTable("PointerFileEntries");
+        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
+        pfemb.HasIndex(pfe => pfe.BinaryHash);
+        pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
+        pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
-            builder.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
+        pfemb.Property(pfe => pfe.RelativeName)
+            .HasConversion(new RemovePointerFileExtensionConverter());
 
-            builder.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
-
-            builder.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
-        });
+        // PointerFileEntries * -- 1 Chunk
+        pfemb.HasOne(pfe => pfe.Chunk)
+            .WithMany(c => c.PointerFileEntries)
+            .HasForeignKey(pfe => pfe.BinaryHash);
     }
 
     public override int SaveChanges()
@@ -92,7 +139,7 @@ internal class StateDbContext : DbContext
         return numChanges;
     }
 
-    internal class RemovePointerFileExtensionConverter : ValueConverter<string, string>
+    private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
     {
         public RemovePointerFileExtensionConverter()
             : base(

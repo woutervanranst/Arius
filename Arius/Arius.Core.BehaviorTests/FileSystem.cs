@@ -183,12 +183,12 @@ static class FileSystem
                    x.Length == y.Length &&
                    x.CreationTimeUtc == y.CreationTimeUtc &&
                    x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
+                   hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
         }
 
         public int GetHashCode(FileInfo obj)
         {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
+            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
         }
     }
     private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
@@ -201,12 +201,12 @@ static class FileSystem
                    x.Length == y.Length &&
                    x.CreationTimeUtc == y.CreationTimeUtc &&
                    x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
+                   hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
         }
 
         public int GetHashCode(FileInfoBase obj)
         {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
+            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
         }
     }
 }

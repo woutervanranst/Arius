@@ -29,11 +29,12 @@ internal record BlobEntry
     /// </summary>
     public string Folder => Path.GetDirectoryName(FullName) ?? string.Empty;
 
-    public long?       Length        => properties.Length;
-    public string?     ContentType   => properties.ContentType;
-    public AccessTier? AccessTier    => properties.AccessTier;
-    public bool        Exists        => properties.Exists;
-    public string?     ArchiveStatus => properties.ArchiveStatus;
+    public long?       Length         => properties.Length;
+    public long?       OriginalLength => properties.OriginalLength;
+    public string?     ContentType    => properties.ContentType;
+    public AccessTier? AccessTier     => properties.AccessTier;
+    public bool        Exists         => properties.Exists;
+    public string?     ArchiveStatus  => properties.ArchiveStatus;
 
 
     // METHODS
@@ -44,7 +45,18 @@ internal record ChunkBlobEntry : BlobEntry
 {
     public ChunkBlobEntry(BlobItem item) : base(item)
     {
+        ChunkHash = new ChunkHash(Name.HexStringToBytes());
     }
 
-    public ChunkHash ChunkHash => new(Name);
+    public ChunkHash ChunkHash { get; }
+}
+
+internal record ChunkListBlobEntry : BlobEntry
+{
+    public ChunkListBlobEntry(BlobItem item) : base(item)
+    {
+        BinaryHash = new BinaryHash(Name.HexStringToBytes());
+    }
+
+    public BinaryHash BinaryHash { get; }
 }

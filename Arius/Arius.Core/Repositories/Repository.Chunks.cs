@@ -1,6 +1,8 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Repositories.BlobRepository;
+using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -74,17 +76,90 @@ internal partial class Repository
     //        return cb2;
     //}
 
-    public async Task<long> GetChunkLengthAsync(ChunkHash chunkHash)
+
+
+
+    public async Task<bool> ChunkExistsAsync(ChunkHash ch)
     {
-        var b = await container.Chunks.GetBlobAsync(chunkHash); // TODO make DB-backed
-        return b.Length;
+        await using var db = GetStateDbContext();
+        return await db.ChunkEntries.AnyAsync(c => c.Hash == ch.Value);
     }
 
-    public async Task<bool> ChunkExistsAsync(ChunkHash chunkHash)
+    /// <summary>
+    /// Get the length of the chunk as it is stored (the archived length - not the original length)
+    /// </summary>
+    public async Task<long> GetChunkLengthAsync(ChunkHash chunkHash)
     {
-        var b = await container.Chunks.GetBlobAsync(chunkHash); // TODO make db backed
-        return b.Exists;
+        var ce = await GetChunkEntryAsync(chunkHash);
+        return ce.ArchivedLength;
     }
+    
+    public async Task<long> TotalChunkIncrementalLengthAsync()
+    {
+        await using var db = GetStateDbContext();
+        return await db.ChunkEntries.SumAsync(bp => bp.IncrementalLength);
+    }
+
+    public async Task<ChunkEntry> CreateChunkEntryAsync(BinaryFile bf, long archivedLength, long incrementalLength, int chunkCount, AccessTier? tier)
+    {
+        var ce = new ChunkEntry()
+        {
+            Hash              = bf.ChunkHash.Value,
+            OriginalLength    = bf.Length,
+            ArchivedLength    = archivedLength,
+            IncrementalLength = incrementalLength,
+            ChunkCount        = chunkCount,
+            AccessTier        = tier
+        };
+
+        await SaveChunkEntryAsync(ce);
+
+        return ce;
+    }
+
+    public async Task<ChunkEntry> CreateChunkEntryAsync(IChunk c, long archivedLength, AccessTier tier)
+    {
+        var ce = new ChunkEntry()
+        {
+            Hash              = c.ChunkHash.Value,
+            OriginalLength    = c.Length,
+            ArchivedLength    = archivedLength,
+            IncrementalLength = archivedLength, // by definition - for a chunk the incremental length == the archived length
+            ChunkCount        = 1, // by definition
+            AccessTier        = tier
+        };
+
+        await SaveChunkEntryAsync(ce);
+
+        return ce;
+    }
+
+    private async Task SaveChunkEntryAsync(ChunkEntry ce)
+    {
+        await using var db = GetStateDbContext();
+        await db.ChunkEntries.AddAsync(ce);
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Get the ChunkEntry for the given chunk.
+    /// If it does not exist, throw an InvalidOperationException
+    /// </summary>
+    /// <exception cref="InvalidOperationException"></exception>
+    public async Task<ChunkEntry> GetChunkEntryAsync(Hash hash)
+    {
+        await using var db = GetStateDbContext();
+        var             r  = await db.ChunkEntries.SingleOrDefaultAsync(ce => ce.Hash == hash.Value);
+
+        if (r == null)
+            throw new InvalidOperationException($"Could not find ChunkEntry for '{hash}'");
+
+        return r;
+    }
+
+
+
+
 
     public async Task HydrateChunkAsync(ChunkHash chunkHash)
     {

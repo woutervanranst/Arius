@@ -63,7 +63,7 @@ internal abstract record FileBase
     public bool Exists() => fib.Exists;
 
 
-    public sealed override string ToString() => $"'{RelativeName}' ({BinaryHash.ToShortString()})"; // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
+    public sealed override string ToString() => $"'{RelativeName}' ({BinaryHash})"; // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
 }
 
 /// <inheritdoc/>

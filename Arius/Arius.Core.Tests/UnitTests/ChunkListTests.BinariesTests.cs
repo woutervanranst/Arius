@@ -1,13 +1,12 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Services;
+using Arius.Core.Repositories.BlobRepository;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Repositories.BlobRepository;
 
 namespace Arius.Core.Tests.UnitTests;
 
@@ -16,15 +15,15 @@ class ChunkListTests : TestBase
     [Test]
     public void GetChunkListAsync_InvalidManifestHash_InvalidOperationException()
     {
-        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(new BinaryHash("idonotexist")).ToArrayAsync());
+        Assert.CatchAsync<InvalidOperationException>(async () => await Repository.GetChunkListAsync(new BinaryHash("idonotexist".StringToBytes())).ToArrayAsync());
     }
 
-    public static string GetChunkListBlobName(BinaryHash bh) => $"{BlobContainer.CHUNK_LISTS_FOLDER_NAME}/{bh.Value}";
+    public static string GetChunkListBlobName(BinaryHash bh) => $"{BlobContainer.CHUNK_LISTS_FOLDER_NAME}/{bh.Value.BytesToHexString()}";
 
     [Test]
     public async Task CreateChunkListAsync_BinaryWithOneChunk_Success()
     {
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
         var chs = ((ChunkHash)bh).AsArray();
 
         await Repository.CreateChunkListAsync(bh, chs);
@@ -43,12 +42,12 @@ class ChunkListTests : TestBase
     [Test]
     public async Task CreateChunkListAsync_BinaryWithMultipleChunk_Success()
     {
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
+        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         await Repository.CreateChunkListAsync(bh, chs);
 
-        // (implementation detail) no chunklist is created
+        // (implementation detail) a chunklist is created
         Assert.IsTrue(await TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh)).ExistsAsync());
 
         // Mock the backing db to have the BinaryProperties set 1 chunk
@@ -56,6 +55,7 @@ class ChunkListTests : TestBase
         //Repository.States.SetMockedDbContext(GetMockedContextWithBinaryProperty(bh, chs.Length));
 
         // we still get the correct chunkhash
+
         Assert.AreEqual(chs, await Repository.GetChunkListAsync(bh).ToArrayAsync());
     }
 
@@ -65,8 +65,8 @@ class ChunkListTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
+        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         // Create the first time
         await Repository.CreateChunkListAsync(bh, chs);
@@ -81,8 +81,8 @@ class ChunkListTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
+        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         // simulate an invalid Chunklist
         var ms = new MemoryStream();
@@ -107,8 +107,8 @@ class ChunkListTests : TestBase
     [Test]
     public async Task CreateChunkListAsync_RecreateInvalidNoTag_Success()
     {
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());  
+        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         // simulate an invalid Chunklist
         var ms = new MemoryStream(new byte[] { 1, 2, 3 });
@@ -132,8 +132,8 @@ class ChunkListTests : TestBase
         if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
             return;
 
-        var bh = new BinaryHash(Guid.NewGuid().ToString());
-        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToString())).ToArray();
+        var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
+        var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         // create the chunkhashlist
         await Repository.CreateChunkListAsync(bh, chs);
@@ -156,7 +156,7 @@ class ChunkListTests : TestBase
         var bfi = new BinaryFileInfo(f);
         var bf  = new BinaryFile(new DirectoryInfo(Path.GetTempPath()), bfi, bh);
 
-        await Repository.CreateBinaryPropertiesAsync(bf, 0, 0, chunkCount);
+        await Repository.CreateChunkEntryAsync(bf, 0, 0, chunkCount, null);
     }
 
     //private static Repositories.Repository.AriusDbContext GetMockedContextWithBinaryProperty(BinaryHash bh, int chunkCount)

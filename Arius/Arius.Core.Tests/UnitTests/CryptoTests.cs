@@ -58,8 +58,8 @@ class CryptoTests : TestBase
                 }
             }
 
-            var h1 = await hasher.GetHashValueAsync(sourceFile.FullName);
-            var h2 = await hasher.GetHashValueAsync(decFile);
+            var h1 = await hasher.GetBinaryHashAsync(sourceFile.FullName);
+            var h2 = await hasher.GetBinaryHashAsync(decFile);
 
             Assert.AreEqual(h1, h2);
         }
@@ -97,8 +97,8 @@ class CryptoTests : TestBase
             ExternalProcess.RunSimpleProcess(openssl, $"enc -d -aes-256-cbc -in {encFile} -out {decFile}.gz -pass pass:\"{passphrase}\" -pbkdf2");
             ExternalProcess.RunSimpleProcess(gzip, $"-d \"{decFile}.gz\" -f"); //-f for overwrite
 
-            var h1 = await hasher.GetHashValueAsync(sourceFile.FullName);
-            var h2 = await hasher.GetHashValueAsync(decFile);
+            var h1 = await hasher.GetBinaryHashAsync(sourceFile.FullName);
+            var h2 = await hasher.GetBinaryHashAsync(decFile);
 
             Assert.AreEqual(h1, h2);
         }

@@ -95,7 +95,7 @@ internal class FileService
                     // We are doing FastHash and the PointerFile exists
                     hash = ReadPointerFile(pfFullName);
 
-                    logger.LogInformation($"Found PointerFile for BinaryFile '{relativeName}' using fasthash '{hash.ToShortString()}'");
+                    logger.LogInformation($"Found PointerFile for BinaryFile '{relativeName}' using fasthash '{hash}'");
 
                     return hash;
                 }
@@ -103,10 +103,10 @@ internal class FileService
 
             logger.LogInformation($"Found BinaryFile '{relativeName}'. Hashing...");
 
-            var (MBps, _, seconds) = await new Stopwatch().GetSpeedAsync(bfi.Length, async () =>
+            var (MBps, _, seconds, _) = await new Stopwatch().GetSpeedAsync(bfi.Length, async () =>
                 hash = await hvp.GetBinaryHashAsync(bfi.FullName));
 
-            logger.LogInformation($"Found BinaryFile '{relativeName}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{hash.ToShortString()}'");
+            logger.LogInformation($"Found BinaryFile '{relativeName}'. Hashing... done in {seconds}s at {MBps} MBps. Hash: '{hash}'");
 
             return hash;
         }
@@ -152,7 +152,7 @@ internal class FileService
         {
             var bfh = await hvp.GetBinaryHashAsync(bfi);
             if (bfh != hash)
-                throw new InvalidOperationException($"The existing BinaryFile {bfi} is out of sync (invalid hash) with the PointerFile. The hash of the BinaryFile is '{bfh.ToShortString()}' and the expected hash is '{hash.ToShortString()}. Delete the BinaryFile and try again. If the file is intact, was it archived with fasthash and another password?");
+                throw new InvalidOperationException($"The existing BinaryFile {bfi} is out of sync (invalid hash) with the PointerFile. The hash of the BinaryFile is '{bfh}' and the expected hash is '{hash}. Delete the BinaryFile and try again. If the file is intact, was it archived with fasthash and another password?");
         }
 
         return new BinaryFile(root, bfi, hash);
@@ -219,7 +219,7 @@ internal class FileService
         try
         {
             var pfc = JsonSerializer.Deserialize<PointerFileContents>(File.ReadAllBytes(pfFullName)); // TODO refactor to async - BUT THIS CASCASES ALL THE WAY UP
-            var bh  = new BinaryHash(pfc.BinaryHash);
+            var bh  = new BinaryHash(pfc.BinaryHash.HexStringToBytes());
 
             if (!hvp.IsValid(bh))
                 throw new ArgumentException($"'{pfFullName}' is not a valid PointerFile");
@@ -235,7 +235,7 @@ internal class FileService
     {
         pfi.Directory.CreateIfNotExists();
 
-        var pfc  = new PointerFileContents(hash.Value);
+        var pfc  = new PointerFileContents(hash.Value.BytesToHexString());
         var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
 
         //using var s = pfi.OpenWrite();

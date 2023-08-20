@@ -70,7 +70,7 @@ internal class StateDbContextV2 : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        var bme = modelBuilder.Entity<BinaryProperties>(builder =>
+        var bme = modelBuilder.Entity<BinaryPropertiesV2>(builder =>
         {
             builder.Property(bm => bm.Hash)
                 .HasColumnName("BinaryHash")

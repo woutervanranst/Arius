@@ -45,36 +45,36 @@ internal partial class Repository : IDisposable
 
     // --------- BLA ---------
 
-    public async IAsyncEnumerable<(PointerFileEntry PointerFileEntry, BinaryProperties BinaryProperties)> GetPointerFileEntriesWithBinaryPropertiesAsync(string relativeNamePrefix)
+    public async Task<(PointerFileEntry PointerFileEntry, ChunkEntry BinaryProperties)[]> GetPointerFileEntriesWithBinaryPropertiesAsync(string relativeNamePrefix)
     {
         throw new NotImplementedException();
 
         // TODO: use db.PointerFileEntries.Include(e => e.BinaryProperties)
         // EF Core Migrations
 
-        await using var db = GetStateDbContext();
+        //await using var db = GetStateDbContext();
 
-        var r = db.PointerFileEntries.Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase))
-            .Select(pfe => new
-            {
-                PointerFileEntry = pfe, 
-                BinaryProperty = db.BinaryProperties.Single(bp => pfe.BinaryHash == bp.Hash)
-            }).AsAsyncEnumerable();
+        //var r = db.PointerFileEntries.Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase))
+        //    .Select(pfe => new
+        //    {
+        //        PointerFileEntry = pfe, 
+        //        BinaryProperty = db.BinaryProperties.Single(bp => pfe.BinaryHash == bp.Hash)
+        //    }).AsAsyncEnumerable();
 
-        await foreach (var x in r)
-            yield return (x.PointerFileEntry, x.BinaryProperty);
+        //await foreach (var x in r)
+        //    yield return (x.PointerFileEntry, x.BinaryProperty);
     }
 
 
     // --------- OTHER HELPERS ---------
 
-    public async Task<(int binaryCount, long binariesSize, int currentPointerFileEntryCount)> GetStats()
+    public async Task<(int binaryCount, long chunkSize, int currentPointerFileEntryCount)> GetStats()
     {
         var binaryCount                  = await CountBinariesAsync();
-        var binariesSize                 = await TotalBinaryIncrementalLengthAsync();
+        var chunkSize                    = await TotalChunkIncrementalLengthAsync();
         var currentPointerFileEntryCount = await CountPointerFileEntriesAsync();
 
-        return (binaryCount, binariesSize, currentPointerFileEntryCount);
+        return (binaryCount, chunkSize, currentPointerFileEntryCount);
     }
 
     // --------- FINALIZER ---------
