@@ -12,19 +12,19 @@ namespace Arius.Core.Repositories;
 internal partial class Repository
 {
     /// <summary>
-    /// Get the count of (distinct) BinaryHashes
+    /// Get the count of Binaries (by counting the distinct PointerFileEntry BinaryHashes)
     /// </summary>
-    /// <returns></returns>
     public async Task<int> CountBinariesAsync()
     {
-
         await using var db = GetStateDbContext();
         return await db.PointerFileEntries.Select(pfe => pfe.BinaryHash).Distinct().CountAsync();
     }
 
+    /// <summary>
+    /// Check the existence of a Binary (by checking whether a PointerFileEntry with the corresponding hash exists)
+    /// </summary>
     public async Task<bool> BinaryExistsAsync(BinaryHash bh)
     {
-
         await using var db = GetStateDbContext();
         return await db.PointerFileEntries.AnyAsync(pfe => pfe.BinaryHash == bh.Value);
     }
