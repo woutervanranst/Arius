@@ -45,9 +45,9 @@ public static class CryptoService
          */
 
         DeriveBytes(passphrase, out var salt, out var key, out var iv);
-        using var aes = CreateAes(key, iv);
-        using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
-        using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+        using var       aes       = CreateAes(key, iv);
+        using var       encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
+        await using var cs        = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
 
         /* SET UP COMPRESSION
@@ -59,12 +59,12 @@ public static class CryptoService
          * https://dotnetcodr.com/2015/01/23/how-to-compress-and-decompress-files-with-gzip-in-net-c/
          */
 
-        using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
+        await using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
 
 
         // Write salt to the begining of the TARGET stream -- not the gz stream
-        target.Write(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
-        target.Write(salt, 0, salt.Length);
+        await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
+        await target.WriteAsync(salt, 0, salt.Length);
 
         // Source through GZip through AES to target
         await source.CopyToAsync(gzs);
@@ -79,11 +79,11 @@ public static class CryptoService
 
         DeriveBytes(passphrase, salt, out var key, out var iv);
 
-        using var aes = CreateAes(key, iv);
-        using var decryptor = aes.CreateDecryptor(/*aes.Key, aes.IV*/);
-        using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
+        using var       aes       = CreateAes(key, iv);
+        using var       decryptor = aes.CreateDecryptor(/*aes.Key, aes.IV*/);
+        await using var cs        = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
 
-        using var gzs = new GZipStream(cs, CompressionMode.Decompress);
+        await using var gzs = new GZipStream(cs, CompressionMode.Decompress);
 
         await gzs.CopyToAsync(target);
     }
@@ -174,246 +174,3 @@ public static class CryptoService
         iv = pbkdf2.GetBytes(16);
     }
 }
-
-
-
-/* APART 1
- * Zie commits 4608264, d085c83, 0a2523b, 12953c7
- * 
-        using (var plain = File.OpenRead(plainFile))
-        {
-            using var compressedFileStream = File.OpenWrite(compFile);
-            using var compressionStream = new GZipStream(compressedFileStream, CompressionLevel.Optimal);
-            await plain.CopyToAsync(compressionStream);
-        }
-
-        using (var compNotEnc = File.OpenRead(compFile))
-        {
-            using var notCompNotEnc = File.OpenWrite(uncompFile);
-            using var gz2 = new GZipStream(compNotEnc, CompressionMode.Decompress);
-            await gz2.CopyToAsync(notCompNotEnc);
-            notCompNotEnc.Close();
-        }
-
-        using (var plain = File.OpenRead(plainFile))
-        {
-            using var enc = File.OpenWrite(encFile);
-            using var aes = Aes.Create();
-            DeriveBytes(password, out var key, out var iv);
-            aes.Key = key;
-            aes.IV = iv;
-            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-            using var cs = new CryptoStream(enc, encryptor, CryptoStreamMode.Write);
-            await plain.CopyToAsync(cs);
-            cs.FlushFinalBlock();
-        }
-
-        using (var enc = File.OpenRead(encFile))
-        {
-            using var notCompNotEnc = File.OpenWrite(decFile);
-            using var aes = Aes.Create();
-            DeriveBytes(password, out var key, out var iv);
-            aes.Key = key;
-            aes.IV = iv;
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            using var cs = new CryptoStream(notCompNotEnc, decryptor, CryptoStreamMode.Write);
-            await enc.CopyToAsync(cs);
-            cs.FlushFinalBlock();
-        }
- * */
-
-
-
-
-
-//class Uploader
-//{
-//    private readonly IBlobCopier.IOptions options;
-
-//    public Uploader(IBlobCopier.IOptions options)
-//    {
-//        this.options = options;
-
-//        //var bsc = new BlobServiceClient(connectionString);
-//        //container = bsc.GetBlobContainerClient(options.Container);
-
-//        //var r = container.CreateIfNotExists(PublicAccessType.None);
-
-//        //if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
-//        //this.logger.LogInformation($"Created container {options.Container}... ");
-
-//    }
-
-//    //private readonly BlobContainerClient container;
-
-
-//    public async Task UploadChunkAsync(ReadOnlyMemory<byte> chunk, ChunkHash hash)
-//    {
-//        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-//        //var bsc = new BlobContainerClient(connectionString, options.Container);
-//        //await bsc.UploadBlobAsync(hash.Value.ToString(), new BinaryData(chunk));
-
-
-//        var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-//        await x.UploadAsync(new BinaryData(chunk), new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-//        //x.DownloadTo()
-//        public async Task UploadChunkAsync(Stream s, ManifestHash hash)
-//        {
-//            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-//            var x = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-//            await x.UploadAsync(s, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-
-//            //var bsc = new BlobContainerClient(connectionString, options.Container);
-//            //await bsc.UploadBlobAsync(hash.Value.ToString(), s);
-
-//        }
-//    }
-//}
-
-
-//static async Task<ReadOnlyMemory<byte>> EncryptAsync(ReadOnlyMemory<byte> plain, string password)
-//{
-//    DeriveBytes(password, out var key, out var iv);
-
-//    using var aesAlg = Aes.Create();
-//    aesAlg.Key = key;
-//    aesAlg.IV = iv;
-
-//    using var encryptor = aesAlg.CreateEncryptor(aesAlg.Key, aesAlg.IV);
-
-//    using var to = new MemoryStream();
-//    using var writer = new CryptoStream(to, encryptor, CryptoStreamMode.Write);
-
-//    await writer.WriteAsync(plain);
-//    writer.FlushFinalBlock();
-
-//    return to.ToArray().AsMemory();
-//}
-
-//static async Task<ReadOnlyMemory<byte>> DecryptAsync(ReadOnlyMemory<byte> cipher, string password)
-//{
-//    DeriveBytes(password, out var key, out var iv);
-
-//    using var aesAlg = Aes.Create();
-//    aesAlg.Key = key;
-//    aesAlg.IV = iv;
-
-//    using var decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
-
-//    using var to = new MemoryStream();
-//    using var writer = new CryptoStream(to, decryptor, CryptoStreamMode.Write);
-
-//    await writer.WriteAsync(cipher);
-//    writer.FlushFinalBlock();
-
-//    return to.ToArray().AsMemory();
-//}
-
-
-
-//public static ReadOnlyMemory<byte> Compress(ReadOnlyMemory<byte> decompressed, CompressionLevel compressionLevel = CompressionLevel.Fastest) //https://stackoverflow.com/a/39157149/1582323
-//{
-//    var compressed = new MemoryStream();
-//    using (var zip = new GZipStream(compressed, compressionLevel, true))
-//    {
-//        decompressed.AsStream().CopyTo(zip);
-//    }
-
-//    compressed.Seek(0, SeekOrigin.Begin);
-//    //compressed.GetBuffer().AsSpan()
-//    //var x = (ReadOnlySpan<byte>)compressed.ToArray().AsSpan();
-//    return compressed.ToArray().AsMemory();
-//}
-
-
-
-
-//public static ReadOnlyMemory<byte> Decompress(ReadOnlyMemory<byte> compressed)
-//{
-//    using var decompressed = new MemoryStream();
-//    using var zip = new GZipStream(compressed.AsStream(), CompressionMode.Decompress, true);
-
-//    zip.CopyTo(decompressed);
-
-//    decompressed.Seek(0, SeekOrigin.Begin);
-//    return decompressed.ToArray().AsMemory();
-//}
-
-
-
-
-
-
-//private async Task ProcessAsync(ManifestHash hash, Stream plain, string password)
-//{
-//    var tempFile = Path.GetTempFileName();
-
-//    //try
-//    //{
-//    using var compressedEncrypted = File.Open(tempFile, FileMode.Open);
-
-//    using var aes = Aes.Create();
-//    DeriveBytes(password, out var key, out var iv);
-//    aes.Key = key;
-//    aes.IV = iv;
-//    using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-//    using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, encryptor, CryptoStreamMode.Write);
-
-//    using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionLevel.Optimal, true);
-
-//    await plain.CopyToAsync(notCompressedNotEncrypted);
-//    compressedNotEncrypted.FlushFinalBlock();
-
-//    compressedEncrypted.Position = 0;
-
-//    var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-//    var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-//    await bc.UploadAsync(compressedEncrypted, new BlobUploadOptions { AccessTier = AccessTier.Cool, TransferOptions = new StorageTransferOptions { MaximumConcurrency = 16 } });
-//    //}
-//    //finally
-//    //{
-//    //    File.Delete(tempFile);
-//    //}
-//}
-
-
-//private async Task<string> UnprocessAsync(ManifestHash hash, string password)
-//{
-//    var compressedEncryptedFile = Path.GetTempFileName();
-
-//    try
-//    {
-//        var connectionString = $"DefaultEndpointsProtocol=https;AccountName={options.AccountName};AccountKey={options.AccountKey};EndpointSuffix=core.windows.net";
-//        var bc = new BlobClient(connectionString, options.Container, hash.Value.ToString());
-//        await bc.DownloadToAsync(compressedEncryptedFile, transferOptions: new StorageTransferOptions { MaximumConcurrency = 16 });
-
-//        using var compressedEncrypted = File.OpenRead(compressedEncryptedFile);
-
-//        using var aes = Aes.Create();
-//        DeriveBytes(password, out var key, out var iv);
-//        aes.Key = key;
-//        aes.IV = iv;
-//        using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-//        using var compressedNotEncrypted = new CryptoStream(compressedEncrypted, decryptor, CryptoStreamMode.Read);
-
-//        using var notCompressedNotEncrypted = new GZipStream(compressedNotEncrypted, CompressionMode.Decompress, true);
-
-//        var notCompressedNotEncryptedFile = Path.GetTempFileName();
-//        using var notCompressedNotEncryptedFileStream = File.OpenWrite(notCompressedNotEncryptedFile);
-
-//        //notCompressedNotEncrypted.Position = 0;
-//        await notCompressedNotEncrypted.CopyToAsync(notCompressedNotEncryptedFileStream);
-//        notCompressedNotEncrypted.Flush(); //.FlushFinalBlock();
-
-//        return notCompressedNotEncryptedFile;
-//    }
-//    catch (Exception e)
-//    {
-//        throw;
-//    }
-//    finally
-//    {
-//        File.Delete(compressedEncryptedFile);
-//    }
-
-//}
