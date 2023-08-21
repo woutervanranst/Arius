@@ -171,10 +171,7 @@ class ArchiveSteps : TestBase
     }
 
     [Then("{int} additional Chunk(s)")]
-    public void ThenAdditionalChunks(int addtlChunks)
-    {
-        ThenAdditionalChunks(addtlChunks.ToString());
-    }
+    public void ThenAdditionalChunks(int addtlChunks) => ThenAdditionalChunks(addtlChunks.ToString());
 
     [Then("{string} additional Chunk(s)")]
     public void ThenAdditionalChunks(string addtlChunksStr)
@@ -191,10 +188,8 @@ class ArchiveSteps : TestBase
     }
 
     [Then("{int} additional Binary/Binaries")]
-    public void ThenAdditionalBinaries(int addtlBinaries)
-    {
-        ThenAdditionalBinaries(addtlBinaries.ToString());
-    }
+    public void ThenAdditionalBinaries(int addtlBinaries) => ThenAdditionalBinaries(addtlBinaries.ToString());
+
     [Then("{string} additional Binary/Binaries")]
     public void ThenAdditionalBinaries(string addtlBinariesStr)
     {
@@ -222,7 +217,6 @@ class ArchiveSteps : TestBase
 
         (rs0.ChunkListCount + x).Should().Be(rs1.ChunkListCount);
     }
-
 
 
     [Then("BinaryFile {string} no longer exists")]

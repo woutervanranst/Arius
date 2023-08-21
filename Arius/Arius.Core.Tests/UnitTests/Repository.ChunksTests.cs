@@ -11,26 +11,6 @@ namespace Arius.Core.Tests.UnitTests;
 
 class ChunkRepositoryTests : TestBase
 {
-    //[Test]
-    //public async Task GetChunkBlob_ExistingChunkBlob_ValidChunkBlob()
-    //{
-    //    if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-    //        return;
-
-    //    TestSetup.StageArchiveTestDirectory(out FileInfo _);
-    //    await EnsureArchiveCommandHasRun();
-
-    //    var cb1 = await Repository.GetAllChunkBlobs().FirstAsync();
-
-    //    var cb2 = await Repository.GetChunkBlobAsync(cb1.ChunkHash);
-
-    //    Assert.AreEqual(cb1.FullName, cb2.FullName);
-    //}
-
-
-
-    
-
     [Test]
     public async Task UploadChunkAsync_ChunkAlreadyExistsButNotInDb_GracefulRecovery()
     {
@@ -62,7 +42,7 @@ class ChunkRepositoryTests : TestBase
         // When the archivecommand is re-run
         await ArchiveCommand();
 
-        // The db is gracefully recovered
+        // Then the db is gracefully recovered
         var ce2 = await Repository.GetChunkEntryAsync(bf.BinaryHash);
 
         ce2.AccessTier.Should().Be(ce0.AccessTier);
@@ -77,6 +57,12 @@ class ChunkRepositoryTests : TestBase
     {
         // the tier of a chunkenetry of a chunked binary in the db is not set
         // archive tier things are not updated
+
+
+        // restore chunked binary
+
+
+        // chunk reuses
 
         throw new NotImplementedException();
 

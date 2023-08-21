@@ -313,8 +313,29 @@ internal partial class ArchiveCommand
                     var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
                     logger.LogDebug($"Starting chunk upload '{chunk.ChunkHash}' for {bf.Name}. Current parallelism {i}, remaining queue depth: {chunksToUpload.Reader.Count}");
 
+                    //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                    /* TODO implement as TryAdd(chunk.ChunkHash)
 
-                    if (await repo.ChunkExistsAsync(chunk.ChunkHash)) //TODO: while the chance is infinitesimally low, implement like the manifests to avoid that a duplicate chunk will start a upload right after each other
+                         private static readonly SemaphoreSlim mutex = new SemaphoreSlim(1, 1);
+
+                        public static async Task<bool> TryAddAsync(this DbSet<ByteHashValue> set, byte[] value, DbContext context)
+                        {
+                            await mutex.WaitAsync(); // Acquire the mutex
+
+                            try
+                            {
+                                const string sql = @"INSERT OR IGNORE INTO HashValues(Value) VALUES (@value);";
+                                var param = new DbParameter[] { new Microsoft.Data.Sqlite.SqliteParameter("@value", value) };
+                                var affectedRows = await context.Database.ExecuteSqlRawAsync(sql, param);
+                                return affectedRows == 1;
+                            }
+                            finally
+                            {
+                                mutex.Release(); // Release the mutex
+                            }
+                        }
+                     */
+                    if (await repo.ChunkExistsAsync(chunk.ChunkHash))
                     {
                         // 1 Exists remote
                         logger.LogDebug($"Chunk with hash '{chunk.ChunkHash}' already exists. No need to upload.");

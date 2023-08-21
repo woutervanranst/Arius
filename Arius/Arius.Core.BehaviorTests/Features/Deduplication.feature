@@ -4,24 +4,6 @@ TODO / Backlog
 chunk1, 2, 3 are already uploaded. file 2 = chunk 2,3. archive.
 
 @todo
-Scenario: Archive_OneFile_Dedup_Success
-#    await TestSetup.PurgeRemote(); //purge the remote in case non-deduped files exist
-#
-#    RepoStats(out var _, out var chunkBlobItemCount0, out var binaryCount0, out var currentPfeWithDeleted0, out var currentPfeWithoutDeleted0, out var allPfes0);
-#
-#    TestSetup.StageArchiveTestDirectory(out FileInfo bfi);
-#    await ArchiveCommand(dedup: true);
-#
-#    RepoStats(out var repo, out var chunkBlobItemCount1, out var binaryCount1, out var currentPfeWithDeleted1, out var currentPfeWithoutDeleted1, out var allPfes1);
-#
-#    GetPointerInfo(repo, bfi, out var pf, out var pfe);
-#    var binaryProperties = await repo.Binaries.GetPropertiesAsync(pf.Hash);
-#
-#    Assert.IsTrue(binaryProperties.ChunkCount > 1);
-#    Assert.AreEqual(chunkBlobItemCount0 + binaryProperties.ChunkCount, chunkBlobItemCount1, binaryProperties.ChunkCount.ToString());
-#    Assert.AreEqual(binaryCount0 + 1, binaryCount1);
-
-@todo
 Scenario: Archive_Directory_Dedup_Success
 #    await TestSetup.PurgeRemote(); //purge the remote in case non-deduped files exist
 #
@@ -61,7 +43,7 @@ Scenario: Archive_Directory_Dedup_Success
 #    var uniqueChunkSize = ch5_UniqueChunks.Select(ch => repo.Chunks.GetChunkBlobByHash(ch, false)).Sum(c => c.Length);
 #    Assert.AreEqual(incrementalLength, uniqueChunkSize);
 
-
+@todo
 Scenario: Restore_DedupedFile_Success
 #        TestSetup.StageArchiveTestDirectory(out FileInfo _);
 #        await ArchiveCommand(dedup: true);
@@ -75,6 +57,7 @@ Scenario: Restore_DedupedFile_Success
 #        var r_bfi = ps.GetBinaryFile(r_pf, ensureCorrectHash: true);
 #        Assert.IsNotNull(r_bfi);
 
+@todo
 Scenario: Restore_DedupedDirectory_Success
 #        TestSetup.StageArchiveTestDirectory(out FileInfo[] _);
 #        await ArchiveCommand(purgeRemote: true, dedup: true, removeLocal: false);
