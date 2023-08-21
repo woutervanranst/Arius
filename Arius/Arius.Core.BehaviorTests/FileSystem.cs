@@ -43,20 +43,7 @@ static class FileSystem
 
     public static void CreateBinaryFile(string relativeName, string size)
     {
-        var sizeInBytes = size switch
-        {
-            "BELOW_ARCHIVE_TIER_LIMIT"
-                => 12 * 1024 + 1, // 12 KB
-            "ABOVE_ARCHIVE_TIER_LIMIT"
-                => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
-            _ when
-                // see https://stackoverflow.com/a/3513858
-                // see https://codereview.stackexchange.com/a/67506
-                int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
-                => size0 * 1024,
-            _ =>
-                throw new ArgumentOutOfRangeException()
-        };
+        var sizeInBytes = SizeInBytes(size);
 
         if (Exists(ArchiveDirectory, relativeName))
         {
@@ -81,6 +68,22 @@ static class FileSystem
             File.WriteAllBytes(fileName, data);
         }
     }
+
+    public static int SizeInBytes(string size) =>
+        size switch
+        {
+            "BELOW_ARCHIVE_TIER_LIMIT"
+                => 12 * 1024 + 1, // 12 KB
+            "ABOVE_ARCHIVE_TIER_LIMIT"
+                => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
+            _ when
+                // see https://stackoverflow.com/a/3513858
+                // see https://codereview.stackexchange.com/a/67506
+                int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
+                => size0 * 1024,
+            _ =>
+                throw new ArgumentOutOfRangeException()
+        };
 
     public static void DuplicateBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
     {

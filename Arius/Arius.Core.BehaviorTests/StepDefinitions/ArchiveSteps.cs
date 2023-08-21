@@ -1,3 +1,5 @@
+using Arius.Core.Models;
+using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using TechTalk.SpecFlow.Assist;
@@ -186,10 +188,10 @@ class ArchiveSteps : TestBase
     /// <returns></returns>
     private static async Task CheckPointerFileAndPointerFileEntry(string relativeName, bool shouldExist)
     {
-        var fi = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
-        var pf = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, relativeName);
+        var fi  = FileSystem.GetFileInfo(FileSystem.ArchiveDirectory, relativeName);
+        var pf  = FileSystem.GetPointerFile(FileSystem.ArchiveDirectory, relativeName);
         var pfe = await TestSetup.GetPointerFileEntryAsync(relativeName);
-
+        
         if (shouldExist)
         {
             pf.Should().NotBeNull();
@@ -212,23 +214,49 @@ class ArchiveSteps : TestBase
         }
     }
 
-    [Then(@"the Chunks for BinaryFile {string} are in the {word} tier and are {word}")]
-    public async Task ThenTheChunksForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus)
+    [Then(@"the Chunk for BinaryFile {string} are in the {word} tier and are {word} and have OriginalLength {word}")]
+    public async Task ThenTheChunkForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus, string sizeStr)
     {
         var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
 
         var chs = await Repository.GetChunkListAsync(pfe.BinaryHash).ToArrayAsync();
+        chs.Length.Should().Be(1); // not chunked
+
+        var size = FileSystem.SizeInBytes(sizeStr);
 
         foreach (var ch in chs)
         {
-            var ch0 = await Repository.GetChunkEntryAsync(ch);
-            ch0.AccessTier.Should().Be(tier);
+            // Check the ChunkEntries
+            var ce = await Repository.GetChunkEntryAsync(ch);
+            
+            ce.AccessTier.Should().Be(tier);
+            ce.OriginalLength.Should().Be(size);
+            ce.ArchivedLength.Should().BeGreaterThan(0);
+            ce.ChunkCount.Should().Be(1); // not chunked
+            ce.IncrementalLength.Should().BeGreaterThan(0);
 
-            var ch1 = await Repository.GetHydratedChunkBlobAsync(ch);
+            // Check the actual Blob
+            var b = TestSetup.GetBlobClient(BlobContainer.CHUNKS_FOLDER_NAME, ch);
+            var p = (await b.GetPropertiesAsync()).Value;
+
+            ce.AccessTier.Should().BeEquivalentTo((AccessTier)p.AccessTier);
+            ce.OriginalLength.ToString().Should().Be(p.Metadata[Blob.ORIGINAL_CONTENT_LENGTH_METADATA_KEY]);
+            ce.ArchivedLength.Should().Be(p.ContentLength);
+            
+            p.ContentType.Should().Be(CryptoService.ContentType);
+
+            // Hydrated status
+            var hb = await Repository.GetHydratedChunkBlobAsync(ch);
             if (hydratedStatus == "HYDRATED")
-                ch1.Should().NotBeNull();
+            {
+                hb.Should().NotBeNull();
+                ce.AccessTier.Should().NotBe(AccessTier.Archive);
+            }
             else if (hydratedStatus == "NOT_HYDRATED")
-                ch1.Should().BeNull();
+            {
+                hb.Should().BeNull();
+                ce.AccessTier.Should().Be(AccessTier.Archive);
+            }
             else
                 throw new NotImplementedException();
         }

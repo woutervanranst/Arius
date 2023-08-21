@@ -17,7 +17,7 @@ Scenario Outline: Archive one file
 	Given a BinaryFile "<RelativeName>" of size "<Size>" is archived to the <ToTier> tier
 	Then 1 additional Chunk and Manifest
 	Then BinaryFile "<RelativeName>" has a PointerFile and the PointerFileEntry is marked as exists
-	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus>
+	Then the Chunk for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus> and have OriginalLength <Size>
 
 	Examples:
 		| RelativeName | Size                     | ToTier  | ActualTier | HydratedStatus |
