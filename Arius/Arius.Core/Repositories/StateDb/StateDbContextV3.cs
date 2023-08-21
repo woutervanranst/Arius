@@ -3,40 +3,10 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.StateDb;
-
-
-internal record PointerFileEntryDto
-{
-    public byte[] BinaryHash   { get; init; }
-    public string RelativeName { get; init; }
-
-    /// <summary>
-    /// Version (in Universal Time)
-    /// </summary>
-    public DateTime VersionUtc { get; init; }
-    public bool      IsDeleted        { get; init; }
-    public DateTime? CreationTimeUtc  { get; init; }
-    public DateTime? LastWriteTimeUtc { get; init; }
-
-    public virtual ChunkEntry Chunk { get; init; }
-}
-
-internal record ChunkEntry
-{
-    public byte[]      Hash              { get; init; }
-    public long        OriginalLength    { get; init; }
-    public long        ArchivedLength    { get; init; }
-    public long        IncrementalLength { get; init; }
-    public int         ChunkCount        { get; init; }
-    public AccessTier? AccessTier        { get; set; } // AcessTier is null for the ChunkEntry of a chunked BinaryFile
-
-    public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
-}
 
 internal class StateDbContext : DbContext
 {
@@ -138,6 +108,8 @@ internal class StateDbContext : DbContext
         hasChanges(numChanges);
         return numChanges;
     }
+
+    public override string ToString() => dbPath;
 
     private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
     {
