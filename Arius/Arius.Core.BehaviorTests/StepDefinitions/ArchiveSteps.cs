@@ -221,7 +221,7 @@ class ArchiveSteps : TestBase
 
         foreach (var ch in chs)
         {
-            var ch0 = await Repository.GetChunkBlobAsync(ch);
+            var ch0 = await Repository.GetChunkEntryAsync(ch);
             ch0.AccessTier.Should().Be(tier);
 
             var ch1 = await Repository.GetHydratedChunkBlobAsync(ch);

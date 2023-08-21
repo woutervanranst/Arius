@@ -32,15 +32,15 @@ internal partial class Repository
         if (chunkHashes.Count == 1)
             return; //do not create a ChunkList for only one ChunkHash
 
-        var bbc = await container.ChunkLists.GetBlobAsync(bh.Value.BytesToHexString());
+        var bbc = container.ChunkLists.GetBlob(bh.Value.BytesToHexString());
 
         RestartUpload:
 
         try
         {
-            using (var ts = await bbc.OpenWriteAsync())
+            await using (var ts = await bbc.OpenWriteAsync()) // NOTE keep in this using {} statement as this closes the stream after use
             {
-                using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+                await using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
                 await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value.BytesToHexString()));
             }
 
@@ -52,9 +52,10 @@ internal partial class Repository
         catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
         {
             // The blob already exists
+            // TODO should this error logic not reside in OpenWriteAsync()?
             try
             {
-                if (bbc.ContentType != JSON_GZIP_CONTENT_TYPE || bbc.Length == 0)
+                if (await bbc.GetContentType() != JSON_GZIP_CONTENT_TYPE || await bbc.GetArchivedLength() == 0)
                 {
                     logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -93,12 +94,12 @@ internal partial class Repository
             yield return bh;
         else
         {
-            var b = await container.ChunkLists.GetBlobAsync(bh);
+            var b = container.ChunkLists.GetBlob(bh);
 
-            if (!b.Exists)
+            if (!await b.ExistsAsync())
                 throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
             
-            if (b.ContentType != JSON_GZIP_CONTENT_TYPE)
+            if (await b.GetContentType() != JSON_GZIP_CONTENT_TYPE)
                 throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JSON_GZIP_CONTENT_TYPE}' ContentType and is potentially corrupt");
 
             var i = 0;

@@ -39,8 +39,8 @@ internal class BlobContainer
             return false;
     }
 
-    public BlobContainerFolder<BlobEntry, Blob> States     { get; }
-    public ChunkListBlobContainerFolder         ChunkLists { get; }
-    public ChunkBlobContainerFolder             Chunks           { get; }
-    public ChunkBlobContainerFolder             RehydratedChunks { get; }
+    public StateContainerFolder               States           { get; }
+    public ChunkListBlobContainerFolder       ChunkLists       { get; }
+    public ChunkBlobContainerFolder           Chunks           { get; }
+    public RehydratedChunkBlobContainerFolder RehydratedChunks { get; }
 }

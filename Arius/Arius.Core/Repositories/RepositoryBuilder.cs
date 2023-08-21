@@ -1,12 +1,10 @@
 ﻿using Arius.Core.Facade;
+using Arius.Core.Repositories.BlobRepository;
 using Azure.Core;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Net;
 using System.Threading.Tasks;
-using Arius.Core.Repositories.BlobRepository;
 
 namespace Arius.Core.Repositories;
 

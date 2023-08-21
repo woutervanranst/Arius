@@ -57,8 +57,9 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobEntry = await container.States.GetBlobEntriesAsync()
-                .OrderBy(b => b.FullName)
+            var lastStateBlobEntry = await container.States.GetBlobs()
+                .Select(be => be.Name)
+                .OrderBy(b => b)
                 .LastOrDefaultAsync();
 
             if (lastStateBlobEntry is null)
@@ -72,7 +73,7 @@ internal partial class RepositoryBuilder
             else
             {
                 // Load existing DB
-                var lastStateBlob = await container.States.GetBlobAsync(lastStateBlobEntry);
+                var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
                 await using (var ss = await lastStateBlob.OpenReadAsync())
                 {
                     await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
@@ -137,7 +138,7 @@ internal partial class RepositoryBuilder
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
 
             // Upload the db
-            var b = await container.States.GetBlobAsync($"{versionUtc:s}");
+            var b = container.States.GetBlob($"{versionUtc:s}");
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
                 await using var ts = await b.OpenWriteAsync(throwOnExists: false); //the throwOnExists: false is a hack for the unit tests, they run in rapid  succession and the DateTimeNowUtc is the same
@@ -148,12 +149,12 @@ internal partial class RepositoryBuilder
             await b.SetContentTypeAsync(CryptoService.ContentType);
 
             // Move the previous states to Archive storage
-            await foreach (var be in container.States.GetBlobEntriesAsync()
+            await foreach (var be in container.States.GetBlobs()
                                .OrderBy(be => be.Name)
                                .SkipLast(2)
                                .Where(be => be.AccessTier != AccessTier.Archive))
             {
-                var b0  = await container.States.GetBlobAsync(be);
+                var b0  = container.States.GetBlob(be.Name);
                 await b0!.SetAccessTierAsync(AccessTier.Archive);
             }
 

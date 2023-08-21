@@ -127,11 +127,8 @@ class ChunkListTests : TestBase
     }
 
     [Test]
-    public async Task GetChunkHashesAsync_InvalidTag_Exception()
+    public async Task CreateChunkListAsync_InvalidTag_Exception()
     {
-        if (DateTime.Now <= TestSetup.UnitTestGracePeriod)
-            return;
-
         var bh = new BinaryHash(Guid.NewGuid().ToByteArray());
         var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 

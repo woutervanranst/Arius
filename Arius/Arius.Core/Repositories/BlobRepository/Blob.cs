@@ -2,25 +2,38 @@
 using Azure;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using Nito.AsyncEx;
 using PostSharp.Constraints;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.BlobRepository;
 
+[ComponentInternal(typeof(Repository))] // only the Repository should be able to access these low level methods
 internal class Blob
 {
-    protected readonly BlockBlobClient client;
-    private readonly   Properties  properties;
+    protected readonly BlockBlobClient            client;
+    private readonly   AsyncLazy<BlobProperties?> properties;
 
-    [ComponentInternal(typeof(BlobContainerFolder<,>))]
-    public Blob(BlockBlobClient client, Properties initialProperties)
+    [ComponentInternal(typeof(BlobContainerFolder<>))]
+    public Blob(BlockBlobClient client)
     {
         this.client     = client;
-        this.properties = initialProperties;
-        this.FullName   = client.Name;
+        FullName   = client.Name;
+
+        properties = new AsyncLazy<BlobProperties?>(async () =>
+        {
+            try
+            {
+                return await client.GetPropertiesAsync();
+            }
+            catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+            {
+                // Blob does not exist
+                return null;
+            }
+        });
     }
 
     /// <summary>
@@ -37,7 +50,6 @@ internal class Blob
     /// The Folder where this Blob resides. If the folder is in the root, returns an empty string.
     /// </summary>
     public string Folder => Path.GetDirectoryName(FullName) ?? string.Empty;
-
 
     public async Task<Stream> OpenReadAsync() => await client.OpenReadAsync();
 
@@ -58,135 +70,81 @@ internal class Blob
             return await client.OpenWriteAsync(overwrite: true);
     }
 
-    public AccessTier? AccessTier => properties.AccessTier;
 
-    /// <summary>
-    /// Sets the AccessTier of the Blob
-    /// </summary>
-    /// <returns>The tier has been updated</returns>
-    public async Task<bool> SetAccessTierAsync(AccessTier accessTier)
+    public async Task<AccessTier> GetAccessTierAsync()                      => (await properties.Task)!.AccessTier; // NOTE Properties can be null in case of a non-existing blob but that should not happen here
+    public async Task             SetAccessTierAsync(AccessTier accessTier) => await client.SetAccessTierAsync(accessTier);
+
+
+    private string? contentTypeOverride = null;
+    public async Task<string> GetContentType() => contentTypeOverride ?? (await properties.Task)!.ContentType; // NOTE Properties can be null in case of a non-existing blob but that should not happen here
+    public async Task SetContentTypeAsync(string contentType)
     {
-        if (accessTier == AccessTier)
-            return false; // already in this access tier
-
-        await client.SetAccessTierAsync(accessTier);
-
-        properties.AccessTier = accessTier;
-
-        return true;
-
-        //TODO Unit test this: smaller blocks are not put into archive tier
+        await client.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = contentType });
+        contentTypeOverride = contentType;
     }
 
-    //public bool IsDownloadable => Exists && AccessTier != Azure.Storage.Blobs.Models.AccessTier.Archive;
-    public bool Hydrated => AccessTier != Azure.Storage.Blobs.Models.AccessTier.Archive;
-
-
-
-    public string? ContentType => properties.ContentType;
-    public async Task<Azure.Response<BlobInfo>> SetContentTypeAsync(string contentType)
+    
+    private long? originalLengthMetadataOverride = null;
+    public async Task<long?> GetOriginalLengthMetadata()
     {
-        var r = await client.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = contentType });
-        properties.ContentType = contentType;
-        return r;
+        if (originalLengthMetadataOverride is not null)
+            return originalLengthMetadataOverride;
+
+        var p = await properties.Task;
+        if (p is null)
+            return null;
+        if (p.Metadata.TryGetValue(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, out string? value))
+            return long.Parse(value);
+        else
+            return null;
     }
-
-    public long? OriginalLength => properties.OriginalLength;
-
-    public async Task<Azure.Response<BlobInfo>> SetOriginalLength(long length)
+    public async Task SetOriginalLengthMetadata(long length)
     {
-        var p = (await client.GetPropertiesAsync()).Value;
-        var m = p.Metadata;
+        var m = (await properties.Task).Metadata;
 
         m.Add(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, length.ToString());
 
-        var r = await client.SetMetadataAsync(m);
+        await client.SetMetadataAsync(m);
 
-        return r;
+        originalLengthMetadataOverride = length;
     }
     public const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
 
 
-    public long Length => properties.Length ?? 0;
+    public async Task<long?> GetArchivedLength() => (await properties.Task)?.ContentLength;
 
-
-    public bool Exists => properties.Exists;
-
-    public async Task<Azure.Response> DeleteAsync()
+    public async Task<bool> ExistsAsync()
     {
-        return await client.DeleteAsync();
+        var p = (await properties.Task);
+        return p is not null;
     }
 
-    public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options)
-    {
-        return await client.StartCopyFromUriAsync(source, options);
-    }
+    public async Task DeleteAsync() => await client.DeleteAsync();
 
-    public bool HydrationPending
+    public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options) => await client.StartCopyFromUriAsync(source, options);
+
+    public async Task<bool> IsHydrationPendingAsync()
     {
-        get
-        {
-            if (properties.ArchiveStatus is null)
-                return false;
-            else if (properties.ArchiveStatus.StartsWith("rehydrate-pending-to-", StringComparison.InvariantCultureIgnoreCase))
-                return true;
-            else
-                throw new InvalidOperationException($"Unknown ArchiveStatus {properties.ArchiveStatus}");
-        }
+        var p = await properties.Task;
+        if (p is null)
+            throw new InvalidOperationException("This blob does not exist");
+
+        if (p.ArchiveStatus is null)
+            return false;
+        else if (p.ArchiveStatus.StartsWith("rehydrate-pending-to-", StringComparison.InvariantCultureIgnoreCase))
+            return true;
+        else
+            throw new InvalidOperationException($"Unknown ArchiveStatus {p.ArchiveStatus}");
     }
 
     public Uri Uri => client.Uri;
 
-    public override string ToString()
-    {
-        return FullName;
-    }
-
-    public record Properties // NOTE this can be an origin of nasty side effects, eg. Exists and Length change after upload
-    {
-        public Properties(BlobEntry be)
-        {
-            this.Length         = be.Length;
-            this.OriginalLength = be.OriginalLength;
-            this.ContentType    = be.ContentType;
-            this.AccessTier     = be.AccessTier;
-            this.ContentType    = be.ContentType;
-            this.ArchiveStatus  = be.ArchiveStatus;
-        }
-        public Properties(BlobItemProperties bip)
-        {
-            this.Length         = bip.ContentLength;
-            this.OriginalLength = null; // we dont have the blob metadata here
-            this.ContentType    = bip.ContentType;
-            this.AccessTier     = bip.AccessTier;
-            this.Exists         = true;
-            this.ArchiveStatus  = bip.ArchiveStatus.ToString();
-        }
-        public Properties(BlobProperties bp)
-        {
-            this.Length         = bp.ContentLength;
-            this.OriginalLength = bp.Metadata.ContainsKey(ORIGINAL_CONTENT_LENGTH_METADATA_KEY) ? long.Parse(bp.Metadata[ORIGINAL_CONTENT_LENGTH_METADATA_KEY]) : null;
-            this.ContentType    = bp.ContentType;
-            this.AccessTier     = bp.AccessTier;
-            this.Exists         = true;
-            this.ArchiveStatus  = bp.ArchiveStatus;
-        }
-        public Properties(bool exists = false)
-        {
-            this.Exists = exists;
-        }
-        public long?       Length         { get; }
-        public long?       OriginalLength { get; }
-        public string?     ContentType    { get; set; }
-        public AccessTier? AccessTier     { get; set; }
-        public bool        Exists         { get; }
-        public string?     ArchiveStatus  { get; }
-    }
+    public override string ToString() => FullName;
 }
 
 internal class ChunkBlob : Blob, IChunk
 {
-    public ChunkBlob(BlockBlobClient client, Properties initialProperties) : base(client, initialProperties)
+    public ChunkBlob(BlockBlobClient client) : base(client)
     {
         ChunkHash = new ChunkHash(Name.HexStringToBytes());
     }
@@ -195,11 +153,14 @@ internal class ChunkBlob : Blob, IChunk
     {
         const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
 
-        if (targetAccessTier == Azure.Storage.Blobs.Models.AccessTier.Archive &&
+        if (targetAccessTier == AccessTier.Archive &&
             length <= oneMegaByte)
         {
-            return Azure.Storage.Blobs.Models.AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+            return AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
         }
+
+        //TODO Unit test this: smaller blocks are not put into archive tier
+
 
         return targetAccessTier;
     }
@@ -209,7 +170,7 @@ internal class ChunkBlob : Blob, IChunk
 
 internal class ChunkListBlob : Blob
 {
-    public ChunkListBlob(BlockBlobClient client, Properties initialProperties) : base(client, initialProperties)
+    public ChunkListBlob(BlockBlobClient client) : base(client)
     {
         BinaryHash = new BinaryHash(Name.HexStringToBytes());
     }

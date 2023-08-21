@@ -33,7 +33,7 @@ internal record ChunkEntry
     public long        ArchivedLength    { get; init; }
     public long        IncrementalLength { get; init; }
     public int         ChunkCount        { get; init; }
-    public AccessTier? AccessTier        { get; init; } // AcessTier is null for the ChunkEntry of a chunked BinaryFile
+    public AccessTier? AccessTier        { get; set; } // AcessTier is null for the ChunkEntry of a chunked BinaryFile
 
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }
@@ -112,7 +112,7 @@ internal class StateDbContext : DbContext
         var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
         pfemb.ToTable("PointerFileEntries");
         pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
-        pfemb.HasIndex(pfe => pfe.BinaryHash);
+        pfemb.HasIndex(pfe => pfe.BinaryHash); // NOT unique
         pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
         pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 

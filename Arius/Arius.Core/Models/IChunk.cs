@@ -6,7 +6,6 @@ namespace Arius.Core.Models;
 
 internal interface IChunk
 {
-    public long Length { get; }
     ChunkHash ChunkHash { get; }
     Task<Stream> OpenReadAsync();
 }
@@ -20,8 +19,6 @@ internal record MemoryChunk : IChunk
     }
         
     public byte[] Bytes  { get; }
-
-    public long Length => Bytes.Length;
 
     public ChunkHash ChunkHash { get; }
 

@@ -85,7 +85,7 @@ internal static class TestSetup
 
     private static async Task AddRepoStat()
     {
-        var chunkCount = await Repository.GetAllChunkBlobs().CountAsync();
+        var chunkCount = await Repository.CountChunksAsync();
         var binaryCount = await Repository.CountBinariesAsync();
 
         //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();

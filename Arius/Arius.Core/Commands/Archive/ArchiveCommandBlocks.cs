@@ -260,7 +260,7 @@ internal partial class ArchiveCommand
                 if (options.Dedup) // TODO rewrite as strategy pattern?
                     return await UploadChunkedBinaryAsync(bf);
                 else
-                    return await UploadChunkAsync(bf);
+                    return await repo.UploadChunkAsync(bf, options.Tier);
             });
 
             logger.LogInformation($"Uploading Binary '{bf.Name}' ('{bf.BinaryHash}') of {bf.Length.GetBytesReadable()}... Completed in {seconds}s ({MBps} MBps / {Mbps} Mbps)");
@@ -323,8 +323,8 @@ internal partial class ArchiveCommand
                         // 1 Exists remote
                         logger.LogDebug($"Chunk with hash '{chunk.ChunkHash}' already exists. No need to upload.");
 
-                        var archivedLength = await repo.GetChunkLengthAsync(chunk.ChunkHash);
-                        Interlocked.Add(ref totalArchivedLength, archivedLength);
+                        var ce = await repo.GetChunkEntryAsync(chunk.ChunkHash);
+                        Interlocked.Add(ref totalArchivedLength, ce.ArchivedLength);
                         Interlocked.Add(ref totalIncrementalLength, 0);
                     }
                     else
@@ -335,7 +335,7 @@ internal partial class ArchiveCommand
                             // 2 Does not yet exist remote and not yet being created --> upload
                             logger.LogDebug($"Chunk with hash '{chunk.ChunkHash}' does not exist remotely. To upload.");
 
-                            var ce = await UploadChunkAsync(chunk);
+                            var ce = await repo.UploadChunkAsync(chunk, options.Tier);
                             Interlocked.Add(ref totalArchivedLength, ce.ArchivedLength);
                             Interlocked.Add(ref totalIncrementalLength, ce.IncrementalLength);
 
@@ -348,8 +348,8 @@ internal partial class ArchiveCommand
 
                             await uploadingChunks[chunk.ChunkHash].Task;
 
-                            var archivedLength = await repo.GetChunkLengthAsync(chunk.ChunkHash);
-                            Interlocked.Add(ref totalArchivedLength, archivedLength);
+                            var ce = await repo.GetChunkEntryAsync(chunk.ChunkHash);
+                            Interlocked.Add(ref totalArchivedLength, ce.ArchivedLength);
                             Interlocked.Add(ref totalIncrementalLength, 0);
 
                             //TODO Write unit test for this path
@@ -367,89 +367,6 @@ internal partial class ArchiveCommand
             var ce = await repo.CreateChunkEntryAsync(bf, totalArchivedLength, totalIncrementalLength, chs.Count, null /* accesstier is undefined for a chunked binary */); 
 
             return ce;
-        }
-
-        /// <summary>
-        /// Upload a (plaintext) chunk to the repository after compressing and encrypting it
-        /// </summary>
-        private async Task<ChunkEntry> UploadChunkAsync(IChunk chunk)
-        {
-            logger.LogDebug($"Uploading Chunk '{chunk.ChunkHash}'...");
-
-            var bbc = await repo.GetChunkBlobAsync(chunk.ChunkHash);
-
-        RestartUpload:
-
-            try
-            {
-                // v12 with blockBlob.Upload: https://blog.matrixpost.net/accessing-azure-storage-account-blobs-from-c-applications/
-
-                long length;
-                await using (var ts = await bbc.OpenWriteAsync())
-                {
-                    await using var ss = await chunk.OpenReadAsync();
-                    await CryptoService.CompressAndEncryptAsync(ss, ts, options.Passphrase);
-                    length = ts.Position;
-                }
-
-                await bbc.SetContentTypeAsync(CryptoService.ContentType); //NOTE put this before SetAccessTier -- once Archived no more operations can happen on the blob
-
-                // Set access tier per policy
-                var tier = ChunkBlob.GetPolicyAccessTier(options.Tier, length);
-                await bbc.SetAccessTierAsync(tier);
-
-                // Create the ChunkEntry
-                var ce = await repo.CreateChunkEntryAsync(chunk, length, tier);
-
-                logger.LogInformation($"Uploading Chunk '{chunk.ChunkHash}'... done");
-
-                return ce;
-            }
-            catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict /*409*/) //icw ThrowOnExistOptions. In case of hot/cool, throws a 409+BlobAlreadyExists. In case of archive, throws a 409+BlobArchived
-            {
-                // The blob already exists
-                try
-                {
-                    if (bbc.ContentType != CryptoService.ContentType || bbc.Length == 0)
-                    {
-                        logger.LogWarning($"Corrupt chunk {chunk.ChunkHash}. Deleting and uploading again");
-                        await bbc.DeleteAsync();
-
-                        goto RestartUpload;
-                    }
-                    else
-                    {
-                        // graceful handling if the chunk is already uploaded but it does not yet exist in the database
-                        //throw new InvalidOperationException($"Chunk {chunk.Hash} with length {p.ContentLength} and contenttype {p.ContentType} already exists, but somehow we are uploading this again."); //this would be a multithreading issue
-                        logger.LogWarning($"A valid Chunk '{chunk.ChunkHash}' already existsted, perhaps in a previous/crashed run?");
-
-                        try
-                        {
-                            return await repo.GetChunkEntryAsync(chunk.ChunkHash); // return bbc.Length; // TODO what if the chunkentry does not exist
-                        }
-                        catch (InvalidOperationException)
-                        {
-                            // Recreate the chunkentry in the db
-                            var ce = await repo.CreateChunkEntryAsync(chunk, bbc.Length, bbc.AccessTier!.Value); // TODO unit test
-                            return ce;
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, $"Exception while reading properties of chunk {chunk.ChunkHash}");
-                    throw;
-                }
-            }
-            catch (Exception e)
-            {
-                var e2 = new InvalidOperationException($"Error while uploading chunk {chunk.ChunkHash}. Deleting...", e);
-                logger.LogError(e2); //TODO test this in a unit test
-                await bbc.DeleteAsync();
-                logger.LogDebug("Error while uploading chunk. Deleting potentially corrupt chunk... Success.");
-
-                throw e2;
-            }
         }
     }
 
@@ -631,23 +548,7 @@ internal partial class ArchiveCommand
 
         protected override async Task TaskBodyImplAsync()
         {
-            // TODO to Cold tier
-
-            if (targetAccessTier != AccessTier.Archive)
-                return; //only support mass moving to Archive tier to avoid huge excess costs when rehydrating the entire archive
-
-            var blobsNotInTier = repo.GetAllChunkBlobs().Where(cbb => cbb.AccessTier != targetAccessTier);
-
-            await Parallel.ForEachAsync(blobsNotInTier,
-                new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                async (cbe, ct) =>
-                {
-                    var cb = await repo.GetChunkBlobAsync(cbe.ChunkHash);
-                    
-                    var updated = await cb.SetAccessTierAsync(targetAccessTier);
-                    if (updated)
-                        logger.LogInformation($"Set acces tier to '{targetAccessTier}' for chunk '{cbe.ChunkHash}'");
-                });
+            await repo.UpdateAllChunksToTier(targetAccessTier, maxDegreeOfParallelism);
         }
     }
 }
