@@ -18,7 +18,7 @@ TODO / BACKLOG
 
 Background:
     Given a clean archive directory
-    Given the following BinaryFiles are archived to Cool tier:
+    When the following BinaryFiles are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
 		| dir1\\wouter.txt | 15 KB                    |                    |
 		| dir2\\joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |                    |

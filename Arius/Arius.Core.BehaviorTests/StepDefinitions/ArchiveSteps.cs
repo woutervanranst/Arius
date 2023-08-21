@@ -29,33 +29,57 @@ class ArchiveSteps : TestBase
     {
         FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
     }
-
-    [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
-    public async Task GivenALocalFileOfSizeIsArchivedToTier(string binaryRelativeName, string size, AccessTier tier)
+    
+    [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
+    public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
     {
-        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
+        FileSystem.DuplicateBinaryFile(binaryRelativeName, sourceBinaryRelativeName);
+    }
 
+    [Given(@"a Pointer of BinaryFile {word} duplicate of the Pointer of BinaryFile {word}")]
+    private static void GivenAPointerFileDuplicateOfThePointerOfBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
+    {
+        FileSystem.DuplicatePointerFile(relativeBinaryName, sourceRelativeBinaryName);
+    }
+
+    [Given("a random PointerFile for BinaryFile {string}")]
+    public void GivenARandomPointerFileForBinaryFile(string relativeBinaryFile)
+    {
+        // Take a real PointerFile
+        var pfi = FileSystem.ArchiveDirectory.GetPointerFileInfos().First();
+        // Build the target filename
+        var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + Models.PointerFile.Extension);
+
+        pfi.CopyTo(pfn);
+    }
+
+    [Given("a random BinaryFile {string}")]
+    public void GivenARandomBinaryFile(string relativeBinaryFile)
+    {
+        var bfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile);
+
+        File.WriteAllText(bfn, "some random binary stuff");
+    }
+
+
+
+    [When("deduplicated and archived to the {word} tier")]
+    public async Task WhenABinaryFileOfSizeIsDeduplicatedAndArchivedToTheCoolTier(AccessTier tier)
+    {
+        await TestSetup.ArchiveCommandAsync(tier, dedup: true);
+    }
+    [When(@"archived to the {word} tier with option RemoveLocal")]
+    public async Task WhenALocalFileOfSizeIsArchivedToTierWithOptionRemoveLocal(AccessTier tier)
+    {
+        await TestSetup.ArchiveCommandAsync(tier, removeLocal: true);
+    }
+    [When("archived to the {word} tier")]
+    public async Task WhenArchivedToTheTier(AccessTier tier)
+    {
         await TestSetup.ArchiveCommandAsync(tier);
     }
 
-    [Given("a BinaryFile {string} of size {string} is deduplicated and archived to the {word} tier")]
-    public async Task GivenABinaryFileOfSizeIsDeduplicatedAndArchivedToTheCoolTier(string binaryRelativeName, string size, AccessTier tier)
-    {
-        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
-
-        await TestSetup.ArchiveCommandAsync(tier, dedup: true);
-    }
-
-
-    [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier with option RemoveLocal")]
-    public async Task GivenALocalFileOfSizeIsArchivedToTierWithOptionRemoveLocal(string binaryRelativeName, string size, AccessTier tier)
-    {
-        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
-
-        await TestSetup.ArchiveCommandAsync(tier, removeLocal: true);
-    }
-
-    [Given(@"the following BinaryFiles are archived to {word} tier:")]
+    [When(@"the following BinaryFiles are archived to {word} tier:")]
     public async Task GivenTheFollowingLocalFilesAreArchivedToTier(AccessTier tier, Table table)
     {
         var files = table.CreateSet<FileTableEntry>().ToList();
@@ -79,25 +103,6 @@ class ArchiveSteps : TestBase
         await TestSetup.ArchiveCommandAsync(tier);
     }
     private record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);
-
-    [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
-    public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
-    {
-        FileSystem.DuplicateBinaryFile(binaryRelativeName, sourceBinaryRelativeName);
-    }
-
-    [Given(@"a Pointer of BinaryFile {word} duplicate of the Pointer of BinaryFile {word}")]
-    private static void GivenAPointerFileDuplicateOfThePointerOfBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
-    {
-        FileSystem.DuplicatePointerFile(relativeBinaryName, sourceRelativeBinaryName);
-    }
-
-
-    [When("archived to the {word} tier")]
-    public async Task WhenArchivedToTheTier(AccessTier tier)
-    {
-        await TestSetup.ArchiveCommandAsync(tier);
-    }
 
     [When(@"BinaryFile {string} and its PointerFile are deleted")]
     public void BinaryFileAndPointerFileAreDeleted(string binaryRelativeName)
@@ -156,7 +161,8 @@ class ArchiveSteps : TestBase
         FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, moveBinary: false, movePointer: true);
     }
 
-        
+
+    
     [Then("{int} additional Chunk(s) and Binary/Binaries")]
     public void ThenAdditionalChunksAndManifests(int x)
     {
@@ -167,7 +173,7 @@ class ArchiveSteps : TestBase
         //(rs0.ChunkEntryCount + addtlChunks).Should().Be(rs1.ChunkEntryCount);
         //(rs0.BinaryCount + addtlChunks).Should().Be(rs1.BinaryCount);
     }
-    [Then("{string} additional Chunks and {string} Binaries")]
+    [Then("{string} additional Chunk(s) and {string} additional Binary/Binaries")]
     public void ThenAdditionalChunksAndManifests(string addtlChunksStr, string addtlBinariesStr)
     {
         var rs0 = TestSetup.Stats.SkipLast(1).Last();
@@ -175,7 +181,7 @@ class ArchiveSteps : TestBase
 
         if (int.TryParse(addtlChunksStr, out int addtlChunks))
             (rs0.ChunkEntryCount + addtlChunks).Should().Be(rs1.ChunkEntryCount);
-        else if (addtlChunksStr == "MULTIPLE")
+        else if (addtlChunksStr == "MORE_THAN_ONE")
             (rs0.ChunkEntryCount + 1).Should().BeLessThan(rs1.ChunkEntryCount);
         else
             throw new NotImplementedException();
@@ -256,16 +262,16 @@ class ArchiveSteps : TestBase
     {
         var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
 
+        var ce = await Repository.GetChunkEntryAsync(pfe.BinaryHash);
+
         var chs = await Repository.GetChunkListAsync(pfe.BinaryHash).ToArrayAsync();
-        chs.Length.Should().Be(1); // not chunked
+        chs.Length.Should().Be(ce.ChunkCount);
 
         var size = FileSystem.SizeInBytes(sizeStr);
 
         foreach (var ch in chs)
         {
             // Check the ChunkEntries
-            var ce = await Repository.GetChunkEntryAsync(ch);
-            
             ce.AccessTier.Should().Be(tier);
             ce.OriginalLength.Should().Be(size);
             ce.ArchivedLength.Should().BeGreaterThan(0);
@@ -298,33 +304,4 @@ class ArchiveSteps : TestBase
                 throw new NotImplementedException();
         }
     }
-
-
-
-
-
-    [Given("a random PointerFile for BinaryFile {string}")]
-    public void GivenARandomPointerFileForBinaryFile(string relativeBinaryFile)
-    {
-        // Take a real PointerFile
-        var pfi = FileSystem.ArchiveDirectory.GetPointerFileInfos().First();
-        // Build the target filename
-        var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + Models.PointerFile.Extension);
-
-        pfi.CopyTo(pfn);
-    }
-
-    [Given("a random BinaryFile {string}")]
-    public void GivenARandomBinaryFile(string relativeBinaryFile)
-    {
-        var bfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile);
-
-        File.WriteAllText(bfn, "some random binary stuff");
-    }
-
-    //[Then("the PointerFile for BinaryFile {string} is not present")]
-    //public void ThenThePointerFileForBinaryFileIsNotPresent(string relativeBinaryFile)
-    //{
-    //    FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile).Should().BeNull();
-    //}
 }

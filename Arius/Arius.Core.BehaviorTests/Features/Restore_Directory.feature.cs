@@ -110,7 +110,7 @@ TODO / BACKLOG
                         "",
                         "dir1\\wouter.txt"});
 #line 21
-    testRunner.Given("the following BinaryFiles are archived to Cool tier:", ((string)(null)), table1, "Given ");
+    testRunner.When("the following BinaryFiles are archived to Cool tier:", ((string)(null)), table1, "When ");
 #line hidden
         }
         
