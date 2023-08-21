@@ -105,7 +105,7 @@ internal partial class Repository
             throw e2;
         }
     }
-
+    
     /// <summary>
     /// Get a hydrated chunk blob with the specified ChunkHash
     /// Returns null if no hydrated chunk exists.
@@ -167,7 +167,7 @@ internal partial class Repository
         //}
     }
 
-    public async Task HydrateChunkAsync(ChunkHash chunkHash)
+    private async Task HydrateChunkAsync(ChunkHash chunkHash)
     {
         logger.LogDebug($"Checking hydration for chunk {chunkHash}");
 

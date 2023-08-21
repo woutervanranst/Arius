@@ -221,7 +221,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
                 bool restored;
                 try
                 {
-                    restored = await TryDownloadAsync(pf.BinaryHash, FileSystemService.GetBinaryFileInfo(pf), options);
+                    restored = await repo.TryDownloadBinaryAsync(pf.BinaryHash, FileSystemService.GetBinaryFileInfo(pf), options.Passphrase);
                 }
                 catch (Exception e)
                 {
@@ -287,115 +287,4 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         if (!options.KeepPointers)
             pf.Delete();
     }
-
-    /// <summary>
-    /// Download the given Binary with the specified options.
-    /// Start hydration for the chunks if required.
-    /// Returns null if the Binary is not yet hydrated
-    /// </summary>
-    private async Task<bool> TryDownloadAsync(BinaryHash bh, BinaryFileInfo target, IRestoreCommandOptions options, bool rehydrateIfNeeded = true)
-    {
-
-        //var chunks = await repo.GetChunkListAsync(bh)
-        //    .SelectAwait(async ch =>
-        //    {
-        //        var hcb = await repo.GetHydratedChunkBlobAsync(ch);
-
-        //        return new
-        //        {
-        //            ChunkHash         = ch,
-        //            HydratedChunkBlob = hcb,
-        //            ArchivedChunkBlob = hcb == null ? await repo.GetChunkBlobAsync(ch) : null
-        //        };
-        //    })
-        //    .ToArrayAsync();
-
-
-        var chunks = await repo.GetChunkListAsync(bh)
-            .SelectAwait(async ch => (ChunkHash: ch, HydratedChunkBlob: await repo.GetHydratedChunkBlobAsync(ch)))
-            .ToArrayAsync();
-
-        var chunksToHydrate = chunks
-            .Where(c => c.HydratedChunkBlob is null);
-            //.Select(c => repo.GetChunkBlob(c.ChunkHash));
-        if (chunksToHydrate.Any())
-        {
-            chunksToHydrate = chunksToHydrate.ToArray();
-            //At least one chunk is not hydrated so the Binary cannot be downloaded
-            logger.LogInformation($"{chunksToHydrate.Count()} chunk(s) for '{bh}' not hydrated. Cannot yet restore.");
-
-            if (rehydrateIfNeeded)
-                foreach (var c in chunksToHydrate)
-                    //hydrate this chunk
-                    await repo.HydrateChunkAsync(c.ChunkHash);
-
-            return false;
-        }
-        else
-        {
-            //All chunks are hydrated  so we can restore the Binary
-            logger.LogInformation($"Downloading Binary '{bh}' from {chunks.Length} chunk(s)...");
-
-            var p = await repo.GetChunkEntryAsync(bh);
-            var stats = await new Stopwatch().GetSpeedAsync(p.ArchivedLength, async () =>
-            {
-                await using var ts = target.OpenWriteAsync();
-
-                /* Faster version but more code
-                //if (chunks.Length == 1)
-                //{
-                //    await using var cs = await chunks[0].ChunkBlob.OpenReadAsync();
-                //    await CryptoService.DecryptAndDecompressAsync(cs, ts, options.Passphrase);
-                //}
-                //else
-                //{
-                //    var x = new ConcurrentDictionary<ChunkHash, byte[]>();
-
-                //    var t0 = Task.Run(async () =>
-                //    {
-                //        await Parallel.ForEachAsync(chunks,
-                //            new ParallelOptions() { MaxDegreeOfParallelism = 20 },
-                //            async (c, ct) =>
-                //            {
-                //                await using var ms = new MemoryStream();
-                //                await using var cs = await c.ChunkBlob.OpenReadAsync();
-                //                await CryptoService.DecryptAndDecompressAsync(cs, ms, options.Passphrase);
-                //                if (!x.TryAdd(c.ChunkHash, ms.ToArray()))
-                //                    throw new InvalidOperationException();
-                //            });
-                //    });
-
-                //    var t1 = Task.Run(async () =>
-                //    {
-                //        foreach (var (ch, _) in chunks)
-                //        {
-                //            while (!x.ContainsKey(ch))
-                //                await Task.Yield();
-
-                //            if (!x.TryRemove(ch, out var buff))
-                //                throw new InvalidOperationException();
-
-                //            await ts.WriteAsync(buff);
-                //            //await x[ch].CopyToAsync(ts);
-                //        }
-                //    });
-
-                //    Task.WaitAll(t0, t1);
-                //}
-                */
-
-                foreach (var (_, cb) in chunks)
-                {
-                    await using var cs = await cb!.OpenReadAsync();
-                    await CryptoService.DecryptAndDecompressAsync(cs, ts, options.Passphrase);
-                }
-            });
-
-            logger.LogInformation($"Downloading Binary '{bh}' of {p.ArchivedLength.GetBytesReadable()} from {chunks.Length} chunk(s)... Completed in {stats.seconds}s ({stats.MBps} MBps / {stats.Mbps} Mbps)");
-
-            return true;
-        }
-    }
-
-
 }
