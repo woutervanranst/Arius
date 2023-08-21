@@ -10,13 +10,17 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.BlobRepository;
 
-[ComponentInternal(typeof(Repository))] // only the Repository should be able to access these low level methods
+
+[ComponentInternal(typeof(Repository),      // only the Repository should be able to access these low level methods
+    typeof(StateContainerFolder), typeof(BlobContainerFolder<>), typeof(ChunkBlobContainerFolder), typeof(ChunkListBlobContainerFolder), // and the folders
+    typeof(ChunkBlob), typeof(ChunkListBlob),               // and the inherited classes
+    typeof(RepositoryBuilder))]
 internal class Blob
 {
     protected readonly BlockBlobClient            client;
     private readonly   AsyncLazy<BlobProperties?> properties;
 
-    [ComponentInternal(typeof(BlobContainerFolder<>))]
+    [ComponentInternal(typeof(BlobContainerFolder<>), typeof(ChunkBlob), typeof(ChunkListBlob))]
     public Blob(BlockBlobClient client)
     {
         this.client     = client;
