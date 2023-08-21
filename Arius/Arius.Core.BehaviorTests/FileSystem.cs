@@ -2,6 +2,7 @@
 using Arius.Core.Models;
 using Arius.Core.Services;
 using System.Text.RegularExpressions;
+using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.BehaviorTests;
@@ -41,7 +42,7 @@ static class FileSystem
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 
-    public static void CreateBinaryFile(string relativeName, string size)
+    public static void CreateBinaryFileIfNotExists(string relativeName, string size)
     {
         var sizeInBytes = SizeInBytes(size);
 
@@ -72,10 +73,12 @@ static class FileSystem
     public static int SizeInBytes(string size) =>
         size switch
         {
-            "BELOW_ARCHIVE_TIER_LIMIT"
-                => 12 * 1024 + 1, // 12 KB
-            "ABOVE_ARCHIVE_TIER_LIMIT"
-                => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
+            "BELOW_ARCHIVE_TIER_LIMIT" => 12 * 1024 + 1, // 12 KB
+            "ABOVE_ARCHIVE_TIER_LIMIT" => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
+
+            "BELOW_CHUNKSIZE_LIMIT" => ByteBoundaryChunker.DEFAULT_MIN_CHUNK_SIZE / 2,
+            "APPROX_TEN_CHUNKS" => ByteBoundaryChunker.DEFAULT_MIN_CHUNK_SIZE * 100,
+
             _ when
                 // see https://stackoverflow.com/a/3513858
                 // see https://codereview.stackexchange.com/a/67506

@@ -27,21 +27,30 @@ class ArchiveSteps : TestBase
     [Given(@"a BinaryFile {string} of size {string}")]
     public void GivenABinaryFileOfSize(string binaryRelativeName, string size)
     {
-        FileSystem.CreateBinaryFile(binaryRelativeName, size);
+        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
     }
 
     [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier")]
     public async Task GivenALocalFileOfSizeIsArchivedToTier(string binaryRelativeName, string size, AccessTier tier)
     {
-        FileSystem.CreateBinaryFile(binaryRelativeName, size);
+        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
 
         await TestSetup.ArchiveCommandAsync(tier);
     }
 
+    [Given("a BinaryFile {string} of size {string} is deduplicated and archived to the {word} tier")]
+    public async Task GivenABinaryFileOfSizeIsDeduplicatedAndArchivedToTheCoolTier(string binaryRelativeName, string size, AccessTier tier)
+    {
+        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
+
+        await TestSetup.ArchiveCommandAsync(tier, dedup: true);
+    }
+
+
     [Given(@"a BinaryFile {string} of size {string} is archived to the {word} tier with option RemoveLocal")]
     public async Task GivenALocalFileOfSizeIsArchivedToTierWithOptionRemoveLocal(string binaryRelativeName, string size, AccessTier tier)
     {
-        FileSystem.CreateBinaryFile(binaryRelativeName, size);
+        FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
 
         await TestSetup.ArchiveCommandAsync(tier, removeLocal: true);
     }
@@ -56,7 +65,7 @@ class ArchiveSteps : TestBase
             if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Create a new file
-                FileSystem.CreateBinaryFile(f.RelativeName, f.Size);
+                FileSystem.CreateBinaryFileIfNotExists(f.RelativeName, f.Size);
             }
             else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
@@ -148,15 +157,43 @@ class ArchiveSteps : TestBase
     }
 
         
-    [Then("{int} additional Chunk(s) and Manifest(s)")]
+    [Then("{int} additional Chunk(s) and Binary/Binaries")]
     public void ThenAdditionalChunksAndManifests(int x)
+    {
+        ThenAdditionalChunksAndManifests(x.ToString(), x.ToString());
+        //var rs0 = TestSetup.Stats.SkipLast(1).Last();
+        //var rs1 = TestSetup.Stats.Last();
+
+        //(rs0.ChunkEntryCount + addtlChunks).Should().Be(rs1.ChunkEntryCount);
+        //(rs0.BinaryCount + addtlChunks).Should().Be(rs1.BinaryCount);
+    }
+    [Then("{string} additional Chunks and {string} Binaries")]
+    public void ThenAdditionalChunksAndManifests(string addtlChunksStr, string addtlBinariesStr)
     {
         var rs0 = TestSetup.Stats.SkipLast(1).Last();
         var rs1 = TestSetup.Stats.Last();
 
-        (rs0.ChunkCount + x).Should().Be(rs1.ChunkCount);
-        (rs0.BinaryCount + x).Should().Be(rs1.BinaryCount);
+        if (int.TryParse(addtlChunksStr, out int addtlChunks))
+            (rs0.ChunkEntryCount + addtlChunks).Should().Be(rs1.ChunkEntryCount);
+        else if (addtlChunksStr == "MULTIPLE")
+            (rs0.ChunkEntryCount + 1).Should().BeLessThan(rs1.ChunkEntryCount);
+        else
+            throw new NotImplementedException();
+
+        if (int.TryParse(addtlBinariesStr, out int addtlBinaries))
+            (rs0.BinaryCount + addtlBinaries).Should().Be(rs1.BinaryCount);
+        else
+            throw new NotImplementedException();
     }
+    //public void ThenAdditionalChunksAndManifests(int addtlChunks, int addtlBinaries)
+    //{
+    //    var rs0 = TestSetup.Stats.SkipLast(1).Last();
+    //    var rs1 = TestSetup.Stats.Last();
+
+    //    (rs0.ChunkEntryCount + addtlChunks).Should().Be(rs1.ChunkEntryCount);
+    //    (rs0.BinaryCount + addtlBinaries).Should().Be(rs1.BinaryCount);
+    //}
+
 
     [Then("BinaryFile {string} no longer exists")]
     public void ThenBinaryFileFileNoLongerExists(string binaryRelativeName)

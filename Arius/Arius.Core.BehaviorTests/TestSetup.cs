@@ -85,7 +85,7 @@ internal static class TestSetup
 
     private static async Task AddRepoStat()
     {
-        var chunkCount = await Repository.CountChunksAsync();
+        var chunkEntryCount = await Repository.CountChunkEntriesAsync();
         var binaryCount = await Repository.CountBinariesAsync();
 
         //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
@@ -93,9 +93,9 @@ internal static class TestSetup
 
         //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
 
-        Stats.Add(new(chunkCount, binaryCount));
+        Stats.Add(new(chunkEntryCount, binaryCount));
     }
-    public record AriusRepositoryStats(int ChunkCount, int BinaryCount);
+    public record AriusRepositoryStats(int ChunkEntryCount, int BinaryCount);
     public static List<AriusRepositoryStats> Stats { get; } = new();
 
 

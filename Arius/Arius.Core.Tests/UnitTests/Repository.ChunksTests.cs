@@ -39,6 +39,16 @@ class ChunkRepositoryTests : TestBase
 
         // the BinaryExists
         // the chunk does not
+        // the metadata is set
+
+        // check when chunking a file that has one chunk only
+
+        // archive as 1 binary
+        // then archive duplicate again but chunked
+
+        // archive as chunked
+        // then archive duplicate as binary
+
 
         throw new NotImplementedException();
     }
