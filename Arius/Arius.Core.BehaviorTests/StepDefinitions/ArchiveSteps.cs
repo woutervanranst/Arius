@@ -170,16 +170,14 @@ class ArchiveSteps : TestBase
         FileSystem.Move(sourceRelativeBinaryName, targetRelativeBinaryName, moveBinary: false, movePointer: true);
     }
 
-
-
-    [Then("{int} additional Chunk(s) and Binary/Binaries")]
-    public void ThenAdditionalChunksAndManifests(int x)
+    [Then("{int} additional Chunk(s)")]
+    public void ThenAdditionalChunks(int addtlChunks)
     {
-        ThenAdditionalChunksAndManifests(x.ToString(), x.ToString());
+        ThenAdditionalChunks(addtlChunks.ToString());
     }
 
-    [Then("{string} additional Chunk(s) and {string} additional Binary/Binaries")]
-    public void ThenAdditionalChunksAndManifests(string addtlChunksStr, string addtlBinariesStr)
+    [Then("{string} additional Chunk(s)")]
+    public void ThenAdditionalChunks(string addtlChunksStr)
     {
         var rs0 = TestSetup.Stats.SkipLast(1).Last();
         var rs1 = TestSetup.Stats.Last();
@@ -190,6 +188,18 @@ class ArchiveSteps : TestBase
             (rs0.ChunkEntryCount + 1).Should().BeLessThan(rs1.ChunkEntryCount);
         else
             throw new NotImplementedException();
+    }
+
+    [Then("{int} additional Binary/Binaries")]
+    public void ThenAdditionalBinaries(int addtlBinaries)
+    {
+        ThenAdditionalBinaries(addtlBinaries.ToString());
+    }
+    [Then("{string} additional Binary/Binaries")]
+    public void ThenAdditionalBinaries(string addtlBinariesStr)
+    {
+        var rs0 = TestSetup.Stats.SkipLast(1).Last();
+        var rs1 = TestSetup.Stats.Last();
 
         if (int.TryParse(addtlBinariesStr, out int addtlBinaries))
             (rs0.BinaryCount + addtlBinaries).Should().Be(rs1.BinaryCount);
@@ -203,6 +213,14 @@ class ArchiveSteps : TestBase
         var rs1 = TestSetup.Stats.Last();
 
         (rs0.PointerFileEntryCount + x).Should().Be(rs1.PointerFileEntryCount);
+    }
+    [Then("{int} additional ChunkList(s)")]
+    public void ThenAdditionalChunkLists(int x)
+    {
+        var rs0 = TestSetup.Stats.SkipLast(1).Last();
+        var rs1 = TestSetup.Stats.Last();
+
+        (rs0.ChunkListCount + x).Should().Be(rs1.ChunkListCount);
     }
 
 

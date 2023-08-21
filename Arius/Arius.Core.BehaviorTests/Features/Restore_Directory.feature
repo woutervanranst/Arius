@@ -25,7 +25,6 @@ Background:
 		| taxes.doc        |                          | dir1\\wouter.txt   |
             # taxes.doc and wouter.txt will have the same chunks
 
-@tag1
 Scenario: Synchronize and download a directory
     # Restore with Synchronize, Download, Directory
     Given a clean restore directory

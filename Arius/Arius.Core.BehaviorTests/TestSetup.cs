@@ -88,15 +88,19 @@ internal static class TestSetup
         var chunkEntryCount = await Repository.CountChunkEntriesAsync();
         var binaryCount     = await Repository.CountBinariesAsync();
 
+
+
         //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
         //var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
 
         //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
         var pfeCount = await Repository.CountPointerFileEntriesAsync();
 
-        Stats.Add(new(chunkEntryCount, binaryCount, pfeCount));
+        var clCount = await GetChunkListCount();
+
+        Stats.Add(new(chunkEntryCount, binaryCount, pfeCount, clCount));
     }
-    public record AriusRepositoryStats(int ChunkEntryCount, int BinaryCount, int PointerFileEntryCount);
+    public record AriusRepositoryStats(int ChunkEntryCount, int BinaryCount, int PointerFileEntryCount, int ChunkListCount);
     public static List<AriusRepositoryStats> Stats { get; } = new();
 
 
@@ -157,6 +161,8 @@ internal static class TestSetup
                 await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
         }
     }
+
+    public static async Task<int> GetChunkListCount() => await container.GetBlobsAsync(prefix: $"{BlobContainer.CHUNK_LISTS_FOLDER_NAME}/").CountAsync();
 
     public static BlobClient GetBlobClient(string folder, ChunkHash h) => GetBlobClient(folder, h.Value);
     public static BlobClient GetBlobClient(string folder, byte[] hash) => GetBlobClient(folder, hash.BytesToHexString());
