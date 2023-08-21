@@ -91,7 +91,7 @@ internal partial class Repository
     /// Get the Chunk Count (by counting the ChunkEntries in the database)
     /// </summary>
     /// <returns></returns>
-    public async Task<int> CountChunksAsync()
+    public async Task<int> CountChunkEntriesAsync()
     {
         await using var db = GetStateDbContext();
         return await db.ChunkEntries.CountAsync();
