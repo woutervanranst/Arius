@@ -360,7 +360,7 @@ internal partial class ArchiveCommand
             {
                 // If the file has been chunked in multiple chunks, create a ChunkList and a separate Binary ChunkEntry
                 await repo.CreateChunkListAsync(bf.BinaryHash, chs);
-                return await repo.CreateChunkEntryAsync(bf, totalArchivedLength, totalIncrementalLength, chs.Count, null /* accesstier is undefined for a chunked binary */);
+                return await repo.CreateChunkEntryAsync(bf, totalArchivedLength, 0 /* the incrementalLength is in the ChunkEntries of the Chunks */, chs.Count, null /* accesstier is undefined for a chunked binary */);
             }
             else
             {
