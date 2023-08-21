@@ -140,11 +140,21 @@ this.ScenarioInitialize(scenarioInfo);
         
         [NUnit.Framework.TestAttribute()]
         [NUnit.Framework.DescriptionAttribute("Archive one file deduplicated")]
-        [NUnit.Framework.TestCaseAttribute("df1.txt", "BELOW_CHUNKSIZE_LIMIT", "Cool", "1", "1", "Cool", "HYDRATED", null)]
-        [NUnit.Framework.TestCaseAttribute("df2.txt", "APPROX_TEN_CHUNKS", "Cool", "MORE_THAN_ONE", "1", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.CategoryAttribute("archive")]
+        [NUnit.Framework.CategoryAttribute("dedup")]
+        [NUnit.Framework.TestCaseAttribute("df10.txt", "BELOW_CHUNKSIZE_LIMIT", "Cool", "1", "1", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("df11.txt", "APPROX_TEN_CHUNKS", "Cool", "MORE_THAN_ONE", "1", "Cool", "HYDRATED", null)]
+        [NUnit.Framework.TestCaseAttribute("df12.txt", "APPROX_TEN_CHUNKS", "Archive", "MORE_THAN_ONE", "1", "Cold", "HYDRATED", null)]
         public void ArchiveOneFileDeduplicated(string relativeName, string size, string toTier, string additionalChunks, string additionalBinaries, string actualTier, string hydratedStatus, string[] exampleTags)
         {
-            string[] tagsOfScenario = exampleTags;
+            string[] @__tags = new string[] {
+                    "archive",
+                    "dedup"};
+            if ((exampleTags != null))
+            {
+                @__tags = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Concat(@__tags, exampleTags));
+            }
+            string[] tagsOfScenario = @__tags;
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             argumentsOfScenario.Add("RelativeName", relativeName);
             argumentsOfScenario.Add("Size", size);
@@ -154,7 +164,7 @@ this.ScenarioInitialize(scenarioInfo);
             argumentsOfScenario.Add("ActualTier", actualTier);
             argumentsOfScenario.Add("HydratedStatus", hydratedStatus);
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive one file deduplicated", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 30
+#line 31
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -164,18 +174,83 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 31
+#line 32
  testRunner.Given(string.Format("a BinaryFile \"{0}\" of size \"{1}\"", relativeName, size), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 32
+#line 33
  testRunner.When(string.Format("deduplicated and archived to the {0} tier", toTier), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 33
+#line 34
  testRunner.Then(string.Format("\"{0}\" additional Chunks and \"{1}\" additional Binaries", additionalChunks, additionalBinaries), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 34
- testRunner.Then(string.Format("the Chunk for BinaryFile \"{0}\" are in the {1} tier and are {2} and have OriginalL" +
-                            "ength {3}", relativeName, actualTier, hydratedStatus, size), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line 35
+ testRunner.Then(string.Format("the Chunks for BinaryFile \"{0}\" are in the {1} tier and are {2} and have Original" +
+                            "Length {3}", relativeName, actualTier, hydratedStatus, size), ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+            }
+            this.ScenarioCleanup();
+        }
+        
+        [NUnit.Framework.TestAttribute()]
+        [NUnit.Framework.DescriptionAttribute("ReArchive a deduplicated file")]
+        [NUnit.Framework.CategoryAttribute("dedup")]
+        public void ReArchiveADeduplicatedFile()
+        {
+            string[] tagsOfScenario = new string[] {
+                    "dedup"};
+            System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
+            TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("ReArchive a deduplicated file", null, tagsOfScenario, argumentsOfScenario, featureTags);
+#line 44
+this.ScenarioInitialize(scenarioInfo);
+#line hidden
+            if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
+            {
+                testRunner.SkipScenario();
+            }
+            else
+            {
+                this.ScenarioStart();
+#line 46
+ testRunner.Given("a BinaryFile \"df20.txt\" of size \"APPROX_TEN_CHUNKS\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 47
+ testRunner.When("deduplicated and archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 48
+ testRunner.Then("\"MORE_THAN_ONE\" additional Chunks and \"1\" additional Binary", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 50
+ testRunner.Given("a BinaryFile \"df21.txt\" duplicate of BinaryFile \"df20.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 51
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 53
+ testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 54
+ testRunner.Then("1 additional PointerFileEntry", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 57
+ testRunner.Given("a BinaryFile \"df22.txt\" of size \"APPROX_TEN_CHUNKS\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 58
+ testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 59
+ testRunner.Then("1 additional Chunks and Binary", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 61
+ testRunner.Given("a BinaryFile \"df23.txt\" duplicate of BinaryFile \"df22.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
+#line hidden
+#line 62
+ testRunner.When("deduplicated and archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+#line hidden
+#line 64
+ testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+#line hidden
+#line 65
+ testRunner.Then("1 additional PointerFileEntry", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -194,7 +269,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "undelete"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Undelete a file", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 46
+#line 69
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -204,39 +279,39 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 48
+#line 71
  testRunner.Given("a BinaryFile \"File2.txt\" of size \"BELOW_ARCHIVE_TIER_LIMIT\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 49
+#line 72
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 50
+#line 73
  testRunner.Then("BinaryFile \"File2.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
                         "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 52
+#line 75
  testRunner.When("BinaryFile \"File2.txt\" and its PointerFile are deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 53
+#line 76
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 54
+#line 77
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 55
+#line 78
  testRunner.Then("the PointerFileEntry for BinaryFile \"File2.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 57
+#line 80
  testRunner.When("BinaryFile \"File2.txt\" is undeleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 58
+#line 81
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 59
+#line 82
  testRunner.Then("BinaryFile \"File2.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
                         "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 60
+#line 83
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -256,7 +331,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "duplicate"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive a duplicate file that was already archived", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 63
+#line 86
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -266,29 +341,29 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 64
+#line 87
  testRunner.Given("a BinaryFile \"File30.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 65
+#line 88
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 66
+#line 89
  testRunner.Then("1 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 68
+#line 91
  testRunner.Given("a BinaryFile \"File31.txt\" duplicate of BinaryFile \"File30.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 69
+#line 92
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 70
+#line 93
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 71
+#line 94
  testRunner.Then("BinaryFile \"File30.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 72
+#line 95
  testRunner.Then("BinaryFile \"File31.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
@@ -309,7 +384,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "duplicate"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive duplicate files", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 75
+#line 98
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -319,36 +394,36 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 76
+#line 99
  testRunner.Given("a BinaryFile \"File40.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 77
+#line 100
  testRunner.Given("a BinaryFile \"File41.txt\" duplicate of BinaryFile \"File40.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 78
+#line 101
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 79
+#line 102
  testRunner.Then("1 additional Chunk and Binary", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 80
+#line 103
  testRunner.Then("BinaryFile \"File40.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 81
+#line 104
  testRunner.Then("BinaryFile \"File41.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 83
+#line 106
  testRunner.Given("a BinaryFile \"File42.txt\" duplicate of BinaryFile \"File41.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 84
+#line 107
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 85
+#line 108
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 86
+#line 109
  testRunner.Then("BinaryFile \"File42.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
@@ -363,7 +438,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive a duplicate PointerFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 90
+#line 113
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -373,27 +448,27 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 91
+#line 114
  testRunner.Given("a BinaryFile \"File50.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 92
+#line 115
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 93
+#line 116
  testRunner.Given("a Pointer of BinaryFile \"File51.txt\" duplicate of the Pointer of BinaryFile \"File" +
                         "50.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 94
+#line 117
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 96
+#line 119
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 97
+#line 120
  testRunner.Then("BinaryFile \"File50.txt\" has a PointerFile and the PointerFileEntry is marked as e" +
                         "xists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 98
+#line 121
  testRunner.Then("a PointerFileEntry for a BinaryFile \"File51.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -407,7 +482,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Rename BinaryFile with PointerFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 101
+#line 124
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -417,25 +492,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 102
+#line 125
  testRunner.Given("a BinaryFile \"File60.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 103
+#line 126
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 104
+#line 127
  testRunner.When("BinaryFile \"File60.txt\" and its PointerFile are moved to \"subdir 1\\File61.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 105
+#line 128
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 107
+#line 130
  testRunner.Then("0 additional Chunk and Binary", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 108
+#line 131
  testRunner.Then("the PointerFileEntry for BinaryFile \"File60.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 109
+#line 132
  testRunner.Then("a PointerFileEntry for a BinaryFile \"subdir 1\\File61.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -449,7 +524,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Rename BinaryFile only", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 112
+#line 135
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -459,25 +534,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 113
+#line 136
  testRunner.Given("a BinaryFile \"File70.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 114
+#line 137
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 115
+#line 138
  testRunner.When("BinaryFile \"File70.txt\" is moved to \"subdir 2\\File71.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 116
+#line 139
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 118
+#line 141
  testRunner.Then("0 additional Chunks and Binaries", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 119
+#line 142
  testRunner.Then("a PointerFileEntry for a BinaryFile \"File70.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 120
+#line 143
  testRunner.Then("a PointerFileEntry for a BinaryFile \"subdir 2\\File71.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
@@ -491,7 +566,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Archive with RemoveLocal", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 123
+#line 146
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -501,16 +576,16 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 124
+#line 147
  testRunner.Given("a BinaryFile \"File8.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 125
+#line 148
  testRunner.When("archived to the Cool tier with option RemoveLocal", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 127
+#line 150
  testRunner.Then("BinaryFile \"File8.txt\" no longer exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 128
+#line 151
  testRunner.Then("BinaryFile \"File8.txt\" has a PointerFile and the PointerFileEntry is marked as ex" +
                         "ists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
@@ -525,7 +600,7 @@ this.ScenarioInitialize(scenarioInfo);
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Rename PointerFile that no longer has a BinaryFile", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 131
+#line 154
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -535,25 +610,25 @@ this.ScenarioInitialize(scenarioInfo);
             else
             {
                 this.ScenarioStart();
-#line 132
+#line 155
  testRunner.Given("a BinaryFile \"File90.txt\" of size \"1 KB\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 133
+#line 156
  testRunner.When("archived to the Cool tier with option RemoveLocal", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 135
+#line 158
  testRunner.When("the PointerFile for BinaryFile \"File90.txt\" is moved to \"subdir 2\\File91.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 136
+#line 159
  testRunner.When("archived to the Cool tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 138
+#line 161
  testRunner.Then("the PointerFileEntry for BinaryFile \"File90.txt\" is marked as deleted", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 140
+#line 163
  testRunner.Then("a PointerFileEntry for a BinaryFile \"subdir 2\\File91.txt\" is marked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 141
+#line 164
  testRunner.Then("BinaryFile \"subdir 2\\File91.txt\" has a PointerFile and the PointerFileEntry is ma" +
                         "rked as exists", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
@@ -570,7 +645,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Corrupt Pointer", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 145
+#line 168
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -593,7 +668,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Non Matching Pointer", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 156
+#line 179
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -616,7 +691,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Stale Pointer", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 180
+#line 203
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -639,7 +714,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Update DateTime of a File or Pointer", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 193
+#line 216
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -662,7 +737,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Delete a Pointer, archive, pointer is recreated", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 196
+#line 219
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -685,7 +760,7 @@ this.ScenarioInitialize(scenarioInfo);
                     "todo"};
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Modify a binary with/without fasthash", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 199
+#line 222
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))

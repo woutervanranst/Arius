@@ -1,8 +1,10 @@
 ﻿using Arius.Core.Repositories;
+using Arius.Core.Services;
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.UnitTests;
@@ -30,45 +32,44 @@ class ChunkRepositoryTests : TestBase
     
 
     [Test]
-    public async Task UploadChunkedBunaryfdfdfAsync_OK_AlreadyExists_GracefulHandled()
+    public async Task UploadChunkAsync_ChunkAlreadyExistsButNotInDb_GracefulRecovery()
     {
-        // the metaata is set
-        // the chunkentry matches
-        // the totals match
-        // is the incremental length double counted -- once for the chunk and once for the binary?
+        // Given
+        TestSetup.StageArchiveTestDirectory(out FileInfo file);
+        await ArchiveCommand();
 
-        // the BinaryExists
-        // the chunk does not
-        // the metadata is set
+        var bfi = FileSystemService.GetBinaryFileInfo(file);
+        var fs  = new FileService(NullLogger<FileService>.Instance, new SHA256Hasher(Repository.Options.Passphrase));
+        var bf  = await fs.GetExistingBinaryFileAsync(TestSetup.ArchiveTestDirectory, bfi, false);
 
-        // check when chunking a file that has one chunk only
+        var ce0  = await Repository.GetChunkEntryAsync(bf.BinaryHash);
+        var bc0  = await Repository.CountBinariesAsync();
+        var cce0 = await Repository.CountChunkEntriesAsync();
 
-        // archive as 1 binary
-        // then archive duplicate again but chunked
+        // When the db is 'lost'
+        //file.Delete();
+        await Repository.DeleteChunkEntryAsync(bf.ChunkHash);
 
-        // archive as chunked
-        // then archive duplicate as binary
+        // Then
+        var bc1  = await Repository.CountBinariesAsync();
+        bc1.Should().Be(bc0 - 1);
 
+        var cce1 = await Repository.CountChunkEntriesAsync();
+        cce1.Should().Be(cce0 - 1);
 
-        throw new NotImplementedException();
-    }
+        Assert.CatchAsync(async () => await Repository.GetChunkEntryAsync(bf.ChunkHash));
 
-    [Test]
-    public async Task UploadChunkAsync_OK_AlreadyExists_GracefulHandled()
-    {
-        // the metaata is set
-        // the chunkentry matches
+        // When the archivecommand is re-run
+        await ArchiveCommand();
 
-        throw new NotImplementedException();
-    }
+        // The db is gracefully recovered
+        var ce2 = await Repository.GetChunkEntryAsync(bf.BinaryHash);
 
-    [Test]
-    public async Task UploadChunkAsync_AlreadyExists_GracefulHandled()
-    {
-        // TODO test the case where a is already uploaded but does not exist in the db - the part with the OriginalContentLength etc
-        // look for // return bbc.Length; // TODO what if the chunkentry does not exist
-
-        throw new NotImplementedException();
+        ce2.AccessTier.Should().Be(ce0.AccessTier);
+        ce2.ArchivedLength.Should().Be(ce0.ArchivedLength);
+        ce2.ChunkCount.Should().Be(ce0.ChunkCount);
+        ce2.IncrementalLength.Should().Be(ce0.IncrementalLength);
+        ce2.OriginalLength.Should().Be(ce0.OriginalLength);
     }
 
     [Test]

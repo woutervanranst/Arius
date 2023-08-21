@@ -27,20 +27,43 @@ Scenario Outline: Archive one file
 		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cold       | HYDRATED       |
 		| f4 d.txt     | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
 
+@archive @dedup
 Scenario Outline: Archive one file deduplicated
 	Given a BinaryFile "<RelativeName>" of size "<Size>" 
 	When deduplicated and archived to the <ToTier> tier
 	Then "<AdditionalChunks>" additional Chunks and "<AdditionalBinaries>" additional Binaries
-	Then the Chunk for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus> and have OriginalLength <Size>
+	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus> and have OriginalLength <Size>
 
 	Examples:
-		| RelativeName | Size                  | ToTier | AdditionalChunks | AdditionalBinaries | ActualTier | HydratedStatus |
-		| df1.txt       | BELOW_CHUNKSIZE_LIMIT | Cool   | 1                | 1                  | Cool       | HYDRATED       |
+		| RelativeName | Size                  | ToTier  | AdditionalChunks | AdditionalBinaries | ActualTier | HydratedStatus |
+		| df10.txt     | BELOW_CHUNKSIZE_LIMIT | Cool    | 1                | 1                  | Cool       | HYDRATED       |
+		| df11.txt     | APPROX_TEN_CHUNKS     | Cool    | MORE_THAN_ONE    | 1                  | Cool       | HYDRATED       |
+		| df12.txt     | APPROX_TEN_CHUNKS     | Archive | MORE_THAN_ONE    | 1                  | Cold       | HYDRATED       |
 
-		| df2.txt       | APPROX_TEN_CHUNKS     | Cool   | MORE_THAN_ONE         | 1                  | Cool       | HYDRATED       |
-		#| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cold    | Cold             | HYDRATED           |
-		#| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cold             | HYDRATED           |
-		#| f4 d.txt     | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive          | NOT_HYDRATED       |
+@dedup
+Scenario: ReArchive a deduplicated file
+		# Archive a deduplicated file, and then archive as not deduplicated
+	Given a BinaryFile "df20.txt" of size "APPROX_TEN_CHUNKS"
+	When deduplicated and archived to the Cool tier
+	Then "MORE_THAN_ONE" additional Chunks and "1" additional Binary
+
+	Given a BinaryFile "df21.txt" duplicate of BinaryFile "df20.txt"
+	When archived to the Cool tier
+
+	Then 0 additional Chunks and Binaries
+	Then 1 additional PointerFileEntry
+
+		# The reverse: archive a file (not deduplicated) and then archive as deduplicated
+	Given a BinaryFile "df22.txt" of size "APPROX_TEN_CHUNKS"
+	When archived to the Cool tier
+	Then 1 additional Chunks and Binary
+
+	Given a BinaryFile "df23.txt" duplicate of BinaryFile "df22.txt"
+	When deduplicated and archived to the Cool tier
+
+	Then 0 additional Chunks and Binaries
+	Then 1 additional PointerFileEntry
+
 
 @archive @file @undelete
 Scenario: Undelete a file

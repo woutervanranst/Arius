@@ -75,7 +75,7 @@ internal partial class Repository
 
                     try
                     {
-                        return await GetChunkEntryAsync(chunk.ChunkHash); // return bbc.Length;
+                        return await GetChunkEntryAsync(chunk.ChunkHash); // TODO why would this ever exist ?
                     }
                     catch (InvalidOperationException)
                     {
@@ -84,8 +84,7 @@ internal partial class Repository
                         var archivedLength = await cb.GetArchivedLength() ?? 0;
                         var accessTier     = await cb.GetAccessTierAsync();
                         
-                        var ce = await CreateChunkEntryAsync(chunk, originalLength, archivedLength , await cb.GetAccessTierAsync()); // TODO unit test
-                        return ce;
+                        return await CreateChunkEntryAsync(chunk, originalLength, archivedLength , accessTier);
                     }
                 }
             }
