@@ -29,8 +29,8 @@ internal partial class Repository
 
         logger.LogDebug($"Creating ChunkList for '{bh}'...");
 
-        if (chunkHashes.Count == 1)
-            return; //do not create a ChunkList for only one ChunkHash
+        //if (chunkHashes.Count == 1)
+        //    return; //do not create a ChunkList for only one ChunkHash
 
         var bbc = container.ChunkLists.GetBlob(bh.Value.BytesToHexString());
 

@@ -307,11 +307,7 @@ internal partial class ArchiveCommand
             int degreeOfParallelism = 0;
 
             await Parallel.ForEachAsync(chunksToUpload.Reader.ReadAllAsync(),
-                new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = options.TransferChunked_ParallelChunkTransfers
-
-                },
+                new ParallelOptions { MaxDegreeOfParallelism = options.TransferChunked_ParallelChunkTransfers },
                 async (chunk, cancellationToken) =>
                 {
                     var i = Interlocked.Add(ref degreeOfParallelism, 1); // store in variable that is local since threads will ramp up and set the dop value to much higher before the next line is hit
@@ -360,13 +356,16 @@ internal partial class ArchiveCommand
                 });
             await chunkTask; //this task will always be compete at this point
 
-            // Create the ChunkList
-            await repo.CreateChunkListAsync(bf.BinaryHash, chs);
-
-            // Create ChunkEntry
-            var ce = await repo.CreateChunkEntryAsync(bf, totalArchivedLength, totalIncrementalLength, chs.Count, null /* accesstier is undefined for a chunked binary */); 
-
-            return ce;
+            if (chs.Count > 1)
+            {
+                // If the file has been chunked in multiple chunks, create a ChunkList and a separate Binary ChunkEntry
+                await repo.CreateChunkListAsync(bf.BinaryHash, chs);
+                return await repo.CreateChunkEntryAsync(bf, totalArchivedLength, totalIncrementalLength, chs.Count, null /* accesstier is undefined for a chunked binary */);
+            }
+            else
+            {
+                return await repo.GetChunkEntryAsync(bf.BinaryHash);
+            }
         }
     }
 
