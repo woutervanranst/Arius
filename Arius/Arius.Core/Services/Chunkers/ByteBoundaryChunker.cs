@@ -9,9 +9,10 @@ namespace Arius.Core.Services.Chunkers;
 
 internal class ByteBoundaryChunker : Chunker
 {
+    internal const int DEFAULT_MIN_CHUNK_SIZE = 1024 * 4; // 4 KB minimum (i.o. 1 KB) has better performance characteristics (empirically tested)
     public ByteBoundaryChunker(IHashValueProvider hashValueProvider, 
         int bufferSize = 1024 * 24,   // with an average chunk size of 14 KB at 4 KB min size, setting this sufficiently high enough to minimize allocations
-        int minChunkSize = 1024 * 4)  // 4 KB minimum (i.o. 1 KB) has better performance characteristics (empirically tested)
+        int minChunkSize = DEFAULT_MIN_CHUNK_SIZE)  
         : base(hashValueProvider)
     {
         this.bufferSize = bufferSize;
