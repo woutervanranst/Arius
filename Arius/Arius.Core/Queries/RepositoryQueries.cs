@@ -1,20 +1,16 @@
 ﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
+using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Arius.Core.Repositories.StateDb;
-using PostSharp.Patterns.Model;
 
 namespace Arius.Core.Queries;
 
-[NotifyPropertyChanged]
+//[NotifyPropertyChanged]
 public interface IQueryFolderResponse
 {
     //public enum HYDRATIONSTATE
@@ -30,7 +26,7 @@ public interface IQueryFolderResponse
 
 
 
-[NotifyPropertyChanged]
+//[NotifyPropertyChanged]
 internal record QueryFolderResponse : IQueryFolderResponse
 {
     public QueryFolderResponse(string name)
