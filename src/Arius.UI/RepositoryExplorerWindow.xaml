@@ -7,6 +7,8 @@
         mc:Ignorable="d"
         Title="RepositoryExplorerWindow" Height="450" Width="800">
     <Grid>
+
+        <Button></Button>
         
     </Grid>
 </Window>

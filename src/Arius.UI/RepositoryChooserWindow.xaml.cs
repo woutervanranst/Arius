@@ -8,6 +8,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI;
@@ -25,13 +26,15 @@ public partial class RepositoryChooserWindow : Window
 
 public partial class ChooseRepositoryViewModel : ObservableObject
 {
-    private readonly Facade               facade;
-    private readonly Debouncer            debouncer = new();
+    private readonly Facade     facade;
+    private readonly IMessenger messenger;
+    private readonly Debouncer  debouncer = new();
 
 
-    public ChooseRepositoryViewModel(Facade facade)
+    public ChooseRepositoryViewModel(Facade facade, IMessenger messenger)
     {
-        this.facade = facade;
+        this.facade    = facade;
+        this.messenger = messenger;
 
         LoadState();
 
@@ -151,13 +154,25 @@ public partial class ChooseRepositoryViewModel : ObservableObject
     private async Task OpenRepositoryAsync()
     {
         if (!Directory.Exists(LocalDirectory))
+        {
+            MessageBox.Show("The local directory does not exist. Please select a valid directory.", App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
             return;
-
+        }
         if (StorageAccountError)
+        {
+            MessageBox.Show("There was an error with the storage account. Please ensure your account details are correct.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
-
+        }
         if (string.IsNullOrEmpty(SelectedContainerName))
+        {
+            MessageBox.Show("No container is selected. Please select a container before proceeding.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
+        }
+        if (string.IsNullOrEmpty(Passphrase))
+        {
+            MessageBox.Show("Passphrase cannot be empty. Please enter a valid passphrase.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         try
         {
@@ -166,13 +181,19 @@ public partial class ChooseRepositoryViewModel : ObservableObject
             var repositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
 
             SaveState();
+
+            messenger.Send(new RepositoryChosenMessage(repositoryFacade));
         }
         catch (ArgumentException e)
         {
-            MessageBox.Show("Invalid password");
+            LoadingRemote = false;
+            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (Exception e)
         {
+            LoadingRemote = false;
+            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
         }
         finally
         {
@@ -187,6 +208,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject
         AccountName    = Settings.Default.AccountName;
         AccountKey     = Settings.Default.AccountKey;
         LocalDirectory = Settings.Default.LocalDirectory;
+        Passphrase     = Settings.Default.Passphrase;
     }
 
     private void SaveState()
@@ -195,6 +217,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject
         Settings.Default.AccountKey            = AccountKey;
         Settings.Default.LocalDirectory        = LocalDirectory;
         Settings.Default.SelectedContainerName = SelectedContainerName;
+        Settings.Default.Passphrase            = Passphrase;
         Settings.Default.Save();
     }
 }

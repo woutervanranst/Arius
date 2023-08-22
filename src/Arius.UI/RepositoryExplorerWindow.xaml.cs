@@ -28,19 +28,22 @@ public partial class RepositoryExplorerWindow : Window
     }
 }
 
-public class ExploreRepositoryViewModel : ObservableObject
+public partial class ExploreRepositoryViewModel : ObservableObject
 {
-    private RepositoryFacade currentRepository;
 
-    public RepositoryFacade CurrentRepository
-    {
-        get => currentRepository;
-        set => SetProperty(ref currentRepository, value);
-    }
+    [ObservableProperty]
+    private RepositoryFacade repository;
 
-    public void SetRepository(RepositoryFacade repository)
-    {
-        CurrentRepository = repository;
-        // Load additional data or perform other actions related to the chosen repository
-    }
+
+    //public RepositoryFacade CurrentRepository
+    //{
+    //    get => currentRepository;
+    //    set => SetProperty(ref currentRepository, value);
+    //}
+
+    //public void SetRepository(RepositoryFacade repository)
+    //{
+    //    CurrentRepository = repository;
+    //    // Load additional data or perform other actions related to the chosen repository
+    //}
 }
