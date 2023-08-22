@@ -36,6 +36,8 @@ internal class CommandInterceptor : ICommandInterceptor
                 // AccountKey was not set in the command line, so we try to get it from the environment variable
                 o1.AccountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
             }
+
+            Program.ContainerName = o1.ContainerName;
         }
 
         if (options is ArchiveCommandOptions o2)
@@ -49,6 +51,7 @@ internal class CommandInterceptor : ICommandInterceptor
             }
 
             o2.VersionUtc = versionUtc;
+            Program.CommandName = "archive";
         }
         else if (options is RestoreCommandOptions o3)
         {
@@ -59,6 +62,8 @@ internal class CommandInterceptor : ICommandInterceptor
 
                 o3.Path = new DirectoryInfo("/archive"); //when runnning in a docker container
             }
+
+            Program.CommandName = "restore";
         }
         else
         {

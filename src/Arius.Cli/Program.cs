@@ -94,16 +94,16 @@ public static class Program
     private static DirectoryInfo LogDirectory         { get; }
     private static DateTime      LogTimestamp         { get; }
 
-    private static string CommandName
+    internal static string CommandName
     {
-        get => !string.IsNullOrWhiteSpace(commandName) ? commandName : throw new InvalidOperationException($"{nameof(CommandName)}was not set by the CommandHandlder");
+        get => !string.IsNullOrWhiteSpace(commandName) ? commandName : throw new InvalidOperationException($"{nameof(CommandName)} was not set by the CommandHandlder");
         set => commandName = value;
     }
     private static string? commandName;
 
-    private static string ContainerName
+    internal static string ContainerName
     {
-        get => !string.IsNullOrWhiteSpace(containerName) ? containerName : throw new InvalidOperationException($"{nameof(ContainerName)}was not set by the CommandHandlder");
+        get => !string.IsNullOrWhiteSpace(containerName) ? containerName : throw new InvalidOperationException($"{nameof(ContainerName)} was not set by the CommandHandlder");
         set => containerName = value;
     }
     private static string? containerName;

@@ -1,15 +1,14 @@
-using System;
-using System.ComponentModel;
-using System.IO;
-using System.Threading.Tasks;
 using Arius.Cli.Utils;
-using Arius.Core.Commands.Archive;
 using Arius.Core.Extensions;
 using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Arius.Cli.Commands;
 
@@ -24,7 +23,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     private readonly IAnsiConsole               console;
     private readonly ILogger<ArchiveCliCommand> logger;
-    private readonly Facade                  facade;
+    private readonly Facade                     facade;
 
     internal class ArchiveCommandOptions : RepositoryOptions
     {

@@ -6,6 +6,10 @@
     },
     "archive with args": {
       "commandName": "Project",
+      "commandLineArgs": "archive C:\\Users\\woute\\Documents\\AriusTest -n %ARIUS_ACCOUNT_NAME% -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --tier cool"
+    },
+    "archive with args and dedup": {
+      "commandName": "Project",
       "commandLineArgs": "archive C:\\Users\\woute\\Documents\\AriusTest -n %ARIUS_ACCOUNT_NAME% -k %ARIUS_ACCOUNT_KEY% -p woutervr -c test --fasthash --dedup --tier cool"
     },
     "restore": {
@@ -14,7 +18,7 @@
     },
     "restore BIG": {
       "commandName": "Project",
-      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p Zamoli12 -c archivededup --synchronize"
+      "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c archivededup --synchronize"
     }
   }
 }
