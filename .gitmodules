@@ -1,0 +1,3 @@
+[submodule "src/WouterVanRanst.Utils"]
+	path = src/WouterVanRanst.Utils
+	url = https://github.com/woutervanranst/utils
