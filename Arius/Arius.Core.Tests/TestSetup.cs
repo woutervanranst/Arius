@@ -1,15 +1,12 @@
-﻿using System;
+﻿using Arius.Core.Facade;
+using Azure.Storage.Blobs;
+using Microsoft.Extensions.Logging.Abstractions;
+using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Facade;
-using Arius.Core.Repositories;
-using Azure.Storage.Blobs;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NUnit.Framework;
 
 namespace Arius.Core.Tests;
 

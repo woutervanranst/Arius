@@ -43,9 +43,6 @@
     <Compile Update="Features\Archive_File.feature.cs">
       <DependentUpon>Archive_File.feature</DependentUpon>
     </Compile>
-    <Compile Update="Features\Restore_Synchronize.feature.cs">
-      <DependentUpon>Restore_Synchronize.feature</DependentUpon>
-    </Compile>
   </ItemGroup>
 
   <ItemGroup>
@@ -54,10 +51,6 @@
       <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
     </SpecFlowFeatureFiles>
     <SpecFlowFeatureFiles Update="Features\Archive_File.feature">
-      <Visible>$(UsingMicrosoftNETSdk)</Visible>
-      <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
-    </SpecFlowFeatureFiles>
-    <SpecFlowFeatureFiles Update="Features\Restore_Synchronize.feature">
       <Visible>$(UsingMicrosoftNETSdk)</Visible>
       <CodeBehindFile>%(RelativeDir)%(Filename).feature$(DefaultLanguageSourceExtension)</CodeBehindFile>
     </SpecFlowFeatureFiles>

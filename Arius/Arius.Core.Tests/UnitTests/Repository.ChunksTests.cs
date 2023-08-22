@@ -3,7 +3,6 @@ using Arius.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -50,30 +49,5 @@ class ChunkRepositoryTests : TestBase
         ce2.ChunkCount.Should().Be(ce0.ChunkCount);
         ce2.IncrementalLength.Should().Be(ce0.IncrementalLength);
         ce2.OriginalLength.Should().Be(ce0.OriginalLength);
-    }
-
-    [Test]
-    public async Task SetAllChunks()
-    {
-        // the tier of a chunkenetry of a chunked binary in the db is not set
-        // archive tier things are not updated
-
-
-        // restore chunked binary
-
-
-        // chunk reuses
-
-        throw new NotImplementedException();
-
-    }
-
-    [Test]
-    public async Task AnArchiveWithAllChunksInCoolAreMigratedToCold()
-    {
-        // the tier of a chunkenetry of a chunked binary in the db is not set
-        // archive tier things are not updated
-
-        throw new NotImplementedException();
     }
 }

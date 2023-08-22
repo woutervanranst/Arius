@@ -140,22 +140,22 @@ static class FileSystem
     public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
     {
         IEnumerable<FileInfoBase> archiveFiles, restoredFiles;
-        var fsf = new FileSystemService(new NullLogger<FileSystemService>());
+        //var fsf = new FileSystemService(NullLogger<FileSystemService>.Instance);
 
         if (compareBinaryFile && comparePointerFile)
         {
-            archiveFiles  = fsf.GetAllFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetAllFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetAllFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetAllFileInfos(RestoreDirectory);
         }
         else if (compareBinaryFile)
         {
-            archiveFiles  = fsf.GetBinaryFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetBinaryFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetBinaryFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetBinaryFileInfos(RestoreDirectory);
         }
         else if (comparePointerFile)
         {
-            archiveFiles  = fsf.GetPointerFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetPointerFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetPointerFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetPointerFileInfos(RestoreDirectory);
         }
         else
             throw new ArgumentException();
@@ -165,11 +165,10 @@ static class FileSystem
 
     public static void RestoreBinaryFileEqualToArchiveBinaryFile(string relativeBinaryFile)
     {
-        var afi = GetFileInfo(ArchiveDirectory, relativeBinaryFile);
-        var rfi = GetFileInfo(RestoreDirectory, relativeBinaryFile);
+        var afi = FileSystemService.GetBinaryFileInfo(ArchiveDirectory, relativeBinaryFile);
+        var rfi = FileSystemService.GetBinaryFileInfo(RestoreDirectory, relativeBinaryFile);
 
-        new FileInfoComparer().Equals(afi, rfi);
-
+        new FileInfoBaseComparer().Equals(afi, rfi);
     }
 
 
@@ -179,24 +178,24 @@ static class FileSystem
     public static           IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
 
 
-    private class FileInfoComparer : IEqualityComparer<FileInfo>
-    {
-        private readonly SHA256Hasher hasher = new("somesalt");
+    //private class FileInfoComparer : IEqualityComparer<FileInfo>
+    //{
+    //    private readonly SHA256Hasher hasher = new("somesalt");
 
-        public bool Equals(FileInfo x, FileInfo y)
-        {
-            return x.Name == y.Name &&
-                   x.Length == y.Length &&
-                   x.CreationTimeUtc == y.CreationTimeUtc &&
-                   x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
-        }
+    //    public bool Equals(FileInfo x, FileInfo y)
+    //    {
+    //        return x.Name == y.Name &&
+    //               x.Length == y.Length &&
+    //               x.CreationTimeUtc == y.CreationTimeUtc &&
+    //               x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
+    //               hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
+    //    }
 
-        public int GetHashCode(FileInfo obj)
-        {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
-        }
-    }
+    //    public int GetHashCode(FileInfo obj)
+    //    {
+    //        return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
+    //    }
+    //}
     private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
     {
         private readonly SHA256Hasher hasher = new("somesalt");

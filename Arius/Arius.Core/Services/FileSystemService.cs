@@ -93,6 +93,7 @@ internal class FileSystemService
     public static PointerFileInfo GetPointerFileInfo(string fileName) => GetPointerFileInfo(GetFileInfo(fileName));
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
     public static PointerFileInfo GetPointerFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetPointerFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+    public static PointerFileInfo GetPointerFileInfo(DirectoryInfo root, string relativeName) => GetPointerFileInfo(Path.Combine(root.FullName, relativeName));
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
     public static PointerFileInfo GetPointerFileInfo(FileInfoBase fib)
     {
@@ -116,6 +117,7 @@ internal class FileSystemService
     public static BinaryFileInfo GetBinaryFileInfo(PointerFile pf)                           => GetBinaryFileInfo(pf.FullName);
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>
     public static BinaryFileInfo GetBinaryFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+    public static BinaryFileInfo GetBinaryFileInfo(DirectoryInfo root, string relativeName) => GetBinaryFileInfo(Path.Combine(root.FullName, relativeName));
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>
     public static BinaryFileInfo GetBinaryFileInfo(string fileName)                          => GetBinaryFileInfo(GetFileInfo(fileName));
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>

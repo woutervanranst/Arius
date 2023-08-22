@@ -374,7 +374,7 @@ class ArchiveSteps : TestBase
         var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
         var ce = await Repository.GetChunkEntryAsync(pfe.BinaryHash);
         
-        if (tier == "null")
+        if (tier == "NULL")
             ce.AccessTier.Should().BeNull();
         else
             ce.AccessTier.Should().Be((AccessTier)tier);
