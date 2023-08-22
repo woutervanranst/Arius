@@ -12,18 +12,27 @@ internal class StorageAccountQueries
 {
     private readonly ILogger<StorageAccountQueries> logger;
     private readonly IStorageAccountOptions          options;
-    private readonly BlobServiceClient              blobServiceClient;
+    //private readonly BlobServiceClient              blobServiceClient;
 
     public StorageAccountQueries(ILogger<StorageAccountQueries> logger, IStorageAccountOptions options)
     {
         this.logger  = logger;
         this.options = options;
-
-        this.blobServiceClient = options.GetBlobServiceClient();
     }
 
-    public IAsyncEnumerable<string> GetContainerNamesAsync()
+    public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
     {
+        var bco = new BlobClientOptions
+        {
+            Retry =
+            {
+                MaxRetries     = maxRetries,
+                NetworkTimeout = TimeSpan.FromSeconds(5),
+            }
+        };
+
+        var blobServiceClient = options.GetBlobServiceClient(bco);
+
         return blobServiceClient.GetBlobContainersAsync().Select(bci => bci.Name);
     }
 }

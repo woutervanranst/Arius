@@ -57,7 +57,7 @@ public class Facade
 
 public class StorageAccountFacade
 {
-    private readonly ILoggerFactory        loggerFactory;
+    private readonly ILoggerFactory         loggerFactory;
     private readonly IStorageAccountOptions storageAccountOptions;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
@@ -70,12 +70,11 @@ public class StorageAccountFacade
         this.storageAccountOptions = options;
     }
 
-    public IAsyncEnumerable<string> GetContainerNamesAsync()
+    public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
     {
-        //var saq = services.GetRequiredService<StorageAccountQueries>();
         var saq = new StorageAccountQueries(loggerFactory.CreateLogger<StorageAccountQueries>(), storageAccountOptions);
 
-        return saq.GetContainerNamesAsync();
+        return saq.GetContainerNamesAsync(maxRetries);
     }
 
     /// <summary>
