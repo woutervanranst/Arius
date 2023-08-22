@@ -47,6 +47,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="15" />
                 </Grid.RowDefinitions>
 
                 <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Azure" FontWeight="Bold" FontSize="20"/>
@@ -56,7 +57,7 @@
                     <TextBox.Style>
                         <Style TargetType="TextBox">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding AccountError}" Value="True">
+                                <DataTrigger Binding="{Binding StorageAccountError}" Value="True">
                                     <Setter Property="BorderBrush" Value="Red"/>
                                     <Setter Property="BorderThickness" Value="1"/>
                                 </DataTrigger>
@@ -70,7 +71,7 @@
                     <TextBox.Style>
                         <Style TargetType="TextBox">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding AccountError}" Value="True">
+                                <DataTrigger Binding="{Binding StorageAccountError}" Value="True">
                                     <Setter Property="BorderBrush" Value="Red"/>
                                     <Setter Property="BorderThickness" Value="1"/>
                                 </DataTrigger>
@@ -83,7 +84,20 @@
                 <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding SelectedContainerName}" />
 
                 <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
-                <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
+                <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding RepositoryError}" Value="True">
+                                    <Setter Property="BorderBrush" Value="Red"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
+
+                <ProgressBar Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="1" IsIndeterminate="{Binding LoadingRemote}" IsEnabled="{Binding LoadingRemote}" />
             </Grid>
 
             <!--

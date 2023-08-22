@@ -23,8 +23,8 @@ public partial class RepositoryChooserWindow : Window
 
 public class ChooseRepositoryViewModel : ObservableObject
 {
-    private readonly Facade    facade;
-    private readonly Debouncer debouncer = new();
+    private readonly Facade               facade;
+    private readonly Debouncer            debouncer = new();
 
 
     public ChooseRepositoryViewModel(Facade facade)
@@ -71,7 +71,7 @@ public class ChooseRepositoryViewModel : ObservableObject
             {
                 debouncer.Debounce(async () =>
                 {
-                    if (CanLoadContainers()) await LoadContainersAsync();
+                    if (CanLoadStorageAccountFacade()) await LoadStorageAccountFacadeAsync();
                 });
             }
         }
@@ -88,7 +88,7 @@ public class ChooseRepositoryViewModel : ObservableObject
             {
                 debouncer.Debounce(async () =>
                 {
-                    if (CanLoadContainers()) await LoadContainersAsync();
+                    if (CanLoadStorageAccountFacade()) await LoadStorageAccountFacadeAsync();
                 });
             }
         }
@@ -96,7 +96,7 @@ public class ChooseRepositoryViewModel : ObservableObject
     private string accountKey;
 
     
-    public bool AccountError
+    public bool StorageAccountError
     {
         get => accountError;
         set => SetProperty(ref accountError, value);
@@ -104,32 +104,39 @@ public class ChooseRepositoryViewModel : ObservableObject
     private bool accountError;
 
 
-    private bool CanLoadContainers()
+    private bool CanLoadStorageAccountFacade()
     {
         return !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey);
     }
-
-
-    private async Task LoadContainersAsync()
+    private async Task LoadStorageAccountFacadeAsync()
     {
         try
         {
-            var storageFacade = facade.ForStorageAccount(AccountName, AccountKey);
-            ContainerNames = new ObservableCollection<string>(await storageFacade.GetContainerNamesAsync(0).ToListAsync());
+            LoadingRemote = true;
+
+            var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
+            ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
 
             if (ContainerNames.Contains(Settings.Default.SelectedContainerName))
                 SelectedContainerName = Settings.Default.SelectedContainerName;
             else if (ContainerNames.Count > 0)
                 SelectedContainerName = ContainerNames[0];
 
-            AccountError = false;
+            StorageAccountError  = false;
+            StorageAccountFacade = storageAccountFacade;
         }
         catch (Exception e)
         {
-            AccountError = true;
+            StorageAccountError         = true;
+            StorageAccountFacade = default;
+        }
+        finally
+        {
+            LoadingRemote = false;
         }
     }
-
+    private StorageAccountFacade? StorageAccountFacade { get; set; } = default;
+    
 
     public ObservableCollection<string> ContainerNames
     {
@@ -142,9 +149,81 @@ public class ChooseRepositoryViewModel : ObservableObject
     public string SelectedContainerName
     {
         get => selectedContainerName;
-        set => SetProperty(ref selectedContainerName, value);
+        set
+        {
+            if (SetProperty(ref selectedContainerName, value))
+            {
+                debouncer.Debounce(async () =>
+                {
+                    if (CanLoadRepositoryFacade()) await LoadRepositoryFacadeAsync();
+                });
+            }
+        }
     }
     private string selectedContainerName;
+
+
+    public string Passphrase
+    {
+        get => passphrase;
+        set
+        {
+            if (SetProperty(ref passphrase, value))
+            {
+                debouncer.Debounce(async () =>
+                {
+                    if (CanLoadRepositoryFacade()) await LoadRepositoryFacadeAsync();
+                });
+            }
+        }
+    }
+    private string passphrase;
+
+
+    public bool RepositoryError
+    {
+        get => repositoryError;
+        set => SetProperty(ref repositoryError, value);
+    }
+    private bool repositoryError;
+    
+
+    private bool CanLoadRepositoryFacade()
+    {
+        return StorageAccountFacade is not null && !string.IsNullOrWhiteSpace(SelectedContainerName) && !string.IsNullOrWhiteSpace(Passphrase);
+    }
+
+
+    private async Task LoadRepositoryFacadeAsync()
+    {
+        try
+        {
+            LoadingRemote = true;
+
+            RepositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
+
+            RepositoryError = false;
+        }
+        catch (Exception e)
+        {
+            RepositoryError  = true;
+            RepositoryFacade = default;
+        }
+        finally
+        {
+            LoadingRemote = false;
+        }
+    }
+    private RepositoryFacade? RepositoryFacade { get; set; }
+
+
+    public bool LoadingRemote
+    {
+        get => loadingRemote;
+        set => SetProperty(ref loadingRemote, value);
+    }
+
+    private bool loadingRemote;
 
 
     public ICommand OpenRepositoryCommand { get; }
@@ -153,7 +232,7 @@ public class ChooseRepositoryViewModel : ObservableObject
         if (!Directory.Exists(LocalDirectory))
             return false;
 
-        if (AccountError)
+        if (StorageAccountError)
             return false;
 
         if (string.IsNullOrEmpty(SelectedContainerName))

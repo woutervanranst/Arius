@@ -66,6 +66,8 @@ public partial class App : System.Windows.Application
     {
         using (host)
         {
+            throw new NotImplementedException();
+            // DISPOSE THE REPOSITORYFACADE
             //_host.Dispose();
             await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
         }
