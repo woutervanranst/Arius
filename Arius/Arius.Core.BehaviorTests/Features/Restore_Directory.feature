@@ -18,14 +18,13 @@ TODO / BACKLOG
 
 Background:
     Given a clean archive directory
-    Given the following BinaryFiles are archived to Cool tier:
+    When the following BinaryFiles are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
 		| dir1\\wouter.txt | 15 KB                    |                    |
 		| dir2\\joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |                    |
 		| taxes.doc        |                          | dir1\\wouter.txt   |
             # taxes.doc and wouter.txt will have the same chunks
 
-@tag1
 Scenario: Synchronize and download a directory
     # Restore with Synchronize, Download, Directory
     Given a clean restore directory

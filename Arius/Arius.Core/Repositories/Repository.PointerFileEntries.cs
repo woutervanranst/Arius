@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Repositories.StateDb;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 
@@ -24,7 +26,7 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime versionUtc)
     {
-        var pfe = new PointerFileEntry()
+        var pfeDto = new PointerFileEntry
         {
             BinaryHash       = pf.BinaryHash,
             RelativeName     = pf.RelativeName,
@@ -32,9 +34,9 @@ internal partial class Repository
             IsDeleted        = false,
             CreationTimeUtc  = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(),
             LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
-        };
+        }.ToPointerFileEntryDto();
 
-        return await CreatePointerFileEntryIfNotExistsAsync(pfe);
+        return await CreatePointerFileEntryIfNotExistsAsync(pfeDto);
     }
 
     /// <summary>
@@ -42,7 +44,7 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime versionUtc)
     {
-        pfe = pfe with
+        var pfeDto = pfe.ToPointerFileEntryDto() with
         {
             VersionUtc = versionUtc,
             IsDeleted = true,
@@ -50,24 +52,22 @@ internal partial class Repository
             LastWriteTimeUtc = null
         };
 
-        return await CreatePointerFileEntryIfNotExistsAsync(pfe);
+        return await CreatePointerFileEntryIfNotExistsAsync(pfeDto);
     }
 
     /// <summary>
     /// Insert the PointerFileEntry into the table storage, if a similar entry (according to the PointerFileEntryEqualityComparer) does not yet exist
     /// </summary>
-    private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
+    private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntryDto pfe)
     {
         await using var db = GetStateDbContext();
-
-        pfe = ToPlatformNeutral(pfe);
 
         var lastVersion = await db.PointerFileEntries
             .Where(pfe0 => pfe.RelativeName.Equals(pfe0.RelativeName))
             .OrderBy(pfe0 => pfe0.VersionUtc)
             .LastOrDefaultAsync();
 
-        var toAdd = !equalityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
+        var toAdd = !pfeDtoEqualityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
         if (toAdd)
         {
             await db.PointerFileEntries.AddAsync(pfe);
@@ -87,9 +87,6 @@ internal partial class Repository
 
         return CreatePointerFileEntryResult.NoChange;
     }
-
-    private static readonly PointerFileEntryEqualityComparer equalityComparer = new();
-
 
     public async Task<IEnumerable<PointerFileEntry>> GetCurrentPointerFileEntriesAsync(bool includeDeleted)
     {
@@ -133,13 +130,14 @@ internal partial class Repository
         //TODO an exception here is swallowed
 
         await using var db = GetStateDbContext();
+
         var r = await db.PointerFileEntries.AsParallel()
             .GroupBy(pfe => pfe.RelativeName)
             .Select(g => g.Where(pfe => pfe.VersionUtc <= versionUtc))
             .ToAsyncEnumerable() //TODO ParallelEnumerable? //remove this and the dependency on Linq.Async?
             .Where(c => c.Any())
             .Select(z => z.OrderBy(pfe => pfe.VersionUtc).Last())
-            .Select(pfe => ToPlatformSpecific(pfe))
+            .Select(pfe => pfe.ToPointerFileEntry())
             .ToArrayAsync();
 
         return r;
@@ -219,31 +217,5 @@ internal partial class Repository
         }
     }
 
-
-
-    private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
-
-    private static PointerFileEntry ToPlatformNeutral(PointerFileEntry platformSpecific)
-    {
-        if (platformSpecific is null)
-            return null;
-
-        if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            return platformSpecific;
-
-        return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
-    }
-
-    private static PointerFileEntry ToPlatformSpecific(PointerFileEntry platformNeutral)
-    {
-        // TODO UNIT TEST for linux pointers (already done if run in the github runner?
-
-        if (platformNeutral is null)
-            return null;
-
-        if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            return platformNeutral;
-
-        return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
-    }
+    private static readonly PointerFileEntryDtoEqualityComparer pfeDtoEqualityComparer = new();
 }

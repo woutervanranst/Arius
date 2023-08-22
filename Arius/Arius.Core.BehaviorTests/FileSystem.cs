@@ -2,6 +2,7 @@
 using Arius.Core.Models;
 using Arius.Core.Services;
 using System.Text.RegularExpressions;
+using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.BehaviorTests;
@@ -41,22 +42,9 @@ static class FileSystem
     public static bool Exists(DirectoryInfo root, string relativeName) => File.Exists(GetFileName(root, relativeName));
     public static long Length(DirectoryInfo root, string relativeName) => new FileInfo(GetFileName(root, relativeName)).Length;
 
-    public static void CreateBinaryFile(string relativeName, string size)
+    public static void CreateBinaryFileIfNotExists(string relativeName, string size)
     {
-        var sizeInBytes = size switch
-        {
-            "BELOW_ARCHIVE_TIER_LIMIT"
-                => 12 * 1024 + 1, // 12 KB
-            "ABOVE_ARCHIVE_TIER_LIMIT"
-                => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
-            _ when
-                // see https://stackoverflow.com/a/3513858
-                // see https://codereview.stackexchange.com/a/67506
-                int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
-                => size0 * 1024,
-            _ =>
-                throw new ArgumentOutOfRangeException()
-        };
+        var sizeInBytes = SizeInBytes(size);
 
         if (Exists(ArchiveDirectory, relativeName))
         {
@@ -81,6 +69,24 @@ static class FileSystem
             File.WriteAllBytes(fileName, data);
         }
     }
+
+    public static int SizeInBytes(string size) =>
+        size switch
+        {
+            "BELOW_ARCHIVE_TIER_LIMIT" => 12 * 1024 + 1, // 12 KB
+            "ABOVE_ARCHIVE_TIER_LIMIT" => 1024 * 1024 + 1, // Note: the file needs to be big enough (> 1 MB) to put into Archive storage (see ChunkBlobBase.SetAccessTierPerPolicyAsync)
+
+            "BELOW_CHUNKSIZE_LIMIT" => ByteBoundaryChunker.DEFAULT_MIN_CHUNK_SIZE / 2,
+            "APPROX_TEN_CHUNKS" => ByteBoundaryChunker.DEFAULT_MIN_CHUNK_SIZE * 100,
+
+            _ when
+                // see https://stackoverflow.com/a/3513858
+                // see https://codereview.stackexchange.com/a/67506
+                int.TryParse(Regex.Match(size, @"(?<size>\d*) KB").Groups["size"].Value, out var size0)
+                => size0 * 1024,
+            _ =>
+                throw new ArgumentOutOfRangeException()
+        };
 
     public static void DuplicateBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
     {
@@ -134,22 +140,21 @@ static class FileSystem
     public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
     {
         IEnumerable<FileInfoBase> archiveFiles, restoredFiles;
-        var fsf = new FileSystemService(new NullLogger<FileSystemService>());
 
         if (compareBinaryFile && comparePointerFile)
         {
-            archiveFiles  = fsf.GetAllFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetAllFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetAllFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetAllFileInfos(RestoreDirectory);
         }
         else if (compareBinaryFile)
         {
-            archiveFiles  = fsf.GetBinaryFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetBinaryFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetBinaryFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetBinaryFileInfos(RestoreDirectory);
         }
         else if (comparePointerFile)
         {
-            archiveFiles  = fsf.GetPointerFileInfos(ArchiveDirectory);
-            restoredFiles = fsf.GetPointerFileInfos(RestoreDirectory);
+            archiveFiles  = fileSystemService.GetPointerFileInfos(ArchiveDirectory);
+            restoredFiles = fileSystemService.GetPointerFileInfos(RestoreDirectory);
         }
         else
             throw new ArgumentException();
@@ -159,11 +164,10 @@ static class FileSystem
 
     public static void RestoreBinaryFileEqualToArchiveBinaryFile(string relativeBinaryFile)
     {
-        var afi = GetFileInfo(ArchiveDirectory, relativeBinaryFile);
-        var rfi = GetFileInfo(RestoreDirectory, relativeBinaryFile);
+        var afi = FileSystemService.GetBinaryFileInfo(ArchiveDirectory, relativeBinaryFile);
+        var rfi = FileSystemService.GetBinaryFileInfo(RestoreDirectory, relativeBinaryFile);
 
-        new FileInfoComparer().Equals(afi, rfi);
-
+        new FileInfoBaseComparer().Equals(afi, rfi);
     }
 
 
@@ -173,24 +177,24 @@ static class FileSystem
     public static           IEnumerable<PointerFileInfo> GetPointerFileInfos(this DirectoryInfo di) => fileSystemService.GetPointerFileInfos(di);
 
 
-    private class FileInfoComparer : IEqualityComparer<FileInfo>
-    {
-        private readonly SHA256Hasher hasher = new("somesalt");
+    //private class FileInfoComparer : IEqualityComparer<FileInfo>
+    //{
+    //    private readonly SHA256Hasher hasher = new("somesalt");
 
-        public bool Equals(FileInfo x, FileInfo y)
-        {
-            return x.Name == y.Name &&
-                   x.Length == y.Length &&
-                   x.CreationTimeUtc == y.CreationTimeUtc &&
-                   x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
-        }
+    //    public bool Equals(FileInfo x, FileInfo y)
+    //    {
+    //        return x.Name == y.Name &&
+    //               x.Length == y.Length &&
+    //               x.CreationTimeUtc == y.CreationTimeUtc &&
+    //               x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
+    //               hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
+    //    }
 
-        public int GetHashCode(FileInfo obj)
-        {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
-        }
-    }
+    //    public int GetHashCode(FileInfo obj)
+    //    {
+    //        return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
+    //    }
+    //}
     private class FileInfoBaseComparer : IEqualityComparer<FileInfoBase>
     {
         private readonly SHA256Hasher hasher = new("somesalt");
@@ -201,12 +205,12 @@ static class FileSystem
                    x.Length == y.Length &&
                    x.CreationTimeUtc == y.CreationTimeUtc &&
                    x.LastWriteTimeUtc == y.LastWriteTimeUtc &&
-                   hasher.GetHashValue(x.FullName).Equals(hasher.GetHashValue(y.FullName));
+                   hasher.GetBinaryHash(x.FullName).Equals(hasher.GetBinaryHash(y.FullName));
         }
 
         public int GetHashCode(FileInfoBase obj)
         {
-            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetHashValue(obj.FullName));
+            return HashCode.Combine(obj.Name, obj.Length, obj.LastWriteTimeUtc, hasher.GetBinaryHash(obj.FullName));
         }
     }
 }

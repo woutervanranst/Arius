@@ -84,18 +84,20 @@ internal partial class SHA256Hasher : IHashValueProvider
         if (h == null)
             return false;
 
-        if (h.Value.Length != 64)
+        if (h.Value.Length != 32)
             return false;
 
-        return SHA265WordRegex().Match(h.Value).Success;
+        return true;
+
+        //return SHA265WordRegex().Match(h.Value.BytesToHexString()).Success;
     }
 
 
-    [GeneratedRegex("^[a-f0-9]{64}$")]
-    private static partial Regex SHA265WordRegex(); //https://stackoverflow.com/a/6630280/1582323 with A-F removed since we do .ToLower() in BytesToString
+    //[GeneratedRegex("^[a-f0-9]{64}$")]
+    //private static partial Regex SHA265WordRegex(); //https://stackoverflow.com/a/6630280/1582323 with A-F removed since we do .ToLower() in BytesToString
 
 
-    internal string GetHashValue(string fullName)
+    private byte[] GetHashValue(string fullName) // WARNING byte arrays are value types - two arrays with the same content are not equal -- do not make this method public or beware of quirky bugs
     {
         using var saltStream   = new MemoryStream(saltBytes);
         using var fs           = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
@@ -103,7 +105,7 @@ internal partial class SHA256Hasher : IHashValueProvider
 
         return saltedStream.CalculateSHA256Hash();
     }
-    internal async Task<string> GetHashValueAsync(string fullName)
+    private async Task<byte[]> GetHashValueAsync(string fullName) // WARNING byte arrays are value types - two arrays with the same content are not equal -- do not make this method public or beware of quirky bugs
     {
         using var       saltStream   = new MemoryStream(saltBytes);
         await using var fs           = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
@@ -111,7 +113,7 @@ internal partial class SHA256Hasher : IHashValueProvider
 
         return await saltedStream.CalculateSHA256HashAsync();
     }
-    private string GetHashValue(byte[] bytes)
+    private byte[] GetHashValue(byte[] bytes) // WARNING byte arrays are value types - two arrays with the same content are not equal -- do not make this method public or beware of quirky bugs
     {
         using var saltStream   = new MemoryStream(saltBytes);
         using var s            = new MemoryStream(bytes);

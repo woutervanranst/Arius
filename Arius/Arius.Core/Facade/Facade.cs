@@ -175,8 +175,6 @@ public class RepositoryFacade : IDisposable
 
         var rco = new RestoreCommandOptions(Repository, root, synchronize, download, keepPointers, pointInTimeUtc);
 
-        // TODO IREstoreCommandOptions.Validator
-
         var cmd = new RestoreCommand(loggerFactory, Repository);
 
         return await cmd.ExecuteAsync(rco);

@@ -64,7 +64,23 @@ internal static class StopwatchExtensions
         return (MBbs, Mbps, seconds);
     }
 
-    public async static Task<(double MBps, double Mbps, double seconds, T1, T2, T3)> GetSpeedAsync<T1, T2, T3>(this Stopwatch sw, long length, Func<Task<(T1, T2, T3)>> action)
+    public static async Task<(double MBps, double Mbps, double seconds, T1)> GetSpeedAsync<T1>(this Stopwatch sw, long length, Func<Task<T1>> action)
+    {
+        sw.Restart();
+        sw.Start();
+
+        var t1 = await action();
+
+        sw.Stop();
+
+        var MBbs    = Math.Round(length / (1024 * 1024 * sw.Elapsed.TotalSeconds), 3);
+        var Mbps    = Math.Round(length * 8 / (1024 * 1024 * sw.Elapsed.TotalSeconds), 3);
+        var seconds = Math.Round(sw.Elapsed.TotalSeconds, 3);
+
+        return (MBbs, Mbps, seconds, t1);
+    }
+
+    public static async Task<(double MBps, double Mbps, double seconds, T1, T2, T3)> GetSpeedAsync<T1, T2, T3>(this Stopwatch sw, long length, Func<Task<(T1, T2, T3)>> action)
     {
         sw.Restart();
         sw.Start();

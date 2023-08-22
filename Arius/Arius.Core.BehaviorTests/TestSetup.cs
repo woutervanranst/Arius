@@ -85,17 +85,22 @@ internal static class TestSetup
 
     private static async Task AddRepoStat()
     {
-        var chunkCount = await Repository.GetAllChunkBlobs().CountAsync();
-        var binaryCount = await Repository.CountBinariesAsync();
+        var chunkEntryCount = await Repository.CountChunkEntriesAsync();
+        var binaryCount     = await Repository.CountBinariesAsync();
+
+
 
         //var currentWithDeletedPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(true)).ToArray();
         //var currentExistingPfes = (await repo.PointerFileEntries.GetCurrentEntriesAsync(false)).ToArray();
 
         //var allPfes = (await repo.PointerFileEntries.GetPointerFileEntriesAsync()).ToArray();
+        var pfeCount = await Repository.CountPointerFileEntriesAsync();
 
-        Stats.Add(new(chunkCount, binaryCount));
+        var clCount = await GetChunkListCount();
+
+        Stats.Add(new(chunkEntryCount, binaryCount, pfeCount, clCount));
     }
-    public record AriusRepositoryStats(int ChunkCount, int BinaryCount);
+    public record AriusRepositoryStats(int ChunkEntryCount, int BinaryCount, int PointerFileEntryCount, int ChunkListCount);
     public static List<AriusRepositoryStats> Stats { get; } = new();
 
 
@@ -157,9 +162,15 @@ internal static class TestSetup
         }
     }
 
+    public static async Task<int> GetChunkListCount() => await container.GetBlobsAsync(prefix: $"{BlobContainer.CHUNK_LISTS_FOLDER_NAME}/").CountAsync();
+
+    public static BlobClient GetBlobClient(string folder, ChunkHash h) => GetBlobClient(folder, h.Value);
+    public static BlobClient GetBlobClient(string folder, byte[] hash) => GetBlobClient(folder, hash.BytesToHexString());
+    public static BlobClient GetBlobClient(string folder, string name) => container.GetBlobClient($"{folder}/{name}");
+
     public static async Task<bool> RehydrateChunkExists(ChunkHash ch)
     {
-        var c = container.GetBlobClient($"{BlobContainer.REHYDRATED_CHUNKS_FOLDER_NAME}/{ch}");
+        var c = GetBlobClient(BlobContainer.REHYDRATED_CHUNKS_FOLDER_NAME, ch);
 
         var p = await c.GetPropertiesAsync();
         var s = p.Value.ArchiveStatus;
@@ -171,8 +182,8 @@ internal static class TestSetup
 
     public static async Task CopyChunkToRehydrateFolderAndArchiveOriginal(ChunkHash ch)
     {
-        var source = container.GetBlobClient($"{BlobContainer.CHUNKS_FOLDER_NAME}/{ch}");
-        var target = container.GetBlobClient($"{BlobContainer.REHYDRATED_CHUNKS_FOLDER_NAME}/{ch}");
+        var source = GetBlobClient(BlobContainer.CHUNKS_FOLDER_NAME, ch);
+        var target = GetBlobClient(BlobContainer.REHYDRATED_CHUNKS_FOLDER_NAME, ch);
 
         var t = await target.StartCopyFromUriAsync(source.Uri);
         await t.WaitForCompletionAsync();

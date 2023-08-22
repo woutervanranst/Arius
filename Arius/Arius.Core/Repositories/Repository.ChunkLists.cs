@@ -17,7 +17,7 @@ internal partial class Repository
 {
     private const string JSON_GZIP_CONTENT_TYPE  = "application/json+gzip";
 
-    internal async Task CreateChunkListAsync(BinaryHash bh, ChunkHash[] chunkHashes)
+    internal async Task CreateChunkListAsync(BinaryHash bh, IList<ChunkHash> chunkHashes)
     {
         /* When writing to blob
          * Logging
@@ -29,32 +29,33 @@ internal partial class Repository
 
         logger.LogDebug($"Creating ChunkList for '{bh}'...");
 
-        if (chunkHashes.Length == 1)
+        if (chunkHashes.Count == 1)
             return; //do not create a ChunkList for only one ChunkHash
 
-        var bbc = await container.ChunkLists.GetBlobAsync(bh.Value);
+        var bbc = container.ChunkLists.GetBlob(bh.Value.BytesToHexString());
 
         RestartUpload:
 
         try
         {
-            using (var ts = await bbc.OpenWriteAsync())
+            await using (var ts = await bbc.OpenWriteAsync()) // NOTE keep in this using {} statement as this closes the stream after use
             {
-                using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
-                await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value));
+                await using var gzs = new GZipStream(ts, CompressionLevel.Optimal);
+                await JsonSerializer.SerializeAsync(gzs, chunkHashes.Select(cf => cf.Value.BytesToHexString()));
             }
 
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
+            await bbc.SetAccessTierAsync(AccessTier.Cold);
             await bbc.SetContentTypeAsync(JSON_GZIP_CONTENT_TYPE);
 
-            logger.LogInformation($"Creating ChunkList for '{bh}'... done with {chunkHashes.Length} chunks");
+            logger.LogInformation($"Creating ChunkList for '{bh}'... done with {chunkHashes.Count} chunks");
         }
         catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
         {
             // The blob already exists
+            // TODO should this error logic not reside in OpenWriteAsync()?
             try
             {
-                if (bbc.ContentType != JSON_GZIP_CONTENT_TYPE || bbc.Length == 0)
+                if (await bbc.GetContentType() != JSON_GZIP_CONTENT_TYPE || await bbc.GetArchivedLength() == 0)
                 {
                     logger.LogWarning($"Corrupt ChunkList for {bh}. Deleting and uploading again");
                     await bbc.DeleteAsync();
@@ -89,16 +90,16 @@ internal partial class Repository
     {
         logger.LogDebug($"Getting ChunkList for '{bh}'...");
 
-        if ((await GetBinaryPropertiesAsync(bh)).ChunkCount == 1)
+        if ((await GetChunkEntryAsync(bh)).ChunkCount == 1)
             yield return bh;
         else
         {
-            var b = await container.ChunkLists.GetBlobAsync(bh.Value);
+            var b = container.ChunkLists.GetBlob(bh);
 
-            if (!b.Exists)
+            if (!await b.ExistsAsync())
                 throw new InvalidOperationException($"ChunkList for '{bh}' does not exist");
             
-            if (b.ContentType != JSON_GZIP_CONTENT_TYPE)
+            if (await b.GetContentType() != JSON_GZIP_CONTENT_TYPE)
                 throw new InvalidOperationException($"ChunkList '{bh}' does not have the '{JSON_GZIP_CONTENT_TYPE}' ContentType and is potentially corrupt");
 
             var i = 0;
@@ -111,7 +112,7 @@ internal partial class Repository
                     throw new InvalidOperationException("ChunkHash is null");
 
                 i++;
-                yield return new ChunkHash(ch);
+                yield return new ChunkHash(ch.HexStringToBytes());
             }
 
             logger.LogInformation($"Getting chunks for binary '{bh}'... found {i} chunks");

@@ -1,11 +1,9 @@
 ﻿using Arius.Core.Commands;
-using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Tests;

@@ -10,6 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Repositories.BlobRepository;
+using Microsoft.Data.Sqlite;
+using Arius.Core.Repositories.StateDb;
 
 namespace Arius.Core.Repositories;
 
@@ -17,9 +19,9 @@ internal partial class RepositoryBuilder
 {
     internal interface IStateDbContextFactory : IDisposable
     {
-        Task                      LoadAsync();
-        Repository.StateDbContext GetContext();
-        Task                      SaveAsync(DateTime versionUtc);
+        Task           LoadAsync();
+        StateDbContext GetContext();
+        Task           SaveAsync(DateTime versionUtc);
     }
 
     //internal class AriusDbContextMockedFactory : IAriusDbContextFactory
@@ -55,14 +57,15 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobEntry = await container.States.GetBlobEntriesAsync()
-                .OrderBy(b => b.FullName)
+            var lastStateBlobEntry = await container.States.GetBlobs()
+                .Select(be => be.Name)
+                .OrderBy(b => b)
                 .LastOrDefaultAsync();
 
             if (lastStateBlobEntry is null)
             {
                 // Create new DB
-                await using var db = new Repository.StateDbContext(localDbPath);
+                await using var db = new StateDbContext(localDbPath);
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");
@@ -70,21 +73,38 @@ internal partial class RepositoryBuilder
             else
             {
                 // Load existing DB
-                var lastStateBlob = await container.States.GetBlobAsync(lastStateBlobEntry);
-                await using var ss = await lastStateBlob.OpenReadAsync();
-                await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
-                await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+                var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
+                await using (var ss = await lastStateBlob.OpenReadAsync())
+                {
+                    await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
+                    await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-                logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                    logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                }
+
+                await using var con = new SqliteConnection($"Data Source={localDbPath}");
+                await con.OpenAsync();
+
+                await using var cmd     = con.CreateCommand();
+                cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type == 'table' and name == 'BinaryProperties'";
+                var             version = (long)cmd.ExecuteScalar();
+
+                if (version == 1)
+                {
+                    // this is a V2 database
+                    // TODO implement migration
+                    throw new NotImplementedException();
+                }
+
             }
         }
 
-        public Repository.StateDbContext GetContext()
+        public StateDbContext GetContext()
         {
             if (!File.Exists(localDbPath))
                 throw new InvalidOperationException("The state database file does not exist. Was it already committed?"); //TODO test?
 
-            return new Repository.StateDbContext(localDbPath, HasChanges);
+            return new StateDbContext(localDbPath, HasChanges);
         }
 
         private bool hasChanges = false;
@@ -118,7 +138,7 @@ internal partial class RepositoryBuilder
                 logger.LogInformation($"Vacuumed database from {originalLength.GetBytesReadable()} to {vacuumedlength.GetBytesReadable()}");
 
             // Upload the db
-            var b = await container.States.GetBlobAsync($"{versionUtc:s}");
+            var b = container.States.GetBlob($"{versionUtc:s}");
             await using (var ss = File.OpenRead(vacuumedDbPath)) //do not convert to inline using; the File.Delete will fail
             {
                 await using var ts = await b.OpenWriteAsync(throwOnExists: false); //the throwOnExists: false is a hack for the unit tests, they run in rapid  succession and the DateTimeNowUtc is the same
@@ -129,12 +149,12 @@ internal partial class RepositoryBuilder
             await b.SetContentTypeAsync(CryptoService.ContentType);
 
             // Move the previous states to Archive storage
-            await foreach (var be in container.States.GetBlobEntriesAsync()
+            await foreach (var be in container.States.GetBlobs()
                                .OrderBy(be => be.Name)
                                .SkipLast(2)
                                .Where(be => be.AccessTier != AccessTier.Archive))
             {
-                var b0  = await container.States.GetBlobAsync(be);
+                var b0  = container.States.GetBlob(be.Name);
                 await b0!.SetAccessTierAsync(AccessTier.Archive);
             }
 

@@ -1,20 +1,20 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Arius.Core.Models;
-using Azure;
+﻿using Arius.Core.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.BlobRepository;
 
-internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where TBlob : Blob
+internal abstract class BlobContainerFolder<TBlob> where TBlob : Blob
 {
-    private readonly BlobContainerClient container;
-    private readonly string              folderName;
+    protected readonly BlobContainerClient container;
+    protected readonly string              folderName;
 
-    public BlobContainerFolder(BlobContainerClient container, string folderName)
+    protected BlobContainerFolder(BlobContainerClient container, string folderName)
     {
         this.container  = container;
         this.folderName = folderName;
@@ -23,63 +23,65 @@ internal class BlobContainerFolder<TEntry, TBlob> where TEntry : BlobEntry where
     private string GetBlobFullName(string name) => $"{folderName}/{name}";
 
     /// <summary>
-    /// List all existing blobs
-    /// </summary>
-    public virtual IAsyncEnumerable<TEntry> GetBlobEntriesAsync() // TODO do we still need this (if we have the DB) and can we do away with the BlobEntry etc?
-    {
-        return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => CreateEntry(bi));
-    }
-    protected virtual TEntry CreateEntry(BlobItem bi) => (TEntry)new BlobEntry(bi);
-
-    /// <summary>
     /// Get an (existing or not existing) Blob
     /// Check whether the blob exists through the Exists property
     /// </summary>
-    public Task<TBlob> GetBlobAsync(TEntry entry) => GetBlobAsync<TBlob>(entry);
-    protected virtual Task<TBlob> GetBlobAsync<T>(TEntry entry)
-    {
-        var p = new Blob.Properties(entry);
-        return Task.FromResult((TBlob)new Blob(container.GetBlockBlobClient(entry.FullName), p));
-    }
-
-    /// <summary>
-    /// Get an (existing or not existing) Blob
-    /// Check whether the blob exists through the Exists property
-    /// </summary>
-    public async Task<TBlob> GetBlobAsync(string name) => await GetBlobAsync<TBlob>(name);
-    protected virtual async Task<TBlob> GetBlobAsync<T>(string name)
+    public TBlob GetBlob(string name) => GetBlob<TBlob>(name);
+    protected TBlob GetBlob<T>(string name)
     {
         var bbc = container.GetBlockBlobClient(GetBlobFullName(name));
-
-        try
-        {
-            var bp = await bbc.GetPropertiesAsync();
-            var p  = new Blob.Properties(bp.Value);
-
-            return CreateAzureBlob(bbc, p);
-        }
-        catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
-        {
-            // Blob does not exist
-            var p = new Blob.Properties(exists: false);
-            return CreateAzureBlob(bbc, p);
-        }
+        return CreateAzureBlob(bbc);
     }
 
-    protected virtual TBlob CreateAzureBlob(BlockBlobClient client, Blob.Properties properties) => (TBlob)new Blob(client, properties);
-
-    public async Task<Response> DeleteBlobAsync(BlobEntry entry) => await container.DeleteBlobAsync(entry.FullName);
+    protected virtual TBlob CreateAzureBlob(BlockBlobClient client) => (TBlob)new Blob(client);
 }
 
-internal class ChunkBlobContainerFolder : BlobContainerFolder<ChunkBlobEntry, ChunkBlob>
+internal class StateContainerFolder : BlobContainerFolder<Blob>
+{
+    public StateContainerFolder(BlobContainerClient container, string folderName) : base(container, folderName)
+    {
+    }
+
+    /// <summary>
+    /// List all existing blobs
+    /// </summary>
+    public virtual IAsyncEnumerable<(string Name, AccessTier? AccessTier)> GetBlobs() // NOTE this is purposefully only in this Folder -- for the other folders we rely on the backing db
+    {
+        return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => (Path.GetFileName(bi.Name), bi.Properties.AccessTier));
+    }
+}
+
+internal class ChunkBlobContainerFolder : BlobContainerFolder<ChunkBlob>
 {
     public ChunkBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
     {
     }
 
-    protected override ChunkBlobEntry CreateEntry(BlobItem bi) => new ChunkBlobEntry(bi);
+    public ChunkBlob GetBlob(ChunkHash chunkHash) => base.GetBlob<ChunkBlob>(chunkHash.Value.BytesToHexString());
 
-    public async Task<ChunkBlob> GetBlobAsync(ChunkHash chunkHash) => await base.GetBlobAsync<ChunkBlob>(chunkHash.Value);
+    protected override ChunkBlob CreateAzureBlob(BlockBlobClient client) => new ChunkBlob(client);
+}
 
-    protected override ChunkBlob CreateAzureBlob(BlockBlobClient client, Blob.Properties properties) => new ChunkBlob(client, properties);
+internal class RehydratedChunkBlobContainerFolder : ChunkBlobContainerFolder
+{
+    public RehydratedChunkBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
+    {
+    }
+
+    public async Task DeleteFolderAsync()
+    {
+        await foreach (var b in container.GetBlobsAsync(prefix: $"{folderName}/"))
+            await container.DeleteBlobAsync(b.Name);
+    }
+}
+
+internal class ChunkListBlobContainerFolder : BlobContainerFolder<ChunkListBlob>
+{
+    public ChunkListBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
+    {
+    }
+
+    public ChunkListBlob GetBlob(BinaryHash chunkHash) => base.GetBlob<ChunkListBlob>(chunkHash.Value.BytesToHexString());
+
+    protected override ChunkListBlob CreateAzureBlob(BlockBlobClient client) => new ChunkListBlob(client);
 }

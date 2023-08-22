@@ -14,42 +14,100 @@ Link to a feature: [Calculator](Arius.Core.BehaviorTests/Features/Calculator.fea
 
 @archive @file
 Scenario Outline: Archive one file
-	Given a BinaryFile "<RelativeName>" of size "<Size>" is archived to the <ToTier> tier
-	Then 1 additional Chunk and Manifest
+	Given a BinaryFile "<RelativeName>" of size "<Size>"
+	When archived to the <ToTier> tier
+	Then 1 additional Chunk
+	Then 1 additional Binary
+	Then 1 additional PointerFileEntry
+	Then 0 additional ChunkList
 	Then BinaryFile "<RelativeName>" has a PointerFile and the PointerFileEntry is marked as exists
-	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualTier> tier and are <HydratedStatus>
+	Then the Chunk for BinaryFile "<RelativeName>" are in the <ActualChunkTier> tier and are <HydratedStatus> and have OriginalLength <Size>
+	
+	Examples:
+		| RelativeName | Size                     | ToTier  | ActualChunkTier | HydratedStatus |
+		| f01.txt      | BELOW_ARCHIVE_TIER_LIMIT | Cool    | Cool            | HYDRATED       |
+		| f02.txt      | ABOVE_ARCHIVE_TIER_LIMIT | Cold    | Cold            | HYDRATED       |
+		| f03.txt      | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cold            | HYDRATED       |
+		| f04.txt      | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive         | NOT_HYDRATED   |
+
+@archive @dedup
+Scenario Outline: Archive one file deduplicated
+	Given a BinaryFile "<RelativeName>" of size "<Size>" 
+	When deduplicated and archived to the <ToTier> tier
+	Then "<AdditionalChunks>" additional Chunks
+	Then "<AdditionalBinaries>" additional Binaries
+	Then <AdditionalChunkLists> additional ChunkLists
+	Then 1 additional PointerFileEntry
+	Then the Chunks for BinaryFile "<RelativeName>" are in the <ActualChunkTier> tier and are <HydratedStatus> and have OriginalLength <Size>
+	Then the ChunkEntry for BinaryFile "<RelativeName>" is in the <ChunkEntryTier> tier
 
 	Examples:
-		| RelativeName | Size                     | ToTier  | ActualTier | HydratedStatus |
-		| f1.txt       | BELOW_ARCHIVE_TIER_LIMIT | Cool	| Cool       | HYDRATED       |
-		| f2.txt       | ABOVE_ARCHIVE_TIER_LIMIT | Cold    | Cold       | HYDRATED       |
-		| f3.txt       | BELOW_ARCHIVE_TIER_LIMIT | Archive | Cold       | HYDRATED       |
-		| f4 d.txt     | ABOVE_ARCHIVE_TIER_LIMIT | Archive | Archive    | NOT_HYDRATED   |
+		| RelativeName | Size                  | ToTier  | AdditionalChunks | AdditionalBinaries | AdditionalChunkLists | ActualChunkTier | ChunkEntryTier | HydratedStatus |
+		| df10.txt     | BELOW_CHUNKSIZE_LIMIT | Cool    | 1                | 1                  | 0                    | Cool            | Cool           | HYDRATED       |
+		| df11.txt     | APPROX_TEN_CHUNKS     | Cool    | MORE_THAN_ONE    | 1                  | 1                    | Cool            | NULL           | HYDRATED       |
+		| df12.txt     | APPROX_TEN_CHUNKS     | Archive | MORE_THAN_ONE    | 1                  | 1                    | Cold            | NULL           | HYDRATED       |
+
+@dedup
+Scenario: ReArchive a deduplicated file
+		# Archive a deduplicated file, and then archive as not deduplicated
+	Given a BinaryFile "df20.txt" of size "APPROX_TEN_CHUNKS"
+	When deduplicated and archived to the Cool tier
+	Then "MORE_THAN_ONE" additional Chunks
+	Then 1 additional Binary
+	Then 1 additional PointerFileEntry
+
+	Given a BinaryFile "df21.txt" duplicate of BinaryFile "df20.txt"
+	When archived to the Cool tier
+
+	Then 0 additional Chunks
+	Then 0 additional Binaries
+	Then 1 additional PointerFileEntry
+
+		# The reverse: archive a file (not deduplicated) and then archive as deduplicated
+	Given a BinaryFile "df22.txt" of size "APPROX_TEN_CHUNKS"
+	When archived to the Cool tier
+	Then 1 additional Chunks
+	Then 1 additional Binaries
+	Then 1 additional PointerFileEntry
+
+	Given a BinaryFile "df23.txt" duplicate of BinaryFile "df22.txt"
+	When deduplicated and archived to the Cool tier
+
+	Then 0 additional Chunks
+	Then 0 additional Binaries
+	Then 1 additional PointerFileEntry
+
 
 @archive @file @undelete
 Scenario: Undelete a file
 	# Archive initial file
-	Given a BinaryFile "File2.txt" of size "BELOW_ARCHIVE_TIER_LIMIT" is archived to the Cool tier
-	Then BinaryFile "File2.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	Given a BinaryFile "File20.txt" of size "BELOW_ARCHIVE_TIER_LIMIT"
+	When archived to the Cool tier
+	Then BinaryFile "File20.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	# Delete, then archive
-	When BinaryFile "File2.txt" and its PointerFile are deleted
+	When BinaryFile "File20.txt" and its PointerFile are deleted
 	When archived to the Cool tier
-	Then 0 additional Chunks and Manifests
-	Then the PointerFileEntry for BinaryFile "File2.txt" is marked as deleted
+	Then 0 additional Chunks
+	Then 0 additional Binaries
+	Then the PointerFileEntry for BinaryFile "File20.txt" is marked as deleted
 	# Restore
-	When BinaryFile "File2.txt" is undeleted
+	When BinaryFile "File20.txt" is undeleted
 	When archived to the Cool tier
-	Then BinaryFile "File2.txt" has a PointerFile and the PointerFileEntry is marked as exists
-	Then 0 additional Chunks and Manifests
+	Then BinaryFile "File20.txt" has a PointerFile and the PointerFileEntry is marked as exists
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	
 @archive @file @duplicate
 Scenario: Archive a duplicate file that was already archived
-	Given a BinaryFile "File30.txt" of size "1 KB" is archived to the Cool tier
-	Then 1 additional Chunks and Manifests
+	Given a BinaryFile "File30.txt" of size "1 KB"
+	When archived to the Cool tier
+	Then 1 additional Chunk
+	Then 1 additional Binary
 	# Add the duplicate file
 	Given a BinaryFile "File31.txt" duplicate of BinaryFile "File30.txt"
 	When archived to the Cool tier
-	Then 0 additional Chunks and Manifests
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	Then BinaryFile "File30.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	Then BinaryFile "File31.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	
@@ -58,56 +116,66 @@ Scenario: Archive duplicate files
 	Given a BinaryFile "File40.txt" of size "1 KB"
 	Given a BinaryFile "File41.txt" duplicate of BinaryFile "File40.txt"
 	When archived to the Cool tier
-	Then 1 additional Chunk and Manifest
+	Then 1 additional Chunk
+	Then 1 additional Binary
 	Then BinaryFile "File40.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	Then BinaryFile "File41.txt" has a PointerFile and the PointerFileEntry is marked as exists
 
 	Given a BinaryFile "File42.txt" duplicate of BinaryFile "File41.txt"
 	When archived to the Cool tier
-	Then 0 additional Chunks and Manifests
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	Then BinaryFile "File42.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	# Then 1 additional pointerfileentry
 
 
 Scenario: Archive a duplicate PointerFile
-	Given a BinaryFile "File50.txt" of size "1 KB" is archived to the Cool tier
+	Given a BinaryFile "File50.txt" of size "1 KB"
+	When archived to the Cool tier
 	Given a Pointer of BinaryFile "File51.txt" duplicate of the Pointer of BinaryFile "File50.txt"
 	When archived to the Cool tier
 
-	Then 0 additional Chunks and Manifests
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	Then BinaryFile "File50.txt" has a PointerFile and the PointerFileEntry is marked as exists
 	Then a PointerFileEntry for a BinaryFile "File51.txt" is marked as exists
 	
 
 Scenario: Rename BinaryFile with PointerFile
-	Given a BinaryFile "File60.txt" of size "1 KB" is archived to the Cool tier
+	Given a BinaryFile "File60.txt" of size "1 KB"
+	When archived to the Cool tier
 	When BinaryFile "File60.txt" and its PointerFile are moved to "subdir 1\File61.txt"
 	When archived to the Cool tier
 
-	Then 0 additional Chunk and Manifest
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	Then the PointerFileEntry for BinaryFile "File60.txt" is marked as deleted
 	Then a PointerFileEntry for a BinaryFile "subdir 1\File61.txt" is marked as exists
 
 
 Scenario: Rename BinaryFile only
-	Given a BinaryFile "File70.txt" of size "1 KB" is archived to the Cool tier
+	Given a BinaryFile "File70.txt" of size "1 KB" 
+	When archived to the Cool tier
 	When BinaryFile "File70.txt" is moved to "subdir 2\File71.txt" 
 	When archived to the Cool tier
 
-	Then 0 additional Chunks and Manifests
+	Then 0 additional Chunks
+	Then 0 additional Binaries
 	Then a PointerFileEntry for a BinaryFile "File70.txt" is marked as exists
 	Then a PointerFileEntry for a BinaryFile "subdir 2\File71.txt" is marked as exists
 
 	
 Scenario: Archive with RemoveLocal
-	Given a BinaryFile "File8.txt" of size "1 KB" is archived to the Cool tier with option RemoveLocal
+	Given a BinaryFile "File8.txt" of size "1 KB"
+	When archived to the Cool tier with option RemoveLocal
 
 	Then BinaryFile "File8.txt" no longer exists
 	Then BinaryFile "File8.txt" has a PointerFile and the PointerFileEntry is marked as exists
 
 	
 Scenario: Rename PointerFile that no longer has a BinaryFile
-	Given a BinaryFile "File90.txt" of size "1 KB" is archived to the Cool tier with option RemoveLocal
+	Given a BinaryFile "File90.txt" of size "1 KB" 
+	When archived to the Cool tier with option RemoveLocal
 
 	When the PointerFile for BinaryFile "File90.txt" is moved to "subdir 2\File91.txt"
 	When archived to the Cool tier
@@ -117,6 +185,22 @@ Scenario: Rename PointerFile that no longer has a BinaryFile
 	Then a PointerFileEntry for a BinaryFile "subdir 2\File91.txt" is marked as exists
 	Then BinaryFile "subdir 2\File91.txt" has a PointerFile and the PointerFileEntry is marked as exists
 
+Scenario: Mass tier update
+	Given a BinaryFile "File100.txt" of size "ABOVE_ARCHIVE_TIER_LIMIT"
+	When archived to the Archive tier
+	Then the Chunks for BinaryFile "File100.txt" are in the Archive tier
+
+	Given a BinaryFile "File101.txt" of size "APPROX_TEN_CHUNKS"
+	When deduplicated and archived to the Cool tier
+		# Chunks in Archive tier remain in archive tier
+	Then the Chunks for BinaryFile "File100.txt" are in the Archive tier
+	Then the Chunks for BinaryFile "File101.txt" are in the Cool tier
+
+	When archived to the Cold tier
+	Then the Chunks for BinaryFile "File100.txt" are in the Archive tier
+		# Chunks in a hydrated tier are moved to the Cold tier
+	Then the Chunks for BinaryFile "File101.txt" are in the Cold tier
+	Then the ChunkEntry for BinaryFile "File101.txt" is in the NULL tier
 
 @todo
 Scenario: Corrupt Pointer

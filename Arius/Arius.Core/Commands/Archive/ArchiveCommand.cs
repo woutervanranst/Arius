@@ -55,7 +55,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         var startStats = await repo.GetStats();
         stats.AddRemoteRepositoryStatistic(
             beforeBinaries: startStats.binaryCount,
-            beforeSize: startStats.binariesSize,
+            beforeSize: startStats.chunkSize,
             beforePointerFileEntries: startStats.currentPointerFileEntryCount);
 
 
@@ -174,7 +174,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         var endStats = await repo.GetStats();
         stats.AddRemoteRepositoryStatistic(
             afterBinaries: endStats.binaryCount,
-            afterSize: endStats.binariesSize,
+            afterSize: endStats.chunkSize,
             afterPointerFileEntries: endStats.currentPointerFileEntryCount);
         var vs = await repo.GetVersionsAsync().ToArrayAsync();
         stats.versionCount = vs.Length;

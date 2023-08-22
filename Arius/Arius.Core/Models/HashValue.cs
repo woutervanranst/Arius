@@ -1,37 +1,29 @@
-﻿namespace Arius.Core.Models;
+﻿using System;
+
+namespace Arius.Core.Models;
 
 internal abstract record Hash
 {
-    public Hash(string value)
+    public Hash(byte[] value)
     {
         Value = value;
     }
-    // TODO implement like https://github.com/Azure/azure-sdk-for-net/blob/master/sdk/storage/Azure.Storage.Blobs/src/Generated/Models/AccessTier.cs
 
-    public string Value { get; private set; } // private setter is needed for EF Core https://stackoverflow.com/a/57473609/1582323
+    public byte[] Value { get; }
 
-    public sealed override string ToString() => Value; // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
+    public sealed override string ToString() => ToShortString(); // marked sealed since records require re-overwriting https://stackoverflow.com/a/64094532/1582323
 
-    /// <summary>
+    /// <summary>`
     /// Print the first 8 characters of the value
     /// </summary>
     /// <returns></returns>
-    public string ToShortString() => Value.Left(8);
+    private /* marked as private to discourage use */ string ToShortString() => SHA256Extensions.BytesToHexString(Value[..4]);
 
-
-    //public static bool operator ==(HashValue c1, HashValue c2)
-    //{
-    //    return c1.Equals(c2);
-    //}
-
-    //public static bool operator !=(HashValue c1, HashValue c2)
-    //{
-    //    return !c1.Equals(c2);
-    //}
+    private /* marked as private to discourage use */ string ToLongString() => SHA256Extensions.BytesToHexString(Value);
 
     public override int GetHashCode()
     {
-        return Value.GetHashCode(); // HashCode.Combine(Value);
+        return BitConverter.ToInt32(Value); //return HashCode.Combine(Value); <-- this doesnt work for bytes
     }
 
     public virtual bool Equals(Hash? other)
@@ -39,32 +31,20 @@ internal abstract record Hash
         if (other is null)
             return false;
 
-        return Value == other.Value;
+        return Value.AsSpan().SequenceEqual(other.Value.AsSpan());
     }
 }
 
 internal record ChunkHash : Hash
 {
-    public ChunkHash(string value) : base(value)
+    public ChunkHash(byte[] value) : base(value)
     {
     }
-    //public ChunkHash(BinaryHash binaryHash) : base(binaryHash.Value)
-    //{
-    //}
-//#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
-//    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
-//    public override string ToString() => base.ToString(); // todo this can be overcome with making the public method 'sealed'
-//#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
-
 }
 
 internal record BinaryHash : ChunkHash // every BinaryHash is a ChunkHash
 {
-    public BinaryHash(string value) : base(value)
+    public BinaryHash(byte[] value) : base(value)
     {
     }
-//#pragma warning disable S1185 // Overriding members should do more than simply call the same member in the base class
-//    // This is required in the specific case of a record - see https://stackoverflow.com/a/64094532/1582323
-//    public override string ToString() => base.ToString(); // todo this can be overcome with making the public method 'sealed'
-//#pragma warning restore S1185 // Overriding members should do more than simply call the same member in the base class
 }

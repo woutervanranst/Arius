@@ -1,42 +1,50 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.17.0" />
-    <PackageReference Include="ConcurrentHashSet" Version="1.3.0" />
-    <PackageReference Include="FluentValidation" Version="11.6.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.9" />
-    <PackageReference Include="Nito.AsyncEx.Tasks" Version="5.1.2" />
-    <PackageReference Include="ParallelExtensionsExtras.NetFxStandard" Version="1.4.0" />
-    <PackageReference Include="PostSharp" Version="2023.0.6" />
-    <PackageReference Include="PostSharp.Patterns.Common" Version="2023.0.6" />
-    <PackageReference Include="PostSharp.Patterns.Model" Version="2023.0.6" />
-    <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
-    <PackageReference Include="System.Linq" Version="4.3.0" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.17.0" />
+		<PackageReference Include="ConcurrentHashSet" Version="1.3.0" />
+		<PackageReference Include="FluentValidation" Version="11.7.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.10" />
+		<PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
+		<PackageReference Include="Nito.AsyncEx.Tasks" Version="5.1.2" />
+		<PackageReference Include="ParallelExtensionsExtras.NetFxStandard" Version="1.4.0" />
+		<PackageReference Include="PostSharp" Version="2023.0.7" />
+		<PackageReference Include="PostSharp.Patterns.Common" Version="2023.0.7" />
+		<PackageReference Include="PostSharp.Patterns.Model" Version="2023.0.7" />
+		<PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
+		<PackageReference Include="System.Linq" Version="4.3.0" />
+		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+	</ItemGroup>
 
-  <PropertyGroup>
-	<!--See https://stackoverflow.com/a/68067278 -->
-    <VersionMajor>2</VersionMajor>
-    <VersionMinor>0</VersionMinor>
-    <VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.Date.Subtract($([System.DateTime]::new(2017, 5, 25))).TotalDays.ToString("0"))</VersionPatch>
-    <VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
-  </PropertyGroup>
+	<PropertyGroup>
+		<!--See https://stackoverflow.com/a/68067278 -->
+		<VersionMajor>2</VersionMajor>
+		<VersionMinor>0</VersionMinor>
+		<VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.Date.Subtract($([System.DateTime]::new(2017, 5, 25))).TotalDays.ToString("0"))</VersionPatch>
+		<VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
+	</PropertyGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>
-    <RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
-    <Authors>Wouter Van Ranst</Authors>
-    <Company>Blue Software</Company>
-    <Copyright>Blue Software</Copyright>
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework> <!--NOTE check specflow and postsharp support -->
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>
+		<RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
+		<Authors>Wouter Van Ranst</Authors>
+		<Company>Blue Software</Company>
+		<Copyright>Blue Software</Copyright>
 
-    <TieredCompilation>false</TieredCompilation>
-  </PropertyGroup>
+		<TieredCompilation>false</TieredCompilation>
+
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<!--See https://doc.postsharp.net/deploymentconfiguration/configuration/configuration-msbuild-->
+		<PostSharpEscalatedMessages>*</PostSharpEscalatedMessages>
+	</PropertyGroup>
 
 </Project>

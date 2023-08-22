@@ -70,7 +70,7 @@ class ByteBoundaryChunkerTests : TestBase
             if (chunk != chunks.Last())
             {
                 // each chunk (apart from the last one) ends with the delimiter
-                Assert.IsTrue(chunkBytes[(chunkBytes.Length - 2)..].SequenceEqual(chunker.Delimiter));
+                Assert.IsTrue(chunkBytes[^2..].SequenceEqual(chunker.Delimiter));
 
                 // the delimiter is the only one in this chunk
                     // ignore the delimiters in the MIN_CHUNK_SIZE part of the byte array
