@@ -272,7 +272,7 @@ class ArchiveSteps : TestBase
     }
 
     [Then(@"the Chunk(s) for BinaryFile {string} are in the {word} tier and are {word} and have OriginalLength {word}")]
-    public async Task ThenTheChunkForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier, string hydratedStatus, string sizeStr)
+    public async Task ThenTheChunkForBinaryFileAreInTheTierAndAreAndHaveOriginalLength(string binaryRelativeName, AccessTier tier, string hydratedStatus, string sizeStr)
     {
         var pfe         = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
         var chunkHashes = await Repository.GetChunkListAsync(pfe.BinaryHash).ToArrayAsync();
@@ -346,4 +346,38 @@ class ArchiveSteps : TestBase
             binaryChunkEntry.IncrementalLength.Should().Be(0); // for a chunked binary the incremental length of the binary is in the chunks
         }
     }
+
+    [Then(@"the Chunk(s) for BinaryFile {string} are in the {word} tier")]
+    public async Task ThenTheChunkForBinaryFileAreInTheTier(string binaryRelativeName, AccessTier tier)
+    {
+        var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
+        var chunkHashes = await Repository.GetChunkListAsync(pfe.BinaryHash).ToArrayAsync();
+
+        foreach (var chunkHash in chunkHashes)
+        {
+            // Check the ChunkEntries
+            var chunkEntry = await Repository.GetChunkEntryAsync(chunkHash);
+
+            chunkEntry.AccessTier.Should().Be(tier);
+
+            // Check the actual Blob
+            var b = TestSetup.GetBlobClient(BlobContainer.CHUNKS_FOLDER_NAME, chunkHash);
+            var p = (await b.GetPropertiesAsync()).Value;
+
+            chunkEntry.AccessTier.Should().BeEquivalentTo((AccessTier)p.AccessTier);
+        }
+    }
+
+    [Then("the ChunkEntry for BinaryFile {string} is in the {word} tier")]
+    public async Task ThenTheChunkEntryForBinaryFileIsInTheTier(string binaryRelativeName, string tier)
+    {
+        var pfe = await TestSetup.GetPointerFileEntryAsync(binaryRelativeName);
+        var ce = await Repository.GetChunkEntryAsync(pfe.BinaryHash);
+        
+        if (tier == "null")
+            ce.AccessTier.Should().BeNull();
+        else
+            ce.AccessTier.Should().Be((AccessTier)tier);
+    }
+
 }
