@@ -1,6 +1,6 @@
 ﻿namespace Arius.UI;
 
-public class Debouncer
+internal class Debouncer
 {
     private CancellationTokenSource cts = new CancellationTokenSource();
 

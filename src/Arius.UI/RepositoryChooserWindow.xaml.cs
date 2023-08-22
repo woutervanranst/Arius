@@ -2,11 +2,13 @@
 using Arius.UI.Properties;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI;
 
@@ -21,7 +23,7 @@ public partial class RepositoryChooserWindow : Window
     }
 }
 
-public class ChooseRepositoryViewModel : ObservableObject
+public partial class ChooseRepositoryViewModel : ObservableObject
 {
     private readonly Facade               facade;
     private readonly Debouncer            debouncer = new();
@@ -33,17 +35,12 @@ public class ChooseRepositoryViewModel : ObservableObject
 
         LoadState();
 
-        //LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
-        OpenRepositoryCommand       = new RelayCommand(OpenRepository, CanOpenRepository);
+        OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
     }
     
 
-    public string LocalDirectory
-    {
-        get => localDirectory;
-        set => SetProperty(ref localDirectory, value);
-    }
+    [ObservableProperty]
     private string localDirectory;
 
 
@@ -96,12 +93,8 @@ public class ChooseRepositoryViewModel : ObservableObject
     private string accountKey;
 
     
-    public bool StorageAccountError
-    {
-        get => accountError;
-        set => SetProperty(ref accountError, value);
-    }
-    private bool accountError;
+    [ObservableProperty]
+    private bool storageAccountError;
 
 
     private bool CanLoadStorageAccountFacade()
@@ -138,116 +131,54 @@ public class ChooseRepositoryViewModel : ObservableObject
     private StorageAccountFacade? StorageAccountFacade { get; set; } = default;
     
 
-    public ObservableCollection<string> ContainerNames
-    {
-        get => containerNames;
-        set => SetProperty(ref containerNames, value);
-    }
+    [ObservableProperty]
     private ObservableCollection<string> containerNames;
 
 
-    public string SelectedContainerName
-    {
-        get => selectedContainerName;
-        set
-        {
-            if (SetProperty(ref selectedContainerName, value))
-            {
-                debouncer.Debounce(async () =>
-                {
-                    if (CanLoadRepositoryFacade()) await LoadRepositoryFacadeAsync();
-                });
-            }
-        }
-    }
+    [ObservableProperty]
     private string selectedContainerName;
 
 
-    public string Passphrase
-    {
-        get => passphrase;
-        set
-        {
-            if (SetProperty(ref passphrase, value))
-            {
-                debouncer.Debounce(async () =>
-                {
-                    if (CanLoadRepositoryFacade()) await LoadRepositoryFacadeAsync();
-                });
-            }
-        }
-    }
+    [ObservableProperty]
     private string passphrase;
 
 
-    public bool RepositoryError
-    {
-        get => repositoryError;
-        set => SetProperty(ref repositoryError, value);
-    }
-    private bool repositoryError;
-    
-
-    private bool CanLoadRepositoryFacade()
-    {
-        return StorageAccountFacade is not null && !string.IsNullOrWhiteSpace(SelectedContainerName) && !string.IsNullOrWhiteSpace(Passphrase);
-    }
+    [ObservableProperty]
+    private bool loadingRemote;
 
 
-    private async Task LoadRepositoryFacadeAsync()
+    public ICommand OpenRepositoryCommand { get; }
+    private async Task OpenRepositoryAsync()
     {
+        if (!Directory.Exists(LocalDirectory))
+            return;
+
+        if (StorageAccountError)
+            return;
+
+        if (string.IsNullOrEmpty(SelectedContainerName))
+            return;
+
         try
         {
             LoadingRemote = true;
 
-            RepositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
+            var repositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
 
-            RepositoryError = false;
+            SaveState();
+        }
+        catch (ArgumentException e)
+        {
+            MessageBox.Show("Invalid password");
         }
         catch (Exception e)
         {
-            RepositoryError  = true;
-            RepositoryFacade = default;
         }
         finally
         {
             LoadingRemote = false;
         }
     }
-    private RepositoryFacade? RepositoryFacade { get; set; }
-
-
-    public bool LoadingRemote
-    {
-        get => loadingRemote;
-        set => SetProperty(ref loadingRemote, value);
-    }
-
-    private bool loadingRemote;
-
-
-    public ICommand OpenRepositoryCommand { get; }
-    private bool CanOpenRepository()
-    {
-        if (!Directory.Exists(LocalDirectory))
-            return false;
-
-        if (StorageAccountError)
-            return false;
-
-        if (string.IsNullOrEmpty(SelectedContainerName))
-            return false;
-
-        return true;
-    }
-
-    private void OpenRepository()
-    {
-        SaveState();
-    }
-
-
-
 
 
 
