@@ -3,7 +3,7 @@ name: Arius.Core - Test & Release Nuget Package
 on:
   push:
     paths:
-      - 'Arius/Arius.Core/**'
+      - 'src/Arius.Core/**'
         
 
 # See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
