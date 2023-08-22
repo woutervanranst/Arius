@@ -1,4 +1,6 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,19 +21,25 @@ namespace Arius.UI;
 /// </summary>
 public partial class RepositoryExplorerWindow : Window
 {
-    public RepositoryExplorerWindow(ExploreRepositoryViewModel viewModel)
+    public RepositoryExplorerWindow()
     {
         InitializeComponent();
-        DataContext = viewModel;
     }
 }
 
-public class RepositoryChosenMessage
+public class ExploreRepositoryViewModel : ObservableObject
 {
-    public RepositoryChosenMessage(Repository repository)
+    private Repository _currentRepository;
+
+    public Repository CurrentRepository
     {
-        ChosenRepository = repository;
+        get => _currentRepository;
+        set => SetProperty(ref _currentRepository, value);
     }
 
-    public Repository ChosenRepository { get; }
+    public void SetRepository(Repository repository)
+    {
+        CurrentRepository = repository;
+        // Load additional data or perform other actions related to the chosen repository
+    }
 }

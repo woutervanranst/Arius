@@ -10,24 +10,28 @@ namespace Arius.UI;
 
 public partial class App : Application
 {
-    private readonly IHost _host;
+    private readonly IHost                    _host;
+    private          RepositoryChooserWindow  _chooserWindow;
+    private          RepositoryExplorerWindow _explorerWindow;
 
     public App()
     {
         _host = Host.CreateDefaultBuilder()
-            .ConfigureServices((context, services) =>
-            {
-                ConfigureServices(context.Configuration, services);
-            })
+            .ConfigureServices(ConfigureServices)
             .Build();
+
+        var messenger = _host.Services.GetRequiredService<IMessenger>();
+        messenger.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
     }
 
-    private void ConfigureServices(IConfiguration configuration, IServiceCollection services)
+    private void ConfigureServices(IServiceCollection services)
     {
         // Configure your services here
 
         services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
+        
         services.AddSingleton<IExternalFacade, ExternalFacade>();
+        
         services.AddTransient<ChooseRepositoryViewModel>();
         services.AddTransient<ExploreRepositoryViewModel>();
 
@@ -39,9 +43,21 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         await _host.StartAsync();
+        _chooserWindow             = new RepositoryChooserWindow();
+        _chooserWindow.DataContext = _host.Services.GetRequiredService<ChooseRepositoryViewModel>();
+        _chooserWindow.Show();
+    }
 
-        var mainWindow = _host.Services.GetRequiredService<RepositoryChooserWindow>();
-        mainWindow.Show();
+    private void OnRepositoryChosen(RepositoryChosenMessage message)
+    {
+        _chooserWindow.Close();
+
+        _explorerWindow = new RepositoryExplorerWindow();
+        var viewModel = _host.Services.GetRequiredService<ExploreRepositoryViewModel>();
+        viewModel.SetRepository(message.ChosenRepository); // Pass the chosen repository to the ViewModel
+
+        _explorerWindow.DataContext = viewModel;
+        _explorerWindow.Show();
     }
 
     protected override async void OnExit(ExitEventArgs e)
