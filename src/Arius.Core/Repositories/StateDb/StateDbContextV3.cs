@@ -62,7 +62,6 @@ internal class StateDbContext : DbContext
             .HasConversion(v => v.ToString(), v => (AccessTier)v);
             //{
             //    return t.ToString();
-
             //    //if (t == AccessTier.Hot)
             //    //    return 10;
             //    //if (t == AccessTier.Cool)
