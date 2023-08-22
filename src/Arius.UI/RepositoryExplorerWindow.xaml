@@ -5,10 +5,38 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
-        Title="RepositoryExplorerWindow" Height="450" Width="800">
+        Title="{Binding WindowName}" Height="600" Width="800">
     <Grid>
 
-        <Button></Button>
-        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250" />
+            <ColumnDefinition Width="5" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <TreeView 
+                  Grid.Column="0" 
+                  ItemsSource="{Binding Folders}"
+                  DisplayMemberPath="FullPath"
+
+                  VirtualizingStackPanel.IsVirtualizing="True"
+                  VirtualizingStackPanel.VirtualizationMode="Recycling"
+        >
+
+            <TreeView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </TreeView.ItemsPanel>
+        </TreeView>
+
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+
+        <ListView Grid.Column="2">
+        </ListView>
+
+
+
+
     </Grid>
 </Window>

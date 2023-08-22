@@ -47,11 +47,27 @@ public partial class App
     protected override async void OnStartup(StartupEventArgs e)
     {
         await host.StartAsync();
-        chooserWindow = new RepositoryChooserWindow
+        //chooserWindow = new RepositoryChooserWindow
+        //{
+        //    DataContext = host.Services.GetRequiredService<ChooseRepositoryViewModel>()
+        //};
+        //chooserWindow.Show();
+
+        // DEBUG PURPOSES
+        var f   = host.Services.GetRequiredService<Facade>();
+        var saf = f.ForStorageAccount(Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"), Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY"));
+        repositoryFacade = await saf.ForRepositoryAsync("test", "woutervr");
+
+        var viewModel = host.Services.GetRequiredService<ExploreRepositoryViewModel>();
+        viewModel.Repository = repositoryFacade;
+
+        //var x = await repositoryFacade.GetEntriesAsync().ToArrayAsync();
+
+        explorerWindow = new RepositoryExplorerWindow
         {
-            DataContext = host.Services.GetRequiredService<ChooseRepositoryViewModel>()
+            DataContext = viewModel
         };
-        chooserWindow.Show();
+        explorerWindow.Show();
     }
 
     private void OnRepositoryChosen(object sender, RepositoryChosenMessage message)
