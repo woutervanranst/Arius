@@ -1,22 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
-using Arius.Core.Facade;
+﻿using Arius.Core.Facade;
 using Arius.UI.Properties;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Arius.UI;
 
@@ -30,6 +19,14 @@ public partial class RepositoryChooserWindow : Window
         InitializeComponent();
     }
 
+    private void RepositoryChooserWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ChooseRepositoryViewModel viewModel)
+        {
+            AccountKeyPasswordBox.Password = viewModel.AccountKey;
+        }
+    }
+
     private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
         if (DataContext is ChooseRepositoryViewModel viewModel)
@@ -41,7 +38,9 @@ public partial class RepositoryChooserWindow : Window
 
 public class ChooseRepositoryViewModel : ObservableObject
 {
-    private readonly Facade facade;
+    private readonly Facade    facade;
+    private readonly Debouncer debouncer = new();
+
 
     public ChooseRepositoryViewModel(Facade facade)
     {
@@ -49,55 +48,23 @@ public class ChooseRepositoryViewModel : ObservableObject
 
         LoadState();
 
-        LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
+        //LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
+        OpenRepositoryCommand       = new RelayCommand(OpenRepository, CanOpenRepository);
+
+        //=> new RelayCommand(OpenRepository, CanOpenRepository);
     }
+    
 
     public string LocalDirectory
     {
         get => localDirectory;
         set => SetProperty(ref localDirectory, value);
     }
-
     private string localDirectory;
 
 
-    public string AccountName
-    {
-        get => accountName;
-        set => SetProperty(ref accountName, value);
-    }
-
-    private string accountName;
-
-
-    public string AccountKey
-    {
-        get => accountKey;
-        set => SetProperty(ref accountKey, value);
-    }
-
-    private string accountKey;
-
-
-    public ObservableCollection<string> ContainerNames
-    {
-        get => containerNames;
-        set => SetProperty(ref containerNames, value);
-    }
-
-    private ObservableCollection<string> containerNames;
-
-
-    public string SelectedContainerName
-    {
-        get => selectedContainerName;
-        set => SetProperty(ref selectedContainerName, value);
-    }
-
-    private string selectedContainerName;
-
-
+    public ICommand SelectLocalDirectoryCommand { get; }
     private void SelectLocalDirectory()
     {
         using (var dialog = new FolderBrowserDialog())
@@ -107,31 +74,111 @@ public class ChooseRepositoryViewModel : ObservableObject
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 LocalDirectory = dialog.SelectedPath;
-                SaveState();
             }
         }
     }
 
-    public ICommand LoadContainersCommand       { get; }
-    public ICommand SelectLocalDirectoryCommand { get; }
+
+    public string AccountName
+    {
+        get => accountName;
+        set
+        {
+            if (SetProperty(ref accountName, value))
+            {
+                debouncer.Debounce(async () =>
+                {
+                    if (CanLoadContainers()) await LoadContainersAsync();
+                });
+            }
+        }
+    }
+    private string accountName;
+
+
+    public string AccountKey
+    {
+        get => accountKey;
+        set
+        {
+            if (SetProperty(ref accountKey, value))
+            {
+                debouncer.Debounce(async () =>
+                {
+                    if (CanLoadContainers()) await LoadContainersAsync();
+                });
+            }
+        }
+    }
+    private string accountKey;
+
+    
+    public bool AccountError
+    {
+        get => accountError;
+        set => SetProperty(ref accountError, value);
+    }
+    private bool accountError;
+
 
     private bool CanLoadContainers()
     {
         return !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey);
     }
 
+
     private async Task LoadContainersAsync()
     {
-        var storageFacade = facade.ForStorageAccount(AccountName, AccountKey);
-        ContainerNames = new ObservableCollection<string>(await storageFacade.GetContainerNamesAsync().ToListAsync());
-
-        if (ContainerNames.Count > 0)
+        try
         {
-            SelectedContainerName = ContainerNames[0];
-        }
+            var storageFacade = facade.ForStorageAccount(AccountName, AccountKey);
+            ContainerNames = new ObservableCollection<string>(await storageFacade.GetContainerNamesAsync(0).ToListAsync());
 
+            if (ContainerNames.Count > 0)
+            {
+                SelectedContainerName = ContainerNames[0];
+            }
+
+            AccountError = false;
+        }
+        catch (Exception e)
+        {
+            AccountError = true;
+        }
+    }
+
+
+    public ObservableCollection<string> ContainerNames
+    {
+        get => containerNames;
+        set => SetProperty(ref containerNames, value);
+    }
+    private ObservableCollection<string> containerNames;
+
+
+    public string SelectedContainerName
+    {
+        get => selectedContainerName;
+        set => SetProperty(ref selectedContainerName, value);
+    }
+    private string selectedContainerName;
+
+
+    public ICommand OpenRepositoryCommand { get; }
+    private bool CanOpenRepository()
+    {
+        throw new NotImplementedException();
+    }
+
+    private void OpenRepository()
+    {
         SaveState();
     }
+
+
+
+
+
 
     private void LoadState()
     {
