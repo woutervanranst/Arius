@@ -5,7 +5,6 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
-        Loaded="RepositoryChooserWindow_OnLoaded"
         Title="Choose Repository" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
 
     <StackPanel>
@@ -67,10 +66,9 @@
                 </TextBox>
 
                 <Label Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Content="Storage Account Key:"/>
-                <!--<TextBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding AccountKey}" />-->
-                <PasswordBox Name="AccountKeyPasswordBox" Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" PasswordChanged="PasswordBox_PasswordChanged">
-                    <PasswordBox.Style>
-                        <Style TargetType="PasswordBox">
+                <TextBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding AccountKey}">
+                    <TextBox.Style>
+                        <Style TargetType="TextBox">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding AccountError}" Value="True">
                                     <Setter Property="BorderBrush" Value="Red"/>
@@ -78,8 +76,8 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </PasswordBox.Style>
-                </PasswordBox>
+                    </TextBox.Style>
+                </TextBox>
 
                 <Label Grid.Row="3" Grid.Column="0" HorizontalAlignment="Left" Content="Container:"/>
                 <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding SelectedContainerName}" />

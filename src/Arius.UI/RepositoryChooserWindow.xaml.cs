@@ -18,22 +18,6 @@ public partial class RepositoryChooserWindow : Window
     {
         InitializeComponent();
     }
-
-    private void RepositoryChooserWindow_OnLoaded(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is ChooseRepositoryViewModel viewModel)
-        {
-            AccountKeyPasswordBox.Password = viewModel.AccountKey;
-        }
-    }
-
-    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is ChooseRepositoryViewModel viewModel)
-        {
-            viewModel.AccountKey = ((PasswordBox)sender).Password;
-        }
-    }
 }
 
 public class ChooseRepositoryViewModel : ObservableObject
@@ -167,7 +151,7 @@ public class ChooseRepositoryViewModel : ObservableObject
     public ICommand OpenRepositoryCommand { get; }
     private bool CanOpenRepository()
     {
-        throw new NotImplementedException();
+        return true;
     }
 
     private void OpenRepository()
@@ -192,7 +176,7 @@ public class ChooseRepositoryViewModel : ObservableObject
         Settings.Default.AccountName    = AccountName;
         Settings.Default.AccountKey     = AccountKey;
         Settings.Default.LocalDirectory = LocalDirectory;
-        Settings.Default.Save(); // Important: Save the settings
+        Settings.Default.Save();
     }
 }
 
