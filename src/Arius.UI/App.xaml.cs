@@ -9,17 +9,5 @@ namespace Arius.UI
     /// </summary>
     public partial class App : Application
     {
-        private readonly RepositoryExplorer mainWindow;
-
-        public App(RepositoryExplorer mainWindow)
-        {
-            this.mainWindow = mainWindow;
-        }
-
-        protected override void OnStartup(StartupEventArgs e)
-        {
-            mainWindow.Show();
-            base.OnStartup(e);
-        }
     }
 }

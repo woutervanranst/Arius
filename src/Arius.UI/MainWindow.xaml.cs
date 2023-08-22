@@ -14,9 +14,9 @@ namespace Arius.UI
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class RepositoryExplorer : Window
+    public partial class MainWindow : Window
     {
-        public RepositoryExplorer()
+        public MainWindow()
         {
             InitializeComponent();
         }
