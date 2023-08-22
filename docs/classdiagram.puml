@@ -69,6 +69,8 @@ class RepositoryFacade {
  + {static} ValidateArchiveCommandOptions(...)
 }
 
+class RepositoryBuilder
+
 class Repository
 
 class StorageAccountOptions {
@@ -86,33 +88,53 @@ class RepositoryOptions {
 rectangle "Encapsulates Blobs" {
 
     class BlobContainer {
-        - States : BlobContainerFolder
-        - ChunkLists : BlobContainerFolder
+        - States : StateContainerFolder
+        - ChunkLists : ChunkListBlobContainerFolder
         - Chunks : ChunkBlobContainerFolder
-        - RehydratedChunks : ChunkBlobContainerFolder
+        - RehydratedChunks : RehydratedChunkBlobContainerFolder
         + CreateIfNotExists()
     }
 
     class BlobContainerFolder {
-        + GetBlobEntriesAsync() : BlobEntry[]
-        + GetBlobAsync(BlobEntry)
-        + GetBlobAsync(string)
-        + DeleteBlobAsync(BlobEntry)
+        + GetBlob(string) : Blob
     }
 
-    class BlobEntry
-    class Blob {
-        + SetAccessTierAsync()
+    class StateContainerFolder {
+        + GetBlobs() : string[]
     }
 
     class ChunkBlobContainerFolder {
-        + GetBlobAsync(ChunkHash)
+        + GetBlob(ChunkHash) : ChunkBlob
     }
-    class ChunkBlobEntry {
-        - ChunkHash
+
+    class RehydratedChunkBlobContainerFolder {
+        + DeleteFolderAsync()
+    }
+
+    class ChunkListBlobContainerFolder {
+        + GetBlob(BinaryHash) : ChunkListBlob
+    }
+
+
+    class Blob {
+        ' - FullName
+        - Name
+        ' - Folder
+
+        ' + ExistsAsync()  
+        + OpenRead/WriteAsync()
+        ' + Get/SetAccessTierAsync()
+        ' + Get/SetContentType()
+        ' + Get/SetOriginalLengthMetadata()
+        ' + GetArchivedLength()
+        ' + DeleteAsync()
+
     }
     class ChunkBlob {
         - ChunkHash
+    }
+    class ChunkListBlob {
+
     }
 }
 
@@ -179,6 +201,9 @@ FileInfoBase<|-- PointerFileInfo
 FileInfoBase<|-- BinaryFileInfo
 
 ' --- OPERATIONS RELATIONSHIPS
+
+RepositoryBuilder -r- Repository : "builds"
+
 Facade --> StorageAccountFacade : "creates a"
 StorageAccountFacade --> RepositoryFacade : "creates a"
 RepositoryFacade --o Repository : "has a"
@@ -202,12 +227,19 @@ FileSystemServiceGroup -u- FileServiceGroup : "built with"
 
 BlobContainer --o BlobContainerFolder : "has many"
 
-BlobContainerFolder --o Blob : "contains many"
-ChunkBlobContainerFolder --o ChunkBlob : "contains many"
-
+StateContainerFolder -u-|> BlobContainerFolder : "is a"
 ChunkBlobContainerFolder -u-|> BlobContainerFolder : "is a"
-ChunkBlobEntry -u-|> BlobEntry : "is a"
+RehydratedChunkBlobContainerFolder -u-|> ChunkBlobContainerFolder : "is a"
+ChunkListBlobContainerFolder -u-|> BlobContainerFolder : "is a"
+
+BlobContainerFolder --o Blob : "contains many"
+StateContainerFolder --o Blob : "contains many"
+ChunkBlobContainerFolder --o ChunkBlob : "contains many"
+RehydratedChunkBlobContainerFolder --o ChunkBlob : "contains many"
+ChunkListBlobContainerFolder --o ChunkListBlob : "contains many"
+
 ChunkBlob -u-|> Blob : "is a"
+ChunkListBlob -u-|> Blob : "is a"
 
 ChunkBlob -u-|> IChunk : "is a"
 
