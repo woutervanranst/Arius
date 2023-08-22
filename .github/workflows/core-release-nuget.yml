@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: ./Arius
+        working-directory: ./src
 
     steps:
     - name: Check out code

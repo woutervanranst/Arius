@@ -16,7 +16,7 @@ env:
 
 defaults:
   run:
-    working-directory: ./Arius
+    working-directory: ./src
 
 jobs:
   artifact:
