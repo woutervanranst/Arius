@@ -49,8 +49,6 @@ public class ChooseRepositoryViewModel : ObservableObject
 
         LoadState();
 
-        ChooseLocalDirectoryCommand = new RelayCommand(ChooseLocalDirectory);
-
         LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
     }
@@ -100,17 +98,19 @@ public class ChooseRepositoryViewModel : ObservableObject
     private string selectedContainerName;
 
 
-    private void ChooseLocalDirectory()
+    private void SelectLocalDirectory()
     {
         using (var dialog = new FolderBrowserDialog())
         {
+            dialog.SelectedPath = LocalDirectory;
+
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 LocalDirectory = dialog.SelectedPath;
+                SaveState();
             }
         }
     }
-    public ICommand ChooseLocalDirectoryCommand { get; }
 
     public ICommand LoadContainersCommand       { get; }
     public ICommand SelectLocalDirectoryCommand { get; }
@@ -131,11 +131,6 @@ public class ChooseRepositoryViewModel : ObservableObject
         }
 
         SaveState();
-    }
-
-    private void SelectLocalDirectory()
-    {
-        // Logic to open a directory picker and set LocalDirectory
     }
 
     private void LoadState()

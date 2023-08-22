@@ -31,7 +31,7 @@
 
             <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
             <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory}" />
-            <Button Grid.Row="1" Grid.Column="2" Width="30"  Command="{Binding ChooseLocalDirectoryCommand}">...</Button>
+            <Button Grid.Row="1" Grid.Column="2" Width="30"  Command="{Binding SelectLocalDirectoryCommand}">...</Button>
 
 
         </Grid>
