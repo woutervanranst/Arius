@@ -5,8 +5,51 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
-        Title="RepositoryChooserWindow" Height="450" Width="800">
-    <Grid>
-        
+        Title="Choose Repository" Height="300" Width="600">
+
+    <Grid Margin="20">
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column ="0">
+            <!--Local column-->
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="Auto"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row="0"  Grid.ColumnSpan="3" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Local" FontWeight="Bold" FontSize="20"/>
+
+            <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
+            <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory}" />
+            <Button Grid.Row="1" Grid.Column="2" Width="30"  Command="{Binding ChooseLocalDirectoryCommand}">...</Button>
+
+
+        </Grid>
+
+        <!-- Local Column --><!--
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Local" FontWeight="Bold" />
+            <Button Content="Select Local Directory" Command="{Binding SelectLocalDirectoryCommand}" />
+            <TextBlock Text="{Binding LocalDirectory}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        --><!-- Azure Column --><!--
+        <StackPanel Grid.Column="1">
+            <TextBlock Text="Azure" FontWeight="Bold" />
+            <TextBox Text="{Binding AccountName}" Width="200" />
+            <PasswordBox Width="200" PasswordChanged="PasswordBox_PasswordChanged" />
+            <ComboBox ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding SelectedContainerName}" Width="200"/>
+            <Button Content="Load Containers" Command="{Binding LoadContainersCommand}" Width="200"/>
+        </StackPanel>-->
     </Grid>
 </Window>

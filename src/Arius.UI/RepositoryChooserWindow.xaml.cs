@@ -12,6 +12,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using Arius.Core.Facade;
+using Arius.UI.Properties;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -27,41 +29,137 @@ public partial class RepositoryChooserWindow : Window
     {
         InitializeComponent();
     }
+
+    private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ChooseRepositoryViewModel viewModel)
+        {
+            viewModel.AccountKey = ((PasswordBox)sender).Password;
+        }
+    }
 }
 
 public class ChooseRepositoryViewModel : ObservableObject
 {
-    private readonly IExternalFacade _facade;
-    private readonly IMessenger      _messenger;
+    private readonly Facade facade;
 
-    public ChooseRepositoryViewModel(IExternalFacade facade, IMessenger messenger)
+    public ChooseRepositoryViewModel(Facade facade)
     {
-        _facade    = facade;
-        _messenger = messenger;
+        this.facade = facade;
 
-        Repositories  = new ObservableCollection<Repository>(_facade.ListRepositories());
-        ChooseCommand = new RelayCommand(ChooseRepository);
+        LoadState();
+
+        ChooseLocalDirectoryCommand = new RelayCommand(ChooseLocalDirectory);
+
+        LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
+        SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
     }
 
-    public ObservableCollection<Repository> Repositories { get; }
-
-    public Repository SelectedRepository { get; set; }
-
-    public ICommand ChooseCommand { get; }
-
-    private void ChooseRepository()
+    public string LocalDirectory
     {
-        // Send a message to indicate which repository was chosen
-        _messenger.Send(new RepositoryChosenMessage(SelectedRepository));
+        get => localDirectory;
+        set => SetProperty(ref localDirectory, value);
+    }
+
+    private string localDirectory;
+
+
+    public string AccountName
+    {
+        get => accountName;
+        set => SetProperty(ref accountName, value);
+    }
+
+    private string accountName;
+
+
+    public string AccountKey
+    {
+        get => accountKey;
+        set => SetProperty(ref accountKey, value);
+    }
+
+    private string accountKey;
+
+
+    public ObservableCollection<string> ContainerNames
+    {
+        get => containerNames;
+        set => SetProperty(ref containerNames, value);
+    }
+
+    private ObservableCollection<string> containerNames;
+
+
+    public string SelectedContainerName
+    {
+        get => selectedContainerName;
+        set => SetProperty(ref selectedContainerName, value);
+    }
+
+    private string selectedContainerName;
+
+
+    private void ChooseLocalDirectory()
+    {
+        using (var dialog = new FolderBrowserDialog())
+        {
+            if (dialog.ShowDialog() == DialogResult.OK)
+            {
+                LocalDirectory = dialog.SelectedPath;
+            }
+        }
+    }
+    public ICommand ChooseLocalDirectoryCommand { get; }
+
+    public ICommand LoadContainersCommand       { get; }
+    public ICommand SelectLocalDirectoryCommand { get; }
+
+    private bool CanLoadContainers()
+    {
+        return !string.IsNullOrWhiteSpace(AccountName) && !string.IsNullOrWhiteSpace(AccountKey);
+    }
+
+    private async Task LoadContainersAsync()
+    {
+        var storageFacade = facade.ForStorageAccount(AccountName, AccountKey);
+        ContainerNames = new ObservableCollection<string>(await storageFacade.GetContainerNamesAsync().ToListAsync());
+
+        if (ContainerNames.Count > 0)
+        {
+            SelectedContainerName = ContainerNames[0];
+        }
+
+        SaveState();
+    }
+
+    private void SelectLocalDirectory()
+    {
+        // Logic to open a directory picker and set LocalDirectory
+    }
+
+    private void LoadState()
+    {
+        AccountName    = Settings.Default.AccountName;
+        AccountKey     = Settings.Default.AccountKey;
+        LocalDirectory = Settings.Default.LocalDirectory;
+    }
+
+    private void SaveState()
+    {
+        Settings.Default.AccountName    = AccountName;
+        Settings.Default.AccountKey     = AccountKey;
+        Settings.Default.LocalDirectory = LocalDirectory;
+        Settings.Default.Save(); // Important: Save the settings
     }
 }
 
 public class RepositoryChosenMessage
 {
-    public RepositoryChosenMessage(Repository repository)
+    public RepositoryChosenMessage(RepositoryFacade repository)
     {
         ChosenRepository = repository;
     }
 
-    public Repository ChosenRepository { get; }
+    public RepositoryFacade ChosenRepository { get; }
 }

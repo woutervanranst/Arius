@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Arius.Core.Facade;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using System;
 using System.Collections.Generic;
@@ -29,15 +30,15 @@ public partial class RepositoryExplorerWindow : Window
 
 public class ExploreRepositoryViewModel : ObservableObject
 {
-    private Repository _currentRepository;
+    private RepositoryFacade currentRepository;
 
-    public Repository CurrentRepository
+    public RepositoryFacade CurrentRepository
     {
-        get => _currentRepository;
-        set => SetProperty(ref _currentRepository, value);
+        get => currentRepository;
+        set => SetProperty(ref currentRepository, value);
     }
 
-    public void SetRepository(Repository repository)
+    public void SetRepository(RepositoryFacade repository)
     {
         CurrentRepository = repository;
         // Load additional data or perform other actions related to the chosen repository
