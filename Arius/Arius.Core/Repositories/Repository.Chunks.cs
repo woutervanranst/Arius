@@ -213,7 +213,7 @@ internal partial class Repository
         var  chunksToUpdate= db.ChunkEntries.Where(ce => ce.AccessTier != targetAccessTier);
 
         await Parallel.ForEachAsync(chunksToUpdate,
-            new ParallelOptions() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (ce, ct) =>
         {
             if (ce.AccessTier is null) // the AcessTier is null for the ChunkEntry of a chunked BinaryFile

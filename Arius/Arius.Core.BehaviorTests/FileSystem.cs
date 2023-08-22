@@ -140,7 +140,6 @@ static class FileSystem
     public static void RestoreDirectoryEqualToArchiveDirectory(bool compareBinaryFile, bool comparePointerFile)
     {
         IEnumerable<FileInfoBase> archiveFiles, restoredFiles;
-        //var fsf = new FileSystemService(NullLogger<FileSystemService>.Instance);
 
         if (compareBinaryFile && comparePointerFile)
         {

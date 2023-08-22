@@ -76,16 +76,26 @@ internal partial class Repository
     // -- UPDATE --
 
     // -- DELETE --
+    /// <summary>
+    /// Delete a ChunkEntry from the database
+    /// WARNING - Only for use for testing
+    /// </summary>
+    internal async Task DeleteChunkEntryAsync(Hash h)
+    {
+        await using var db = GetStateDbContext();
+
+        await db.ChunkEntries.Where(ce => ce.Hash == h.Value).ExecuteDeleteAsync();
+    }
 
     // --- QUERY ---
 
-    [ComponentInternal(typeof(Repository))] // only for Unit testing
-    internal async IAsyncEnumerable<ChunkEntry> GetChunkEntriesAsync()
-    {
-        await using var db = GetStateDbContext();
-        foreach (var ce in db.ChunkEntries)
-            yield return ce;
-    }
+    //[ComponentInternal(typeof(Repository))] // only for Unit testing
+    //internal async IAsyncEnumerable<ChunkEntry> GetChunkEntriesAsync()
+    //{
+    //    await using var db = GetStateDbContext();
+    //    foreach (var ce in db.ChunkEntries)
+    //        yield return ce;
+    //}
 
     /// <summary>
     /// Get the Chunk Count (by counting the ChunkEntries in the database)
