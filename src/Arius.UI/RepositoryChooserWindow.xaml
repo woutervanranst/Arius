@@ -5,51 +5,75 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
-        Title="Choose Repository" Height="300" Width="600">
+        Title="Choose Repository" Height="Auto" Width="800" ResizeMode="CanMinimize">
 
-    <Grid Margin="20">
+    <StackPanel>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+        <Grid Margin="10">
 
-        <Grid Grid.Column ="0">
-            <!--Local column-->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"></ColumnDefinition>
-                <ColumnDefinition Width="*"></ColumnDefinition>
-                <ColumnDefinition Width="Auto"></ColumnDefinition>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"></RowDefinition>
-                <RowDefinition Height="Auto"></RowDefinition>
-            </Grid.RowDefinitions>
+            <Grid Grid.Column ="0" Margin="10">
+                <!--Local column-->
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
 
-            <Label Grid.Row="0"  Grid.ColumnSpan="3" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Local" FontWeight="Bold" FontSize="20"/>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"></RowDefinition>
+                    <RowDefinition Height="Auto"></RowDefinition>
+                </Grid.RowDefinitions>
 
-            <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
-            <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory}" />
-            <Button Grid.Row="1" Grid.Column="2" Width="30"  Command="{Binding SelectLocalDirectoryCommand}">...</Button>
+                <Label Grid.Row="0"  Grid.ColumnSpan="3" HorizontalContentAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" FontSize="20">Local</Label>
 
+                <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
+                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory}" />
+                <Button Grid.Row="1" Grid.Column="2" Height="30" Width="30"  Command="{Binding SelectLocalDirectoryCommand}">...</Button>
+            </Grid>
 
-        </Grid>
+            <Grid Grid.Column="1" Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"></ColumnDefinition>
+                    <ColumnDefinition Width="*"></ColumnDefinition>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
 
-        <!-- Local Column --><!--
-        <StackPanel Grid.Column="0">
-            <TextBlock Text="Local" FontWeight="Bold" />
-            <Button Content="Select Local Directory" Command="{Binding SelectLocalDirectoryCommand}" />
-            <TextBlock Text="{Binding LocalDirectory}" TextWrapping="Wrap" />
-        </StackPanel>
+                <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Azure" FontWeight="Bold" FontSize="20"/>
 
-        --><!-- Azure Column --><!--
+                <Label Grid.Row="1" Grid.Column="0" HorizontalAlignment="Left" Content="Storage Account Name:"/>
+                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding AccountName}" />
+
+                <Label Grid.Row="2" Grid.Column="0" HorizontalAlignment="Left" Content="Storage Account Key:"/>
+                <!--<TextBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding AccountKey}" />-->
+                <PasswordBox Grid.Row="2" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" PasswordChanged="PasswordBox_PasswordChanged" />
+
+                <Label Grid.Row="3" Grid.Column="0" HorizontalAlignment="Left" Content="Container:"/>
+                <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding Containers}" SelectedItem="{Binding SelectedContainer}" DisplayMemberPath="Name" />
+
+                <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
+                <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
+            </Grid>
+
+            <!--
         <StackPanel Grid.Column="1">
-            <TextBlock Text="Azure" FontWeight="Bold" />
-            <TextBox Text="{Binding AccountName}" Width="200" />
             <PasswordBox Width="200" PasswordChanged="PasswordBox_PasswordChanged" />
             <ComboBox ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding SelectedContainerName}" Width="200"/>
             <Button Content="Load Containers" Command="{Binding LoadContainersCommand}" Width="200"/>
         </StackPanel>-->
-    </Grid>
+        </Grid>
+
+        <Button HorizontalAlignment="Right" Width="100" Height="30" Margin="0,0,21,0">Open</Button>
+    </StackPanel>
+
 </Window>
