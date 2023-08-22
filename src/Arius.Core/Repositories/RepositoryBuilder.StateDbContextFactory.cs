@@ -73,13 +73,18 @@ internal partial class RepositoryBuilder
             else
             {
                 // Load existing DB
-                var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
-                await using (var ss = await lastStateBlob.OpenReadAsync())
+                try
                 {
+                    var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
+                    await using var ss = await lastStateBlob.OpenReadAsync();
                     await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
                     await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
                     logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
                 }
 
                 await using var con = new SqliteConnection($"Data Source={localDbPath}");
