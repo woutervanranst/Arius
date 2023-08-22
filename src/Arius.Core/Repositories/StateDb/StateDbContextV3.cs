@@ -79,12 +79,12 @@ internal class StateDbContext : DbContext
 
         var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
         pfemb.ToTable("PointerFileEntries");
-        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
+        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativePath, pfe.Name, pfe.VersionUtc });
         pfemb.HasIndex(pfe => pfe.BinaryHash); // NOT unique
         pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
         pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
-        pfemb.Property(pfe => pfe.RelativeName)
+        pfemb.Property(pfe => pfe.Name)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
         // PointerFileEntries * -- 1 Chunk

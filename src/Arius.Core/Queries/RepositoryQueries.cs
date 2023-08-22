@@ -7,8 +7,31 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Queries;
+
+internal class RepositoryQueries
+{
+    private readonly ILoggerFactory loggerFactory;
+    private readonly Repository     repository;
+
+    public RepositoryQueries(ILoggerFactory loggerFactory, Repository repository)
+    {
+        this.loggerFactory = loggerFactory;
+        this.repository    = repository;
+    }
+
+    public IAsyncEnumerable<(string RelativePath, string Name)> GetEntriesAsync(string? relativePathPrefix = null)
+    {
+        return repository
+            .GetPointerFileEntriesAsync(DateTime.Now, false, relativePathPrefix)
+            //.Where(pfe => pfe.RelativePath.Equals(relativePathPrefix, StringComparison.InvariantCultureIgnoreCase))
+            .Select(pfe => (pfe.RelativePath, pfe.Name));
+    }
+}
 
 //[NotifyPropertyChanged]
 public interface IQueryFolderResponse
@@ -45,18 +68,18 @@ internal record QueryFolderResponse : IQueryFolderResponse
 
 }
 
-internal class RepositoryQueries
+internal class RepositoryQueries2
 {
-    private readonly ILogger<RepositoryQueries> logger;
+    private readonly ILogger<RepositoryQueries2> logger;
     private readonly ILoggerFactory             loggerFactory;
     private readonly DirectoryInfo              root;
     private readonly Repository                 repository;
     private readonly FileSystemService          fileSystemService;
     private readonly FileService                fileService;
 
-    public RepositoryQueries(ILoggerFactory loggerFactory, DirectoryInfo root, Repository repository, FileSystemService fileSystemService, FileService fileService)
+    public RepositoryQueries2(ILoggerFactory loggerFactory, DirectoryInfo root, Repository repository, FileSystemService fileSystemService, FileService fileService)
     {
-        this.logger            = loggerFactory.CreateLogger<RepositoryQueries>();
+        this.logger            = loggerFactory.CreateLogger<RepositoryQueries2>();
         this.loggerFactory     = loggerFactory;
         this.root              = root;
         this.repository        = repository;

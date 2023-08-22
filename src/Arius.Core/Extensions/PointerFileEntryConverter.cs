@@ -10,8 +10,9 @@ internal static class PointerFileEntryConverter
     {
         return new PointerFileEntryDto()
         {
-            BinaryHash       = pfe.BinaryHash.Value,    // convert the bytes
-            RelativeName     = ToPlatformNeutral(pfe.RelativeName), // convert to platform neutral
+            BinaryHash       = pfe.BinaryHash.Value, // convert the bytes
+            RelativePath     = ToPlatformNeutral(pfe.RelativePath), // convert to platform neutral
+            Name             = pfe.Name,
             VersionUtc       = pfe.VersionUtc,
             IsDeleted        = pfe.IsDeleted,
             CreationTimeUtc  = pfe.CreationTimeUtc,
@@ -24,7 +25,8 @@ internal static class PointerFileEntryConverter
         return new PointerFileEntry()
         {
             BinaryHash       = new BinaryHash(pfeDto.BinaryHash),
-            RelativeName     = ToPlatformSpecific(pfeDto.RelativeName),
+            RelativePath     = ToPlatformSpecific(pfeDto.RelativePath),
+            Name             = pfeDto.Name,
             VersionUtc       = pfeDto.VersionUtc,
             IsDeleted        = pfeDto.IsDeleted,
             CreationTimeUtc  = pfeDto.CreationTimeUtc,

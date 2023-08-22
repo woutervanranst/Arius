@@ -127,10 +127,8 @@ public class RepositoryFacade : IDisposable
 
     internal Repository Repository { get; }
 
-    public IAsyncEnumerable<string> GetVersions()
-    {
-        throw new NotImplementedException();
-    }
+    public string AccountName   => Repository.Options.AccountName;
+    public string ContainerName => Repository.Options.ContainerName;
 
 
     // --------- ARCHIVE ---------
@@ -190,6 +188,20 @@ public class RepositoryFacade : IDisposable
         var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
 
         return await cmd.ExecuteAsync(rco);
+    }
+
+    // --------- QUERIES ---------
+
+    public IAsyncEnumerable<string> GetVersions()
+    {
+        throw new NotImplementedException();
+    }
+
+    public async IAsyncEnumerable<(string RelativePath, string Name)> GetEntriesAsync(string path)
+    {
+        var q = new RepositoryQueries(loggerFactory, Repository);
+        await foreach (var e in q.GetEntriesAsync(path))
+            yield return e;
     }
 
 

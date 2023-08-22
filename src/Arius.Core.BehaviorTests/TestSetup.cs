@@ -113,7 +113,7 @@ internal static class TestSetup
     /// <returns></returns>
     public static async Task<PointerFileEntry?> GetPointerFileEntryAsync(string relativeName)
     {
-        var pfes = await Repository.GetCurrentPointerFileEntriesAsync(includeDeleted: true);
+        var pfes = await Repository.GetCurrentPointerFileEntriesAsync(includeDeleted: true).ToArrayAsync();
         var pfe  = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile
 
         return pfe;
