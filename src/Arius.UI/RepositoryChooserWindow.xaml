@@ -94,7 +94,7 @@
         </StackPanel>-->
         </Grid>
 
-        <Button HorizontalAlignment="Right" Width="100" Height="30" Margin="0,0,11,10">Open</Button>
+        <Button HorizontalAlignment="Right" Width="100" Height="30" Margin="0,0,11,10" Command="{Binding OpenRepositoryCommand}">Open</Button>
     </StackPanel>
 
 </Window>

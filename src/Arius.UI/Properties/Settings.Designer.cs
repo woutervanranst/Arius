@@ -58,5 +58,17 @@ namespace Arius.UI.Properties {
                 this["LocalDirectory"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string SelectedContainerName {
+            get {
+                return ((string)(this["SelectedContainerName"]));
+            }
+            set {
+                this["SelectedContainerName"] = value;
+            }
+        }
     }
 }

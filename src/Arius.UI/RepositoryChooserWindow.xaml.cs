@@ -3,6 +3,7 @@ using Arius.UI.Properties;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -35,8 +36,6 @@ public class ChooseRepositoryViewModel : ObservableObject
         //LoadContainersCommand       = new RelayCommand(async () => await LoadContainersAsync(), CanLoadContainers);
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new RelayCommand(OpenRepository, CanOpenRepository);
-
-        //=> new RelayCommand(OpenRepository, CanOpenRepository);
     }
     
 
@@ -118,10 +117,10 @@ public class ChooseRepositoryViewModel : ObservableObject
             var storageFacade = facade.ForStorageAccount(AccountName, AccountKey);
             ContainerNames = new ObservableCollection<string>(await storageFacade.GetContainerNamesAsync(0).ToListAsync());
 
-            if (ContainerNames.Count > 0)
-            {
+            if (ContainerNames.Contains(Settings.Default.SelectedContainerName))
+                SelectedContainerName = Settings.Default.SelectedContainerName;
+            else if (ContainerNames.Count > 0)
                 SelectedContainerName = ContainerNames[0];
-            }
 
             AccountError = false;
         }
@@ -151,6 +150,15 @@ public class ChooseRepositoryViewModel : ObservableObject
     public ICommand OpenRepositoryCommand { get; }
     private bool CanOpenRepository()
     {
+        if (!Directory.Exists(LocalDirectory))
+            return false;
+
+        if (AccountError)
+            return false;
+
+        if (string.IsNullOrEmpty(SelectedContainerName))
+            return false;
+
         return true;
     }
 
@@ -173,9 +181,10 @@ public class ChooseRepositoryViewModel : ObservableObject
 
     private void SaveState()
     {
-        Settings.Default.AccountName    = AccountName;
-        Settings.Default.AccountKey     = AccountKey;
-        Settings.Default.LocalDirectory = LocalDirectory;
+        Settings.Default.AccountName           = AccountName;
+        Settings.Default.AccountKey            = AccountKey;
+        Settings.Default.LocalDirectory        = LocalDirectory;
+        Settings.Default.SelectedContainerName = SelectedContainerName;
         Settings.Default.Save();
     }
 }
