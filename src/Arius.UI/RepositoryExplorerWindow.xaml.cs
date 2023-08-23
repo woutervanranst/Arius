@@ -32,8 +32,6 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
     private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
     {
-        // TODO this is not called twice on startup?
-
         switch (message.PropertyName)
         {
             case nameof(FolderViewModel.IsSelected):
@@ -118,12 +116,6 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     private FolderViewModel  selectedFolder;
 
 
-    //[ObservableProperty]
-    //private ObservableCollection<ItemViewModel> items;
-
-    //[ObservableProperty]
-    //private ItemViewModel selectedItem;
-
     public partial class FolderViewModel : ObservableRecipient
     {
         public FolderViewModel()
@@ -155,39 +147,12 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         //}
 
         public ObservableCollection<FolderViewModel> Folders { get; }
-        public ObservableCollection<ItemViewModel>   Items          { get; }
+        public ObservableCollection<ItemViewModel>   Items   { get; }
 
         [ObservableProperty]
         [NotifyPropertyChangedRecipients]
         private bool isSelected;
-        //public bool IsSelected
-        //{
-        //    get => isSelected;
-        //    set
-        //    {
-        //        if (SetProperty(ref isSelected, value))
-        //        {
-        //            if (value) // Load entries when expanded.
-        //            {
-        //                //LoadEntriesAsync();
-        //            }
-        //        }
-        //    }
-        //}
-        //private bool isSelected;
 
-        //public bool IsExpanded
-        //{
-        //    get => isExpanded;
-        //    set
-        //    {
-        //        if (SetProperty(ref isExpanded, value))
-        //        {
-        //            //if (value) // Load entries when expanded.
-        //            //    LoadEntriesAsync();
-        //        }
-        //    }
-        //}
         [ObservableProperty]
         [NotifyPropertyChangedRecipients]
         private bool isExpanded;

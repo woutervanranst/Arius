@@ -46,7 +46,7 @@
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
 
-        <ListView Grid.Column="2">
+        <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
         </ListView>
 
 
