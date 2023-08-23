@@ -38,15 +38,15 @@ class FileService
         DirectoryInfo rootDir,
         string? relativeParentPathEquals = null)
     {
-        //// If no relativeParentPathEquals is provided, return files from the root directory
-        //if (string.IsNullOrEmpty(relativeParentPathEquals))
-        //{
-        //    foreach (var file in rootDir.GetFiles())
-        //    {
-        //        yield return ("", "", file.Name);
-        //    }
-        //    yield break;
-        //}
+        // If no relativeParentPathEquals is provided, return files from the root directory
+        if (string.IsNullOrEmpty(relativeParentPathEquals))
+        {
+            foreach (var file in rootDir.GetFiles())
+            {
+                yield return ("", "", file.Name);
+            }
+            //yield break;
+        }
 
         // Convert relative path to system-specific directory path
         string adjustedRelativePath = relativeParentPathEquals.Replace('/', Path.DirectorySeparatorChar);
@@ -55,18 +55,26 @@ class FileService
         // Ensure the target directory exists before proceeding
         if (!targetDir.Exists) yield break;
 
-        string directoryRelativeToRoot = targetDir.FullName.Substring(rootDir.FullName.Length).TrimStart(Path.DirectorySeparatorChar);
-
-        string[] pathSegments = directoryRelativeToRoot.Split(Path.DirectorySeparatorChar);
+        string   directoryRelativeToRoot = targetDir.FullName.Substring(rootDir.FullName.Length).TrimStart(Path.DirectorySeparatorChar);
+        string[] pathSegments            = directoryRelativeToRoot.Split(Path.DirectorySeparatorChar);
 
         // Deduce the DirectoryName and RelativeParentPath from the pathSegments
         string directoryName      = pathSegments.Length > 0 ? pathSegments[pathSegments.Length - 1] : "";
         string relativeParentPath = pathSegments.Length > 1 ? string.Join(Path.DirectorySeparatorChar, pathSegments, 0, pathSegments.Length - 1) : "";
 
-        // Return files in the target directory
-        foreach (var file in targetDir.GetFiles())
+        //// Return files in the target directory
+        //foreach (var file in targetDir.EnumerateFiles())
+        //{
+        //    yield return (relativeParentPath, directoryName, file.Name);
+        //}
+
+        // Return files from direct child directories
+        foreach (var childDir in targetDir.EnumerateDirectories())
         {
-            yield return (relativeParentPath, directoryName, file.Name);
+            foreach (var childFile in childDir.EnumerateFiles())
+            {
+                yield return (directoryRelativeToRoot, childDir.Name, childFile.Name);
+            }
         }
     }
 }
