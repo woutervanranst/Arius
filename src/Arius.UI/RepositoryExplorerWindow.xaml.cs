@@ -106,19 +106,20 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                                   Func<string, string, string, string, string> pathCombiner,
                                   Action<ItemViewModel, string> setValue)
         {
+            // Create the necessary FolderViewModels and ItemViewModels for the given entries
             await foreach (var e in entries)
             {
                 var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
                 var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
 
-                // Get the string to the PointerFile, BinaryFile or PointerFileEntry
+                // Set the string to the PointerFile, BinaryFile or PointerFileEntry
                 var value = pathCombiner(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
                 setValue(itemViewModel, value);
             }
 
             static string GetItemName(string name)
             {
-                if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
+                if (name.EndsWith(PointerFileInfo.Extension))
                     return name.RemoveSuffix(".pointer.arius");
                 else
                     return name;
@@ -127,9 +128,10 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
         {
-            var nodePath = CombinePathSegments(ROOT_NODEKEY, relativeParentPath, directoryName);
-            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
+            var key = CombinePathSegments(ROOT_NODEKEY, relativeParentPath, directoryName);
+            if (!foldersDict.TryGetValue(key, out var folderViewModel))
             {
+                // We need a new FolderViewModel
                 var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, relativeParentPath);
                 var parentFolder = foldersDict[nodeParentPath];
                 folderViewModel = new FolderViewModel
@@ -137,18 +139,22 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                     Name = directoryName,
                     RelativeDirectoryName = CombinePathSegments(relativeParentPath, directoryName)
                 };
-                foldersDict.Add(nodePath, folderViewModel);
+                foldersDict.Add(key, folderViewModel);
                 parentFolder.Folders.Add(folderViewModel);
             }
+
             return folderViewModel;
         }
 
         ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
         {
-            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
+            var key = CombinePathSegments(folderViewModel.RelativeDirectoryName, name);
+            if (!folderViewModel.TryGetItemViewModel(key, out var itemViewModel))
             {
+                // We need a new ItemViewModel
                 itemViewModel.Name = name;
             }
+
             return itemViewModel;
         }
 
@@ -178,24 +184,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
     private const string ROOT_NODEKEY = "root";
 
-
-
-    //private bool TryGetFolderViewModel(string key, out FolderViewModel folderViewModel)
-    //{
-    //    if (!foldersDict.TryGetValue(key, out folderViewModel))
-    //    {
-    //        foldersDict.Add(key, folderViewModel = new FolderViewModel());
-    //        RootNode.Add(folderViewModel);
-    //        return false;
-    //    }
-
-    //    return true;
-    //}
-
     private readonly Dictionary<string, FolderViewModel> foldersDict = new();
-
-    
-
 
     [ObservableProperty]
     private ObservableCollection<FolderViewModel> rootNode = new(); // this will really only contain one node but the TreeView binds to a collection
