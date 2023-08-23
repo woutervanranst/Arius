@@ -113,8 +113,8 @@ internal class StateDbContext : DbContext
     {
         public RemovePointerFileExtensionConverter()
             : base(
-                v => v.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
-                v => $"{v}{PointerFile.Extension}") // Convert from Provider to Model (db to code)
+                v => v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
+                v => $"{v}{PointerFileInfo.Extension}") // Convert from Provider to Model (db to code)
         {
         }
     }

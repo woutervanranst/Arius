@@ -39,18 +39,20 @@ public abstract record FileInfoBase
 
 public record PointerFileInfo : FileInfoBase
 {
+    public static readonly string Extension = ".pointer.arius";
+
     public PointerFileInfo(string fileName) : this(new FileInfo(fileName))
     {
     }
     public PointerFileInfo(FileInfo fi) : base(fi)
     {
-        if (!fi.FullName.EndsWith(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase))
+        if (!fi.FullName.EndsWith(Extension, StringComparison.InvariantCultureIgnoreCase))
             throw new ArgumentException("This is not a valid PointerFile");
     }
 
     public string BinaryFileFullName => GetBinaryFileName(fi.FullName);
 
-    public static string GetBinaryFileName(string pointerFileName) => pointerFileName.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase);
+    public static string GetBinaryFileName(string pointerFileName) => pointerFileName.RemoveSuffix(Extension, StringComparison.InvariantCultureIgnoreCase);
 }
 
 
@@ -61,11 +63,11 @@ public record BinaryFileInfo : FileInfoBase
     }
     public BinaryFileInfo(FileInfo fi) : base(fi)
     {
-        if (fi.FullName.EndsWith(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase))
+        if (fi.FullName.EndsWith(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase))
             throw new ArgumentException("This seems to be a PointerFile");
     }
 
     public string PointerFileFullName => GetPointerFileName(fi.FullName);
 
-    public static string GetPointerFileName(string binaryFileName) => $"{binaryFileName}{PointerFile.Extension}";
+    public static string GetPointerFileName(string binaryFileName) => $"{binaryFileName}{PointerFileInfo.Extension}";
 }

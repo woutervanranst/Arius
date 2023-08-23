@@ -10,7 +10,7 @@ namespace Arius.Core.Extensions;
 public static class FileInfoExtensions
 {
     // TODO refactor & put in PointerFileInfo IsPointerFile()
-    internal static bool IsPointerFile(this FileInfo fi) => fi.Name.EndsWith(PointerFile.Extension, StringComparison.CurrentCultureIgnoreCase);
+    internal static bool IsPointerFile(this FileInfo fi) => fi.Name.EndsWith(PointerFileInfo.Extension, StringComparison.CurrentCultureIgnoreCase);
 }
 
 
