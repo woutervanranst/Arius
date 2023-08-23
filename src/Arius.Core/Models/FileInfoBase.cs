@@ -3,7 +3,7 @@ using System.IO;
 
 namespace Arius.Core.Models;
 
-internal abstract record FileInfoBase
+public abstract record FileInfoBase
 {
     protected readonly FileInfo fi;
 
@@ -37,7 +37,7 @@ internal abstract record FileInfoBase
 }
 
 
-internal record PointerFileInfo : FileInfoBase
+public record PointerFileInfo : FileInfoBase
 {
     public PointerFileInfo(string fileName) : this(new FileInfo(fileName))
     {
@@ -54,7 +54,7 @@ internal record PointerFileInfo : FileInfoBase
 }
 
 
-internal record BinaryFileInfo : FileInfoBase
+public record BinaryFileInfo : FileInfoBase
 {
     public BinaryFileInfo(string fileName) : this(new FileInfo(fileName))
     {
