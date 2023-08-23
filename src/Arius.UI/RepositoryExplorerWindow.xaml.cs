@@ -7,6 +7,8 @@ using System.IO;
 using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Threading;
+using Arius.Core.Models;
+using Arius.Core.Services;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.UI;
@@ -71,102 +73,112 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         if (SelectedFolder.IsLoaded)
             return;
 
-#if DEBUG
-        var x = await Repository
-            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName)
-            .ToListAsync();
+//#if DEBUG
+//        var x = await Repository
+//            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName)
+//            .ToListAsync();
 
-        var y = FileService
-            .GetEntries(new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest"), 
-                SelectedFolder.RelativeDirectoryName)
-            .Where(e => e.Name.EndsWith(".pointer.arius"))
-            .ToList();
+//        var y = FileService
+//            .GetEntries(new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest"), 
+//                SelectedFolder.RelativeDirectoryName)
+//            .Where(e => e.Name.EndsWith(".pointer.arius"))
+//            .ToList();
 
-        var z  = x.Except(y);
-        var zz = y.Except(x);
-        if (z.Any() || zz.Any())
+//        var z  = x.Except(y);
+//        var zz = y.Except(x);
+//        if (z.Any() || zz.Any())
+//        {
+
+//        }
+//#endif
+
+        // Load local entries
+        await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName),
+                     CombineLocalFilePath,
+                     SetLocalFilePaths);
+
+        // Load database entries
+        await ProcessEntries(Repository.GetEntriesAsync(SelectedFolder.RelativeDirectoryName),
+                             CombinePointerFileEntryPath,
+                             SetPointerFileEntry);
+
+        async Task ProcessEntries(IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> entries,
+                                  Func<string, string, string, string, string> pathCombiner,
+                                  Action<ItemViewModel, string> setValue)
         {
-
-        }
-#endif
-        // Load the Local entries
-        foreach (var e in FileService
-                     .GetEntries(LocalDirectory, SelectedFolder.RelativeDirectoryName))
-        {
-            // Get the node where this entry belongs to
-            var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
+            await foreach (var e in entries)
             {
-                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
-                var parentFolder   = foldersDict[nodeParentPath];
-                foldersDict.Add(nodePath, folderViewModel = new FolderViewModel
-                {
-                    Name                  = e.DirectoryName,
-                    RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName)
-                });
+                var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
+                var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
 
-                parentFolder.Folders.Add(folderViewModel);
+                // Get the string to the PointerFile, BinaryFile or PointerFileEntry
+                var value = pathCombiner(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
+                setValue(itemViewModel, value);
             }
 
-            var name = GetItemName(e.Name);
-            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
-                itemViewModel.Name = name;
+            static string GetItemName(string name)
+            {
+                if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
+                    return name.RemoveSuffix(".pointer.arius");
+                else
+                    return name;
+            }
+        }
 
-            if (e.Name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
-                itemViewModel.PointerFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
+        FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
+        {
+            var nodePath = CombinePathSegments(ROOT_NODEKEY, relativeParentPath, directoryName);
+            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
+            {
+                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, relativeParentPath);
+                var parentFolder = foldersDict[nodeParentPath];
+                folderViewModel = new FolderViewModel
+                {
+                    Name = directoryName,
+                    RelativeDirectoryName = CombinePathSegments(relativeParentPath, directoryName)
+                };
+                foldersDict.Add(nodePath, folderViewModel);
+                parentFolder.Folders.Add(folderViewModel);
+            }
+            return folderViewModel;
+        }
+
+        ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
+        {
+            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
+            {
+                itemViewModel.Name = name;
+            }
+            return itemViewModel;
+        }
+
+        void SetLocalFilePaths(ItemViewModel itemViewModel, string filename)
+        {
+            var fib = FileSystemService.GetFileInfo(filename);
+            if (fib is PointerFileInfo pfi)
+                itemViewModel.PointerFileInfo = pfi;
+            else if (fib is BinaryFileInfo bfi)
+                itemViewModel.BinaryFileInfo = bfi;
             else
-                itemViewModel.BinaryFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
-
+                throw new NotImplementedException();
         }
-
-
-
-
-        // Load the database entries
-        await foreach (var e in Repository
-                           .GetEntriesAsync(SelectedFolder.RelativeDirectoryName))
+        void SetPointerFileEntry(ItemViewModel itemViewModel, string path)
         {
-            // Get the node where this entry belongs to
-            var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
-            {
-                // The node does not yet exist - create it
-                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
-                var parentFolder   = foldersDict[nodeParentPath];
-                foldersDict.Add(nodePath, folderViewModel = new FolderViewModel
-                {
-                    Name                  = e.DirectoryName,
-                    RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName),
-                });
-
-                parentFolder.Folders.Add(folderViewModel);
-            }
-
-            var name = e.Name.RemoveSuffix(".pointer.arius");
-            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
-                itemViewModel.Name = name;
-
-            itemViewModel.PointerFileEntry = Path.Combine(e.RelativeParentPath, e.DirectoryName, e.Name);
+            itemViewModel.PointerFileEntry = path;
         }
+
+        static string CombineLocalFilePath(string root, string relativeParentPath, string directoryName, string name)     => Path.Combine(root, relativeParentPath, directoryName, name);
+        static string CombinePointerFileEntryPath(string _, string relativeParentPath, string directoryName, string name) => Path.Combine(relativeParentPath, directoryName, name);
+
+        static string CombinePathSegments(params string[] segments) => Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
+
 
         SelectedFolder.IsLoaded = true;
-
-
-        static string GetItemName(string name)
-        {
-            if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
-                return name.RemoveSuffix(".pointer.arius");
-            else
-                return name;
-        }
     }
 
     private const string ROOT_NODEKEY = "root";
 
-    private static string CombinePathSegments(params string[] segments)
-    {
-        return Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
-    }
+
 
     //private bool TryGetFolderViewModel(string key, out FolderViewModel folderViewModel)
     //{
@@ -245,8 +257,8 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         public string Name { get; set; }
 
-        public string BinaryFilePath   { get; set; }
-        public string PointerFilePath  { get; set; }
+        public BinaryFileInfo BinaryFileInfo   { get; set; }
+        public PointerFileInfo PointerFileInfo  { get; set; }
         public string PointerFileEntry { get; set; }
 
         public override string ToString() => Name;
