@@ -1,17 +1,16 @@
 ﻿using Arius.Core.Facade;
+using Arius.Core.Models;
+using Arius.Core.Queries;
+using Arius.Core.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Net.NetworkInformation;
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
-using Arius.Core.Models;
-using Arius.Core.Queries;
-using Arius.Core.Services;
 using WouterVanRanst.Utils.Extensions;
-using static Arius.UI.FileService;
 
 namespace Arius.UI;
 
@@ -151,7 +150,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         void UpdateViewModel(ItemViewModel itemViewModel, IGetEntriesResult e)
         {
-            if (e is GetLocalEntriesResult le)
+            if (e is FileService.GetLocalEntriesResult le)
             {
                 var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
                 var fib      = FileSystemService.GetFileInfo(filename);
@@ -166,6 +165,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             {
                 var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
                 itemViewModel.PointerFileEntry = path;
+                itemViewModel.OriginalLength   = pfe.OriginalLength;
             }
             else
                 throw new NotImplementedException();
@@ -239,9 +239,29 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         public string Name { get; set; }
 
-        public BinaryFileInfo BinaryFileInfo   { get; set; }
-        public PointerFileInfo PointerFileInfo  { get; set; }
-        public string PointerFileEntry { get; set; }
+        public BinaryFileInfo?  BinaryFileInfo   { get; set; }
+        public PointerFileInfo? PointerFileInfo  { get; set; }
+        public string?          PointerFileEntry { get; set; }
+        public long             OriginalLength   { get; set; }
+
+        /// <summary>
+        /// Get the string representing the state of the item for the bollekes (eg. pointer present, blob present, ...)
+        /// </summary>
+        public string ItemState
+        {
+            get
+            {
+                var itemState = new StringBuilder();
+
+                itemState.Append(BinaryFileInfo is not null ? 'Y' : 'N');
+                itemState.Append(PointerFileInfo is not null ? 'Y' : 'N');
+                itemState.Append(PointerFileEntry is not null ? 'Y' : 'N');
+                itemState.Append('A');
+                //itemState.Append(Manifest is not null ? 'A' : throw new NotImplementedException());
+
+                return itemState.ToString();
+            }
+        }
 
         public override string ToString() => Name;
     }
