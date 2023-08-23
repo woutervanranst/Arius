@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -21,26 +22,24 @@ public partial class RepositoryExplorerWindow : Window
 
 public partial class ExploreRepositoryViewModel : ObservableObject
 {
-    private readonly IMessenger messenger;
-
     public ExploreRepositoryViewModel(IMessenger messenger)
     {
-        this.messenger = messenger;
-        Folders        = new();
-        //Items          = new();
+        Folders = new();
 
         messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
         // Set the selected folder to the root and kick off the loading process
-        SelectedFolder = new FolderViewModel() { Name = "", Parent = null };
+        SelectedFolder = AddRootFolder(); //new FolderViewModel { Name = "Root", RelativePath = "", Parent = null };
     }
 
     private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
     {
+        // TODO this is not called twice on startup?
+
         switch (message.PropertyName)
         {
             case nameof(FolderViewModel.IsSelected):
-                SelectedFolder = message.Sender as FolderViewModel;
+                SelectedFolder = (FolderViewModel)message.Sender;
                 break;
 
             case nameof(FolderViewModel.IsExpanded):
@@ -61,31 +60,47 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     private async Task LoadEntriesAsync()
     {
         var x = await repository
-            .GetEntriesAsync(SelectedFolder.FullPath ?? "")
+            .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
             //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
             .ToListAsync();
 
         var y = await FileService
             //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
-            .GetEntriesAsync(SelectedFolder.FullPath ?? "")
+            .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
             .ToListAsync();
 
         await foreach (var e in repository
-                           .GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? ""))
+                           .GetEntriesAsync(SelectedFolder.Parent?.RelativePath ?? ""))
         {
-            if (!f.TryGetValue(e.DirectoryName, out var d))
+            var relativePath       = Path.Combine("root", e.RelativeParentPath, e.DirectoryName); //parent.RelativePath;
+            if (!f.TryGetValue(relativePath, out var folder))
             {
-                var parent = f.TryGetValue(e.RelativeParentPath, out var p) ? p : null;
-                f.Add(e.DirectoryName, d = new FolderViewModel { Name = e.DirectoryName, Parent = parent });
-                Folders.Add(d);
+                var relativeParentPath = Path.Combine("root", e.RelativeParentPath);
+                //var parentFolder = f.TryGetValue(relativeParentPath, out var p) ? p : null;
+                var parentFolder = f[relativeParentPath]; //, out var p) ? p : null;
+                f.Add(relativePath, folder = new FolderViewModel { Name = e.DirectoryName, RelativePath = relativePath, Parent = parentFolder });
+
+                //if (parentFolder is null)
+                //    Folders.Add(folder); // this is the root node we're adding
+                //else
+                    parentFolder.Folders.Add(folder);
             }
 
-            d.Items.Add(new ItemViewModel { Name = e.Name });
+            folder.Items.Add(new ItemViewModel { Name = e.Name });
 
         }
     }
 
     private readonly Dictionary<string, FolderViewModel> f = new();
+
+    private FolderViewModel AddRootFolder()
+    {
+        var root = new FolderViewModel { Name = "Root", RelativePath = "", Parent = null };
+        f.Add("root", root);
+        Folders.Add(root);
+
+        return root;
+    }
 
 
     [ObservableProperty]
@@ -119,25 +134,27 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             Items   = new ObservableCollection<ItemViewModel>();
         }
 
-        public string           Name   { get; init; }
+        public string Name         { get; init; }
+        public string RelativePath { get; init; }
+
         public FolderViewModel? Parent { get; set; }
 
-        public string FullPath
-        {
-            get
-            {
-                var path   = Name;
-                var parent = Parent;
+        //public string FullPath
+        //{
+        //    get
+        //    {
+        //        var path   = Name;
+        //        var parent = Parent;
 
-                while (parent != null)
-                {
-                    path   = $"{parent.Name}\\{path}";
-                    parent = parent.Parent;
-                }
+        //        while (parent != null)
+        //        {
+        //            path   = $"{parent.Name}\\{path}";
+        //            parent = parent.Parent;
+        //        }
 
-                return path;
-            }
-        }
+        //        return path;
+        //    }
+        //}
 
         public ObservableCollection<FolderViewModel> Folders { get; }
         public ObservableCollection<ItemViewModel>   Items          { get; }
@@ -177,7 +194,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         //[NotifyPropertyChangedRecipients]
         private bool isExpanded;
 
-        public override string ToString() => FullPath;
+        public override string ToString() => Name;
     }
 
     public partial class ItemViewModel : ObservableObject
