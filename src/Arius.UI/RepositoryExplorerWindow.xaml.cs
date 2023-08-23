@@ -69,17 +69,15 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         await foreach (var e in repository
                            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName))
         {
-            var nodePath       = Path.Combine("root", e.RelativeParentPath, e.DirectoryName);
+            var nodePath       = CombinePathSegments("root", e.RelativeParentPath, e.DirectoryName);
             if (!folders.TryGetValue(nodePath, out var folder))
             {
-                var nodeParentPath = Path.Combine("root", e.RelativeParentPath);
-                var parentFolder = folders[nodeParentPath];
+                var nodeParentPath = CombinePathSegments("root", e.RelativeParentPath);
+                var parentFolder   = folders[nodeParentPath];
                 folders.Add(nodePath, folder = new FolderViewModel
                 {
                     Name                  = e.DirectoryName,
-                    NodePath              = nodePath,
                     RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName),
-                    Parent                = parentFolder
                 });
 
                 parentFolder.Folders.Add(folder);
@@ -90,23 +88,19 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         SelectedFolder.IsLoaded = true;
 
-        string CombinePathSegments(string segment1, string segment2)
-        {
-            return Path.Combine(segment1, segment2).Replace(Path.DirectorySeparatorChar, '/');
-            //// Return the non-empty segment if one of them is empty or null
-            //if (string.IsNullOrEmpty(segment1)) return segment2 ?? string.Empty;
-            //if (string.IsNullOrEmpty(segment2)) return segment1;
+        
+    }
 
-            //// Both segments are non-empty, join with a forward slash
-            //return $"{segment1}/{segment2}";
-        }
+    private static string CombinePathSegments(params string[] segments)
+    {
+        return Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
     }
 
     private readonly Dictionary<string, FolderViewModel> folders = new();
 
     private FolderViewModel AddRootFolder()
     {
-        var root = new FolderViewModel { Name = "Root", NodePath = "root", RelativeDirectoryName  = "", Parent = null };
+        var root = new FolderViewModel { Name = "Root", RelativeDirectoryName  = "" };
         folders.Add("root", root);
         RootNode.Add(root);
 
@@ -139,32 +133,9 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             Items   = new ObservableCollection<ItemViewModel>();
         }
 
-        public string Name               { get; init; }
-        //public string NodePath           => $"root\\{Path.Combine(RelativeParentPath, DirectoryName)}"; //{ get; init; } // TODO is nodepath just 'root' + relativepath?
-        public string NodePath           { get; init; }
-        //public string RelativeParentPath { get; init; }
-        //public string DirectoryName      { get; init; }
+        public string Name                  { get; init; }
         public string RelativeDirectoryName { get; init; }
         public bool   IsLoaded              { get; set; } = false;
-
-        public FolderViewModel? Parent { get; set; }
-
-        //public string FullPath
-        //{
-        //    get
-        //    {
-        //        var path   = Name;
-        //        var parent = Parent;
-
-        //        while (parent != null)
-        //        {
-        //            path   = $"{parent.Name}\\{path}";
-        //            parent = parent.Parent;
-        //        }
-
-        //        return path;
-        //    }
-        //}
 
         public ObservableCollection<FolderViewModel> Folders { get; }
         public ObservableCollection<ItemViewModel>   Items   { get; }
@@ -177,7 +148,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         [NotifyPropertyChangedRecipients]
         private bool isExpanded;
 
-        public override string ToString() => NodePath;
+        public override string ToString() => RelativeDirectoryName;
     }
 
     public partial class ItemViewModel : ObservableObject
