@@ -7,7 +7,7 @@ class FileService
     /// <summary>
     /// Returns file entries from a given directory, and from its direct child directories.
     /// </summary>
-    public static async IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntriesAsync(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
+    public static IEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntries(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
     {
         // NOTE This method is somewhat enigmatic but it produces consistent results with the GetPointerFileEntriesAtVersionAsync
 

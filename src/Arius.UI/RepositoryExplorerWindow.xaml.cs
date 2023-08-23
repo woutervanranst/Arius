@@ -4,8 +4,10 @@ using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Threading;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.UI;
 
@@ -56,26 +58,76 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         }
     }
 
-    public string WindowName => $"Arius: {repository.AccountName} - {repository.ContainerName}";
+    public string WindowName => $"Arius: {Repository.AccountName} - {Repository.ContainerName}";
 
 
-    [ObservableProperty]
-    private RepositoryFacade repository;
+    //[ObservableProperty]
+    //private RepositoryFacade repository;
+    public RepositoryFacade Repository { get; set; }
+    public DirectoryInfo    LocalDirectory       { get; set; }
 
     private async Task LoadEntriesAsync()
     {
         if (SelectedFolder.IsLoaded)
             return;
 
-        var x = await repository
+#if DEBUG
+        var x = await Repository
             .GetEntriesAsync(SelectedFolder.RelativeDirectoryName)
             .ToListAsync();
 
-        var y = await FileService
-            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName)
-            .ToListAsync();
+        var y = FileService
+            .GetEntries(new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest"), 
+                SelectedFolder.RelativeDirectoryName)
+            .Where(e => e.Name.EndsWith(".pointer.arius"))
+            .ToList();
 
-        await foreach (var e in repository
+        var z  = x.Except(y);
+        var zz = y.Except(x);
+        if (z.Any() || zz.Any())
+        {
+
+        }
+#endif
+        // Load the Local entries
+        foreach (var e in FileService
+                     .GetEntries(LocalDirectory, SelectedFolder.RelativeDirectoryName))
+        {
+            // Get the node where this entry belongs to
+            var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
+            if (!folders.TryGetValue(nodePath, out var folder))
+            {
+                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
+                var parentFolder   = folders[nodeParentPath];
+                folders.Add(nodePath, folder = new FolderViewModel
+                {
+                    Name                  = e.DirectoryName,
+                    RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName)
+                });
+
+                parentFolder.Folders.Add(folder);
+            }
+
+            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, GetItemName(e.Name)), GetItemName(e.Name));
+
+            if (e.Name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
+                itemViewModel.PointerFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
+            else
+                itemViewModel.BinaryFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
+
+        }
+
+        static string GetItemName(string name)
+        {
+            if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
+                return name.RemoveSuffix(".pointer.arius");
+            else
+                return name;
+        }
+
+
+        // Load the database entries
+        await foreach (var e in Repository
                            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName))
         {
             // Get the node where this entry belongs to
@@ -144,6 +196,33 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         public ObservableCollection<FolderViewModel> Folders { get; }
         public ObservableCollection<ItemViewModel>   Items   { get; }
 
+        //public void AddBinaryFilePath(string key, string binaryFilePath)
+        //{
+
+        //}
+
+        //public void AddPointerFilePath(string key, string pointerFilePath)
+        //{
+
+        //}
+
+        //public void AddPointerFileEntry(string key, string pointerFileEntry)
+        //{
+
+        //}
+
+        public ItemViewModel GetItemViewModel(string key, string name)
+        {
+            if (!itemsDict.TryGetValue(key, out var itemViewModel))
+            {
+                itemsDict.Add(key, itemViewModel = new ItemViewModel { Name = name });
+                Items.Add(itemViewModel);
+            }
+
+            return itemViewModel;
+        }
+        private readonly Dictionary<string, ItemViewModel> itemsDict = new();
+
         [ObservableProperty]
         [NotifyPropertyChangedRecipients]
         private bool isSelected;
@@ -158,6 +237,9 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     public partial class ItemViewModel : ObservableObject
     {
         public string Name { get; set; }
+
+        public string BinaryFilePath  { get; set; }
+        public string PointerFilePath { get; set; }
 
         public override string ToString() => Name;
     }

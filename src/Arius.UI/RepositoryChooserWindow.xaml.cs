@@ -180,7 +180,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject
 
             SaveState();
 
-            messenger.Send(new RepositoryChosenMessage(repositoryFacade));
+            messenger.Send(new RepositoryChosenMessage(new DirectoryInfo(LocalDirectory), repositoryFacade));
         }
         catch (ArgumentException e)
         {
@@ -222,10 +222,12 @@ public partial class ChooseRepositoryViewModel : ObservableObject
 
 public class RepositoryChosenMessage
 {
-    public RepositoryChosenMessage(RepositoryFacade repository)
+    public RepositoryChosenMessage(DirectoryInfo root, RepositoryFacade repository)
     {
+        LocalDirectory             = root;
         ChosenRepository = repository;
     }
 
+    public DirectoryInfo LocalDirectory { get; }
     public RepositoryFacade ChosenRepository { get; }
 }

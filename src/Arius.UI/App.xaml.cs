@@ -1,4 +1,5 @@
-﻿using Arius.Core.Facade;
+﻿using System.IO;
+using Arius.Core.Facade;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -59,7 +60,8 @@ public partial class App
         repositoryFacade = await saf.ForRepositoryAsync("test", "woutervr");
 
         var viewModel = host.Services.GetRequiredService<ExploreRepositoryViewModel>();
-        viewModel.Repository = repositoryFacade;
+        viewModel.Repository     = repositoryFacade;
+        viewModel.LocalDirectory = new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest");
 
         //var x = await repositoryFacade.GetEntriesAsync().ToArrayAsync();
 
@@ -78,7 +80,8 @@ public partial class App
         repositoryFacade = message.ChosenRepository;
 
         var viewModel = host.Services.GetRequiredService<ExploreRepositoryViewModel>();
-        viewModel.Repository = message.ChosenRepository;
+        viewModel.Repository     = message.ChosenRepository;
+        viewModel.LocalDirectory = message.LocalDirectory;
 
         explorerWindow = new RepositoryExplorerWindow
         {
@@ -92,8 +95,8 @@ public partial class App
     {
         using (host)
         {
-            repositoryFacade?.Dispose();
             host.Dispose();
+            repositoryFacade?.Dispose();
             await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
         }
 
