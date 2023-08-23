@@ -109,7 +109,8 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             }
 
             var name = GetItemName(e.Name);
-            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), name);
+            if (!folder.TryGetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), out var itemViewModel))
+                itemViewModel.Name = name;
 
             if (e.Name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
                 itemViewModel.PointerFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
@@ -118,13 +119,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         }
 
-        static string GetItemName(string name)
-        {
-            if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
-                return name.RemoveSuffix(".pointer.arius");
-            else
-                return name;
-        }
+
 
 
         // Load the database entries
@@ -147,14 +142,23 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                 parentFolder.Folders.Add(folder);
             }
 
-            var name          = e.Name.RemoveSuffix(".pointer.arius");
-            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), name);
-            itemViewModel.PointerFileEntry = Path.Combine(e.RelativeParentPath, e.DirectoryName, e.Name);
+            var name = e.Name.RemoveSuffix(".pointer.arius");
+            if (!folder.TryGetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), out var itemViewModel))
+                itemViewModel.Name = name;
 
-            //folder.Items.Add(new ItemViewModel { Name = e.Name });
+            itemViewModel.PointerFileEntry = Path.Combine(e.RelativeParentPath, e.DirectoryName, e.Name);
         }
 
         SelectedFolder.IsLoaded = true;
+
+
+        static string GetItemName(string name)
+        {
+            if (name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
+                return name.RemoveSuffix(".pointer.arius");
+            else
+                return name;
+        }
     }
 
     private const string ROOT_NODEKEY = "root";
@@ -218,15 +222,16 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         public ObservableCollection<FolderViewModel> Folders { get; }
         public ObservableCollection<ItemViewModel>   Items   { get; } // TODO ReadOnlyCollection public?
 
-        public ItemViewModel GetItemViewModel(string key, string name)
+        public bool TryGetItemViewModel(string key, out ItemViewModel itemViewModel)
         {
-            if (!itemsDict.TryGetValue(key, out var itemViewModel))
+            if (!itemsDict.TryGetValue(key, out itemViewModel))
             {
-                itemsDict.Add(key, itemViewModel = new ItemViewModel { Name = name });
+                itemsDict.Add(key, itemViewModel = new ItemViewModel( ));
                 Items.Add(itemViewModel);
+                return false;
             }
 
-            return itemViewModel;
+            return true;
         }
         private readonly Dictionary<string, ItemViewModel> itemsDict = new();
 
