@@ -8,8 +8,10 @@ using System.Net.NetworkInformation;
 using System.Windows;
 using System.Windows.Threading;
 using Arius.Core.Models;
+using Arius.Core.Queries;
 using Arius.Core.Services;
 using WouterVanRanst.Utils.Extensions;
+using static Arius.UI.FileService;
 
 namespace Arius.UI;
 
@@ -93,37 +95,26 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 //#endif
 
         // Load local entries
-        await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName),
-                     CombineLocalFilePath,
-                     SetLocalFilePaths);
+        await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
 
         // Load database entries
-        await ProcessEntries(Repository.GetEntriesAsync(SelectedFolder.RelativeDirectoryName),
-                             CombinePointerFileEntryPath,
-                             SetPointerFileEntry);
+        await ProcessEntries(Repository.GetEntriesAsync(SelectedFolder.RelativeDirectoryName));
 
-        async Task ProcessEntries(IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> entries,
-                                  Func<string, string, string, string, string> pathCombiner,
-                                  Action<ItemViewModel, string> setValue)
+        async Task ProcessEntries(IAsyncEnumerable<IGetEntriesResult> entries)
         {
             // Create the necessary FolderViewModels and ItemViewModels for the given entries
             await foreach (var e in entries)
             {
                 var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
-                var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
+                var itemViewModel   = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
 
-                // Set the string to the PointerFile, BinaryFile or PointerFileEntry
-                var value = pathCombiner(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
-                setValue(itemViewModel, value);
+                // Set update the viewmodel with the entry
+                UpdateViewModel(itemViewModel, e);
             }
 
-            static string GetItemName(string name)
-            {
-                if (name.EndsWith(PointerFileInfo.Extension))
-                    return name.RemoveSuffix(".pointer.arius");
-                else
-                    return name;
-            }
+            static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension) 
+                ? name.RemoveSuffix(".pointer.arius") 
+                : name;
         }
 
         FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
@@ -158,23 +149,27 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             return itemViewModel;
         }
 
-        void SetLocalFilePaths(ItemViewModel itemViewModel, string filename)
+        void UpdateViewModel(ItemViewModel itemViewModel, IGetEntriesResult e)
         {
-            var fib = FileSystemService.GetFileInfo(filename);
-            if (fib is PointerFileInfo pfi)
-                itemViewModel.PointerFileInfo = pfi;
-            else if (fib is BinaryFileInfo bfi)
-                itemViewModel.BinaryFileInfo = bfi;
+            if (e is GetLocalEntriesResult le)
+            {
+                var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
+                var fib      = FileSystemService.GetFileInfo(filename);
+                if (fib is PointerFileInfo pfi)
+                    itemViewModel.PointerFileInfo = pfi;
+                else if (fib is BinaryFileInfo bfi)
+                    itemViewModel.BinaryFileInfo = bfi;
+                else
+                    throw new NotImplementedException();
+            }
+            else if (e is IGetPointerFileEntriesResult pfe)
+            {
+                var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
+                itemViewModel.PointerFileEntry = path;
+            }
             else
                 throw new NotImplementedException();
         }
-        void SetPointerFileEntry(ItemViewModel itemViewModel, string path)
-        {
-            itemViewModel.PointerFileEntry = path;
-        }
-
-        static string CombineLocalFilePath(string root, string relativeParentPath, string directoryName, string name)     => Path.Combine(root, relativeParentPath, directoryName, name);
-        static string CombinePointerFileEntryPath(string _, string relativeParentPath, string directoryName, string name) => Path.Combine(relativeParentPath, directoryName, name);
 
 
         SelectedFolder.IsLoaded = true;

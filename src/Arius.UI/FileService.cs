@@ -1,20 +1,23 @@
 ﻿using System.IO;
+using Arius.Core.Queries;
 
 namespace Arius.UI;
 
 class FileService
 {
+    public record GetLocalEntriesResult(string RelativeParentPath, string DirectoryName, string Name) : IGetEntriesResult;
+    
     /// <summary>
     /// Returns file entries from a given directory, and from its direct child directories.
     /// </summary>
-    public static async IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntriesAsync(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
+    public static async IAsyncEnumerable<IGetEntriesResult> GetEntriesAsync(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
     {
         // NOTE This method is somewhat enigmatic but it produces consistent results with the GetPointerFileEntriesAtVersionAsync
 
         // If no relativeParentPathEquals is provided, return files from the root directory
         if (string.IsNullOrEmpty(relativeParentPathEquals))
             foreach (var file in rootDir.GetFiles())
-                yield return ("", "", file.Name);
+                yield return new GetLocalEntriesResult("", "", file.Name);
 
         // Convert relative path to system-specific directory path
         var adjustedRelativePath = relativeParentPathEquals.Replace('/', Path.DirectorySeparatorChar);
@@ -23,7 +26,7 @@ class FileService
         // Return files from direct child directories
         foreach (var childDir in targetDir.EnumerateDirectories())
             foreach (var childFile in childDir.EnumerateFiles())
-                yield return (GetRelativePath(rootDir.FullName, targetDir.FullName), childDir.Name, childFile.Name);
+                yield return new GetLocalEntriesResult(GetRelativePath(rootDir.FullName, targetDir.FullName), childDir.Name, childFile.Name);
 
 
         static string GetRelativePath(string relativeTo, string path)
