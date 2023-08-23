@@ -24,8 +24,6 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 {
     public ExploreRepositoryViewModel(IMessenger messenger)
     {
-        Folders = new();
-
         messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
         // Set the selected folder to the root and kick off the loading process
@@ -97,14 +95,14 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         var root = new FolderViewModel { Name = "Root", RelativePath = "", Parent = null };
         f.Add("root", root);
-        Folders.Add(root);
+        RootNode.Add(root);
 
         return root;
     }
 
 
     [ObservableProperty]
-    private ObservableCollection<FolderViewModel> folders;
+    private ObservableCollection<FolderViewModel> rootNode = new(); // this will really only contain one node but the TreeView binds to a collection
 
     public FolderViewModel SelectedFolder
     {
@@ -178,20 +176,20 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         //}
         //private bool isSelected;
 
-        public bool IsExpanded
-        {
-            get => isExpanded;
-            set
-            {
-                if (SetProperty(ref isExpanded, value))
-                {
-                    //if (value) // Load entries when expanded.
-                    //    LoadEntriesAsync();
-                }
-            }
-        }
-        //[ObservableProperty]
-        //[NotifyPropertyChangedRecipients]
+        //public bool IsExpanded
+        //{
+        //    get => isExpanded;
+        //    set
+        //    {
+        //        if (SetProperty(ref isExpanded, value))
+        //        {
+        //            //if (value) // Load entries when expanded.
+        //            //    LoadEntriesAsync();
+        //        }
+        //    }
+        //}
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
         private bool isExpanded;
 
         public override string ToString() => Name;

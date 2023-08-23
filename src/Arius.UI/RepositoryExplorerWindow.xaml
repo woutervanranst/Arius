@@ -16,7 +16,7 @@
 
         <TreeView 
                   Grid.Column="0" 
-                  ItemsSource="{Binding Folders}"
+                  ItemsSource="{Binding RootNode}"
 
                   VirtualizingStackPanel.IsVirtualizing="True"
                   VirtualizingStackPanel.VirtualizationMode="Recycling">
@@ -36,8 +36,8 @@
 
             <TreeView.ItemContainerStyle>
                 <Style TargetType="TreeViewItem">
-                    <Setter Property="IsSelected" Value="{Binding IsSelected}" />
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 </Style>
             </TreeView.ItemContainerStyle>
         </TreeView>
