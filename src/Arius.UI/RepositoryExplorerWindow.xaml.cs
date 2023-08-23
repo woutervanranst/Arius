@@ -27,7 +27,16 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
         // Set the selected folder to the root and kick off the loading process
-        SelectedFolder = AddRootFolder(); //new FolderViewModel { Name = "Root", RelativePath = "", Parent = null };
+        SelectedFolder = GetRootNode();
+
+        FolderViewModel GetRootNode()
+        {
+            var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "" };
+            folders.Add(ROOT_NODEKEY, rootNode);
+            RootNode.Add(rootNode);
+
+            return rootNode;
+        }
     }
 
     private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
@@ -69,10 +78,12 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         await foreach (var e in repository
                            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName))
         {
-            var nodePath       = CombinePathSegments("root", e.RelativeParentPath, e.DirectoryName);
+            // Get the node where this entry belongs to
+            var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
             if (!folders.TryGetValue(nodePath, out var folder))
             {
-                var nodeParentPath = CombinePathSegments("root", e.RelativeParentPath);
+                // The node does not yet exist - create it
+                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
                 var parentFolder   = folders[nodeParentPath];
                 folders.Add(nodePath, folder = new FolderViewModel
                 {
@@ -87,9 +98,9 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         }
 
         SelectedFolder.IsLoaded = true;
-
-        
     }
+
+    private const string ROOT_NODEKEY = "root";
 
     private static string CombinePathSegments(params string[] segments)
     {
@@ -98,14 +109,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
     private readonly Dictionary<string, FolderViewModel> folders = new();
 
-    private FolderViewModel AddRootFolder()
-    {
-        var root = new FolderViewModel { Name = "Root", RelativeDirectoryName  = "" };
-        folders.Add("root", root);
-        RootNode.Add(root);
-
-        return root;
-    }
+    
 
 
     [ObservableProperty]
