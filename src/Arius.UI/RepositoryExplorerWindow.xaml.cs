@@ -128,16 +128,16 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
         {
-            var key = CombinePathSegments(ROOT_NODEKEY, relativeParentPath, directoryName);
+            var key = Path.Combine(ROOT_NODEKEY, relativeParentPath, directoryName);
             if (!foldersDict.TryGetValue(key, out var folderViewModel))
             {
                 // We need a new FolderViewModel
-                var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, relativeParentPath);
-                var parentFolder = foldersDict[nodeParentPath];
+                var nodeParentPath = Path.Combine(ROOT_NODEKEY, relativeParentPath);
+                var parentFolder   = foldersDict[nodeParentPath];
                 folderViewModel = new FolderViewModel
                 {
                     Name = directoryName,
-                    RelativeDirectoryName = CombinePathSegments(relativeParentPath, directoryName)
+                    RelativeDirectoryName = Path.Combine(relativeParentPath, directoryName)
                 };
                 foldersDict.Add(key, folderViewModel);
                 parentFolder.Folders.Add(folderViewModel);
@@ -148,7 +148,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
         {
-            var key = CombinePathSegments(folderViewModel.RelativeDirectoryName, name);
+            var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
             if (!folderViewModel.TryGetItemViewModel(key, out var itemViewModel))
             {
                 // We need a new ItemViewModel
@@ -175,8 +175,6 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
         static string CombineLocalFilePath(string root, string relativeParentPath, string directoryName, string name)     => Path.Combine(root, relativeParentPath, directoryName, name);
         static string CombinePointerFileEntryPath(string _, string relativeParentPath, string directoryName, string name) => Path.Combine(relativeParentPath, directoryName, name);
-
-        static string CombinePathSegments(params string[] segments) => Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
 
 
         SelectedFolder.IsLoaded = true;
