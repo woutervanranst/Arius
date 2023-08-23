@@ -55,16 +55,19 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
     private async Task LoadEntriesAsync()
     {
+        //if (SelectedFolder.IsLoaded)
+        //    return;
+
         var x = await repository
-            .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
+            .GetEntriesAsync(CombinePathSegments(SelectedFolder.RelativeParentPath, SelectedFolder.DirectoryName))
             .ToListAsync();
 
         var y = await FileService
-            .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
+            .GetEntriesAsync(CombinePathSegments(SelectedFolder.RelativeParentPath, SelectedFolder.DirectoryName))
             .ToListAsync();
 
         await foreach (var e in repository
-                           .GetEntriesAsync(SelectedFolder.Parent?.RelativePath ?? ""))
+                           .GetEntriesAsync(CombinePathSegments(SelectedFolder.RelativeParentPath, SelectedFolder.DirectoryName)))
         {
             var nodePath       = Path.Combine("root", e.RelativeParentPath, e.DirectoryName);
             if (!folders.TryGetValue(nodePath, out var folder))
@@ -73,10 +76,11 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                 var parentFolder = folders[nodeParentPath];
                 folders.Add(nodePath, folder = new FolderViewModel
                 {
-                    Name         = e.DirectoryName,
-                    NodePath     = nodePath,
-                    RelativePath = Path.Combine(e.RelativeParentPath, e.DirectoryName),
-                    Parent       = parentFolder
+                    Name               = e.DirectoryName,
+                    NodePath           = nodePath,
+                    RelativeParentPath = e.RelativeParentPath,
+                    DirectoryName      = e.DirectoryName,
+                    Parent             = parentFolder
                 });
 
                 parentFolder.Folders.Add(folder);
@@ -84,13 +88,26 @@ public partial class ExploreRepositoryViewModel : ObservableObject
 
             folder.Items.Add(new ItemViewModel { Name = e.Name });
         }
+
+        SelectedFolder.IsLoaded = true;
+
+        string CombinePathSegments(string segment1, string segment2)
+        {
+            return Path.Combine(segment1, segment2).Replace(Path.DirectorySeparatorChar, '/');
+            //// Return the non-empty segment if one of them is empty or null
+            //if (string.IsNullOrEmpty(segment1)) return segment2 ?? string.Empty;
+            //if (string.IsNullOrEmpty(segment2)) return segment1;
+
+            //// Both segments are non-empty, join with a forward slash
+            //return $"{segment1}/{segment2}";
+        }
     }
 
     private readonly Dictionary<string, FolderViewModel> folders = new();
 
     private FolderViewModel AddRootFolder()
     {
-        var root = new FolderViewModel { Name = "Root", NodePath = "root", RelativePath = "", Parent = null };
+        var root = new FolderViewModel { Name = "Root", NodePath = "root", RelativeParentPath = "", DirectoryName = "", Parent = null };
         folders.Add("root", root);
         RootNode.Add(root);
 
@@ -123,9 +140,11 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             Items   = new ObservableCollection<ItemViewModel>();
         }
 
-        public string Name         { get; init; }
-        public string NodePath     { get; init; } // TODO is nodepath just 'root' + relativepath?
-        public string RelativePath { get; init; }
+        public string Name               { get; init; }
+        public string NodePath           { get; init; } // TODO is nodepath just 'root' + relativepath?
+        public string RelativeParentPath { get; init; }
+        public string DirectoryName      { get; init; }
+        public bool   IsLoaded           { get; set; } = false;
 
         public FolderViewModel? Parent { get; set; }
 
