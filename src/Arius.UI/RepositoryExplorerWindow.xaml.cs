@@ -27,7 +27,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         this.messenger = messenger;
         Folders        = new();
-        Items          = new();
+        //Items          = new();
 
         messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
@@ -40,7 +40,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         switch (message.PropertyName)
         {
             case nameof(FolderViewModel.IsSelected):
-                // Handle IsSelected change
+                SelectedFolder = message.Sender as FolderViewModel;
                 break;
 
             case nameof(FolderViewModel.IsExpanded):
@@ -61,9 +61,14 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     private async Task LoadEntriesAsync()
     {
         var x = await repository
-            .GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "").ToListAsync();
+            .GetEntriesAsync(SelectedFolder.FullPath ?? "")
+            //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
+            .ToListAsync();
 
-        var y = await FileService.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "").ToListAsync();
+        var y = await FileService
+            //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
+            .GetEntriesAsync(SelectedFolder.FullPath ?? "")
+            .ToListAsync();
 
         await foreach (var e in repository
                            .GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? ""))
@@ -93,25 +98,25 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         {
             if (SetProperty(ref selectedFolder, value))
             {
-                Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
             }
         }
     }
     private FolderViewModel  selectedFolder;
 
 
-    [ObservableProperty]
-    private ObservableCollection<ItemViewModel> items;
+    //[ObservableProperty]
+    //private ObservableCollection<ItemViewModel> items;
 
-    [ObservableProperty]
-    private ItemViewModel selectedItem;
+    //[ObservableProperty]
+    //private ItemViewModel selectedItem;
 
     public partial class FolderViewModel : ObservableRecipient
     {
         public FolderViewModel()
         {
-            Subdirectories = new ObservableCollection<FolderViewModel>();
-            Items          = new ObservableCollection<ItemViewModel>();
+            Folders = new ObservableCollection<FolderViewModel>();
+            Items   = new ObservableCollection<ItemViewModel>();
         }
 
         public string           Name   { get; init; }
@@ -134,7 +139,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             }
         }
 
-        public ObservableCollection<FolderViewModel> Subdirectories { get; }
+        public ObservableCollection<FolderViewModel> Folders { get; }
         public ObservableCollection<ItemViewModel>   Items          { get; }
 
         [ObservableProperty]
@@ -156,18 +161,20 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         //}
         //private bool isSelected;
 
-        //public bool IsExpanded
-        //{
-        //    get => isExpanded;
-        //    set
-        //    {
-        //        if (SetProperty(ref isExpanded, value))
-        //            if (value) // Load entries when expanded.
-        //                LoadEntriesAsync();
-        //    }
-        //}
-        [ObservableProperty]
-        [NotifyPropertyChangedRecipients]
+        public bool IsExpanded
+        {
+            get => isExpanded;
+            set
+            {
+                if (SetProperty(ref isExpanded, value))
+                {
+                    //if (value) // Load entries when expanded.
+                    //    LoadEntriesAsync();
+                }
+            }
+        }
+        //[ObservableProperty]
+        //[NotifyPropertyChangedRecipients]
         private bool isExpanded;
 
         public override string ToString() => FullPath;
