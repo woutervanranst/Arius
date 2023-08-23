@@ -146,11 +146,8 @@ internal partial class Repository
         // Apply the filters from the filter object
         if (relativeParentPathEquals is not null)
             entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
-        //entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.RelativeParentPath.StartsWith(relativeParentPathStartsWith));
-
         if (directoryNameEquals is not null)
             entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.DirectoryName == directoryNameEquals);
-
         if (nameContains is not null)
             entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.Name.Contains(nameContains));
 
