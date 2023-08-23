@@ -34,7 +34,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         FolderViewModel GetRootNode()
         {
             var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "" };
-            folders.Add(ROOT_NODEKEY, rootNode);
+            foldersDict.Add(ROOT_NODEKEY, rootNode);
             RootNode.Add(rootNode);
 
             return rootNode;
@@ -95,11 +95,11 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         {
             // Get the node where this entry belongs to
             var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!folders.TryGetValue(nodePath, out var folder))
+            if (!foldersDict.TryGetValue(nodePath, out var folder))
             {
                 var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
-                var parentFolder   = folders[nodeParentPath];
-                folders.Add(nodePath, folder = new FolderViewModel
+                var parentFolder   = foldersDict[nodeParentPath];
+                foldersDict.Add(nodePath, folder = new FolderViewModel
                 {
                     Name                  = e.DirectoryName,
                     RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName)
@@ -108,7 +108,8 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                 parentFolder.Folders.Add(folder);
             }
 
-            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, GetItemName(e.Name)), GetItemName(e.Name));
+            var name = GetItemName(e.Name);
+            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), name);
 
             if (e.Name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
                 itemViewModel.PointerFilePath = Path.Combine(LocalDirectory.FullName, e.RelativeParentPath, e.DirectoryName, e.Name);
@@ -132,12 +133,12 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         {
             // Get the node where this entry belongs to
             var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!folders.TryGetValue(nodePath, out var folder))
+            if (!foldersDict.TryGetValue(nodePath, out var folder))
             {
                 // The node does not yet exist - create it
                 var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
-                var parentFolder   = folders[nodeParentPath];
-                folders.Add(nodePath, folder = new FolderViewModel
+                var parentFolder   = foldersDict[nodeParentPath];
+                foldersDict.Add(nodePath, folder = new FolderViewModel
                 {
                     Name                  = e.DirectoryName,
                     RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName),
@@ -146,7 +147,11 @@ public partial class ExploreRepositoryViewModel : ObservableObject
                 parentFolder.Folders.Add(folder);
             }
 
-            folder.Items.Add(new ItemViewModel { Name = e.Name });
+            var name          = e.Name.RemoveSuffix(".pointer.arius");
+            var itemViewModel = folder.GetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), name);
+            itemViewModel.PointerFileEntry = Path.Combine(e.RelativeParentPath, e.DirectoryName, e.Name);
+
+            //folder.Items.Add(new ItemViewModel { Name = e.Name });
         }
 
         SelectedFolder.IsLoaded = true;
@@ -159,7 +164,24 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         return Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
     }
 
-    private readonly Dictionary<string, FolderViewModel> folders = new();
+    //private bool TryAddFolderViewModel(string key, out FolderViewModel folderViewModel)
+    //{
+    //    if (!foldersDict.TryGetValue(key, out folderViewModel))
+    //    {
+    //        foldersDict.Add(key, folderViewModel = new FolderViewModel());
+    //        RootNode.Add(folderViewModel);
+    //    }
+
+    //    //if (!itemsDict.TryGetValue(key, out var itemViewModel))
+    //    //{
+    //    //    itemsDict.Add(key, itemViewModel = new ItemViewModel { Name = name });
+    //    //    Items.Add(itemViewModel);
+    //    //}
+
+    //    //return itemViewModel;
+    //}
+
+    private readonly Dictionary<string, FolderViewModel> foldersDict = new();
 
     
 
@@ -194,22 +216,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         public bool   IsLoaded              { get; set; } = false;
 
         public ObservableCollection<FolderViewModel> Folders { get; }
-        public ObservableCollection<ItemViewModel>   Items   { get; }
-
-        //public void AddBinaryFilePath(string key, string binaryFilePath)
-        //{
-
-        //}
-
-        //public void AddPointerFilePath(string key, string pointerFilePath)
-        //{
-
-        //}
-
-        //public void AddPointerFileEntry(string key, string pointerFileEntry)
-        //{
-
-        //}
+        public ObservableCollection<ItemViewModel>   Items   { get; } // TODO ReadOnlyCollection public?
 
         public ItemViewModel GetItemViewModel(string key, string name)
         {
@@ -238,8 +245,9 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         public string Name { get; set; }
 
-        public string BinaryFilePath  { get; set; }
-        public string PointerFilePath { get; set; }
+        public string BinaryFilePath   { get; set; }
+        public string PointerFilePath  { get; set; }
+        public string PointerFileEntry { get; set; }
 
         public override string ToString() => Name;
     }
