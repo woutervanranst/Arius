@@ -33,7 +33,6 @@ internal class RepositoryQueries
     {
         return repository
             .GetPointerFileEntriesAsync(DateTime.Now, false, relativeParentPathEquals, directoryNameEquals, nameContains)
-            //.Where(pfe => pfe.RelativePath.Equals(relativePathPrefix, StringComparison.InvariantCultureIgnoreCase))
             .Select(pfe => (pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name));
     }
 }
