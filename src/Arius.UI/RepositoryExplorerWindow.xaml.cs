@@ -95,21 +95,21 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         {
             // Get the node where this entry belongs to
             var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!foldersDict.TryGetValue(nodePath, out var folder))
+            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
             {
                 var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
                 var parentFolder   = foldersDict[nodeParentPath];
-                foldersDict.Add(nodePath, folder = new FolderViewModel
+                foldersDict.Add(nodePath, folderViewModel = new FolderViewModel
                 {
                     Name                  = e.DirectoryName,
                     RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName)
                 });
 
-                parentFolder.Folders.Add(folder);
+                parentFolder.Folders.Add(folderViewModel);
             }
 
             var name = GetItemName(e.Name);
-            if (!folder.TryGetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), out var itemViewModel))
+            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
                 itemViewModel.Name = name;
 
             if (e.Name.EndsWith(".pointer.arius")) // todo get this from PointerFile.Extension
@@ -128,22 +128,22 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         {
             // Get the node where this entry belongs to
             var nodePath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath, e.DirectoryName);
-            if (!foldersDict.TryGetValue(nodePath, out var folder))
+            if (!foldersDict.TryGetValue(nodePath, out var folderViewModel))
             {
                 // The node does not yet exist - create it
                 var nodeParentPath = CombinePathSegments(ROOT_NODEKEY, e.RelativeParentPath);
                 var parentFolder   = foldersDict[nodeParentPath];
-                foldersDict.Add(nodePath, folder = new FolderViewModel
+                foldersDict.Add(nodePath, folderViewModel = new FolderViewModel
                 {
                     Name                  = e.DirectoryName,
                     RelativeDirectoryName = CombinePathSegments(e.RelativeParentPath, e.DirectoryName),
                 });
 
-                parentFolder.Folders.Add(folder);
+                parentFolder.Folders.Add(folderViewModel);
             }
 
             var name = e.Name.RemoveSuffix(".pointer.arius");
-            if (!folder.TryGetItemViewModel(CombinePathSegments(folder.RelativeDirectoryName, name), out var itemViewModel))
+            if (!folderViewModel.TryGetItemViewModel(CombinePathSegments(folderViewModel.RelativeDirectoryName, name), out var itemViewModel))
                 itemViewModel.Name = name;
 
             itemViewModel.PointerFileEntry = Path.Combine(e.RelativeParentPath, e.DirectoryName, e.Name);
@@ -168,21 +168,16 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         return Path.Combine(segments).Replace(Path.DirectorySeparatorChar, '/');
     }
 
-    //private bool TryAddFolderViewModel(string key, out FolderViewModel folderViewModel)
+    //private bool TryGetFolderViewModel(string key, out FolderViewModel folderViewModel)
     //{
     //    if (!foldersDict.TryGetValue(key, out folderViewModel))
     //    {
     //        foldersDict.Add(key, folderViewModel = new FolderViewModel());
     //        RootNode.Add(folderViewModel);
+    //        return false;
     //    }
 
-    //    //if (!itemsDict.TryGetValue(key, out var itemViewModel))
-    //    //{
-    //    //    itemsDict.Add(key, itemViewModel = new ItemViewModel { Name = name });
-    //    //    Items.Add(itemViewModel);
-    //    //}
-
-    //    //return itemViewModel;
+    //    return true;
     //}
 
     private readonly Dictionary<string, FolderViewModel> foldersDict = new();
