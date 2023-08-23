@@ -11,12 +11,66 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\NNNA.png" />
+    <None Remove="Resources\NNNC.png" />
+    <None Remove="Resources\NNNN.png" />
+    <None Remove="Resources\NNYA.png" />
+    <None Remove="Resources\NNYC.png" />
+    <None Remove="Resources\NNYN.png" />
+    <None Remove="Resources\NYNA.png" />
+    <None Remove="Resources\NYNC.png" />
+    <None Remove="Resources\NYNN.png" />
+    <None Remove="Resources\NYYA.png" />
+    <None Remove="Resources\NYYC.png" />
+    <None Remove="Resources\NYYN.png" />
+    <None Remove="Resources\YNNA.png" />
+    <None Remove="Resources\YNNC.png" />
+    <None Remove="Resources\YNNN.png" />
+    <None Remove="Resources\YNYA.png" />
+    <None Remove="Resources\YNYC.png" />
+    <None Remove="Resources\YNYN.png" />
+    <None Remove="Resources\YYNA.png" />
+    <None Remove="Resources\YYNC.png" />
+    <None Remove="Resources\YYNN.png" />
+    <None Remove="Resources\YYYA.png" />
+    <None Remove="Resources\YYYC.png" />
+    <None Remove="Resources\YYYN.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\NNNA.png" />
+    <Resource Include="Resources\NNNC.png" />
+    <Resource Include="Resources\NNNN.png" />
+    <Resource Include="Resources\NNYA.png" />
+    <Resource Include="Resources\NNYC.png" />
+    <Resource Include="Resources\NNYN.png" />
+    <Resource Include="Resources\NYNA.png" />
+    <Resource Include="Resources\NYNC.png" />
+    <Resource Include="Resources\NYNN.png" />
+    <Resource Include="Resources\NYYA.png" />
+    <Resource Include="Resources\NYYC.png" />
+    <Resource Include="Resources\NYYN.png" />
+    <Resource Include="Resources\YNNA.png" />
+    <Resource Include="Resources\YNNC.png" />
+    <Resource Include="Resources\YNNN.png" />
+    <Resource Include="Resources\YNYA.png" />
+    <Resource Include="Resources\YNYC.png" />
+    <Resource Include="Resources\YNYN.png" />
+    <Resource Include="Resources\YYNA.png" />
+    <Resource Include="Resources\YYNC.png" />
+    <Resource Include="Resources\YYNN.png" />
+    <Resource Include="Resources\YYYA.png" />
+    <Resource Include="Resources\YYYC.png" />
+    <Resource Include="Resources\YYYN.png" />
   </ItemGroup>
 
   <ItemGroup>
