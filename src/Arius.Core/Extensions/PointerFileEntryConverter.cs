@@ -10,13 +10,14 @@ internal static class PointerFileEntryConverter
     {
         return new PointerFileEntryDto()
         {
-            BinaryHash       = pfe.BinaryHash.Value, // convert the bytes
-            RelativePath     = ToPlatformNeutral(pfe.RelativePath), // convert to platform neutral
-            Name             = pfe.Name,
-            VersionUtc       = pfe.VersionUtc,
-            IsDeleted        = pfe.IsDeleted,
-            CreationTimeUtc  = pfe.CreationTimeUtc,
-            LastWriteTimeUtc = pfe.LastWriteTimeUtc
+            BinaryHash         = pfe.BinaryHash.Value, // convert the bytes
+            RelativeParentPath = ToPlatformNeutral(pfe.RelativeParentPath), // convert to platform neutral
+            DirectoryName      = pfe.DirectoryName,
+            Name               = pfe.Name,
+            VersionUtc         = pfe.VersionUtc,
+            IsDeleted          = pfe.IsDeleted,
+            CreationTimeUtc    = pfe.CreationTimeUtc,
+            LastWriteTimeUtc   = pfe.LastWriteTimeUtc
         };
     }
 
@@ -24,13 +25,14 @@ internal static class PointerFileEntryConverter
     {
         return new PointerFileEntry()
         {
-            BinaryHash       = new BinaryHash(pfeDto.BinaryHash),
-            RelativePath     = ToPlatformSpecific(pfeDto.RelativePath),
-            Name             = pfeDto.Name,
-            VersionUtc       = pfeDto.VersionUtc,
-            IsDeleted        = pfeDto.IsDeleted,
-            CreationTimeUtc  = pfeDto.CreationTimeUtc,
-            LastWriteTimeUtc = pfeDto.LastWriteTimeUtc
+            BinaryHash         = new BinaryHash(pfeDto.BinaryHash),
+            RelativeParentPath = ToPlatformSpecific(pfeDto.RelativeParentPath),
+            DirectoryName      = pfeDto.DirectoryName,
+            Name               = pfeDto.Name,
+            VersionUtc         = pfeDto.VersionUtc,
+            IsDeleted          = pfeDto.IsDeleted,
+            CreationTimeUtc    = pfeDto.CreationTimeUtc,
+            LastWriteTimeUtc   = pfeDto.LastWriteTimeUtc
         };
     }
 

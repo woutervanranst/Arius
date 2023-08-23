@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories.StateDb;
 using Microsoft.EntityFrameworkCore;
@@ -25,15 +26,22 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime versionUtc)
     {
+        var relativePath       = Path.GetDirectoryName(pf.RelativeName);
+        var lastSepIndex       = relativePath.LastIndexOf(Path.DirectorySeparatorChar);
+        var directoryName      = relativePath[(lastSepIndex + 1)..];
+        var relativeParentPath = lastSepIndex == -1 ? "" : relativePath[..lastSepIndex];
+
+
         var pfeDto = new PointerFileEntry
         {
-            BinaryHash       = pf.BinaryHash,
-            RelativePath     = Path.GetDirectoryName(pf.RelativeName),
-            Name             = Path.GetFileName(pf.RelativeName),
-            VersionUtc       = versionUtc,
-            IsDeleted        = false,
-            CreationTimeUtc  = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(),
-            LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
+            BinaryHash         = pf.BinaryHash,
+            RelativeParentPath = relativeParentPath,
+            DirectoryName      = directoryName,
+            Name               = Path.GetFileName(pf.RelativeName),
+            VersionUtc         = versionUtc,
+            IsDeleted          = false,
+            CreationTimeUtc    = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(),
+            LastWriteTimeUtc   = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
         }.ToPointerFileEntryDto();
 
         return await CreatePointerFileEntryIfNotExistsAsync(pfeDto);
@@ -63,9 +71,11 @@ internal partial class Repository
         await using var db = GetStateDbContext();
 
         var lastVersion = await db.PointerFileEntries
-            .Where(pfe0 => pfe.RelativePath == pfe0.RelativePath && pfe.Name == pfe0.Name)
+            .Where(pfe0 => pfe.RelativeParentPath == pfe0.RelativeParentPath && pfe.DirectoryName == pfe0.DirectoryName && pfe.Name == pfe0.Name)
             .OrderBy(pfe0 => pfe0.VersionUtc)
             .LastOrDefaultAsync();
+
+        // TODO here be race condition, see "C:\Users\woute\Documents\GitHub\Arius\src\Arius.Cli\bin\Debug\net7.0\logs\arius-archive-test-2023-08-22T14-02-59.6513082Z.tar.gzip"
 
         var toAdd = !pfeDtoEqualityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
         if (toAdd)
@@ -98,25 +108,34 @@ internal partial class Repository
     /// Get the PointerFileEntries at the given version.
     /// If no version is specified, the current (most recent) will be returned
     /// </summary>
-    public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted, string? relativePathPrefix = null)
+    public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted,
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
     {
-        return GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc, relativePathPrefix)
+        return GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc, relativeParentPathEquals, directoryNameEquals, nameContains)
             .Where(pfe => includeDeleted || !pfe.IsDeleted);
     }
 
 
-    private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc, string? relativePathPrefix = null)
+    private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc,
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
     {
         var versionUtc = await GetVersionAsync(pointInTimeUtc);
 
         if (versionUtc is null)
             yield break;
 
-        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(versionUtc.Value, relativePathPrefix))
+        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(versionUtc.Value, relativeParentPathEquals, directoryNameEquals, nameContains))
             yield return entry;
     }
 
-    private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc, string? relativePathPrefix = null)
+    private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc,
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
     {
         await using var db = GetStateDbContext();
 
@@ -124,16 +143,20 @@ internal partial class Repository
         var entriesUpToVersion = db.PointerFileEntries
             .Where(pfe => pfe.VersionUtc <= versionUtc);
 
-        // If a relativePathPrefix is provided, filter entries based on it
-        if (!string.IsNullOrEmpty(relativePathPrefix))
-        {
-            entriesUpToVersion = entriesUpToVersion
-                .Where(pfe => pfe.RelativePath.StartsWith(relativePathPrefix));
-        }
+        // Apply the filters from the filter object
+        if (relativeParentPathEquals is not null)
+            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
+        //entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.RelativeParentPath.StartsWith(relativeParentPathStartsWith));
+
+        if (directoryNameEquals is not null)
+            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.DirectoryName == directoryNameEquals);
+
+        if (nameContains is not null)
+            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.Name.Contains(nameContains));
 
         // Perform the grouping and ordering within the same query to limit the amount of data pulled into memory
         var groupedAndOrdered = entriesUpToVersion
-            .GroupBy(pfe => pfe.RelativePath + "/" + pfe.Name)
+            .GroupBy(pfe => pfe.RelativeParentPath + '/' + pfe.DirectoryName + '/' + pfe.Name)
             .Select(g => g.OrderByDescending(p => p.VersionUtc).FirstOrDefault());
 
         await foreach (var entry in groupedAndOrdered.AsAsyncEnumerable())

@@ -9,8 +9,10 @@ namespace Arius.Core.Repositories.StateDb;
 internal record PointerFileEntryDto
 {
     public byte[] BinaryHash   { get; init; }
-    public string RelativePath { get; init; }
-    public string Name         { get; init; }
+
+    public string RelativeParentPath { get; init; }
+    public string DirectoryName      { get; init; }
+    public string Name               { get; init; }
 
     /// <summary>
     /// Version (in Universal Time)
@@ -22,7 +24,7 @@ internal record PointerFileEntryDto
 
     public virtual ChunkEntry Chunk { get; init; }
     [NotMapped]
-    public string RelativeName => Path.Combine(RelativePath, Name);
+    public string RelativeName => Path.Combine(RelativeParentPath, DirectoryName, Name);
 }
 
 internal record ChunkEntry

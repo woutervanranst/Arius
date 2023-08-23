@@ -75,7 +75,7 @@ internal partial class Repository
 
                     try
                     {
-                        return await GetChunkEntryAsync(chunk.ChunkHash); // TODO when would this path be executed??
+                        return await GetChunkEntryAsync(chunk.ChunkHash); // TODO when would this path succeed / not result in an InvalidOperationException ??
                     }
                     catch (InvalidOperationException)
                     {

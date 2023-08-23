@@ -10,6 +10,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using PostSharp.Patterns.Contracts;
+using System.Linq.Expressions;
+using Arius.Core.Facade;
 
 namespace Arius.Core.Queries;
 
@@ -24,12 +26,15 @@ internal class RepositoryQueries
         this.repository    = repository;
     }
 
-    public IAsyncEnumerable<(string RelativePath, string Name)> GetEntriesAsync(string? relativePathPrefix = null)
+    public IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntriesAsync(
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
     {
         return repository
-            .GetPointerFileEntriesAsync(DateTime.Now, false, relativePathPrefix)
+            .GetPointerFileEntriesAsync(DateTime.Now, false, relativeParentPathEquals, directoryNameEquals, nameContains)
             //.Where(pfe => pfe.RelativePath.Equals(relativePathPrefix, StringComparison.InvariantCultureIgnoreCase))
-            .Select(pfe => (pfe.RelativePath, pfe.Name));
+            .Select(pfe => (pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name));
     }
 }
 

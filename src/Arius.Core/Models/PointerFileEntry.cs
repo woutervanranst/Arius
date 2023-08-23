@@ -5,10 +5,12 @@ namespace Arius.Core.Models;
 
 internal record PointerFileEntry
 {
-    public BinaryHash BinaryHash   { get; init; }
-    public string     RelativePath { get; init; }
-    public string     Name         { get; init; }
-    public string     RelativeName => Path.Combine(RelativePath, Name);
+    public BinaryHash BinaryHash         { get; init; }
+
+    public string     RelativeParentPath { get; init; }
+    public string     DirectoryName      { get; init; }
+    public string     Name               { get; init; }
+    public string     RelativeName       => Path.Combine(RelativeParentPath, DirectoryName, Name);
 
     /// <summary>
     /// Version (in Universal Time)

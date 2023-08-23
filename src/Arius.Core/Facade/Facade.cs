@@ -1,18 +1,18 @@
 ﻿using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.Rehydrate;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Queries;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
+using PostSharp.Constraints;
+using PostSharp.Patterns.Contracts;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using Arius.Core.Commands.Rehydrate;
-using Arius.Core.Commands.Restore;
-using FluentValidation.Results;
-using PostSharp.Constraints;
-using PostSharp.Patterns.Contracts;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -197,10 +197,15 @@ public class RepositoryFacade : IDisposable
         throw new NotImplementedException();
     }
 
-    public async IAsyncEnumerable<(string RelativePath, string Name)> GetEntriesAsync(string path)
+    
+
+    public async IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntriesAsync(
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
     {
         var q = new RepositoryQueries(loggerFactory, Repository);
-        await foreach (var e in q.GetEntriesAsync(path))
+        await foreach (var e in q.GetEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
             yield return e;
     }
 
