@@ -57,42 +57,41 @@ public partial class ExploreRepositoryViewModel : ObservableObject
     {
         var x = await repository
             .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
-            //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
             .ToListAsync();
 
         var y = await FileService
-            //.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "")
             .GetEntriesAsync(SelectedFolder.RelativePath ?? "")
             .ToListAsync();
 
         await foreach (var e in repository
                            .GetEntriesAsync(SelectedFolder.Parent?.RelativePath ?? ""))
         {
-            var relativePath       = Path.Combine("root", e.RelativeParentPath, e.DirectoryName); //parent.RelativePath;
-            if (!f.TryGetValue(relativePath, out var folder))
+            var nodePath       = Path.Combine("root", e.RelativeParentPath, e.DirectoryName);
+            if (!folders.TryGetValue(nodePath, out var folder))
             {
-                var relativeParentPath = Path.Combine("root", e.RelativeParentPath);
-                //var parentFolder = f.TryGetValue(relativeParentPath, out var p) ? p : null;
-                var parentFolder = f[relativeParentPath]; //, out var p) ? p : null;
-                f.Add(relativePath, folder = new FolderViewModel { Name = e.DirectoryName, RelativePath = relativePath, Parent = parentFolder });
+                var nodeParentPath = Path.Combine("root", e.RelativeParentPath);
+                var parentFolder = folders[nodeParentPath];
+                folders.Add(nodePath, folder = new FolderViewModel
+                {
+                    Name         = e.DirectoryName,
+                    NodePath     = nodePath,
+                    RelativePath = Path.Combine(e.RelativeParentPath, e.DirectoryName),
+                    Parent       = parentFolder
+                });
 
-                //if (parentFolder is null)
-                //    Folders.Add(folder); // this is the root node we're adding
-                //else
-                    parentFolder.Folders.Add(folder);
+                parentFolder.Folders.Add(folder);
             }
 
             folder.Items.Add(new ItemViewModel { Name = e.Name });
-
         }
     }
 
-    private readonly Dictionary<string, FolderViewModel> f = new();
+    private readonly Dictionary<string, FolderViewModel> folders = new();
 
     private FolderViewModel AddRootFolder()
     {
-        var root = new FolderViewModel { Name = "Root", RelativePath = "", Parent = null };
-        f.Add("root", root);
+        var root = new FolderViewModel { Name = "Root", NodePath = "root", RelativePath = "", Parent = null };
+        folders.Add("root", root);
         RootNode.Add(root);
 
         return root;
@@ -125,6 +124,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         }
 
         public string Name         { get; init; }
+        public string NodePath     { get; init; } // TODO is nodepath just 'root' + relativepath?
         public string RelativePath { get; init; }
 
         public FolderViewModel? Parent { get; set; }
@@ -157,7 +157,7 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         [NotifyPropertyChangedRecipients]
         private bool isExpanded;
 
-        public override string ToString() => Name;
+        public override string ToString() => NodePath;
     }
 
     public partial class ItemViewModel : ObservableObject
