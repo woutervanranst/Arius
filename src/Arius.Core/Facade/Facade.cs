@@ -199,7 +199,7 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public async IAsyncEnumerable<(string RelativeParentPath, string DirectoryName, string Name)> GetEntriesAsync(
+    public async IAsyncEnumerable<IGetPointerFileEntriesResult> GetEntriesAsync(
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
         string? nameContains = null)

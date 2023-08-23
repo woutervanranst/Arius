@@ -111,9 +111,10 @@ internal partial class Repository
     public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
-        string? nameContains = null)
+        string? nameContains = null,
+        bool includeChunkEntry = false)
     {
-        return GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc, relativeParentPathEquals, directoryNameEquals, nameContains)
+        return GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry)
             .Where(pfe => includeDeleted || !pfe.IsDeleted);
     }
 
@@ -121,38 +122,43 @@ internal partial class Repository
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
-        string? nameContains = null)
+        string? nameContains = null,
+        bool includeChunkEntry = false)
     {
         var versionUtc = await GetVersionAsync(pointInTimeUtc);
 
         if (versionUtc is null)
             yield break;
 
-        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(versionUtc.Value, relativeParentPathEquals, directoryNameEquals, nameContains))
+        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(versionUtc.Value, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry))
             yield return entry;
     }
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
-        string? nameContains = null)
+        string? nameContains = null,
+        bool includeChunkEntry = false)
     {
         await using var db = GetStateDbContext();
 
         // Get all the entries up to the given version
-        var entriesUpToVersion = db.PointerFileEntries
-            .Where(pfe => pfe.VersionUtc <= versionUtc);
+        var entries = includeChunkEntry ?
+            (IQueryable<PointerFileEntryDto>)db.PointerFileEntries.Include(pfe => pfe.Chunk) :
+            (IQueryable<PointerFileEntryDto>)db.PointerFileEntries;
+
+        entries = entries.Where(pfe => pfe.VersionUtc <= versionUtc);
 
         // Apply the filters from the filter object
         if (relativeParentPathEquals is not null)
-            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
+            entries = entries.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
         if (directoryNameEquals is not null)
-            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.DirectoryName == directoryNameEquals);
+            entries = entries.Where(pfe => pfe.DirectoryName == directoryNameEquals);
         if (nameContains is not null)
-            entriesUpToVersion = entriesUpToVersion.Where(pfe => pfe.Name.Contains(nameContains));
+            entries = entries.Where(pfe => pfe.Name.Contains(nameContains));
 
         // Perform the grouping and ordering within the same query to limit the amount of data pulled into memory
-        var groupedAndOrdered = entriesUpToVersion
+        var groupedAndOrdered = entries
             .GroupBy(pfe => pfe.RelativeParentPath + '/' + pfe.DirectoryName + '/' + pfe.Name)
             .Select(g => g.OrderByDescending(p => p.VersionUtc).FirstOrDefault());
 

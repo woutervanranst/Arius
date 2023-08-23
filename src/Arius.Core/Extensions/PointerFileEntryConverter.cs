@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using Arius.Core.Models;
 using Arius.Core.Repositories.StateDb;
 
@@ -8,7 +9,8 @@ internal static class PointerFileEntryConverter
 {
     public static PointerFileEntryDto ToPointerFileEntryDto(this PointerFileEntry pfe)
     {
-        return new PointerFileEntryDto()
+
+        return new PointerFileEntryDto
         {
             BinaryHash         = pfe.BinaryHash.Value, // convert the bytes
             RelativeParentPath = ToPlatformNeutral(pfe.RelativeParentPath), // convert to platform neutral
@@ -23,7 +25,7 @@ internal static class PointerFileEntryConverter
 
     public static PointerFileEntry ToPointerFileEntry(this PointerFileEntryDto pfeDto)
     {
-        return new PointerFileEntry()
+        return new PointerFileEntry
         {
             BinaryHash         = new BinaryHash(pfeDto.BinaryHash),
             RelativeParentPath = ToPlatformSpecific(pfeDto.RelativeParentPath),
@@ -32,7 +34,8 @@ internal static class PointerFileEntryConverter
             VersionUtc         = pfeDto.VersionUtc,
             IsDeleted          = pfeDto.IsDeleted,
             CreationTimeUtc    = pfeDto.CreationTimeUtc,
-            LastWriteTimeUtc   = pfeDto.LastWriteTimeUtc
+            LastWriteTimeUtc   = pfeDto.LastWriteTimeUtc,
+            Chunk              = pfeDto.Chunk
         };
     }
 
