@@ -17,20 +17,34 @@
         <TreeView 
                   Grid.Column="0" 
                   ItemsSource="{Binding Folders}"
-                  DisplayMemberPath="FullPath"
 
                   VirtualizingStackPanel.IsVirtualizing="True"
-                  VirtualizingStackPanel.VirtualizationMode="Recycling"
-        >
+                  VirtualizingStackPanel.VirtualizationMode="Recycling">
 
             <TreeView.ItemsPanel>
                 <ItemsPanelTemplate>
                     <VirtualizingStackPanel />
                 </ItemsPanelTemplate>
             </TreeView.ItemsPanel>
+
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}">
+                    <!--the binding here are the child folders-->
+                    <TextBlock Text="{Binding Path=Name}" />
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="IsSelected" Value="{Binding IsSelected}" />
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded}" />
+                </Style>
+            </TreeView.ItemContainerStyle>
         </TreeView>
 
+
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+
 
         <ListView Grid.Column="2">
         </ListView>

@@ -1,9 +1,10 @@
 ﻿using Arius.Core.Facade;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace Arius.UI;
 
@@ -20,139 +21,101 @@ public partial class RepositoryExplorerWindow : Window
 
 public partial class ExploreRepositoryViewModel : ObservableObject
 {
-    public ExploreRepositoryViewModel()
+    private readonly IMessenger messenger;
+
+    public ExploreRepositoryViewModel(IMessenger messenger)
     {
-        Folders = new ObservableCollection<DirectoryItem>();
-        FileList       = new ObservableCollection<FileItem>();
+        this.messenger = messenger;
+        Folders        = new();
+        Items          = new();
+
+        messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
+
+        // Set the selected folder to the root and kick off the loading process
+        SelectedFolder = new FolderViewModel() { Name = "", Parent = null };
     }
 
-    //public IAsyncRelayCommand LoadEntriesCommand => new AsyncRelayCommand(LoadEntriesAsync);
+    private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
+    {
+        switch (message.PropertyName)
+        {
+            case nameof(FolderViewModel.IsSelected):
+                // Handle IsSelected change
+                break;
+
+            case nameof(FolderViewModel.IsExpanded):
+                // Handle IsExpanded change
+                break;
+
+            default:
+                break;
+        }
+    }
 
     public string WindowName => $"Arius: {repository.AccountName} - {repository.ContainerName}";
 
 
-    public RepositoryFacade Repository
-    {
-        get => repository;
-        set
-        {
-            if (SetProperty(ref repository, value))
-            {
-                LoadEntriesAsync();
-            }
-        }
-    }
+    [ObservableProperty]
     private RepositoryFacade repository;
 
     private async Task LoadEntriesAsync()
     {
-        var prefix = SelectedFolder?.FullPath ?? "";
+        var x = await repository
+            .GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "").ToListAsync();
 
-        var x      = await repository.GetEntriesAsync(prefix).ToListAsync();
+        var y = await FileService.GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? "").ToListAsync();
 
-        Folders.Clear();
-
-        await foreach (var entry in repository.GetEntriesAsync(prefix))
+        await foreach (var e in repository
+                           .GetEntriesAsync(SelectedFolder.Parent?.FullPath ?? ""))
         {
-            Folders.Add(DirectoryItem.FromEntry(entry.RelativePath));
+            if (!f.TryGetValue(e.DirectoryName, out var d))
+            {
+                var parent = f.TryGetValue(e.RelativeParentPath, out var p) ? p : null;
+                f.Add(e.DirectoryName, d = new FolderViewModel { Name = e.DirectoryName, Parent = parent });
+                Folders.Add(d);
+            }
 
-            //// If it's root, then build the directory tree
-            //if (string.IsNullOrEmpty(path) && entry.Contains("\\"))
-            //{
-            //    // Note: Modify this based on how you're building your directory tree.
-            //    var directoryItem = BuildDirectoryItem(entry);
-            //    if (directoryItem != null)
-            //        DirectoryItems.Add(directoryItem);
-            //}
-            //else
-            //{
-            //    FileList.Add(new FileItem { Name = entry });
-            //}
+            d.Items.Add(new ItemViewModel { Name = e.Name });
+
         }
     }
 
-    //private FileItem BuildDirectoryItem(string entry)
-    //{
-    //    // This method should break down the entry into directories and subdirectories.
-    //    // This is a basic implementation. You'd likely want to handle nested directories properly.
-    //    var directories = entry.Split('\\');
-    //    if (directories.Length > 0)
-    //    {
-    //        return new FileItem { Name = directories[0] };
-    //    }
-
-    //    return null;
-    //}
-
-
+    private readonly Dictionary<string, FolderViewModel> f = new();
 
 
     [ObservableProperty]
-    private ObservableCollection<DirectoryItem> folders;
+    private ObservableCollection<FolderViewModel> folders;
 
-    [ObservableProperty] 
-    private DirectoryItem selectedFolder;
-
-
-    [ObservableProperty]
-    private ObservableCollection<FileItem> fileList;
-
-
-
-
-    //public ICommand DirectorySelectedCommand => new RelayCommand<DirectoryItem>(OnDirectorySelected);
-
-
-
-    //private ObservableCollection<DirectoryItem> BuildDirectoryTree(IEnumerable<string> directories)
-    //{
-    //    // Convert the list of directories to a hierarchical ObservableCollection of DirectoryItems
-    //    // (This can be a recursive operation)
-    //}
-
-    //private void OnDirectorySelected(DirectoryItem selectedDirectory)
-    //{
-    //    // Update the fileList based on the selected directory
-    //}
-
-    //public class DirectoryItem
-    //{
-    //    public string                              Name           { get; set; }
-    //    public ObservableCollection<DirectoryItem> SubDirectories { get; set; }
-    //}
-
-    public class DirectoryItem : FileItem
+    public FolderViewModel SelectedFolder
     {
-        public static DirectoryItem FromEntry(string entry)
+        get => selectedFolder;
+        set
         {
-            var parts = entry.Split('\\');
-
-            var currentDir = new DirectoryItem { Name = parts[0] };
-
-            for (int i = 1; i < parts.Length - 1; i++)
+            if (SetProperty(ref selectedFolder, value))
             {
-                var newDir = new DirectoryItem { Name = parts[i], Parent = currentDir };
-                currentDir.Subdirectories.Add(newDir);
-                currentDir = newDir;
+                Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
             }
+        }
+    }
+    private FolderViewModel  selectedFolder;
 
-            if (parts.Length > 1)
-            {
-                var file = new FileItem { Name = parts[^1] };
-                currentDir.Files.Add(file);
-            }
 
-            return currentDir;
+    [ObservableProperty]
+    private ObservableCollection<ItemViewModel> items;
+
+    [ObservableProperty]
+    private ItemViewModel selectedItem;
+
+    public partial class FolderViewModel : ObservableRecipient
+    {
+        public FolderViewModel()
+        {
+            Subdirectories = new ObservableCollection<FolderViewModel>();
+            Items          = new ObservableCollection<ItemViewModel>();
         }
 
-
-        public DirectoryItem()
-        {
-            Subdirectories = new ObservableCollection<DirectoryItem>();
-            Files          = new ObservableCollection<FileItem>();
-        }
-
-        public DirectoryItem Parent { get; set; }
+        public string           Name   { get; init; }
+        public FolderViewModel? Parent { get; set; }
 
         public string FullPath
         {
@@ -171,16 +134,49 @@ public partial class ExploreRepositoryViewModel : ObservableObject
             }
         }
 
-        public ObservableCollection<DirectoryItem> Subdirectories { get; }
-        public ObservableCollection<FileItem>      Files          { get; }
+        public ObservableCollection<FolderViewModel> Subdirectories { get; }
+        public ObservableCollection<ItemViewModel>   Items          { get; }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
+        private bool isSelected;
+        //public bool IsSelected
+        //{
+        //    get => isSelected;
+        //    set
+        //    {
+        //        if (SetProperty(ref isSelected, value))
+        //        {
+        //            if (value) // Load entries when expanded.
+        //            {
+        //                //LoadEntriesAsync();
+        //            }
+        //        }
+        //    }
+        //}
+        //private bool isSelected;
+
+        //public bool IsExpanded
+        //{
+        //    get => isExpanded;
+        //    set
+        //    {
+        //        if (SetProperty(ref isExpanded, value))
+        //            if (value) // Load entries when expanded.
+        //                LoadEntriesAsync();
+        //    }
+        //}
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
+        private bool isExpanded;
+
+        public override string ToString() => FullPath;
     }
 
-
-    public class FileItem
+    public partial class ItemViewModel : ObservableObject
     {
         public string Name { get; set; }
+
+        public override string ToString() => Name;
     }
-
-
-
 }
