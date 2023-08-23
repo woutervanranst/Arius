@@ -6,9 +6,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WouterVanRanst.Utils.Extensions;
 
@@ -264,5 +267,48 @@ public partial class ExploreRepositoryViewModel : ObservableObject
         }
 
         public override string ToString() => Name;
+    }
+}
+
+public class ItemStateToImageConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string itemName)
+        {
+            // Assuming that the image is a resource, adjust the path as needed.
+            return new BitmapImage(new Uri($"/Resources/{itemName}.png", UriKind.Relative));
+        }
+        return null;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+
+public class BytesToReadableSizeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is long bytes)
+        {
+            string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+            int      order = 0;
+            while (bytes >= 1024 && order < sizes.Length - 1)
+            {
+                order++;
+                bytes = bytes / 1024;
+            }
+            return $"{bytes:0.##} {sizes[order]}";
+        }
+        return null;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
     }
 }

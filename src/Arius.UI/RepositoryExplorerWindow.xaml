@@ -6,6 +6,13 @@
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
         Title="{Binding WindowName}" Height="600" Width="800">
+
+    <Window.Resources>
+        <local:ItemStateToImageConverter x:Key="ItemStateToImageConverter" />
+        <local:BytesToReadableSizeConverter x:Key="BytesToReadableSizeConverter" />
+    </Window.Resources>
+
+
     <Grid>
 
         <Grid.ColumnDefinitions>
@@ -47,7 +54,26 @@
 
 
         <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
+            <ListView.View>
+                <GridView>
+                    <!-- Column for Name -->
+                    <GridViewColumn Header="Name" Width="120" DisplayMemberBinding="{Binding Name}" />
+
+                    <!-- Column for ItemState (Image) -->
+                    <GridViewColumn Header="Status" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Image Source="{Binding ItemState, Converter={StaticResource ItemStateToImageConverter}}" Width="16" Height="16"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <!-- Column for OriginalLength -->
+                    <GridViewColumn Header="Size" Width="100" DisplayMemberBinding="{Binding OriginalLength, Converter={StaticResource BytesToReadableSizeConverter}}" />
+                </GridView>
+            </ListView.View>
         </ListView>
+
 
 
 
