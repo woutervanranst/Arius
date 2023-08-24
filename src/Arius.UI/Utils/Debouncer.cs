@@ -1,4 +1,4 @@
-﻿namespace Arius.UI;
+﻿namespace Arius.UI.Utils;
 
 internal class Debouncer
 {

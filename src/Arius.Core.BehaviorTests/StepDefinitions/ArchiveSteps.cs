@@ -48,7 +48,7 @@ class ArchiveSteps : TestBase
         // Take a real PointerFile
         var pfi = FileSystem.ArchiveDirectory.GetPointerFileInfos().First();
         // Build the target filename
-        var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + Models.PointerFile.Extension);
+        var pfn = Path.Combine(FileSystem.RestoreDirectory.FullName, relativeBinaryFile + PointerFileInfo.Extension);
 
         pfi.CopyTo(pfn);
     }

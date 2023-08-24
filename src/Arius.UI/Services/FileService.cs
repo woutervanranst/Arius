@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using Arius.Core.Queries;
 
-namespace Arius.UI;
+namespace Arius.UI.Services;
 
 class FileService
 {

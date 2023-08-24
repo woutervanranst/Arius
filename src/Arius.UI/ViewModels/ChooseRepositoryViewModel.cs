@@ -1,5 +1,7 @@
 ﻿using Arius.Core.Facade;
+using Arius.UI.Extensions;
 using Arius.UI.Properties;
+using Arius.UI.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -9,27 +11,16 @@ using System.Windows;
 using System.Windows.Input;
 using MessageBox = System.Windows.MessageBox;
 
-namespace Arius.UI;
+namespace Arius.UI.ViewModels;
 
-/// <summary>
-/// Interaction logic for RepositoryChooserWindow.xaml
-/// </summary>
-public partial class RepositoryChooserWindow : Window
-{
-    public RepositoryChooserWindow()
-    {
-        InitializeComponent();
-    }
-}
-
-public partial class ChooseRepositoryViewModel : ObservableObject
+public partial class RepositoryChooserViewModel : ObservableObject
 {
     private readonly Facade     facade;
     private readonly IMessenger messenger;
     private readonly Debouncer  debouncer = new();
 
 
-    public ChooseRepositoryViewModel(Facade facade, IMessenger messenger)
+    public RepositoryChooserViewModel(Facade facade, IMessenger messenger)
     {
         this.facade    = facade;
         this.messenger = messenger;
@@ -121,7 +112,7 @@ public partial class ChooseRepositoryViewModel : ObservableObject
         }
         catch (Exception e)
         {
-            StorageAccountError         = true;
+            StorageAccountError  = true;
             StorageAccountFacade = default;
         }
         finally
@@ -204,30 +195,18 @@ public partial class ChooseRepositoryViewModel : ObservableObject
     private void LoadState()
     {
         AccountName    = Settings.Default.AccountName;
-        AccountKey     = Settings.Default.AccountKey;
+        AccountKey     = Settings.Default.AccountKey.Unprotect();
         LocalDirectory = Settings.Default.LocalDirectory;
-        Passphrase     = Settings.Default.Passphrase;
+        Passphrase     = Settings.Default.Passphrase.Unprotect();
     }
 
     private void SaveState()
     {
         Settings.Default.AccountName           = AccountName;
-        Settings.Default.AccountKey            = AccountKey;
+        Settings.Default.AccountKey            = AccountKey.Protect();
         Settings.Default.LocalDirectory        = LocalDirectory;
         Settings.Default.SelectedContainerName = SelectedContainerName;
-        Settings.Default.Passphrase            = Passphrase;
+        Settings.Default.Passphrase            = StringExtensions.Protect(Passphrase);
         Settings.Default.Save();
     }
-}
-
-public class RepositoryChosenMessage
-{
-    public RepositoryChosenMessage(DirectoryInfo root, RepositoryFacade repository)
-    {
-        LocalDirectory             = root;
-        ChosenRepository = repository;
-    }
-
-    public DirectoryInfo LocalDirectory { get; }
-    public RepositoryFacade ChosenRepository { get; }
 }
