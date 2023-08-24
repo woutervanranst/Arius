@@ -261,7 +261,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                     Arius.Core.Queries.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
                     Arius.Core.Queries.HydrationState.NotHydrated      => Brushes.LightBlue,
                     null => Brushes.Transparent,
-                    _ => throw new NotImplementedException()
+                    _ => throw new ArgumentOutOfRangeException()
                 };
             }
         }
@@ -287,8 +287,23 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 else
                     s.AppendLine("The remote entry not exist");
 
-                if (true)
-                    s.AppendLine("HYDRATED");
+                switch (HydrationState)
+                {
+                    case Core.Queries.HydrationState.Hydrated:
+                        s.AppendLine("The remote file can be restored");
+                        break;
+                    case Core.Queries.HydrationState.NotHydrated:
+                        s.AppendLine("The remote file needs to be hydrated first");
+                        break;
+                    case Core.Queries.HydrationState.NeedsToBeQueried:
+                        s.AppendLine("The remote file is split up in parts. Not sure whether it can be downloaded.");
+                        break;
+                    case null:
+                        s.AppendLine("The remote file does not exist");
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
 
                 return s.ToString();
             }
