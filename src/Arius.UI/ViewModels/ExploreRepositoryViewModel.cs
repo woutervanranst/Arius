@@ -110,12 +110,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
         {
             var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
-            if (!folderViewModel.TryGetItemViewModel(key, out var itemViewModel))
-            {
-                // We need a new ItemViewModel
-                itemViewModel.Name = name;
-            }
-
+            folderViewModel.TryGetItemViewModel(key,
+                out var itemViewModel, 
+                () => new ItemViewModel { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
             return itemViewModel;
         }
 
@@ -176,18 +173,20 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             Items   = new SortedObservableCollection<ItemViewModel>(new NaturalStringComparer());
         }
 
-        public string Name                  { get; init; }
+        [ObservableProperty]
+        private string name;
+
         public string RelativeDirectoryName { get; init; }
         public bool   IsLoaded              { get; set; } = false;
 
         public ObservableCollection<FolderViewModel> Folders { get; }
-        public ObservableCollection<ItemViewModel>   Items   { get; } // TODO ReadOnlyCollection public?
+        public SortedObservableCollection<ItemViewModel>   Items   { get; } // TODO ReadOnlyCollection public?
 
-        public bool TryGetItemViewModel(string key, out ItemViewModel itemViewModel)
+        public bool TryGetItemViewModel(string key, out ItemViewModel itemViewModel, Func<ItemViewModel> itemViewModelFactory)
         {
             if (!itemsDict.TryGetValue(key, out itemViewModel))
             {
-                itemsDict.Add(key, itemViewModel = new ItemViewModel( ));
+                itemsDict.Add(key, itemViewModel = itemViewModelFactory());
                 Items.Add(itemViewModel);
                 return false;
             }
@@ -209,7 +208,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     public partial class ItemViewModel : ObservableObject
     {
-        public string Name { get; set; }
+        [ObservableProperty]
+        private string name;
 
         public BinaryFileInfo?  BinaryFileInfo   { get; set; }
         public PointerFileInfo? PointerFileInfo  { get; set; }
