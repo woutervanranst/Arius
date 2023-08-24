@@ -8,7 +8,9 @@
         xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
         xmlns:views="clr-namespace:Arius.UI.Views"
         mc:Ignorable="d"
-        Title="{Binding WindowName}" Height="600" Width="800">
+        WindowStartupLocation="CenterScreen"
+        Title="{Binding WindowName}" 
+        Height="1024" Width="1280">
 
     <Window.Resources>
         <utils:BytesToReadableSizeConverter x:Key="BytesToReadableSizeConverter" />
@@ -18,18 +20,30 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
 
-        <CollectionViewSource x:Key="SortedItems" Source="{Binding SelectedFolder.Items}">
+        <!--<CollectionViewSource x:Key="SortedItems" Source="{Binding SelectedFolder.Items}">
             <CollectionViewSource.SortDescriptions>
                 <componentModel:SortDescription PropertyName="Name" Direction="Ascending"/>
             </CollectionViewSource.SortDescriptions>
-        </CollectionViewSource>
+        </CollectionViewSource>-->
     </Window.Resources>
+
+    <!--IsLoading Indicator-->
+    <Window.Style>
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                    <Setter Property="Cursor" Value="Wait"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
 
 
     <Grid>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250" />
+            <ColumnDefinition Width="430" />
             <ColumnDefinition Width="5" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
@@ -61,7 +75,7 @@
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
 
-        <ListView Grid.Column="2" ItemsSource="{Binding Source={StaticResource SortedItems}}">
+        <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
             <ListView.View>
                 <GridView>
 

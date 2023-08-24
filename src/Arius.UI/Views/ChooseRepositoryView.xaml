@@ -5,7 +5,21 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Arius.UI"
         mc:Ignorable="d"
-        Title="Choose Repository" ResizeMode="CanMinimize" SizeToContent="WidthAndHeight">
+        WindowStartupLocation="CenterScreen"
+        Title="Choose Repository"
+        ResizeMode="CanMinimize"
+        SizeToContent="WidthAndHeight">
+
+    <Window.Style>
+        <Style TargetType="{x:Type Window}">
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                    <Setter Property="Cursor" Value="Wait"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
 
     <StackPanel>
 
@@ -47,7 +61,6 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="15" />
                 </Grid.RowDefinitions>
 
                 <Label Grid.Row="0"  Grid.ColumnSpan="2" HorizontalContentAlignment="Center" HorizontalAlignment="Center" Content="Azure" FontWeight="Bold" FontSize="20"/>
@@ -85,8 +98,6 @@
 
                 <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
                 <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />
-
-                <ProgressBar Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Margin="1" IsIndeterminate="{Binding LoadingRemote}" IsEnabled="{Binding LoadingRemote}" />
             </Grid>
 
             <!--

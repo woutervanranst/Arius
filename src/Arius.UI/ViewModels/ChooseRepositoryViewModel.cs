@@ -97,7 +97,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
     {
         try
         {
-            LoadingRemote = true;
+            IsLoading = true;
 
             var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
             ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
@@ -117,7 +117,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
         }
         finally
         {
-            LoadingRemote = false;
+            IsLoading = false;
         }
     }
     private StorageAccountFacade? StorageAccountFacade { get; set; } = default;
@@ -136,7 +136,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
 
 
     [ObservableProperty]
-    private bool loadingRemote;
+    private bool isLoading;
 
 
     public ICommand OpenRepositoryCommand { get; }
@@ -165,7 +165,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
 
         try
         {
-            LoadingRemote = true;
+            IsLoading = true;
 
             var repositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
 
@@ -175,18 +175,18 @@ public partial class RepositoryChooserViewModel : ObservableObject
         }
         catch (ArgumentException e)
         {
-            LoadingRemote = false;
+            IsLoading = false;
             MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (Exception e)
         {
-            LoadingRemote = false;
+            IsLoading = false;
             MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
         finally
         {
-            LoadingRemote = false;
+            IsLoading = false;
         }
     }
 

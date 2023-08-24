@@ -28,7 +28,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
         FolderViewModel GetRootNode()
         {
-            var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "" };
+            var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
             foldersDict.Add(ROOT_NODEKEY, rootNode);
             RootNode.Add(rootNode);
 
@@ -59,89 +59,100 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     public RepositoryFacade Repository     { get; set; }
     public DirectoryInfo    LocalDirectory { get; set; }
 
+    [ObservableProperty]
+    private bool isLoading;
+
     private async Task LoadEntriesAsync()
     {
         if (SelectedFolder.IsLoaded)
             return;
 
-        // Load local entries
-        await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+        IsLoading = true;
 
-        // Load database entries
-        await ProcessEntries(Repository.QueryEntriesAsync(SelectedFolder.RelativeDirectoryName));
-
-        async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
+        try
         {
-            // Create the necessary FolderViewModels and ItemViewModels for the given entries
-            await foreach (var e in entries)
+            // Load local entries
+            await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+
+            // Load database entries
+            await ProcessEntries(Repository.QueryEntriesAsync(SelectedFolder.RelativeDirectoryName));
+
+            async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
             {
-                var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
-                var itemViewModel   = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
-
-                // Set update the viewmodel with the entry
-                UpdateViewModel(itemViewModel, e);
-            }
-
-            static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension) 
-                ? name.RemoveSuffix(".pointer.arius") 
-                : name;
-        }
-
-        FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
-        {
-            var key = Path.Combine(ROOT_NODEKEY, relativeParentPath, directoryName);
-            if (!foldersDict.TryGetValue(key, out var folderViewModel))
-            {
-                // We need a new FolderViewModel
-                var nodeParentPath = Path.Combine(ROOT_NODEKEY, relativeParentPath);
-                var parentFolder   = foldersDict[nodeParentPath];
-                folderViewModel = new FolderViewModel
+                // Create the necessary FolderViewModels and ItemViewModels for the given entries
+                await foreach (var e in entries)
                 {
-                    Name                  = directoryName,
-                    RelativeDirectoryName = Path.Combine(relativeParentPath, directoryName)
-                };
-                foldersDict.Add(key, folderViewModel);
-                parentFolder.Folders.Add(folderViewModel);
+                    var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
+                    var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
+
+                    // Set update the viewmodel with the entry
+                    UpdateViewModel(itemViewModel, e);
+                }
+
+                static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension)
+                    ? name.RemoveSuffix(".pointer.arius")
+                    : name;
             }
 
-            return folderViewModel;
-        }
-
-        ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
-        {
-            var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
-            folderViewModel.TryGetItemViewModel(key,
-                out var itemViewModel, 
-                () => new ItemViewModel { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
-            return itemViewModel;
-        }
-
-        void UpdateViewModel(ItemViewModel itemViewModel, IEntryQueryResult e)
-        {
-            if (e is FileService.GetLocalEntriesResult le)
+            FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
             {
-                var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
-                var fib      = FileSystemService.GetFileInfo(filename);
-                if (fib is PointerFileInfo pfi)
-                    itemViewModel.PointerFileInfo = pfi;
-                else if (fib is BinaryFileInfo bfi)
-                    itemViewModel.BinaryFileInfo = bfi;
+                var key = Path.Combine(ROOT_NODEKEY, relativeParentPath, directoryName);
+                if (!foldersDict.TryGetValue(key, out var folderViewModel))
+                {
+                    // We need a new FolderViewModel
+                    var nodeParentPath = Path.Combine(ROOT_NODEKEY, relativeParentPath);
+                    var parentFolder = foldersDict[nodeParentPath];
+                    folderViewModel = new FolderViewModel
+                    {
+                        Name = directoryName,
+                        RelativeDirectoryName = Path.Combine(relativeParentPath, directoryName)
+                    };
+                    foldersDict.Add(key, folderViewModel);
+                    parentFolder.Folders.Add(folderViewModel);
+                }
+
+                return folderViewModel;
+            }
+
+            ItemViewModel GetOrCreateItemViewModel(FolderViewModel folderViewModel, string name)
+            {
+                var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
+                folderViewModel.TryGetItemViewModel(key,
+                    out var itemViewModel,
+                    () => new ItemViewModel { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
+                return itemViewModel;
+            }
+
+            void UpdateViewModel(ItemViewModel itemViewModel, IEntryQueryResult e)
+            {
+                if (e is FileService.GetLocalEntriesResult le)
+                {
+                    var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
+                    var fib = FileSystemService.GetFileInfo(filename);
+                    if (fib is PointerFileInfo pfi)
+                        itemViewModel.PointerFileInfo = pfi;
+                    else if (fib is BinaryFileInfo bfi)
+                        itemViewModel.BinaryFileInfo = bfi;
+                    else
+                        throw new NotImplementedException();
+                }
+                else if (e is IPointerFileEntryQueryResult pfe)
+                {
+                    var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
+                    itemViewModel.PointerFileEntry = path;
+                    itemViewModel.OriginalLength = pfe.OriginalLength;
+                    itemViewModel.HydrationState = pfe.HydrationState;
+                }
                 else
                     throw new NotImplementedException();
             }
-            else if (e is IPointerFileEntryQueryResult pfe)
-            {
-                var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
-                itemViewModel.PointerFileEntry = path;
-                itemViewModel.OriginalLength   = pfe.OriginalLength;
-                itemViewModel.HydrationState   = pfe.HydrationState;
-            }
-            else
-                throw new NotImplementedException();
+
+            SelectedFolder.IsLoaded = true;
         }
-
-
-        SelectedFolder.IsLoaded = true;
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private const string ROOT_NODEKEY = "root";
