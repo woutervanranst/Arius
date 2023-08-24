@@ -193,6 +193,7 @@ internal partial class RepositoryBuilder
             {
                 // Delete the temporary db
                 using var db = GetContext();
+                SqliteConnection.ClearAllPools();  // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
                 db.Database.EnsureDeleted();
             }
         }
