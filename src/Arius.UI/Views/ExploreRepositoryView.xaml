@@ -42,6 +42,7 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!--Folder explorer-->
         <TreeView Grid.Column="0" ItemsSource="{Binding RootNode}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
 
             <TreeView.ItemsPanel>
@@ -65,10 +66,10 @@
             </TreeView.ItemContainerStyle>
         </TreeView>
 
-
+        <!--Grid splitter-->
         <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-
+        <!--Items explorer-->
         <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
             <ListView.View>
                 <GridView>
@@ -76,7 +77,7 @@
                     <!-- Column for Name -->
                     <GridViewColumn Header="Name" Width="300" DisplayMemberBinding="{Binding Name}" />
 
-                    <!-- Column for ItemState (Image) -->
+                    <!-- Column for ItemState -->
                     <GridViewColumn Header="Status" Width="50">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
@@ -102,6 +103,22 @@
 
                 </GridView>
             </ListView.View>
+
+            <!--Context menu-->
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="ContextMenu">
+                        <Setter.Value>
+                            <ContextMenu>
+                                <MenuItem Header="Hydrate" 
+                                          Command="{Binding HydrateCommand}"/>
+                                <MenuItem Header="Download" 
+                                          Command="{Binding RestoreCommand}"/>
+                            </ContextMenu>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListView.ItemContainerStyle>
         </ListView>
     </Grid>
 </Window>

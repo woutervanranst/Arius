@@ -11,6 +11,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 using WouterVanRanst.Utils.Extensions;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -119,7 +120,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
                 folderViewModel.TryGetItemViewModel(key,
                     out var itemViewModel,
-                    () => new ItemViewModel { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
+                    () => new ItemViewModel(this) { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
                 return itemViewModel;
             }
 
@@ -219,6 +220,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     public partial class ItemViewModel : ObservableObject
     {
+        private readonly RepositoryExplorerViewModel parent;
+
+        public ItemViewModel(RepositoryExplorerViewModel parent)
+        {
+            this.parent    = parent;
+            HydrateCommand = new AsyncRelayCommand(OnHydrate, () => HydrationState == Core.Queries.HydrationState.NotHydrated);
+            RestoreCommand = new AsyncRelayCommand(OnRestore, () => HydrationState != Core.Queries.HydrationState.NotHydrated); // explicitly leaving NeedsToBeChecked out here
+        }
+
         [ObservableProperty]
         private string name;
 
@@ -226,7 +236,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         public PointerFileInfo? PointerFileInfo  { get; set; }
         public string?          PointerFileEntry { get; set; }
         public long             OriginalLength   { get; set; }
-        public HydrationState?  HydrationState   { get; set; }
+
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(HydrateCommand))]
+        [NotifyCanExecuteChangedFor(nameof(RestoreCommand))]
+        private HydrationState? hydrationState;
 
 
         public Brush PointerFileStateColor
@@ -318,6 +332,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
                 return s.ToString();
             }
+        }
+
+        public AsyncRelayCommand HydrateCommand { get; }
+        private async Task OnHydrate()
+        {
+            // Hydration logic
+        }
+
+        public AsyncRelayCommand RestoreCommand { get; }
+        private async Task OnRestore()
+        {
+            await parent.Repository.ExecuteRestoreCommandAsync(parent.LocalDirectory, PointerFileEntry);
         }
 
         public override string ToString() => Name;
