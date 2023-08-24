@@ -119,14 +119,17 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         foreach (var relativeName in options.RelativeNames)
         {
             var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(relativeName);
-            var pfe = repo.GetPointerFileEntriesAsync(
+            var pfe = await repo.GetPointerFileEntriesAsync(
                 options.PointInTimeUtc,
                 includeDeleted: false,
                 relativeParentPathEquals: relativeParentPath,
                 directoryNameEquals: directoryName,
-                nameEquals: name).ToListAsync();
+                nameEquals: name).SingleAsync();
 
-            yield break;
+            var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
+
+            logger.LogInformation($"PointerFile '{pf}' created");
+            yield return pf;
         }
     }
 

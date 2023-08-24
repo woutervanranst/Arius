@@ -57,18 +57,21 @@ internal class RepositoryQueries
         if (relativeParentPathEquals is not null)
             relativeParentPathEquals = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPathEquals);
 
-        return repository.GetPointerFileEntriesAsync(DateTime.Now, false, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry: true)
-            .Select(pfe =>
+        return repository.GetPointerFileEntriesAsync(
+                pointInTimeUtc: DateTime.Now, 
+                includeDeleted: false, 
+                relativeParentPathEquals: relativeParentPathEquals, 
+                directoryNameEquals: directoryNameEquals, 
+                nameContains: nameContains, 
+                includeChunkEntry: true)
+            .Select(pfe => new GetPointerFileEntriesResult()
             {
-                return new GetPointerFileEntriesResult()
-                {
-                    RelativeParentPath = pfe.RelativeParentPath,
-                    DirectoryName      = pfe.DirectoryName,
-                    Name               = pfe.Name,
+                RelativeParentPath = pfe.RelativeParentPath,
+                DirectoryName      = pfe.DirectoryName,
+                Name               = pfe.Name,
 
-                    OriginalLength = pfe.Chunk.OriginalLength,
-                    HydrationState = GetHydrationState(pfe.Chunk.AccessTier)
-                };
+                OriginalLength = pfe.Chunk.OriginalLength,
+                HydrationState = GetHydrationState(pfe.Chunk.AccessTier)
             });
 
         HydrationState GetHydrationState(AccessTier? accessTier)

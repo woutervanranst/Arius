@@ -161,7 +161,7 @@ public class RepositoryFacade : IDisposable
 
 
     // --------- RESTORE ---------
-    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
+    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime pointInTimeUtc)
     {
         var v = new IRestoreCommandOptions.Validator();
         return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
@@ -179,12 +179,12 @@ public class RepositoryFacade : IDisposable
         return await cmd.ExecuteAsync(rco);
     }
 
-    public async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] pointerFileEntries)
+    public async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] relativeNames)
     {
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc, pointerFileEntries);
+        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
 
         var cmd = new RestoreCommand(loggerFactory, Repository);
 

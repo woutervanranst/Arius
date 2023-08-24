@@ -107,10 +107,17 @@ internal partial class Repository
     public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
+        string? nameEquals = null,
         string? nameContains = null,
         bool includeChunkEntry = false)
     {
-        return GetPointerFileEntriesAtPointInTimeAsync(pointInTimeUtc, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry)
+        return GetPointerFileEntriesAtPointInTimeAsync(
+                pointInTimeUtc: pointInTimeUtc, 
+                relativeParentPathEquals: relativeParentPathEquals, 
+                directoryNameEquals: directoryNameEquals, 
+                nameEquals: nameEquals,
+                nameContains: nameContains, 
+                includeChunkEntry: includeChunkEntry)
             .Where(pfe => includeDeleted || !pfe.IsDeleted);
     }
 
@@ -118,6 +125,7 @@ internal partial class Repository
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
+        string? nameEquals = null,
         string? nameContains = null,
         bool includeChunkEntry = false)
     {
@@ -126,13 +134,20 @@ internal partial class Repository
         if (versionUtc is null)
             yield break;
 
-        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(versionUtc.Value, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry))
+        await foreach (var entry in GetPointerFileEntriesAtVersionAsync(
+                           versionUtc: versionUtc.Value, 
+                           relativeParentPathEquals: relativeParentPathEquals, 
+                           directoryNameEquals: directoryNameEquals, 
+                           nameEquals: nameEquals, 
+                           nameContains: nameContains, 
+                           includeChunkEntry: includeChunkEntry))
             yield return entry;
     }
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc,
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
+        string? nameEquals = null,
         string? nameContains = null,
         bool includeChunkEntry = false)
     {
@@ -150,6 +165,8 @@ internal partial class Repository
             entries = entries.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
         if (directoryNameEquals is not null)
             entries = entries.Where(pfe => pfe.DirectoryName == directoryNameEquals);
+        if (nameEquals is not null)
+            entries = entries.Where(pfe => pfe.Name == nameEquals);
         if (nameContains is not null)
             entries = entries.Where(pfe => pfe.Name.Contains(nameContains));
 

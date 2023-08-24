@@ -343,7 +343,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         public AsyncRelayCommand RestoreCommand { get; }
         private async Task OnRestore()
         {
-            await parent.Repository.ExecuteRestoreCommandAsync(parent.LocalDirectory, pointerFileEntries: PointerFileEntry);
+            await parent.Repository.ExecuteRestoreCommandAsync(parent.LocalDirectory, 
+                relativeNames: PointerFileEntry,
+                download: true,
+                keepPointers: false);
         }
 
         public override string ToString() => Name;
