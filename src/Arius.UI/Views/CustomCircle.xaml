@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:Arius.UI.Views"
              mc:Ignorable="d" 
              Width="16" Height="16">
-    <Canvas Width="16" Height="16">
+    <Canvas>
         <!-- Left Outer Segment -->
         <Path Fill="{Binding LeftOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}" 
               Data="M8,8 L0,8 A8,8 0 0,1 8,0 Z M8,8 L0,8 A8,8 0 0,0 8,16 Z"/>
@@ -15,9 +15,9 @@
               Data="M8,8 L16,8 A8,8 0 0,0 8,0 Z M8,8 L16,8 A8,8 0 0,1 8,16 Z"/>
         <!-- Left Inner Segment -->
         <Path Fill="{Binding LeftInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M8,8 L4,8 A4,4 0 0,1 8,4 Z M8,8 L4,8 A4,4 0 0,0 8,12 Z"/>
+              Data="M8,8 L2.5,8 A5.5,5.5 0 0,1 8,2.5 Z M8,8 L2.5,8 A5.5,5.5 0 0,0 8,13.5 Z"/>
         <!-- Right Inner Segment -->
         <Path Fill="{Binding RightInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M8,8 L12,8 A4,4 0 0,0 8,4 Z M8,8 L12,8 A4,4 0 0,1 8,12 Z"/>
+              Data="M8,8 L13.5,8 A5.5,5.5 0 0,0 8,2.5 Z M8,8 L13.5,8 A5.5,5.5 0 0,1 8,13.5 Z"/>
     </Canvas>
 </UserControl>
