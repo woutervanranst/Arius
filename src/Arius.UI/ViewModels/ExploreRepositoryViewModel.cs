@@ -173,7 +173,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         public FolderViewModel()
         {
             Folders = new ObservableCollection<FolderViewModel>();
-            Items   = new ObservableCollection<ItemViewModel>();
+            Items   = new SortedObservableCollection<ItemViewModel>(new NaturalStringComparer());
         }
 
         public string Name                  { get; init; }
