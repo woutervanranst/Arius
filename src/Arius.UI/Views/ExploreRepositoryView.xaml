@@ -19,12 +19,6 @@
         <Style TargetType="ListViewItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         </Style>
-
-        <!--<CollectionViewSource x:Key="SortedItems" Source="{Binding SelectedFolder.Items}">
-            <CollectionViewSource.SortDescriptions>
-                <componentModel:SortDescription PropertyName="Name" Direction="Ascending"/>
-            </CollectionViewSource.SortDescriptions>
-        </CollectionViewSource>-->
     </Window.Resources>
 
     <!--IsLoading Indicator-->
