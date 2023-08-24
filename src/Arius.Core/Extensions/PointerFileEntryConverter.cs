@@ -9,11 +9,15 @@ internal static class PointerFileEntryConverter
 {
     public static PointerFileEntryDto ToPointerFileEntryDto(this PointerFileEntry pfe)
     {
+        if (pfe.Chunk is not null)
+        {
+            throw new NotImplementedException(); // not sure what to do here
+        }
 
         return new PointerFileEntryDto
         {
             BinaryHash         = pfe.BinaryHash.Value, // convert the bytes
-            RelativeParentPath = ToPlatformNeutral(pfe.RelativeParentPath), // convert to platform neutral
+            RelativeParentPath = ToPlatformNeutralPath(pfe.RelativeParentPath), // convert to platform neutral
             DirectoryName      = pfe.DirectoryName,
             Name               = pfe.Name,
             VersionUtc         = pfe.VersionUtc,
@@ -28,7 +32,7 @@ internal static class PointerFileEntryConverter
         return new PointerFileEntry
         {
             BinaryHash         = new BinaryHash(pfeDto.BinaryHash),
-            RelativeParentPath = ToPlatformSpecific(pfeDto.RelativeParentPath),
+            RelativeParentPath = ToPlatformSpecificPath(pfeDto.RelativeParentPath),
             DirectoryName      = pfeDto.DirectoryName,
             Name               = pfeDto.Name,
             VersionUtc         = pfeDto.VersionUtc,
@@ -41,12 +45,12 @@ internal static class PointerFileEntryConverter
 
     private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
 
-    private static string ToPlatformNeutral(string platformSpecific)
+    public static string ToPlatformNeutralPath(string platformSpecificPath)
     {
         if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            return platformSpecific;
+            return platformSpecificPath;
 
-        return platformSpecific.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
+        return platformSpecificPath.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
 
         //if (platformSpecific is null)
         //    return null;
@@ -55,14 +59,14 @@ internal static class PointerFileEntryConverter
         //return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
     }
 
-    private static string ToPlatformSpecific(string platformNeutral)
+    public static string ToPlatformSpecificPath(string platformNeutralPath)
     {
         // TODO UNIT TEST for linux pointers (already done if run in the github runner?
 
         if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            return platformNeutral;
+            return platformNeutralPath;
 
-        return platformNeutral.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar);
+        return platformNeutralPath.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar);
 
         //if (platformNeutral is null)
         //    return null;

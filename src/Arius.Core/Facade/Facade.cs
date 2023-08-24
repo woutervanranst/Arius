@@ -28,6 +28,8 @@ using System.Threading.Tasks;
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 
+[assembly: InternalsVisibleTo("Arius.Core.DbMigrationV2V3")]
+
 namespace Arius.Core.Facade;
 
 public class Facade

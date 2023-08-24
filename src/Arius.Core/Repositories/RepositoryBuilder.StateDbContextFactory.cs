@@ -152,6 +152,7 @@ internal partial class RepositoryBuilder
 
             await b.SetAccessTierAsync(AccessTier.Cold);
             await b.SetContentTypeAsync(CryptoService.ContentType);
+            await b.UpsertMetadataAsync("DatabaseVersion", "3");
 
             // Move the previous states to Archive storage
             await foreach (var be in container.States.GetBlobs()

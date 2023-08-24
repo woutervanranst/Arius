@@ -106,7 +106,7 @@ internal class Blob
     {
         var m = (await properties.Task).Metadata;
 
-        m.Add(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, length.ToString());
+        m.Add(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, length.ToString()); // TODO use UpsertMetadata
 
         await client.SetMetadataAsync(m);
 
@@ -114,6 +114,18 @@ internal class Blob
     }
     public const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
 
+
+    public async Task UpsertMetadataAsync(string key, string value)
+    {
+        var m = (await properties.Task).Metadata;
+
+        if (m.ContainsKey(key))
+            m[key] = value;
+        else
+            m.Add(key, value);
+
+        await client.SetMetadataAsync(m);
+    }
 
     public async Task<long?> GetArchivedLength() => (await properties.Task)?.ContentLength;
 

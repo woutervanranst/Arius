@@ -8,7 +8,7 @@ namespace Arius.Core.Repositories.StateDb;
 
 internal record PointerFileEntryV2
 {
-    public BinaryHash BinaryHash   { get; init; }
+    public string BinaryHash   { get; init; }
     public string     RelativeName { get; init; }
 
     /// <summary>
@@ -22,11 +22,11 @@ internal record PointerFileEntryV2
 
 internal record BinaryPropertiesV2
 {
-    public BinaryHash Hash              { get; init; }
-    public long       OriginalLength    { get; init; }
-    public long       ArchivedLength    { get; init; }
-    public long       IncrementalLength { get; init; }
-    public int        ChunkCount        { get; init; }
+    public string Hash              { get; init; }
+    public long   OriginalLength    { get; init; }
+    public long   ArchivedLength    { get; init; }
+    public long   IncrementalLength { get; init; }
+    public int    ChunkCount        { get; init; }
 }
 
 internal class StateDbContextV2 : DbContext
@@ -35,14 +35,7 @@ internal class StateDbContextV2 : DbContext
     public virtual DbSet<BinaryPropertiesV2> BinaryProperties   { get; set; }
 
     private readonly string      dbPath;
-    private readonly Action<int> hasChanges;
 
-    ///// <summary>
-    ///// Required for EF Migrations (potentially also Moq, UnitTests but not sure)
-    ///// </summary>
-    //public StateDbContext()
-    //{
-    //}
     internal StateDbContextV2(string dbPath) : this(dbPath, new Action<int>(_ => { }))
     {
     }
@@ -50,7 +43,6 @@ internal class StateDbContextV2 : DbContext
     internal StateDbContextV2(string dbPath, Action<int> hasChanges)
     {
         this.dbPath     = dbPath;
-        this.hasChanges = hasChanges;
     }
 
 
@@ -73,9 +65,7 @@ internal class StateDbContextV2 : DbContext
         var bme = modelBuilder.Entity<BinaryPropertiesV2>(builder =>
         {
             builder.Property(bm => bm.Hash)
-                .HasColumnName("BinaryHash")
-                .HasConversion(bh => bh.Value, value => new BinaryHash(value));
-            //.HasConversion(new MyValueConverter());
+                .HasColumnName("BinaryHash");
 
             builder.HasKey(bm => bm.Hash);
 
@@ -83,11 +73,10 @@ internal class StateDbContextV2 : DbContext
                 .IsUnique();
         });
 
-        var pfes = modelBuilder.Entity<PointerFileEntry>(builder =>
+        var pfes = modelBuilder.Entity<PointerFileEntryV2>(builder =>
         {
             builder.Property(pfe => pfe.BinaryHash)
-                .HasColumnName("BinaryHash")
-                .HasConversion(bh => bh.Value, value => new BinaryHash(value));
+                .HasColumnName("BinaryHash");
 
             builder.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
 
@@ -95,19 +84,5 @@ internal class StateDbContextV2 : DbContext
 
             builder.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
         });
-    }
-
-    public override int SaveChanges()
-    {
-        var numChanges = base.SaveChanges();
-        hasChanges(numChanges);
-        return numChanges;
-    }
-
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
-    {
-        var numChanges = await base.SaveChangesAsync(cancellationToken);
-        hasChanges(numChanges);
-        return numChanges;
     }
 }

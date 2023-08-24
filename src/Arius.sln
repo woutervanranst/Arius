@@ -19,6 +19,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.UI", "Arius.UI\Arius.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.UI.Tests", "Arius.UI.Tests\Arius.UI.Tests.csproj", "{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.DbMigrationV2V3", "Arius.Core.DbMigrationV2V3\Arius.Core.DbMigrationV2V3.csproj", "{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
