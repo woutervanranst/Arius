@@ -98,17 +98,14 @@ namespace Arius.Core.DbMigrationV2V3
 
                     foreach (var v2pfe in v2db.PointerFileEntries)
                     {
-                        var relativePath       = Path.GetDirectoryName(v2pfe.RelativeName);
-                        var lastSepIndex       = relativePath.LastIndexOf(Path.DirectorySeparatorChar);
-                        var directoryName      = relativePath[(lastSepIndex + 1)..];
-                        var relativeParentPath = lastSepIndex == -1 ? "" : relativePath[..lastSepIndex];
+                        var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(v2pfe.RelativeName);
 
                         var v3pfe = new PointerFileEntryDto
                         {
                             BinaryHash         = v2pfe.BinaryHash.HexStringToBytes(),
                             RelativeParentPath = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPath),
                             DirectoryName      = directoryName,
-                            Name               = Path.GetFileName(v2pfe.RelativeName),
+                            Name               = name,
                             VersionUtc         = v2pfe.VersionUtc,
                             IsDeleted          = v2pfe.IsDeleted,
                             CreationTimeUtc    = v2pfe.CreationTimeUtc,

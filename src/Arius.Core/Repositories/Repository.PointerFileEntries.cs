@@ -26,11 +26,7 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime versionUtc)
     {
-        var relativePath       = Path.GetDirectoryName(pf.RelativeName);
-        var lastSepIndex       = relativePath.LastIndexOf(Path.DirectorySeparatorChar);
-        var directoryName      = relativePath[(lastSepIndex + 1)..];
-        var relativeParentPath = lastSepIndex == -1 ? "" : relativePath[..lastSepIndex];
-
+        var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(pf.RelativeName);
 
         var pfeDto = new PointerFileEntry
         {

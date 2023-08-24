@@ -7,6 +7,20 @@ namespace Arius.Core.Extensions;
 
 internal static class PointerFileEntryConverter
 {
+    /// <summary>
+    /// Deconstructs the given relativeName into the platform SPECIFIC path components
+    /// </summary>
+    public static (string RelativeParentPath, string DirectoryName, string Name) Deconstruct(string relativeName)
+    {
+        var relativePath       = Path.GetDirectoryName(relativeName);
+        var lastSepIndex       = relativePath.LastIndexOf(Path.DirectorySeparatorChar);
+        var directoryName      = relativePath[(lastSepIndex + 1)..];
+        var relativeParentPath = lastSepIndex == -1 ? "" : relativePath[..lastSepIndex];
+        var name               = Path.GetFileName(relativeName);
+
+        return (relativeParentPath, directoryName, name);
+    }
+
     public static PointerFileEntryDto ToPointerFileEntryDto(this PointerFileEntry pfe)
     {
         if (pfe.Chunk is not null)
