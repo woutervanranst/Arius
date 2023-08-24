@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Arius.Core.Facade;
 using Arius.Core.Models;
@@ -11,6 +12,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using WouterVanRanst.Utils.Extensions;
+using Brush = System.Windows.Media.Brush;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace Arius.UI.ViewModels;
 
@@ -249,6 +252,75 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 //itemState.Append(Manifest is not null ? 'A' : throw new NotImplementedException());
 
                 return itemState.ToString();
+            }
+        }
+
+        public Brush PointerFileStateColor
+        {
+            get
+            {
+                if (PointerFileInfo is not null)
+                    return Brushes.Black;
+                else
+                    return Brushes.Transparent;
+            }
+        }
+
+        public Brush BinaryFileStateColor
+        {
+            get
+            {
+                if (BinaryFileInfo is not null)
+                    return Brushes.Blue;
+                else
+                    return Brushes.Transparent;
+            }
+        }
+
+        public Brush PointerFileEntryStateColor
+        {
+            get
+            {
+                if (PointerFileEntry is not null)
+                    return Brushes.Black;
+                else
+                    return Brushes.Transparent;
+            }
+        }
+
+        public Brush ChunkStateColor
+        {
+            get
+            {
+                return Brushes.LightBlue;
+            }
+        }
+
+        public string StateTooltip
+        {
+            get
+            {
+                var s = new StringBuilder();
+
+                if (PointerFileInfo is not null)
+                    s.AppendLine("The local PointerFile exists");
+                else
+                    s.AppendLine("The local PointerFile does not exist");
+
+                if (BinaryFileInfo is not null)
+                    s.AppendLine("The local BinaryFile exists");
+                else
+                    s.AppendLine("The local BinaryFile does not exist");
+
+                if (PointerFileEntry is not null)
+                    s.AppendLine("The remote entry exists");
+                else
+                    s.AppendLine("The remote entry not exist");
+
+                if (true)
+                    s.AppendLine("HYDRATED");
+
+                return s.ToString();
             }
         }
 
