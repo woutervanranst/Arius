@@ -194,10 +194,17 @@ public partial class RepositoryChooserViewModel : ObservableObject
 
     private void LoadState()
     {
-        AccountName    = Settings.Default.AccountName;
-        AccountKey     = Settings.Default.AccountKey.Unprotect();
-        LocalDirectory = Settings.Default.LocalDirectory;
-        Passphrase     = Settings.Default.Passphrase.Unprotect();
+        try
+        {
+            AccountName    = Settings.Default.AccountName;
+            AccountKey     = Settings.Default.AccountKey.Unprotect();
+            LocalDirectory = Settings.Default.LocalDirectory;
+            Passphrase     = Settings.Default.Passphrase.Unprotect();
+        }
+        catch (Exception e)
+        {
+            Settings.Default.Reset();
+        }
     }
 
     private void SaveState()
