@@ -30,6 +30,9 @@ namespace Arius.Core.DbMigrationV2V3
 
             var v2BlobClient = container.GetBlobClient(lastStateBlobName);
 
+            if (v2BlobClient.GetProperties().Value.Metadata.ContainsKey("DatabaseVersion"))
+                return; // already migrated
+
             var v2LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v2.sqlite");
             var v3LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v3.sqlite");
 
