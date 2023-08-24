@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Arius.Core.Extensions;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Queries;
@@ -53,6 +54,9 @@ internal class RepositoryQueries
         string? directoryNameEquals = null,
         string? nameContains = null)
     {
+        if (relativeParentPathEquals is not null)
+            relativeParentPathEquals = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPathEquals);
+
         return repository.GetPointerFileEntriesAsync(DateTime.Now, false, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry: true)
             .Select(pfe =>
             {
