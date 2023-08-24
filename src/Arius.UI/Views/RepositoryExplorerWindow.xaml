@@ -11,6 +11,11 @@
     <Window.Resources>
         <utils:ItemStateToImageConverter x:Key="ItemStateToImageConverter" />
         <utils:BytesToReadableSizeConverter x:Key="BytesToReadableSizeConverter" />
+
+        <!-- Center and right align ListView columns see https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/how-to-change-the-horizontal-alignment-of-a-column-in-a-listview?view=netframeworkdesktop-4.8 -->
+        <Style TargetType="ListViewItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        </Style>
     </Window.Resources>
 
 
@@ -57,11 +62,12 @@
         <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
             <ListView.View>
                 <GridView>
+
                     <!-- Column for Name -->
                     <GridViewColumn Header="Name" Width="300" DisplayMemberBinding="{Binding Name}" />
 
                     <!-- Column for ItemState (Image) -->
-                    <GridViewColumn Header="Status" Width="100">
+                    <GridViewColumn Header="Status" Width="50">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <Image Source="{Binding ItemState, Converter={StaticResource ItemStateToImageConverter}}" Width="16" Height="16"/>
@@ -70,14 +76,16 @@
                     </GridViewColumn>
 
                     <!-- Column for OriginalLength -->
-                    <GridViewColumn Header="Size" Width="100" DisplayMemberBinding="{Binding OriginalLength, Converter={StaticResource BytesToReadableSizeConverter}}"/>
+                    <GridViewColumn Header="Size" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding OriginalLength, Converter={StaticResource BytesToReadableSizeConverter}}" HorizontalAlignment="Right"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
                 </GridView>
             </ListView.View>
         </ListView>
-
-
-
-
-
     </Grid>
 </Window>
