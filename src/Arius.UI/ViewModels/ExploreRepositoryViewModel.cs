@@ -64,25 +64,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         if (SelectedFolder.IsLoaded)
             return;
 
-//#if DEBUG
-//        var x = await Repository
-//            .GetEntriesAsync(SelectedFolder.RelativeDirectoryName)
-//            .ToListAsync();
-
-//        var y = FileService
-//            .GetEntries(new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest"), 
-//                SelectedFolder.RelativeDirectoryName)
-//            .Where(e => e.Name.EndsWith(".pointer.arius"))
-//            .ToList();
-
-//        var z  = x.Except(y);
-//        var zz = y.Except(x);
-//        if (z.Any() || zz.Any())
-//        {
-
-//        }
-//#endif
-
         // Load local entries
         await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
 
