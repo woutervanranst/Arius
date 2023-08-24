@@ -53,11 +53,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
-    public string WindowName => $"Arius: {Repository.AccountName} - {Repository.ContainerName}";
+    public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
 
 
-    //[ObservableProperty]
-    //private RepositoryFacade repository;
     public RepositoryFacade Repository     { get; set; }
     public DirectoryInfo    LocalDirectory { get; set; }
 
@@ -89,9 +87,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
 
         // Load database entries
-        await ProcessEntries(Repository.GetEntriesAsync(SelectedFolder.RelativeDirectoryName));
+        await ProcessEntries(Repository.QueryEntriesAsync(SelectedFolder.RelativeDirectoryName));
 
-        async Task ProcessEntries(IAsyncEnumerable<IGetEntriesResult> entries)
+        async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
         {
             // Create the necessary FolderViewModels and ItemViewModels for the given entries
             await foreach (var e in entries)
@@ -140,7 +138,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             return itemViewModel;
         }
 
-        void UpdateViewModel(ItemViewModel itemViewModel, IGetEntriesResult e)
+        void UpdateViewModel(ItemViewModel itemViewModel, IEntryQueryResult e)
         {
             if (e is FileService.GetLocalEntriesResult le)
             {
@@ -153,11 +151,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 else
                     throw new NotImplementedException();
             }
-            else if (e is IGetPointerFileEntriesResult pfe)
+            else if (e is IPointerFileEntryQueryResult pfe)
             {
                 var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
                 itemViewModel.PointerFileEntry = path;
                 itemViewModel.OriginalLength   = pfe.OriginalLength;
+                itemViewModel.HydrationState   = pfe.HydrationState;
             }
             else
                 throw new NotImplementedException();
@@ -235,25 +234,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         public PointerFileInfo? PointerFileInfo  { get; set; }
         public string?          PointerFileEntry { get; set; }
         public long             OriginalLength   { get; set; }
+        public HydrationState?  HydrationState   { get; set; }
 
-        /// <summary>
-        /// Get the string representing the state of the item for the bollekes (eg. pointer present, blob present, ...)
-        /// </summary>
-        public string ItemState
-        {
-            get
-            {
-                var itemState = new StringBuilder();
-
-                itemState.Append(BinaryFileInfo is not null ? 'Y' : 'N');
-                itemState.Append(PointerFileInfo is not null ? 'Y' : 'N');
-                itemState.Append(PointerFileEntry is not null ? 'Y' : 'N');
-                itemState.Append('A');
-                //itemState.Append(Manifest is not null ? 'A' : throw new NotImplementedException());
-
-                return itemState.ToString();
-            }
-        }
 
         public Brush PointerFileStateColor
         {
@@ -292,7 +274,14 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         {
             get
             {
-                return Brushes.LightBlue;
+                return HydrationState switch
+                {
+                    Arius.Core.Queries.HydrationState.Hydrated         => Brushes.Blue,
+                    Arius.Core.Queries.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
+                    Arius.Core.Queries.HydrationState.NotHydrated      => Brushes.LightBlue,
+                    null => Brushes.Transparent,
+                    _ => throw new NotImplementedException()
+                };
             }
         }
 

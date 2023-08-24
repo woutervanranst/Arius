@@ -39,8 +39,8 @@ public partial class App
         
         services.AddSingleton<Facade>(new Facade(NullLoggerFactory.Instance));
         
-        services.AddTransient<ViewModels.RepositoryChooserViewModel>();
-        services.AddTransient<ViewModels.RepositoryExplorerViewModel>();
+        services.AddTransient<RepositoryChooserViewModel>();
+        services.AddTransient<RepositoryExplorerViewModel>();
 
         services.AddTransient<RepositoryChooserWindow>();
         services.AddTransient<RepositoryExplorerWindow>();
@@ -61,7 +61,7 @@ public partial class App
         var saf = f.ForStorageAccount(Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"), Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY"));
         repositoryFacade = await saf.ForRepositoryAsync("test", "woutervr");
 
-        var viewModel = host.Services.GetRequiredService<ViewModels.RepositoryExplorerViewModel>();
+        var viewModel = host.Services.GetRequiredService<RepositoryExplorerViewModel>();
         viewModel.Repository     = repositoryFacade;
         viewModel.LocalDirectory = new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest");
 
@@ -81,7 +81,7 @@ public partial class App
         repositoryFacade?.Dispose();
         repositoryFacade = message.ChosenRepository;
 
-        var viewModel = host.Services.GetRequiredService<ViewModels.RepositoryExplorerViewModel>();
+        var viewModel = host.Services.GetRequiredService<RepositoryExplorerViewModel>();
         viewModel.Repository     = message.ChosenRepository;
         viewModel.LocalDirectory = message.LocalDirectory;
 

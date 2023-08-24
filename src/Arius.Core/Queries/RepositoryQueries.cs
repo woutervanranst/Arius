@@ -3,22 +3,30 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Queries;
 
-public interface IGetEntriesResult
+public interface IEntryQueryResult
 {
     public string RelativeParentPath { get; }
     public string DirectoryName { get; }
     public string Name { get; }
 }
 
-public interface IGetPointerFileEntriesResult : IGetEntriesResult
+public interface IPointerFileEntryQueryResult : IEntryQueryResult
 {
-    public long OriginalLength { get; }
+    public long           OriginalLength { get; }
+    public HydrationState HydrationState { get; }
 }
 
-internal record GetPointerFileEntriesResponse(string RelativeParentPath, string DirectoryName, string Name, long OriginalLength) : IGetPointerFileEntriesResult;
+public enum HydrationState
+{
+    Hydrated,
+    NotHydrated,
+    NeedsToBeQueried
+}
+
 
 internal class RepositoryQueries
 {
@@ -31,12 +39,43 @@ internal class RepositoryQueries
         this.repository    = repository;
     }
 
-    public IAsyncEnumerable<IGetPointerFileEntriesResult> GetEntriesAsync(
+    record GetPointerFileEntriesResult : IPointerFileEntryQueryResult
+    {
+        public string         RelativeParentPath { get; init; }
+        public string         DirectoryName      { get; init; }
+        public string         Name               { get; init; }
+        public long           OriginalLength     { get; init; }
+        public HydrationState HydrationState     { get; init; }
+    }
+
+    public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
         string? nameContains = null)
     {
         return repository.GetPointerFileEntriesAsync(DateTime.Now, false, relativeParentPathEquals, directoryNameEquals, nameContains, includeChunkEntry: true)
-            .Select(pfe => new GetPointerFileEntriesResponse(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name, pfe.Chunk.OriginalLength));
+            .Select(pfe =>
+            {
+                return new GetPointerFileEntriesResult()
+                {
+                    RelativeParentPath = pfe.RelativeParentPath,
+                    DirectoryName      = pfe.DirectoryName,
+                    Name               = pfe.Name,
+
+                    OriginalLength = pfe.Chunk.OriginalLength,
+                    HydrationState = GetHydrationState(pfe.Chunk.AccessTier)
+                };
+            });
+
+        HydrationState GetHydrationState(AccessTier? accessTier)
+        {
+            if (accessTier is null)
+                return HydrationState.NeedsToBeQueried; // in case of chunked
+            if (accessTier == AccessTier.Archive)
+                return HydrationState.NotHydrated;
+
+            return HydrationState.Hydrated;
+
+        }
     }
 }

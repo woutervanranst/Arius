@@ -199,13 +199,13 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public async IAsyncEnumerable<IGetPointerFileEntriesResult> GetEntriesAsync(
+    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
         string? nameContains = null)
     {
         var q = new RepositoryQueries(loggerFactory, Repository);
-        await foreach (var e in q.GetEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
+        await foreach (var e in q.QueryEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
             yield return e;
     }
 
