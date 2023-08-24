@@ -1,6 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using UserControl = System.Windows.Controls.UserControl;
@@ -10,9 +8,9 @@ namespace Arius.UI.Views
     /// <summary>
     /// Interaction logic for CustomCircle.xaml
     /// </summary>
-    public partial class CustomCircle : UserControl
+    public partial class StateCircle : UserControl
     {
-        public CustomCircle()
+        public StateCircle()
         {
             InitializeComponent();
         }
@@ -24,7 +22,7 @@ namespace Arius.UI.Views
         }
 
         public static readonly DependencyProperty LeftOuterColorProperty =
-            DependencyProperty.Register("LeftOuterColor", typeof(Brush), typeof(CustomCircle), new UIPropertyMetadata(Brushes.Transparent));
+            DependencyProperty.Register("LeftOuterColor", typeof(Brush), typeof(StateCircle), new UIPropertyMetadata(Brushes.Transparent));
 
         public Brush RightOuterColor
         {
@@ -33,7 +31,7 @@ namespace Arius.UI.Views
         }
 
         public static readonly DependencyProperty RightOuterColorProperty =
-            DependencyProperty.Register("RightOuterColor", typeof(Brush), typeof(CustomCircle), new UIPropertyMetadata(Brushes.Transparent));
+            DependencyProperty.Register("RightOuterColor", typeof(Brush), typeof(StateCircle), new UIPropertyMetadata(Brushes.Transparent));
 
         public Brush LeftInnerColor
         {
@@ -42,7 +40,7 @@ namespace Arius.UI.Views
         }
 
         public static readonly DependencyProperty LeftInnerColorProperty =
-            DependencyProperty.Register("LeftInnerColor", typeof(Brush), typeof(CustomCircle), new UIPropertyMetadata(Brushes.Transparent));
+            DependencyProperty.Register("LeftInnerColor", typeof(Brush), typeof(StateCircle), new UIPropertyMetadata(Brushes.Transparent));
 
         public Brush RightInnerColor
         {
@@ -51,6 +49,6 @@ namespace Arius.UI.Views
         }
 
         public static readonly DependencyProperty RightInnerColorProperty =
-            DependencyProperty.Register("RightInnerColor", typeof(Brush), typeof(CustomCircle), new UIPropertyMetadata(Brushes.Transparent));
+            DependencyProperty.Register("RightInnerColor", typeof(Brush), typeof(StateCircle), new UIPropertyMetadata(Brushes.Transparent));
     }
 }
