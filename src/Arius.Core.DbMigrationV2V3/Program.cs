@@ -21,6 +21,13 @@ namespace Arius.Core.DbMigrationV2V3
             var passphrase    = "";
 
             var bsc       = new BlobServiceClient(new Uri($"https://{accountName}.blob.core.windows.net/"), new StorageSharedKeyCredential(accountName, accountKey));
+
+            foreach (var blobContainerItem in bsc.GetBlobContainers())
+                await MirateContainerAsync(bsc, blobContainerItem.Name, passphrase);
+        }
+
+        private static async Task MirateContainerAsync(BlobServiceClient bsc, string containerName, string passphrase)
+        {
             var container = bsc.GetBlobContainerClient(containerName);
 
             var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{BlobContainer.STATE_DBS_FOLDER_NAME}")
@@ -31,7 +38,7 @@ namespace Arius.Core.DbMigrationV2V3
             var v2BlobClient = container.GetBlobClient(lastStateBlobName);
 
             if (v2BlobClient.GetProperties().Value.Metadata.ContainsKey("DatabaseVersion"))
-                return; // already migrated
+                return;
 
             var v2LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v2.sqlite");
             var v3LocalDbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Arius", "states", containerName, "v3.sqlite");
@@ -69,6 +76,13 @@ namespace Arius.Core.DbMigrationV2V3
                             ChunkCount        = bp.ChunkCount,
                             AccessTier        = chunks[bp.Hash].Properties.AccessTier
                         };
+
+                        if (ce.AccessTier == AccessTier.Cool)
+                        {
+                            // Also update the Tier
+                            var blobClient = container.GetBlobClient($"{BlobContainer.CHUNKS_FOLDER_NAME}/{bp.Hash}");
+                            blobClient.SetAccessTierAsync(AccessTier.Cold);
+                        }
 
                         v3db.ChunkEntries.Add(ce);
                     }
@@ -111,16 +125,15 @@ namespace Arius.Core.DbMigrationV2V3
 
                 await v3db.Database.ExecuteSqlRawAsync("VACUUM;");
                 //await v3db.Database.CloseConnectionAsync(); 
-
             }
 
             SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
 
 
             // Upload
-            var v3BlobClient = container.GetBlobClient($"{BlobContainer.STATE_DBS_FOLDER_NAME}/{DateTime.UtcNow:s}");
-            await using var ssv3 = File.OpenRead(v3LocalDbPath);
-            await using var tsv3 = await v3BlobClient.OpenWriteAsync(overwrite: true);
+            var             v3BlobClient = container.GetBlobClient($"{BlobContainer.STATE_DBS_FOLDER_NAME}/{DateTime.UtcNow:s}");
+            await using var ssv3         = File.OpenRead(v3LocalDbPath);
+            await using var tsv3         = await v3BlobClient.OpenWriteAsync(overwrite: true);
             await CryptoService.CompressAndEncryptAsync(ssv3, tsv3, passphrase);
 
             await v3BlobClient.SetAccessTierAsync(AccessTier.Cold);
