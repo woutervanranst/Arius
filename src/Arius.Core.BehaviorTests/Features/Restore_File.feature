@@ -27,11 +27,14 @@ Scenario: Synchronization removes obsolete pointers but leaves binaryfiles intac
     Then the PointerFile for BinaryFile "test.txt" does not exist
 
 
+@todo
 Scenario: Synchronize and download a file
     # Restore with Synchronize, Download, File is NOT SUPPORTED
 
+@todo
 Scenario: Synchronize a file
     # Restore with Synchronize, NoDownload, File is NOT SUPPORTED
 
+@todo
 Scenario: Download a file
     # Restore with NoSynchronize, Download, File is NOT SUPPORTED

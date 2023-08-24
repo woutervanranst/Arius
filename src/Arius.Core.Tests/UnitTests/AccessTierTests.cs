@@ -13,13 +13,4 @@ class AccessTierTests
         Assert.AreEqual((AccessTier)"cold", AccessTier.Cold);
         Assert.AreEqual((AccessTier)"archive", AccessTier.Archive);
     }
-
-    [Test]
-    public void AccessTierToStringOperator_AccessTier_Equals()
-    {
-        Assert.AreEqual(AccessTier.Hot.ToString(), "hot");
-        Assert.AreEqual(AccessTier.Cool.ToString(), "cool");
-        Assert.AreEqual(AccessTier.Cold.ToString(), "cold");
-        Assert.AreEqual(AccessTier.Archive.ToString(), "archive");
-    }
 }

@@ -32,8 +32,8 @@ internal interface IRestoreCommandOptions : IRepositoryOptions
             RuleFor(o => o)
                 .Custom((o, context) =>
                 {
-                    if (o.Synchronize && o.Path is not DirectoryInfo)
-                        context.AddFailure($"The synchronize flag is only valid for directories");
+                    if (!o.Path.Exists)
+                        context.AddFailure("The specified path does not exist");
 
                     if (!o.Synchronize && !o.Download)
                         context.AddFailure("Either specify --synchronize or --download"); //this is just silly to call
@@ -44,7 +44,7 @@ internal interface IRestoreCommandOptions : IRepositoryOptions
 
 internal record RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
 {
-    public RestoreCommandOptions(Repository repo, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(repo.Options)
+    public RestoreCommandOptions(IRepositoryOptions options, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(options)
     {
         this.Synchronize    = synchronize;
         this.Download       = download;
@@ -66,4 +66,14 @@ internal record RestoreCommandOptions : RepositoryOptions, IRestoreCommandOption
     public bool          KeepPointers   { get; }
     public DateTime?     PointInTimeUtc { get; }
     public DirectoryInfo Path           { get; }
+}
+
+internal record RestorePointerFileEntriesCommandOptions : RestoreCommandOptions
+{
+    public RestorePointerFileEntriesCommandOptions(IRepositoryOptions options, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc, params string[] pointerFileEntries) 
+        : base(options, root, synchronize, download, keepPointers, pointInTimeUtc)
+    {
+        PointerFileEntries = pointerFileEntries;
+    }
+    public string[] PointerFileEntries { get; }
 }

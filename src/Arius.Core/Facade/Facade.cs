@@ -148,7 +148,7 @@ public class RepositoryFacade : IDisposable
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(Repository, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var aco = new ArchiveCommandOptions(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
 
         var sp = new ArchiveCommandStatistics();
 
@@ -172,7 +172,19 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestoreCommandOptions(Repository, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var rco = new RestoreCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
+
+        var cmd = new RestoreCommand(loggerFactory, Repository);
+
+        return await cmd.ExecuteAsync(rco);
+    }
+
+    public async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] pointerFileEntries)
+    {
+        if (pointInTimeUtc == default)
+            pointInTimeUtc = DateTime.UtcNow;
+
+        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc, pointerFileEntries);
 
         var cmd = new RestoreCommand(loggerFactory, Repository);
 
