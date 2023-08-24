@@ -5,33 +5,19 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:Arius.UI.Views"
              mc:Ignorable="d" 
-             Width="32" Height="32">
-    <Grid>
-
-        <!-- Left Outer Segment --><!--
+             Width="16" Height="16">
+    <Canvas Width="16" Height="16">
+        <!-- Left Outer Segment -->
         <Path Fill="{Binding LeftOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-              Data="M8,8 L8,0 A8,8 0 0,0 0,8 Z"/>
-        --><!-- Right Outer Segment --><!--
+              Data="M8,8 L0,8 A8,8 0 0,1 8,0 Z M8,8 L0,8 A8,8 0 0,0 8,16 Z"/>
+        <!-- Right Outer Segment -->
         <Path Fill="{Binding RightOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M8,8 L16,8 A8,8 0 0,1 8,0 Z"/>
-        --><!-- Left Inner Segment --><!--
+              Data="M8,8 L16,8 A8,8 0 0,0 8,0 Z M8,8 L16,8 A8,8 0 0,1 8,16 Z"/>
+        <!-- Left Inner Segment -->
         <Path Fill="{Binding LeftInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M8,8 L8,4 A4,4 0 0,0 4,8 Z"/>
-        --><!-- Right Inner Segment --><!--
+              Data="M8,8 L4,8 A4,4 0 0,1 8,4 Z M8,8 L4,8 A4,4 0 0,0 8,12 Z"/>
+        <!-- Right Inner Segment -->
         <Path Fill="{Binding RightInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M8,8 L12,8 A4,4 0 0,1 8,4 Z"/>-->
-
-         <!--Left Outer Segment--> 
-        <Path Fill="{Binding LeftOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-              Data="M16,16 L0,16 A16,16 0 0,1 16,0 Z"/>
-         <!--Right Outer Segment--> 
-        <Path Fill="{Binding RightOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M16,16 L32,16 A16,16 0 0,0 16,0 Z"/>
-         <!--Left Inner Segment--> 
-        <Path Fill="{Binding LeftInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M16,16 L8,16 A8,8 0 0,1 16,8 Z"/>
-         <!--Right Inner Segment--> 
-        <Path Fill="{Binding RightInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
-              Data="M16,16 L24,16 A8,8 0 0,0 16,8 Z"/>
-    </Grid>
+              Data="M8,8 L12,8 A4,4 0 0,0 8,4 Z M8,8 L12,8 A4,4 0 0,1 8,12 Z"/>
+    </Canvas>
 </UserControl>
