@@ -1,6 +1,7 @@
 name: Arius.Core - Test Suite
 
 on:
+  # Runs on every push to Arius.Core
   push:
     paths: 
       - 'src/Arius.Core/**'
@@ -8,7 +9,7 @@ on:
 jobs:
   test:
     name: Run Test Suite on ${{ matrix.os }}
-    if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'v'))
+    # if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'v'))
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:

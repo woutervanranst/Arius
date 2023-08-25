@@ -1,9 +1,10 @@
 name: Arius.Core - Test & Release Nuget Package
 
 on:
+  # Runs when main gets a tag
   push:
-    paths:
-      - 'src/Arius.Core/**'
+    # paths:
+    #   - 'src/Arius.Core/**'
     branches:
         - main
     tags:
@@ -12,7 +13,7 @@ on:
 jobs:
   job1:
     name: Release Nuget Package
-    if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'v'))
+    # if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'v'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:

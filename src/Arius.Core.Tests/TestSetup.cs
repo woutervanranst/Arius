@@ -37,7 +37,7 @@ internal static class TestSetup
     {
         // Executes once before the test run. (Optional)
         
-        var containerName = $"{TestContainerNamePrefix}{DateTime.Now:yyMMddHHmmss}";
+        var containerName = $"{TestContainerNamePrefix}-{DateTime.Now.Ticks}-{Random.Shared.Next()}";
         unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
 
         //Create and populate source directory
