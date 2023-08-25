@@ -183,8 +183,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 }
                 else if (e is IPointerFileEntryQueryResult pfe)
                 {
-                    var path = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
-                    itemViewModel.PointerFileEntry = path;
+                    var relativeName = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
+                    itemViewModel.PointerFileEntryRelativeName = relativeName;
                     itemViewModel.OriginalLength = pfe.OriginalLength;
                     itemViewModel.HydrationState = pfe.HydrationState;
                 }
@@ -233,7 +233,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
             return;
 
-        var relativeNames = selectedItems.Select(item => item.PointerFileEntry).ToArray();
+        var relativeNames = selectedItems.Select(item => item.PointerFileEntryRelativeName).ToArray();
 
         var r = await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
             relativeNames: relativeNames,
@@ -310,12 +310,23 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         [ObservableProperty]
         private string name;
 
+        
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PointerFileStateColor))]
+        private PointerFileInfo? pointerFileInfo;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(BinaryFileStateColor))]
+        private BinaryFileInfo? binaryFileInfo;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(PointerFileEntryStateColor))]
+        private string? pointerFileEntryRelativeName;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ChunkStateColor))]
         private HydrationState? hydrationState;
 
-        public BinaryFileInfo?  BinaryFileInfo   { get; set; }
-        public PointerFileInfo? PointerFileInfo  { get; set; }
-        public string?          PointerFileEntry { get; set; } // TODO this is really the RelativeName
 
         public Brush PointerFileStateColor
         {
@@ -343,7 +354,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         {
             get
             {
-                if (PointerFileEntry is not null)
+                if (PointerFileEntryRelativeName is not null)
                     return Brushes.Black;
                 else
                     return Brushes.Transparent;
@@ -358,9 +369,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 {
                     Arius.Core.Queries.HydrationState.Hydrated         => Brushes.Blue,
                     Arius.Core.Queries.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
+                    Arius.Core.Queries.HydrationState.Hydrating        => Brushes.DeepSkyBlue,
                     Arius.Core.Queries.HydrationState.NotHydrated      => Brushes.LightBlue,
-                    null => Brushes.Transparent,
-                    _ => throw new ArgumentOutOfRangeException()
+                    null                                               => Brushes.Transparent,
+                    _                                                  => throw new ArgumentOutOfRangeException()
                 };
             }
         }
@@ -381,7 +393,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 else
                     s.AppendLine("The local BinaryFile does not exist");
 
-                if (PointerFileEntry is not null)
+                if (PointerFileEntryRelativeName is not null)
                     s.AppendLine("The remote entry exists");
                 else
                     s.AppendLine("The remote entry not exist");
@@ -390,6 +402,9 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 {
                     case Core.Queries.HydrationState.Hydrated:
                         s.AppendLine("The remote file can be restored");
+                        break;
+                    case Core.Queries.HydrationState.Hydrating:
+                        s.AppendLine("The remote file is being hydrated");
                         break;
                     case Core.Queries.HydrationState.NotHydrated:
                         s.AppendLine("The remote file needs to be hydrated first");

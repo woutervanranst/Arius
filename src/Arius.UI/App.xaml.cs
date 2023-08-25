@@ -5,8 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Windows;
+using System.Windows.Threading;
 using Arius.UI.ViewModels;
 using Arius.UI.Views;
+using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace Arius.UI;
 
@@ -25,11 +27,17 @@ public partial class App
             .ConfigureServices(ConfigureServices)
             .Build();
 
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
+        this.DispatcherUnhandledException += OnDispatcherUnhandledException;
+
         var messenger = host.Services.GetRequiredService<IMessenger>();
         messenger.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
 
         ShutdownMode = ShutdownMode.OnLastWindowClose;
     }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e) => MessageBox.Show(e.Exception.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)        => MessageBox.Show(e.ExceptionObject.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
     private void ConfigureServices(IServiceCollection services)
     {
