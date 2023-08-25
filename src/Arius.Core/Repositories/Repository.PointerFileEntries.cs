@@ -198,29 +198,24 @@ internal partial class Repository
         //}
     }
 
-
-    ///// <summary>
-    ///// Get All PointerFileEntries
-    ///// DO NOT USE?
-    ///// TODO REMOVE ME
-    ///// </summary>
-    ///// <returns></returns>
-    //internal async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync()
-    //{
-    //    await using var db = GetAriusDbContext();
-    //    await foreach (var pfe in db.PointerFileEntries.AsAsyncEnumerable())
-    //        yield return pfe;
-    //}
-
-    //internal IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(string relativeNamePrefix)
-    //{
-    //    return GetPointerFileEntriesAsync().Where(pfe => pfe.RelativeName.StartsWith(relativeNamePrefix, StringComparison.InvariantCultureIgnoreCase));
-    //}
-
+    /// <summary>
+    /// Get the count of all PointerFileEntries (deleted and older versions)
+    /// </summary>
+    /// <returns></returns>
     internal async Task<int> CountPointerFileEntriesAsync()
     {
         await using var db = GetStateDbContext();
         return await db.PointerFileEntries.CountAsync();
+    }
+
+    /// <summary>
+    /// Get the count of the current existing PointerFileEntries
+    /// </summary>
+    /// <returns></returns>
+    internal async Task<int> CountCurrentPointerFileEntriesAsync()
+    {
+        await using var db = GetStateDbContext();
+        return await GetCurrentPointerFileEntriesAsync(false).CountAsync();
     }
 
 

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
 
 namespace Arius.Core.Queries;
 
@@ -32,6 +33,11 @@ public enum HydrationState
     NeedsToBeQueried
 }
 
+public interface IQueryRepositoryStatisticsResult
+{
+    public long TotalSize { get; }
+}
+
 
 internal class RepositoryQueries
 {
@@ -43,15 +49,15 @@ internal class RepositoryQueries
         this.loggerFactory = loggerFactory;
         this.repository    = repository;
 
-        // Eager load the rehydrating chunks
-        rehydratingChunks ??= Task.Run(async () =>
+        // Lazy load the rehydrating chunks
+        rehydratingChunks ??= new AsyncLazy<Dictionary<ChunkHash, bool>>(async () =>
         {
             return await repository.GetRehydratedChunksAsync()
                 .ToDictionaryAsync(c => c.ChunkHash, c => c.HydrationPending);
         });
     }
 
-    record GetPointerFileEntriesResult : IPointerFileEntryQueryResult
+    record QueryPointerFileEntriesResult : IPointerFileEntryQueryResult
     {
         public string         RelativeParentPath { get; init; }
         public string         DirectoryName      { get; init; }
@@ -60,9 +66,9 @@ internal class RepositoryQueries
         public HydrationState HydrationState     { get; init; }
     }
 
-    private static Task<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
+    private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
 
-    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
+    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntriesAsync(
         string? relativeParentPathEquals = null,
         string? directoryNameEquals = null,
         string? nameContains = null)
@@ -78,7 +84,7 @@ internal class RepositoryQueries
                            nameContains: nameContains,
                            includeChunkEntry: true))
         {
-            yield return new GetPointerFileEntriesResult()
+            yield return new QueryPointerFileEntriesResult()
             {
                 RelativeParentPath = pfe.RelativeParentPath,
                 DirectoryName      = pfe.DirectoryName,
@@ -109,5 +115,19 @@ internal class RepositoryQueries
 
             return HydrationState.Hydrated;
         }
+    }
+
+    record RepositoryStatistics : IQueryRepositoryStatisticsResult
+    {
+        public long TotalSize { get; init; }
+    }
+
+    public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
+    {
+        var s = await repository.GetStatisticsAsync();
+        return new RepositoryStatistics()
+        {
+            TotalSize = s.chunkSize
+        };
     }
 }

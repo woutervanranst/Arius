@@ -219,8 +219,14 @@ public class RepositoryFacade : IDisposable
         string? nameContains = null)
     {
         var q = new RepositoryQueries(loggerFactory, Repository);
-        await foreach (var e in q.QueryEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
+        await foreach (var e in q.QueryPointerFileEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
             yield return e;
+    }
+
+    public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
+    {
+        var q = new RepositoryQueries(loggerFactory, Repository);
+        return await q.QueryRepositoryStatisticsAsync();
     }
 
 

@@ -11,7 +11,6 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
-using System.Windows.Input;
 using System.Windows.Threading;
 using WouterVanRanst.Utils.Extensions;
 using Brush = System.Windows.Media.Brush;
@@ -66,7 +65,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                     else
                         SelectedItems.Remove(itemViewModel);
 
-                    OnPropertyChanged(nameof(SelectedItemsCount));
+                    OnPropertyChanged(nameof(SelectedItemsText));
                     //HydrateCommand.NotifyCanExecuteChanged();
                     RestoreCommand.NotifyCanExecuteChanged();
                     break;
@@ -99,6 +98,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             if (SetProperty(ref selectedFolder, value))
             {
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadArchiveProperties, DispatcherPriority.Background);
             }
         }
     }
@@ -200,12 +200,20 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
+    private async Task LoadArchiveProperties()
+    {
+        var s = await Repository.QueryRepositoryStatisticsAsync();
+        ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()}";
+    }
 
     // Item ListView
     [ObservableProperty]
     private ObservableCollection<ItemViewModel> selectedItems = new();
 
-    public string SelectedItemsCount => $"{SelectedItems.Count} item(s) selected, {SelectedItems.Sum(item => item.OriginalLength).GetBytesReadable(0)}";
+    public string SelectedItemsText => $"{SelectedItems.Count} item(s) selected, {SelectedItems.Sum(item => item.OriginalLength).GetBytesReadable(0)}";
+
+    [ObservableProperty]
+    public string archiveStatistics;
 
 
     // Commands

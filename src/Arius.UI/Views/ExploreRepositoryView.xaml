@@ -42,11 +42,24 @@
             </MenuItem>
         </Menu>
 
+        <!--<StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding SelectedItemsText}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Stretch" Width="Auto">
+                <TextBlock Text="{Binding ArchiveStatistics}" HorizontalAlignment="Right" />
+            </StatusBarItem>
+        </StatusBar>-->
+
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
-                <TextBlock Text="{Binding SelectedItemsCount}" />
+                <TextBlock Text="{Binding SelectedItemsText}" />
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{Binding ArchiveStatistics}" />
             </StatusBarItem>
         </StatusBar>
+
 
         <Grid DockPanel.Dock="Top">
 
@@ -130,21 +143,6 @@
                     </GridView>
                 </ListView.View>
 
-                <!--Context menu-->
-                <!--<ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
-                    <Setter Property="ContextMenu">
-                        <Setter.Value>
-                            <ContextMenu>
-                                <MenuItem Header="Hydrate" 
-                                          Command="{Binding HydrateCommand}"/>
-                                <MenuItem Header="Download" 
-                                          Command="{Binding RestoreCommand}"/>
-                            </ContextMenu>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ListView.ItemContainerStyle>-->
             </ListView>
 
         </Grid>

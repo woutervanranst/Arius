@@ -52,7 +52,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
 
 
         // Get statistics of before the run
-        var startStats = await repo.GetStats();
+        var startStats = await repo.GetStatisticsAsync();
         stats.AddRemoteRepositoryStatistic(
             beforeBinaries: startStats.binaryCount,
             beforeSize: startStats.chunkSize,
@@ -172,7 +172,7 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
 
 
         // Get statistics after the run
-        var endStats = await repo.GetStats();
+        var endStats = await repo.GetStatisticsAsync();
         stats.AddRemoteRepositoryStatistic(
             afterBinaries: endStats.binaryCount,
             afterSize: endStats.chunkSize,

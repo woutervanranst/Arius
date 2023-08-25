@@ -63,11 +63,11 @@ internal partial class Repository : IDisposable
 
     // --------- OTHER HELPERS ---------
 
-    public async Task<(int binaryCount, long chunkSize, int currentPointerFileEntryCount)> GetStats()
+    public async Task<(int binaryCount, long chunkSize, int currentPointerFileEntryCount)> GetStatisticsAsync()
     {
         var binaryCount                  = await CountBinariesAsync();
         var chunkSize                    = await TotalChunkIncrementalLengthAsync();
-        var currentPointerFileEntryCount = await CountPointerFileEntriesAsync();
+        var currentPointerFileEntryCount = await CountCurrentPointerFileEntriesAsync();
 
         return (binaryCount, chunkSize, currentPointerFileEntryCount);
     }
