@@ -28,8 +28,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // Set the selected folder to the root and kick off the loading process
         SelectedFolder = GetRootNode();
 
-        HydrateCommand = new AsyncRelayCommand<IList<ItemViewModel>>(OnHydrateAsync, CanHydrate);
-        RestoreCommand = new AsyncRelayCommand<IList<ItemViewModel>>(OnRestoreAsync, CanRestore);
+        HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
+        RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
     }
 
     public RepositoryFacade Repository     { get; set; }
@@ -67,6 +67,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                         SelectedItems.Remove(itemViewModel);
 
                     OnPropertyChanged(nameof(SelectedItemsCount));
+                    HydrateCommand.NotifyCanExecuteChanged();
+                    RestoreCommand.NotifyCanExecuteChanged();
                     break;
             }
         }
@@ -203,35 +205,33 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<ItemViewModel> selectedItems = new();
 
-    public string SelectedItemsCount => $"{SelectedItems.Count} item(s) selected";
+    public string SelectedItemsCount => $"{SelectedItems.Count} item(s) selected, {SelectedItems.Sum(item => item.OriginalLength).GetBytesReadable(0)}";
 
 
     // Commands
-    public ICommand HydrateCommand { get; }
-    private Task OnHydrateAsync(IList<ItemViewModel>? arg)
+    public IRelayCommand HydrateCommand { get; }
+    private Task OnHydrateAsync()
     {
         throw new NotImplementedException();
     }
-    private bool CanHydrate(IList<ItemViewModel>? obj)
-    {
-        return false;
-    }
+    private bool CanHydrate() => selectedItems.Any(item => item.HydrationState == HydrationState.NotHydrated);
 
-    public ICommand RestoreCommand { get; }
-    private async Task OnRestoreAsync(IList<ItemViewModel>? arg)
+    public IRelayCommand RestoreCommand { get; }
+    private async Task OnRestoreAsync()
     {
-        await Task.Yield();
-        //await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
-        //    relativeNames: PointerFileEntry,
-        //    download: true,
-        //    keepPointers: false);
+        var relativeNames = selectedItems.Select(item => item.PointerFileEntry).ToArray();
+
+        if (MessageBox.Show($"Restore {relativeNames.Length} item(s)?", App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+            return;
+
+        await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
+            relativeNames: relativeNames,
+            download: true,
+            keepPointers: false);
 
 
     }
-    private bool CanRestore(IList<ItemViewModel>? obj)
-    {
-        return false;
-    }
+    private bool CanRestore() => selectedItems.Any(item => item.HydrationState != HydrationState.NotHydrated);
 
 
     public partial class FolderViewModel : ObservableRecipient
