@@ -52,15 +52,22 @@ internal static class TestSetup
             if (string.IsNullOrEmpty(accountKey))
                 throw new ArgumentException("Environment variable ARIUS_ACCOUNT_KEY not specified");
 
-            var containerName = $"{TEST_CONTAINER_NAME_PREFIX}{DateTime.Now:yyMMdd-HHmmss}";
+            var containerName = $"{TEST_CONTAINER_NAME_PREFIX}-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}";
 
             var passphrase = "myPassphrase";
 
             return new RepositoryOptions(accountName, accountKey, containerName, passphrase);
         }
     }
-        
-    
+
+    [AfterTestRun]
+    private static async Task ClassCleanup()
+    {
+        await PurgeRemoteAsync(false);
+        Facade.Dispose();
+    }
+
+
     internal static RepositoryFacade Facade      { get; private set; }
     internal static FileService      FileService { get; private set; }
     
@@ -71,13 +78,6 @@ internal static class TestSetup
     public static void ClearDirectories()
     {
         BlockBase.Reset();
-    }
-
-    [AfterTestRun]
-    private static async Task ClassCleanup()
-    {
-        await PurgeRemoteAsync(false);
-        Facade.Dispose();
     }
     
 
@@ -163,7 +163,7 @@ internal static class TestSetup
         {
             // Delete all containers
             var blobService = container.GetParentBlobServiceClient();
-            foreach (var bci in blobService.GetBlobContainers(prefix: TestSetup.TEST_CONTAINER_NAME_PREFIX))
+            foreach (var bci in blobService.GetBlobContainers(prefix: $"{TEST_CONTAINER_NAME_PREFIX}-{DateTime.Now.AddHours(-1):yyMMddHHmmss}"))
                 await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
         }
     }
