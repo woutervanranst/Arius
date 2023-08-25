@@ -1,4 +1,4 @@
-name: Release
+name: Arius.UI - Publish ClickOnce
 
 on:
   push:
