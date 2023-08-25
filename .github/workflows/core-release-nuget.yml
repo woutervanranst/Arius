@@ -12,6 +12,7 @@ on:
 jobs:
   job1:
     name: Release Nuget Package
+    if: startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'v'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
