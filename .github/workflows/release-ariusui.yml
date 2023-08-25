@@ -1,28 +1,28 @@
-name: Arius.UI - Publish ClickOnce
+# name: Arius.UI - Publish ClickOnce
 
-# See https://janjones.me/posts/clickonce-installer-build-publish-github/
+# # See https://janjones.me/posts/clickonce-installer-build-publish-github/
 
-on:
-  push:
-    tags: [v*]
+# on:
+#   push:
+#     tags: [v*]
 
-jobs:
-  release:
-    runs-on: windows-latest
+# jobs:
+#   release:
+#     runs-on: windows-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          submodules: true # Check out WouterVanRanst.Utils
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v3
+#         with:
+#           submodules: true # Check out WouterVanRanst.Utils
 
-      - name: Setup Git
-        run: |
-          git config --global url."https://user:${{ secrets.GITHUB_TOKEN }}@github".insteadOf https://github
-          git config --global user.name github-actions
-          git config --global user.email github-actions@github.com          
+#       - name: Setup Git
+#         run: |
+#           git config --global url."https://user:${{ secrets.GITHUB_TOKEN }}@github".insteadOf https://github
+#           git config --global user.name github-actions
+#           git config --global user.email github-actions@github.com          
 
-      - name: Run release script
-        shell: pwsh
-        run: ./.github/workflows/release.ps1
+#       - name: Run release script
+#         shell: pwsh
+#         run: ./.github/workflows/release.ps1
         

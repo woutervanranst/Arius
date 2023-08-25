@@ -221,10 +221,10 @@ this.FeatureBackground();
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 42
-    testRunner.When("restore relativename \"dir1\\\\wouter.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    testRunner.When("restore relativename \"dir1\\wouter.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 43
-    testRunner.Then("only the BinaryFile \"dir1\\\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("only the BinaryFile \"dir1\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
