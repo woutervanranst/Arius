@@ -9,6 +9,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Threading.Tasks;
+using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Commands;
 
