@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Services;
 
+
 public static class CryptoService
 {
     private const string OPENSSL_SALT_PREFIX = "Salted__";
