@@ -66,8 +66,8 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
                 case RestorePointerFileEntriesCommandOptions o:
                     pointerFiles = CreatePointerFilesAsync(o);
                     break;
-                case RestoreCommandOptions:
-                    // do nothing
+                case RestoreCommandOptions o:
+                    pointerFiles = GetExistingPointerFiles(o);
                     break;
                 default:
                     throw new NotImplementedException();
@@ -132,14 +132,14 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         }
     }
 
-    //private async Task IndexPointerFiles(DirectoryInfo root)
-    //{
-    //    foreach (var pfi in fileSystemService.GetPointerFileInfos(root))
-    //    {
-    //        var pf = fileService.GetExistingPointerFile(root, pfi);
-    //        await onIndexedPointerFile(pf);
-    //    }
-    //}
+    private async IAsyncEnumerable<PointerFile> GetExistingPointerFiles(RestoreCommandOptions options)
+    {
+        foreach (var pfi in fileSystemService.GetPointerFileInfos(options.Path))
+        {
+            var pf = fileService.GetExistingPointerFile(options.Path, pfi);
+            yield return pf;
+        }
+    }
 }
 
 internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
