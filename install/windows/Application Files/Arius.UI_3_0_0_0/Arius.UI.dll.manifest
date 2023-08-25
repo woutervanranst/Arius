@@ -60,7 +60,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>7posMLqHx7x4IoOKtrkSsRSFPuutsvF8hRqAtIrJLK4=</dsig:DigestValue>
+      <dsig:DigestValue>TaiWAK+r1k6vrwTSy7YiDAn2JIkoCIQleEUoyiO/N08=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.UI.deps.json" size="65906">
@@ -69,16 +69,16 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>y78wzmRLeDO0WmY1KS6xMUPgDw9gFyuSqJeMctks/fE=</dsig:DigestValue>
+      <dsig:DigestValue>fJ6bVaCntr5ldCSFh3oIO2SB1pgzCoEQOPTABeMJcJY=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.UI.dll" size="246784">
+  <file name="Arius.UI.dll" size="247296">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>PUoQYNRDmOmLbdYHc5Yny0mVue5/Tk3msUWvWcr7Hz4=</dsig:DigestValue>
+      <dsig:DigestValue>gxL5x12nslZlO0q2zSzu+u+bvwXlTVWdlj2ftl9ux+w=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.UI.dll.config" size="1268">
@@ -90,13 +90,13 @@
       <dsig:DigestValue>SxoyU5SUQsO+rsN8dgss04GK9goO9jVVTtsXmCVZszc=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.UI.exe" size="339968">
+  <file name="Arius.UI.exe" size="340480">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>gc+87mpXGpGo/m5H8EnIrGdFa2Q1fJqk+m1l/bWTagg=</dsig:DigestValue>
+      <dsig:DigestValue>yLnOEvXWvZuPPDbhSzoXM4TqGgnHQtVAQYxMmMzE+bs=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.UI.runtimeconfig.json" size="527">
