@@ -40,7 +40,7 @@ Scenario: Synchronize and download a file
     Given a clean restore directory
         # NOTE this gets converted to a platform specific in the codebehind
     When restore relativename "dir1\\wouter.txt"   
-    Then only the BinaryFile "dir1\wouter.txt" is present
+    Then only the BinaryFile "dir1\\wouter.txt" is present
 
     # Restore with Synchronize, Download, File is NOT SUPPORTED
 
