@@ -45,16 +45,23 @@ internal class UnitTests
     [OneTimeSetUp]
     public void CreateLogsDirectory()
     {
-        // Create the /logs folder for unit testing purposes
-        // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
-        if (!IsRunningInContainer)
+        try
         {
-            Directory.CreateDirectory("/logs");
-            File.Create(Path.Combine("/logs", "Used_for_Arius_unit_test.txt"));
-        }
+            // Create the /logs folder for unit testing purposes
+            // We 'simulate' running in a container (where the /logs MOUNT VOLUME is present) by creating this folder
+            if (!IsRunningInContainer)
+            {
+                Directory.CreateDirectory("/logs");
+                File.Create(Path.Combine("/logs", "Used_for_Arius_unit_test.txt"));
+            }
 
-        Directory.CreateDirectory("/archive");
-        File.Create(Path.Combine("/archive", "Used_for_Arius_unit_test.txt"));
+            Directory.CreateDirectory("/archive");
+            File.Create(Path.Combine("/archive", "Used_for_Arius_unit_test.txt"));
+        }
+        catch (IOException)
+        {
+            // this does not work in the Github Actions runner
+        }
     }
 
     [Test]
