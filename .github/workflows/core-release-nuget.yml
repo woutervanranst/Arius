@@ -41,7 +41,7 @@ jobs:
     # Extract the version from the tag
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
 
     - name: Pack
       run: dotnet pack Arius.Core -c Release --output . -p:PackageVersion=${{ steps.get_version.outputs.VERSION }}
