@@ -120,8 +120,7 @@ internal class UnitTests
         var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
-        consoleText.Should().Contain("Error:");
-        consoleText.Should().Contain("Unknown command"); //possible fix for linux runner where it displays Error:[0m Unknown command
+        consoleText.Should().Contain("Error: Unknown command");
         consoleText.Should().NotContain("at "); // no stack trace in the output
     }
 

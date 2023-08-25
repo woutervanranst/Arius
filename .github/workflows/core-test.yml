@@ -27,7 +27,10 @@ jobs:
           # include-prerelease: true
 
       - name: Test
-        run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
+        run: |
+          mkdir /archive
+          mkdir /logs
+          dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
         #run: dotnet test -l "console;verbosity=detailed" # -v normal
         # continue-on-error: true
         env:

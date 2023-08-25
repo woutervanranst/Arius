@@ -1,5 +1,7 @@
 name: Arius.UI - Publish ClickOnce
 
+# See https://janjones.me/posts/clickonce-installer-build-publish-github/
+
 on:
   push:
     tags: [v*]

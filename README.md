@@ -189,7 +189,7 @@ dotnet arius.dll <see syntax above>
 
 ### Windows (Arius Explorer)
 
-Via ClickOnce: https://woutervanranst.github.io/Arius/Arius%20Explorer.application
+Via ClickOnce: https://woutervanranst.github.io/Arius/Arius.Explorer.application
 
 ### Windows (CLI)
 
@@ -203,10 +203,6 @@ https://chocolatey.org/install.ps1
 
 ```
 -->
-
-### Windows GUI
-
-TODO
 
 ### Restore manually
 
