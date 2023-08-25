@@ -29,12 +29,6 @@ jobs:
       with:
         dotnet-version: 7.x
 
-    - name: Install Coverlet for coverage report generation
-      run: |
-          dotnet add Arius.Core.BehaviorTests/Arius.Core.BehaviorTests.csproj package coverlet.msbuild
-          dotnet add Arius.Core.Tests/Arius.Core.Tests.csproj package coverlet.msbuild
-      
-
     # Cache NuGet packages
     - name: Cache .NET packages
       uses: actions/cache@v3
@@ -55,11 +49,15 @@ jobs:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
+    - name: Merge and Convert Coverage Reports
+      run: |
+        dotnet tool install --global dotnet-reportgenerator-globaltool
+        reportgenerator "-reports:./Arius.Core.BehaviorTests/coverage.opencover.xml;./Arius.Core.Tests/coverage.opencover.xml" "-targetdir:." -reporttypes:Cobertura
+
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       with:
         files: |
-          ./src/Arius.Core.BehaviorTests/coverage.opencover.xml
-          ./src/Arius.Core.Tests/coverage.opencover.xml
+          Cobertura.xml
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
