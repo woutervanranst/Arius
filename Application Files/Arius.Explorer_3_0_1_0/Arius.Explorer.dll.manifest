@@ -60,7 +60,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>bNWyotMznDKsqMq6eMH/wAXU4Fp+uB4xdzjKhq/rbBM=</dsig:DigestValue>
+      <dsig:DigestValue>vl+A4lL8LUCmN0gaTuw+Ty2iNkdzGyYOoWkDHyhKOII=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.deps.json" size="65924">
@@ -69,7 +69,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>Z4ub3kwmruVXI84Pwd/lyI2E5J9V6sxZt8Kz3ey3Qhc=</dsig:DigestValue>
+      <dsig:DigestValue>EuUv9ATBuYlf/t3cQN0cz1s8P1fsKrkFUuMSIgIrC8Y=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll" size="245760">
@@ -78,7 +78,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>q9ds6yz59macnnhFlBpieEANO2OuoG2WKfaOZDYGnqU=</dsig:DigestValue>
+      <dsig:DigestValue>4j3lCt/MCHBV+ANC1RGKgAfEfQam1TLR8OFJO2dmO2E=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll.config" size="1268">
@@ -96,7 +96,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>HrhJxSg/+Ik+VtBs/rh3Ajkabdgs+JHGwRP09fOlBXk=</dsig:DigestValue>
+      <dsig:DigestValue>6e/tf9aitiZKk8LZmQdTvALXY0z8+AJ2gVL8nK9t224=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.runtimeconfig.json" size="441">
@@ -834,7 +834,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>s/ioqQAOA3ngLrShZITPsw7bkXUJtvkeBAnhlmKqDm0=</dsig:DigestValue>
+      <dsig:DigestValue>rnujkzj9c+v0O1CeFb/SkBv8bfeEc/RdQSlh+UoH3bE=</dsig:DigestValue>
     </hash>
   </file>
 </asmv1:assembly>
