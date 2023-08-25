@@ -136,7 +136,7 @@ class RestoreSteps : TestBase
     public void ThenOnlyTheBinaryFileIsPresent(string relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile.FromWindowsPathToPlatformPath());
+        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile, becauseArgs: $"{d.GetBinaryFileInfos().Single().GetRelativeName(d)} vs {relativeBinaryFile}");
     }
         
     [Then("the BinaryFile {string} is restored from online tier")]
