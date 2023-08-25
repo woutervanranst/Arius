@@ -37,7 +37,7 @@
 		<Company>Blue Software</Company>
 		<Copyright>Blue Software</Copyright>
 
-		<TieredCompilation>false</TieredCompilation>
+		<TieredCompilation>true</TieredCompilation>
 
 		<Nullable>enable</Nullable>
 	</PropertyGroup>

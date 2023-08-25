@@ -35,7 +35,9 @@ public enum HydrationState
 
 public interface IQueryRepositoryStatisticsResult
 {
-    public long TotalSize { get; }
+    public long TotalSize   { get; }
+    public int  TotalFiles  { get; }
+    public int  TotalChunks { get; }
 }
 
 
@@ -119,7 +121,9 @@ internal class RepositoryQueries
 
     record RepositoryStatistics : IQueryRepositoryStatisticsResult
     {
-        public long TotalSize { get; init; }
+        public long TotalSize   { get; init; }
+        public int  TotalFiles  { get; init; }
+        public int  TotalChunks { get; init; }
     }
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
@@ -127,7 +131,9 @@ internal class RepositoryQueries
         var s = await repository.GetStatisticsAsync();
         return new RepositoryStatistics()
         {
-            TotalSize = s.chunkSize
+            TotalSize   = s.ChunkSize,
+            TotalFiles  = s.CurrentPointerFileEntryCount,
+            TotalChunks = s.ChunkCount
         };
     }
 }

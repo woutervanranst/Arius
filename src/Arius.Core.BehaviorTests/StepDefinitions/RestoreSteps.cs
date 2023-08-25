@@ -55,13 +55,26 @@ class RestoreSteps : TestBase
     {
         await TestSetup.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: true);
     }
+    [When("restore relativename {string}")]
+    public async Task WhenRestoreRelativename(string relativeName)
+    {
+        await TestSetup.RestoreCommandAsync(relativeName);
+    }
+
     [When("restore expect a ValidationException")]
-    public async Task WhenRestore()
+    public async Task WhenRestoreValidationException()
     {
         Func<Task> t = () => TestSetup.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
         await t.Should().ThrowAsync<FluentValidation.ValidationException>();
 
         //Assert.CatchAsync<FluentValidation.ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
+    }
+    [When("restore successful")]
+    public async Task RestoreSuccessful()
+    {
+        // this just runs without any exception
+        var r = await TestSetup.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
+        r.Should().Be(0);
     }
 
     [When("copy the PointerFile of BinaryFile {string} to the restore directory")]

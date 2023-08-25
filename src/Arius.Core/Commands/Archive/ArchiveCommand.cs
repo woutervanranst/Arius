@@ -54,9 +54,9 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         // Get statistics of before the run
         var startStats = await repo.GetStatisticsAsync();
         stats.AddRemoteRepositoryStatistic(
-            beforeBinaries: startStats.binaryCount,
-            beforeSize: startStats.chunkSize,
-            beforePointerFileEntries: startStats.currentPointerFileEntryCount);
+            beforeBinaries: startStats.BinaryCount,
+            beforeSize: startStats.ChunkSize,
+            beforePointerFileEntries: startStats.CurrentPointerFileEntryCount);
 
 
         var indexBlock = new IndexBlock(this,
@@ -174,9 +174,9 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         // Get statistics after the run
         var endStats = await repo.GetStatisticsAsync();
         stats.AddRemoteRepositoryStatistic(
-            afterBinaries: endStats.binaryCount,
-            afterSize: endStats.chunkSize,
-            afterPointerFileEntries: endStats.currentPointerFileEntryCount);
+            afterBinaries: endStats.BinaryCount,
+            afterSize: endStats.ChunkSize,
+            afterPointerFileEntries: endStats.CurrentPointerFileEntryCount);
         var vs = await repo.GetVersionsAsync().ToArrayAsync();
         stats.versionCount = vs.Length;
         stats.lastVersion = vs.Last();

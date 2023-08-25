@@ -378,7 +378,7 @@ this.FeatureBackground();
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 87
-    testRunner.When("restore expect a ValidationException", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    testRunner.When("restore successful", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
             }
             this.ScenarioCleanup();
@@ -391,7 +391,7 @@ this.FeatureBackground();
             string[] tagsOfScenario = ((string[])(null));
             System.Collections.Specialized.OrderedDictionary argumentsOfScenario = new System.Collections.Specialized.OrderedDictionary();
             TechTalk.SpecFlow.ScenarioInfo scenarioInfo = new TechTalk.SpecFlow.ScenarioInfo("Download a file of which the binary is already restored", null, tagsOfScenario, argumentsOfScenario, featureTags);
-#line 90
+#line 91
 this.ScenarioInitialize(scenarioInfo);
 #line hidden
             if ((TagHelper.ContainsIgnoreTag(tagsOfScenario) || TagHelper.ContainsIgnoreTag(featureTags)))
@@ -404,22 +404,22 @@ this.ScenarioInitialize(scenarioInfo);
 #line 19
 this.FeatureBackground();
 #line hidden
-#line 91
+#line 92
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
-#line 92
+#line 93
     testRunner.When("copy the PointerFile of BinaryFile \"dir1\\wouter.txt\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 93
+#line 94
     testRunner.When("copy the PointerFile of BinaryFile \"taxes.doc\" to the restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 94
+#line 95
     testRunner.When("restore --download", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
-#line 95
+#line 96
     testRunner.Then("the BinaryFile \"dir1\\wouter.txt\" is restored from online tier", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
-#line 96
+#line 97
     testRunner.Then("the BinaryFile \"taxes.doc\" is restored from local", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }

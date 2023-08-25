@@ -161,8 +161,10 @@ public class RepositoryFacade : IDisposable
 
 
     // --------- RESTORE ---------
-    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime pointInTimeUtc)
+    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
     {
+        // TODO align handling of versionUtc == default and DateTime? pointInTime
+        
         var v = new IRestoreCommandOptions.Validator();
         return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
     }

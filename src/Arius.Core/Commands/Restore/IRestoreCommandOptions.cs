@@ -7,11 +7,11 @@ namespace Arius.Core.Commands.Restore;
 
 internal interface IRestoreCommandOptions : IRepositoryOptions
 {
-    bool Synchronize { get; }
-    bool Download { get; }
-    bool KeepPointers { get; }
-    DateTime PointInTimeUtc { get; }
-    DirectoryInfo Path { get; }
+    bool           Synchronize    { get; }
+    bool           Download       { get; }
+    bool           KeepPointers   { get; }
+    DateTime       PointInTimeUtc { get; }
+    DirectoryInfo? Path           { get; }
 
 
     int IndexBlock_Parallelism => 16 * 2;
@@ -31,7 +31,7 @@ internal interface IRestoreCommandOptions : IRepositoryOptions
             RuleFor(o => o)
                 .Custom((o, context) =>
                 {
-                    if (!o.Path.Exists)
+                    if (o.Path is null || !o.Path.Exists)
                         context.AddFailure("The specified path does not exist");
 
                     //if (!o.Synchronize && !o.Download)
@@ -43,20 +43,20 @@ internal interface IRestoreCommandOptions : IRepositoryOptions
 
 internal record RestoreCommandOptions : RepositoryOptions, IRestoreCommandOptions
 {
-    public RestoreCommandOptions(IRepositoryOptions options, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime pointInTimeUtc) : base(options)
+    public RestoreCommandOptions(IRepositoryOptions options, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(options)
     {
         this.Synchronize    = synchronize;
         this.Download       = download;
         this.KeepPointers   = keepPointers;
-        this.PointInTimeUtc = pointInTimeUtc;
+        this.PointInTimeUtc = pointInTimeUtc ?? DateTime.UtcNow;
         this.Path           = root;
     }
-    public RestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime pointInTimeUtc) : base(accountName, accountKey, containerName, passphrase)
+    public RestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(accountName, accountKey, containerName, passphrase)
     {
         this.Synchronize    = synchronize;
         this.Download       = download;
         this.KeepPointers   = keepPointers;
-        this.PointInTimeUtc = pointInTimeUtc;
+        this.PointInTimeUtc = pointInTimeUtc ?? DateTime.UtcNow;
         this.Path           = root;
     }
 
