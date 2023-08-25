@@ -309,7 +309,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 if (BinaryFileInfo is not null)
                     return Brushes.Blue;
                 else
-                    return Brushes.Transparent;
+                    return Brushes.White; // NOT transparent - if the PointerFile is black then the full half circle is black
             }
         }
 
