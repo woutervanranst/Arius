@@ -390,7 +390,7 @@ internal class UnitTests
         public bool Download { get; init; } = false;
         public bool KeepPointers { get; init; } = false;
         public DirectoryInfo? Path { get; init; } = new DirectoryInfo(".");
-        public DateTime? PointInTimeUtc { get; init; }
+        public DateTime PointInTimeUtc { get; init; }
 
         public override string ToString()
         {

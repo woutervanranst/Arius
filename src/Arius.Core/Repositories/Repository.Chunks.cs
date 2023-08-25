@@ -7,6 +7,7 @@ using Azure;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -75,7 +76,7 @@ internal partial class Repository
 
                     try
                     {
-                        return await GetChunkEntryAsync(chunk.ChunkHash); // TODO when would this path be executed??
+                        return await GetChunkEntryAsync(chunk.ChunkHash); // TODO when would this path succeed / not result in an InvalidOperationException ??
                     }
                     catch (InvalidOperationException)
                     {
@@ -182,7 +183,7 @@ internal partial class Repository
             //Start hydration
             await hydratedItem.StartCopyFromUriAsync(
                 blobToHydrate.Uri,
-                new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
+                new BlobCopyFromUriOptions { AccessTier = AccessTier.Cold, RehydratePriority = RehydratePriority.Standard });
 
             logger.LogInformation($"Hydration started for '{blobToHydrate.ChunkHash}'");
         }
@@ -196,6 +197,16 @@ internal partial class Repository
             else
                 logger.LogInformation($"Hydration done for '{blobToHydrate.ChunkHash}'");
         }
+    }
+
+    /// <summary>
+    /// Get the list of all hydrating chunks along with their status
+    /// </summary>
+    /// <returns></returns>
+    public async IAsyncEnumerable<(ChunkHash ChunkHash, bool HydrationPending)> GetRehydratedChunksAsync()
+    {
+        await foreach ((string Name, ArchiveStatus? ArchiveStatus) b in container.RehydratedChunks.GetBlobsAsync()) 
+            yield return (new ChunkHash(b.Name.HexStringToBytes()), Blob.IsHydrationPending(b.ArchiveStatus));
     }
 
     public async Task DeleteHydratedChunksFolderAsync()

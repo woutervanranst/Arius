@@ -1,13 +1,18 @@
 ﻿using Azure.Storage.Blobs.Models;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
 
 namespace Arius.Core.Repositories.StateDb;
 
 internal record PointerFileEntryDto
 {
     public byte[] BinaryHash   { get; init; }
-    public string RelativeName { get; init; }
+
+    public string RelativeParentPath { get; init; }
+    public string DirectoryName      { get; init; }
+    public string Name               { get; init; }
 
     /// <summary>
     /// Version (in Universal Time)
@@ -18,6 +23,8 @@ internal record PointerFileEntryDto
     public DateTime? LastWriteTimeUtc { get; init; }
 
     public virtual ChunkEntry Chunk { get; init; }
+    [NotMapped]
+    public string RelativeName => Path.Combine(RelativeParentPath, DirectoryName, Name);
 }
 
 internal record ChunkEntry

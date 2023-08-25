@@ -1,0 +1,23 @@
+﻿<UserControl x:Class="Arius.UI.Views.StateCircle"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Arius.UI.Views"
+             mc:Ignorable="d" 
+             Width="16" Height="16">
+    <Canvas>
+        <!-- Left Outer Segment -->
+        <Path Fill="{Binding LeftOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+              Data="M8,8 L0,8 A8,8 0 0,1 8,0 Z M8,8 L0,8 A8,8 0 0,0 8,16 Z"/>
+        <!-- Right Outer Segment -->
+        <Path Fill="{Binding RightOuterColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
+              Data="M8,8 L16,8 A8,8 0 0,0 8,0 Z M8,8 L16,8 A8,8 0 0,1 8,16 Z"/>
+        <!-- Left Inner Segment -->
+        <Path Fill="{Binding LeftInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
+              Data="M8,8 L2.5,8 A5.5,5.5 0 0,1 8,2.5 Z M8,8 L2.5,8 A5.5,5.5 0 0,0 8,13.5 Z"/>
+        <!-- Right Inner Segment -->
+        <Path Fill="{Binding RightInnerColor, RelativeSource={RelativeSource AncestorType=UserControl}}"
+              Data="M8,8 L13.5,8 A5.5,5.5 0 0,0 8,2.5 Z M8,8 L13.5,8 A5.5,5.5 0 0,1 8,13.5 Z"/>
+    </Canvas>
+</UserControl>

@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services;
 
-internal class FileSystemService
+public class FileSystemService
 {
     private readonly ILogger<FileSystemService> logger;
 
@@ -88,11 +88,11 @@ internal class FileSystemService
     /// </summary>
     public static PointerFileInfo GetPointerFileInfo(FileInfo fi) => GetPointerFileInfo(GetFileInfo(fi));
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
-    public static PointerFileInfo GetPointerFileInfo(BinaryFile bf) => GetPointerFileInfo(bf.FullName);
+    internal static PointerFileInfo GetPointerFileInfo(BinaryFile bf) => GetPointerFileInfo(bf.FullName);
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
     public static PointerFileInfo GetPointerFileInfo(string fileName) => GetPointerFileInfo(GetFileInfo(fileName));
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
-    public static PointerFileInfo GetPointerFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetPointerFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+    internal static PointerFileInfo GetPointerFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetPointerFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
     public static PointerFileInfo GetPointerFileInfo(DirectoryInfo root, string relativeName) => GetPointerFileInfo(Path.Combine(root.FullName, relativeName));
     /// <inheritdoc cref="GetPointerFileInfo(FileInfo)"/>
     public static PointerFileInfo GetPointerFileInfo(FileInfoBase fib)
@@ -114,9 +114,9 @@ internal class FileSystemService
     /// </summary>
     public static BinaryFileInfo GetBinaryFileInfo(FileInfo fi)                              => GetBinaryFileInfo(GetFileInfo(fi));
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>
-    public static BinaryFileInfo GetBinaryFileInfo(PointerFile pf)                           => GetBinaryFileInfo(pf.FullName);
+    internal static BinaryFileInfo GetBinaryFileInfo(PointerFile pf)                           => GetBinaryFileInfo(pf.FullName);
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>
-    public static BinaryFileInfo GetBinaryFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
+    internal static BinaryFileInfo GetBinaryFileInfo(DirectoryInfo root, PointerFileEntry pfe) => GetBinaryFileInfo(Path.Combine(root.FullName, pfe.RelativeName));
     public static BinaryFileInfo GetBinaryFileInfo(DirectoryInfo root, string relativeName) => GetBinaryFileInfo(Path.Combine(root.FullName, relativeName));
     /// <inheritdoc cref="GetBinaryFileInfo(FileInfo)"/>
     public static BinaryFileInfo GetBinaryFileInfo(string fileName)                          => GetBinaryFileInfo(GetFileInfo(fileName));
@@ -132,7 +132,7 @@ internal class FileSystemService
     }
 
 
-    private static FileInfoBase GetFileInfo(string fileName)
+    public static FileInfoBase GetFileInfo(string fileName)
     {
         return GetFileInfo(new FileInfo(fileName));
     }

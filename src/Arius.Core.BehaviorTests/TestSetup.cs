@@ -113,7 +113,7 @@ internal static class TestSetup
     /// <returns></returns>
     public static async Task<PointerFileEntry?> GetPointerFileEntryAsync(string relativeName)
     {
-        var pfes = await Repository.GetCurrentPointerFileEntriesAsync(includeDeleted: true);
+        var pfes = await Repository.GetCurrentPointerFileEntriesAsync(includeDeleted: true).ToArrayAsync();
         var pfe  = pfes.SingleOrDefault(r => r.RelativeName.StartsWith(relativeName)); // StartsWith so relativeName can be both a PointerFile and a BinaryFile
 
         return pfe;
@@ -122,24 +122,30 @@ internal static class TestSetup
 
     // --------- COMMANDS ---------
 
-    public static async Task ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    public static async Task<int> ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (purgeRemote)
             await PurgeRemoteAsync(true);
 
-        await Facade.ExecuteArchiveCommandAsync(FileSystem.ArchiveDirectory, fastHash, removeLocal, tier, dedup, DateTime.UtcNow);
+        var (r, _) = await Facade.ExecuteArchiveCommandAsync(FileSystem.ArchiveDirectory, fastHash, removeLocal, tier, dedup, DateTime.UtcNow);
 
         await AddRepoStat();
+
+        return r;
     }
 
 
-    public static async Task RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
+    public static async Task<int> RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
     {
-        await RestoreCommandAsyc(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
+        return await RestoreCommandAsync(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
     }
-    public static async Task RestoreCommandAsyc(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
+    public static async Task<int> RestoreCommandAsync(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
     {
-        await Facade.ExecuteRestoreCommandAsync(path, synchronize, download, keepPointers, DateTime.UtcNow);
+        return await Facade.ExecuteRestoreCommandAsync(path, synchronize, download, keepPointers, DateTime.UtcNow);
+    }
+    public static async Task<int> RestoreCommandAsync(params string[] relativeNames)
+    {
+        return await Facade.ExecuteRestoreCommandAsync(FileSystem.RestoreDirectory, download: true, keepPointers: false, relativeNames: relativeNames);
     }
 
 
@@ -175,7 +181,7 @@ internal static class TestSetup
         var p = await c.GetPropertiesAsync();
         var s = p.Value.ArchiveStatus;
 
-        s.Should().BeOneOf("rehydrate-pending-to-cool", "rehydrate-pending-to-hot");
+        s.Should().BeOneOf("rehydrate-pending-to-cool", "rehydrate-pending-to-hot", "rehydrate-pending-to-cold");
 
         return await c.ExistsAsync();
     }

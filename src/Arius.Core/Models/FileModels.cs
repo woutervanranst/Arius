@@ -68,9 +68,7 @@ internal abstract record FileBase
 
 /// <inheritdoc/>
 internal record PointerFile : FileBase
-{
-    public static readonly string Extension = ".pointer.arius";
-
+{ 
     public PointerFile(DirectoryInfo root, PointerFileInfo pfi, BinaryHash hash) : base(root, pfi, hash)
     {
     }

@@ -84,7 +84,8 @@ Scenario: Selective restore: Download a directory and do not keep pointers
 
 Scenario: Restore without synchronize and without download
     Given a clean restore directory
-    When restore expect a ValidationException
+    When restore successful
+    # then no errors
 
 
 Scenario: Download a file of which the binary is already restored

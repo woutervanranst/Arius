@@ -3,6 +3,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -59,32 +60,16 @@ internal class StateDbContext : DbContext
         //.HasConversion(new MyValueConverter());
 
         cmb.Property(c => c.AccessTier)
-            .HasConversion(v => v.ToString(), v => (AccessTier)v);
-            //{
-            //    return t.ToString();
-            //    //if (t == AccessTier.Hot)
-            //    //    return 10;
-            //    //if (t == AccessTier.Cool)
-            //    //    return 20;
-            //    //if (t == AccessTier.Cold)
-            //    //    return 30;
-            //    //if (t == AccessTier.Archive)
-            //    //    return 40;
-            //}, t =>
-            //{
-            //    t switch
-            //    {
-            //    }
-            //});
+            .HasConversion(new AccessTierConverter());
 
         var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
         pfemb.ToTable("PointerFileEntries");
-        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeName, pfe.VersionUtc });
+        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name, pfe.VersionUtc });
         pfemb.HasIndex(pfe => pfe.BinaryHash); // NOT unique
         pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
-        pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
+        //pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
-        pfemb.Property(pfe => pfe.RelativeName)
+        pfemb.Property(pfe => pfe.Name)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
         // PointerFileEntries * -- 1 Chunk
@@ -113,9 +98,44 @@ internal class StateDbContext : DbContext
     {
         public RemovePointerFileExtensionConverter()
             : base(
-                v => v.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
-                v => $"{v}{PointerFile.Extension}") // Convert from Provider to Model (db to code)
+                v => v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
+                v => $"{v}{PointerFileInfo.Extension}") // Convert from Provider to Model (db to code)
         {
         }
     }
+
+    private class AccessTierConverter : ValueConverter<AccessTier, int>
+    {
+        public AccessTierConverter() : base(
+            tier => ConvertTierToNumber(tier),
+            number => ConvertNumberToTier(number))
+        { }
+
+        private static int ConvertTierToNumber(AccessTier tier)
+        {
+            if (tier == AccessTier.Archive)
+                return 10;
+            if (tier == AccessTier.Cold)
+                return 20;
+            if (tier == AccessTier.Cool)
+                return 30;
+            if (tier == AccessTier.Hot)
+                return 40;
+
+            return -1;
+        }
+
+        private static AccessTier ConvertNumberToTier(int number)
+        {
+            return number switch
+            {
+                10 => AccessTier.Archive,
+                20 => AccessTier.Cold,
+                30 => AccessTier.Cool,
+                40 => AccessTier.Hot,
+                _  => (AccessTier)"unknown"
+            };
+        }
+    }
+
 }

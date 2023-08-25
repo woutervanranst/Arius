@@ -20,7 +20,7 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
     }
 
     private readonly ILogger<RestoreCliCommand> logger;
-    private readonly Facade                  facade;
+    private readonly Facade                     facade;
 
     internal class RestoreCommandOptions : RepositoryOptions
     {

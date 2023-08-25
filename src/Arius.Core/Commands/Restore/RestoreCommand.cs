@@ -43,11 +43,11 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions>
 
         var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
 
-        var indexBlock = new IndexBlock(
+        var provisionPointerFilesBlock = new ProvisionPointerFilesBlock(
             loggerFactory: loggerFactory,
             sourceFunc: () => options.Path, //S10
             maxDegreeOfParallelism: options.IndexBlock_Parallelism,
-            synchronize: options.Synchronize,
+            options: options,
             repo: repo,
             fileSystemService: fileSystemService,
             fileService: fileService,
@@ -62,7 +62,7 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions>
             {
                 binariesToDownload.Writer.Complete(); //S13
             });
-        var indexTask = indexBlock.GetTask;
+        var indexTask = provisionPointerFilesBlock.GetTask;
 
 
         var chunkRehydrating = false;

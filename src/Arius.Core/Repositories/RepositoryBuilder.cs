@@ -50,10 +50,9 @@ internal partial class RepositoryBuilder
     {
         if (options == default(IRepositoryOptions))
             throw new ArgumentException("Options not set");
-        
 
         // Ensure the Blob Container exists
-        var r = await container.CreateIfNotExistsAsync();
+        if (await container.CreateIfNotExistsAsync())
             logger.LogInformation($"Created container {options.ContainerName}... ");
 
         // Initialize the DbContextFactory (ie. download the state from blob)

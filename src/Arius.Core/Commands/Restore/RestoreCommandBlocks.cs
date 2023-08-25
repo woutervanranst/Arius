@@ -1,26 +1,25 @@
-﻿using System;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Repositories;
+using Arius.Core.Services;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class IndexBlock : TaskBlockBase<FileSystemInfo>
+internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
 {
-    public IndexBlock(ILoggerFactory loggerFactory,
-       Func<FileSystemInfo> sourceFunc,
+    public ProvisionPointerFilesBlock(ILoggerFactory loggerFactory,
+       Func<DirectoryInfo> sourceFunc,
        int maxDegreeOfParallelism,
-       bool synchronize,
+       IRestoreCommandOptions options,
        Repository repo,
        FileSystemService fileSystemService,
        FileService fileService,
@@ -29,7 +28,7 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
        : base(loggerFactory: loggerFactory, sourceFunc: sourceFunc, onCompleted: onCompleted)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-        this.synchronize            = synchronize;
+        this.options                = options;
         this.repo                   = repo;
         this.fileSystemService      = fileSystemService;
         this.fileService            = fileService;
@@ -37,95 +36,109 @@ internal class IndexBlock : TaskBlockBase<FileSystemInfo>
     }
 
     private readonly int                     maxDegreeOfParallelism;
-    private readonly bool                    synchronize;
+    private readonly IRestoreCommandOptions  options;
     private readonly Repository              repo;
     private readonly FileSystemService       fileSystemService;
     private readonly FileService             fileService;
     private readonly Func<PointerFile, Task> onIndexedPointerFile;
 
-    protected override async Task TaskBodyImplAsync(FileSystemInfo source)
+    protected override async Task TaskBodyImplAsync(DirectoryInfo root)
     {
-        if (synchronize)
-        {
-            if (source is not DirectoryInfo di)
-                throw new ArgumentException($"The synchronize flag is only valid for directories");
+        var pointerFiles = AsyncEnumerable.Empty<PointerFile>();
 
-            await SynchronizeThenIndex(di);
+        if (options.Synchronize)
+        {
+            switch (options)
+            {
+                case RestorePointerFileEntriesCommandOptions: // put the more specific type first
+                    throw new NotSupportedException("We cannot synchronize PointerFiles when we are only restoring a select number of relativeNames.");
+                case RestoreCommandOptions o:
+                    pointerFiles = SynchronizePointerFilesAsync(o);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
         }
         else
         {
-            await Index(source);
+            switch (options)
+            {
+                case RestorePointerFileEntriesCommandOptions o:
+                    pointerFiles = CreatePointerFilesAsync(o);
+                    break;
+                case RestoreCommandOptions o:
+                    pointerFiles = GetExistingPointerFiles(o);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
         }
-    }
 
-    private async Task SynchronizeThenIndex(DirectoryInfo root)
-    {
-        var currentPfes = (await repo.GetCurrentPointerFileEntriesAsync(includeDeleted: false)).ToArray();
-
-        logger.LogInformation($"{currentPfes.Length} files in latest version of remote");
-
-        var t1 = Task.Run(async () => await CreatePointerFilesIfNotExistAsync(root, currentPfes));
-        var t2 = Task.Run(() => DeletePointerFilesIfShouldNotExist(root, currentPfes));
-
-        await Task.WhenAll(t1, t2);
-    }
-
-    /// <summary>
-    /// Get the PointerFiles for the given PointerFileEntries. Create PointerFiles if they do not exist.
-    /// </summary>
-    /// <returns></returns>
-    private async Task CreatePointerFilesIfNotExistAsync(DirectoryInfo root, PointerFileEntry[] pfes)
-    {
-        await Parallel.ForEachAsync(pfes,
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            async (pfe, ct) => 
-            {
-                var (_, pf) = fileService.CreatePointerFileIfNotExists(root, pfe);
-                await onIndexedPointerFile(pf);
-            });
-    }
-
-    /// <summary>
-    /// Delete the PointerFiles that do not exist in the given PointerFileEntries.
-    /// </summary>
-    /// <param name="pfes"></param>
-    private void DeletePointerFilesIfShouldNotExist(DirectoryInfo root, PointerFileEntry[] pfes)
-    {
-        var relativeNames = pfes.Select(pfe => pfe.RelativeName).ToArray();
-
-        Parallel.ForEach(fileSystemService.GetPointerFileInfos(root),
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            (pfi) =>
-            {
-                var relativeName = pfi.GetRelativeName(root);
-
-                if (relativeNames.Contains(relativeName))
-                    return;
-
-                pfi.Delete();
-                logger.LogInformation($"Pointer for '{relativeName}' deleted");
-            });
-
-        root.DeleteEmptySubdirectories();
-    }
-
-
-    private async Task Index(FileSystemInfo source)
-    {
-        if (source is DirectoryInfo root)
-            await ProcessPointersInDirectory(root);
-        else if (source is FileInfo fi && fi.IsPointerFile())
-            await onIndexedPointerFile(fileService.GetExistingPointerFile(fi.Directory, FileSystemService.GetPointerFileInfo(fi))); //TODO test dit in non root
-        else
-            throw new InvalidOperationException($"Argument {source} is not valid");
-    }
-
-    private async Task ProcessPointersInDirectory(DirectoryInfo root)
-    {
-        var pfs = fileSystemService.GetPointerFileInfos(root).Select(pfi => fileService.GetExistingPointerFile(root, pfi));
-
-        foreach (var pf in pfs)
+        await foreach (var pf in pointerFiles)
             await onIndexedPointerFile(pf);
+    }
+
+    /// <summary>
+    /// Create the PointerFiles (if they do not exist) for the given root
+    /// Delete the PointerFiles that should not exist
+    /// </summary>
+    private async IAsyncEnumerable<PointerFile> SynchronizePointerFilesAsync(RestoreCommandOptions options)
+    {
+        var existingPointerFileEntries = new HashSet<string>();
+        
+        await foreach (var pfe in repo.GetPointerFileEntriesAsync(options.PointInTimeUtc, includeDeleted: false))
+        {
+            var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
+
+            logger.LogInformation($"PointerFile '{pf}' created");
+            yield return pf;
+
+            existingPointerFileEntries.Add(pfe.RelativeName);
+        }
+
+        // Delete the PointerFiles that do not exist in the given PointerFileEntries.
+        foreach (var pfi in fileSystemService.GetPointerFileInfos(options.Path))
+        {
+            var rn = pfi.GetRelativeName(options.Path);
+            if (!existingPointerFileEntries.Contains(rn))
+            {
+                pfi.Delete();
+                logger.LogInformation($"PointerFile '{rn}' deleted");
+            }
+        }
+
+        options.Path.DeleteEmptySubdirectories();
+    }
+
+    /// <summary>
+    /// Create the PointerFiles (if they do not exist) for the given relativeNames
+    /// </summary>
+    private async IAsyncEnumerable<PointerFile> CreatePointerFilesAsync(RestorePointerFileEntriesCommandOptions options)
+    {
+        foreach (var relativeName in options.RelativeNames)
+        {
+            var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(relativeName);
+            var pfe = await repo.GetPointerFileEntriesAsync(
+                options.PointInTimeUtc,
+                includeDeleted: false,
+                relativeParentPathEquals: relativeParentPath,
+                directoryNameEquals: directoryName,
+                nameEquals: name).SingleAsync();
+
+            var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
+
+            logger.LogInformation($"PointerFile '{pf}' created");
+            yield return pf;
+        }
+    }
+
+    private async IAsyncEnumerable<PointerFile> GetExistingPointerFiles(RestoreCommandOptions options)
+    {
+        foreach (var pfi in fileSystemService.GetPointerFileInfos(options.Path))
+        {
+            var pf = fileService.GetExistingPointerFile(options.Path, pfi);
+            yield return pf;
+        }
     }
 }
 

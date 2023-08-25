@@ -57,7 +57,7 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobEntry = await container.States.GetBlobs()
+            var lastStateBlobEntry = await container.States.GetBlobsAsync()
                 .Select(be => be.Name)
                 .OrderBy(b => b)
                 .LastOrDefaultAsync();
@@ -73,13 +73,18 @@ internal partial class RepositoryBuilder
             else
             {
                 // Load existing DB
-                var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
-                await using (var ss = await lastStateBlob.OpenReadAsync())
+                try
                 {
+                    var lastStateBlob = container.States.GetBlob(lastStateBlobEntry);
+                    await using var ss = await lastStateBlob.OpenReadAsync();
                     await using var ts = new FileStream(localDbPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, bufferSize: 4096); //File.OpenWrite(localDbPath); // do not use asyncIO for small files
                     await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
                     logger.LogInformation($"Successfully downloaded latest state '{lastStateBlobEntry}' to '{localDbPath}'");
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
                 }
 
                 await using var con = new SqliteConnection($"Data Source={localDbPath}");
@@ -147,9 +152,10 @@ internal partial class RepositoryBuilder
 
             await b.SetAccessTierAsync(AccessTier.Cold);
             await b.SetContentTypeAsync(CryptoService.ContentType);
+            await b.UpsertMetadataAsync("DatabaseVersion", "3");
 
             // Move the previous states to Archive storage
-            await foreach (var be in container.States.GetBlobs()
+            await foreach (var be in container.States.GetBlobsAsync()
                                .OrderBy(be => be.Name)
                                .SkipLast(2)
                                .Where(be => be.AccessTier != AccessTier.Archive))
@@ -187,6 +193,7 @@ internal partial class RepositoryBuilder
             {
                 // Delete the temporary db
                 using var db = GetContext();
+                SqliteConnection.ClearAllPools();  // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
                 db.Database.EnsureDeleted();
             }
         }

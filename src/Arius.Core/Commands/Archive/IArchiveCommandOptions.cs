@@ -1,9 +1,8 @@
-﻿using Azure.Storage.Blobs.Models;
+﻿using Arius.Core.Facade;
+using Azure.Storage.Blobs.Models;
 using FluentValidation;
 using System;
 using System.IO;
-using Arius.Core.Facade;
-using Arius.Core.Repositories;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -78,7 +77,7 @@ internal interface IArchiveCommandOptions : IRepositoryOptions
 
 internal record ArchiveCommandOptions : RepositoryOptions, IArchiveCommandOptions
 {
-    public ArchiveCommandOptions(Repository repo, DirectoryInfo root, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DateTime versionUtc) : base(repo.Options)
+    public ArchiveCommandOptions(IRepositoryOptions options, DirectoryInfo root, bool fastHash, bool removeLocal, AccessTier tier, bool dedup, DateTime versionUtc) : base(options)
     {
         this.FastHash    = fastHash;
         this.RemoveLocal = removeLocal;

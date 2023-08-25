@@ -1,18 +1,18 @@
 ﻿using Arius.Core.Commands.Archive;
+using Arius.Core.Commands.Rehydrate;
+using Arius.Core.Commands.Restore;
 using Arius.Core.Queries;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
+using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
+using PostSharp.Constraints;
+using PostSharp.Patterns.Contracts;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
-using Arius.Core.Commands.Rehydrate;
-using Arius.Core.Commands.Restore;
-using FluentValidation.Results;
-using PostSharp.Constraints;
-using PostSharp.Patterns.Contracts;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -27,6 +27,8 @@ using System.Runtime.CompilerServices;
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
+
+[assembly: InternalsVisibleTo("Arius.Core.DbMigrationV2V3")]
 
 namespace Arius.Core.Facade;
 
@@ -57,7 +59,7 @@ public class Facade
 
 public class StorageAccountFacade
 {
-    private readonly ILoggerFactory        loggerFactory;
+    private readonly ILoggerFactory         loggerFactory;
     private readonly IStorageAccountOptions storageAccountOptions;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
@@ -70,12 +72,11 @@ public class StorageAccountFacade
         this.storageAccountOptions = options;
     }
 
-    public IAsyncEnumerable<string> GetContainerNamesAsync()
+    public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
     {
-        //var saq = services.GetRequiredService<StorageAccountQueries>();
         var saq = new StorageAccountQueries(loggerFactory.CreateLogger<StorageAccountQueries>(), storageAccountOptions);
 
-        return saq.GetContainerNamesAsync();
+        return saq.GetContainerNamesAsync(maxRetries);
     }
 
     /// <summary>
@@ -128,10 +129,8 @@ public class RepositoryFacade : IDisposable
 
     internal Repository Repository { get; }
 
-    public IAsyncEnumerable<string> GetVersions()
-    {
-        throw new NotImplementedException();
-    }
+    public string AccountName   => Repository.Options.AccountName;
+    public string ContainerName => Repository.Options.ContainerName;
 
 
     // --------- ARCHIVE ---------
@@ -149,7 +148,7 @@ public class RepositoryFacade : IDisposable
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(Repository, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var aco = new ArchiveCommandOptions(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
 
         var sp = new ArchiveCommandStatistics();
 
@@ -164,6 +163,8 @@ public class RepositoryFacade : IDisposable
     // --------- RESTORE ---------
     public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
     {
+        // TODO align handling of versionUtc == default and DateTime? pointInTime
+        
         var v = new IRestoreCommandOptions.Validator();
         return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
     }
@@ -173,7 +174,19 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestoreCommandOptions(Repository, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var rco = new RestoreCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
+
+        var cmd = new RestoreCommand(loggerFactory, Repository);
+
+        return await cmd.ExecuteAsync(rco);
+    }
+
+    public async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] relativeNames)
+    {
+        if (pointInTimeUtc == default)
+            pointInTimeUtc = DateTime.UtcNow;
+
+        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
 
         var cmd = new RestoreCommand(loggerFactory, Repository);
 
@@ -191,6 +204,31 @@ public class RepositoryFacade : IDisposable
         var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
 
         return await cmd.ExecuteAsync(rco);
+    }
+
+    // --------- QUERIES ---------
+
+    public IAsyncEnumerable<string> GetVersions()
+    {
+        throw new NotImplementedException();
+    }
+
+    
+
+    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
+        string? relativeParentPathEquals = null,
+        string? directoryNameEquals = null,
+        string? nameContains = null)
+    {
+        var q = new RepositoryQueries(loggerFactory, Repository);
+        await foreach (var e in q.QueryPointerFileEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
+            yield return e;
+    }
+
+    public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
+    {
+        var q = new RepositoryQueries(loggerFactory, Repository);
+        return await q.QueryRepositoryStatisticsAsync();
     }
 
 
