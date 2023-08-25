@@ -5,13 +5,14 @@ using Arius.Core.Services;
 using Arius.UI.Services;
 using Arius.UI.Utils;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using System.Windows.Input;
 using System.Windows.Threading;
-using CommunityToolkit.Mvvm.Input;
 using WouterVanRanst.Utils.Extensions;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
@@ -27,15 +28,17 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // Set the selected folder to the root and kick off the loading process
         SelectedFolder = GetRootNode();
 
-        FolderViewModel GetRootNode()
-        {
-            var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
-            foldersDict.Add(ROOT_NODEKEY, rootNode);
-            RootNode.Add(rootNode);
-
-            return rootNode;
-        }
+        HydrateCommand = new AsyncRelayCommand<IList<ItemViewModel>>(OnHydrateAsync, CanHydrate);
+        RestoreCommand = new AsyncRelayCommand<IList<ItemViewModel>>(OnRestoreAsync, CanRestore);
     }
+
+    public RepositoryFacade Repository     { get; set; }
+    public DirectoryInfo    LocalDirectory { get; set; }
+
+    public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
+
+    [ObservableProperty]
+    private bool isLoading;
 
     private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
     {
@@ -69,13 +72,35 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
-    public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
 
-    public RepositoryFacade Repository     { get; set; }
-    public DirectoryInfo    LocalDirectory { get; set; }
+    // Folders Treeview
+    private const string ROOT_NODEKEY = "root";
+
+    private FolderViewModel GetRootNode()
+    {
+        var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
+        foldersDict.Add(ROOT_NODEKEY, rootNode);
+        RootNode.Add(rootNode);
+
+        return rootNode;
+    }
 
     [ObservableProperty]
-    private bool isLoading;
+    private ObservableCollection<FolderViewModel> rootNode = new(); // this will really only contain one node but the TreeView binds to a collection
+    private readonly Dictionary<string, FolderViewModel> foldersDict = new(); // a lookup dictionary with the folder's relative path as key
+
+    public FolderViewModel SelectedFolder
+    {
+        get => selectedFolder;
+        set
+        {
+            if (SetProperty(ref selectedFolder, value))
+            {
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
+            }
+        }
+    }
+    private FolderViewModel selectedFolder;
 
     private async Task LoadEntriesAsync()
     {
@@ -173,31 +198,41 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
     }
 
-    private const string ROOT_NODEKEY = "root";
-
-    private readonly Dictionary<string, FolderViewModel> foldersDict = new();
-
-    [ObservableProperty]
-    private ObservableCollection<FolderViewModel> rootNode = new(); // this will really only contain one node but the TreeView binds to a collection
-
-    public FolderViewModel SelectedFolder
-    {
-        get => selectedFolder;
-        set
-        {
-            if (SetProperty(ref selectedFolder, value))
-            {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
-            }
-        }
-    }
-    private FolderViewModel selectedFolder;
 
     // Item ListView
     [ObservableProperty]
     private ObservableCollection<ItemViewModel> selectedItems = new();
 
     public string SelectedItemsCount => $"{SelectedItems.Count} item(s) selected";
+
+
+    // Commands
+    public ICommand HydrateCommand { get; }
+    private Task OnHydrateAsync(IList<ItemViewModel>? arg)
+    {
+        throw new NotImplementedException();
+    }
+    private bool CanHydrate(IList<ItemViewModel>? obj)
+    {
+        return false;
+    }
+
+    public ICommand RestoreCommand { get; }
+    private async Task OnRestoreAsync(IList<ItemViewModel>? arg)
+    {
+        await Task.Yield();
+        //await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
+        //    relativeNames: PointerFileEntry,
+        //    download: true,
+        //    keepPointers: false);
+
+
+    }
+    private bool CanRestore(IList<ItemViewModel>? obj)
+    {
+        return false;
+    }
+
 
     public partial class FolderViewModel : ObservableRecipient
     {
@@ -210,11 +245,19 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         [ObservableProperty]
         private string name;
 
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
+        private bool isSelected;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
+        private bool isExpanded;
+
         public string RelativeDirectoryName { get; init; }
         public bool   IsLoaded              { get; set; } = false;
 
-        public ObservableCollection<FolderViewModel> Folders { get; }
-        public SortedObservableCollection<ItemViewModel>   Items   { get; } // TODO ReadOnlyCollection public?
+        public ObservableCollection<FolderViewModel>     Folders { get; }
+        public SortedObservableCollection<ItemViewModel> Items   { get; } // TODO ReadOnlyCollection public?
 
         public bool TryGetItemViewModel(string key, out ItemViewModel itemViewModel, Func<ItemViewModel> itemViewModelFactory)
         {
@@ -229,14 +272,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         }
         private readonly Dictionary<string, ItemViewModel> itemsDict = new();
 
-        [ObservableProperty]
-        [NotifyPropertyChangedRecipients]
-        private bool isSelected;
-
-        [ObservableProperty]
-        [NotifyPropertyChangedRecipients]
-        private bool isExpanded;
-
         public override string ToString() => RelativeDirectoryName;
     }
 
@@ -249,16 +284,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         [ObservableProperty]
         private string name;
 
-        public BinaryFileInfo?  BinaryFileInfo   { get; set; }
-        public PointerFileInfo? PointerFileInfo  { get; set; }
-        public string?          PointerFileEntry { get; set; }
-        public long             OriginalLength   { get; set; }
-
         [ObservableProperty]
-        [NotifyCanExecuteChangedFor(nameof(HydrateCommand))]
-        [NotifyCanExecuteChangedFor(nameof(RestoreCommand))]
         private HydrationState? hydrationState;
 
+        public BinaryFileInfo?  BinaryFileInfo   { get; set; }
+        public PointerFileInfo? PointerFileInfo  { get; set; }
+        public string?          PointerFileEntry { get; set; } // TODO this is really the RelativeName
 
         public Brush PointerFileStateColor
         {
@@ -351,20 +382,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             }
         }
 
-        public AsyncRelayCommand HydrateCommand { get; }
-        private async Task OnHydrate()
-        {
-            // Hydration logic
-        }
-
-        public AsyncRelayCommand RestoreCommand { get; }
-        private async Task OnRestore()
-        {
-            await parent.Repository.ExecuteRestoreCommandAsync(parent.LocalDirectory, 
-                relativeNames: PointerFileEntry,
-                download: true,
-                keepPointers: false);
-        }
+        [ObservableProperty]
+        private long originalLength;
 
         public override string ToString() => Name;
     }
