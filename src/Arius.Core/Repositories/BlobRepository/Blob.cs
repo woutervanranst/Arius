@@ -145,12 +145,22 @@ internal class Blob
         if (p is null)
             throw new InvalidOperationException("This blob does not exist");
 
-        if (p.ArchiveStatus is null)
+        return IsHydrationPending(p.ArchiveStatus);
+    }
+
+    public static bool IsHydrationPending(ArchiveStatus? archiveStatus) => IsHydrationPending(archiveStatus.ToString());
+    public static bool IsHydrationPending(string? archiveStatus)
+    {
+        // see https://github.com/Azure/azure-sdk-for-net/blob/main/sdk/storage/Azure.Storage.Blobs/src/Models/ArchiveStatus.cs
+
+        if (archiveStatus is null)
             return false;
-        else if (p.ArchiveStatus.StartsWith("rehydrate-pending-to-", StringComparison.InvariantCultureIgnoreCase))
+        else if (archiveStatus.StartsWith("rehydrate-pending-to-", StringComparison.InvariantCultureIgnoreCase))
+            return true;
+        else if (archiveStatus.StartsWith("RehydratePendingTo", StringComparison.InvariantCultureIgnoreCase))
             return true;
         else
-            throw new InvalidOperationException($"Unknown ArchiveStatus {p.ArchiveStatus}");
+            throw new InvalidOperationException($"Unknown ArchiveStatus {archiveStatus}");
     }
 
     public Uri Uri => client.Uri;

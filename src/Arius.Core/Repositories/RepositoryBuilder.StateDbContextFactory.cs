@@ -57,7 +57,7 @@ internal partial class RepositoryBuilder
 
         public async Task LoadAsync()
         {
-            var lastStateBlobEntry = await container.States.GetBlobs()
+            var lastStateBlobEntry = await container.States.GetBlobsAsync()
                 .Select(be => be.Name)
                 .OrderBy(b => b)
                 .LastOrDefaultAsync();
@@ -155,7 +155,7 @@ internal partial class RepositoryBuilder
             await b.UpsertMetadataAsync("DatabaseVersion", "3");
 
             // Move the previous states to Archive storage
-            await foreach (var be in container.States.GetBlobs()
+            await foreach (var be in container.States.GetBlobsAsync()
                                .OrderBy(be => be.Name)
                                .SkipLast(2)
                                .Where(be => be.AccessTier != AccessTier.Archive))

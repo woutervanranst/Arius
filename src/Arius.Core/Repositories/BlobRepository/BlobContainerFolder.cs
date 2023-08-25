@@ -45,7 +45,7 @@ internal class StateContainerFolder : BlobContainerFolder<Blob>
     /// <summary>
     /// List all existing blobs
     /// </summary>
-    public virtual IAsyncEnumerable<(string Name, AccessTier? AccessTier)> GetBlobs() // NOTE this is purposefully only in this Folder -- for the other folders we rely on the backing db
+    public virtual IAsyncEnumerable<(string Name, AccessTier? AccessTier)> GetBlobsAsync() // NOTE this is purposefully only in this Folder -- for the other folders we rely on the backing db
     {
         return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => (Path.GetFileName(bi.Name), bi.Properties.AccessTier));
     }
@@ -66,6 +66,14 @@ internal class RehydratedChunkBlobContainerFolder : ChunkBlobContainerFolder
 {
     public RehydratedChunkBlobContainerFolder(BlobContainerClient containter, string folderName) : base(containter, folderName)
     {
+    }
+
+    /// <summary>
+    /// List all rehydrated/rehydrating blobs
+    /// </summary>
+    public virtual IAsyncEnumerable<(string Name, ArchiveStatus? ArchiveStatus)> GetBlobsAsync()
+    {
+        return container.GetBlobsAsync(prefix: $"{folderName}/").Select(bi => (Path.GetFileName(bi.Name), bi.Properties.ArchiveStatus));
     }
 
     public async Task DeleteFolderAsync()
