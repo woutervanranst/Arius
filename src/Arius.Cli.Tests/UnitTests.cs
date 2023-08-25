@@ -62,6 +62,10 @@ internal class UnitTests
         {
             // this does not work in the Github Actions runner
         }
+        catch (UnauthorizedAccessException)
+        {
+            // this does not work in the Github Actions runner
+        }
     }
 
     [Test]
