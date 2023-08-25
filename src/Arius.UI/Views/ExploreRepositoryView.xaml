@@ -33,79 +33,98 @@
         </Style>
     </Window.Style>
 
+    <DockPanel LastChildFill="True">
 
-    <Grid>
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBarItem>
+                <TextBlock Text="{Binding SelectedItemsCount}" />
+            </StatusBarItem>
+        </StatusBar>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="430" />
-            <ColumnDefinition Width="5" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+        <Grid DockPanel.Dock="Top">
 
-        <!--Folder explorer-->
-        <TreeView Grid.Column="0" ItemsSource="{Binding RootNode}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="430" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <TreeView.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <VirtualizingStackPanel />
-                </ItemsPanelTemplate>
-            </TreeView.ItemsPanel>
+            <!--Folder explorer-->
+            <TreeView Grid.Column="0" ItemsSource="{Binding RootNode}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
 
-            <TreeView.ItemTemplate>
-                <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}">
-                    <!--the binding here are the child folders-->
-                    <TextBlock Text="{Binding Path=Name}" />
-                </HierarchicalDataTemplate>
-            </TreeView.ItemTemplate>
+                <TreeView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </TreeView.ItemsPanel>
 
-            <TreeView.ItemContainerStyle>
-                <Style TargetType="TreeViewItem">
-                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                </Style>
-            </TreeView.ItemContainerStyle>
-        </TreeView>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type TreeViewItem}" ItemsSource="{Binding Folders}">
+                        <!--the binding here are the child folders-->
+                        <TextBlock Text="{Binding Path=Name}" />
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
 
-        <!--Grid splitter-->
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                    </Style>
+                </TreeView.ItemContainerStyle>
 
-        <!--Items explorer-->
-        <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
-            <ListView.View>
-                <GridView>
+            </TreeView>
 
-                    <!-- Column for Name -->
-                    <GridViewColumn Header="Name" Width="300" DisplayMemberBinding="{Binding Name}" />
+            <!--Grid splitter-->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
 
-                    <!-- Column for ItemState -->
-                    <GridViewColumn Header="Status" Width="50">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <views:StateCircle LeftOuterColor="{Binding PointerFileStateColor}" 
+            <!--Items explorer-->
+            <ListView Grid.Column="2" ItemsSource="{Binding SelectedFolder.Items}">
+                <ListView.View>
+                    <GridView>
+
+                        <!-- Checkbox column -->
+                        <GridViewColumn Width="50">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+
+                        <!-- Column for Name -->
+                        <GridViewColumn Header="Name" Width="300" DisplayMemberBinding="{Binding Name}" />
+
+                        <!-- Column for ItemState -->
+                        <GridViewColumn Header="Status" Width="50">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <views:StateCircle LeftOuterColor="{Binding PointerFileStateColor}" 
                                                    LeftInnerColor="{Binding BinaryFileStateColor}" 
 
                                                    RightOuterColor="{Binding PointerFileEntryStateColor}" 
                                                    RightInnerColor="{Binding ChunkStateColor}"
                                                    
-                                                   ToolTip="{Binding StateTooltip}"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
+                                                   ToolTip="{Binding StateTooltip}"
+                                                   HorizontalAlignment="Center"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
 
-                    <!-- Column for OriginalLength -->
-                    <GridViewColumn Header="Size" Width="100">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding OriginalLength, Converter={StaticResource BytesToReadableSizeConverter}}" HorizontalAlignment="Right"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
+                        <!-- Column for OriginalLength -->
+                        <GridViewColumn Header="Size" Width="100">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding OriginalLength, Converter={StaticResource BytesToReadableSizeConverter}}" HorizontalAlignment="Right"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
 
-                </GridView>
-            </ListView.View>
+                    </GridView>
+                </ListView.View>
 
-            <!--Context menu-->
-            <ListView.ItemContainerStyle>
+                <!--Context menu-->
+                <!--<ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
                     <Setter Property="ContextMenu">
                         <Setter.Value>
@@ -118,7 +137,11 @@
                         </Setter.Value>
                     </Setter>
                 </Style>
-            </ListView.ItemContainerStyle>
-        </ListView>
-    </Grid>
+            </ListView.ItemContainerStyle>-->
+            </ListView>
+
+        </Grid>
+
+    </DockPanel>
+
 </Window>

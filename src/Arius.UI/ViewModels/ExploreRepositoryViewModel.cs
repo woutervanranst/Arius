@@ -39,23 +39,37 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     private void HandlePropertyChange(object recipient, PropertyChangedMessage<bool> message)
     {
-        switch (message.PropertyName)
+        if (message.Sender is FolderViewModel folderViewModel)
         {
-            case nameof(FolderViewModel.IsSelected):
-                SelectedFolder = (FolderViewModel)message.Sender;
-                break;
+            switch (message.PropertyName)
+            {
+                case nameof(FolderViewModel.IsSelected):
+                    SelectedFolder = folderViewModel;
+                    break;
+                case nameof(FolderViewModel.IsExpanded):
+                    // Handle IsExpanded change
+                    break;
+                default:
+                    break;
+            }
+        }
+        else if (message.Sender is ItemViewModel itemViewModel)
+        {
+            switch (message.PropertyName)
+            {
+                case nameof(ItemViewModel.IsSelected):
+                    if (message.NewValue)
+                        SelectedItems.Add(itemViewModel);
+                    else
+                        SelectedItems.Remove(itemViewModel);
 
-            case nameof(FolderViewModel.IsExpanded):
-                // Handle IsExpanded change
-                break;
-
-            default:
-                break;
+                    OnPropertyChanged(nameof(SelectedItemsCount));
+                    break;
+            }
         }
     }
 
     public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
-
 
     public RepositoryFacade Repository     { get; set; }
     public DirectoryInfo    LocalDirectory { get; set; }
@@ -120,7 +134,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
                 folderViewModel.TryGetItemViewModel(key,
                     out var itemViewModel,
-                    () => new ItemViewModel(this) { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
+                    () => new ItemViewModel() { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
                 return itemViewModel;
             }
 
@@ -133,7 +147,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                     if (fib is PointerFileInfo pfi)
                         itemViewModel.PointerFileInfo = pfi;
                     else if (fib is BinaryFileInfo bfi)
+                    {
                         itemViewModel.BinaryFileInfo = bfi;
+                        itemViewModel.OriginalLength = bfi.Length;
+                    }
                     else
                         throw new NotImplementedException();
                 }
@@ -176,6 +193,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     }
     private FolderViewModel selectedFolder;
 
+    // Item ListView
+    [ObservableProperty]
+    private ObservableCollection<ItemViewModel> selectedItems = new();
+
+    public string SelectedItemsCount => $"{SelectedItems.Count} item(s) selected";
 
     public partial class FolderViewModel : ObservableRecipient
     {
@@ -218,16 +240,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         public override string ToString() => RelativeDirectoryName;
     }
 
-    public partial class ItemViewModel : ObservableObject
+    public partial class ItemViewModel : ObservableRecipient
     {
-        private readonly RepositoryExplorerViewModel parent;
-
-        public ItemViewModel(RepositoryExplorerViewModel parent)
-        {
-            this.parent    = parent;
-            HydrateCommand = new AsyncRelayCommand(OnHydrate, () => HydrationState == Core.Queries.HydrationState.NotHydrated);
-            RestoreCommand = new AsyncRelayCommand(OnRestore, () => HydrationState != Core.Queries.HydrationState.NotHydrated); // explicitly leaving NeedsToBeChecked out here
-        }
+        [ObservableProperty]
+        [NotifyPropertyChangedRecipients]
+        private bool isSelected;
 
         [ObservableProperty]
         private string name;
