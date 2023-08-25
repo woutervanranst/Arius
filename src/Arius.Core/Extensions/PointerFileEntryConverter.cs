@@ -8,7 +8,7 @@ namespace Arius.Core.Extensions;
 internal static class PointerFileEntryConverter
 {
     /// <summary>
-    /// Deconstructs the given relativeName into the platform SPECIFIC path components
+    /// Deconstructs the given (platform specific) relativeName into the platform SPECIFIC path components
     /// </summary>
     public static (string RelativeParentPath, string DirectoryName, string Name) Deconstruct(string relativeName)
     {

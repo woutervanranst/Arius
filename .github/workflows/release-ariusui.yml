@@ -22,4 +22,5 @@ jobs:
 
       - name: Run release script
         shell: pwsh
-        run: ./install/windows/release.ps1
+        run: ./.github/workflows/release.ps1
+        

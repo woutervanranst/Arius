@@ -187,6 +187,10 @@ Execute the `install.sh` file in the install folder.
 dotnet arius.dll <see syntax above>
 ```
 
+### Windows (Arius Explorer)
+
+Via ClickOnce: https://woutervanranst.github.io/Arius/Arius%20Explorer.application
+
 ### Windows (CLI)
 
 TODO
