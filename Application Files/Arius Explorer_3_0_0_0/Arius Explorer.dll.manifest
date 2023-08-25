@@ -60,7 +60,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>fDj7vHJxpS3UwJxGl/oGBlIdbXPpBTQd2cdQYsMhb3k=</dsig:DigestValue>
+      <dsig:DigestValue>iTOzlaiePpQ8YKyVK/dvgQSt/BpsqOn9lr7DMpo0zOw=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius Explorer.dll" size="245760">
@@ -69,7 +69,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>wipVV3fquIGtotAp29kEU6FXCbppUtroQapzUvD4fH8=</dsig:DigestValue>
+      <dsig:DigestValue>Xp+nN0hb6neQ8rXEkYn1xaWJQgwzwrRPYLUnD/nyZOw=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius Explorer.dll.config" size="1268">
@@ -105,7 +105,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>3h+VdMKqjb8GM47qWZU9pVXKV0sHYYxW7ONNowlWSss=</dsig:DigestValue>
+      <dsig:DigestValue>HSxKytRPJj/IX5sHb5Ww9A2N1CwhfPQQxtH6s4ekZ5g=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Azure.Core.dll" size="377240">
