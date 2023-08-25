@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Arius.Core.Models;
 using Azure.Storage.Blobs.Models;
 
@@ -132,21 +133,23 @@ class RestoreSteps : TestBase
         var d = FileSystem.RestoreDirectory;
         d.GetPointerFileInfos().Single().GetRelativeName(d).Should().StartWith(relativeBinaryFile);
     }
+
     [Then("only the BinaryFile {string} is present")]
     public void ThenOnlyTheBinaryFileIsPresent(string relativeBinaryFile)
     {
-        try
-        {
-            var d = FileSystem.RestoreDirectory;
-            d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
-        }
-        catch (Exception e)
-        {
-            throw new Exception($"{FileSystem.RestoreDirectory.GetBinaryFileInfos().Single().GetRelativeName(FileSystem.RestoreDirectory)} vs {relativeBinaryFile}");
-        }
-        
+        var x = FileSystem.RestoreDirectory.GetBinaryFileInfos().Single().GetRelativeName(FileSystem.RestoreDirectory);
+        var y = relativeBinaryFile;
+
+        Console.WriteLine(x);
+        Console.WriteLine(y);
+
+        Debug.WriteLine(x);
+        Debug.WriteLine(y);
+
+        var d = FileSystem.RestoreDirectory;
+        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
     }
-        
+
     [Then("the BinaryFile {string} is restored from online tier")]
     public void ThenTheBinaryFileIsRestored(string relativeBinaryFile)
     {
