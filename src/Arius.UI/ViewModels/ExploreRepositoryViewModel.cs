@@ -203,7 +203,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     private async Task LoadArchiveProperties()
     {
         var s = await Repository.QueryRepositoryStatisticsAsync();
-        ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()}";
+        ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()} in {s.TotalFiles} file(s) in {s.TotalChunks} unique part(s)";
     }
 
     // Item ListView
@@ -229,11 +229,11 @@ public partial class RepositoryExplorerViewModel : ObservableObject
     {
         var msg = new StringBuilder();
 
-        var itemsToHydrate = selectedItems.Where(item => item.HydrationState != HydrationState.Hydrated);
+        var itemsToHydrate = SelectedItems.Where(item => item.HydrationState != HydrationState.Hydrated);
         if (itemsToHydrate.Any())
             msg.AppendLine($"This will start hydration on {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).GetBytesReadable(0)}). This may incur a significant cost.");
 
-        var itemsToRestore  = selectedItems.Where(item => item.HydrationState == HydrationState.Hydrated);
+        var itemsToRestore  = SelectedItems.Where(item => item.HydrationState == HydrationState.Hydrated);
         msg.AppendLine($"This will download {itemsToRestore.Count()} item(s) ({itemsToRestore.Sum(item => item.OriginalLength).GetBytesReadable(0)}).");
         msg.AppendLine();
         msg.AppendLine("Proceed?");
@@ -241,7 +241,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
             return;
 
-        var relativeNames = selectedItems.Select(item => item.PointerFileEntryRelativeName).ToArray();
+        var relativeNames = SelectedItems.Select(item => item.PointerFileEntryRelativeName).ToArray();
 
         var r = await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
             relativeNames: relativeNames,
