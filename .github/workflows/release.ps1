@@ -5,7 +5,7 @@ param (
     [switch]$OnlyBuild=$false
 )
 
-$appName = "Arius Explorer" # 👈 Replace with your application project name.
+$appName = "AriusExplorer" # 👈 Replace with your application project name.
 $projDir = "src\Arius.UI" # 👈 Replace with your project directory (where .csproj resides).
 
 Set-StrictMode -version 2.0
