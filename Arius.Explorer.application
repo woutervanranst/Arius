@@ -8,7 +8,7 @@
         <beforeApplicationStartup />
       </update>
     </subscription>
-    <deploymentProvider codebase="https://woutervanranst.github.io/arius/Arius.Explorer.application" />
+    <deploymentProvider codebase="https://woutervanranst.github.io/Arius/Arius.Explorer.application" />
   </deployment>
   <compatibleFrameworks xmlns="urn:schemas-microsoft-com:clickonce.v2">
     <framework targetVersion="4.5" profile="Full" supportedRuntime="4.0.30319" />
@@ -21,7 +21,7 @@
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>HB8QbpwNU9EXPC64jkVHhcGRh6g1UxNEx0JyhAVoFLI=</dsig:DigestValue>
+        <dsig:DigestValue>kZSbjm4eWIRQAATIFO7cjXu7aDOMnGV1uVP+nNI9A2g=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>
