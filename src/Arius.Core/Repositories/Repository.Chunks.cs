@@ -182,7 +182,7 @@ internal partial class Repository
             //Start hydration
             await hydratedItem.StartCopyFromUriAsync(
                 blobToHydrate.Uri,
-                new BlobCopyFromUriOptions { AccessTier = AccessTier.Cool, RehydratePriority = RehydratePriority.Standard });
+                new BlobCopyFromUriOptions { AccessTier = AccessTier.Cold, RehydratePriority = RehydratePriority.Standard });
 
             logger.LogInformation($"Hydration started for '{blobToHydrate.ChunkHash}'");
         }
