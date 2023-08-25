@@ -28,6 +28,7 @@ jobs:
 
       - name: Test
         run: |
+          sudo
           mkdir /archive
           mkdir /logs
           dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
