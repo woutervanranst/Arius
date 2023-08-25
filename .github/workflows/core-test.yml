@@ -41,9 +41,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-dotnet-
 
-    - name: Install dotCover Global Tool
-      run: dotnet tool install --global JetBrains.dotCover.GlobalTool
-
     - name: Test
       run: |
         dotnet dotcover test Arius.Core.BehaviorTests --output=TestResults/CoverageReport/BehaviorTestsCoverageResult.dcvr
