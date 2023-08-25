@@ -35,6 +35,13 @@
 
     <DockPanel LastChildFill="True">
 
+        <Menu DockPanel.Dock="Top">
+            <MenuItem Header="File">
+                <MenuItem Header="Hydrate" Command="{Binding HydrateCommand}"/>
+                <MenuItem Header="Download" Command="{Binding RestoreCommand}"/>
+            </MenuItem>
+        </Menu>
+
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBarItem>
                 <TextBlock Text="{Binding SelectedItemsCount}" />
