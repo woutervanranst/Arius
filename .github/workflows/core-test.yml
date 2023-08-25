@@ -29,12 +29,6 @@ jobs:
       with:
         dotnet-version: 7.x
 
-    - name: Install Coverlet for coverage report generation
-      run: |
-          dotnet add Arius.Core.BehaviorTests/Arius.Core.BehaviorTests.csproj package coverlet.msbuild
-          dotnet add Arius.Core.Tests/Arius.Core.Tests.csproj package coverlet.msbuild
-      
-
     # Cache NuGet packages
     - name: Cache .NET packages
       uses: actions/cache@v3
@@ -49,17 +43,35 @@ jobs:
 
     - name: Test
       run: |
-        dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-        dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        dotnet dotcover test Arius.Core.BehaviorTests --output=TestResults/CoverageReport/BehaviorTestsCoverageResult.dcvr
+        dotnet dotcover test Arius.Core.Tests         --output=TestResults/CoverageReport/TestsCoverageResult.dcvr
       env:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
+    - name: Merge coverage reports
+      run: |
+        dotnet dotcover merge --source=TestResults/CoverageReport/BehaviorTestsCoverageResult.dcvr;TestResults/CoverageReport/TestsCoverageResult.dcvr --output=TestResults/CoverageReport/MergedCoverageResult.dcvr
+
+        # dotnet tool install --global dotnet-reportgenerator-globaltool
+        # reportgenerator "-reports:./TestResults/Arius.Core.BehaviorTests.opencover.xml;./TestResults/Arius.Core.Tests.opencover.xml" "-targetdir:./TestResults/CoverageReport" -reporttypes:Cobertura
+        # mv ./TestResults/CoverageReport/Cobertura.xml ./TestResults/MergedCoverage.opencover.xml
+    
+    - name: Generate dotCover XML Report
+      run: |
+        dotnet dotcover report --source=TestResults/CoverageReport/CoverageResult.dcvr --output=TestResults/CoverageReport/Coverage.xml --reportType=DetailedXML
+    
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       with:
-        files: |
-          ./src/Arius.Core.BehaviorTests/coverage.opencover.xml
-          ./src/Arius.Core.Tests/coverage.opencover.xml
+        file: ./TestResults/CoverageReport/Coverage.xml
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+
+    # - name: Upload coverage reports to Codecov
+    #   uses: codecov/codecov-action@v3
+    #   with:
+    #     file: ./TestResults/MergedCoverage.opencover.xml
+    #   env:
+    #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

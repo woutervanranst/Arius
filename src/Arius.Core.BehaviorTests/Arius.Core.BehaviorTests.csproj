@@ -27,6 +27,10 @@
 
 	<ItemGroup>
 		<PackageReference Include="CucumberExpressions.SpecFlow.3-9" Version="1.0.7" />
+		<PackageReference Include="JetBrains.dotCover.CommandLineTools" Version="2023.2.1">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="7.0.0" />
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.1" />
 		<PackageReference Include="SpecFlow.NUnit" Version="3.9.74" />
