@@ -60,16 +60,16 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>vl+A4lL8LUCmN0gaTuw+Ty2iNkdzGyYOoWkDHyhKOII=</dsig:DigestValue>
+      <dsig:DigestValue>dknSdhBDKeOOztRiddVgS0fqpwXdbPlXNCuV5kT7P0I=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.deps.json" size="65924">
+  <file name="Arius.Explorer.deps.json" size="65927">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>EuUv9ATBuYlf/t3cQN0cz1s8P1fsKrkFUuMSIgIrC8Y=</dsig:DigestValue>
+      <dsig:DigestValue>4HORcdCYdPthQvV7EXUtqiUEuHMO0CaTIC8G3mk9LcE=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll" size="245760">
@@ -78,7 +78,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>4j3lCt/MCHBV+ANC1RGKgAfEfQam1TLR8OFJO2dmO2E=</dsig:DigestValue>
+      <dsig:DigestValue>RxOrTVTwtT6MxLh3BBNhgvPx1lHDeIqWAekjz03vTo8=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll.config" size="1268">
