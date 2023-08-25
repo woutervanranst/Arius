@@ -135,9 +135,9 @@ internal static class TestSetup
 
     public static async Task RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
     {
-        await RestoreCommandAsyc(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
+        await RestoreCommandAsync(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
     }
-    public static async Task RestoreCommandAsyc(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
+    public static async Task RestoreCommandAsync(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
     {
         await Facade.ExecuteRestoreCommandAsync(path, synchronize, download, keepPointers, DateTime.UtcNow);
     }
