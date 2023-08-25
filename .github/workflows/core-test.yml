@@ -30,7 +30,10 @@ jobs:
         dotnet-version: 7.x
 
     - name: Install Coverlet for coverage report generation
-      run: dotnet add package coverlet.msbuild
+      run: |
+          dotnet add Arius.Core.BehaviorTests/Arius.Core.BehaviorTests.csproj package coverlet.msbuild
+          dotnet add Arius.Core.Tests/Arius.Core.Tests.csproj package coverlet.msbuild
+      
 
     # Cache NuGet packages
     - name: Cache .NET packages
