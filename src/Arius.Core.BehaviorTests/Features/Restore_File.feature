@@ -4,9 +4,9 @@ Background:
     Given a clean archive directory
     When the following BinaryFiles are archived to Cool tier:
 		| RelativeName     | Size                     | SourceRelativeName |
-		| dir1\\wouter.txt | 15 KB                    |                    |
-		| dir2\\joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |                    |
-		| taxes.doc        |                          | dir1\\wouter.txt   |
+		| dir1/wouter.txt | 15 KB                    |                    |
+		| dir2/joke.pdf   | BELOW_ARCHIVE_TIER_LIMIT |                    |
+		| taxes.doc        |                          | dir1/wouter.txt   |
             # taxes.doc and wouter.txt will have the same chunks
 
 @restore @dedup
@@ -39,8 +39,8 @@ Scenario: Synchronization removes obsolete pointers but leaves binaryfiles intac
 Scenario: Synchronize and download a file
     Given a clean restore directory
         # NOTE this gets converted to a platform specific in the codebehind
-    When restore relativename "dir1\wouter.txt"   
-    Then only the BinaryFile "dir1\wouter.txt" is present
+    When restore relativename "dir1/wouter.txt"   
+    Then only the BinaryFile "dir1/wouter.txt" is present
 
     # Restore with Synchronize, Download, File is NOT SUPPORTED
 

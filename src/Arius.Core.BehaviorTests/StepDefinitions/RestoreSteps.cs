@@ -57,9 +57,9 @@ class RestoreSteps : TestBase
         await TestSetup.RestoreCommandAsyc(synchronize: false, download: true, keepPointers: true);
     }
     [When("restore relativename {string}")]
-    public async Task WhenRestoreRelativename(string relativeName)
+    public async Task WhenRestoreRelativename(RelativePath relativeName)
     {
-        await TestSetup.RestoreCommandAsync(relativeName.FromWindowsPathToPlatformPath());
+        await TestSetup.RestoreCommandAsync(relativeName.Value);
     }
 
     [When("restore expect a ValidationException")]
@@ -79,9 +79,9 @@ class RestoreSteps : TestBase
     }
 
     [When("copy the PointerFile of BinaryFile {string} to the restore directory")]
-    public void WhenCopyThePointerFileOfToTheRestoreDirectory(string relativeBinaryFile)
+    public void WhenCopyThePointerFileOfToTheRestoreDirectory(RelativePath relativeBinaryFile)
     {
-        FileSystem.CopyArchiveBinaryFileToRestoreDirectory(relativeBinaryFile);
+        FileSystem.CopyArchiveBinaryFileToRestoreDirectory(relativeBinaryFile.Value);
     }
 
         
@@ -97,23 +97,23 @@ class RestoreSteps : TestBase
     }
         
     [Then("the PointerFile for BinaryFile {string} does not exist")]
-    public void ThenThePointerFileForBinaryFileDoesNotExist(string relativeBinaryFile)
+    public void ThenThePointerFileForBinaryFileDoesNotExist(RelativePath relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetPointerFileInfos().Where(pfi => pfi.GetRelativeName(d).StartsWith(relativeBinaryFile)).Should().BeEmpty();
+        d.GetPointerFileInfos().Where(pfi => pfi.GetRelativeName(d).StartsWith(relativeBinaryFile.Value)).Should().BeEmpty();
     }
 
     [Then("the BinaryFile {string} exists")]
-    public void ThenTheBinaryFileExists(string relativeBinaryFile)
+    public void ThenTheBinaryFileExists(RelativePath relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetBinaryFileInfos().Should().Contain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
+        d.GetBinaryFileInfos().Should().Contain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile.Value));
     }
     [Then("the BinaryFile {string} does not exist")]
-    public void ThenTheBinaryFileDoesNotExist(string relativeBinaryFile)
+    public void ThenTheBinaryFileDoesNotExist(RelativePath relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetBinaryFileInfos().Should().NotContain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile));
+        d.GetBinaryFileInfos().Should().NotContain(pfi => pfi.GetRelativeName(d).Equals(relativeBinaryFile.Value));
     }
         
     [Then("no PointerFiles are present")]
@@ -128,45 +128,36 @@ class RestoreSteps : TestBase
     }
         
     [Then("only the PointerFile for BinaryFile {string} is present")]
-    public void ThenOnlyThePointerFileForBinaryFileIsPresent(string relativeBinaryFile)
+    public void ThenOnlyThePointerFileForBinaryFileIsPresent(RelativePath relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetPointerFileInfos().Single().GetRelativeName(d).Should().StartWith(relativeBinaryFile);
+        d.GetPointerFileInfos().Single().GetRelativeName(d).Should().StartWith(relativeBinaryFile.Value);
     }
 
     [Then("only the BinaryFile {string} is present")]
-    public void ThenOnlyTheBinaryFileIsPresent(string relativeBinaryFile)
+    public void ThenOnlyTheBinaryFileIsPresent(RelativePath relativeBinaryFile)
     {
-        var x = FileSystem.RestoreDirectory.GetBinaryFileInfos().Single().GetRelativeName(FileSystem.RestoreDirectory);
-        var y = relativeBinaryFile;
-
-        Console.WriteLine(x);
-        Console.WriteLine(y);
-
-        Debug.WriteLine(x);
-        Debug.WriteLine(y);
-
         var d = FileSystem.RestoreDirectory;
-        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
+        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile.Value);
     }
 
     [Then("the BinaryFile {string} is restored from online tier")]
-    public void ThenTheBinaryFileIsRestored(string relativeBinaryFile)
+    public void ThenTheBinaryFileIsRestored(RelativePath relativeBinaryFile)
     {
-        FileSystem.RestoreBinaryFileEqualToArchiveBinaryFile(relativeBinaryFile);
+        FileSystem.RestoreBinaryFileEqualToArchiveBinaryFile(relativeBinaryFile.Value);
         Commands.Restore.DownloadBinaryBlock.RestoredFromOnlineTier.Should().BeTrue();
     }
     [Then("the BinaryFile {string} is restored from local")]
-    public void ThenTheBinaryFileIsRestoredFromLocal(string relativeBinaryFile)
+    public void ThenTheBinaryFileIsRestoredFromLocal(RelativePath relativeBinaryFile)
     {
-        FileSystem.RestoreBinaryFileEqualToArchiveBinaryFile(relativeBinaryFile);
+        FileSystem.RestoreBinaryFileEqualToArchiveBinaryFile(relativeBinaryFile.Value);
         Commands.Restore.DownloadBinaryBlock.RestoredFromLocal.Should().BeTrue();
     }
 
     [Then("the hydration for the chunks of BinaryFile {string} have started")]
-    public async Task ThenTheHydrationForTheChunksOfBinaryFileHaveStarted(string relativeBinaryFile)
+    public async Task ThenTheHydrationForTheChunksOfBinaryFileHaveStarted(RelativePath relativeBinaryFile)
     {
-        var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
+        var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile.Value);
         var ch = (ChunkHash)pf.BinaryHash; // hack
 
         var e = await TestSetup.RehydrateChunkExists(ch);
@@ -175,11 +166,11 @@ class RestoreSteps : TestBase
         
         
     [When("the chunk of BinaryFile {string} is copied to the rehydrate folder and the original chunk is moved to the {word} tier")]
-    public async Task WhenTheChunkOfBinaryFileIsCopiedToTheRehydrateFolderAndTheOriginalChunkIsMovedToTheArchiveTier(string relativeBinaryFile, AccessTier tier)
+    public async Task WhenTheChunkOfBinaryFileIsCopiedToTheRehydrateFolderAndTheOriginalChunkIsMovedToTheArchiveTier(RelativePath relativeBinaryFile, AccessTier tier)
     {
         tier.Should().Be(AccessTier.Archive); // other tiers are not supported in this step
 
-        var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile);
+        var pf = FileSystem.GetPointerFile(FileSystem.RestoreDirectory, relativeBinaryFile.Value);
         var ch = (ChunkHash)pf.BinaryHash;
 
         await TestSetup.CopyChunkToRehydrateFolderAndArchiveOriginal(ch);

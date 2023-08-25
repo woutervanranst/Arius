@@ -14,10 +14,6 @@ class ArchiveSteps : TestBase
     }
 
 
-    [StepArgumentTransformation]
-    public static AccessTier TierTransform(string tier) => (AccessTier)tier;
-
-
     [Given("a clean archive directory")]
     public void GivenACleanRestoreDirectory()
     {
@@ -88,15 +84,15 @@ class ArchiveSteps : TestBase
 
         foreach (var f in files)
         {
-            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName.FromWindowsPathToPlatformPath()))
+            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(new RelativePath(f.SourceRelativeName).Value))
             {
                 // Create a new file
-                FileSystem.CreateBinaryFileIfNotExists(f.RelativeName.FromWindowsPathToPlatformPath(), f.Size);
+                FileSystem.CreateBinaryFileIfNotExists(new RelativePath(f.RelativeName).Value, f.Size);
             }
             else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Duplicate a file
-                FileSystem.DuplicateBinaryFile(f.RelativeName.FromWindowsPathToPlatformPath(), f.SourceRelativeName.FromWindowsPathToPlatformPath());
+                FileSystem.DuplicateBinaryFile(new RelativePath(f.RelativeName).Value, new RelativePath(f.SourceRelativeName).Value);
             }
             else
                 throw new ArgumentException();

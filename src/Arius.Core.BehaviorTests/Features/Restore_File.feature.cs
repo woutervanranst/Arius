@@ -85,17 +85,17 @@ namespace Arius.Core.BehaviorTests.Features
                         "Size",
                         "SourceRelativeName"});
             table2.AddRow(new string[] {
-                        "dir1\\wouter.txt",
+                        "dir1/wouter.txt",
                         "15 KB",
                         ""});
             table2.AddRow(new string[] {
-                        "dir2\\joke.pdf",
+                        "dir2/joke.pdf",
                         "BELOW_ARCHIVE_TIER_LIMIT",
                         ""});
             table2.AddRow(new string[] {
                         "taxes.doc",
                         "",
-                        "dir1\\wouter.txt"});
+                        "dir1/wouter.txt"});
 #line 5
     testRunner.When("the following BinaryFiles are archived to Cool tier:", ((string)(null)), table2, "When ");
 #line hidden
@@ -221,10 +221,10 @@ this.FeatureBackground();
     testRunner.Given("a clean restore directory", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Given ");
 #line hidden
 #line 42
-    testRunner.When("restore relativename \"dir1\\wouter.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
+    testRunner.When("restore relativename \"dir1/wouter.txt\"", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "When ");
 #line hidden
 #line 43
-    testRunner.Then("only the BinaryFile \"dir1\\wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
+    testRunner.Then("only the BinaryFile \"dir1/wouter.txt\" is present", ((string)(null)), ((TechTalk.SpecFlow.Table)(null)), "Then ");
 #line hidden
             }
             this.ScenarioCleanup();
