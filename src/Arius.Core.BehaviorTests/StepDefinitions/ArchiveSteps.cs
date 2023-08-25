@@ -91,12 +91,12 @@ class ArchiveSteps : TestBase
             if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Create a new file
-                FileSystem.CreateBinaryFileIfNotExists(f.RelativeName, f.Size);
+                FileSystem.CreateBinaryFileIfNotExists(f.RelativeName.FromWindowsPathToPlatformPath(), f.Size);
             }
             else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Duplicate a file
-                FileSystem.DuplicateBinaryFile(f.RelativeName, f.SourceRelativeName);
+                FileSystem.DuplicateBinaryFile(f.RelativeName.FromWindowsPathToPlatformPath(), f.SourceRelativeName);
             }
             else
                 throw new ArgumentException();
