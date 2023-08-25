@@ -1,59 +1,59 @@
-# name: Arius.Core - Test & Release Nuget Package
+name: Arius.Core - Test & Release Nuget Package
 
-# on:
-#   push:
-#     paths:
-#       - 'src/Arius.Core/**'
+on:
+  push:
+    paths:
+      - 'src/Arius.Core/**'
         
 
-# # See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
-#   ## See 'Set VERSION variable from tag'
-# # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+# See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
+  ## See 'Set VERSION variable from tag'
+# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
-# jobs:
-#   job1:
-#     name: Release Nuget Package
-#     runs-on: ubuntu-latest
-#     timeout-minutes: 10
-#     defaults:
-#       run:
-#         working-directory: ./src
+jobs:
+  job1:
+    name: Release Nuget Package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ./src
 
-#     steps:
-#     - name: Check out code
-#       uses: actions/checkout@v2
-#       with:
-#         submodules: true # Check out WouterVanRanst.Utils
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        submodules: true # Check out WouterVanRanst.Utils
 
-#     - name: Setup .NET Core
-#       uses: actions/setup-dotnet@v3
-#       with:
-#         dotnet-version: 7.x
-#         # include-prerelease: true
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.x
+        # include-prerelease: true
 
-#     - name: Build
-#       run: dotnet build Arius.Core -c Release
+    - name: Build
+      run: dotnet build Arius.Core -c Release
     
-#     - name: Test
-#       run: |
-#         dotnet test Arius.Core.BehaviorTests -c Release
-#         dotnet test Arius.Core.Tests -c Release
-#       env:
-#         ARIUS_ACCOUNT_NAME: ariusci
-#         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+    - name: Test
+      run: |
+        dotnet test Arius.Core.BehaviorTests -c Release
+        dotnet test Arius.Core.Tests -c Release
+      env:
+        ARIUS_ACCOUNT_NAME: ariusci
+        ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
-#     # - name: Test
-#     #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
-#     #   #run: dotnet test -l "console;verbosity=detailed" # -v normal
-#     #   # continue-on-error: true
-#     #   env:
-#     #     ARIUS_ACCOUNT_NAME: ariusci
-#     #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+    # - name: Test
+    #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
+    #   #run: dotnet test -l "console;verbosity=detailed" # -v normal
+    #   # continue-on-error: true
+    #   env:
+    #     ARIUS_ACCOUNT_NAME: ariusci
+    #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
     
-#     - name: Pack
-#       run: dotnet pack Arius.Core -c Release --no-build --output .
+    - name: Pack
+      run: dotnet pack Arius.Core -c Release --no-build --output .
     
-#     - name: Push
-#       run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
-#       env:
-#         GITHUB_TOKEN: ${{ secrets.PAT }}
+    - name: Push
+      run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
+      env:
+        GITHUB_TOKEN: ${{ secrets.PAT }}
