@@ -4,11 +4,10 @@ on:
   push:
     paths:
       - 'src/Arius.Core/**'
-        
-
-# See https://acraven.medium.com/a-nuget-package-workflow-using-github-actions-7da8c6557863
-  ## See 'Set VERSION variable from tag'
-# TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+    branches:
+        - main
+    tags:
+      - 'v*'
 
 jobs:
   job1:
@@ -31,9 +30,6 @@ jobs:
         dotnet-version: 7.x
         # include-prerelease: true
 
-    - name: Build
-      run: dotnet build Arius.Core -c Release
-    
     - name: Test
       run: |
         dotnet test Arius.Core.BehaviorTests -c Release
@@ -42,16 +38,13 @@ jobs:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
-    # - name: Test
-    #   run: dotnet test Arius.Core.Tests -l "console;verbosity=detailed" # -v normal #specified project with tests for wpf / windows / linux runner
-    #   #run: dotnet test -l "console;verbosity=detailed" # -v normal
-    #   # continue-on-error: true
-    #   env:
-    #     ARIUS_ACCOUNT_NAME: ariusci
-    #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
-    
+    # Extract the version from the tag
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+
     - name: Pack
-      run: dotnet pack Arius.Core -c Release --no-build --output .
+      run: dotnet pack Arius.Core -c Release --output . -p:PackageVersion=${{ steps.get_version.outputs.VERSION }}
     
     - name: Push
       run: dotnet nuget push *.nupkg --source https://nuget.pkg.github.com/woutervanranst --api-key ${GITHUB_TOKEN}
