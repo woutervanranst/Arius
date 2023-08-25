@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Queries;
 
@@ -41,6 +42,13 @@ internal class RepositoryQueries
     {
         this.loggerFactory = loggerFactory;
         this.repository    = repository;
+
+        // Eager load the rehydrating chunks
+        rehydratingChunks ??= Task.Run(async () =>
+        {
+            return await repository.GetRehydratedChunksAsync()
+                .ToDictionaryAsync(c => c.ChunkHash, c => c.HydrationPending);
+        });
     }
 
     record GetPointerFileEntriesResult : IPointerFileEntryQueryResult
@@ -52,7 +60,7 @@ internal class RepositoryQueries
         public HydrationState HydrationState     { get; init; }
     }
 
-    private static Dictionary<ChunkHash, bool>? rehydratingChunks = default;
+    private static Task<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
 
     public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
         string? relativeParentPathEquals = null,
@@ -62,15 +70,13 @@ internal class RepositoryQueries
         if (relativeParentPathEquals is not null)
             relativeParentPathEquals = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPathEquals);
 
-        rehydratingChunks ??= await repository.GetRehydratedChunksAsync().ToDictionaryAsync(c => c.ChunkHash, c => c.HydrationPending); // TODO figure out a better caching mechanism
-
         await foreach (var pfe in repository.GetPointerFileEntriesAsync(
-                     pointInTimeUtc: DateTime.Now,
-                     includeDeleted: false,
-                     relativeParentPathEquals: relativeParentPathEquals,
-                     directoryNameEquals: directoryNameEquals,
-                     nameContains: nameContains,
-                     includeChunkEntry: true))
+                           pointInTimeUtc: DateTime.Now,
+                           includeDeleted: false,
+                           relativeParentPathEquals: relativeParentPathEquals,
+                           directoryNameEquals: directoryNameEquals,
+                           nameContains: nameContains,
+                           includeChunkEntry: true))
         {
             yield return new GetPointerFileEntriesResult()
             {
@@ -79,18 +85,18 @@ internal class RepositoryQueries
                 Name               = pfe.Name,
 
                 OriginalLength = pfe.Chunk.OriginalLength,
-                HydrationState = GetHydrationState(pfe.Chunk)
+                HydrationState = await GetHydrationStateAsync(pfe.Chunk)
             };
         }
             
 
-        HydrationState GetHydrationState(ChunkEntry c)
+        async Task<HydrationState> GetHydrationStateAsync(ChunkEntry c)
         {
             if (c.AccessTier is null)
                 return HydrationState.NeedsToBeQueried; // in case of chunked
             if (c.AccessTier == AccessTier.Archive)
             {
-                if (rehydratingChunks!.TryGetValue(new ChunkHash(c.Hash), out var hydrationPending))
+                if ((await rehydratingChunks).TryGetValue(new ChunkHash(c.Hash), out var hydrationPending))
                 {
                     if (hydrationPending)
                         return HydrationState.Hydrating; // It s in the archive tier but a hydrating copy is being made

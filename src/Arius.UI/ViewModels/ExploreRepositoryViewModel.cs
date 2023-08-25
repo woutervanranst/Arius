@@ -225,8 +225,8 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         if (itemsToHydrate.Any())
             msg.AppendLine($"This will start hydration on {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).GetBytesReadable(0)}). This may incur a significant cost.");
 
-        var itemsToRestore = selectedItems.Where(item => item.HydrationState == HydrationState.Hydrated);
-        msg.AppendLine($"This download {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).GetBytesReadable(0)}).");
+        var itemsToRestore  = selectedItems.Where(item => item.HydrationState == HydrationState.Hydrated);
+        msg.AppendLine($"This will download {itemsToRestore.Count()} item(s) ({itemsToRestore.Sum(item => item.OriginalLength).GetBytesReadable(0)}).");
         msg.AppendLine();
         msg.AppendLine("Proceed?");
 
