@@ -28,7 +28,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         // Set the selected folder to the root and kick off the loading process
         SelectedFolder = GetRootNode();
 
-        HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
+        //HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
         RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
     }
 
@@ -67,7 +67,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                         SelectedItems.Remove(itemViewModel);
 
                     OnPropertyChanged(nameof(SelectedItemsCount));
-                    HydrateCommand.NotifyCanExecuteChanged();
+                    //HydrateCommand.NotifyCanExecuteChanged();
                     RestoreCommand.NotifyCanExecuteChanged();
                     break;
             }
@@ -209,29 +209,55 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
 
     // Commands
-    public IRelayCommand HydrateCommand { get; }
-    private Task OnHydrateAsync()
-    {
-        throw new NotImplementedException();
-    }
-    private bool CanHydrate() => selectedItems.Any(item => item.HydrationState == HydrationState.NotHydrated);
+    //public IRelayCommand HydrateCommand { get; }
+    //private Task OnHydrateAsync()
+    //{
+    //    throw new NotImplementedException();
+    //}
+    //private bool CanHydrate() => selectedItems.Any(item => item.HydrationState == HydrationState.NotHydrated);
 
     public IRelayCommand RestoreCommand { get; }
     private async Task OnRestoreAsync()
     {
-        var relativeNames = selectedItems.Select(item => item.PointerFileEntry).ToArray();
+        var msg = new StringBuilder();
 
-        if (MessageBox.Show($"Restore {relativeNames.Length} item(s)?", App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+        var itemsToHydrate = selectedItems.Where(item => item.HydrationState != HydrationState.Hydrated);
+        if (itemsToHydrate.Any())
+            msg.AppendLine($"This will start hydration on {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).GetBytesReadable(0)}). This may incur a significant cost.");
+
+        var itemsToRestore = selectedItems.Where(item => item.HydrationState == HydrationState.Hydrated);
+        msg.AppendLine($"This download {itemsToHydrate.Count()} item(s) ({itemsToHydrate.Sum(item => item.OriginalLength).GetBytesReadable(0)}).");
+        msg.AppendLine();
+        msg.AppendLine("Proceed?");
+
+        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
             return;
 
-        await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
+        var relativeNames = selectedItems.Select(item => item.PointerFileEntry).ToArray();
+
+        var r = await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
             relativeNames: relativeNames,
             download: true,
             keepPointers: false);
 
+        if (r == 0)
+        {
+            msg = new StringBuilder();
 
+            if (itemsToHydrate.Any())
+                msg.AppendLine("Hydration started. These files will be ready for download in ~18 hours.");
+
+            msg.AppendLine("Files downloaded!");
+
+            MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        else
+        {
+            MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+        }
     }
-    private bool CanRestore() => selectedItems.Any(item => item.HydrationState != HydrationState.NotHydrated);
+
+    private bool CanRestore() => true;
 
 
     public partial class FolderViewModel : ObservableRecipient
