@@ -88,7 +88,7 @@ class ArchiveSteps : TestBase
 
         foreach (var f in files)
         {
-            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName))
+            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(f.SourceRelativeName.FromWindowsPathToPlatformPath()))
             {
                 // Create a new file
                 FileSystem.CreateBinaryFileIfNotExists(f.RelativeName.FromWindowsPathToPlatformPath(), f.Size);
@@ -96,7 +96,7 @@ class ArchiveSteps : TestBase
             else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Duplicate a file
-                FileSystem.DuplicateBinaryFile(f.RelativeName.FromWindowsPathToPlatformPath(), f.SourceRelativeName);
+                FileSystem.DuplicateBinaryFile(f.RelativeName.FromWindowsPathToPlatformPath(), f.SourceRelativeName.FromWindowsPathToPlatformPath());
             }
             else
                 throw new ArgumentException();
