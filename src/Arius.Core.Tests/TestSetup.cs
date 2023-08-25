@@ -16,7 +16,7 @@ internal static class TestSetup
     public static readonly DateTime UnitTestGracePeriod = new(2022, 1, 1);
 
     public const  string Passphrase              = "myPassphrase";
-    private const string TestContainerNamePrefix = "unittest";
+    private const string TEST_CONTAINER_NAME_PREFIX = "unittest";
 
     public static string AccountName { get; set; }
     public static string AccountKey  { get; set; }
@@ -37,7 +37,7 @@ internal static class TestSetup
     {
         // Executes once before the test run. (Optional)
         
-        var containerName = $"{TestContainerNamePrefix}-{DateTime.Now.Ticks}-{Random.Shared.Next()}";
+        var containerName = $"{TEST_CONTAINER_NAME_PREFIX}-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}";
         unitTestRoot = new DirectoryInfo(Path.Combine(Path.GetTempPath(), containerName));
 
         //Create and populate source directory
@@ -66,22 +66,24 @@ internal static class TestSetup
 
 
         // Initialize Facade
-        //var loggerFactory = LoggerFactory.Create(builder => builder.AddDebug());
-
-        //var tempDirectoryAppSettings = Options.Create(new TempDirectoryAppSettings()
-        //{
-        //    TempDirectoryName = ".ariustemp",
-        //    RestoreTempDirectoryName = ".ariusrestore"
-        //});
-
-        //Facade = new Facade.Facade(loggerFactory);
-
         RepositoryFacade = await new Facade.Facade(NullLoggerFactory.Instance)
             .ForStorageAccount(TestSetup.AccountName, TestSetup.AccountKey)
             .ForRepositoryAsync(TestSetup.Container.Name, TestSetup.Passphrase);
     }
 
-    
+    [OneTimeTearDown]
+    public static async Task OneTimeTearDown()
+    {
+        // TODO delete SQLite file?
+
+        // Delete local temp
+        foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TEST_CONTAINER_NAME_PREFIX}*")) 
+            d.Delete(true);
+
+        // Delete blobs
+        foreach (var bci in blobService.GetBlobContainers(prefix: $"{TEST_CONTAINER_NAME_PREFIX}-{DateTime.Now.AddHours(-1):yyMMddHHmmss}"))
+            await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
+    }
 
 
     public class SourceFilesType
@@ -165,21 +167,7 @@ internal static class TestSetup
 
         return f;
     }
-
-    [OneTimeTearDown]
-    public static async Task OneTimeTearDown()
-    {
-        // TODO delete SQLite file?
-
-        // Delete local temp
-        foreach (var d in new DirectoryInfo(Path.GetTempPath()).GetDirectories($"{TestContainerNamePrefix}*"))
-            d.Delete(true);
-
-        // Delete blobs
-        foreach (var bci in blobService.GetBlobContainers(prefix: TestContainerNamePrefix))
-            await blobService.GetBlobContainerClient(bci.Name).DeleteAsync();
-    }
-
+    
     public static async Task PurgeRemote()
     {
         // delete all blobs in the container but leave the container
