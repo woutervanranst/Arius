@@ -142,7 +142,7 @@ class RestoreSteps : TestBase
         }
         catch (Exception e)
         {
-            throw new Exception($"{FileSystem.RestoreDirectory.GetBinaryFileInfos().Single().GetRelativeName(d)} vs {relativeBinaryFile}");
+            throw new Exception($"{FileSystem.RestoreDirectory.GetBinaryFileInfos().Single().GetRelativeName(FileSystem.RestoreDirectory)} vs {relativeBinaryFile}");
         }
         
     }
