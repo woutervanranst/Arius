@@ -38,7 +38,8 @@ Scenario: Synchronization removes obsolete pointers but leaves binaryfiles intac
 
 Scenario: Synchronize and download a file
     Given a clean restore directory
-    When restore relativename "dir1\\wouter.txt"
+        # NOTE this gets converted to a platform specific in the codebehind
+    When restore relativename "dir1\\wouter.txt"   
     Then only the BinaryFile "dir1\wouter.txt" is present
 
     # Restore with Synchronize, Download, File is NOT SUPPORTED

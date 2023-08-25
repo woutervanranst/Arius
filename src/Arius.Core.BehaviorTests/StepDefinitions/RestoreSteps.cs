@@ -58,7 +58,7 @@ class RestoreSteps : TestBase
     [When("restore relativename {string}")]
     public async Task WhenRestoreRelativename(string relativeName)
     {
-        await TestSetup.RestoreCommandAsync(relativeName);
+        await TestSetup.RestoreCommandAsync(relativeName.FromWindowsPathToPlatformPath()));
     }
 
     [When("restore expect a ValidationException")]
@@ -136,7 +136,7 @@ class RestoreSteps : TestBase
     public void ThenOnlyTheBinaryFileIsPresent(string relativeBinaryFile)
     {
         var d = FileSystem.RestoreDirectory;
-        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile);
+        d.GetBinaryFileInfos().Single().GetRelativeName(d).Should().BeEquivalentTo(relativeBinaryFile.FromWindowsPathToPlatformPath());
     }
         
     [Then("the BinaryFile {string} is restored from online tier")]
