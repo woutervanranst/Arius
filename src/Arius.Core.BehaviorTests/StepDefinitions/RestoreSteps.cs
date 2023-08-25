@@ -58,7 +58,7 @@ class RestoreSteps : TestBase
     [When("restore relativename {string}")]
     public async Task WhenRestoreRelativename(string relativeName)
     {
-        await TestSetup.RestoreCommandAsync(relativeName.FromWindowsPathToPlatformPath()));
+        await TestSetup.RestoreCommandAsync(relativeName.FromWindowsPathToPlatformPath());
     }
 
     [When("restore expect a ValidationException")]
