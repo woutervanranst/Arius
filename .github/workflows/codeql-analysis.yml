@@ -37,7 +37,6 @@ jobs:
 
     - name: Build Arius.Core
       run: |
-        cd Arius.Core
         dotnet build
 
     - name: Initialize CodeQL
