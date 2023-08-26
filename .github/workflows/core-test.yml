@@ -5,6 +5,9 @@ on:
   push:
     paths: 
       - 'src/Arius.Core/**'
+      - 'src/Arius.Core.BehaviorTests/**'
+      - 'src/Arius.Core.Tests/**'        
+      - '.github/workflows/core-test.yml'
 
 jobs:
   test:
