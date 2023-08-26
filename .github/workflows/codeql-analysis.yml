@@ -35,16 +35,16 @@ jobs:
       with:
         dotnet-version: 7.x
 
-    - name: Build Arius.Core
-      run: |
-        dotnet build Arius.Core
-        cd Arius.Core
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
         # config-file: .github/codeql-config.yml
 
+    - name: Build Arius.Core
+      run: |
+        dotnet build Arius.Core
+        # cd Arius.Core
+        
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
