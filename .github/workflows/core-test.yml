@@ -1,4 +1,4 @@
-name: Arius.Core - Test Suite
+name: Arius.Core - Test Suite & CodeQL
 
 on:
   # Runs on every push to Arius.Core
@@ -10,21 +10,6 @@ on:
       - '.github/workflows/core-test.yml'
 
 jobs:
-  codeql:
-    name: CodeQL Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v1
-        with:
-          languages: csharp # Assuming the language is C# for Arius.Core
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v1
-
   test:
     name: Run Test Suite on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -79,3 +64,33 @@ jobs:
           Cobertura.xml
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  analyze:
+    needs: test
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'csharp' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
