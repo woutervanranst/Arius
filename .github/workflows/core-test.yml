@@ -3,10 +3,28 @@ name: Arius.Core - Test Suite
 on:
   # Runs on every push to Arius.Core
   push:
-    paths: 
+    paths:
       - 'src/Arius.Core/**'
+      - 'src/Arius.Core.BehaviorTests/**'
+      - 'src/Arius.Core.Tests/**'        
+      - '.github/workflows/core-test.yml'
 
 jobs:
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v1
+        with:
+          languages: csharp # Assuming the language is C# for Arius.Core
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v1
+
   test:
     name: Run Test Suite on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
