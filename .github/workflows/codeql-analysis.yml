@@ -15,6 +15,9 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    defaults:
+        run:
+          working-directory: ./src
 
     strategy:
       fail-fast: false
@@ -41,7 +44,7 @@ jobs:
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
-        config-file: codeql-config.yml
+        config-file: .github/codeql-config.yml
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
