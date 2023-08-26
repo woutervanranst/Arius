@@ -15,6 +15,9 @@ jobs:
       actions: read
       contents: read
       security-events: write
+    defaults:
+        run:
+          working-directory: ./src
 
     strategy:
       fail-fast: false
@@ -32,16 +35,15 @@ jobs:
       with:
         dotnet-version: 7.x
 
-    - name: Build Arius.Core
-      run: |
-        cd src/Arius.Core
-        dotnet build
-
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v2
       with:
         languages: ${{ matrix.language }}
-        # config-file: ./codeql-config.yml
 
+    - name: Build Arius.Core
+      run: |
+        dotnet build Arius.Core
+        # cd Arius.Core
+        
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
