@@ -15,9 +15,6 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    defaults:
-        run:
-          working-directory: ./src
 
     strategy:
       fail-fast: false
