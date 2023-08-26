@@ -1,13 +1,10 @@
-name: Arius.Core - Test Suite & CodeQL
+name: Arius.Core - Test Suite
 
 on:
   # Runs on every push to Arius.Core
   push:
-    paths:
+    paths: 
       - 'src/Arius.Core/**'
-      - 'src/Arius.Core.BehaviorTests/**'
-      - 'src/Arius.Core.Tests/**'        
-      - '.github/workflows/core-test.yml'
 
 jobs:
   test:
@@ -43,7 +40,6 @@ jobs:
         key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
         restore-keys: |
           ${{ runner.os }}-dotnet-
-
     - name: Test
       run: |
         dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
@@ -56,7 +52,6 @@ jobs:
       run: |
         dotnet tool install --global dotnet-reportgenerator-globaltool
         reportgenerator "-reports:./Arius.Core.BehaviorTests/coverage.opencover.xml;./Arius.Core.Tests/coverage.opencover.xml" "-targetdir:." -reporttypes:Cobertura
-
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -64,35 +59,3 @@ jobs:
           Cobertura.xml
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  analyze:
-    needs: test
-    name: Analyze
-    runs-on: ubuntu-latest
-    timeout-minutes: 360
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [ 'csharp' ]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
-      with:
-        submodules: true # Check out WouterVanRanst.Utils
-
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
