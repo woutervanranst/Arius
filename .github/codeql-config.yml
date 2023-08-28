@@ -1,8 +1,0 @@
-name: "Arius.Core-Only Analysis"
-
-paths:
-  - ./src/Arius.Core/
-
-# Exclude any paths if needed (optional)
-#paths-ignore:
-#  - src/Arius.Core/ExcludedFolder/
