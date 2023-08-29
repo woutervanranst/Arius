@@ -75,10 +75,10 @@ jobs:
 
     - name: Get version from tag
       id: get_version
-      run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_OUTPUT
-
+      run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+    
     - name: Build NuGet Package
-      run: dotnet pack Arius.Core --configuration Release /p:Version=${{ steps.get_version.outputs.VERSION }}
+      run: dotnet pack Arius.Core --configuration Release /p:Version=$VERSION
 
     - name: Publish NuGet Package
       run: dotnet nuget push Arius.Core/bin/Release/WouterVanRanst.Arius.Core.*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
