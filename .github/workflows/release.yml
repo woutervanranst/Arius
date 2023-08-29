@@ -65,8 +65,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        submodules: true # Check out WouterVanRanst.Utils
+      # with:
+      #   submodules: true # Check out WouterVanRanst.Utils
 
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v3
@@ -85,11 +85,8 @@ jobs:
 
     - name: Wait for NuGet package to be available
       run: |
-        # sudo apt-get update
-        # sudo apt-get install -y jq
-
         PACKAGE_NAME=WouterVanRanst.Arius.Core
-        VERSION=${{ github.ref }}
+        VERSION=${VERSION}
         end=$((SECONDS+900))
         while [ $SECONDS -lt $end ]; do
           RESPONSE=$(curl -s "https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME}/index.json")
@@ -123,3 +120,40 @@ jobs:
       - name: Run release script
         shell: pwsh
         run: ./.github/workflows/release.ps1
+
+
+  build_docker:
+    name: Arius.Cli - Publish Docker image
+    needs: publish_nuget
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+
+  release:
+    needs: [build_windows_ui, build_docker]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: true # Check out WouterVanRanst.Utils
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: gh-actions/create-release@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: Release description here
+        draft: false
+        prerelease: false
+
+    - name: Attach artifacts to release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./path_to_artifact
+        asset_name: artifact_name.zip
+        asset_content_type: application/zip
+  
