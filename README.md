@@ -10,6 +10,9 @@
 [![codecov](https://codecov.io/gh/woutervanranst/Arius/graph/badge.svg?token=GEZJ4Y0ZNK)](https://codecov.io/gh/woutervanranst/Arius)
 [![CodeQL: Arius.Core](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml)
 
+![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fwoutervanranst%2Farius)
+
+
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
 The name derives from the Greek for 'immortal'.
