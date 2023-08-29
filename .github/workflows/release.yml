@@ -93,12 +93,13 @@ jobs:
             echo "Package $PACKAGE_NAME version $VERSION is available!"
             break
           fi
-          echo "Waiting for package $PACKAGE_NAME version $VERSION to be available..."
+          echo "Waiting for package $PACKAGE_NAME version $VERSION to be listed..."
           sleep 10
         done
 
 
   build_windows_ui:
+    # See https://janjones.me/posts/clickonce-installer-build-publish-github/
     name: Arius.UI - Publish ClickOnce
     needs: publish_nuget
     runs-on: windows-latest
@@ -123,13 +124,29 @@ jobs:
 
   build_docker:
     name: Arius.Cli - Publish Docker image
-    needs: publish_nuget
+    # needs: publish_nuget
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./src
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Get version from tag
+        id: get_version_docker
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:$VERSION"
+          docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
+          docker push $IMAGE_NAME
 
 
   release:
