@@ -25,32 +25,32 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
-      with:
-        submodules: true # Check out WouterVanRanst.Utils
+      # with:
+      #   submodules: true # Check out WouterVanRanst.Utils
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 7.x
+    # - name: Setup .NET Core
+    #   uses: actions/setup-dotnet@v3
+    #   with:
+    #     dotnet-version: 7.x
 
-    - name: Cache .NET packages
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.nuget/packages
-          !~/.nuget/packages/**/project.assets.json
-          !~/.nuget/packages/**/project.nuget.cache
-        key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
-        restore-keys: |
-          ${{ runner.os }}-dotnet-
+    # - name: Cache .NET packages
+    #   uses: actions/cache@v3
+    #   with:
+    #     path: |
+    #       ~/.nuget/packages
+    #       !~/.nuget/packages/**/project.assets.json
+    #       !~/.nuget/packages/**/project.nuget.cache
+    #     key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-dotnet-
 
-    - name: Test
-      run: |
-        # dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-        # dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-      env:
-        ARIUS_ACCOUNT_NAME: ariusci
-        ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+    # - name: Test
+    #   run: |
+    #     dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+    #     dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+    #   env:
+    #     ARIUS_ACCOUNT_NAME: ariusci
+    #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
 
   publish_nuget:
@@ -58,6 +58,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./src
+        
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
