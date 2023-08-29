@@ -62,19 +62,19 @@ class ArchiveSteps : TestBase
     [When("deduplicated and archived to the {word} tier")]
     public async Task WhenABinaryFileOfSizeIsDeduplicatedAndArchivedToTheCoolTier(AccessTier tier)
     {
-        await TestSetup.ArchiveCommandAsync(tier, dedup: true);
+        await TestSetup.ArchiveCommandAsync(tier.ToString(), dedup: true);
     }
 
     [When(@"archived to the {word} tier with option RemoveLocal")]
     public async Task WhenALocalFileOfSizeIsArchivedToTierWithOptionRemoveLocal(AccessTier tier)
     {
-        await TestSetup.ArchiveCommandAsync(tier, removeLocal: true);
+        await TestSetup.ArchiveCommandAsync(tier.ToString(), removeLocal: true);
     }
 
     [When("archived to the {word} tier")]
     public async Task WhenArchivedToTheTier(AccessTier tier)
     {
-        await TestSetup.ArchiveCommandAsync(tier);
+        await TestSetup.ArchiveCommandAsync(tier.ToString());
     }
 
     [When(@"the following BinaryFiles are archived to {word} tier:")]
@@ -98,7 +98,7 @@ class ArchiveSteps : TestBase
                 throw new ArgumentException();
         }
 
-        await TestSetup.ArchiveCommandAsync(tier);
+        await TestSetup.ArchiveCommandAsync(tier.ToString());
     }
 
     private record FileTableEntry(string RelativeName, string Size, string SourceRelativeName);

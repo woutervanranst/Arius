@@ -11,10 +11,9 @@ namespace Arius.Core.Queries;
 internal class StorageAccountQueries
 {
     private readonly ILogger<StorageAccountQueries> logger;
-    private readonly IStorageAccountOptions          options;
-    //private readonly BlobServiceClient              blobServiceClient;
+    private readonly StorageAccountOptions          options;
 
-    public StorageAccountQueries(ILogger<StorageAccountQueries> logger, IStorageAccountOptions options)
+    public StorageAccountQueries(ILogger<StorageAccountQueries> logger, StorageAccountOptions options)
     {
         this.logger  = logger;
         this.options = options;

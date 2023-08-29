@@ -48,10 +48,10 @@ abstract class TestBase
     /// <summary>
     /// Archive to the given tier
     /// </summary>
-    protected static async Task ArchiveCommand(AccessTier tier = default, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    protected static async Task ArchiveCommand(string tier = default, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (tier == default)
-            tier = AccessTier.Cool;
+            tier = AccessTier.Cool.ToString();
 
         if (purgeRemote)
             await TestSetup.PurgeRemote();

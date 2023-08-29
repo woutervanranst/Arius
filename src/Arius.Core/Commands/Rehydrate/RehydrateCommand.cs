@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Rehydrate;
 
-internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
+internal class RehydrateCommand : ICommand<RehydrateCommandOptions>
 {
     public RehydrateCommand(ILogger<RehydrateCommand> logger)
     {
@@ -18,7 +18,7 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
 
     private readonly ILogger<RehydrateCommand> logger;
 
-    public async Task<int> ExecuteAsync(IRehydrateCommandOptions options)
+    public async Task<CommandResultStatus> ExecuteAsync(RehydrateCommandOptions options)
     {
         var container = options.GetBlobContainerClient();
 

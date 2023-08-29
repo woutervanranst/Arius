@@ -1,15 +1,36 @@
-﻿using FluentValidation.Results;
-using System;
+﻿using System;
 using System.Threading.Tasks;
 
 namespace Arius.Core.Commands;
 
-public interface ICommandOptions
+internal interface ICommandOptions
 {
+    /// <summary>
+    /// Validate these ICommandOptions
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
+    void Validate() => throw new NotImplementedException();
 }
 
-public interface ICommand<T> where T : ICommandOptions // TODO REMOVE INTERFARCE?
+public enum CommandResultStatus
 {
-    public ValidationResult Validate(T options) => throw new NotImplementedException();
-    public Task<int> ExecuteAsync(T options);
+    Success = 0,
+    Error = -1,
+    //Cancelled = -2
+}
+
+internal interface ICommand<TOptions> 
+    where TOptions : ICommandOptions 
+{
+    /// <summary>
+    /// Validate these ICommandOptions
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
+    public void      Validate(TOptions options) => options.Validate();
+
+    /// <summary>
+    /// Execute the Command
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
+    public Task<CommandResultStatus> ExecuteAsync(TOptions options);
 }

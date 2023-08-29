@@ -59,11 +59,15 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
 
     public override ValidationResult Validate(CommandContext context, ArchiveCommandOptions options)
     {
-        var r = RepositoryFacade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
-        if (!r.IsValid)
-            return ValidationResult.Error(r.ToString());
-
-        return ValidationResult.Success();
+        try
+        {
+            RepositoryFacade.ValidateArchiveCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.FastHash, options.RemoveLocal, options.Tier.ToString(), options.Dedup, options.VersionUtc);
+            return ValidationResult.Success();
+        }
+        catch (ArgumentException e)
+        {
+            return ValidationResult.Error(e.Message);
+        }
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, ArchiveCommandOptions options)
@@ -78,7 +82,7 @@ internal class ArchiveCliCommand : AsyncCommand<ArchiveCliCommand.ArchiveCommand
                 .ForStorageAccount(options.AccountName, options.AccountKey)
                 .ForRepositoryAsync(options.ContainerName, options.Passphrase);
 
-            var (_, s) = await rf.ExecuteArchiveCommandAsync(options.Path, options.FastHash, options.RemoveLocal, options.Tier, options.Dedup, options.VersionUtc);
+            var (_, s) = await rf.ExecuteArchiveCommandAsync(options.Path, options.FastHash, options.RemoveLocal, options.Tier.ToString(), options.Dedup, options.VersionUtc);
 
             console.WriteLine();
             console.Write(new Rule("[red]Summary[/]"));

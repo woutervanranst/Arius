@@ -1,13 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Arius.Core.Commands;
-using Arius.Core.Extensions;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Facade;
 using Arius.Core.Models;
-using Microsoft.Extensions.Logging;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Services;
 
@@ -28,7 +24,7 @@ internal interface IHashValueProvider
 
 internal partial class SHA256Hasher : IHashValueProvider
 {
-    public SHA256Hasher(IRepositoryOptions options) 
+    public SHA256Hasher(RepositoryOptions options) 
         : this(options.Passphrase)
     {
     }

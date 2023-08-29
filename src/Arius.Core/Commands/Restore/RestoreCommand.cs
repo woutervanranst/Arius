@@ -1,17 +1,16 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Channels;
-using System.Threading.Tasks;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using FluentValidation;
-using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Linq;
+using System.Threading.Channels;
+using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ICommand<IRestoreCommandOptions>
+internal class RestoreCommand : ICommand<RestoreCommandOptions>
 {
     public RestoreCommand(ILoggerFactory loggerFactory, Repository repo)
     {
@@ -24,17 +23,9 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions>
     private readonly Repository              repo;
     private readonly ILogger<RestoreCommand> logger;
 
-    public ValidationResult Validate(IRestoreCommandOptions options)
+    public async Task<CommandResultStatus> ExecuteAsync(RestoreCommandOptions options)
     {
-        var validator = new IRestoreCommandOptions.Validator();
-        return validator.Validate(options);
-    }
-
-    public async Task<int> ExecuteAsync(IRestoreCommandOptions options)
-    {
-        var v = Validate(options);
-        if (!v.IsValid)
-            throw new ValidationException(v.Errors);
+        options.Validate();
 
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
@@ -96,13 +87,15 @@ internal class RestoreCommand : ICommand<IRestoreCommandOptions>
             logger.LogWarning("WARNING: Not all files are restored as chunks are still being hydrated. Please run the restore operation again in 12-24 hours.");
         }
 
-        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
-            && ts.Any())
+        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts && ts.Any())
         {
             var exceptions = ts.Select(t => t.Exception);
+            foreach (var e in exceptions)
+                logger.LogError(e);
+
             throw new AggregateException(exceptions);
         }
 
-        return 0;
+        return CommandResultStatus.Success;
     }
 }

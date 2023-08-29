@@ -1,10 +1,9 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Repositories.BlobRepository;
+using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
-using Azure;
 using Azure.Storage.Blobs.Models;
 using ConcurrentCollections;
 using Microsoft.Extensions.Logging;
@@ -13,12 +12,9 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-using Arius.Core.Repositories.StateDb;
 
 
 namespace Arius.Core.Commands.Archive;
@@ -43,7 +39,7 @@ internal partial class ArchiveCommand
             Action onCompleted,
 
             int maxDegreeOfParallelism,
-            IArchiveCommandOptions options,
+            ArchiveCommandOptions options,
             FileService fileService,
             Func<PointerFile, Task> onIndexedPointerFile,
             Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile,
@@ -158,7 +154,7 @@ internal partial class ArchiveCommand
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            IArchiveCommandOptions options,
+            ArchiveCommandOptions options,
             IHashValueProvider hashValueProvider,
             Func<BinaryFile, Task> onBinaryExists)
             : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
@@ -174,7 +170,7 @@ internal partial class ArchiveCommand
 
         private readonly ArchiveCommandStatistics stats;
         private readonly Repository               repo;
-        private readonly IArchiveCommandOptions   options;
+        private readonly ArchiveCommandOptions   options;
         private readonly Chunker                  chunker;
 
         private readonly Func<BinaryFile, Task> onBinaryExists;
@@ -438,7 +434,7 @@ internal partial class ArchiveCommand
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            IArchiveCommandOptions options) 
+            ArchiveCommandOptions options) 
                 : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
             this.stats      = command.stats;
@@ -514,7 +510,7 @@ internal partial class ArchiveCommand
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            IArchiveCommandOptions options,
+            ArchiveCommandOptions options,
             FileService fileService)
                 : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
@@ -554,7 +550,7 @@ internal partial class ArchiveCommand
             Action onCompleted,
 
             int maxDegreeOfParallelism,
-            IArchiveCommandOptions options) 
+            ArchiveCommandOptions options) 
                 : base(command.loggerFactory, onCompleted)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;

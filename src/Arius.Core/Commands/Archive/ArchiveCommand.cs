@@ -2,8 +2,6 @@
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using FluentValidation;
-using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
@@ -12,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive;
 
-internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
+internal partial class ArchiveCommand : ICommand<ArchiveCommandOptions>
 {
     public ArchiveCommand(ILoggerFactory loggerFactory, Repository repo, ArchiveCommandStatistics statisticsProvider)
     {
@@ -30,17 +28,9 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
     private readonly ArchiveCommandStatistics stats;
     private readonly FileSystemService        fileSystemService;
 
-    public ValidationResult Validate(IArchiveCommandOptions options)
+    public async Task<CommandResultStatus> ExecuteAsync(ArchiveCommandOptions options)
     {
-        var validator = new IArchiveCommandOptions.Validator();
-        return validator.Validate(options);
-    }
-    
-    public async Task<int> ExecuteAsync(IArchiveCommandOptions options)
-    {
-        var v = Validate(options);
-        if (!v.IsValid)
-            throw new ValidationException(v.Errors);
+        options.Validate();
 
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
@@ -184,17 +174,15 @@ internal partial class ArchiveCommand : ICommand<IArchiveCommandOptions>
         // save the state in any case even in case of errors otherwise the info on BinaryProperties is lost
         await repo.SaveStateToRepositoryAsync(options.VersionUtc);
 
-        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts
-            && ts.Any())
+        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts && ts.Any())
         {
             var exceptions = ts.Select(t => t.Exception);
-
             foreach (var e in exceptions)
                 logger.LogError(e);
 
             throw new AggregateException(exceptions);
         }
 
-        return 0;
+        return CommandResultStatus.Success;
     }
 }

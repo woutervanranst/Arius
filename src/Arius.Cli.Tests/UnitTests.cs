@@ -1,5 +1,5 @@
-﻿using Arius.Core.Commands.Archive;
-using Arius.Core.Commands.Restore;
+﻿using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
@@ -40,7 +40,7 @@ namespace Arius.Cli.Tests;
 internal class UnitTests
 {
     private const string RUNNING_IN_CONTAINER = "DOTNET_RUNNING_IN_CONTAINER";
-    private readonly bool IsRunningInContainer = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) == "true";
+    private static readonly bool IsRunningInContainer = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER) == "true";
 
     [OneTimeSetUp]
     public void CreateLogsDirectory()
@@ -132,7 +132,7 @@ internal class UnitTests
 
         if (command == "archive")
         {
-            command = new MockedArchiveCommandOptions().ToString();
+            command = new MockedArchiveCommandOptions { }.ToString();
             await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
 
             repositoryFacade.Verify(executeArchiveCommand, Times.Once());
@@ -184,9 +184,9 @@ internal class UnitTests
         int r;
 
         if (command == "archive")
-            command = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null, Path = new DirectoryInfo(".") }.ToString();
+            command = new MockedArchiveCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null }.ToString();
         else if (command == "restore")
-            command = new MockedRestoreCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null, Path = new DirectoryInfo("."), Synchronize = true }.ToString();
+            command = new MockedRestoreCommandOptions { AccountKey = null, Passphrase = null, ContainerName = null, Synchronize = true }.ToString();
         else
             throw new NotImplementedException();
 
@@ -195,7 +195,7 @@ internal class UnitTests
 
         r.Should().Be(-1);
         //Program.Instance.e.Should().BeOfType<InvalidOperationException>();
-        consoleText.Should().Contain("Runtime Error: The parameter 'accountKey' is required.");
+        consoleText.Should().Contain("Command error: AccountKey must be specified");
         consoleText.Should().NotContain("at "); // no stack trace in the output
 
         // Put it back
@@ -218,12 +218,12 @@ internal class UnitTests
 
             if (command == "archive")
             {
-                command = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") }.ToString();
+                command = new MockedArchiveCommandOptions { Path = new DirectoryInfo(".") /* path is explicitly set */ }.ToString();
                 r       = await Program.Main(command.Split(' '));
             }
             else if (command == "restore")
             {
-                command = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") }.ToString();
+                command = new MockedRestoreCommandOptions { Path = new DirectoryInfo(".") /* path is explicitly set */ }.ToString();
                 r       = await Program.Main(command.Split(' '));
             }
             else
@@ -257,7 +257,7 @@ internal class UnitTests
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
                 await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade.Object));
-                repositoryFacade.Verify(x => x.ExecuteArchiveCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<AccessTier>(), It.IsAny<bool>(), It.IsAny<DateTime>()), Times.Once);
+                repositoryFacade.Verify(x => x.ExecuteArchiveCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>()), Times.Once);
             }
             else if (command == "restore")
             {
@@ -297,14 +297,14 @@ internal class UnitTests
         var mockRepositoryFacade = new Mock<RepositoryFacade>();
         //mockRepositoryFacade.Setup(x => x.GetVersions()).Returns(new List<string> { "v1", "v2" }.ToAsyncEnumerable());
 
-        Expression<Func<RepositoryFacade, Task<(int, ArchiveCommandStatistics)>>> executeArchiveCommandAsyncExpr = x => x.ExecuteArchiveCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<AccessTier>(), It.IsAny<bool>(), It.IsAny<DateTime>());
+        Expression<Func<RepositoryFacade, Task<(CommandResultStatus, ArchiveCommandStatistics)>>> executeArchiveCommandAsyncExpr = x => x.ExecuteArchiveCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>());
         mockRepositoryFacade.Setup(executeArchiveCommandAsyncExpr)
-            .ReturnsAsync((1, new ArchiveCommandStatistics()))
+            .ReturnsAsync((CommandResultStatus.Success, new ArchiveCommandStatistics()))
             .Verifiable();
 
-        Expression<Func<RepositoryFacade, Task<int>>> executeRestoreCommandAsyncExpr = x => x.ExecuteRestoreCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>());
+        Expression<Func<RepositoryFacade, Task<CommandResultStatus>>> executeRestoreCommandAsyncExpr = x => x.ExecuteRestoreCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>());
         mockRepositoryFacade.Setup(executeRestoreCommandAsyncExpr)
-            .ReturnsAsync(1)
+            .ReturnsAsync(CommandResultStatus.Success)
             .Verifiable();
 
         //mockRepositoryFacade.Setup(x => x.ExecuteRehydrateCommandAsync())
@@ -344,18 +344,18 @@ internal class UnitTests
     }
 
 
-    private class MockedArchiveCommandOptions : IArchiveCommandOptions
+    private class MockedArchiveCommandOptions
     {
-        public string AccountName { get; init; } = "an";
-        public string AccountKey { get; init; } = "ak";
-        public string ContainerName { get; init; } = "c";
-        public string Passphrase { get; init; } = "pp";
-        public bool FastHash { get; init; } = false;
-        public bool RemoveLocal { get; init; } = false;
-        public AccessTier Tier { get; init; } = AccessTier.Cool;
-        public bool Dedup { get; init; } = false;
-        public DirectoryInfo? Path { get; init; } = new DirectoryInfo(".");
-        public DateTime VersionUtc { get; init; } = DateTime.UtcNow;
+        public string?        AccountName   { get; init; } = "an";
+        public string?        AccountKey    { get; init; } = "ak";
+        public string         ContainerName { get; init; } = "c";
+        public string         Passphrase    { get; init; } = "pp";
+        public bool           FastHash      { get; init; } = false;
+        public bool           RemoveLocal   { get; init; } = false;
+        public AccessTier     Tier          { get; init; } = AccessTier.Cool;
+        public bool           Dedup         { get; init; } = false;
+        public DirectoryInfo? Path          { get; init; } = IsRunningInContainer ? null : new DirectoryInfo(".");
+        public DateTime       VersionUtc    { get; init; } = DateTime.UtcNow;
 
         public override string ToString()
         {
@@ -376,7 +376,7 @@ internal class UnitTests
             if (RemoveLocal)
                 sb.Append("--remove-local ");
 
-            sb.Append($"--tier {Tier.ToString().ToLower()} ");
+            sb.Append($"--tier {Tier.ToString().ToLower()} "); // NOTE the tolower is intentional - AccessTier doesnt always play nice and (AccessTier)"cool" is also valid
 
             if (Dedup)
                 sb.Append("--dedup ");
@@ -391,17 +391,17 @@ internal class UnitTests
         }
     }
 
-    private class MockedRestoreCommandOptions : IRestoreCommandOptions
+    private class MockedRestoreCommandOptions
     {
-        public string AccountName { get; init; } = "an";
-        public string AccountKey { get; init; } = "ak";
-        public string ContainerName { get; init; } = "c";
-        public string Passphrase { get; init; } = "pp";
-        public bool Synchronize { get; init; } = false;
-        public bool Download { get; init; } = false;
-        public bool KeepPointers { get; init; } = false;
-        public DirectoryInfo? Path { get; init; } = new DirectoryInfo(".");
-        public DateTime PointInTimeUtc { get; init; }
+        public string?        AccountName    { get; init; } = "an";
+        public string?        AccountKey     { get; init; } = "ak";
+        public string         ContainerName  { get; init; } = "c";
+        public string         Passphrase     { get; init; } = "pp";
+        public bool           Synchronize    { get; init; } = false;
+        public bool           Download       { get; init; } = false;
+        public bool           KeepPointers   { get; init; } = false;
+        public DirectoryInfo? Path           { get; init; } = IsRunningInContainer ? null : new DirectoryInfo(".");
+        public DateTime       PointInTimeUtc { get; init; }
 
         public override string ToString()
         {

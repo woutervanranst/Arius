@@ -1,10 +1,10 @@
-﻿using Arius.Core.Commands.Archive;
+﻿using Arius.Core.Commands;
+using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Queries;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using FluentValidation.Results;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using PostSharp.Patterns.Contracts;
@@ -53,20 +53,20 @@ public class Facade
 
 
     public   virtual StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
-    internal virtual StorageAccountFacade ForStorageAccount(IStorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
+    internal virtual StorageAccountFacade ForStorageAccount(StorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
 }
 
 
 public class StorageAccountFacade
 {
-    private readonly ILoggerFactory         loggerFactory;
-    private readonly IStorageAccountOptions storageAccountOptions;
+    private readonly ILoggerFactory        loggerFactory;
+    private readonly StorageAccountOptions storageAccountOptions;
 
     [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
     internal StorageAccountFacade()
     {
     }
-    internal StorageAccountFacade(ILoggerFactory loggerFactory, IStorageAccountOptions options)
+    internal StorageAccountFacade(ILoggerFactory loggerFactory, StorageAccountOptions options)
     {
         this.loggerFactory         = loggerFactory;
         this.storageAccountOptions = options;
@@ -88,7 +88,7 @@ public class StorageAccountFacade
     /// <param name="passphrase"></param>
     /// <returns></returns>
     public   virtual async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
-    internal virtual async Task<RepositoryFacade> ForRepositoryAsync(IRepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
+    internal virtual async Task<RepositoryFacade> ForRepositoryAsync(RepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
     ///// <summary>
     ///// FOR UNIT TESTING PURPOSES ONLY
@@ -117,7 +117,7 @@ public class RepositoryFacade : IDisposable
     }
 
     [ComponentInternal(typeof(StorageAccountFacade))]
-    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, IRepositoryOptions options)
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
     {
         var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
             .WithOptions(options)
@@ -134,16 +134,24 @@ public class RepositoryFacade : IDisposable
 
 
     // --------- ARCHIVE ---------
-    public static ValidationResult ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+
+    /// <summary>
+    /// Validate the given options for an Archive command
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException in case of an invalid option</exception>
+    public static void ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, string tier = default, bool dedup = false, DateTime versionUtc = default)
     {
-        var v = new IArchiveCommandOptions.Validator();
-        return v.Validate(new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc));
+        var o = new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        o.Validate();
     }
 
-    public virtual async Task<(int, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, AccessTier tier = default, bool dedup = false, DateTime versionUtc = default)
+    /// <summary>
+    /// Execute an Archive command
+    /// </summary>
+    public virtual async Task<(CommandResultStatus, ArchiveCommandStatistics)> ExecuteArchiveCommandAsync(DirectoryInfo root, bool fastHash = false, bool removeLocal = false, string tier = default, bool dedup = false, DateTime versionUtc = default)
     {
         if (tier == default)
-            tier = AccessTier.Cold;
+            tier = AccessTier.Cold.ToString();
 
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
@@ -161,15 +169,23 @@ public class RepositoryFacade : IDisposable
 
 
     // --------- RESTORE ---------
-    public static ValidationResult ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
+
+    /// <summary>
+    /// Validate the given options for a Restore command
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException in case of an invalid option</exception>
+    public static void ValidateRestoreCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc)
     {
         // TODO align handling of versionUtc == default and DateTime? pointInTime
-        
-        var v = new IRestoreCommandOptions.Validator();
-        return v.Validate(new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc));
+
+        var o = new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc);
+        o.Validate();
     }
 
-    public virtual async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
+    /// <summary>
+    /// Execute a Restore command for a full directory
+    /// </summary>
+    public virtual async Task<CommandResultStatus> ExecuteRestoreCommandAsync(DirectoryInfo root, bool synchronize = false, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default)
     {
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
@@ -181,7 +197,10 @@ public class RepositoryFacade : IDisposable
         return await cmd.ExecuteAsync(rco);
     }
 
-    public async Task<int> ExecuteRestoreCommandAsync(DirectoryInfo root, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] relativeNames)
+    /// <summary>
+    /// Execute a Restore command for the specified files
+    /// </summary>
+    public async Task<CommandResultStatus> ExecuteRestoreCommandAsync(DirectoryInfo root, bool download = false, bool keepPointers = true, DateTime pointInTimeUtc = default, params string[] relativeNames)
     {
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
@@ -195,7 +214,7 @@ public class RepositoryFacade : IDisposable
 
     // --------- REHYDRATE ---------
 
-    public async Task<int> ExecuteRehydrateCommandAsync()
+    public async Task<CommandResultStatus> ExecuteRehydrateCommandAsync()
     {
         throw new NotImplementedException();
 

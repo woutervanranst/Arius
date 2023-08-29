@@ -66,7 +66,7 @@ class RestoreSteps : TestBase
     public async Task WhenRestoreValidationException()
     {
         Func<Task> t = () => TestSetup.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false);
-        await t.Should().ThrowAsync<FluentValidation.ValidationException>();
+        await t.Should().ThrowAsync<ArgumentException>();
 
         //Assert.CatchAsync<FluentValidation.ValidationException>(async () => await Arius.RestoreCommandAsyc(synchronize: false, download: false, keepPointers: false));
     }
