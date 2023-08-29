@@ -85,8 +85,8 @@ jobs:
 
     - name: Wait for NuGet package to be available
       run: |
-        sudo apt-get update
-        sudo apt-get install -y jq
+        # sudo apt-get update
+        # sudo apt-get install -y jq
 
         PACKAGE_NAME=WouterVanRanst.Arius.Core
         VERSION=${{ github.ref }}
@@ -97,6 +97,7 @@ jobs:
             echo "Package $PACKAGE_NAME version $VERSION is available!"
             break
           fi
+          echo "Waiting for package $PACKAGE_NAME version $VERSION to be available..."
           sleep 10
         done
 
