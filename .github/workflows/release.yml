@@ -85,8 +85,7 @@ jobs:
 
     - name: Wait for NuGet package to be available
       run: |
-        PACKAGE_NAME=WouterVanRanst.Arius.Core
-        VERSION=${VERSION}
+        PACKAGE_NAME=$(echo "WouterVanRanst.Arius.Core" | tr '[:upper:]' '[:lower:]')   # needs to be lowercase
         end=$((SECONDS+900))
         while [ $SECONDS -lt $end ]; do
           RESPONSE=$(curl -s "https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME}/index.json")
