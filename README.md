@@ -2,13 +2,13 @@
 
 <img src="docs/iceberg.svg" width="200" />
 
-[![Arius.Cli - Docker TODO](https://github.com/woutervanranst/Arius/actions/workflows/cli-release-docker.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/cli-release-docker.yml)
-[![Arius.Core - Nuget Package TODO](https://github.com/woutervanranst/Arius/actions/workflows/core-release-nuget.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/core-release-nuget.yml)
-
 [![Arius.Core - Test Suite](https://github.com/woutervanranst/Arius/actions/workflows/core-test.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/core-test.yml)
-
 [![codecov](https://codecov.io/gh/woutervanranst/Arius/graph/badge.svg?token=GEZJ4Y0ZNK)](https://codecov.io/gh/woutervanranst/Arius)
 [![CodeQL: Arius.Core](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml)
+
+[![Arius Release](https://github.com/woutervanranst/Arius/actions/workflows/release.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/release.yml)
+![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fwoutervanranst%2Farius)
+[![Arius.Core Version](https://img.shields.io/nuget/v/WouterVanRanst.Arius.Core?logo=nuget)](https://www.nuget.org/packages/WouterVanRanst.Arius.Core)
 
 Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
 
