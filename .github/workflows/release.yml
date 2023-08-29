@@ -150,6 +150,7 @@ jobs:
 
 
   release:
+    name: Arius - Create GitHub Release
     needs: [build_windows_ui, build_docker]
     runs-on: ubuntu-latest
     steps:
@@ -160,7 +161,7 @@ jobs:
 
     - name: Create GitHub Release
       id: create_release
-      uses: gh-actions/create-release@v1
+      uses: actions/create-release@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         tag_name: ${{ github.ref }}
