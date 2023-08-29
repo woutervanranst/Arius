@@ -1,49 +1,55 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-	<AssemblyName>arius</AssemblyName>
-	<Nullable>enable</Nullable>
-	<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net7.0</TargetFramework>
+		<AssemblyName>arius</AssemblyName>
+		<Nullable>enable</Nullable>
+		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\.dockerignore" Link=".dockerignore">
-      <DependentUpon>$(DockerDefaultDockerfile)</DependentUpon>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\.dockerignore" Link=".dockerignore">
+			<DependentUpon>DockerfileOld</DependentUpon>
+		</None>
+	</ItemGroup>
 
-  <ItemGroup>
-    <!--<PackageReference Include="Arius.Core" Version="2.0.2043.621" />-->
-	<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
-	<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
+	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
+	<ItemGroup Condition="'$(Configuration)'=='Debug'">
+		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(Configuration)'=='Release'">
+		<PackageReference Include="WouterVanRanst.Arius.Core" Version="*" />
+		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
+	</ItemGroup>
 
-	<PackageReference Include="Spectre.Console" Version="0.47.0" />
-	<PackageReference Include="Spectre.Console.Cli" Version="0.47.0" />
+	<ItemGroup>
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
 
-    
-    <!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
-	<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.4.0" />
-	<PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" />
-	<PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />
+		<PackageReference Include="Spectre.Console" Version="0.47.0" />
+		<PackageReference Include="Spectre.Console.Cli" Version="0.47.0" />
 
-
-    <!-- For AddCustomFormatter Logger-->
-	<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
-	<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-
-	<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
-	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
-  </ItemGroup>
+		<!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
+		<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.4.0" />
+		<!--<PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="7.0.0" />-->
 
 
-  <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+		<!-- For AddCustomFormatter Logger-->
+		<PackageReference Include="Microsoft.Extensions.Logging.Console" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
+
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
+	</ItemGroup>
+
+
+	<ItemGroup>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>

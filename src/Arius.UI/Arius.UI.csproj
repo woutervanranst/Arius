@@ -32,8 +32,13 @@
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
 	</ItemGroup>
 
-	<ItemGroup>
+	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
+	<ItemGroup Condition="'$(Configuration)'=='Debug'">
 		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(Configuration)'=='Release'">
+		<PackageReference Include="WouterVanRanst.Arius.Core" Version="*" />
+		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
 	</ItemGroup>
 
 	<ItemGroup>
