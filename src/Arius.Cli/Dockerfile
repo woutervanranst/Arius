@@ -33,7 +33,7 @@ RUN dotnet build "Arius.Cli/Arius.Cli.csproj" -c Release -o /app/build
 
 # Run the CLI test project _in_ the container
 RUN mkdir /logs
-RUN dotnet test "Arius.Cli.Tests/Arius.Cli.Tests.csproj"
+RUN dotnet test "Arius.Cli.Tests/Arius.Cli.Tests.csproj" -c Release
 
 # If the test was successful, create final artifact
 FROM build AS publish
