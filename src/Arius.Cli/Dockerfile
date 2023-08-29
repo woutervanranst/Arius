@@ -25,20 +25,21 @@ COPY ["Arius.Cli.Tests/Arius.Cli.Tests.csproj", "Arius.Cli.Tests/"]
 RUN dotnet restore "Arius.Cli/Arius.Cli.csproj"
 RUN dotnet restore "Arius.Cli.Tests/Arius.Cli.Tests.csproj"
 
+# Copy the source code
 COPY . .
 
 # Build the CLI project
 RUN dotnet build "Arius.Cli/Arius.Cli.csproj" -c Release -o /app/build
 
-# Test the CLI project
-RUN mkdir /archive
+# Run the CLI test project _in_ the container
 RUN mkdir /logs
 RUN dotnet test "Arius.Cli.Tests/Arius.Cli.Tests.csproj"
 
-
+# If the test was successful, create final artifact
 FROM build AS publish
 RUN dotnet publish "Arius.Cli/Arius.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
+# Final image
 FROM base AS final
 VOLUME ["/archive"]
 VOLUME ["/logs"]
