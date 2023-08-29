@@ -41,8 +41,8 @@ internal record RestoreCommandOptions : RepositoryOptions
         if (Path is null || !Path.Exists)
             throw new ArgumentException("The specified path does not exist", nameof(Path));
 
-        if (!Synchronize && !Download)
-            throw new ArgumentException("Either specify --synchronize or --download"); //this is just silly to call
+        //if (!Synchronize && !Download)
+        //    throw new ArgumentException("Either specify --synchronize or --download"); //this is just silly to call
 
         //// validate the IRepositoryOptions (AccountName, AccountKey, Container, Passphrase)
         //RuleFor(o => (IRepositoryOptions)o)
