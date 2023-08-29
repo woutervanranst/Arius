@@ -77,3 +77,41 @@ jobs:
 
     - name: Publish NuGet Package
       run: dotnet nuget push ./src/Arius.Core/bin/Release/Arius.Core.*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+    - name: Wait for NuGet package to be available
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
+        PACKAGE_NAME=WouterVanRanst.Arius.Core
+        VERSION=${{ github.ref }}
+        end=$((SECONDS+900))
+        while [ $SECONDS -lt $end ]; do
+          RESPONSE=$(curl -s "https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME}/index.json")
+          if echo "$RESPONSE" | jq -e --arg version "$VERSION" '.versions[] | select(. == $version)' > /dev/null; then
+            echo "Package $PACKAGE_NAME version $VERSION is available!"
+            break
+          fi
+          sleep 10
+        done
+
+  build_windows_ui:
+    needs: publish_nuget
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        # with:
+        #   submodules: true # Check out WouterVanRanst.Utils
+
+      - name: Setup Git
+        run: |
+          git config --global url."https://user:${{ secrets.GITHUB_TOKEN }}@github".insteadOf https://github
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com          
+
+      - name: Run release script
+        shell: pwsh
+        run: ./.github/workflows/release.ps1
