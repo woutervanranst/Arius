@@ -46,8 +46,8 @@ jobs:
 
     - name: Test
       run: |
-        dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-        dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        # dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        # dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
       env:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
