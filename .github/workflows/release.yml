@@ -128,6 +128,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
 
   release:
     needs: [build_windows_ui, build_docker]
