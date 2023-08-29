@@ -1,131 +1,131 @@
-name: Arius.Cli - Test & Release Artifact & Docker
+# name: Arius.Cli - Test & Release Artifact & Docker
 
-on:
-  push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+# on:
+#   push:
+#     # Sequence of patterns matched against refs/tags
+#     tags:
+#     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
-# See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
-# # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
+# # See https://teilin.net/build-asp-net-core-3-0-project-and-publish-release-using-github-actions/
+# # # # # TODO https://dusted.codes/github-actions-for-dotnet-core-nuget-packages
 
-env:
-  IMAGE_NAME: arius
-  GITHUB_USER: wouter.vanranst@gmail.com
-  GITHUB_TOKEN: ${{ secrets.PAT }}
+# env:
+#   IMAGE_NAME: arius
+#   GITHUB_USER: wouter.vanranst@gmail.com
+#   GITHUB_TOKEN: ${{ secrets.PAT }}
 
-defaults:
-  run:
-    working-directory: ./src
+# defaults:
+#   run:
+#     working-directory: ./src
 
-jobs:
-  artifact:
-    name: Release Artifact
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+# jobs:
+#   artifact:
+#     name: Release Artifact
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 10
 
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v3
-      with:
-        submodules: true # Check out WouterVanRanst.Utils
+#     steps:
+#     - name: Check out code
+#       uses: actions/checkout@v3
+#       with:
+#         submodules: true # Check out WouterVanRanst.Utils
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 7.x
-        # include-prerelease: true
+#     - name: Setup .NET Core
+#       uses: actions/setup-dotnet@v3
+#       with:
+#         dotnet-version: 7.x
+#         # include-prerelease: true
         
-    - name: Add Arius.Core Github Package Source
-      run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'
+#     - name: Add Arius.Core Github Package Source
+#       run: dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub 'https://nuget.pkg.github.com/woutervanranst/index.json'
 
-    - name: Run Arius.Cli.Tests #make /logs directory for Unit tests (see CreateLogsDirectory)
-      run: | 
-        sudo mkdir /logs
-        dotnet test Arius.Cli.Tests -c Release
+#     - name: Run Arius.Cli.Tests #make /logs directory for Unit tests (see CreateLogsDirectory)
+#       run: | 
+#         sudo mkdir /logs
+#         dotnet test Arius.Cli.Tests -c Release
 
-    - name: Publish
-      run: dotnet publish Arius.Cli -c Release -o ./artifacts #Deploy only Arius project, not the tests
+#     - name: Publish
+#       run: dotnet publish Arius.Cli -c Release -o ./artifacts #Deploy only Arius project, not the tests
       
-    - name: Create Artifact ZIP
-      run: |
-        pushd ./artifacts/
-        zip -r ../../release.zip .
-        popd
+#     - name: Create Artifact ZIP
+#       run: |
+#         pushd ./artifacts/
+#         zip -r ../../release.zip .
+#         popd
         
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      #env:
-      #  GITHUB_TOKEN: $GITHUB_TOKEN
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
+#     - name: Create Release
+#       id: create_release
+#       uses: actions/create-release@v1
+#       #env:
+#       #  GITHUB_TOKEN: $GITHUB_TOKEN
+#       with:
+#         tag_name: ${{ github.ref }}
+#         release_name: Release ${{ github.ref }}
+#         draft: false
+#         prerelease: false
 
-    # For SSH / debug        
-    # - name: Setup tmate session
-    #   uses: mxschmitt/action-tmate@v3
+#     # For SSH / debug        
+#     # - name: Setup tmate session
+#     #   uses: mxschmitt/action-tmate@v3
     
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1
-      #env:
-      #  GITHUB_TOKEN: $GITHUB_TOKEN
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./release.zip   #NOTE: seems to be an absolute path
-        asset_name: release.zip
-        asset_content_type: application/zip
+#     - name: Upload Release Asset
+#       id: upload-release-asset 
+#       uses: actions/upload-release-asset@v1
+#       #env:
+#       #  GITHUB_TOKEN: $GITHUB_TOKEN
+#       with:
+#         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing its ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+#         asset_path: ./release.zip   #NOTE: seems to be an absolute path
+#         asset_name: release.zip
+#         asset_content_type: application/zip
 
 
 
-  docker:
-    needs: artifact ## Depend on a successful artifact deployment (only for Tests)
-    name: Release Docker
+#   docker:
+#     needs: artifact ## Depend on a successful artifact deployment (only for Tests)
+#     name: Release Docker
     
-    runs-on: ubuntu-latest
+#     runs-on: ubuntu-latest
 
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v3
+#     steps:
+#     - name: Check out code
+#       uses: actions/checkout@v3
 
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 7.x
+#     - name: Setup .NET Core
+#       uses: actions/setup-dotnet@v3
+#       with:
+#         dotnet-version: 7.x
 
-    - name: Build image
-      run: |
-        pushd Arius.Cli
-        docker build . --tag $IMAGE_NAME --build-arg GITHUB_USER=$GITHUB_USER --build-arg GITHUB_TOKEN=$GITHUB_TOKEN
-        popd
+#     - name: Build image
+#       run: |
+#         pushd Arius.Cli
+#         docker build . --tag $IMAGE_NAME --build-arg GITHUB_USER=$GITHUB_USER --build-arg GITHUB_TOKEN=$GITHUB_TOKEN
+#         popd
 
-    - name: Log into GitHub Container Registry
-      run: echo "$GITHUB_TOKEN" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
+#     - name: Log into GitHub Container Registry
+#       run: echo "$GITHUB_TOKEN" | docker login https://ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Push image to GitHub Container Registry
-      run: |
-        # IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
-        IMAGE_ID=ghcr.io/${{ github.repository }}
+#     - name: Push image to GitHub Container Registry
+#       run: |
+#         # IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
+#         IMAGE_ID=ghcr.io/${{ github.repository }}
 
-        # Change all uppercase to lowercase
-        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+#         # Change all uppercase to lowercase
+#         IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
 
-        # Strip git ref prefix from version
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+#         # Strip git ref prefix from version
+#         VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
 
-        # Strip "v" prefix from tag name
-        [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+#         # Strip "v" prefix from tag name
+#         [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
-        # Use Docker `latest` tag convention
-        [ "$VERSION" == "master" ] && VERSION=latest
+#         # Use Docker `latest` tag convention
+#         [ "$VERSION" == "master" ] && VERSION=latest
 
-        echo IMAGE_ID=$IMAGE_ID
-        echo VERSION=$VERSION
+#         echo IMAGE_ID=$IMAGE_ID
+#         echo VERSION=$VERSION
 
-        docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-        docker tag $IMAGE_NAME $IMAGE_ID:latest
-        docker push $IMAGE_ID:$VERSION
-        docker push $IMAGE_ID:latest
+#         docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+#         docker tag $IMAGE_NAME $IMAGE_ID:latest
+#         docker push $IMAGE_ID:$VERSION
+#         docker push $IMAGE_ID:latest

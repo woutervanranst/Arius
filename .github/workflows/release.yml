@@ -124,7 +124,7 @@ jobs:
 
   build_docker:
     name: Arius.Cli - Publish Docker image
-    # needs: publish_nuget
+    needs: publish_nuget
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
