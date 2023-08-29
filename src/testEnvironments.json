@@ -9,11 +9,9 @@
     //  "wslDistribution": "Ubuntu"
     //},
     {
-      "name": "Docker dotnet/sdk",
+      "name": "Docker dotnet/sdk with Logs and Archive path",
       "type": "docker",
-      "dockerImage": "mcr.microsoft.com/dotnet/sdk",
-      //"dockerImage": "arius"
-      // "dockerFile": "Arius.Cli\\Dockerfile"
+      "dockerFile": "Arius.Cli\\UnitTests.dockerfile"
     }
   ]
 }
