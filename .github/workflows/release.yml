@@ -61,7 +61,7 @@ jobs:
     defaults:
       run:
         working-directory: ./src
-        
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -81,7 +81,7 @@ jobs:
       run: dotnet pack Arius.Core --configuration Release /p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Publish NuGet Package
-      run: dotnet nuget push ./src/Arius.Core/bin/Release/Arius.Core.*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push ./Arius.Core/bin/Release/Arius.Core.*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
     - name: Wait for NuGet package to be available
       run: |
