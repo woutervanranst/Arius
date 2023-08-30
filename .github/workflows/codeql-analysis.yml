@@ -40,10 +40,9 @@ jobs:
       with:
         languages: ${{ matrix.language }}
 
-    - name: Build Arius.Core
+    - name: Build
       run: |
-        dotnet build Arius.Core
-        # cd Arius.Core
+        dotnet build
         
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
