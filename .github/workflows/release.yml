@@ -151,7 +151,7 @@ jobs:
 
   release:
     name: Arius - Create GitHub Release
-    needs: [build_windows_ui, build_docker]
+    # needs: [build_windows_ui, build_docker]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -160,21 +160,22 @@ jobs:
         submodules: true # Check out WouterVanRanst.Utils
 
     - name: Create GitHub Release
-      id: create_release
-      uses: actions/create-release@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: Release description here
-        draft: false
-        prerelease: false
+      uses: softprops/action-gh-release@v1
+      #with:
+      #  files: |
 
-    - name: Attach artifacts to release
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./path_to_artifact
-        asset_name: artifact_name.zip
-        asset_content_type: application/zip
+    #     token: ${{ secrets.GITHUB_TOKEN }}
+    #     tag_name: ${{ github.ref }}
+    #     release_name: Release ${{ github.ref }}
+    #     body: Release description here
+    #     draft: false
+    #     prerelease: false
+
+    # - name: Attach artifacts to release
+    #   uses: actions/upload-release-asset@v1
+    #   with:
+    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
+    #     asset_path: ./path_to_artifact
+    #     asset_name: artifact_name.zip
+    #     asset_content_type: application/zip
   
