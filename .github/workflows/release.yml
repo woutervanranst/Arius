@@ -25,8 +25,8 @@ jobs:
     steps:
     - name: Check out code
       uses: actions/checkout@v3
-      # with:
-      #   submodules: true # Check out WouterVanRanst.Utils
+      with:
+        submodules: true # Check out WouterVanRanst.Utils - here we DO need it since we don't have nuget packages yet
 
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v3
