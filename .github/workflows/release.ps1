@@ -38,7 +38,7 @@ if (Test-Path $outDir) {
 # Publish the application.
 Push-Location $projDir
 try {
-    # Write-Output "Restoring:"
+    Write-Output "Restoring:"
     # dotnet restore -r win-x64  ## this does not play well with <ItemGroup Condition="'$(Configuration)'=='Release'">
     dotnet build -r win-x64 -c Release
     Write-Output "Publishing:"
