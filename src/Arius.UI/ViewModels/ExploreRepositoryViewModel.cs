@@ -271,7 +271,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     private void OnAbout()
     {
-        var explorerVersion = System.Reflection.Assembly.GetEntryAssembly().GetName().Version;
+        var explorerVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "0.0.0.0"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
 
         var coreVersion = typeof(Arius.Core.Facade.Facade).Assembly.GetName().Version;
 
