@@ -8,13 +8,15 @@ internal record RepositoryOptions : StorageAccountOptions
     public RepositoryOptions(RepositoryOptions repositoryOptions) : base(repositoryOptions)
     {
         ContainerName = repositoryOptions.ContainerName;
-        Passphrase = repositoryOptions.Passphrase;
+        Passphrase    = repositoryOptions.Passphrase;
     }
+
     public RepositoryOptions(StorageAccountOptions storageAccountOptions, string containerName, string passphrase) : base(storageAccountOptions)
     {
         ContainerName = containerName;
-        Passphrase = passphrase;
+        Passphrase    = passphrase;
     }
+
     public RepositoryOptions(string accountName, string accountKey, string containerName, string passphrase) : base(accountName, accountKey)
     {
         ContainerName = containerName;

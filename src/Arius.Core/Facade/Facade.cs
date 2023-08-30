@@ -112,7 +112,7 @@ public class RepositoryFacade : IDisposable
     }
     private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
     {
-        Repository          = repo;
+        Repository         = repo;
         this.loggerFactory = loggerFactory;
     }
 
