@@ -15,7 +15,6 @@
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
 	</ItemGroup>
 
-
 	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
 	<ItemGroup Condition="'$(Configuration)'=='Debug'">
 		<ProjectReference Include="..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
@@ -24,18 +23,8 @@
 		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
 	</ItemGroup>
 
-	<!--<PropertyGroup>
-		--><!--See https://stackoverflow.com/a/68067278 --><!--
-		<VersionMajor>2</VersionMajor>
-		<VersionMinor>0</VersionMinor>
-		<VersionPatch Condition="'$(VersionPatch)' == ''">$([System.DateTime]::UtcNow.Date.Subtract($([System.DateTime]::new(2017, 5, 25))).TotalDays.ToString("0"))</VersionPatch>
-		<VersionRevision Condition="'$(VersionRevision)' == ''">$([System.DateTime]::UtcNow.TimeOfDay.TotalMinutes.ToString("0"))</VersionRevision>
-	</PropertyGroup>-->
-
 	<PropertyGroup>
 		<TargetFramework>net7.0</TargetFramework> <!--NOTE check specflow and postsharp support -->
-		<!--<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Version>$(VersionMajor).$(VersionMinor).$(VersionPatch).$(VersionRevision)</Version>-->
 		<RepositoryUrl>https://github.com/woutervanranst/arius</RepositoryUrl>
 		<Authors>Wouter Van Ranst</Authors>
 		<Company>Blue Software</Company>

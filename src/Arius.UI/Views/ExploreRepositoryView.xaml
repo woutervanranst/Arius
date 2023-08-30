@@ -40,6 +40,9 @@
                 <!--<MenuItem Header="Hydrate" Command="{Binding HydrateCommand}"/>-->
                 <MenuItem Header="Download" Command="{Binding RestoreCommand}"/>
             </MenuItem>
+            <MenuItem Header="Help">
+                <MenuItem Header="About" Command="{Binding AboutCommand}"/>
+            </MenuItem>
         </Menu>
 
         <!--<StatusBar DockPanel.Dock="Bottom">

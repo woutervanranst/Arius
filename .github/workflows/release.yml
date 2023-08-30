@@ -28,29 +28,29 @@ jobs:
       # with:
       #   submodules: true # Check out WouterVanRanst.Utils
 
-    # - name: Setup .NET Core
-    #   uses: actions/setup-dotnet@v3
-    #   with:
-    #     dotnet-version: 7.x
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.x
 
-    # - name: Cache .NET packages
-    #   uses: actions/cache@v3
-    #   with:
-    #     path: |
-    #       ~/.nuget/packages
-    #       !~/.nuget/packages/**/project.assets.json
-    #       !~/.nuget/packages/**/project.nuget.cache
-    #     key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-dotnet-
+    - name: Cache .NET packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.nuget/packages
+          !~/.nuget/packages/**/project.assets.json
+          !~/.nuget/packages/**/project.nuget.cache
+        key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-dotnet-
 
-    # - name: Test
-    #   run: |
-    #     dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-    #     dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-    #   env:
-    #     ARIUS_ACCOUNT_NAME: ariusci
-    #     ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+    - name: Test
+      run: |
+        dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+      env:
+        ARIUS_ACCOUNT_NAME: ariusci
+        ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
 
 
   publish_nuget:
@@ -151,7 +151,7 @@ jobs:
 
   release:
     name: Arius - Create GitHub Release
-    # needs: [build_windows_ui, build_docker]
+    needs: [build_windows_ui, build_docker]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -160,22 +160,4 @@ jobs:
         submodules: true # Check out WouterVanRanst.Utils
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
-      #with:
-      #  files: |
-
-    #     token: ${{ secrets.GITHUB_TOKEN }}
-    #     tag_name: ${{ github.ref }}
-    #     release_name: Release ${{ github.ref }}
-    #     body: Release description here
-    #     draft: false
-    #     prerelease: false
-
-    # - name: Attach artifacts to release
-    #   uses: actions/upload-release-asset@v1
-    #   with:
-    #     upload_url: ${{ steps.create_release.outputs.upload_url }}
-    #     asset_path: ./path_to_artifact
-    #     asset_name: artifact_name.zip
-    #     asset_content_type: application/zip
-  
+      uses: softprops/action-gh-release@v1 # see https://github.com/softprops/action-gh-release for options

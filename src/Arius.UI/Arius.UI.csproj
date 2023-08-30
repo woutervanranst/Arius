@@ -5,14 +5,17 @@
 		<TargetFramework>net7.0-windows</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<UseWPF>true</UseWPF>
+		
 		<ApplicationIcon>Resources\iceberg.ico</ApplicationIcon>
+		<PackageIcon>iceberg.svg</PackageIcon>
+
+		<UseWPF>true</UseWPF>
 		<UseWindowsForms>True</UseWindowsForms>
+		
 		<Authors>Wouter Van Ranst</Authors>
 		<Company>Blue Software</Company>
 		<Copyright>Blue Software</Copyright>
 		<PackageProjectUrl>https://github.com/woutervanranst/Arius</PackageProjectUrl>
-		<PackageIcon>iceberg.svg</PackageIcon>
 		<RepositoryUrl>https://github.com/woutervanranst/Arius</RepositoryUrl>
 		<AssemblyName>Arius.Explorer</AssemblyName>
 		<Title>Arius Explorer</Title>

@@ -29,6 +29,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
         //HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
         RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
+        AboutCommand = new RelayCommand(OnAbout);
     }
 
     public RepositoryFacade Repository     { get; set; }
@@ -264,8 +265,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
     }
-
     private bool CanRestore() => true;
+
+    public IRelayCommand AboutCommand { get; }
+
+    private void OnAbout()
+    {
+        var explorerVersion = System.Reflection.Assembly.GetEntryAssembly().GetName().Version;
+
+        var coreVersion = typeof(Arius.Core.Facade.Facade).Assembly.GetName().Version;
+
+        MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
 
 
     public partial class FolderViewModel : ObservableRecipient
