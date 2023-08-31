@@ -84,15 +84,15 @@ class ArchiveSteps : TestBase
 
         foreach (var f in files)
         {
-            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(new RelativePath(f.SourceRelativeName).Value))
+            if (!string.IsNullOrWhiteSpace(f.Size) && string.IsNullOrWhiteSpace(new RelativePath(f.SourceRelativeName)))
             {
                 // Create a new file
-                FileSystem.CreateBinaryFileIfNotExists(new RelativePath(f.RelativeName).Value, f.Size);
+                FileSystem.CreateBinaryFileIfNotExists(new RelativePath(f.RelativeName), f.Size);
             }
             else if (string.IsNullOrWhiteSpace(f.Size) && !string.IsNullOrWhiteSpace(f.SourceRelativeName))
             {
                 // Duplicate a file
-                FileSystem.DuplicateBinaryFile(new RelativePath(f.RelativeName).Value, new RelativePath(f.SourceRelativeName).Value);
+                FileSystem.DuplicateBinaryFile(new RelativePath(f.RelativeName), new RelativePath(f.SourceRelativeName));
             }
             else
                 throw new ArgumentException();
