@@ -19,41 +19,34 @@ public enum QueryResultStatus
     //Cancelled = -2
 }
 
-internal interface IQueryResult
-{
-    QueryResultStatus Status { get; }
-}
-
-internal abstract class Query<TOptions, TResults>
+internal abstract class Query<TOptions, TResult>
     where TOptions : QueryOptions
-    where TResults : IQueryResult
 {
     public void Validate(TOptions options) => options.Validate();
 
-    public TResults Execute(TOptions options)
+    public (QueryResultStatus Status, TResult? Result) Execute(TOptions options)
     {
         options.Validate();
 
         return ExecuteImpl(options);
     }
 
-    protected abstract TResults ExecuteImpl(TOptions options);
+    protected abstract (QueryResultStatus Status, TResult? Result) ExecuteImpl(TOptions options);
 }
 
-internal abstract class AsyncQuery<TOptions, TResults>
+internal abstract class AsyncQuery<TOptions, TResult>
     where TOptions : QueryOptions
-    where TResults : IQueryResult
 {
     /// <summary>
     /// Execute the Query
     /// </summary>
     /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
-    public async Task<TResults> ExecuteAsync(TOptions options)
+    public async Task<(QueryResultStatus Status, TResult? Result)> ExecuteAsync(TOptions options)
     {
         options.Validate();
 
         return await ExecuteImplAsync(options);
     }
     
-    protected abstract Task<TResults> ExecuteImplAsync(TOptions options);
+    protected abstract Task<(QueryResultStatus Status, TResult? Result)> ExecuteImplAsync(TOptions options);
 }

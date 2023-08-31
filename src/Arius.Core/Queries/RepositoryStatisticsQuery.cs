@@ -20,22 +20,8 @@ public interface IQueryRepositoryStatisticsResult
     public int  TotalChunks { get; }
 }
 
-internal record RepositoryStatisticsQueryResult : IQueryResult
-{
-    public QueryResultStatus Status { get; init; }
 
-
-    internal record RepositoryStatistics : IQueryRepositoryStatisticsResult
-    {
-        public long TotalSize   { get; init; }
-        public int  TotalFiles  { get; init; }
-        public int  TotalChunks { get; init; }
-    }
-    public IQueryRepositoryStatisticsResult? Result { get; init; }
-}
-
-
-internal class RepositoryStatisticsQuery: AsyncQuery<RepositoryStatisticsQueryOptions, RepositoryStatisticsQueryResult>
+internal class RepositoryStatisticsQuery: AsyncQuery<RepositoryStatisticsQueryOptions, IQueryRepositoryStatisticsResult>
 {
     private readonly Repository repository;
 
@@ -44,16 +30,24 @@ internal class RepositoryStatisticsQuery: AsyncQuery<RepositoryStatisticsQueryOp
         this.repository = repository;
     }
 
-    protected override async Task<RepositoryStatisticsQueryResult> ExecuteImplAsync(RepositoryStatisticsQueryOptions options)
+    protected override async Task<(QueryResultStatus Status, IQueryRepositoryStatisticsResult? Result)> ExecuteImplAsync(RepositoryStatisticsQueryOptions options)
     {
         var s = await repository.GetStatisticsAsync();
-        var r = new RepositoryStatisticsQueryResult.RepositoryStatistics()
+        var r = new RepositoryStatistics()
         {
             TotalSize   = s.ChunkSize,
             TotalFiles  = s.CurrentPointerFileEntryCount,
             TotalChunks = s.ChunkCount
         };
 
-        return new RepositoryStatisticsQueryResult { Status = QueryResultStatus.Success, Result = r };
+        return (QueryResultStatus.Success, r);
+    }
+
+
+    private record RepositoryStatistics : IQueryRepositoryStatisticsResult
+    {
+        public long TotalSize   { get; init; }
+        public int  TotalFiles  { get; init; }
+        public int  TotalChunks { get; init; }
     }
 }

@@ -78,7 +78,7 @@ public class StorageAccountFacade
         var q = new ContainerNamesQuery(loggerFactory.CreateLogger<ContainerNamesQuery>(), storageAccountOptions);
 
 
-        return q.Execute(o).ContainerNames;
+        return q.Execute(o).Result;
     }
 
     /// <summary>

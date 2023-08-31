@@ -28,7 +28,7 @@ internal partial class ArchiveCommand : AsyncCommand<ArchiveCommandOptions>
     private readonly ArchiveCommandStatistics stats;
     private readonly FileSystemService        fileSystemService;
 
-    public async Task<CommandResultStatus> ExecuteImplAsync(ArchiveCommandOptions options)
+    protected override async Task<CommandResultStatus> ExecuteImplAsync(ArchiveCommandOptions options)
     {
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);

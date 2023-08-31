@@ -1,16 +1,15 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Facade;
 using Arius.Core.Models;
-using Arius.Core.Repositories.StateDb;
 using Arius.Core.Repositories;
+using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Queries;
 
@@ -33,30 +32,14 @@ public interface IEntryQueryResult // also implemented by Arius.UI.FileService
     public string DirectoryName { get; }
     public string Name { get; }
 }
-
 public interface IPointerFileEntryQueryResult : IEntryQueryResult // properties specific to PointerFileEntry. Public interface is required for type matching
 {
     public long OriginalLength { get; }
     public HydrationState HydrationState { get; }
 }
 
-internal record PointerFileEntriesQueryResult : IQueryResult
-{
-    public required QueryResultStatus Status { get; init; }
 
-
-    internal record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
-    {
-        public string RelativeParentPath { get; init; }
-        public string DirectoryName { get; init; }
-        public string Name { get; init; }
-        public long OriginalLength { get; init; }
-        public HydrationState HydrationState { get; init; }
-    }
-    public IAsyncEnumerable<PointerFileEntryQueryResult>? Result { get; init; }
-}
-
-internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, PointerFileEntriesQueryResult>
+internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, IAsyncEnumerable<IPointerFileEntryQueryResult>>
 {
     private readonly ILoggerFactory loggerFactory;
     private readonly Repository repository;
@@ -76,16 +59,12 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, P
         });
     }
 
-    protected override PointerFileEntriesQueryResult ExecuteImpl(PointerFileEntriesQueryOptions options)
+    protected override (QueryResultStatus Status, IAsyncEnumerable<IPointerFileEntryQueryResult>? Result) ExecuteImpl(PointerFileEntriesQueryOptions options)
     {
-        return new PointerFileEntriesQueryResult
-        {
-            Status = QueryResultStatus.Success,
-            Result = GetPointerFilesEntriesAsync(repository, options)
-        };
+        return (QueryResultStatus.Success, GetPointerFilesEntriesAsync(repository, options));
 
 
-        static async IAsyncEnumerable<PointerFileEntriesQueryResult.PointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
+        static async IAsyncEnumerable<IPointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
         {
             var relativeParentPathEquals = options.RelativeParentPathEquals is not null
                 ? PointerFileEntryConverter.ToPlatformNeutralPath(options.RelativeParentPathEquals)
@@ -99,7 +78,7 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, P
                                nameContains: options.NameContains,
                                includeChunkEntry: true))
             {
-                yield return new PointerFileEntriesQueryResult.PointerFileEntryQueryResult
+                yield return new PointerFileEntryQueryResult
                 {
                     RelativeParentPath = pfe.RelativeParentPath,
                     DirectoryName = pfe.DirectoryName,
@@ -131,5 +110,14 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, P
                 return HydrationState.Hydrated;
             }
         }
+    }
+
+    private record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
+    {
+        public string         RelativeParentPath { get; init; }
+        public string         DirectoryName      { get; init; }
+        public string         Name               { get; init; }
+        public long           OriginalLength     { get; init; }
+        public HydrationState HydrationState     { get; init; }
     }
 }

@@ -23,7 +23,7 @@ internal class RestoreCommand : AsyncCommand<RestoreCommandOptions>
     private readonly Repository              repo;
     private readonly ILogger<RestoreCommand> logger;
 
-    public async Task<CommandResultStatus> ExecuteImplAsync(RestoreCommandOptions options)
+    protected override async Task<CommandResultStatus> ExecuteImplAsync(RestoreCommandOptions options)
     {
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);

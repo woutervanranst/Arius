@@ -17,13 +17,8 @@ internal record QueryContainerNamesOptions : QueryOptions
     }
 }
 
-internal class QueryContainerNamesResult : IQueryResult
-{
-    public required QueryResultStatus        Status         { get; init; }
-    public required IAsyncEnumerable<string> ContainerNames { get; init; }
-}
 
-internal class ContainerNamesQuery : Query<QueryContainerNamesOptions, QueryContainerNamesResult>
+internal class ContainerNamesQuery : Query<QueryContainerNamesOptions, IAsyncEnumerable<string>>
 {
     private readonly ILogger<ContainerNamesQuery> logger;
     private readonly StorageAccountOptions        storageAccountOptions;
@@ -34,23 +29,19 @@ internal class ContainerNamesQuery : Query<QueryContainerNamesOptions, QueryCont
         this.storageAccountOptions = options;
     }
 
-    protected override QueryContainerNamesResult ExecuteImpl(QueryContainerNamesOptions queryOptions)
+    protected override (QueryResultStatus Status, IAsyncEnumerable<string>? Result) ExecuteImpl(QueryContainerNamesOptions queryOptions)
     {
         var bco = new BlobClientOptions
         {
             Retry =
-            {
-                MaxRetries     = queryOptions.MaxRetries,
-                NetworkTimeout = TimeSpan.FromSeconds(5),
-            }
+                {
+                    MaxRetries     = queryOptions.MaxRetries,
+                    NetworkTimeout = TimeSpan.FromSeconds(5),
+                }
         };
 
         var blobServiceClient = storageAccountOptions.GetBlobServiceClient(bco);
 
-        return new QueryContainerNamesResult
-        {
-            Status = QueryResultStatus.Success, 
-            ContainerNames = blobServiceClient.GetBlobContainersAsync().Select(bci => bci.Name)
-        };
+        return (QueryResultStatus.Success, blobServiceClient.GetBlobContainersAsync().Select(bci => bci.Name));
     }
 }
