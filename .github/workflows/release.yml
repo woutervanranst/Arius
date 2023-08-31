@@ -1,0 +1,163 @@
+name: Arius Release
+
+on:
+  # Runs when main gets a tag
+  push:
+    # paths:
+    #   - 'src/Arius.Core/**'
+    # branches:
+    #     - main
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    name: Run Test Suite on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: ./src
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+      # with:
+      #   submodules: true # Check out WouterVanRanst.Utils - here we DO need it since we don't have nuget packages yet
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.x
+
+    - name: Cache .NET packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.nuget/packages
+          !~/.nuget/packages/**/project.assets.json
+          !~/.nuget/packages/**/project.nuget.cache
+        key: ${{ runner.os }}-dotnet-${{ hashFiles('**/Arius.Core.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-dotnet-
+
+    - name: Test
+      run: |
+        dotnet test Arius.Core.BehaviorTests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        dotnet test Arius.Core.Tests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+      env:
+        ARIUS_ACCOUNT_NAME: ariusci
+        ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
+
+
+  publish_nuget:
+    name: Arius.Core - Publish NuGet package
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./src
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      # with:
+      #   submodules: true # Check out WouterVanRanst.Utils
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.x
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+    
+    - name: Build NuGet Package
+      run: dotnet pack Arius.Core --configuration Release /p:Version=$VERSION
+
+    - name: Publish NuGet Package
+      run: dotnet nuget push Arius.Core/bin/Release/WouterVanRanst.Arius.Core.*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+    - name: Wait for NuGet package to be available
+      run: |
+        PACKAGE_NAME=$(echo "WouterVanRanst.Arius.Core" | tr '[:upper:]' '[:lower:]')   # needs to be lowercase
+        end=$((SECONDS+900))
+        while [ $SECONDS -lt $end ]; do
+          RESPONSE=$(curl -s "https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME}/index.json")
+          if echo "$RESPONSE" | jq -e --arg version "$VERSION" '.versions[] | select(. == $version)' > /dev/null; then
+            echo "Package $PACKAGE_NAME version $VERSION is available!"
+            break
+          fi
+          echo "Waiting for package $PACKAGE_NAME version $VERSION to be listed..."
+          sleep 10
+        done
+
+
+  build_windows_ui:
+    # See https://janjones.me/posts/clickonce-installer-build-publish-github/
+    name: Arius.UI - Publish ClickOnce
+    needs: publish_nuget
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        # with:
+        #   submodules: true # Check out WouterVanRanst.Utils
+
+      - name: Setup Git
+        run: |
+          git config --global url."https://user:${{ secrets.GITHUB_TOKEN }}@github".insteadOf https://github
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com          
+
+      - name: Run release script
+        shell: pwsh
+        run: ./.github/workflows/release.ps1
+
+
+  build_docker:
+    name: Arius.Cli - Publish Docker image
+    needs: publish_nuget
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./src
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get version from tag
+        id: get_version_docker
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:$VERSION"
+          docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
+          docker push $IMAGE_NAME
+
+
+  release:
+    name: Arius - Create GitHub Release
+    needs: [build_windows_ui, build_docker]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        submodules: true # Check out WouterVanRanst.Utils
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1 # see https://github.com/softprops/action-gh-release for options

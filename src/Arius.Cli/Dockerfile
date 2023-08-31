@@ -1,36 +1,51 @@
-# Local build:  
-# docker build . -t arius --build-arg GITHUB_USER=wouter.vanranst@gmail.com --build-arg GITHUB_TOKEN=....
+#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
-# Local Run --> IN CMD (not WSL)
-#	For WSL Volume Mount > check 'Enable integration with additional distros'
+# Local build
+# in /src/
+# docker build -f Arius.Cli\Dockerfile . -t arius
 
+# Local run (in cmd.exe, not WSL)
+# docker run -it arius /bin/sh
 
+# Base rintime image for final image
 # https://hub.docker.com/_/microsoft-dotnet-runtime/
 FROM mcr.microsoft.com/dotnet/runtime:7.0 AS base
-# RUN apt-get update
 WORKDIR /app
 
-
+# SDK image for build & test
 # https://hub.docker.com/_/microsoft-dotnet-sdk/
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-ARG GITHUB_USER
-ARG GITHUB_TOKEN
+
+# Copy project files
 WORKDIR /src
-COPY "Arius.Cli.csproj" .
-RUN dotnet nuget add source -u $GITHUB_USER -p $GITHUB_TOKEN --store-password-in-clear-text -n AriusGithub "https://nuget.pkg.github.com/woutervanranst/index.json"
-RUN dotnet restore "Arius.Cli.csproj"
+COPY ["Arius.Cli/Arius.Cli.csproj", "Arius.Cli/"]
+COPY ["Arius.Cli.Tests/Arius.Cli.Tests.csproj", "Arius.Cli.Tests/"]
+
+# Restore the projects
+RUN dotnet restore "Arius.Cli/Arius.Cli.csproj"
+RUN dotnet restore "Arius.Cli.Tests/Arius.Cli.Tests.csproj"
+
+# Copy the source code
 COPY . .
-WORKDIR "/src"
-RUN dotnet build "Arius.Cli.csproj" -c Release -o /app/build
 
+# Build the CLI project
+RUN dotnet build "Arius.Cli/Arius.Cli.csproj" -c Release -o /app/build
 
+# Run the CLI test project _in_ the container
+RUN mkdir /logs
+RUN dotnet test "Arius.Cli.Tests/Arius.Cli.Tests.csproj" -c Release
+
+# If the test was successful, create final artifact
 FROM build AS publish
-RUN dotnet publish "Arius.Cli.csproj" -c Release -o /app/publish
+RUN dotnet publish "Arius.Cli/Arius.Cli.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-
-FROM base as final
+# Final image
+FROM base AS final
 VOLUME ["/archive"]
 VOLUME ["/logs"]
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "arius.dll"]
+
+#ENTRYPOINT ["/bin/sh", "-c"]
+#CMD ["while :; do sleep 10; done"]

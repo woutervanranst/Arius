@@ -31,7 +31,7 @@ internal abstract class BlockBase
 
 internal abstract class TaskBlockBase : BlockBase
 {
-    protected TaskBlockBase(ILoggerFactory loggerFactory, Action onCompleted = default)
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Action? onCompleted = default)
     {
         this.logger = loggerFactory.CreateLogger(this.GetType());
 
@@ -91,11 +91,11 @@ internal abstract class TaskBlockBase : BlockBase
 
 internal abstract class TaskBlockBase<TSource> : TaskBlockBase
 {
-    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action onCompleted = default)
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<TSource> sourceFunc, Action? onCompleted = default)
         : this(loggerFactory, () => Task.FromResult(sourceFunc()), onCompleted)
     {
     }
-    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action onCompleted = default)
+    protected TaskBlockBase(ILoggerFactory loggerFactory, Func<Task<TSource>> sourceFunc, Action? onCompleted = default)
         : base(loggerFactory, onCompleted)
     {
         this.sourceFunc = sourceFunc;
@@ -133,11 +133,11 @@ internal abstract class TaskBlockBase<TSource> : TaskBlockBase
     
 internal abstract class ChannelTaskBlockBase<TSource> : TaskBlockBase<ChannelReader<TSource>>
 {
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action onCompleted = default)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<ChannelReader<TSource>> sourceFunc, int maxDegreeOfParallelism = 1, Action? onCompleted = default)
         : this(loggerFactory, () => Task.FromResult(sourceFunc()), maxDegreeOfParallelism, onCompleted)
     {
     }
-    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<ChannelReader<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action onCompleted = default)
+    protected ChannelTaskBlockBase(ILoggerFactory loggerFactory, Func<Task<ChannelReader<TSource>>> sourceFunc, int maxDegreeOfParallelism = 1, Action? onCompleted = default)
         : base(loggerFactory, sourceFunc, onCompleted)
     {
         this.maxDegreeOfParallelism = maxDegreeOfParallelism;

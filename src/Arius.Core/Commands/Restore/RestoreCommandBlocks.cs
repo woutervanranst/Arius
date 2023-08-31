@@ -19,7 +19,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     public ProvisionPointerFilesBlock(ILoggerFactory loggerFactory,
        Func<DirectoryInfo> sourceFunc,
        int maxDegreeOfParallelism,
-       IRestoreCommandOptions options,
+       RestoreCommandOptions options,
        Repository repo,
        FileSystemService fileSystemService,
        FileService fileService,
@@ -36,7 +36,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     }
 
     private readonly int                     maxDegreeOfParallelism;
-    private readonly IRestoreCommandOptions  options;
+    private readonly RestoreCommandOptions   options;
     private readonly Repository              repo;
     private readonly FileSystemService       fileSystemService;
     private readonly FileService             fileService;
@@ -148,7 +148,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         Func<ChannelReader<PointerFile>> sourceFunc,
         FileService fileService,
         Repository repo,
-        IRestoreCommandOptions options,
+        RestoreCommandOptions options,
         Action chunkRehydrating,
         Action onCompleted,
         int maxDegreeOfParallelism)
@@ -160,10 +160,10 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         this.chunkRehydrating = chunkRehydrating;
     }
 
-    private readonly FileService            fileService;
-    private readonly Repository             repo;
-    private readonly IRestoreCommandOptions options;
-    private readonly Action                 chunkRehydrating;
+    private readonly FileService           fileService;
+    private readonly Repository            repo;
+    private readonly RestoreCommandOptions options;
+    private readonly Action                chunkRehydrating;
 
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource<BinaryFile>> restoredBinaries = new();
 

@@ -11,4 +11,9 @@ class RelativePath
     }
 
     public string Value { get; }
+
+    public static implicit operator string(RelativePath relativePath)
+    {
+        return relativePath.Value;
+    }
 }

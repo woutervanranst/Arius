@@ -39,7 +39,8 @@ if (Test-Path $outDir) {
 Push-Location $projDir
 try {
     Write-Output "Restoring:"
-    dotnet restore -r win-x64
+    # dotnet restore -r win-x64  ## this does not play well with <ItemGroup Condition="'$(Configuration)'=='Release'">
+    dotnet build -r win-x64 -c Release
     Write-Output "Publishing:"
     $msBuildVerbosityArg = "/v:m"
     if ($env:CI) {

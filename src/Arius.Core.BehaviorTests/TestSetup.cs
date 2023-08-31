@@ -122,7 +122,7 @@ internal static class TestSetup
 
     // --------- COMMANDS ---------
 
-    public static async Task<int> ArchiveCommandAsync(AccessTier tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
+    public static async Task<CommandResultStatus> ArchiveCommandAsync(string tier, bool purgeRemote = false, bool removeLocal = false, bool fastHash = false, bool dedup = false)
     {
         if (purgeRemote)
             await PurgeRemoteAsync(true);
@@ -135,15 +135,15 @@ internal static class TestSetup
     }
 
 
-    public static async Task<int> RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
+    public static async Task<CommandResultStatus> RestoreCommandAsyc(bool synchronize = false, bool download = false, bool keepPointers = true)
     {
         return await RestoreCommandAsync(FileSystem.RestoreDirectory, synchronize, download, keepPointers);
     }
-    public static async Task<int> RestoreCommandAsync(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
+    public static async Task<CommandResultStatus> RestoreCommandAsync(DirectoryInfo path, bool synchronize = false, bool download = false, bool keepPointers = true)
     {
         return await Facade.ExecuteRestoreCommandAsync(path, synchronize, download, keepPointers, DateTime.UtcNow);
     }
-    public static async Task<int> RestoreCommandAsync(params string[] relativeNames)
+    public static async Task<CommandResultStatus> RestoreCommandAsync(params string[] relativeNames)
     {
         return await Facade.ExecuteRestoreCommandAsync(FileSystem.RestoreDirectory, download: true, keepPointers: false, relativeNames: relativeNames);
     }

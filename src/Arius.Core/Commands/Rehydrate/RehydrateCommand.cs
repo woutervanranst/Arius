@@ -1,15 +1,13 @@
-﻿using System;
+﻿using Arius.Core.Facade;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Arius.Core.Facade;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Rehydrate;
 
-internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
+internal class RehydrateCommand : AsyncCommand<RehydrateCommandOptions>
 {
     public RehydrateCommand(ILogger<RehydrateCommand> logger)
     {
@@ -18,7 +16,7 @@ internal class RehydrateCommand : ICommand<IRehydrateCommandOptions>
 
     private readonly ILogger<RehydrateCommand> logger;
 
-    public async Task<int> ExecuteAsync(IRehydrateCommandOptions options)
+    protected override async Task<CommandResultStatus> ExecuteImplAsync(RehydrateCommandOptions options)
     {
         var container = options.GetBlobContainerClient();
 

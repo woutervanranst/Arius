@@ -17,12 +17,6 @@ internal class StateDbContext : DbContext
     private readonly string dbPath;
     private readonly Action<int> hasChanges;
 
-    ///// <summary>
-    ///// Required for EF Migrations (potentially also Moq, UnitTests but not sure)
-    ///// </summary>
-    //public StateDbContext()
-    //{
-    //}
     internal StateDbContext(string dbPath) : this(dbPath, new Action<int>(_ => { }))
     {
     }
@@ -54,20 +48,21 @@ internal class StateDbContext : DbContext
         cmb.HasKey(c => c.Hash);
         cmb.HasIndex(c => c.Hash).IsUnique();
 
-        //builder.Property(c => c.Hash)
-        //    .HasColumnName("Hash");
-        //.HasConversion(bh => bh.Value, value => new BinaryHash(value));
-        //.HasConversion(new MyValueConverter());
-
         cmb.Property(c => c.AccessTier)
             .HasConversion(new AccessTierConverter());
+
 
         var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
         pfemb.ToTable("PointerFileEntries");
         pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name, pfe.VersionUtc });
         pfemb.HasIndex(pfe => pfe.BinaryHash); // NOT unique
         pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
-        //pfemb.HasIndex(pfe => pfe.RelativeName); //to facilitate PointerFileEntries.GroupBy(RelativeName)
+        
+        pfemb.HasIndex(pfe => pfe.RelativeParentPath);  // to facilitate GetPointerFileEntriesAtVersionAsync
+        pfemb.HasIndex(pfe => pfe.DirectoryName);       // to facilitate GetPointerFileEntriesAtVersionAsync
+        pfemb.HasIndex(pfe => pfe.Name);                // to facilitate GetPointerFileEntriesAtVersionAsync
+        
+        //pfemb.HasIndex(pfe => pfe.RelativeName);        //to facilitate PointerFileEntries.GroupBy(RelativeName)
 
         pfemb.Property(pfe => pfe.Name)
             .HasConversion(new RemovePointerFileExtensionConverter());

@@ -19,6 +19,18 @@
     "restore BIG": {
       "commandName": "Project",
       "commandLineArgs": "restore e:\\Restore -n aurius -k %ARIUS_ACCOUNT_KEY% -p woutervr -c archivededup --synchronize"
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "commandLineArgs": "archive"
+    },
+    "Docker w env vars": {
+      "commandName": "Docker",
+      "environmentVariables": {
+        "ARIUS_ACCOUNT_NAME": "ha",
+        "ARIUS_ACCOUNT_KEY": "ho"
+      },
+      "commandLineArgs": "archive"
     }
   }
 }

@@ -51,11 +51,15 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
 
     public override ValidationResult Validate(CommandContext context, RestoreCommandOptions options)
     {
-        var r = RepositoryFacade.ValidateRestoreCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc);
-        if (!r.IsValid)
-            return ValidationResult.Error(r.ToString());
-
-        return ValidationResult.Success();
+        try
+        {
+            RepositoryFacade.ValidateRestoreCommandOptions(options.AccountName, options.AccountKey, options.ContainerName, options.Passphrase, options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc);
+            return ValidationResult.Success();
+        }
+        catch (ArgumentException e)
+        {
+            return ValidationResult.Error(e.Message);
+        }
     }
 
     public override async Task<int> ExecuteAsync(CommandContext context, RestoreCommandOptions options)
@@ -70,9 +74,9 @@ internal class RestoreCliCommand : AsyncCommand<RestoreCliCommand.RestoreCommand
                 .ForRepositoryAsync(options.ContainerName, options.Passphrase);
 
             if (options.PointInTimeUtc.HasValue)
-                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
+                return (int)await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers, options.PointInTimeUtc!.Value);
             else
-                return await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers);
+                return (int)await rf.ExecuteRestoreCommandAsync(options.Path, options.Synchronize, options.Download, options.KeepPointers);
         }
         catch (Exception e)
         {
