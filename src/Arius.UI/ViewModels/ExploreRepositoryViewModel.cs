@@ -375,12 +375,12 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             {
                 return HydrationState switch
                 {
-                    Arius.Core.Queries.HydrationState.Hydrated         => Brushes.Blue,
-                    Arius.Core.Queries.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
-                    Arius.Core.Queries.HydrationState.Hydrating        => Brushes.DeepSkyBlue,
-                    Arius.Core.Queries.HydrationState.NotHydrated      => Brushes.LightBlue,
-                    null                                               => Brushes.Transparent,
-                    _                                                  => throw new ArgumentOutOfRangeException()
+                    Core.Facade.HydrationState.Hydrated         => Brushes.Blue,
+                    Core.Facade.HydrationState.NeedsToBeQueried => Brushes.Blue, // for chunked ones - graceful UI for now
+                    Core.Facade.HydrationState.Hydrating        => Brushes.DeepSkyBlue,
+                    Core.Facade.HydrationState.NotHydrated      => Brushes.LightBlue,
+                    null                                        => Brushes.Transparent,
+                    _                                           => throw new ArgumentOutOfRangeException()
                 };
             }
         }
@@ -408,16 +408,16 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
                 switch (HydrationState)
                 {
-                    case Core.Queries.HydrationState.Hydrated:
+                    case Core.Facade.HydrationState.Hydrated:
                         s.AppendLine("The remote file can be restored");
                         break;
-                    case Core.Queries.HydrationState.Hydrating:
+                    case Core.Facade.HydrationState.Hydrating:
                         s.AppendLine("The remote file is being hydrated");
                         break;
-                    case Core.Queries.HydrationState.NotHydrated:
+                    case Core.Facade.HydrationState.NotHydrated:
                         s.AppendLine("The remote file needs to be hydrated first");
                         break;
-                    case Core.Queries.HydrationState.NeedsToBeQueried:
+                    case Core.Facade.HydrationState.NeedsToBeQueried:
                         s.AppendLine("The remote file is split up in parts. Not sure whether it can be downloaded.");
                         break;
                     case null:
