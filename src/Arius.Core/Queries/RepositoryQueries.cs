@@ -1,52 +1,67 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Nito.AsyncEx;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace Arius.Core.Queries;
 
-public interface IEntryQueryResult
+internal record PointerFileEntriesQueryOptions : IQueryOptions
 {
-    public string RelativeParentPath { get; }
-    public string DirectoryName { get; }
-    public string Name { get; }
+    public string? RelativeParentPathEquals { get; init; } = null;
+    public string? DirectoryNameEquals      { get; init; } = null;
+    public string? NameContains             { get; init; } = null;
+
+    public void Validate()
+    {
+        // Always succeeds
+    }
 }
 
-public interface IPointerFileEntryQueryResult : IEntryQueryResult
+
+public interface IEntryQueryResult // also implemented by Arius.UI.FileService
+{
+    public string RelativeParentPath { get; }
+    public string DirectoryName      { get; }
+    public string Name               { get; }
+}
+
+public interface IPointerFileEntryQueryResult : IEntryQueryResult // properties specific to PointerFileEntry. Public interface is required for type matching
 {
     public long           OriginalLength { get; }
     public HydrationState HydrationState { get; }
 }
 
-public enum HydrationState
+internal record PointerFileEntriesQueryResult : IQueryResult
 {
-    Hydrated,
-    Hydrating,
-    NotHydrated,
-    NeedsToBeQueried
+    internal record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
+    {
+        public string         RelativeParentPath { get; init; }
+        public string         DirectoryName      { get; init; }
+        public string         Name               { get; init; }
+        public long           OriginalLength     { get; init; }
+        public HydrationState HydrationState     { get; init; }
+    }
+
+    public required QueryResultStatus Status { get; init; }
+    public required IAsyncEnumerable<PointerFileEntryQueryResult> PointerFileEntries { get; init; }
 }
 
-public interface IQueryRepositoryStatisticsResult
-{
-    public long TotalSize   { get; }
-    public int  TotalFiles  { get; }
-    public int  TotalChunks { get; }
-}
-
-
-internal class RepositoryQueries
+internal class PointerFileEntriesQuery : IQuery<PointerFileEntriesQueryOptions, PointerFileEntriesQueryResult>
 {
     private readonly ILoggerFactory loggerFactory;
-    private readonly Repository     repository; 
+    private readonly Repository     repository;
 
-    public RepositoryQueries(ILoggerFactory loggerFactory, Repository repository)
+    private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
+
+    public PointerFileEntriesQuery(ILoggerFactory loggerFactory, Repository repository)
     {
         this.loggerFactory = loggerFactory;
         this.repository    = repository;
@@ -59,65 +74,161 @@ internal class RepositoryQueries
         });
     }
 
-    record QueryPointerFileEntriesResult : IPointerFileEntryQueryResult
+    public PointerFileEntriesQueryResult Execute(PointerFileEntriesQueryOptions options)
     {
-        public string         RelativeParentPath { get; init; }
-        public string         DirectoryName      { get; init; }
-        public string         Name               { get; init; }
-        public long           OriginalLength     { get; init; }
-        public HydrationState HydrationState     { get; init; }
-    }
+        options.Validate();
 
-    private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
-
-    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntriesAsync(
-        string? relativeParentPathEquals = null,
-        string? directoryNameEquals = null,
-        string? nameContains = null)
-    {
-        if (relativeParentPathEquals is not null)
-            relativeParentPathEquals = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPathEquals);
-
-        await foreach (var pfe in repository.GetPointerFileEntriesAsync(
-                           pointInTimeUtc: DateTime.Now,
-                           includeDeleted: false,
-                           relativeParentPathEquals: relativeParentPathEquals,
-                           directoryNameEquals: directoryNameEquals,
-                           nameContains: nameContains,
-                           includeChunkEntry: true))
+        return new PointerFileEntriesQueryResult
         {
-            yield return new QueryPointerFileEntriesResult()
-            {
-                RelativeParentPath = pfe.RelativeParentPath,
-                DirectoryName      = pfe.DirectoryName,
-                Name               = pfe.Name,
+            Status = QueryResultStatus.Success,
+            PointerFileEntries = GetPointerFilesEntriesAsync(repository, options)
+        };
 
-                OriginalLength = pfe.Chunk.OriginalLength,
-                HydrationState = await GetHydrationStateAsync(pfe.Chunk)
-            };
-        }
-            
 
-        async Task<HydrationState> GetHydrationStateAsync(ChunkEntry c)
+        static async IAsyncEnumerable<PointerFileEntriesQueryResult.PointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
         {
-            if (c.AccessTier is null)
-                return HydrationState.NeedsToBeQueried; // in case of chunked
-            if (c.AccessTier == AccessTier.Archive)
+            var relativeParentPathEquals = options.RelativeParentPathEquals is not null
+                ? PointerFileEntryConverter.ToPlatformNeutralPath(options.RelativeParentPathEquals)
+                : null;
+
+            await foreach (var pfe in repository.GetPointerFileEntriesAsync(
+                               pointInTimeUtc: DateTime.Now,
+                               includeDeleted: false,
+                               relativeParentPathEquals: relativeParentPathEquals,
+                               directoryNameEquals: options.DirectoryNameEquals,
+                               nameContains: options.NameContains,
+                               includeChunkEntry: true))
             {
-                if ((await rehydratingChunks).TryGetValue(new ChunkHash(c.Hash), out var hydrationPending))
+                yield return new PointerFileEntriesQueryResult.PointerFileEntryQueryResult
                 {
-                    if (hydrationPending)
-                        return HydrationState.Hydrating; // It s in the archive tier but a hydrating copy is being made
-                    else
-                        return HydrationState.Hydrated; // It s in the archive tier but there is a hydrated copy
-                }
-                else
-                    return HydrationState.NotHydrated; // It s in the archive tier
+                    RelativeParentPath = pfe.RelativeParentPath,
+                    DirectoryName      = pfe.DirectoryName,
+                    Name               = pfe.Name,
+
+                    OriginalLength = pfe.Chunk.OriginalLength,
+                    HydrationState = await GetHydrationStateAsync(pfe.Chunk)
+                };
             }
 
-            return HydrationState.Hydrated;
+
+            static async Task<HydrationState> GetHydrationStateAsync(ChunkEntry c)
+            {
+                if (c.AccessTier is null)
+                    return HydrationState.NeedsToBeQueried; // in case of chunked
+                if (c.AccessTier == AccessTier.Archive)
+                {
+                    if ((await rehydratingChunks).TryGetValue(new ChunkHash(c.Hash), out var hydrationPending))
+                    {
+                        if (hydrationPending)
+                            return HydrationState.Hydrating; // It s in the archive tier but a hydrating copy is being made
+                        else
+                            return HydrationState.Hydrated; // It s in the archive tier but there is a hydrated copy
+                    }
+                    else
+                        return HydrationState.NotHydrated; // It s in the archive tier
+                }
+
+                return HydrationState.Hydrated;
+            }
         }
     }
+}
+
+
+
+
+
+
+
+
+
+
+
+public interface IQueryRepositoryStatisticsResult
+{
+    public long TotalSize   { get; }
+    public int  TotalFiles  { get; }
+    public int  TotalChunks { get; }
+}
+
+
+internal class RepositoryQueries
+{
+    //private readonly ILoggerFactory loggerFactory;
+    private readonly Repository repository;
+
+    public RepositoryQueries(ILoggerFactory loggerFactory, Repository repository)
+    {
+        //this.loggerFactory = loggerFactory;
+        this.repository = repository;
+
+        //    // Lazy load the rehydrating chunks
+        //    rehydratingChunks ??= new AsyncLazy<Dictionary<ChunkHash, bool>>(async () =>
+        //    {
+        //        return await repository.GetRehydratedChunksAsync()
+        //            .ToDictionaryAsync(c => c.ChunkHash, c => c.HydrationPending);
+        //    });
+    }
+
+    //record QueryPointerFileEntriesResult : IPointerFileEntryQueryResult
+    //{
+    //    public string         RelativeParentPath { get; init; }
+    //    public string         DirectoryName      { get; init; }
+    //    public string         Name               { get; init; }
+    //    public long           OriginalLength     { get; init; }
+    //    public HydrationState HydrationState     { get; init; }
+    //}
+
+    //private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
+
+    //public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntriesAsync(
+    //    string? relativeParentPathEquals = null,
+    //    string? directoryNameEquals = null,
+    //    string? nameContains = null)
+    //{
+    //    if (relativeParentPathEquals is not null)
+    //        relativeParentPathEquals = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPathEquals);
+
+    //    await foreach (var pfe in repository.GetPointerFileEntriesAsync(
+    //                       pointInTimeUtc: DateTime.Now,
+    //                       includeDeleted: false,
+    //                       relativeParentPathEquals: relativeParentPathEquals,
+    //                       directoryNameEquals: directoryNameEquals,
+    //                       nameContains: nameContains,
+    //                       includeChunkEntry: true))
+    //    {
+    //        yield return new QueryPointerFileEntriesResult()
+    //        {
+    //            RelativeParentPath = pfe.RelativeParentPath,
+    //            DirectoryName      = pfe.DirectoryName,
+    //            Name               = pfe.Name,
+
+    //            OriginalLength = pfe.Chunk.OriginalLength,
+    //            HydrationState = await GetHydrationStateAsync(pfe.Chunk)
+    //        };
+    //    }
+
+
+    //    async Task<HydrationState> GetHydrationStateAsync(ChunkEntry c)
+    //    {
+    //        if (c.AccessTier is null)
+    //            return HydrationState.NeedsToBeQueried; // in case of chunked
+    //        if (c.AccessTier == AccessTier.Archive)
+    //        {
+    //            if ((await rehydratingChunks).TryGetValue(new ChunkHash(c.Hash), out var hydrationPending))
+    //            {
+    //                if (hydrationPending)
+    //                    return HydrationState.Hydrating; // It s in the archive tier but a hydrating copy is being made
+    //                else
+    //                    return HydrationState.Hydrated; // It s in the archive tier but there is a hydrated copy
+    //            }
+    //            else
+    //                return HydrationState.NotHydrated; // It s in the archive tier
+    //        }
+
+    //        return HydrationState.Hydrated;
+    //    }
+    //}
 
     record RepositoryStatistics : IQueryRepositoryStatisticsResult
     {

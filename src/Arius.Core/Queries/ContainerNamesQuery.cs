@@ -36,6 +36,8 @@ internal class ContainerNamesQuery : IQuery<QueryContainerNamesOptions, QueryCon
 
     public QueryContainerNamesResult Execute(QueryContainerNamesOptions queryOptions)
     {
+        queryOptions.Validate();
+        
         var bco = new BlobClientOptions
         {
             Retry =

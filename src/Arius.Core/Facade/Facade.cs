@@ -241,8 +241,11 @@ public class RepositoryFacade : IDisposable
         string? directoryNameEquals = null,
         string? nameContains = null)
     {
-        var q = new RepositoryQueries(loggerFactory, Repository);
-        await foreach (var e in q.QueryPointerFileEntriesAsync(relativeParentPathEquals, directoryNameEquals, nameContains))
+        var o = new PointerFileEntriesQueryOptions { RelativeParentPathEquals = relativeParentPathEquals, DirectoryNameEquals = directoryNameEquals, NameContains = nameContains };
+        var q = new PointerFileEntriesQuery(loggerFactory, Repository);
+        var r = q.Execute(o);
+
+        await foreach (var e in r.PointerFileEntries)
             yield return e;
     }
 
