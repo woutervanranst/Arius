@@ -15,15 +15,16 @@ internal abstract record QueryOptions
 public enum QueryResultStatus
 {
     Success = 0,
-    Failed  = -1,
+    Error  = -1,
     //Cancelled = -2
 }
 
-internal abstract class Query<TOptions, TResult>
-    where TOptions : QueryOptions
+internal abstract class Query<TOptions, TResult> where TOptions : QueryOptions
 {
-    public void Validate(TOptions options) => options.Validate();
-
+    /// <summary>
+    /// Execute the Query
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
     public (QueryResultStatus Status, TResult? Result) Execute(TOptions options)
     {
         options.Validate();
@@ -34,8 +35,7 @@ internal abstract class Query<TOptions, TResult>
     protected abstract (QueryResultStatus Status, TResult? Result) ExecuteImpl(TOptions options);
 }
 
-internal abstract class AsyncQuery<TOptions, TResult>
-    where TOptions : QueryOptions
+internal abstract class AsyncQuery<TOptions, TResult> where TOptions : QueryOptions
 {
     /// <summary>
     /// Execute the Query
