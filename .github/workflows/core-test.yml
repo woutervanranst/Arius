@@ -1,4 +1,4 @@
-name: Arius.Core - Test Suite
+name: Arius.Core - Test Suites
 
 on:
   # Runs on every push to Arius.Core

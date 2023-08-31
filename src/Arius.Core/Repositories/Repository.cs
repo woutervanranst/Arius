@@ -20,7 +20,7 @@ internal partial class Repository : IDisposable
     }
 
     [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, IRepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainer container)
+    public Repository(ILogger<Repository> logger, RepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainer container)
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;
@@ -28,7 +28,7 @@ internal partial class Repository : IDisposable
         this.Options          = options;
     }
 
-    public IRepositoryOptions Options { get; }
+    public RepositoryOptions Options { get; }
 
     // --------- STATE DB ---------
 

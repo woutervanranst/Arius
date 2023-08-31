@@ -17,10 +17,10 @@ internal partial class RepositoryBuilder
         this.logger = logger;
     }
 
-    private IRepositoryOptions options   = default;
-    private BlobContainer      container = default;
+    private RepositoryOptions options   = default;
+    private BlobContainer     container = default;
 
-    public RepositoryBuilder WithOptions(IRepositoryOptions options)
+    public RepositoryBuilder WithOptions(RepositoryOptions options)
     {
         this.options = options;
 
@@ -48,7 +48,7 @@ internal partial class RepositoryBuilder
 
     public async Task<Repository> BuildAsync()
     {
-        if (options == default(IRepositoryOptions))
+        if (options == default(RepositoryOptions))
             throw new ArgumentException("Options not set");
 
         // Ensure the Blob Container exists

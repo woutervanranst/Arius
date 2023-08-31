@@ -30,7 +30,9 @@ public partial class RepositoryChooserViewModel : ObservableObject
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
     }
-    
+
+    public string WindowName => $"{App.Name}: Choose repository";
+
 
     [ObservableProperty]
     private string localDirectory;

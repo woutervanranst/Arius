@@ -1,0 +1,19 @@
+@startuml
+
+package "Code" {
+  [Arius.UI.csproj] --> [Arius.Core.csproj] : Debug
+  [Arius.Cli.csproj] --> [Arius.Core.csproj] : Debug
+  [Arius.Core.csproj] --> [WouterVanRanst.Utils.csproj] : Debug
+}
+
+package "NuGet" {
+  [WouterVanRanst.Arius.Core] --> [WouterVanRanst.Utils] : Release
+}
+
+[Arius.UI.csproj] --> [WouterVanRanst.Arius.Core] : Release
+[Arius.UI.csproj] --> [WouterVanRanst.Utils] : Release
+[Arius.Cli.csproj] --> [WouterVanRanst.Arius.Core] : Release
+[Arius.Cli.csproj] --> [WouterVanRanst.Utils] : Release
+[Arius.Core.csproj] --> [WouterVanRanst.Utils] : Release
+
+@enduml

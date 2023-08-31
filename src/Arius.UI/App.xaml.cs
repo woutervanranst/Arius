@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using Arius.UI.ViewModels;
 using Arius.UI.Views;
 using MessageBox = System.Windows.Forms.MessageBox;
+using System.Reflection;
 
 namespace Arius.UI;
 
@@ -19,7 +20,7 @@ public partial class App
     private          RepositoryExplorerWindow explorerWindow;
     private          RepositoryFacade         repositoryFacade;
 
-    public static string Name => System.Reflection.Assembly.GetEntryAssembly().GetName().Name;
+    public static string Name => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "PRODUCT_UNKNOWN"; // get the value of the <Product> in csproj
 
     public App()
     {
