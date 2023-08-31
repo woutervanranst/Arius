@@ -45,7 +45,7 @@ internal class ApplicationSettings
         }
     }
 
-    public void AddLastUsedRepository(RepositoryOptions ro)
+    public void AddLastUsedRepository(RepositoryChosenMessage ro)
     {
         using var context  = GetContext();
         var rodto = context.RecentRepositories.Find(ro.LocalDirectory.FullName, ro.AccountName, ro.ContainerName) ?? new RepositoryOptionsDto();

@@ -27,8 +27,9 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         this.settings = settings;
         Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
-        RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
-        AboutCommand   = new RelayCommand(OnAbout);
+        OpenRepositoryCommand = new RelayCommand(OnOpenRepository);
+        RestoreCommand        = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
+        AboutCommand          = new RelayCommand(OnAbout);
     }
 
     public RepositoryFacade Repository
@@ -40,6 +41,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
             {
                 // Set the selected folder to the root and kick off the loading process
                 SelectedFolder = GetRootNode();
+                OnPropertyChanged(nameof(WindowName));
             }
         }
     }
@@ -88,7 +90,6 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
                         SelectedItems.Remove(itemViewModel);
 
                     OnPropertyChanged(nameof(SelectedItemsText));
-                    //HydrateCommand.NotifyCanExecuteChanged();
                     RestoreCommand.NotifyCanExecuteChanged();
                     break;
             }
@@ -101,6 +102,9 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
     private FolderViewModel GetRootNode()
     {
+        RootNode.Clear();
+        foldersDict.Clear();
+
         var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
         foldersDict.Add(ROOT_NODEKEY, rootNode);
         RootNode.Add(rootNode);
@@ -239,6 +243,21 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
 
     // Commands
+    public IRelayCommand OpenRepositoryCommand { get; }
+    private void OnOpenRepository()
+    {
+        Messenger.Send(new ChooseRepositoryMessage
+        {
+            Sender         = this,
+            LocalDirectory = this.LocalDirectory,
+            AccountName    = Repository.AccountName,
+            AccountKey     = Repository.AccountKey,  // TODO not ok
+            ContainerName  = Repository.ContainerName,
+            Passphrase     = Repository.Passphrase // TODO not ok
+        });
+    }
+
+
     public IRelayCommand RestoreCommand { get; }
     private async Task OnRestoreAsync()
     {
@@ -281,8 +300,8 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
     }
     private bool CanRestore() => selectedItems.Any();
 
-    public IRelayCommand AboutCommand { get; }
 
+    public IRelayCommand AboutCommand { get; }
     private void OnAbout()
     {
         var explorerVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "0.0.0.0"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work

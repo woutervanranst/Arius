@@ -17,8 +17,8 @@ namespace Arius.UI;
 
 public partial class App
 {
-    private readonly IHost                    host;
-    private          RepositoryFacade         repositoryFacade;
+    private readonly IHost             host;
+    private          RepositoryFacade? repositoryFacade;
 
     public static string Name => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "PRODUCT_UNKNOWN"; // get the value of the <Product> in csproj
 
@@ -33,6 +33,7 @@ public partial class App
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
         this.DispatcherUnhandledException += OnDispatcherUnhandledException;
 
+        WeakReferenceMessenger.Default.Register<ChooseRepositoryMessage>(this, OnChooseRepository);
         WeakReferenceMessenger.Default.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
 
         ShutdownMode = ShutdownMode.OnLastWindowClose;
@@ -50,14 +51,18 @@ public partial class App
         services.AddTransient<RepositoryChooserViewModel>(); 
         services.AddTransient<RepositoryExplorerViewModel>();
 
-        // register the views - they are singletons
-        services.AddSingleton<RepositoryChooserWindow>(sp => new RepositoryChooserWindow { DataContext   = sp.GetRequiredService<RepositoryChooserViewModel>() });
+        // register the views
+            // the RepositoryExplorerWindow is a singleton, we only need to show it once
         services.AddSingleton<RepositoryExplorerWindow>(sp => new RepositoryExplorerWindow
         {
             DataContext = sp.GetRequiredService<RepositoryExplorerViewModel>()
         });
+            // the RepositoryChooserWindow is transient, we can show it multiple times (a closed window cannot be reopened)
+        services.AddTransient<RepositoryChooserWindow>(sp => new RepositoryChooserWindow
+        {
+            DataContext = sp.GetRequiredService<RepositoryChooserViewModel>()
+        });
     }
-
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -70,10 +75,10 @@ public partial class App
         var lastOpenedRepository = s.RecentRepositories.FirstOrDefault();
         if (lastOpenedRepository is null)
         {
-            // Show a UI to choose a Repository
-            var chooserWindow = host.Services.GetRequiredService<RepositoryChooserWindow>();
-            chooserWindow.Owner = explorerWindow; // show modal over ExplorerWindow
-            chooserWindow.ShowDialog();
+            WeakReferenceMessenger.Default.Send(new ChooseRepositoryMessage
+            {
+                Sender = this
+            });
         }
         else
         {
@@ -90,6 +95,39 @@ public partial class App
         }
     }
 
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        using (host)
+        {
+            host.Dispose();
+            repositoryFacade?.Dispose();
+            await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
+        }
+
+        base.OnExit(e);
+    }
+
+    // -- CHOOSE REPOSITORY --
+
+    private RepositoryChooserWindow? chooserWindow;
+
+    private void OnChooseRepository(object recipient, ChooseRepositoryMessage message)
+    {
+        // Show a UI to choose a Repository
+        chooserWindow  = host.Services.GetRequiredService<RepositoryChooserWindow>();
+
+        var viewModel = (RepositoryChooserViewModel)chooserWindow.DataContext;
+        viewModel.LocalDirectory        = message.LocalDirectory?.FullName ?? "";
+        viewModel.AccountName           = message?.AccountName ?? "";
+        viewModel.AccountKey            = message?.AccountKey ?? "";
+        viewModel.SelectedContainerName = message?.ContainerName ?? "";
+        viewModel.Passphrase            = message?.Passphrase ?? "";
+
+        var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
+        chooserWindow.Owner = explorerWindow; // show modal over ExplorerWindow
+        chooserWindow.ShowDialog();
+    }
+
     private async void OnRepositoryChosen(object sender, RepositoryChosenMessage message)
     {
         if (message.Sender == this)
@@ -99,10 +137,10 @@ public partial class App
         else if (message.Sender is RepositoryChooserViewModel)
         {
             // Message sent by the RepositoryChooserWindow
-            host.Services.GetRequiredService<RepositoryChooserWindow>().Close();
+            chooserWindow!.Close();
         }
 
-        // Save
+        // Save to settings
         var s = host.Services.GetRequiredService<ApplicationSettings>();
         s.AddLastUsedRepository(message);
 
@@ -114,20 +152,8 @@ public partial class App
 
         // Update the ViewModel
         var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
-        var viewModel      = explorerWindow.DataContext as RepositoryExplorerViewModel;
+        var viewModel      = (RepositoryExplorerViewModel)explorerWindow.DataContext;
         viewModel.LocalDirectory = message.LocalDirectory;
         viewModel.Repository     = repositoryFacade;
-    }
-
-    protected override async void OnExit(ExitEventArgs e)
-    {
-        using (host)
-        {
-            host.Dispose();
-            repositoryFacade?.Dispose();
-            await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
-        }
-
-        base.OnExit(e);
     }
 }
