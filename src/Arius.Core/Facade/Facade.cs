@@ -245,14 +245,17 @@ public class RepositoryFacade : IDisposable
         var q = new PointerFileEntriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
-        await foreach (var e in r.PointerFileEntries)
+        await foreach (var e in r.Result)
             yield return e;
     }
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
     {
-        var q = new RepositoryQueries(loggerFactory, Repository);
-        return await q.QueryRepositoryStatisticsAsync();
+        var o = new RepositoryStatisticsQueryOptions();
+        var q = new RepositoryStatisticsQuery(loggerFactory, Repository);
+        var r = await q.ExecuteAsync(o);
+
+        return r.Result;
     }
 
 
