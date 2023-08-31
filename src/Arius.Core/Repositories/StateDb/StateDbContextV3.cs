@@ -43,12 +43,12 @@ internal class StateDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        var cmb = modelBuilder.Entity<ChunkEntry>();
-        cmb.ToTable("ChunkEntries");
-        cmb.HasKey(c => c.Hash);
-        cmb.HasIndex(c => c.Hash).IsUnique();
+        var cemb = modelBuilder.Entity<ChunkEntry>();
+        cemb.ToTable("ChunkEntries");
+        cemb.HasKey(c => c.Hash);
+        cemb.HasIndex(c => c.Hash).IsUnique();
 
-        cmb.Property(c => c.AccessTier)
+        cemb.Property(c => c.AccessTier)
             .HasConversion(new AccessTierConverter());
 
 

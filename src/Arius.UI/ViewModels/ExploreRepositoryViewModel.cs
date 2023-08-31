@@ -18,24 +18,45 @@ using Brushes = System.Windows.Media.Brushes;
 
 namespace Arius.UI.ViewModels;
 
-public partial class RepositoryExplorerViewModel : ObservableObject
+internal partial class RepositoryExplorerViewModel : ObservableRecipient
 {
-    public RepositoryExplorerViewModel(IMessenger messenger)
+    private readonly ApplicationSettings settings;
+
+    public RepositoryExplorerViewModel(ApplicationSettings settings)
     {
-        messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
+        this.settings = settings;
+        Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
-        // Set the selected folder to the root and kick off the loading process
-        SelectedFolder = GetRootNode();
-
-        //HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
         RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
-        AboutCommand = new RelayCommand(OnAbout);
+        AboutCommand   = new RelayCommand(OnAbout);
     }
 
-    public RepositoryFacade Repository     { get; set; }
-    public DirectoryInfo    LocalDirectory { get; set; }
+    public RepositoryFacade Repository
+    {
+        get => repository;
+        set
+        {
+            if (SetProperty(ref repository, value))
+            {
+                // Set the selected folder to the root and kick off the loading process
+                SelectedFolder = GetRootNode();
+            }
+        }
+    }
+    private RepositoryFacade repository;
+    
+    public DirectoryInfo LocalDirectory { get; set; }
 
-    public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
+    public string WindowName
+    {
+        get
+        {
+            if (Repository is null)
+                return $"{App.Name} - No repository";
+            else
+                return $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
+        }
+    }
 
     [ObservableProperty]
     private bool isLoading;
@@ -218,13 +239,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
 
     // Commands
-    //public IRelayCommand HydrateCommand { get; }
-    //private Task OnHydrateAsync()
-    //{
-    //    throw new NotImplementedException();
-    //}
-    //private bool CanHydrate() => selectedItems.Any(item => item.HydrationState == HydrationState.NotHydrated);
-
     public IRelayCommand RestoreCommand { get; }
     private async Task OnRestoreAsync()
     {
@@ -265,7 +279,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
         }
     }
-    private bool CanRestore() => true;
+    private bool CanRestore() => selectedItems.Any();
 
     public IRelayCommand AboutCommand { get; }
 

@@ -3,7 +3,7 @@ using Arius.UI.ViewModels;
 
 namespace Arius.UI.Utils;
 
-public class NaturalStringComparer : IComparer<RepositoryExplorerViewModel.ItemViewModel>
+internal class NaturalStringComparer : IComparer<RepositoryExplorerViewModel.ItemViewModel>
 {
     [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int StrCmpLogicalW(string x, string y);
