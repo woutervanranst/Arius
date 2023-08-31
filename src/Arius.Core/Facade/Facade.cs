@@ -74,9 +74,11 @@ public class StorageAccountFacade
 
     public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
     {
-        var saq = new StorageAccountQueries(loggerFactory.CreateLogger<StorageAccountQueries>(), storageAccountOptions);
+        var o   = new QueryContainerNamesOptions { MaxRetries = maxRetries };
+        var q = new ContainerNamesQuery(loggerFactory.CreateLogger<ContainerNamesQuery>(), storageAccountOptions);
 
-        return saq.GetContainerNamesAsync(maxRetries);
+
+        return q.Execute(o).ContainerNames;
     }
 
     /// <summary>
