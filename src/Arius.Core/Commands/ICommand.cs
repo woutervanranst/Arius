@@ -3,13 +3,13 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands;
 
-internal interface ICommandOptions
+internal abstract record CommandOptions
 {
     /// <summary>
-    /// Validate these ICommandOptions
+    /// Validate these CommandOptions
     /// </summary>
     /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
-    void Validate() => throw new NotImplementedException();
+    public abstract void Validate();
 }
 
 public enum CommandResultStatus
@@ -20,13 +20,13 @@ public enum CommandResultStatus
 }
 
 internal interface ICommand<TOptions> 
-    where TOptions : ICommandOptions 
+    where TOptions : CommandOptions 
 {
     /// <summary>
     /// Validate these ICommandOptions
     /// </summary>
     /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
-    public void      Validate(TOptions options) => options.Validate();
+    public void Validate(TOptions options) => options.Validate();
 
     /// <summary>
     /// Execute the Command

@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Queries;
 
-internal record RepositoryStatisticsQueryOptions : IQueryOptions
+internal record RepositoryStatisticsQueryOptions : QueryOptions
 {
-    public void Validate()
+    public override void Validate()
     {
         // always succeeds
     }
@@ -35,7 +35,7 @@ internal record RepositoryStatisticsQueryResult : IQueryResult
 }
 
 
-internal class RepositoryStatisticsQuery: IAsyncQuery<RepositoryStatisticsQueryOptions, RepositoryStatisticsQueryResult>
+internal class RepositoryStatisticsQuery: AsyncQuery<RepositoryStatisticsQueryOptions, RepositoryStatisticsQueryResult>
 {
     private readonly Repository repository;
 
@@ -44,7 +44,7 @@ internal class RepositoryStatisticsQuery: IAsyncQuery<RepositoryStatisticsQueryO
         this.repository = repository;
     }
 
-    public async Task<RepositoryStatisticsQueryResult> ExecuteAsync(RepositoryStatisticsQueryOptions options)
+    protected override async Task<RepositoryStatisticsQueryResult> ExecuteImplAsync(RepositoryStatisticsQueryOptions options)
     {
         var s = await repository.GetStatisticsAsync();
         var r = new RepositoryStatisticsQueryResult.RepositoryStatistics()

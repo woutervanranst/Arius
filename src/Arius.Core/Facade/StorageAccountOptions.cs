@@ -5,7 +5,7 @@ using Azure.Storage;
 
 namespace Arius.Core.Facade;
 
-internal record StorageAccountOptions : ICommandOptions
+internal record StorageAccountOptions : CommandOptions
 {
     public StorageAccountOptions(string accountName, string accountKey)
     {
@@ -16,7 +16,7 @@ internal record StorageAccountOptions : ICommandOptions
     public string AccountName { get; }
     public string AccountKey  { get; }
 
-    public virtual void Validate()
+    public override void Validate()
     {
         if (string.IsNullOrWhiteSpace(AccountName))
             throw new ArgumentException($"{nameof(AccountName)} must be specified", nameof(AccountName));

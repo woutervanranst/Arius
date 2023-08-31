@@ -7,11 +7,11 @@ using System.Linq;
 
 namespace Arius.Core.Queries;
 
-internal class QueryContainerNamesOptions : IQueryOptions
+internal record QueryContainerNamesOptions : QueryOptions
 {
     public required int MaxRetries { get; init; }
 
-    public void Validate()
+    public override void Validate()
     {
         // Always succeeds
     }
@@ -23,7 +23,7 @@ internal class QueryContainerNamesResult : IQueryResult
     public required IAsyncEnumerable<string> ContainerNames { get; init; }
 }
 
-internal class ContainerNamesQuery : IQuery<QueryContainerNamesOptions, QueryContainerNamesResult>
+internal class ContainerNamesQuery : Query<QueryContainerNamesOptions, QueryContainerNamesResult>
 {
     private readonly ILogger<ContainerNamesQuery> logger;
     private readonly StorageAccountOptions        storageAccountOptions;
@@ -34,10 +34,8 @@ internal class ContainerNamesQuery : IQuery<QueryContainerNamesOptions, QueryCon
         this.storageAccountOptions = options;
     }
 
-    public QueryContainerNamesResult Execute(QueryContainerNamesOptions queryOptions)
+    protected override QueryContainerNamesResult ExecuteImpl(QueryContainerNamesOptions queryOptions)
     {
-        queryOptions.Validate();
-        
         var bco = new BlobClientOptions
         {
             Retry =

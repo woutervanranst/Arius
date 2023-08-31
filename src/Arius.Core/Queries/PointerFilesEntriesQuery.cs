@@ -14,13 +14,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Queries;
 
-internal record PointerFileEntriesQueryOptions : IQueryOptions
+internal record PointerFileEntriesQueryOptions : QueryOptions
 {
     public string? RelativeParentPathEquals { get; init; } = null;
     public string? DirectoryNameEquals { get; init; } = null;
     public string? NameContains { get; init; } = null;
 
-    public void Validate()
+    public override void Validate()
     {
         // Always succeeds
     }
@@ -56,7 +56,7 @@ internal record PointerFileEntriesQueryResult : IQueryResult
     public IAsyncEnumerable<PointerFileEntryQueryResult>? Result { get; init; }
 }
 
-internal class PointerFileEntriesQuery : IQuery<PointerFileEntriesQueryOptions, PointerFileEntriesQueryResult>
+internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, PointerFileEntriesQueryResult>
 {
     private readonly ILoggerFactory loggerFactory;
     private readonly Repository repository;
@@ -76,10 +76,8 @@ internal class PointerFileEntriesQuery : IQuery<PointerFileEntriesQueryOptions, 
         });
     }
 
-    public PointerFileEntriesQueryResult Execute(PointerFileEntriesQueryOptions options)
+    protected override PointerFileEntriesQueryResult ExecuteImpl(PointerFileEntriesQueryOptions options)
     {
-        options.Validate();
-
         return new PointerFileEntriesQueryResult
         {
             Status = QueryResultStatus.Success,
