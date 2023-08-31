@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive;
 
-internal partial class ArchiveCommand : ICommand<ArchiveCommandOptions>
+internal partial class ArchiveCommand : AsyncCommand<ArchiveCommandOptions>
 {
     public ArchiveCommand(ILoggerFactory loggerFactory, Repository repo, ArchiveCommandStatistics statisticsProvider)
     {
@@ -28,10 +28,8 @@ internal partial class ArchiveCommand : ICommand<ArchiveCommandOptions>
     private readonly ArchiveCommandStatistics stats;
     private readonly FileSystemService        fileSystemService;
 
-    public async Task<CommandResultStatus> ExecuteAsync(ArchiveCommandOptions options)
+    public async Task<CommandResultStatus> ExecuteImplAsync(ArchiveCommandOptions options)
     {
-        options.Validate();
-
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
 

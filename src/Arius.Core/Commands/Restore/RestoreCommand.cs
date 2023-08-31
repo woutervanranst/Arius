@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Restore;
 
-internal class RestoreCommand : ICommand<RestoreCommandOptions>
+internal class RestoreCommand : AsyncCommand<RestoreCommandOptions>
 {
     public RestoreCommand(ILoggerFactory loggerFactory, Repository repo)
     {
@@ -23,10 +23,8 @@ internal class RestoreCommand : ICommand<RestoreCommandOptions>
     private readonly Repository              repo;
     private readonly ILogger<RestoreCommand> logger;
 
-    public async Task<CommandResultStatus> ExecuteAsync(RestoreCommandOptions options)
+    public async Task<CommandResultStatus> ExecuteImplAsync(RestoreCommandOptions options)
     {
-        options.Validate();
-
         var hashValueProvider = new SHA256Hasher(options);
         var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
         var fileSystemService = new FileSystemService(loggerFactory.CreateLogger<FileSystemService>());

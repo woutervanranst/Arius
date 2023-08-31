@@ -19,18 +19,19 @@ public enum CommandResultStatus
     //Cancelled = -2
 }
 
-internal interface ICommand<TOptions> 
+internal abstract class AsyncCommand<TOptions> 
     where TOptions : CommandOptions 
 {
-    /// <summary>
-    /// Validate these ICommandOptions
-    /// </summary>
-    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
-    public void Validate(TOptions options) => options.Validate();
-
     /// <summary>
     /// Execute the Command
     /// </summary>
     /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
-    public Task<CommandResultStatus> ExecuteAsync(TOptions options);
+    public async Task<CommandResultStatus> ExecuteAsync(TOptions options)
+    {
+        options.Validate();
+
+        return await ExecuteImplAsync(options);
+    }
+
+    protected abstract Task<CommandResultStatus> ExecuteImplAsync(TOptions options);
 }

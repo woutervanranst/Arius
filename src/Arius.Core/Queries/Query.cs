@@ -44,14 +44,16 @@ internal abstract class AsyncQuery<TOptions, TResults>
     where TOptions : QueryOptions
     where TResults : IQueryResult
 {
-    public void Validate(TOptions options) => options.Validate();
-
+    /// <summary>
+    /// Execute the Query
+    /// </summary>
+    /// <exception cref="ArgumentException">Throws an ArgumentException if the options are not valid</exception>
     public async Task<TResults> ExecuteAsync(TOptions options)
     {
         options.Validate();
 
         return await ExecuteImplAsync(options);
     }
-
+    
     protected abstract Task<TResults> ExecuteImplAsync(TOptions options);
 }
