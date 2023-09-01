@@ -174,7 +174,7 @@ internal partial class Repository
         //}
     }
 
-    public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix)
+    public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth)
     {
         await using var db = GetStateDbContext();
 
@@ -188,30 +188,77 @@ internal partial class Repository
             .FindProperty(nameof(PointerFileEntry.RelativeName))
             .GetColumnName();
 
+        //var sql = $@"
+        //    WITH PrefixLocations AS (
+        //        SELECT
+        //            instr({relativeNameColumnName}, @Prefix) + length(@Prefix) - 1 AS PrefixEnd,
+        //            {relativeNameColumnName}
+        //        FROM
+        //            {pointerFileEntriesTableName}
+        //        WHERE
+        //            {relativeNameColumnName} LIKE @Prefix || '%'
+        //    )
+
+        //    SELECT DISTINCT
+        //        substr({relativeNameColumnName}, PrefixEnd + 1, instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') - 1) AS Result
+        //    FROM
+        //        PrefixLocations
+        //    WHERE
+        //        instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') > 0;";
+
+        //await using var command = new SqliteCommand(sql, connection);
+        //command.Parameters.AddWithValue("@Prefix", prefix);
+
         var sql = $@"
-            WITH PrefixLocations AS (
-                SELECT
-                    instr({relativeNameColumnName}, @Prefix) + length(@Prefix) - 1 AS PrefixEnd,
-                    {relativeNameColumnName}
-                FROM
-                    {pointerFileEntriesTableName}
-                WHERE
-                    {relativeNameColumnName} LIKE @Prefix || '%'
+            WITH RECURSIVE SlashCounter AS (
+                SELECT 
+                    1 AS Counter,
+                    instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') AS SlashPosition,
+                    {relativeNameColumnName},
+                    PrefixEnd
+                FROM (
+                    SELECT
+                        instr({relativeNameColumnName}, @prefix) + length(@prefix) - 1 AS PrefixEnd,
+                        {relativeNameColumnName}
+                    FROM
+                        {pointerFileEntriesTableName}
+                    WHERE
+                        {relativeNameColumnName} LIKE @prefix || '%'
+                )
+                WHERE SlashPosition > 0
+
+                UNION ALL
+
+                SELECT 
+                    Counter + 1,
+                    instr(substr({relativeNameColumnName}, PrefixEnd + 1 + sc.SlashPosition), '/') + sc.SlashPosition AS NextSlashPosition,
+                    sc.{relativeNameColumnName},
+                    sc.PrefixEnd
+                FROM SlashCounter sc
+                WHERE sc.SlashPosition > 0
+                AND Counter < @slashCount
+            ),
+
+            MaxSlashPosition AS (
+                SELECT {relativeNameColumnName}, PrefixEnd, MAX(SlashPosition) AS FinalSlashPosition
+                FROM SlashCounter
+                WHERE Counter = @slashCount
+                GROUP BY {relativeNameColumnName}, PrefixEnd
             )
 
             SELECT DISTINCT
-                substr({relativeNameColumnName}, PrefixEnd + 1, instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') - 1) AS Result
-            FROM
-                PrefixLocations
-            WHERE
-                instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') > 0;";
+                substr({relativeNameColumnName}, PrefixEnd + 1, COALESCE(FinalSlashPosition, 0) - 1) AS Result
+            FROM MaxSlashPosition;
+            ";
 
         await using var command = new SqliteCommand(sql, connection);
-        command.Parameters.AddWithValue("@Prefix", prefix);
+        command.Parameters.AddWithValue("@prefix", prefix);
+        command.Parameters.AddWithValue("@slashCount", depth);
+
 
         await using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync())
-            yield return reader.GetString(0);
+            yield return $"{prefix}{reader.GetString(0)}";
     }
 
     /// <summary>

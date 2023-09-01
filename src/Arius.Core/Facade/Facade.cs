@@ -11,6 +11,7 @@ using PostSharp.Patterns.Contracts;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
@@ -261,15 +262,16 @@ public class RepositoryFacade : IDisposable
     /// If the prefix is a precise folder, use a trailing slash, e.g. "dir1/dir2/", otherwise it will search until the next '/' which is 0 characters away
     /// </summary>
     /// <param name="prefix">The platform-specific prefix</param>
+    /// <param name="depth">The depth in the directory structure to return</param>
     /// <returns></returns>
-    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix)
+    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth)
     {
         prefix = prefix.ToPlatformNeutralPath();
-        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix };
+        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth };
         var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
-        return r.Result;
+        return r.Result.Select(r => r.ToPlatformSpecificPath());
     }
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()

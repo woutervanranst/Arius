@@ -98,15 +98,15 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
 
     // Folders Treeview
-    private const string ROOT_NODEKEY = "root";
+    private const string ROOT_NODEKEY = ".";
 
     private FolderViewModel GetRootNode()
     {
         RootNode.Clear();
         foldersDict.Clear();
 
-        var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
-        foldersDict.Add(ROOT_NODEKEY, rootNode);
+        var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = ROOT_NODEKEY, IsExpanded = true, IsSelected = true };
+        foldersDict.Add(rootNode.RelativeDirectoryName, rootNode);
         RootNode.Add(rootNode);
 
         return rootNode;
@@ -139,43 +139,67 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
         try
         {
-            // Load local entries
-            await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            // Load the TreeView
+            var rn = SelectedFolder.RelativeDirectoryName == ROOT_NODEKEY ? "" : $"{SelectedFolder.RelativeDirectoryName.RemovePrefix(".\\")}\\";
 
-            // Load database entries
-            await ProcessEntries(Repository.QueryEntriesAsync(SelectedFolder.RelativeDirectoryName));
+            await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
 
-            async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
+            async Task LoadTreeView(IAsyncEnumerable<string> paths)
             {
-                // Create the necessary FolderViewModels and ItemViewModels for the given entries
-                await foreach (var e in entries)
+                await foreach (var path in paths)
                 {
-                    var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
-                    var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
+                    var relativePath = Path.GetRelativePath(SelectedFolder.RelativeDirectoryName, path);
+                    var pathElements = relativePath.Split(Path.DirectorySeparatorChar);
 
-                    // Set update the viewmodel with the entry
-                    UpdateViewModel(itemViewModel, e);
+                    for (var i = 0; i < pathElements.Length; i++)
+                    {
+                        var directoryName      = pathElements[i];
+                        var relativeParentPath = Path.Combine(SelectedFolder.RelativeDirectoryName, string.Join(Path.DirectorySeparatorChar, pathElements.Take(i)));
+
+                        var folderViewModel = GetOrCreateFolderViewModel(relativeParentPath, directoryName);
+                    }
+
                 }
 
-                static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension)
-                    ? name.RemoveSuffix(".pointer.arius")
-                    : name;
             }
+
+            //// Load local entries
+            //await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+
+            //// Load database entries
+            //await ProcessEntries(Repository.QueryPointerFileEntries(SelectedFolder.RelativeDirectoryName));
+
+            //async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
+            //{
+            //    // Create the necessary FolderViewModels and ItemViewModels for the given entries
+            //    await foreach (var e in entries)
+            //    {
+            //        var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
+            //        var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
+
+            //        // Set update the viewmodel with the entry
+            //        UpdateViewModel(itemViewModel, e);
+            //    }
+
+            //    static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension)
+            //        ? name.RemoveSuffix(".pointer.arius")
+            //        : name;
+            //}
 
             FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
             {
-                var key = Path.Combine(ROOT_NODEKEY, relativeParentPath, directoryName);
+                var key = Path.Combine(relativeParentPath, directoryName);
                 if (!foldersDict.TryGetValue(key, out var folderViewModel))
                 {
                     // We need a new FolderViewModel
-                    var nodeParentPath = Path.Combine(ROOT_NODEKEY, relativeParentPath);
-                    var parentFolder = foldersDict[nodeParentPath];
                     folderViewModel = new FolderViewModel
                     {
                         Name = directoryName,
                         RelativeDirectoryName = Path.Combine(relativeParentPath, directoryName)
                     };
                     foldersDict.Add(key, folderViewModel);
+                    
+                    var parentFolder = foldersDict[relativeParentPath];
                     parentFolder.Folders.Add(folderViewModel);
                 }
 
@@ -195,7 +219,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
             {
                 if (e is FileService.GetLocalEntriesResult le)
                 {
-                    var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
+                    var filename = Path.Combine(LocalDirectory.FullName, le.RelativeName);
                     var fib = FileSystemService.GetFileInfo(filename);
                     if (fib is PointerFileInfo pfi)
                         itemViewModel.PointerFileInfo = pfi;
@@ -209,7 +233,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
                 }
                 else if (e is IPointerFileEntryQueryResult pfe)
                 {
-                    var relativeName = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
+                    var relativeName = pfe.RelativeName;
                     itemViewModel.PointerFileEntryRelativeName = relativeName;
                     itemViewModel.OriginalLength = pfe.OriginalLength;
                     itemViewModel.HydrationState = pfe.HydrationState;

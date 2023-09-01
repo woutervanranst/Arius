@@ -10,6 +10,7 @@ namespace Arius.Core.Queries;
 internal record PointerFileEntriesSubdirectoriesQueryOptions : QueryOptions
 {
     public required string Prefix { get; init; }
+    public required int Depth  { get; init; } = 1;
 
     public override void Validate()
     {
@@ -32,7 +33,7 @@ internal class PointerFileEntriesSubdirectoriesQuery : Query<PointerFileEntriesS
 
     protected override (QueryResultStatus Status, IAsyncEnumerable<string>? Result) ExecuteImpl(PointerFileEntriesSubdirectoriesQueryOptions options)
     {
-        var r = repository.GetPointerFileEntriesSubdirectoriesAsync(options.Prefix);
+        var r = repository.GetPointerFileEntriesSubdirectoriesAsync(options.Prefix, options.Depth);
 
         return (QueryResultStatus.Success, r);
     }
