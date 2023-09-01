@@ -19,11 +19,12 @@ public partial class RepositoryChooserViewModel : ObservableRecipient
 
     public RepositoryChooserViewModel(Facade facade)
     {
-        this.facade    = facade;
+        this.facade = facade;
 
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
         Messenger.Register<ChooseRepositoryMessage>(this, OnChooseRepository);
+    }
 
     private void OnChooseRepository(object recipient, ChooseRepositoryMessage message)
     {

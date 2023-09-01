@@ -27,9 +27,10 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         this.settings = settings;
         Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
-        OpenRepositoryCommand = new RelayCommand(OnOpenRepository);
-        RestoreCommand        = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
-        AboutCommand          = new RelayCommand(OnAbout);
+        ChooseRepositoryCommand     = new RelayCommand(OnChooseRepository);
+        OpenRecentRepositoryCommand = new RelayCommand<RecentlyUsedRepositoryViewModel>(OnOpenRecentRepository);
+        RestoreCommand              = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
+        AboutCommand                = new RelayCommand(OnAbout);
     }
 
     public RepositoryFacade Repository
@@ -264,8 +265,8 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
 
     // Commands
-    public IRelayCommand OpenRepositoryCommand { get; }
-    private void OnOpenRepository()
+    public IRelayCommand ChooseRepositoryCommand { get; }
+    private void OnChooseRepository()
     {
         Messenger.Send(new ChooseRepositoryMessage
         {
@@ -276,6 +277,12 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
             ContainerName  = Repository.ContainerName,
             Passphrase     = Repository.Passphrase // TODO not ok
         });
+    }
+
+    
+    public IRelayCommand OpenRecentRepositoryCommand { get; }
+    private void OnOpenRecentRepository(RecentlyUsedRepositoryViewModel a)
+    {
     }
 
 
