@@ -143,7 +143,10 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
             // Load local entries
             await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
-            //await LoadListView(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+
+            var x = await FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName).ToListAsync();
+
+            await LoadListView(FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName));
 
             // Load database entries
             await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
