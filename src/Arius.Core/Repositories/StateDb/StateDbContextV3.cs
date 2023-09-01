@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 
 namespace Arius.Core.Repositories.StateDb;
 
@@ -91,42 +92,10 @@ internal class StateDbContext : DbContext
     {
         public RemovePointerFileExtensionConverter()
             : base(
-                v => ToPlatformNeutralPath(v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase)), // Convert from Model to Provider (code to db)
-                v => ToPlatformSpecificPath($"{v}{PointerFileInfo.Extension}")) // Convert from Provider to Model (db to code)
+                v => v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase).ToPlatformNeutralPath(), // Convert from Model to Provider (code to db)
+                v => $"{v}{PointerFileInfo.Extension}".ToPlatformSpecificPath()) // Convert from Provider to Model (db to code)
         {
         }
-
-        private static string ToPlatformNeutralPath(string platformSpecificPath)
-        {
-            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-                return platformSpecificPath;
-
-            return platformSpecificPath.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
-
-            //if (platformSpecific is null)
-            //    return null;
-            //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            //    return platformSpecific;
-            //return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
-        }
-
-        private static string ToPlatformSpecificPath(string platformNeutralPath)
-        {
-            // TODO UNIT TEST for linux pointers (already done if run in the github runner?
-
-            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-                return platformNeutralPath;
-
-            return platformNeutralPath.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar);
-
-            //if (platformNeutral is null)
-            //    return null;
-            //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
-            //    return platformNeutral;
-            //return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
-        }
-
-        private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
     }
 
     private class AccessTierConverter : ValueConverter<AccessTier, int>

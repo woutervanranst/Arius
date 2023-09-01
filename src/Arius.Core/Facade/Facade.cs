@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -244,25 +245,31 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntriesAsync(
+    public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(
         string? relativeNameEquals = null)
     {
         var o = new PointerFileEntriesQueryOptions { RelativeNameEquals = relativeNameEquals };
         var q = new PointerFileEntriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
-        await foreach (var e in r.Result)
-            yield return e;
+        return r.Result;
     }
 
-    public async IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectoriesAsync(string prefix)
+    /// <summary>
+    /// Get the directories in the PointerFileEntries that are prefixed with `prefix`
+    /// For the root, use ""
+    /// If the prefix is a precise folder, use a trailing slash, e.g. "dir1/dir2/", otherwise it will search until the next '/' which is 0 characters away
+    /// </summary>
+    /// <param name="prefix">The platform-specific prefix</param>
+    /// <returns></returns>
+    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix)
     {
+        prefix = prefix.ToPlatformNeutralPath();
         var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix };
         var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
-        await foreach (var e in r.Result)
-            yield return e;
+        return r.Result;
     }
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()

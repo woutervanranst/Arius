@@ -31,7 +31,7 @@ public partial class App
             .Build();
 
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
-        this.DispatcherUnhandledException += OnDispatcherUnhandledException;
+        this.DispatcherUnhandledException          += OnDispatcherUnhandledException;
 
         WeakReferenceMessenger.Default.Register<ChooseRepositoryMessage>(this, OnChooseRepository);
         WeakReferenceMessenger.Default.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
@@ -46,18 +46,18 @@ public partial class App
     {
         services.AddSingleton<Facade>(new Facade(NullLoggerFactory.Instance));
         services.AddSingleton<ApplicationSettings>(new ApplicationSettings(Path.Combine(ApplicationDataPath, "arius.explorer.settings.sqlite")));
-        
+
         // register the viewmodels - they are Transient - for every window a new one
-        services.AddTransient<RepositoryChooserViewModel>(); 
+        services.AddTransient<RepositoryChooserViewModel>();
         services.AddTransient<RepositoryExplorerViewModel>();
 
         // register the views
-            // the RepositoryExplorerWindow is a singleton, we only need to show it once
+        // the RepositoryExplorerWindow is a singleton, we only need to show it once
         services.AddSingleton<RepositoryExplorerWindow>(sp => new RepositoryExplorerWindow
         {
             DataContext = sp.GetRequiredService<RepositoryExplorerViewModel>()
         });
-            // the RepositoryChooserWindow is transient, we can show it multiple times (a closed window cannot be reopened)
+        // the RepositoryChooserWindow is transient, we can show it multiple times (a closed window cannot be reopened)
         services.AddTransient<RepositoryChooserWindow>(sp => new RepositoryChooserWindow
         {
             DataContext = sp.GetRequiredService<RepositoryChooserViewModel>()
@@ -67,7 +67,7 @@ public partial class App
     protected override async void OnStartup(StartupEventArgs e)
     {
         await host.StartAsync();
-        
+
         var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
         explorerWindow.Show();
 
@@ -114,7 +114,7 @@ public partial class App
     private void OnChooseRepository(object recipient, ChooseRepositoryMessage message)
     {
         // Show a UI to choose a Repository
-        chooserWindow  = host.Services.GetRequiredService<RepositoryChooserWindow>();
+        chooserWindow = host.Services.GetRequiredService<RepositoryChooserWindow>();
 
         var viewModel = (RepositoryChooserViewModel)chooserWindow.DataContext;
         viewModel.LocalDirectory        = message.LocalDirectory?.FullName ?? "";
@@ -144,6 +144,10 @@ public partial class App
         var s = host.Services.GetRequiredService<ApplicationSettings>();
         s.AddLastUsedRepository(message);
 
+        var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
+        var viewModel      = (RepositoryExplorerViewModel)explorerWindow.DataContext;
+        viewModel.IsLoading = true;
+
         // Load RepositoryFacade
         repositoryFacade?.Dispose();
         repositoryFacade = await host.Services.GetRequiredService<Facade>()
@@ -151,9 +155,9 @@ public partial class App
             .ForRepositoryAsync(message.ContainerName, message.Passphrase);
 
         // Update the ViewModel
-        var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
-        var viewModel      = (RepositoryExplorerViewModel)explorerWindow.DataContext;
         viewModel.LocalDirectory = message.LocalDirectory;
         viewModel.Repository     = repositoryFacade;
+
+        viewModel.IsLoading = false;
     }
 }

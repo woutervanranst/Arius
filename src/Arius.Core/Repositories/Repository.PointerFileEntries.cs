@@ -176,9 +176,6 @@ internal partial class Repository
 
     public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix)
     {
-        if (!prefix.EndsWith('/'))
-            throw new ArgumentException($"{nameof(prefix)} argument must end with '/'");
-
         await using var db = GetStateDbContext();
 
         var connectionString = db.Database.GetConnectionString();

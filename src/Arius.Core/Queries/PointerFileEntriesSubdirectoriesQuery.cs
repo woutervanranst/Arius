@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using Arius.Core.Extensions;
 
 namespace Arius.Core.Queries;
 
@@ -11,8 +13,9 @@ internal record PointerFileEntriesSubdirectoriesQueryOptions : QueryOptions
 
     public override void Validate()
     {
-        if (!Prefix.EndsWith('/'))
-            throw new ArgumentException($"{nameof(Prefix)} argument must end with '/'");
+        if (Path.DirectorySeparatorChar != PathExtensions.PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR
+            && Prefix.Contains(Path.DirectorySeparatorChar))
+            throw new ArgumentException($"Prefix must be platform neutral, but contains {Path.DirectorySeparatorChar}");
     }
 }
 
@@ -26,7 +29,6 @@ internal class PointerFileEntriesSubdirectoriesQuery : Query<PointerFileEntriesS
         this.loggerFactory = loggerFactory;
         this.repository    = repository;
     }
-
 
     protected override (QueryResultStatus Status, IAsyncEnumerable<string>? Result) ExecuteImpl(PointerFileEntriesSubdirectoriesQueryOptions options)
     {
