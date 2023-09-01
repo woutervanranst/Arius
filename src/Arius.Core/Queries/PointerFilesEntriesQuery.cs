@@ -2,7 +2,6 @@
 using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
-using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
@@ -15,9 +14,7 @@ namespace Arius.Core.Queries;
 
 internal record PointerFileEntriesQueryOptions : QueryOptions
 {
-    public string? RelativeParentPathEquals { get; init; } = null;
-    public string? DirectoryNameEquals { get; init; } = null;
-    public string? NameContains { get; init; } = null;
+    public string? RelativeNameEquals { get; init; } = null; 
 
     public override void Validate()
     {
@@ -28,9 +25,10 @@ internal record PointerFileEntriesQueryOptions : QueryOptions
 
 public interface IEntryQueryResult // also implemented by Arius.UI.FileService
 {
-    public string RelativeParentPath { get; }
-    public string DirectoryName { get; }
-    public string Name { get; }
+    public string RelativeName { get; }
+    //public string RelativeParentPath { get; }
+    //public string DirectoryName { get; }
+    //public string Name { get; }
 }
 public interface IPointerFileEntryQueryResult : IEntryQueryResult // properties specific to PointerFileEntry. Public interface is required for type matching
 {
@@ -66,23 +64,15 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
 
         static async IAsyncEnumerable<IPointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
         {
-            var relativeParentPathEquals = options.RelativeParentPathEquals is not null
-                ? PointerFileEntryConverter.ToPlatformNeutralPath(options.RelativeParentPathEquals)
-                : null;
-
             await foreach (var pfe in repository.GetPointerFileEntriesAsync(
                                pointInTimeUtc: DateTime.Now,
                                includeDeleted: false,
-                               relativeParentPathEquals: relativeParentPathEquals,
-                               directoryNameEquals: options.DirectoryNameEquals,
-                               nameContains: options.NameContains,
+                               relativeNameEquals: options.RelativeNameEquals,
                                includeChunkEntry: true))
             {
                 yield return new PointerFileEntryQueryResult
                 {
-                    RelativeParentPath = pfe.RelativeParentPath,
-                    DirectoryName = pfe.DirectoryName,
-                    Name = pfe.Name,
+                    RelativeName = pfe.RelativeName,
 
                     OriginalLength = pfe.Chunk.OriginalLength,
                     HydrationState = await GetHydrationStateAsync(pfe.Chunk)
@@ -114,9 +104,10 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
 
     private record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
     {
-        public string         RelativeParentPath { get; init; }
-        public string         DirectoryName      { get; init; }
-        public string         Name               { get; init; }
+        public string         RelativeName       { get; init; }
+        //public string         RelativeParentPath { get; init; }
+        //public string         DirectoryName      { get; init; }
+        //public string         Name               { get; init; }
         public long           OriginalLength     { get; init; }
         public HydrationState HydrationState     { get; init; }
     }

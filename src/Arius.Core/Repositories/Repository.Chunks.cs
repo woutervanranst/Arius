@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories.BlobRepository;
-using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
 using Azure;
 using Azure.Storage.Blobs.Models;

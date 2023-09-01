@@ -3,7 +3,7 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System;
-using System.Text.Json.Serialization.Metadata;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,7 +11,7 @@ namespace Arius.Core.Repositories.StateDb;
 
 internal class StateDbContext : DbContext
 {
-    public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
+    public virtual DbSet<PointerFileEntry> PointerFileEntries { get; set; }
     public virtual DbSet<ChunkEntry>    ChunkEntries   { get; set; }
 
     private readonly string dbPath;
@@ -52,25 +52,23 @@ internal class StateDbContext : DbContext
             .HasConversion(new AccessTierConverter());
 
 
-        var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
+        var pfemb = modelBuilder.Entity<PointerFileEntry>();
         pfemb.ToTable("PointerFileEntries");
-        pfemb.HasKey(pfe => new { pfe.BinaryHash, pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name, pfe.VersionUtc });
-        pfemb.HasIndex(pfe => pfe.BinaryHash); // NOT unique
-        pfemb.HasIndex(pfe => pfe.VersionUtc); //to facilitate Versions.Distinct
+        pfemb.HasKey(pfe => new { pfe.BinaryHashValue, pfe.RelativeName, pfe.VersionUtc });
         
-        pfemb.HasIndex(pfe => pfe.RelativeParentPath);  // to facilitate GetPointerFileEntriesAtVersionAsync
-        pfemb.HasIndex(pfe => pfe.DirectoryName);       // to facilitate GetPointerFileEntriesAtVersionAsync
-        pfemb.HasIndex(pfe => pfe.Name);                // to facilitate GetPointerFileEntriesAtVersionAsync
-        
-        //pfemb.HasIndex(pfe => pfe.RelativeName);        //to facilitate PointerFileEntries.GroupBy(RelativeName)
+        pfemb.HasIndex(pfe => pfe.BinaryHashValue);  // NOT unique
+        pfemb.HasIndex(pfe => pfe.VersionUtc);       //to facilitate Versions.Distinct
+        pfemb.HasIndex(pfe => pfe.RelativeName);     // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        pfemb.Property(pfe => pfe.Name)
+        //pfemb.Property(pfe => pfe.BinaryHash)
+        //    .HasConversion(new BinaryHashConverter());
+        pfemb.Property(pfe => pfe.RelativeName)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
         // PointerFileEntries * -- 1 Chunk
         pfemb.HasOne(pfe => pfe.Chunk)
             .WithMany(c => c.PointerFileEntries)
-            .HasForeignKey(pfe => pfe.BinaryHash);
+            .HasForeignKey(pfe => pfe.BinaryHashValue);
     }
 
     public override int SaveChanges()
@@ -93,10 +91,42 @@ internal class StateDbContext : DbContext
     {
         public RemovePointerFileExtensionConverter()
             : base(
-                v => v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
-                v => $"{v}{PointerFileInfo.Extension}") // Convert from Provider to Model (db to code)
+                v => ToPlatformNeutralPath(v.RemoveSuffix(PointerFileInfo.Extension, StringComparison.InvariantCultureIgnoreCase)), // Convert from Model to Provider (code to db)
+                v => ToPlatformSpecificPath($"{v}{PointerFileInfo.Extension}")) // Convert from Provider to Model (db to code)
         {
         }
+
+        private static string ToPlatformNeutralPath(string platformSpecificPath)
+        {
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformSpecificPath;
+
+            return platformSpecificPath.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
+
+            //if (platformSpecific is null)
+            //    return null;
+            //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+            //    return platformSpecific;
+            //return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
+        }
+
+        private static string ToPlatformSpecificPath(string platformNeutralPath)
+        {
+            // TODO UNIT TEST for linux pointers (already done if run in the github runner?
+
+            if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+                return platformNeutralPath;
+
+            return platformNeutralPath.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar);
+
+            //if (platformNeutral is null)
+            //    return null;
+            //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+            //    return platformNeutral;
+            //return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
+        }
+
+        private const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
     }
 
     private class AccessTierConverter : ValueConverter<AccessTier, int>

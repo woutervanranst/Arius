@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Arius.Core.Models;
-using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
 using Microsoft.EntityFrameworkCore;
 using PostSharp.Constraints;

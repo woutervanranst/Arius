@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 
 namespace Arius.Core.Repositories;
 
@@ -26,21 +27,17 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFile pf, DateTime versionUtc)
     {
-        var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(pf.RelativeName);
-
-        var pfeDto = new PointerFileEntry
+        var pfe = new PointerFileEntry
         {
-            BinaryHash         = pf.BinaryHash,
-            RelativeParentPath = relativeParentPath,
-            DirectoryName      = directoryName,
-            Name               = Path.GetFileName(pf.RelativeName),
-            VersionUtc         = versionUtc,
-            IsDeleted          = false,
-            CreationTimeUtc    = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(),
-            LastWriteTimeUtc   = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
-        }.ToPointerFileEntryDto();
+            BinaryHashValue  = pf.BinaryHash.Value,
+            RelativeName     = pf.RelativeName,
+            VersionUtc       = versionUtc,
+            IsDeleted        = false,
+            CreationTimeUtc  = File.GetCreationTimeUtc(pf.FullName).ToUniversalTime(),
+            LastWriteTimeUtc = File.GetLastWriteTimeUtc(pf.FullName).ToUniversalTime(),
+        };
 
-        return await CreatePointerFileEntryIfNotExistsAsync(pfeDto);
+        return await CreatePointerFileEntryIfNotExistsAsync(pfe);
     }
 
     /// <summary>
@@ -48,7 +45,7 @@ internal partial class Repository
     /// </summary>
     public async Task<CreatePointerFileEntryResult> CreateDeletedPointerFileEntryAsync(PointerFileEntry pfe, DateTime versionUtc)
     {
-        var pfeDto = pfe.ToPointerFileEntryDto() with
+        pfe = pfe with
         {
             VersionUtc = versionUtc,
             IsDeleted = true,
@@ -56,24 +53,24 @@ internal partial class Repository
             LastWriteTimeUtc = null
         };
 
-        return await CreatePointerFileEntryIfNotExistsAsync(pfeDto);
+        return await CreatePointerFileEntryIfNotExistsAsync(pfe);
     }
 
     /// <summary>
     /// Insert the PointerFileEntry into the table storage, if a similar entry (according to the PointerFileEntryEqualityComparer) does not yet exist
     /// </summary>
-    private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntryDto pfe)
+    private async Task<CreatePointerFileEntryResult> CreatePointerFileEntryIfNotExistsAsync(PointerFileEntry pfe)
     {
         await using var db = GetStateDbContext();
 
         var lastVersion = await db.PointerFileEntries
-            .Where(pfe0 => pfe.RelativeParentPath == pfe0.RelativeParentPath && pfe.DirectoryName == pfe0.DirectoryName && pfe.Name == pfe0.Name)
+            .Where(pfe0 => pfe.RelativeName == pfe0.RelativeName)
             .OrderBy(pfe0 => pfe0.VersionUtc)
             .LastOrDefaultAsync();
 
         // TODO here be race condition, see "C:\Users\woute\Documents\GitHub\Arius\src\Arius.Cli\bin\Debug\net7.0\logs\arius-archive-test-2023-08-22T14-02-59.6513082Z.tar.gzip"
 
-        var toAdd = !pfeDtoEqualityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
+        var toAdd = !pfeEqualityComparer.Equals(pfe, lastVersion); //if the last version of the PointerFileEntry is not equal -- insert a new one
         if (toAdd)
         {
             await db.PointerFileEntries.AddAsync(pfe);
@@ -105,28 +102,19 @@ internal partial class Repository
     /// If no version is specified, the current (most recent) will be returned
     /// </summary>
     public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(DateTime pointInTimeUtc, bool includeDeleted,
-        string? relativeParentPathEquals = null,
-        string? directoryNameEquals = null,
-        string? nameEquals = null,
-        string? nameContains = null,
+        string? relativeNameEquals = null,
         bool includeChunkEntry = false)
     {
         return GetPointerFileEntriesAtPointInTimeAsync(
                 pointInTimeUtc: pointInTimeUtc, 
-                relativeParentPathEquals: relativeParentPathEquals, 
-                directoryNameEquals: directoryNameEquals, 
-                nameEquals: nameEquals,
-                nameContains: nameContains, 
+                relativeNameEquals: relativeNameEquals,
                 includeChunkEntry: includeChunkEntry)
             .Where(pfe => includeDeleted || !pfe.IsDeleted);
     }
 
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc,
-        string? relativeParentPathEquals = null,
-        string? directoryNameEquals = null,
-        string? nameEquals = null,
-        string? nameContains = null,
+        string? relativeNameEquals = null,
         bool includeChunkEntry = false)
     {
         var versionUtc = await GetVersionAsync(pointInTimeUtc);
@@ -136,48 +124,36 @@ internal partial class Repository
 
         await foreach (var entry in GetPointerFileEntriesAtVersionAsync(
                            versionUtc: versionUtc.Value, 
-                           relativeParentPathEquals: relativeParentPathEquals, 
-                           directoryNameEquals: directoryNameEquals, 
-                           nameEquals: nameEquals, 
-                           nameContains: nameContains, 
+                           relativeNameEquals: relativeNameEquals, 
                            includeChunkEntry: includeChunkEntry))
             yield return entry;
     }
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc,
-        string? relativeParentPathEquals = null,
-        string? directoryNameEquals = null,
-        string? nameEquals = null,
-        string? nameContains = null,
+        string? relativeNameEquals = null,
         bool includeChunkEntry = false)
     {
         await using var db = GetStateDbContext();
 
         // Get all the entries up to the given version
         var entries = includeChunkEntry ?
-            (IQueryable<PointerFileEntryDto>)db.PointerFileEntries.Include(pfe => pfe.Chunk) :
-            (IQueryable<PointerFileEntryDto>)db.PointerFileEntries;
+            (IQueryable<PointerFileEntry>)db.PointerFileEntries.Include(pfe => pfe.Chunk) :
+            (IQueryable<PointerFileEntry>)db.PointerFileEntries;
 
         entries = entries.Where(pfe => pfe.VersionUtc <= versionUtc);
 
         // Apply the filters from the filter object
-        if (relativeParentPathEquals is not null)
-            entries = entries.Where(pfe => pfe.RelativeParentPath == relativeParentPathEquals);
-        if (directoryNameEquals is not null)
-            entries = entries.Where(pfe => pfe.DirectoryName == directoryNameEquals);
-        if (nameEquals is not null)
-            entries = entries.Where(pfe => pfe.Name == nameEquals);
-        if (nameContains is not null)
-            entries = entries.Where(pfe => pfe.Name.Contains(nameContains));
+        if (relativeNameEquals is not null)
+            entries = entries.Where(pfe => pfe.RelativeName == relativeNameEquals);
 
         // Perform the grouping and ordering within the same query to limit the amount of data pulled into memory
         var groupedAndOrdered = entries
-            .GroupBy(pfe => pfe.RelativeParentPath + '/' + pfe.DirectoryName + '/' + pfe.Name)
+            .GroupBy(pfe => pfe.RelativeName)
             .Select(g => g.OrderByDescending(p => p.VersionUtc).FirstOrDefault());
 
         await foreach (var entry in groupedAndOrdered.AsAsyncEnumerable())
             if (entry != null)
-                yield return entry.ToPointerFileEntry();
+                yield return entry;
 
         //private async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
         //{
@@ -259,5 +235,5 @@ internal partial class Repository
         }
     }
 
-    private static readonly PointerFileEntryDtoEqualityComparer pfeDtoEqualityComparer = new();
+    private static readonly PointerFileEntryEqualityComparer pfeEqualityComparer = new();
 }

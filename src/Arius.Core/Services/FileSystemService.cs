@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Repositories.StateDb;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services;
