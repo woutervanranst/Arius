@@ -129,6 +129,14 @@ public class RepositoryFacade : IDisposable
         return new RepositoryFacade(loggerFactory, repo);
     }
 
+    /// <summary>
+    /// FOR TESTING PURPOSES ONLY
+    /// </summary>
+    internal static RepositoryFacade Create(ILoggerFactory loggerFactory, Repository repo)
+    {
+        return new RepositoryFacade(loggerFactory, repo);
+    }
+
     internal Repository Repository { get; }
 
     public string AccountName   => Repository.Options.AccountName;
@@ -236,11 +244,21 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
+    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntriesAsync(
         string? relativeNameEquals = null)
     {
         var o = new PointerFileEntriesQueryOptions { RelativeNameEquals = relativeNameEquals };
         var q = new PointerFileEntriesQuery(loggerFactory, Repository);
+        var r = q.Execute(o);
+
+        await foreach (var e in r.Result)
+            yield return e;
+    }
+
+    public async IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectoriesAsync(string prefix)
+    {
+        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix };
+        var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
         await foreach (var e in r.Result)

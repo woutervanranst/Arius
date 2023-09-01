@@ -174,6 +174,49 @@ internal partial class Repository
         //}
     }
 
+    public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix)
+    {
+        if (!prefix.EndsWith('/'))
+            throw new ArgumentException($"{nameof(prefix)} argument must end with '/'");
+
+        await using var db = GetStateDbContext();
+
+        var connectionString = db.Database.GetConnectionString();
+
+        await using var connection = new SqliteConnection(connectionString);
+        await connection.OpenAsync();
+
+        var pointerFileEntriesTableName = db.Model.FindEntityType(typeof(PointerFileEntry)).GetTableName();
+        var relativeNameColumnName = db.Model.FindEntityType(typeof(PointerFileEntry))
+            .FindProperty(nameof(PointerFileEntry.RelativeName))
+            .GetColumnName();
+
+        var sql = $@"
+            WITH PrefixLocations AS (
+                SELECT
+                    instr({relativeNameColumnName}, @Prefix) + length(@Prefix) - 1 AS PrefixEnd,
+                    {relativeNameColumnName}
+                FROM
+                    {pointerFileEntriesTableName}
+                WHERE
+                    {relativeNameColumnName} LIKE @Prefix || '%'
+            )
+
+            SELECT DISTINCT
+                substr({relativeNameColumnName}, PrefixEnd + 1, instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') - 1) AS Result
+            FROM
+                PrefixLocations
+            WHERE
+                instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') > 0;";
+
+        await using var command = new SqliteCommand(sql, connection);
+        command.Parameters.AddWithValue("@Prefix", prefix);
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+            yield return reader.GetString(0);
+    }
+
     /// <summary>
     /// Get the count of all PointerFileEntries (deleted and older versions)
     /// </summary>

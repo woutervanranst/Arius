@@ -1,5 +1,4 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Facade;
+﻿using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
