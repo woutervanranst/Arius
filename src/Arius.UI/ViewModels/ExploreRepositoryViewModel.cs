@@ -140,13 +140,16 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         try
         {
             var rn = SelectedFolder.RelativeDirectoryName == ROOT_NODEKEY ? "" : $"{SelectedFolder.RelativeDirectoryName.RemovePrefix(".\\")}\\";
-            
+
+            // Load local entries
+            await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
+            //await LoadListView(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+
             // Load database entries
             await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
             await LoadListView(Repository.QueryPointerFileEntries(rn));
 
-            // Load local entries
-            //await LoadListView(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            
 
 
 

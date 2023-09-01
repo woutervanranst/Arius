@@ -3,41 +3,167 @@ using Arius.Core.Queries;
 
 namespace Arius.UI.Services;
 
-class FileService
+internal class FileService
 {
-    public record GetLocalEntriesResult(string RelativeParentPath, string DirectoryName, string Name) : IEntryQueryResult;
-    
-    /// <summary>
-    /// Returns file entries from a given directory, and from its direct child directories.
-    /// </summary>
-    public static async IAsyncEnumerable<IEntryQueryResult> GetEntriesAsync(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
+    public record GetLocalEntriesResult(string RelativeName) : IEntryQueryResult;
+
+
+    public static async IAsyncEnumerable<string> QuerySubdirectories(DirectoryInfo rootDir, string prefix, int depth)
     {
-        // NOTE This method is somewhat enigmatic but it produces consistent results with the GetPointerFileEntriesAtVersionAsync
+        /* Spec:
+         * write an implementation for this method
 
-        // If no relativeParentPathEquals is provided, return files from the root directory
-        if (string.IsNullOrEmpty(relativeParentPathEquals))
-            foreach (var file in rootDir.GetFiles())
-                yield return new GetLocalEntriesResult("", "", file.Name);
+            public static async IAsyncEnumerable<string> QuerySubdirectories(DirectoryInfo rootDir, string prefix, int depth)
 
-        // Convert relative path to system-specific directory path
-        var adjustedRelativePath = relativeParentPathEquals.Replace('/', Path.DirectorySeparatorChar);
-        var targetDir            = new DirectoryInfo(Path.Combine(rootDir.FullName, adjustedRelativePath));
+            given this directory tree structure
 
-        // If the target directory doesn't exist, we have nothing more to do.
-        if (!targetDir.Exists) 
+            C:\Users\woute\Documents\AriusTest>tree
+            Folder PATH listing
+            Volume serial number is 5E32-C2BC
+            C:.
+            ├───Antifragile
+            └───SOMEDIR
+                ├───dir2
+                └───MOREDIR
+                    └───directory 1
+                        └───fdfsf dfs
+
+            given prefix "" and depth 2
+
+            i expect 
+
+            Antifragile
+            SOMEDIR
+            SOMEDIR\dir2
+            SOMEDIR\MOREDIR
+
+
+            given prefix "SOMEDIR" and depth 2
+
+            i expect
+
+            SOMEDIR\dir2
+            SOMEDIR\MOREDIR\directory 1
+
+
+
+            given prefix "SOMEDIR\MOREDIR" and depth 2
+
+            i expect
+
+            SOMEDIR\MOREDIR\directory 1
+            SOMEDIR\MOREDIR\directory 1\fdfsf dfs
+         */
+
+        // Determine the starting directory based on the given prefix
+        var startingDir = string.IsNullOrWhiteSpace(prefix) 
+            ? rootDir 
+            : new DirectoryInfo(Path.Combine(rootDir.FullName, prefix));
+
+        if (!startingDir.Exists)
             yield break;
 
-        // Return files from direct child directories
-        foreach (var childDir in targetDir.EnumerateDirectories())
-            foreach (var childFile in childDir.EnumerateFiles())
-                yield return new GetLocalEntriesResult(GetRelativePath(rootDir.FullName, targetDir.FullName), childDir.Name, childFile.Name);
+        await foreach (var dir in GetDirectoriesRecursive(startingDir, depth))
+            yield return dir.FullName[rootDir.FullName.Length..].TrimStart(Path.DirectorySeparatorChar);
 
 
-        static string GetRelativePath(string relativeTo, string path)
+        static async IAsyncEnumerable<DirectoryInfo> GetDirectoriesRecursive(DirectoryInfo root, int depth)
         {
-            var p = Path.GetRelativePath(relativeTo, path);
-            return p == "." ? "" : p;
+            if (depth == 0 || !root.Exists)
+                yield break;
+
+            foreach (var subDir in root.GetDirectories())
+            {
+                yield return subDir;
+
+                await foreach (var nextSubDir in GetDirectoriesRecursive(subDir, depth - 1))
+                    yield return nextSubDir;
+            }
         }
+    }
+
+    
+
+
+
+
+
+
+
+//public static async IAsyncEnumerable<string> QuerySubdirectories(DirectoryInfo rootDir, string prefix, int depth)
+//{
+//    await foreach (var dir in QuerySubdirectoriesRecursive(rootDir, "", prefix, depth))
+//    {
+//        yield return dir;
+//    }
+//}
+
+//private static async IAsyncEnumerable<string> QuerySubdirectoriesRecursive(DirectoryInfo currentDir, string currentPath, string prefix, int depth)
+//{
+//    // Base case: if depth is zero or directory doesn't exist, return
+//    if (depth <= 0 || !currentDir.Exists)
+//    {
+//        yield break;
+//    }
+
+//    var subDirectories = currentDir.GetDirectories();
+
+//    foreach (var dir in subDirectories)
+//    {
+//        var relativePath = dir.FullName.Substring(currentDir.FullName.Length).TrimStart(Path.DirectorySeparatorChar);
+//        var fullPath     = string.IsNullOrEmpty(currentPath) ? relativePath : $"{currentPath}{Path.DirectorySeparatorChar}{relativePath}";
+
+//        if (prefix.StartsWith(fullPath) || string.IsNullOrEmpty(prefix))
+//        {
+//            yield return fullPath;
+
+//            var newPrefix = prefix.Length > fullPath.Length ? prefix.Substring(fullPath.Length + 1) : string.Empty;
+
+//            await foreach (var subDir in QuerySubdirectoriesRecursive(dir, fullPath, newPrefix, depth - 1))
+//            {
+//                yield return subDir;
+//            }
+//        }
+//    }
+//}
+
+
+
+/// <summary>
+/// Returns file entries from a given directory, and from its direct child directories.
+/// </summary>
+public static async IAsyncEnumerable<IEntryQueryResult> GetEntriesAsync(DirectoryInfo rootDir, string? relativeParentPathEquals = null)
+    {
+        await Task.CompletedTask;
+
+        yield break;
+
+        //// NOTE This method is somewhat enigmatic but it produces consistent results with the GetPointerFileEntriesAtVersionAsync
+
+        //// If no relativeParentPathEquals is provided, return files from the root directory
+        //if (string.IsNullOrEmpty(relativeParentPathEquals))
+        //    foreach (var file in rootDir.GetFiles())
+        //        yield return new GetLocalEntriesResult("", "", file.Name);
+
+        //// Convert relative path to system-specific directory path
+        //var adjustedRelativePath = relativeParentPathEquals.Replace('/', Path.DirectorySeparatorChar);
+        //var targetDir            = new DirectoryInfo(Path.Combine(rootDir.FullName, adjustedRelativePath));
+
+        //// If the target directory doesn't exist, we have nothing more to do.
+        //if (!targetDir.Exists) 
+        //    yield break;
+
+        //// Return files from direct child directories
+        //foreach (var childDir in targetDir.EnumerateDirectories())
+        //    foreach (var childFile in childDir.EnumerateFiles())
+        //        yield return new GetLocalEntriesResult(GetRelativePath(rootDir.FullName, targetDir.FullName), childDir.Name, childFile.Name);
+
+
+        //static string GetRelativePath(string relativeTo, string path)
+        //{
+        //    var p = Path.GetRelativePath(relativeTo, path);
+        //    return p == "." ? "" : p;
+        //}
 
 
 
