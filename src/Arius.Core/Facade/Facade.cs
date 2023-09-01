@@ -246,10 +246,9 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(
-        string? relativeNameEquals = null)
+    public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(string? relativeDirectory = null)
     {
-        var o = new PointerFileEntriesQueryOptions { RelativeNameEquals = relativeNameEquals };
+        var o = new PointerFileEntriesQueryOptions { RelativeDirectory = relativeDirectory };
         var q = new PointerFileEntriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 

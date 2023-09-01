@@ -139,10 +139,17 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
         try
         {
-            // Load the TreeView
             var rn = SelectedFolder.RelativeDirectoryName == ROOT_NODEKEY ? "" : $"{SelectedFolder.RelativeDirectoryName.RemovePrefix(".\\")}\\";
-
+            
+            // Load database entries
             await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
+            await LoadListView(Repository.QueryPointerFileEntries(rn));
+
+            // Load local entries
+            //await LoadListView(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+
+
+
 
             async Task LoadTreeView(IAsyncEnumerable<string> paths)
             {
@@ -163,28 +170,21 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
             }
 
-            //// Load local entries
-            //await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            async Task LoadListView(IAsyncEnumerable<IEntryQueryResult> entries)
+            {
+                await foreach (var e in entries)
+                {
+                    var folderViewModel = foldersDict[SelectedFolder.RelativeDirectoryName];
+                    var itemViewModel   = GetOrCreateItemViewModel(folderViewModel, GetItemName(Path.GetFileName(e.RelativeName)));
 
-            //// Load database entries
-            //await ProcessEntries(Repository.QueryPointerFileEntries(SelectedFolder.RelativeDirectoryName));
+                    // Set update the viewmodel with the entry
+                    UpdateViewModel(itemViewModel, e);
+                }
 
-            //async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
-            //{
-            //    // Create the necessary FolderViewModels and ItemViewModels for the given entries
-            //    await foreach (var e in entries)
-            //    {
-            //        var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
-            //        var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
-
-            //        // Set update the viewmodel with the entry
-            //        UpdateViewModel(itemViewModel, e);
-            //    }
-
-            //    static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension)
-            //        ? name.RemoveSuffix(".pointer.arius")
-            //        : name;
-            //}
+                static string GetItemName(string name) => name.EndsWith(PointerFileInfo.Extension)
+                    ? name.RemoveSuffix(".pointer.arius")
+                    : name;
+            }
 
             FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
             {

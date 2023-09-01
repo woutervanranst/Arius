@@ -120,7 +120,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
             var pfe = await repo.GetPointerFileEntriesAsync(
                 options.PointInTimeUtc,
                 includeDeleted: false,
-                relativeNameEquals: relativeName).SingleAsync();
+                relativeDirectory: relativeName).SingleAsync();
 
             var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
 

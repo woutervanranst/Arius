@@ -8,12 +8,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 
 namespace Arius.Core.Queries;
 
 internal record PointerFileEntriesQueryOptions : QueryOptions
 {
-    public string? RelativeNameEquals { get; init; } = null; 
+    public string? RelativeDirectory { get; init; } = null; 
 
     public override void Validate()
     {
@@ -63,10 +64,11 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
 
         static async IAsyncEnumerable<IPointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
         {
+            //await foreach (var pfe in repository.Kak(options.RelativeNameStartsWith.ToPlatformNeutralPath()))
             await foreach (var pfe in repository.GetPointerFileEntriesAsync(
                                pointInTimeUtc: DateTime.Now,
                                includeDeleted: false,
-                               relativeNameEquals: options.RelativeNameEquals,
+                               relativeDirectory: options.RelativeDirectory,
                                includeChunkEntry: true))
             {
                 yield return new PointerFileEntryQueryResult
