@@ -36,12 +36,16 @@ internal class ApplicationSettings
         }
     }
 
+    /// <summary>
+    /// Get the most recently used repositories
+    /// The most recently used is first
+    /// </summary>
     public IEnumerable<RepositoryOptionsDto> RecentRepositories
     {
         get
         {
             using var context = GetContext();
-            return context.RecentRepositories.OrderBy(r => r.LastOpened).ToList();
+            return context.RecentRepositories.OrderByDescending(r => r.LastOpened).ToList();
         }
     }
 

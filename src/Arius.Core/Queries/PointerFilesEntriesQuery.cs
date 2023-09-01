@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Extensions;
 
 namespace Arius.Core.Queries;
 
@@ -26,9 +25,6 @@ internal record PointerFileEntriesQueryOptions : QueryOptions
 public interface IEntryQueryResult // also implemented by Arius.UI.FileService
 {
     public string RelativeName { get; }
-    //public string RelativeParentPath { get; }
-    //public string DirectoryName { get; }
-    //public string Name { get; }
 }
 public interface IPointerFileEntryQueryResult : IEntryQueryResult // properties specific to PointerFileEntry. Public interface is required for type matching
 {
@@ -106,9 +102,6 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
     private record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
     {
         public string         RelativeName       { get; init; }
-        //public string         RelativeParentPath { get; init; }
-        //public string         DirectoryName      { get; init; }
-        //public string         Name               { get; init; }
         public long           OriginalLength     { get; init; }
         public HydrationState HydrationState     { get; init; }
     }

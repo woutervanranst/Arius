@@ -143,18 +143,11 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
             // Load local entries
             await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
-
-            var x = await FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName).ToListAsync();
-
             await LoadListView(FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName));
 
             // Load database entries
             await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
             await LoadListView(Repository.QueryPointerFileEntries(rn));
-
-            
-
-
 
 
             async Task LoadTreeView(IAsyncEnumerable<string> paths)
@@ -171,9 +164,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
                         var folderViewModel = GetOrCreateFolderViewModel(relativeParentPath, directoryName);
                     }
-
                 }
-
             }
 
             async Task LoadListView(IAsyncEnumerable<IEntryQueryResult> entries)

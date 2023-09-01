@@ -6,7 +6,7 @@ namespace Arius.UI.Services;
 
 internal class FileService
 {
-    public static async IAsyncEnumerable<string> QuerySubdirectories(DirectoryInfo rootDir, string prefix, int depth)
+    public static async IAsyncEnumerable<string> QuerySubdirectories(DirectoryInfo root, string prefix, int depth)
     {
         /* Spec:
          * write an implementation for this method
@@ -55,14 +55,14 @@ internal class FileService
 
         // Determine the starting directory based on the given prefix
         var startingDir = string.IsNullOrWhiteSpace(prefix) 
-            ? rootDir 
-            : new DirectoryInfo(Path.Combine(rootDir.FullName, prefix));
+            ? root 
+            : new DirectoryInfo(Path.Combine(root.FullName, prefix));
 
         if (!startingDir.Exists)
             yield break;
 
         await foreach (var dir in QuerySubdirectoriesRecursive(startingDir, depth))
-            yield return dir.FullName[rootDir.FullName.Length..].TrimStart(Path.DirectorySeparatorChar);
+            yield return dir.FullName[root.FullName.Length..].TrimStart(Path.DirectorySeparatorChar);
 
 
         static async IAsyncEnumerable<DirectoryInfo> QuerySubdirectoriesRecursive(DirectoryInfo root, int depth)
