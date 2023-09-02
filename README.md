@@ -154,6 +154,10 @@ Arius employs deduplication to optimize storage efficiency. For detailed explana
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/dependencies.puml)
 
+### Arius.Core Architecture
+
+![](docs/AriusFlows-Arius.Core%20Structure.drawio.svg)
+
 ### Arius.Core Domain Model
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/classdiagram.puml)
