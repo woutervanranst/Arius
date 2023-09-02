@@ -41,11 +41,11 @@ Install it via ClickOnce by clicking on the shield at the top of the page.
 
 The status icon 
 
-| Operation | CLI                                    | CLI in Docker        |   |
-| --- |---|---|---|
-| ![](docs/status/NNYC.png) | s | a | b |
-| ![](docs/status/NYYC.png) | s | a | b |
-| ![](docs/status/YYYC.png) | s | a | b |
+| Icon | Local | Azure |
+| --- |---|---|
+| ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
+| ![](docs/status/NNYC.png) | Only the Pointer | Pointer and Binary |
+| ![](docs/status/YYYC.png) | Pointer and Binary | Pointer and Binary |
 
 
 ### Arius CLI
