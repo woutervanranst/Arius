@@ -340,6 +340,25 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
     }
 
 
+    public IEnumerable<RecentlyUsedRepositoryViewModel> RecentRepositories 
+        => settings.RecentRepositories.Skip(1).Select(r => new RecentlyUsedRepositoryViewModel(r));
+
+
+    public partial class RecentlyUsedRepositoryViewModel : ObservableObject
+    {
+        private readonly RepositoryOptionsDto r;
+
+        public RecentlyUsedRepositoryViewModel(RepositoryOptionsDto r)
+        {
+            this.r = r;
+        }
+
+        public override string ToString()
+        {
+            return $"{r.LocalDirectory} : {r.AccountName}/{r.ContainerName}";
+        }
+    }
+
     public partial class FolderViewModel : ObservableRecipient
     {
         public FolderViewModel()
