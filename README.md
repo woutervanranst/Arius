@@ -44,7 +44,7 @@ The status icon
 | Icon | Local | Azure |
 | --- |---|---|
 | ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
-| ![](docs/status/NNYC.png) | Only the Pointer | Pointer and Binary |
+| ![](docs/status/NNYC.png) | Not present | Pointer and Binary |
 | ![](docs/status/YYYC.png) | Pointer and Binary | Pointer and Binary |
 
 
