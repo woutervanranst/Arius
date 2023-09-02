@@ -39,9 +39,9 @@ Arius Explorer is a Windows application that offers a graphical user interface i
 
 Install it via ClickOnce by clicking on the shield at the top of the page.
 
-The status icon 
+The status icon is a combination of the state in the local file system (left half moon) and the state in the repository (right half moon). For example:
 
-| Icon | Local | Azure |
+| Icon | Local file systen | Azure Arius Repository |
 | --- |---|---|
 | ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
 | ![](docs/status/NNYC.png) | Not present | Pointer and Binary |
