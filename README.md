@@ -39,6 +39,15 @@ Arius Explorer is a Windows application that offers a graphical user interface i
 
 Install it via ClickOnce by clicking on the shield at the top of the page.
 
+The status icon 
+
+| Operation | CLI                                    | CLI in Docker        |   |
+| --- |---|---|---|
+| ![](docs/status/NNYC.png) | s | a | b |
+| ![](docs/status/NYYC.png) | s | a | b |
+| ![](docs/status/YYYC.png) | s | a | b |
+
+
 ### Arius CLI
 
 #### Archive
@@ -139,11 +148,13 @@ For detailed instructions on restoring files manually, _without_ using any of th
 
 Arius employs deduplication to optimize storage efficiency. For detailed explanations, diagrams, and benchmarks on deduplication, refer to the [Deduplication](docs/deduplication.md) section in the documentation.
 
+## Technical Documentation
+
 ### Dependencies
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/dependencies.puml)
 
-### Arius.Core Domain Moodel
+### Arius.Core Domain Model
 
 ![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/classdiagram.puml)
 
