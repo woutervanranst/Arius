@@ -25,8 +25,6 @@ The name derives from the Greek for 'immortal'.
 
 1. **Deduplication**: Arius assists users who wish to avoid storing duplicate files or file parts. It offers file-level deduplication by default and allows optional chunking and deduplication.
 
-1. **Cost**: The Azure Archive tier is the cheapest storage option in Azure, at approximately 1 EUR per TB per month. Arius leverages this tier to offer a cost-effective archival solution.
-
 ![](docs/overview.png)
 
 ## How
@@ -131,10 +129,6 @@ docker run
 | &#x2011;&#x2011;download | Download and restore the actual file (contents) |  `restore`-only<br> OPTIONAL. Default: do not download.<br>NOTE: If the file is in the archive blob tier, hydration to an online tier is started. Run the restore command again after ~15 hours to download the file.
 | &#x2011;&#x2011;keep-pointers | Keep pointer files after downloading content files | `restore`-only<br>OPTIONAL. Default: keep the pointers. 
 
-### Windows (Arius Explorer)
-
-Via ClickOnce: https://woutervanranst.github.io/Arius/Arius.Explorer.application
-
 ### Restoring manually
 
 For detailed instructions on restoring files manually, _without_ using any of the Arius tools, please consult the [Restore Manually](docs/manualrestore.md) section.
@@ -145,11 +139,13 @@ For detailed instructions on restoring files manually, _without_ using any of th
 
 Arius employs deduplication to optimize storage efficiency. For detailed explanations, diagrams, and benchmarks on deduplication, refer to the [Deduplication](docs/deduplication.md) section in the documentation.
 
-## Technical Documentation
+### Dependencies
 
-## Arius Core Classes
+![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/dependencies.puml)
 
-![your-UML-diagram-name](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/classdiagram.puml)
+### Arius.Core Domain Moodel
+
+![](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.githubusercontent.com/woutervanranst/Arius/main/docs/classdiagram.puml)
 
 # Attributions
 
