@@ -11,7 +11,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
-using MessageBox = System.Windows.Forms.MessageBox;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI;
 
@@ -39,8 +39,8 @@ public partial class App
         ShutdownMode = ShutdownMode.OnLastWindowClose;
     }
 
-    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e) => MessageBox.Show(e.Exception.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-    private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)        => MessageBox.Show(e.ExceptionObject.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e) => MessageBox.Show(e.Exception.ToString(), "Unhandled exception", MessageBoxButton.OK, MessageBoxImage.Error);
+    private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)        => MessageBox.Show(e.ExceptionObject.ToString(), "Unhandled exception", MessageBoxButton.OK, MessageBoxImage.Error);
 
     private void ConfigureServices(IServiceCollection services)
     {
@@ -140,24 +140,40 @@ public partial class App
             chooserWindow!.Close();
         }
 
-        // Save to settings
-        var s = host.Services.GetRequiredService<ApplicationSettings>();
-        s.AddLastUsedRepository(message);
-
         var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
         var viewModel      = (RepositoryExplorerViewModel)explorerWindow.DataContext;
-        viewModel.IsLoading = true;
 
-        // Load RepositoryFacade
-        repositoryFacade?.Dispose();
-        repositoryFacade = await host.Services.GetRequiredService<Facade>()
-            .ForStorageAccount(message.AccountName, message.AccountKey)
-            .ForRepositoryAsync(message.ContainerName, message.Passphrase);
+        try
+        {
+            // Set the loading indicator
+            viewModel.IsLoading = true;
 
-        // Update the ViewModel
-        viewModel.LocalDirectory = message.LocalDirectory;
-        viewModel.Repository     = repositoryFacade;
+            // Load RepositoryFacade
+            repositoryFacade?.Dispose();
+            repositoryFacade = await host.Services.GetRequiredService<Facade>()
+                .ForStorageAccount(message.AccountName, message.AccountKey)
+                .ForRepositoryAsync(message.ContainerName, message.Passphrase);
 
-        viewModel.IsLoading = false;
+            // in case of success, save to settings
+            var s = host.Services.GetRequiredService<ApplicationSettings>();
+            s.AddLastUsedRepository(message);
+
+            // Update the ViewModel
+            viewModel.LocalDirectory = message.LocalDirectory;
+            viewModel.Repository     = repositoryFacade;
+        }
+        catch (ArgumentException e)
+        {
+            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
+        }
+        finally
+        {
+            viewModel.IsLoading = false;
+        }
     }
 }

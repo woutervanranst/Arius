@@ -171,34 +171,14 @@ public partial class RepositoryChooserViewModel : ObservableRecipient
             return;
         }
 
-        try
+        WeakReferenceMessenger.Default.Send(new RepositoryChosenMessage
         {
-            IsLoading = true;
-
-            var repositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
-
-            SaveState();
-
-            messenger.Send(new RepositoryChosenMessage(new DirectoryInfo(LocalDirectory), repositoryFacade));
-        }
-        catch (ArgumentException e)
-        {
-            IsLoading = false;
-            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception e)
-        {
-            IsLoading = false;
-            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
-            throw;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-
-
+            Sender         = this,
+            LocalDirectory = new DirectoryInfo(this.LocalDirectory),
+            AccountName    = this.AccountName,
+            AccountKey     = this.AccountKey,
+            ContainerName  = this.SelectedContainerName,
+            Passphrase     = this.Passphrase
+        });
     }
 }
