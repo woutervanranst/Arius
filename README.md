@@ -7,7 +7,7 @@
 [![CodeQL: Arius.Core](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/codeql-analysis.yml)
 
 [![Arius Release](https://github.com/woutervanranst/Arius/actions/workflows/release.yml/badge.svg)](https://github.com/woutervanranst/Arius/actions/workflows/release.yml)
-![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker&link=https%3A%2F%2Fhub.docker.com%2Fr%2Fwoutervanranst%2Farius)
+[![Docker](https://img.shields.io/docker/v/woutervanranst/arius?logo=docker&label=Docker)](https://hub.docker.com/r/woutervanranst/arius)
 [![Arius.Core Version](https://img.shields.io/nuget/v/WouterVanRanst.Arius.Core?logo=nuget)](https://www.nuget.org/packages/WouterVanRanst.Arius.Core)
 [![ClickOnce](https://img.shields.io/badge/Windows-ClickOnce-dsfs?logo=windows&logoColor=lightblue)](https://woutervanranst.github.io/Arius/Arius.Explorer.application)
 
@@ -35,39 +35,15 @@ Arius is a command-line tool (CLI) that can be run manually or scheduled. It can
 
 Arius Explorer is a Windows application that offers a graphical user interface into an Arius repository.
 
+### Arius Explorer
+
+![](docs/arius.explorer.png)
+
 ### Arius CLI
 
-| Operation | CLI                  | CLI in Docker        |   |
-|-----------|----------------------|----------------------|---|
-| Archive   | ``` ddfd ```         | Starts with xoxb-... |   |
-| Restore   | SLACK_SIGNING_SECRET | A number             |   |
+#### Archive
 
-### Archive to blob storage
-
-<thead>
-  <tr>
-    <th>Operation</th>
-    <th>CLI</th>
-    <th>CLI in Docker</th>
-    <th></th>
-  </tr>
-</thead>
-<tbody>
-  <tr>
-    <td>Archive</td>
-    <td>```<br>ddfd<br>gdfg<br><br>fggfdg<br>f<br>g<br>d<br>gf<br>gd<br><br>```</td>
-    <td>Starts with xoxb-...</td>
-    <td></td>
-  </tr>
-  <tr>
-    <td>Restore</td>
-    <td>SLACK_SIGNING_SECRET</td>
-    <td>A number</td>
-    <td></td>
-  </tr>
-</tbody>
-
-#### CLI
+CLI:
 
 ```
 arius archive <path>
@@ -81,13 +57,13 @@ arius archive <path>
   [--fasthash]
 ```
 
-#### Docker
+CLI in Docker:
 
 ```
 docker run
   -v <absolute_path_to_archive>:/archive
  [-v <absolute_path_to_logs>:/logs]
-  ghcr.io/woutervanranst/arius:latest
+  woutervanranst/arius
 
   archive
    --accountname <accountname>
@@ -100,9 +76,9 @@ docker run
   [--fasthash]
 ```
 
-### Restore from blob storage
+### Restore
 
-#### CLI
+CLI:
 
 ```
 arius restore <path>
@@ -113,16 +89,15 @@ arius restore <path>
   [--synchronize]
   [--download]
   [--keep-pointers]
-  
 ```
 
-#### Docker
+CLI in Docker:
 
 ```
 docker run
   -v <absolute_path_to_archive>:/archive
  [-v <absolute_path_to_logs>:/logs]
-  ghcr.io/woutervanranst/arius:latest
+  woutervanranst/arius
 
   restore
    --accountname <accountname>
@@ -151,6 +126,8 @@ docker run
 | &#x2011;&#x2011;synchronize | Bring the structure of the local file system (pointer files) in line with the latest state of the remote repository | `restore`-only<br> OPTIONAL. Default: do not synchronize.<br>This command only touches the pointers (ie. `.pointer.arius` files). Other files are left untouched:<ul><li>Pointers that exist in the archive but not locally are created.<li>Pointers that exist locally but not in the archive are deleted</ul>
 | &#x2011;&#x2011;download | Download and restore the actual file (contents) |  `restore`-only<br> OPTIONAL. Default: do not download.<br>NOTE: If the file is in the archive blob tier, hydration to an online tier is started. Run the restore command again after ~15 hours to download the file.
 | &#x2011;&#x2011;keep-pointers | Keep pointer files after downloading content files | `restore`-only<br>OPTIONAL. Default: keep the pointers. 
+
+
 
 
 ## Installing
