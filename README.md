@@ -43,8 +43,8 @@ The status icon is a combination of the state in the local file system (left hal
 
 | Icon | Local file systen | Azure Arius Repository |
 | --- |---|---|
-| ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
 | ![](docs/status/NNYC.png) | Not present | Pointer and Binary |
+| ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
 | ![](docs/status/YYYC.png) | Pointer and Binary | Pointer and Binary |
 
 
