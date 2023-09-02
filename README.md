@@ -1,4 +1,4 @@
-# Arius
+# Arius: a Lightweight Tiered Archival Solution for Azure Blob Storage
 
 <img src="docs/iceberg.svg" width="200" />
 
@@ -11,85 +11,61 @@
 [![Arius.Core Version](https://img.shields.io/nuget/v/WouterVanRanst.Arius.Core?logo=nuget)](https://www.nuget.org/packages/WouterVanRanst.Arius.Core)
 [![ClickOnce](https://img.shields.io/badge/Windows-ClickOnce-dsfs?logo=windows&logoColor=lightblue)](https://woutervanranst.github.io/Arius/Arius.Explorer.application)
 
-
-Arius is a lightweight tiered archival solution, specifically built to leverage the Azure Blob Archive tier.
+Arius is a lightweight archival solution, specifically built to leverage the Azure Blob Archive tier.
 
 The name derives from the Greek for 'immortal'.
 
-- [Arius](#arius)
-  - [Key design scenarios](#key-design-scenarios)
-  - [Key design objectives](#key-design-objectives)
-  - [Overview](#overview)
-  - [Usage](#usage)
-    - [Archive to blob storage](#archive-to-blob-storage)
-      - [CLI](#cli)
-      - [Docker](#docker)
-    - [Restore from blob storage](#restore-from-blob-storage)
-      - [CLI](#cli-1)
-      - [Docker](#docker-1)
-    - [Arguments](#arguments)
-  - [Installing](#installing)
-    - [Docker (Recommended option)](#docker-recommended-option)
-    - [Linux (CLI)](#linux-cli)
-    - [Windows (CLI)](#windows-cli)
-    - [Windows GUI](#windows-gui)
-    - [Restore manually](#restore-manually)
-      - [Getting the correct binary](#getting-the-correct-binary)
-      - [Decrypt and unpack](#decrypt-and-unpack)
-  - [Advanced](#advanced)
-    - [Deduplication](#deduplication)
-      - [How it works](#how-it-works)
-      - [In detail](#in-detail)
-      - [Deduplication benchmark for large binary files](#deduplication-benchmark-for-large-binary-files)
-      - [Deduplication benchmark on general purpose file share](#deduplication-benchmark-on-general-purpose-file-share)
-- [Attributions](#attributions)
+## Why?
 
-## Key design scenarios
+1. **Supporting 3-2-1 Backup Strategy**: Arius offers a secure and cost-effective offsite backup solution, complementing offline disk backups. The use of Azure Blob Archive tier results in low-cost archiving, approximately 1 EUR per TB per month.
 
-Why Arius?
+1. **Single Pane of Glass**: Arius ensures seamless access to offline backups without requiring a separate application. By creating small "pointers" locally, the Windows Explorer's search functionality makes them easily visible.
 
-**Scenario 1: support 3-2-1 backup strategy**
+1. **Encryption**: For those with privacy concerns, Arius uses AES256/openssl-compatible encryption, providing robust client-side encryption.
 
-- I keep my backups on offline disks but want a secure and cheap offsite backup.
-- With Arius and the blob archive tier, the cost is approx. 1 EUR per TB per month.
+1. **Deduplication**: Arius assists users who wish to avoid storing duplicate files or file parts. It offers file-level deduplication by default and allows optional chunking and deduplication.
 
-**Scenario 2: single pane of glass of all files**
-
-- I do not want to open a separate application to see what is in my offline backups.
-- Arius creates 'pointers' of <1KB each on the local hard drive. That way, the Search in Windows Explorer makes them visible.
-
-**Scenario 3: encryption**
-
-- I want client side encryption (because of \<reasons>).
-- Arius uses AES256 / openssl compatible encryption.
-
-**Scenario 4: deduplication**
-
-- I have OCD and do not want to store duplicate files/parts of files twice.
-- Arius deduplicates on file level by default, and can optionally 'chunk' files into multiple parts and deduplicate on these.
-
-## Key design objectives
-
-- [x] Maintain the local file structure (files/folders) by creating 'sparse' placeholders (Scenario 2).
-- [x] Files, folders & filenames are encrypted clientside (Scenario 3).
-- [x] The local filestructure is _not_ reflected in the archive structure (ie it is obfuscated) (Scenario 3).
-- [x] Changes in the local file _structure_ do not cause a reshuffle in the archive (which doesn't sit well with Archive storage).
-- [x] Never delete files on remote.
-- [x] No central store to avoid a single point of failure.
-- [x] File level deduplication (Scenario 4).
-- [x] Variable block size deduplication (Scenario 4).
-- [x] Leverage common tools, to allow restores even when this project would become deprecated.
-- [ ] Point in time restore (FUTURE).
-
-## Overview
-
-Arius is a tool that archives a local folder structure to/from Azure Blob Storage Archive Tier. The following diagram shows the concept of how Arius works.
+1. **Cost**: The Azure Archive tier is the cheapest storage option in Azure, at approximately 1 EUR per TB per month. Arius leverages this tier to offer a cost-effective archival solution.
 
 ![](docs/overview.png)
 
-## Usage
+## How
+
+Arius is a command-line tool (CLI) that can be run manually or scheduled. It can also be run as a Docker container.
+
+Arius Explorer is a Windows application that offers a graphical user interface into an Arius repository.
+
+### Arius CLI
+
+| Operation | CLI                  | CLI in Docker        |   |
+|-----------|----------------------|----------------------|---|
+| Archive   | ``` ddfd ```         | Starts with xoxb-... |   |
+| Restore   | SLACK_SIGNING_SECRET | A number             |   |
 
 ### Archive to blob storage
+
+<thead>
+  <tr>
+    <th>Operation</th>
+    <th>CLI</th>
+    <th>CLI in Docker</th>
+    <th></th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td>Archive</td>
+    <td>```<br>ddfd<br>gdfg<br><br>fggfdg<br>f<br>g<br>d<br>gf<br>gd<br><br>```</td>
+    <td>Starts with xoxb-...</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Restore</td>
+    <td>SLACK_SIGNING_SECRET</td>
+    <td>A number</td>
+    <td></td>
+  </tr>
+</tbody>
 
 #### CLI
 
