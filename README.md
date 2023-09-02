@@ -39,6 +39,8 @@ Arius Explorer is a Windows application that offers a graphical user interface i
 
 ![](docs/arius.explorer.png)
 
+Install it via ClickOnce by clicking on the shield at the top of the page.
+
 ### Arius CLI
 
 #### Archive
@@ -126,25 +128,6 @@ docker run
 | &#x2011;&#x2011;synchronize | Bring the structure of the local file system (pointer files) in line with the latest state of the remote repository | `restore`-only<br> OPTIONAL. Default: do not synchronize.<br>This command only touches the pointers (ie. `.pointer.arius` files). Other files are left untouched:<ul><li>Pointers that exist in the archive but not locally are created.<li>Pointers that exist locally but not in the archive are deleted</ul>
 | &#x2011;&#x2011;download | Download and restore the actual file (contents) |  `restore`-only<br> OPTIONAL. Default: do not download.<br>NOTE: If the file is in the archive blob tier, hydration to an online tier is started. Run the restore command again after ~15 hours to download the file.
 | &#x2011;&#x2011;keep-pointers | Keep pointer files after downloading content files | `restore`-only<br>OPTIONAL. Default: keep the pointers. 
-
-
-
-
-## Installing
-
-### Docker (Recommended option)
-
-```
-docker pull ghcr.io/woutervanranst/arius
-```
-
-### Linux (CLI)
-
-Execute the `install.sh` file in the install folder.
-
-```
-dotnet arius.dll <see syntax above>
-```
 
 ### Windows (Arius Explorer)
 
