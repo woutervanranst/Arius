@@ -17,13 +17,13 @@ The name derives from the Greek for 'immortal'.
 
 ## Why?
 
-1. **Supporting 3-2-1 Backup Strategy**: Arius offers a secure and cost-effective offsite backup solution, complementing offline disk backups. The use of Azure Blob Archive tier results in low-cost archiving, approximately 1 EUR per TB per month.
+1. **Supporting 3-2-1 Backup Strategy**: Arius offers a secure and cost-effective offsite backup solution, complementing offline disk backups. The use of Azure Blob Archive tier allows for low-cost archiving, approximately 1 EUR per TB per month.
 
-1. **Single Pane of Glass**: Arius ensures seamless access to offline backups without requiring a separate application. By creating small "pointers" locally, the Windows Explorer's search functionality makes them easily visible.
+1. **Single Pane of Glass**: Arius ensures seamless visibility to offline backups without requiring a separate application. By creating small "pointers" locally, they remain present in the local filesystem and easily discoverable in Windows Explorer.
 
 1. **Encryption**: For those with privacy concerns, Arius uses AES256/openssl-compatible encryption, providing robust client-side encryption.
 
-1. **Deduplication**: Arius assists users who wish to avoid storing duplicate files or file parts. It offers file-level deduplication by default and allows optional chunking and deduplication.
+1. **Deduplication**: Arius does not store duplicate files or file parts. It offers file-level deduplication by default and allows optional variable block size deduplication within files.
 
 ![](docs/overview.png)
 
@@ -41,7 +41,7 @@ Install it via ClickOnce by clicking on the shield at the top of the page.
 
 The status icon is a combination of the state in the local file system (left half moon) and the state in the repository (right half moon). For example:
 
-| Icon | Local file systen | Azure Arius Repository |
+| Icon | Local file systen | Azure Repository |
 | --- |---|---|
 | ![](docs/status/NNYC.png) | Not present | Pointer and Binary |
 | ![](docs/status/NYYC.png) | Only the Pointer | Pointer and Binary |
@@ -50,7 +50,7 @@ The status icon is a combination of the state in the local file system (left hal
 
 ### Arius CLI
 
-#### Archive
+#### Archive to Azure
 
 CLI:
 
@@ -59,9 +59,9 @@ CLI:
 ```
 arius archive <path>
    --accountname <accountname>
-   --accountkey <accountkey>
-   --passphrase <passphrase>
-   --container <containername>
+   --accountkey  <accountkey>
+   --passphrase  <passphrase>
+   --container   <containername>
   [--remove-local]
   [--tier=<hot/cool/archive>]
   [--dedup]
@@ -78,25 +78,25 @@ docker run
 
   archive
    --accountname <accountname>
-   --accountkey <accountkey>
-   --passphrase <passphrase>
-   --container <containername>
+   --accountkey  <accountkey>
+   --passphrase  <passphrase>
+   --container   <containername>
   [--remove-local]
   [--tier=<hot/cool/archive>]
   [--dedup]
   [--fasthash]
 ```
 
-### Restore
+### Restore from Azure
 
 CLI:
 
 ```
 arius restore <path>
    --accountname <accountname>
-   --accountkey <accountkey>
-   --passphrase <passphrase>
-   --container <containername>
+   --accountkey  <accountkey>
+   --passphrase  <passphrase>
+   --container   <containername>
   [--synchronize]
   [--download]
   [--keep-pointers]
@@ -112,9 +112,9 @@ docker run
 
   restore
    --accountname <accountname>
-   --accountkey <accountkey>
-   --passphrase <passphrase>
-   --container <containername>
+   --accountkey  <accountkey>
+   --passphrase  <passphrase>
+   --container   <containername>
   [--synchronize]
   [--download]
   [--keep-pointers]
