@@ -178,6 +178,8 @@ internal partial class Repository
 
     public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth)
     {
+        // TODO needs to be adapted to account for deleted versions
+
         await using var db = GetStateDbContext();
 
         var connectionString = db.Database.GetConnectionString();
