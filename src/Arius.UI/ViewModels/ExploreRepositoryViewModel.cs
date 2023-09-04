@@ -11,27 +11,67 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using System.Windows;
 using System.Windows.Threading;
 using WouterVanRanst.Utils.Extensions;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI.ViewModels;
 
-internal partial class RepositoryExplorerViewModel : ObservableRecipient
+internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDisposable
 {
+    private readonly Facade              facade;
     private readonly ApplicationSettings settings;
 
-    public RepositoryExplorerViewModel(ApplicationSettings settings)
+    public ExploreRepositoryViewModel(Facade facade, ApplicationSettings settings)
     {
+        this.facade   = facade;
         this.settings = settings;
-        Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
 
         ChooseRepositoryCommand     = new RelayCommand(OnChooseRepository);
         OpenRecentRepositoryCommand = new RelayCommand<RecentlyUsedRepositoryViewModel>(OnOpenRecentRepository);
         RestoreCommand              = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
         AboutCommand                = new RelayCommand(OnAbout);
+
+        Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
+        Messenger.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
     }
+
+    private async void OnRepositoryChosen(object recipient, RepositoryChosenMessage message)
+    {
+        try
+        {
+            // Set the loading indicator
+            IsLoading = true;
+
+            // Load RepositoryFacade
+            m = message;
+            Repository = await facade
+                .ForStorageAccount(message.AccountName, message.AccountKey)
+                .ForRepositoryAsync(message.ContainerName, message.Passphrase);
+            LocalDirectory = message.LocalDirectory;
+
+            // in case of success, save to settings
+            settings.AddLastUsedRepository(message);
+        }
+        catch (ArgumentException e)
+        {
+            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private RepositoryChosenMessage m;
 
     public RepositoryFacade Repository
     {
@@ -268,21 +308,25 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
     public IRelayCommand ChooseRepositoryCommand { get; }
     private void OnChooseRepository()
     {
-        Messenger.Send(new ChooseRepositoryMessage
-        {
-            Sender         = this,
-            LocalDirectory = this.LocalDirectory,
-            AccountName    = Repository.AccountName,
-            AccountKey     = Repository.AccountKey,  // TODO not ok
-            ContainerName  = Repository.ContainerName,
-            Passphrase     = Repository.Passphrase // TODO not ok
-        });
+        Messenger.Send(m); 
+        //new ChooseRepositoryMessage
+        //{
+        //    LocalDirectory = this.LocalDirectory,
+        //    AccountName    = Repository?.AccountName ?? "",
+        //    AccountKey     = Repository?.AccountKey ?? "",  // TODO not ok
+        //    ContainerName  = Repository?.ContainerName ?? "",
+        //    Passphrase     = Repository?.Passphrase ?? "" // TODO not ok
+        //});
     }
 
     
     public IRelayCommand OpenRecentRepositoryCommand { get; }
     private void OnOpenRecentRepository(RecentlyUsedRepositoryViewModel a)
     {
+        //Messenger.Send(new RepositoryChosenMessage
+        //{
+        //    AccountName = a.
+        //})
     }
 
 
@@ -300,7 +344,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         msg.AppendLine();
         msg.AppendLine("Proceed?");
 
-        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
             return;
 
         var relativeNames = SelectedItems.Select(item => item.PointerFileEntryRelativeName).ToArray();
@@ -308,7 +352,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         var r = await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
             relativeNames: relativeNames,
             download: true,
-            keepPointers: false);
+            keepPointers: settings.KeepPointersOnRestore);
 
         if (r == 0)
         {
@@ -319,11 +363,11 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
             msg.AppendLine("Files downloaded!");
 
-            MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(msg.ToString(), App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
         }
         else
         {
-            MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
     }
     private bool CanRestore() => selectedItems.Any();
@@ -336,7 +380,7 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
 
         var coreVersion = typeof(Arius.Core.Facade.Facade).Assembly.GetName().Version;
 
-        MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
 
@@ -526,5 +570,10 @@ internal partial class RepositoryExplorerViewModel : ObservableRecipient
         private long originalLength;
 
         public override string ToString() => Name;
+    }
+
+    public void Dispose()
+    {
+        repository.Dispose();
     }
 }

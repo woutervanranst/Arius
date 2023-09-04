@@ -18,7 +18,6 @@ namespace Arius.UI;
 public partial class App
 {
     private readonly IHost             host;
-    private          RepositoryFacade? repositoryFacade;
 
     public static string Name => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "PRODUCT_UNKNOWN"; // get the value of the <Product> in csproj
 
@@ -48,19 +47,19 @@ public partial class App
         services.AddSingleton<ApplicationSettings>(new ApplicationSettings(Path.Combine(ApplicationDataPath, "arius.explorer.settings.sqlite")));
 
         // register the viewmodels - they are Transient - for every window a new one
-        services.AddTransient<RepositoryChooserViewModel>();
-        services.AddTransient<RepositoryExplorerViewModel>();
+        services.AddTransient<ChooseRepositoryViewModel>();
+        services.AddTransient<ExploreRepositoryViewModel>();
 
         // register the views
         // the RepositoryExplorerWindow is a singleton, we only need to show it once
         services.AddSingleton<RepositoryExplorerWindow>(sp => new RepositoryExplorerWindow
         {
-            DataContext = sp.GetRequiredService<RepositoryExplorerViewModel>()
+            DataContext = sp.GetRequiredService<ExploreRepositoryViewModel>()
         });
         // the RepositoryChooserWindow is transient, we can show it multiple times (a closed window cannot be reopened)
         services.AddTransient<RepositoryChooserWindow>(sp => new RepositoryChooserWindow
         {
-            DataContext = sp.GetRequiredService<RepositoryChooserViewModel>()
+            DataContext = sp.GetRequiredService<ChooseRepositoryViewModel>()
         });
     }
 
@@ -75,23 +74,13 @@ public partial class App
         var lastOpenedRepository = s.RecentRepositories.FirstOrDefault();
         if (lastOpenedRepository is null)
         {
-            WeakReferenceMessenger.Default.Send(new ChooseRepositoryMessage
-            {
-                Sender = this
-            });
+            // Show the ChooseRepositoryWindow with empty fields
+            WeakReferenceMessenger.Default.Send(new ChooseRepositoryMessage());
         }
         else
         {
-            // Load the last used Repository
-            WeakReferenceMessenger.Default.Send(new RepositoryChosenMessage
-            {
-                Sender         = this,
-                LocalDirectory = new DirectoryInfo(lastOpenedRepository.LocalDirectory),
-                AccountName    = lastOpenedRepository.AccountName,
-                AccountKey     = lastOpenedRepository.AccountKeyProtected.Unprotect(),
-                ContainerName  = lastOpenedRepository.ContainerName,
-                Passphrase     = lastOpenedRepository.PassphraseProtected.Unprotect()
-            });
+            // Show the ExporeRepositoryWindow with the last used Repository
+            WeakReferenceMessenger.Default.Send(new RepositoryChosenMessage(this, lastOpenedRepository));
         }
     }
 
@@ -100,7 +89,6 @@ public partial class App
         using (host)
         {
             host.Dispose();
-            repositoryFacade?.Dispose();
             await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
         }
 
@@ -115,65 +103,26 @@ public partial class App
     {
         // Show a UI to choose a Repository
         chooserWindow = host.Services.GetRequiredService<RepositoryChooserWindow>();
-
-        var viewModel = (RepositoryChooserViewModel)chooserWindow.DataContext;
-        viewModel.LocalDirectory        = message.LocalDirectory?.FullName ?? "";
-        viewModel.AccountName           = message?.AccountName ?? "";
-        viewModel.AccountKey            = message?.AccountKey ?? "";
-        viewModel.SelectedContainerName = message?.ContainerName ?? "";
-        viewModel.Passphrase            = message?.Passphrase ?? "";
+        WeakReferenceMessenger.Default.Send(message); // do this after the GetRequiredServices - then the ViewModel is instantiated
 
         var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
         chooserWindow.Owner = explorerWindow; // show modal over ExplorerWindow
         chooserWindow.ShowDialog();
     }
 
-    private async void OnRepositoryChosen(object sender, RepositoryChosenMessage message)
+    private async void OnRepositoryChosen(object recipient, RepositoryChosenMessage message)
     {
         if (message.Sender == this)
         {
             // Message sent during startup
         }
-        else if (message.Sender is RepositoryChooserViewModel)
+        else if (message.Sender is ChooseRepositoryViewModel)
         {
             // Message sent by the RepositoryChooserWindow
             chooserWindow!.Close();
         }
 
         var explorerWindow = host.Services.GetRequiredService<RepositoryExplorerWindow>();
-        var viewModel      = (RepositoryExplorerViewModel)explorerWindow.DataContext;
-
-        try
-        {
-            // Set the loading indicator
-            viewModel.IsLoading = true;
-
-            // Load RepositoryFacade
-            repositoryFacade?.Dispose();
-            repositoryFacade = await host.Services.GetRequiredService<Facade>()
-                .ForStorageAccount(message.AccountName, message.AccountKey)
-                .ForRepositoryAsync(message.ContainerName, message.Passphrase);
-
-            // in case of success, save to settings
-            var s = host.Services.GetRequiredService<ApplicationSettings>();
-            s.AddLastUsedRepository(message);
-
-            // Update the ViewModel
-            viewModel.LocalDirectory = message.LocalDirectory;
-            viewModel.Repository     = repositoryFacade;
-        }
-        catch (ArgumentException e)
-        {
-            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception e)
-        {
-            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
-            throw;
-        }
-        finally
-        {
-            viewModel.IsLoading = false;
-        }
+        WeakReferenceMessenger.Default.Send(message); // do this after the GetRequiredServices - then the ViewModel is instantiated
     }
 }

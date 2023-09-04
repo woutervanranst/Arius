@@ -11,30 +11,33 @@ using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI.ViewModels;
 
-public partial class RepositoryChooserViewModel : ObservableRecipient
+internal partial class ChooseRepositoryViewModel : ObservableRecipient
 {
     private readonly Facade     facade;
     private readonly Debouncer  debouncer = new();
 
 
-    public RepositoryChooserViewModel(Facade facade)
+    public ChooseRepositoryViewModel(Facade facade)
     {
         this.facade = facade;
 
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
+
         Messenger.Register<ChooseRepositoryMessage>(this, OnChooseRepository);
     }
 
     private void OnChooseRepository(object recipient, ChooseRepositoryMessage message)
     {
-        if (message is not null)
-        {
-            AccountName    = message.AccountName;
-            AccountKey     = message.AccountKey;
-            LocalDirectory = message.LocalDirectory.FullName;
-            Passphrase     = message.Passphrase;
-        }
+        if (message is null) 
+            return;
+
+        LocalDirectory = message.LocalDirectory.FullName;
+
+        AccountName           = message.AccountName;
+        AccountKey            = message.AccountKey;
+        SelectedContainerName = message.ContainerName;
+        Passphrase            = message.Passphrase;
     }
 
     public string WindowName => $"Choose repository";
@@ -171,14 +174,6 @@ public partial class RepositoryChooserViewModel : ObservableRecipient
             return;
         }
 
-        WeakReferenceMessenger.Default.Send(new RepositoryChosenMessage
-        {
-            Sender         = this,
-            LocalDirectory = new DirectoryInfo(this.LocalDirectory),
-            AccountName    = this.AccountName,
-            AccountKey     = this.AccountKey,
-            ContainerName  = this.SelectedContainerName,
-            Passphrase     = this.Passphrase
-        });
+        WeakReferenceMessenger.Default.Send(new RepositoryChosenMessage(this));
     }
 }
