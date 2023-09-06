@@ -46,7 +46,7 @@
                 <Label Grid.Row="0"  Grid.ColumnSpan="3" HorizontalContentAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" FontSize="20">Local</Label>
 
                 <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
-                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectoryFullName}" />
+                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory.FullName, Mode=OneWay}" IsReadOnly="True" />
                 <Button Grid.Row="1" Grid.Column="2" Margin="1" Width="35"  Command="{Binding SelectLocalDirectoryCommand}">...</Button>
             </Grid>
 

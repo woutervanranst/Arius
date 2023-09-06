@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Arius.UI.Messages;
 using MessageBox = System.Windows.MessageBox;
+using Application = System.Windows.Application;
 
 namespace Arius.UI.ViewModels;
 
@@ -29,20 +30,18 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
 
 
     [ObservableProperty]
-    private string localDirectoryFullName;
-
-    public DirectoryInfo LocalDirectory => new(localDirectoryFullName);
+    private DirectoryInfo localDirectory;
 
 
     public ICommand SelectLocalDirectoryCommand { get; }
     private void SelectLocalDirectory()
     {
         using var dialog = new FolderBrowserDialog();
-        dialog.SelectedPath = LocalDirectory.FullName;
+        dialog.SelectedPath = LocalDirectory?.FullName ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         if (dialog.ShowDialog() == DialogResult.OK)
         {
-            LocalDirectoryFullName = dialog.SelectedPath;
+            LocalDirectory = new(dialog.SelectedPath);
         }
     }
 
@@ -56,7 +55,7 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
             {
                 if (CanLoadStorageAccountFacade())
                 {
-                    System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
+                    Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
                 }
             }
         }
@@ -73,7 +72,7 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
             {
                 if (CanLoadStorageAccountFacade())
                 {
-                    System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
+                    Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
                 }
             }
         }
@@ -98,25 +97,20 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
             var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
             ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
 
-            if (ContainerNames.Contains(Settings.Default.SelectedContainerName))
-                SelectedContainerName = Settings.Default.SelectedContainerName;
-            else if (ContainerNames.Count > 0)
-                SelectedContainerName = ContainerNames[0];
+            if (ContainerName is null && ContainerNames.Count > 0)
+                ContainerName = ContainerNames[0];
 
             StorageAccountError  = false;
-            StorageAccountFacade = storageAccountFacade;
         }
         catch (Exception e)
         {
             StorageAccountError  = true;
-            StorageAccountFacade = default;
         }
         finally
         {
             IsLoading = false;
         }
     }
-    private StorageAccountFacade? StorageAccountFacade { get; set; } = default;
     
 
     [ObservableProperty]
@@ -138,7 +132,7 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
     public ICommand OpenRepositoryCommand { get; }
     private async Task OpenRepositoryAsync()
     {
-        if (!Directory.Exists(LocalDirectoryFullName))
+        if (!Directory.Exists(LocalDirectory.FullName))
         {
             MessageBox.Show("The local directory does not exist. Please select a valid directory.", App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -162,4 +156,3 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
         WeakReferenceMessenger.Default.Send(new CloseChooseRepositoryWindowMessage());
     }
 }
-

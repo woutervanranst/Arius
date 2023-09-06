@@ -3,7 +3,7 @@ using Arius.UI.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Application = System.Windows.Application;
 
-namespace Arius.UI;
+namespace Arius.UI.Services;
 
 public interface IDialogService
 {
@@ -25,7 +25,7 @@ public class DialogService : IDialogService
         where TWindow : Window
         where TViewModel : class
     {
-        var window    = sp.GetRequiredService<TWindow>();
+        var window = sp.GetRequiredService<TWindow>();
         var viewModel = window.DataContext as TViewModel;
 
         // Initialize the ViewModel

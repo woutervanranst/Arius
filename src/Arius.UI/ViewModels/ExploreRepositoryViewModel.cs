@@ -24,9 +24,9 @@ namespace Arius.UI.ViewModels;
 
 internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDisposable
 {
-    private readonly IDialogService          dialogService;
-    private readonly ApplicationSettings     settings;
-    private readonly Facade                  facade;
+    private readonly IDialogService      dialogService;
+    private readonly ApplicationSettings settings;
+    private readonly Facade              facade;
 
     private IRepositoryOptionsProvider repositoryOptions;
 
@@ -46,7 +46,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
     }
     
 
-    public RepositoryFacade Repository
+    public RepositoryFacade? Repository
     {
         get => repository;
         set
@@ -59,9 +59,9 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
             }
         }
     }
-    private RepositoryFacade repository;
+    private RepositoryFacade? repository;
     
-    public DirectoryInfo LocalDirectory { get; set; }
+    public DirectoryInfo? LocalDirectory { get; set; }
 
     public string WindowName
     {
@@ -156,12 +156,18 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
             var rn = SelectedFolder.RelativeDirectoryName == ROOT_NODEKEY ? "" : $"{SelectedFolder.RelativeDirectoryName.RemovePrefix(".\\")}\\";
 
             // Load local entries
-            await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
-            await LoadListView(FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            if (LocalDirectory is not null)
+            {
+                await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
+                await LoadListView(FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            }
 
             // Load database entries
-            await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
-            await LoadListView(Repository.QueryPointerFileEntries(rn));
+            if (Repository is not null)
+            {
+                await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
+                await LoadListView(Repository.QueryPointerFileEntries(rn));
+            }
 
 
             async Task LoadTreeView(IAsyncEnumerable<string> paths)
@@ -263,8 +269,15 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
 
     private async Task LoadArchiveProperties()
     {
-        var s = await Repository.QueryRepositoryStatisticsAsync();
-        ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()} in {s.TotalFiles} file(s) in {s.TotalChunks} unique part(s)";
+        if (Repository is null)
+        {
+            ArchiveStatistics = "No repository loaded";
+        }
+        else
+        {
+            var s = await Repository?.QueryRepositoryStatisticsAsync();
+            ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()} in {s.TotalFiles} file(s) in {s.TotalChunks} unique part(s)";
+        }
     }
 
     // Item ListView
@@ -297,11 +310,11 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
     {
         repositoryOptions = dialogService.ShowDialog<ChooseRepositoryWindow, ChooseRepositoryViewModel>(model =>
         {
-            model.LocalDirectoryFullName = repositoryOptions.LocalDirectory.FullName;
-            model.AccountName            = repositoryOptions.AccountName;
-            model.AccountKey             = repositoryOptions.AccountKey;
-            model.ContainerName          = repositoryOptions.ContainerName;
-            model.Passphrase             = repositoryOptions.Passphrase;
+            model.LocalDirectory = repositoryOptions.LocalDirectory;
+            model.AccountName    = repositoryOptions.AccountName;
+            model.AccountKey     = repositoryOptions.AccountKey;
+            model.ContainerName  = repositoryOptions.ContainerName;
+            model.Passphrase     = repositoryOptions.Passphrase;
         });
 
         await LoadRepository();
@@ -344,10 +357,14 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         catch (ArgumentException e)
         {
             MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            Repository     = null;
+            LocalDirectory = null;
         }
         catch (Exception e)
         {
             MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            Repository     = null;
+            LocalDirectory = null;
             throw;
         }
         finally
