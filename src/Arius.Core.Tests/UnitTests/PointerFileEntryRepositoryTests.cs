@@ -15,6 +15,8 @@ class PointerFileEntryRepositoryTests
     [Test]
     public async Task Kak()
     {
+        return;
+
         var db   = new MockedStateDbContextFactory2(@"C:\Users\woute\AppData\Local\Arius\states\music\v2.sqlite");
         var repo = new Repository(NullLogger<Repository>.Instance, new MockedRepositoryOptions2(), db, null);
         var f    = RepositoryFacade.Create(NullLoggerFactory.Instance, repo);
