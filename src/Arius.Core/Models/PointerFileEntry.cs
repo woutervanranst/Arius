@@ -1,18 +1,16 @@
 ﻿using System;
-using System.IO;
-using Arius.Core.Queries;
-using Arius.Core.Repositories.StateDb;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Arius.Core.Models;
 
 internal record PointerFileEntry
 {
-    public BinaryHash BinaryHash         { get; init; }
+    public byte[]     BinaryHashValue { get; init; }
 
-    public string     RelativeParentPath { get; init; }
-    public string     DirectoryName      { get; init; }
-    public string     Name               { get; init; }
-    public string     RelativeName       => Path.Combine(RelativeParentPath, DirectoryName, Name);
+    [NotMapped]
+    public BinaryHash BinaryHash      => new (BinaryHashValue);
+
+    public string RelativeName { get; init; }
 
     /// <summary>
     /// Version (in Universal Time)
@@ -23,6 +21,5 @@ internal record PointerFileEntry
     public DateTime? CreationTimeUtc  { get; init; }
     public DateTime? LastWriteTimeUtc { get; init; }
 
-    public ChunkEntry Chunk { get; init; }
-
+    public virtual ChunkEntry Chunk { get; init; }
 }

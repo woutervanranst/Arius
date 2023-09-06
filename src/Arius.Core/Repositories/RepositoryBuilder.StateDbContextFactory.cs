@@ -1,17 +1,14 @@
-﻿using Arius.Core.Extensions;
+﻿using Arius.Core.Repositories.BlobRepository;
+using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
-using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Arius.Core.Repositories.BlobRepository;
-using Microsoft.Data.Sqlite;
-using Arius.Core.Repositories.StateDb;
 
 namespace Arius.Core.Repositories;
 
@@ -37,6 +34,8 @@ internal partial class RepositoryBuilder
     //    public AriusDbContext GetContext() => mockedContext;
     //    public Task SaveAsync(DateTime versionUtc) => Task.CompletedTask;
     //}
+
+
 
     private sealed class StateDbContextFactory : IStateDbContextFactory
     {
@@ -66,6 +65,7 @@ internal partial class RepositoryBuilder
             {
                 // Create new DB
                 await using var db = new StateDbContext(localDbPath);
+                localDbPath.CreateDirectoryIfNotExists();
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");
@@ -90,17 +90,15 @@ internal partial class RepositoryBuilder
                 await using var con = new SqliteConnection($"Data Source={localDbPath}");
                 await con.OpenAsync();
 
-                await using var cmd     = con.CreateCommand();
+                await using var cmd = con.CreateCommand();
                 cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type == 'table' and name == 'BinaryProperties'";
-                var             version = (long)cmd.ExecuteScalar();
+                var binaryPropertiesExist = (long)cmd.ExecuteScalar();
 
-                if (version == 1)
+                if (binaryPropertiesExist == 1)
                 {
                     // this is a V2 database
-                    // TODO implement migration
-                    throw new NotImplementedException();
+                    throw new InvalidOperationException("This repository still contains a V2 database. Please use the migration tool first.");
                 }
-
             }
         }
 

@@ -1,4 +1,4 @@
-name: "CodeQL Analysis: Arius.Core"
+name: CodeQL Analysis
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   analyze:
-    name: Analyze Arius.Core
+    name: Analyze Arius
     runs-on: windows-latest # run on windows-latest for Arius.UI
     timeout-minutes: 360
     permissions:

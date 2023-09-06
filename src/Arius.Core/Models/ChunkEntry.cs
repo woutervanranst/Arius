@@ -1,31 +1,8 @@
-﻿using Azure.Storage.Blobs.Models;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
+﻿using System.Collections.Generic;
+using Arius.Core.Repositories.StateDb;
+using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.Repositories.StateDb;
-
-internal record PointerFileEntryDto
-{
-    public byte[] BinaryHash   { get; init; }
-
-    public string RelativeParentPath { get; init; }
-    public string DirectoryName      { get; init; }
-    public string Name               { get; init; }
-
-    /// <summary>
-    /// Version (in Universal Time)
-    /// </summary>
-    public DateTime VersionUtc { get;        init; }
-    public bool      IsDeleted        { get; init; }
-    public DateTime? CreationTimeUtc  { get; init; }
-    public DateTime? LastWriteTimeUtc { get; init; }
-
-    public virtual ChunkEntry Chunk { get; init; }
-    [NotMapped]
-    public string RelativeName => Path.Combine(RelativeParentPath, DirectoryName, Name);
-}
+namespace Arius.Core.Models;
 
 internal record ChunkEntry
 {
@@ -62,5 +39,5 @@ internal record ChunkEntry
     /// </summary>
     public AccessTier? AccessTier { get; set; }
 
-    public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
+    public virtual ICollection<PointerFileEntry> PointerFileEntries { get; set; }
 }

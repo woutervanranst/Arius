@@ -1,26 +1,29 @@
-﻿using System.IO;
-using Arius.Core.Facade;
+﻿using Arius.Core.Facade;
+using Arius.UI.Messages;
+using Arius.UI.Services;
+using Arius.UI.Utils;
+using Arius.UI.ViewModels;
+using Arius.UI.Views;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
-using Arius.UI.ViewModels;
-using Arius.UI.Views;
-using MessageBox = System.Windows.Forms.MessageBox;
-using System.Reflection;
+using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI;
 
 public partial class App
 {
-    private readonly IHost                    host;
-    private          RepositoryChooserWindow  chooserWindow;
-    private          RepositoryExplorerWindow explorerWindow;
-    private          RepositoryFacade         repositoryFacade;
+    private readonly IHost host;
 
     public static string Name => Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyProductAttribute>()?.Product ?? "PRODUCT_UNKNOWN"; // get the value of the <Product> in csproj
+
+    public static string ApplicationDataPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arius");
 
     public App()
     {
@@ -29,77 +32,46 @@ public partial class App
             .Build();
 
         AppDomain.CurrentDomain.UnhandledException += CurrentDomainOnUnhandledException;
-        this.DispatcherUnhandledException += OnDispatcherUnhandledException;
+        this.DispatcherUnhandledException          += OnDispatcherUnhandledException;
 
-        var messenger = host.Services.GetRequiredService<IMessenger>();
-        messenger.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
+        WeakReferenceMessenger.Default.Register<CloseChooseRepositoryWindowMessage>(this, CloseChooseRepositoryWindowMessageHandler);
 
         ShutdownMode = ShutdownMode.OnLastWindowClose;
     }
 
-    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e) => MessageBox.Show(e.Exception.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
-    private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)        => MessageBox.Show(e.ExceptionObject.ToString(), "Unhandled exception", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    private void CloseChooseRepositoryWindowMessageHandler(object recipient, CloseChooseRepositoryWindowMessage message)
+    {
+        Application.Current.Windows.OfType<ChooseRepositoryWindow>().Single().Close();
+    }
+
+    private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e) => MessageBox.Show(e.Exception.ToString(), "Unhandled exception", MessageBoxButton.OK, MessageBoxImage.Error);
+    private void CurrentDomainOnUnhandledException(object sender, UnhandledExceptionEventArgs e)        => MessageBox.Show(e.ExceptionObject.ToString(), "Unhandled exception", MessageBoxButton.OK, MessageBoxImage.Error);
 
     private void ConfigureServices(IServiceCollection services)
     {
-        // Configure your services here
-
-        services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
-        
         services.AddSingleton<Facade>(new Facade(NullLoggerFactory.Instance));
-        
-        services.AddTransient<RepositoryChooserViewModel>();
-        services.AddTransient<RepositoryExplorerViewModel>();
+        services.AddSingleton<ApplicationSettings>(new ApplicationSettings(Path.Combine(ApplicationDataPath, "arius.explorer.settings.sqlite")));
 
-        services.AddTransient<RepositoryChooserWindow>();
-        services.AddTransient<RepositoryExplorerWindow>();
+        // register the viewmodels - they are Transient - for every window a new one
+        services.AddTransient<ChooseRepositoryViewModel>();
+        services.AddTransient<ExploreRepositoryViewModel>();
 
+        // register the views
+            // the RepositoryExplorerWindow is a singleton, we only need to show it once
+        services.AddSingleton<ExploreRepositoryWindow>(sp => new ExploreRepositoryWindow { DataContext = sp.GetRequiredService<ExploreRepositoryViewModel>() });
+            // the RepositoryChooserWindow is transient, we can show it multiple times (a closed window cannot be reopened)
+        services.AddTransient<ChooseRepositoryWindow>(sp => new ChooseRepositoryWindow { DataContext = sp.GetRequiredService<ChooseRepositoryViewModel>() });
+        //services.AddSingleton<IRepositoryChooserWindowFactory, RepositoryChooserWindowFactory>();
+
+        services.AddSingleton<IDialogService, DialogService>();
     }
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         await host.StartAsync();
-        chooserWindow = new RepositoryChooserWindow
-        {
-            DataContext = host.Services.GetRequiredService<RepositoryChooserViewModel>()
-        };
-        chooserWindow.Show();
 
-        //// DEBUG PURPOSES
-        //var f   = host.Services.GetRequiredService<Facade>();
-        //var saf = f.ForStorageAccount(Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_NAME"), Environment.GetEnvironmentVariable("ARIUS_ACCOUNT_KEY"));
-        //repositoryFacade = await saf.ForRepositoryAsync("test", "woutervr");
-
-        //var viewModel = host.Services.GetRequiredService<RepositoryExplorerViewModel>();
-        //viewModel.Repository     = repositoryFacade;
-        //viewModel.LocalDirectory = new DirectoryInfo("C:\\Users\\woute\\Documents\\AriusTest");
-
-        ////var x = await repositoryFacade.GetEntriesAsync().ToArrayAsync();
-
-        //explorerWindow = new RepositoryExplorerWindow
-        //{
-        //    DataContext = viewModel
-        //};
-        //explorerWindow.Show();
-    }
-
-    private void OnRepositoryChosen(object sender, RepositoryChosenMessage message)
-    {
-        chooserWindow.Hide();
-
-        repositoryFacade?.Dispose();
-        repositoryFacade = message.ChosenRepository;
-
-        var viewModel = host.Services.GetRequiredService<RepositoryExplorerViewModel>();
-        viewModel.Repository     = message.ChosenRepository;
-        viewModel.LocalDirectory = message.LocalDirectory;
-
-        explorerWindow = new RepositoryExplorerWindow
-        {
-            DataContext = viewModel
-        };
+        var explorerWindow = host.Services.GetRequiredService<ExploreRepositoryWindow>();
         explorerWindow.Show();
-        chooserWindow.Close();
     }
 
     protected override async void OnExit(ExitEventArgs e)
@@ -107,11 +79,9 @@ public partial class App
         using (host)
         {
             host.Dispose();
-            repositoryFacade?.Dispose();
             await host.StopAsync(TimeSpan.FromSeconds(5)); // allow for graceful exit
         }
 
         base.OnExit(e);
     }
-
 }

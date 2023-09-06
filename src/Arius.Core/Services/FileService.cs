@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
+using Arius.Core.Repositories.StateDb;
 using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Services;

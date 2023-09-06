@@ -1,7 +1,5 @@
 ﻿using Arius.Core.Facade;
-using Arius.UI.Extensions;
-using Arius.UI.Properties;
-using Arius.UI.Utils;
+using Arius.UI.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -9,46 +7,41 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
+using Arius.UI.Messages;
 using MessageBox = System.Windows.MessageBox;
+using Application = System.Windows.Application;
 
 namespace Arius.UI.ViewModels;
 
-public partial class RepositoryChooserViewModel : ObservableObject
+internal partial class ChooseRepositoryViewModel : ObservableRecipient, IRepositoryOptionsProvider
 {
-    private readonly Facade     facade;
-    private readonly IMessenger messenger;
-    private readonly Debouncer  debouncer = new();
+    private readonly Facade                 facade;
 
-
-    public RepositoryChooserViewModel(Facade facade, IMessenger messenger)
+    public ChooseRepositoryViewModel(Facade facade)
     {
-        this.facade    = facade;
-        this.messenger = messenger;
-
-        LoadState();
+        this.facade = facade;
 
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
     }
 
-    public string WindowName => $"{App.Name}: Choose repository";
+    public string WindowName => $"Choose repository";
 
 
     [ObservableProperty]
-    private string localDirectory;
+    private DirectoryInfo localDirectory;
 
 
     public ICommand SelectLocalDirectoryCommand { get; }
     private void SelectLocalDirectory()
     {
-        using (var dialog = new FolderBrowserDialog())
-        {
-            dialog.SelectedPath = LocalDirectory;
+        using var dialog = new FolderBrowserDialog();
+        dialog.SelectedPath = LocalDirectory?.FullName ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                LocalDirectory = dialog.SelectedPath;
-            }
+        if (dialog.ShowDialog() == DialogResult.OK)
+        {
+            LocalDirectory = new(dialog.SelectedPath);
         }
     }
 
@@ -60,10 +53,10 @@ public partial class RepositoryChooserViewModel : ObservableObject
         {
             if (SetProperty(ref accountName, value))
             {
-                debouncer.Debounce(async () =>
+                if (CanLoadStorageAccountFacade())
                 {
-                    if (CanLoadStorageAccountFacade()) await LoadStorageAccountFacadeAsync();
-                });
+                    Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
+                }
             }
         }
     }
@@ -77,10 +70,10 @@ public partial class RepositoryChooserViewModel : ObservableObject
         {
             if (SetProperty(ref accountKey, value))
             {
-                debouncer.Debounce(async () =>
+                if (CanLoadStorageAccountFacade())
                 {
-                    if (CanLoadStorageAccountFacade()) await LoadStorageAccountFacadeAsync();
-                });
+                    Application.Current.Dispatcher.InvokeAsync(LoadStorageAccountFacadeAsync, DispatcherPriority.Background);
+                }
             }
         }
     }
@@ -104,25 +97,20 @@ public partial class RepositoryChooserViewModel : ObservableObject
             var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
             ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
 
-            if (ContainerNames.Contains(Settings.Default.SelectedContainerName))
-                SelectedContainerName = Settings.Default.SelectedContainerName;
-            else if (ContainerNames.Count > 0)
-                SelectedContainerName = ContainerNames[0];
+            if (ContainerName is null && ContainerNames.Count > 0)
+                ContainerName = ContainerNames[0];
 
             StorageAccountError  = false;
-            StorageAccountFacade = storageAccountFacade;
         }
         catch (Exception e)
         {
             StorageAccountError  = true;
-            StorageAccountFacade = default;
         }
         finally
         {
             IsLoading = false;
         }
     }
-    private StorageAccountFacade? StorageAccountFacade { get; set; } = default;
     
 
     [ObservableProperty]
@@ -130,7 +118,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
 
 
     [ObservableProperty]
-    private string selectedContainerName;
+    private string containerName;
 
 
     [ObservableProperty]
@@ -144,7 +132,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
     public ICommand OpenRepositoryCommand { get; }
     private async Task OpenRepositoryAsync()
     {
-        if (!Directory.Exists(LocalDirectory))
+        if (!Directory.Exists(LocalDirectory.FullName))
         {
             MessageBox.Show("The local directory does not exist. Please select a valid directory.", App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
             return;
@@ -154,7 +142,7 @@ public partial class RepositoryChooserViewModel : ObservableObject
             MessageBox.Show("There was an error with the storage account. Please ensure your account details are correct.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        if (string.IsNullOrEmpty(SelectedContainerName))
+        if (string.IsNullOrEmpty(ContainerName))
         {
             MessageBox.Show("No container is selected. Please select a container before proceeding.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -165,57 +153,6 @@ public partial class RepositoryChooserViewModel : ObservableObject
             return;
         }
 
-        try
-        {
-            IsLoading = true;
-
-            var repositoryFacade = await StorageAccountFacade!.ForRepositoryAsync(SelectedContainerName, Passphrase);
-
-            SaveState();
-
-            messenger.Send(new RepositoryChosenMessage(new DirectoryInfo(LocalDirectory), repositoryFacade));
-        }
-        catch (ArgumentException e)
-        {
-            IsLoading = false;
-            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception e)
-        {
-            IsLoading = false;
-            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
-            throw;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-
-
-    private void LoadState()
-    {
-        try
-        {
-            AccountName    = Settings.Default.AccountName;
-            AccountKey     = Settings.Default.AccountKey.Unprotect();
-            LocalDirectory = Settings.Default.LocalDirectory;
-            Passphrase     = Settings.Default.Passphrase.Unprotect();
-        }
-        catch (Exception e)
-        {
-            Settings.Default.Reset();
-        }
-    }
-
-    private void SaveState()
-    {
-        Settings.Default.AccountName           = AccountName;
-        Settings.Default.AccountKey            = AccountKey.Protect();
-        Settings.Default.LocalDirectory        = LocalDirectory;
-        Settings.Default.SelectedContainerName = SelectedContainerName;
-        Settings.Default.Passphrase            = StringExtensions.Protect(Passphrase);
-        Settings.Default.Save();
+        WeakReferenceMessenger.Default.Send(new CloseChooseRepositoryWindowMessage());
     }
 }

@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Models;
-using Arius.Core.Services;
 using System;
 using System.IO;
 using System.Linq;
@@ -7,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Arius.Core.Extensions;
 
-public static class FileInfoExtensions
+internal static class FileInfoExtensions
 {
     // TODO refactor & put in PointerFileInfo IsPointerFile()
     internal static bool IsPointerFile(this FileInfo fi) => fi.Name.EndsWith(PointerFileInfo.Extension, StringComparison.CurrentCultureIgnoreCase);
@@ -67,4 +66,41 @@ internal static class DirectoryInfoExtensions
     {
         return !di.GetFileSystemInfos().Any();
     }
+}
+
+
+
+internal static class PathExtensions
+{
+    public static string ToPlatformNeutralPath(this string platformSpecificPath)
+    {
+        if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+            return platformSpecificPath;
+
+        return platformSpecificPath.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
+
+        //if (platformSpecific is null)
+        //    return null;
+        //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+        //    return platformSpecific;
+        //return platformSpecific with { RelativeName = platformSpecific.RelativeName.Replace(Path.DirectorySeparatorChar, PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR) };
+    }
+
+    public static string ToPlatformSpecificPath(this string platformNeutralPath)
+    {
+        // TODO UNIT TEST for linux pointers (already done if run in the github runner?
+
+        if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+            return platformNeutralPath;
+
+        return platformNeutralPath.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar);
+
+        //if (platformNeutral is null)
+        //    return null;
+        //if (Path.DirectorySeparatorChar == PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR)
+        //    return platformNeutral;
+        //return platformNeutral with { RelativeName = platformNeutral.RelativeName.Replace(PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR, Path.DirectorySeparatorChar) };
+    }
+
+    internal const char PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR = '/';
 }

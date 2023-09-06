@@ -17,7 +17,7 @@ internal partial class Repository
     public async Task<int> CountBinariesAsync()
     {
         await using var db = GetStateDbContext();
-        return await db.PointerFileEntries.Select(pfe => pfe.BinaryHash).Distinct().CountAsync();
+        return await db.PointerFileEntries.Select(pfe => pfe.BinaryHashValue).Distinct().CountAsync();
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ internal partial class Repository
     public async Task<bool> BinaryExistsAsync(BinaryHash bh)
     {
         await using var db = GetStateDbContext();
-        return await db.PointerFileEntries.AnyAsync(pfe => pfe.BinaryHash == bh.Value);
+        return await db.PointerFileEntries.AnyAsync(pfe => pfe.BinaryHashValue == bh.Value);
     }
 
     /// <summary>

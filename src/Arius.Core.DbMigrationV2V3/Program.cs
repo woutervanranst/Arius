@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
@@ -98,18 +99,14 @@ namespace Arius.Core.DbMigrationV2V3
 
                     foreach (var v2pfe in v2db.PointerFileEntries)
                     {
-                        var (relativeParentPath, directoryName, name) = PointerFileEntryConverter.Deconstruct(v2pfe.RelativeName);
-
-                        var v3pfe = new PointerFileEntryDto
+                        var v3pfe = new PointerFileEntry
                         {
-                            BinaryHash         = v2pfe.BinaryHash.HexStringToBytes(),
-                            RelativeParentPath = PointerFileEntryConverter.ToPlatformNeutralPath(relativeParentPath),
-                            DirectoryName      = directoryName,
-                            Name               = name,
-                            VersionUtc         = v2pfe.VersionUtc,
-                            IsDeleted          = v2pfe.IsDeleted,
-                            CreationTimeUtc    = v2pfe.CreationTimeUtc,
-                            LastWriteTimeUtc   = v2pfe.LastWriteTimeUtc
+                            BinaryHashValue  = v2pfe.BinaryHash.HexStringToBytes(),
+                            RelativeName     = v2pfe.RelativeName,
+                            VersionUtc       = v2pfe.VersionUtc,
+                            IsDeleted        = v2pfe.IsDeleted,
+                            CreationTimeUtc  = v2pfe.CreationTimeUtc,
+                            LastWriteTimeUtc = v2pfe.LastWriteTimeUtc
                         };
 
                         v3db.PointerFileEntries.Add(v3pfe);

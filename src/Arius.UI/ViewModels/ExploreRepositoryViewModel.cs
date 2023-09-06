@@ -2,8 +2,10 @@
 using Arius.Core.Models;
 using Arius.Core.Queries;
 using Arius.Core.Services;
+using Arius.UI.Models;
 using Arius.UI.Services;
 using Arius.UI.Utils;
+using Arius.UI.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -11,31 +13,66 @@ using CommunityToolkit.Mvvm.Messaging.Messages;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
+using System.Windows;
 using System.Windows.Threading;
 using WouterVanRanst.Utils.Extensions;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI.ViewModels;
 
-public partial class RepositoryExplorerViewModel : ObservableObject
+internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDisposable
 {
-    public RepositoryExplorerViewModel(IMessenger messenger)
+    private readonly IDialogService      dialogService;
+    private readonly ApplicationSettings settings;
+    private readonly Facade              facade;
+
+    private IRepositoryOptionsProvider repositoryOptions;
+
+    public ExploreRepositoryViewModel(IDialogService dialogService, ApplicationSettings settings, Facade facade)
     {
-        messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
+        this.dialogService = dialogService;
+        this.settings      = settings;
+        this.facade        = facade;
 
-        // Set the selected folder to the root and kick off the loading process
-        SelectedFolder = GetRootNode();
+        ViewLoadedCommand           = new AsyncRelayCommand(OnViewLoadedAsync);
+        ChooseRepositoryCommand     = new AsyncRelayCommand(OnChooseRepositoryAsync);
+        OpenRecentRepositoryCommand = new AsyncRelayCommand<RecentlyUsedRepositoryViewModel>(OnOpenRecentRepositoryAsync);
+        RestoreCommand              = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
+        AboutCommand                = new RelayCommand(OnAbout);
 
-        //HydrateCommand = new AsyncRelayCommand(OnHydrateAsync, CanHydrate);
-        RestoreCommand = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
-        AboutCommand = new RelayCommand(OnAbout);
+        Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
     }
+    
 
-    public RepositoryFacade Repository     { get; set; }
-    public DirectoryInfo    LocalDirectory { get; set; }
+    public RepositoryFacade? Repository
+    {
+        get => repository;
+        set
+        {
+            if (SetProperty(ref repository, value))
+            {
+                // Set the selected folder to the root and kick off the loading process
+                SelectedFolder = GetRootNode();
+                OnPropertyChanged(nameof(WindowName));
+            }
+        }
+    }
+    private RepositoryFacade? repository;
+    
+    public DirectoryInfo? LocalDirectory { get; set; }
 
-    public string WindowName => $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
+    public string WindowName
+    {
+        get
+        {
+            if (Repository is null)
+                return $"{App.Name} - No repository";
+            else
+                return $"{App.Name}: {Repository.AccountName} - {Repository.ContainerName}";
+        }
+    }
 
     [ObservableProperty]
     private bool isLoading;
@@ -67,7 +104,6 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                         SelectedItems.Remove(itemViewModel);
 
                     OnPropertyChanged(nameof(SelectedItemsText));
-                    //HydrateCommand.NotifyCanExecuteChanged();
                     RestoreCommand.NotifyCanExecuteChanged();
                     break;
             }
@@ -76,12 +112,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
 
     // Folders Treeview
-    private const string ROOT_NODEKEY = "root";
+    private const string ROOT_NODEKEY = ".";
 
     private FolderViewModel GetRootNode()
     {
-        var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = "", IsExpanded = true, IsSelected = true };
-        foldersDict.Add(ROOT_NODEKEY, rootNode);
+        RootNode.Clear();
+        foldersDict.Clear();
+
+        var rootNode = new FolderViewModel { Name = "Root", RelativeDirectoryName = ROOT_NODEKEY, IsExpanded = true, IsSelected = true };
+        foldersDict.Add(rootNode.RelativeDirectoryName, rootNode);
         RootNode.Add(rootNode);
 
         return rootNode;
@@ -114,19 +153,46 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
         try
         {
+            var rn = SelectedFolder.RelativeDirectoryName == ROOT_NODEKEY ? "" : $"{SelectedFolder.RelativeDirectoryName.RemovePrefix(".\\")}\\";
+
             // Load local entries
-            await ProcessEntries(FileService.GetEntriesAsync(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            if (LocalDirectory is not null)
+            {
+                await LoadTreeView(FileService.QuerySubdirectories(LocalDirectory, rn, 2));
+                await LoadListView(FileService.QueryFiles(LocalDirectory, SelectedFolder.RelativeDirectoryName));
+            }
 
             // Load database entries
-            await ProcessEntries(Repository.QueryEntriesAsync(SelectedFolder.RelativeDirectoryName));
-
-            async Task ProcessEntries(IAsyncEnumerable<IEntryQueryResult> entries)
+            if (Repository is not null)
             {
-                // Create the necessary FolderViewModels and ItemViewModels for the given entries
+                await LoadTreeView(Repository.QueryPointerFileEntriesSubdirectories(rn, 2));
+                await LoadListView(Repository.QueryPointerFileEntries(rn));
+            }
+
+
+            async Task LoadTreeView(IAsyncEnumerable<string> paths)
+            {
+                await foreach (var path in paths)
+                {
+                    var relativePath = Path.GetRelativePath(SelectedFolder.RelativeDirectoryName, path);
+                    var pathElements = relativePath.Split(Path.DirectorySeparatorChar);
+
+                    for (var i = 0; i < pathElements.Length; i++)
+                    {
+                        var directoryName      = pathElements[i];
+                        var relativeParentPath = Path.Combine(SelectedFolder.RelativeDirectoryName, string.Join(Path.DirectorySeparatorChar, pathElements.Take(i)));
+
+                        var folderViewModel = GetOrCreateFolderViewModel(relativeParentPath, directoryName);
+                    }
+                }
+            }
+
+            async Task LoadListView(IAsyncEnumerable<IEntryQueryResult> entries)
+            {
                 await foreach (var e in entries)
                 {
-                    var folderViewModel = GetOrCreateFolderViewModel(e.RelativeParentPath, e.DirectoryName);
-                    var itemViewModel = GetOrCreateItemViewModel(folderViewModel, GetItemName(e.Name));
+                    var folderViewModel = foldersDict[SelectedFolder.RelativeDirectoryName];
+                    var itemViewModel   = GetOrCreateItemViewModel(folderViewModel, GetItemName(Path.GetFileName(e.RelativeName)));
 
                     // Set update the viewmodel with the entry
                     UpdateViewModel(itemViewModel, e);
@@ -139,18 +205,18 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             FolderViewModel GetOrCreateFolderViewModel(string relativeParentPath, string directoryName)
             {
-                var key = Path.Combine(ROOT_NODEKEY, relativeParentPath, directoryName);
+                var key = Path.Combine(relativeParentPath, directoryName);
                 if (!foldersDict.TryGetValue(key, out var folderViewModel))
                 {
                     // We need a new FolderViewModel
-                    var nodeParentPath = Path.Combine(ROOT_NODEKEY, relativeParentPath);
-                    var parentFolder = foldersDict[nodeParentPath];
                     folderViewModel = new FolderViewModel
                     {
                         Name = directoryName,
                         RelativeDirectoryName = Path.Combine(relativeParentPath, directoryName)
                     };
                     foldersDict.Add(key, folderViewModel);
+                    
+                    var parentFolder = foldersDict[relativeParentPath];
                     parentFolder.Folders.Add(folderViewModel);
                 }
 
@@ -170,7 +236,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
             {
                 if (e is FileService.GetLocalEntriesResult le)
                 {
-                    var filename = Path.Combine(LocalDirectory.FullName, le.RelativeParentPath, le.DirectoryName, le.Name);
+                    var filename = Path.Combine(LocalDirectory.FullName, le.RelativeName);
                     var fib = FileSystemService.GetFileInfo(filename);
                     if (fib is PointerFileInfo pfi)
                         itemViewModel.PointerFileInfo = pfi;
@@ -184,7 +250,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
                 }
                 else if (e is IPointerFileEntryQueryResult pfe)
                 {
-                    var relativeName = Path.Combine(pfe.RelativeParentPath, pfe.DirectoryName, pfe.Name);
+                    var relativeName = pfe.RelativeName;
                     itemViewModel.PointerFileEntryRelativeName = relativeName;
                     itemViewModel.OriginalLength = pfe.OriginalLength;
                     itemViewModel.HydrationState = pfe.HydrationState;
@@ -203,8 +269,15 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
     private async Task LoadArchiveProperties()
     {
-        var s = await Repository.QueryRepositoryStatisticsAsync();
-        ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()} in {s.TotalFiles} file(s) in {s.TotalChunks} unique part(s)";
+        if (Repository is null)
+        {
+            ArchiveStatistics = "No repository loaded";
+        }
+        else
+        {
+            var s = await Repository?.QueryRepositoryStatisticsAsync();
+            ArchiveStatistics = $"Total size: {s.TotalSize.GetBytesReadable()} in {s.TotalFiles} file(s) in {s.TotalChunks} unique part(s)";
+        }
     }
 
     // Item ListView
@@ -218,12 +291,88 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
 
     // Commands
-    //public IRelayCommand HydrateCommand { get; }
-    //private Task OnHydrateAsync()
-    //{
-    //    throw new NotImplementedException();
-    //}
-    //private bool CanHydrate() => selectedItems.Any(item => item.HydrationState == HydrationState.NotHydrated);
+    public IRelayCommand ViewLoadedCommand { get; }
+    private async Task OnViewLoadedAsync()
+    {
+        repositoryOptions = settings.RecentRepositories.FirstOrDefault();
+            // if there was no recent repository, show the choose repository dialog
+        repositoryOptions ??= dialogService.ShowDialog<ChooseRepositoryWindow, ChooseRepositoryViewModel>();
+
+        await LoadRepository();
+    }
+
+
+    /// <summary>
+    /// Open the ChooseRepositoryWindow and load that repository
+    /// </summary>
+    public IRelayCommand ChooseRepositoryCommand { get; }
+    private async Task OnChooseRepositoryAsync()
+    {
+        repositoryOptions = dialogService.ShowDialog<ChooseRepositoryWindow, ChooseRepositoryViewModel>(model =>
+        {
+            model.LocalDirectory = repositoryOptions.LocalDirectory;
+            model.AccountName    = repositoryOptions.AccountName;
+            model.AccountKey     = repositoryOptions.AccountKey;
+            model.ContainerName  = repositoryOptions.ContainerName;
+            model.Passphrase     = repositoryOptions.Passphrase;
+        });
+
+        await LoadRepository();
+    }
+
+
+    /// <summary>
+    /// Load the repository chosen from the recent repositories menu
+    /// </summary>
+    public IRelayCommand OpenRecentRepositoryCommand { get; }
+    private async Task OnOpenRecentRepositoryAsync(RecentlyUsedRepositoryViewModel repo)
+    {
+        repositoryOptions = repo;
+
+        await LoadRepository();
+    }
+
+
+    /// <summary>
+    /// Load the Repository from the RepositoryOptions
+    /// </summary>
+    private async Task LoadRepository()
+    {
+        try
+        {
+            // Set the loading indicator
+            IsLoading = true;
+
+            // Load RepositoryFacade
+            Repository = await facade
+                .ForStorageAccount(repositoryOptions.AccountName, repositoryOptions.AccountKey)
+                .ForRepositoryAsync(repositoryOptions.ContainerName, repositoryOptions.Passphrase);
+            LocalDirectory = repositoryOptions.LocalDirectory;
+
+            // in case of success, save to settings
+            settings.AddLastUsedRepository(repositoryOptions);
+
+            OnPropertyChanged(nameof(RecentRepositories));
+        }
+        catch (ArgumentException e)
+        {
+            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            Repository     = null;
+            LocalDirectory = null;
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            Repository     = null;
+            LocalDirectory = null;
+            throw;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
 
     public IRelayCommand RestoreCommand { get; }
     private async Task OnRestoreAsync()
@@ -239,7 +388,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         msg.AppendLine();
         msg.AppendLine("Proceed?");
 
-        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.No)
+        if (MessageBox.Show(msg.ToString(), App.Name, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
             return;
 
         var relativeNames = SelectedItems.Select(item => item.PointerFileEntryRelativeName).ToArray();
@@ -247,7 +396,7 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         var r = await Repository.ExecuteRestoreCommandAsync(LocalDirectory,
             relativeNames: relativeNames,
             download: true,
-            keepPointers: false);
+            keepPointers: settings.KeepPointersOnRestore);
 
         if (r == 0)
         {
@@ -258,26 +407,55 @@ public partial class RepositoryExplorerViewModel : ObservableObject
 
             msg.AppendLine("Files downloaded!");
 
-            MessageBox.Show(msg.ToString(), App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(msg.ToString(), App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
         }
         else
         {
-            MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
+
+        // Clear the selected items
+        foreach (var i in SelectedItems.ToArray()) // cast to array since we ll be modifying the collection
+            i.IsSelected = false;
     }
-    private bool CanRestore() => true;
+    private bool CanRestore() => SelectedItems.Any();
+
 
     public IRelayCommand AboutCommand { get; }
-
     private void OnAbout()
     {
         var explorerVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "0.0.0.0"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
 
-        var coreVersion = typeof(Arius.Core.Facade.Facade).Assembly.GetName().Version;
+        var coreVersion = typeof(Facade).Assembly.GetName().Version;
 
-        MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+
+    public IEnumerable<RecentlyUsedRepositoryViewModel> RecentRepositories 
+        => settings.RecentRepositories.Skip(1).Select(r => new RecentlyUsedRepositoryViewModel(r));
+
+
+    public partial class RecentlyUsedRepositoryViewModel : ObservableObject, IRepositoryOptionsProvider
+    {
+        private readonly RepositoryOptionsDto ro;
+
+        public RecentlyUsedRepositoryViewModel(RepositoryOptionsDto ro)
+        {
+            this.ro = ro;
+        }
+
+        public DirectoryInfo LocalDirectory => ro.LocalDirectory;
+        public string        AccountName    => ro.AccountName;
+        public string        AccountKey     => ro.AccountKey;
+        public string        ContainerName  => ro.ContainerName;
+        public string        Passphrase     => ro.Passphrase;
+
+        public override string ToString()
+        {
+            return $"{ro.LocalDirectory} : {ro.AccountName}/{ro.ContainerName}";
+        }
+    }
 
     public partial class FolderViewModel : ObservableRecipient
     {
@@ -446,5 +624,10 @@ public partial class RepositoryExplorerViewModel : ObservableObject
         private long originalLength;
 
         public override string ToString() => Name;
+    }
+
+    public void Dispose()
+    {
+        repository.Dispose();
     }
 }

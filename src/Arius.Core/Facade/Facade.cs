@@ -11,8 +11,10 @@ using PostSharp.Patterns.Contracts;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -129,6 +131,14 @@ public class RepositoryFacade : IDisposable
         return new RepositoryFacade(loggerFactory, repo);
     }
 
+    /// <summary>
+    /// FOR TESTING PURPOSES ONLY
+    /// </summary>
+    internal static RepositoryFacade Create(ILoggerFactory loggerFactory, Repository repo)
+    {
+        return new RepositoryFacade(loggerFactory, repo);
+    }
+
     internal Repository Repository { get; }
 
     public string AccountName   => Repository.Options.AccountName;
@@ -236,17 +246,31 @@ public class RepositoryFacade : IDisposable
 
     
 
-    public async IAsyncEnumerable<IPointerFileEntryQueryResult> QueryEntriesAsync(
-        string? relativeParentPathEquals = null,
-        string? directoryNameEquals = null,
-        string? nameContains = null)
+    public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(string? relativeDirectory = null)
     {
-        var o = new PointerFileEntriesQueryOptions { RelativeParentPathEquals = relativeParentPathEquals, DirectoryNameEquals = directoryNameEquals, NameContains = nameContains };
+        var o = new PointerFileEntriesQueryOptions { RelativeDirectory = relativeDirectory };
         var q = new PointerFileEntriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
-        await foreach (var e in r.Result)
-            yield return e;
+        return r.Result;
+    }
+
+    /// <summary>
+    /// Get the directories in the PointerFileEntries that are prefixed with `prefix`
+    /// For the root, use ""
+    /// If the prefix is a precise folder, use a trailing slash, e.g. "dir1/dir2/", otherwise it will search until the next '/' which is 0 characters away
+    /// </summary>
+    /// <param name="prefix">The platform-specific prefix</param>
+    /// <param name="depth">The depth in the directory structure to return</param>
+    /// <returns></returns>
+    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth)
+    {
+        prefix = prefix.ToPlatformNeutralPath();
+        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth };
+        var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
+        var r = q.Execute(o);
+
+        return r.Result.Select(r => r.ToPlatformSpecificPath());
     }
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
