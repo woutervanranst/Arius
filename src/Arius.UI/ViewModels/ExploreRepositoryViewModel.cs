@@ -2,8 +2,10 @@
 using Arius.Core.Models;
 using Arius.Core.Queries;
 using Arius.Core.Services;
+using Arius.UI.Models;
 using Arius.UI.Services;
 using Arius.UI.Utils;
+using Arius.UI.Views;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -22,56 +24,27 @@ namespace Arius.UI.ViewModels;
 
 internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDisposable
 {
-    private readonly Facade              facade;
-    private readonly ApplicationSettings settings;
+    private readonly IDialogService          dialogService;
+    private readonly ApplicationSettings     settings;
+    private readonly Facade                  facade;
 
-    public ExploreRepositoryViewModel(Facade facade, ApplicationSettings settings)
+    private IRepositoryOptionsProvider repositoryOptions;
+
+    public ExploreRepositoryViewModel(IDialogService dialogService, ApplicationSettings settings, Facade facade)
     {
-        this.facade   = facade;
-        this.settings = settings;
+        this.dialogService = dialogService;
+        this.settings      = settings;
+        this.facade        = facade;
 
-        ChooseRepositoryCommand     = new RelayCommand(OnChooseRepository);
-        OpenRecentRepositoryCommand = new RelayCommand<RecentlyUsedRepositoryViewModel>(OnOpenRecentRepository);
+        ViewLoadedCommand           = new AsyncRelayCommand(OnViewLoadedAsync);
+        ChooseRepositoryCommand     = new AsyncRelayCommand(OnChooseRepositoryAsync);
+        OpenRecentRepositoryCommand = new AsyncRelayCommand<RecentlyUsedRepositoryViewModel>(OnOpenRecentRepositoryAsync);
         RestoreCommand              = new AsyncRelayCommand(OnRestoreAsync, CanRestore);
         AboutCommand                = new RelayCommand(OnAbout);
 
         Messenger.Register<PropertyChangedMessage<bool>>(this, HandlePropertyChange);
-        Messenger.Register<RepositoryChosenMessage>(this, OnRepositoryChosen);
     }
-
-    private async void OnRepositoryChosen(object recipient, RepositoryChosenMessage message)
-    {
-        try
-        {
-            // Set the loading indicator
-            IsLoading = true;
-
-            // Load RepositoryFacade
-            m = message;
-            Repository = await facade
-                .ForStorageAccount(message.AccountName, message.AccountKey)
-                .ForRepositoryAsync(message.ContainerName, message.Passphrase);
-            LocalDirectory = message.LocalDirectory;
-
-            // in case of success, save to settings
-            settings.AddLastUsedRepository(message);
-        }
-        catch (ArgumentException e)
-        {
-            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-        catch (Exception e)
-        {
-            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
-            throw;
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-
-    private RepositoryChosenMessage m;
+    
 
     public RepositoryFacade Repository
     {
@@ -305,28 +278,82 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
 
 
     // Commands
-    public IRelayCommand ChooseRepositoryCommand { get; }
-    private void OnChooseRepository()
+    public IRelayCommand ViewLoadedCommand { get; }
+    private async Task OnViewLoadedAsync()
     {
-        Messenger.Send(m); 
-        //new ChooseRepositoryMessage
-        //{
-        //    LocalDirectory = this.LocalDirectory,
-        //    AccountName    = Repository?.AccountName ?? "",
-        //    AccountKey     = Repository?.AccountKey ?? "",  // TODO not ok
-        //    ContainerName  = Repository?.ContainerName ?? "",
-        //    Passphrase     = Repository?.Passphrase ?? "" // TODO not ok
-        //});
+        repositoryOptions = settings.RecentRepositories.FirstOrDefault();
+            // if there was no recent repository, show the choose repository dialog
+        repositoryOptions ??= dialogService.ShowDialog<ChooseRepositoryWindow, ChooseRepositoryViewModel>();
+
+        await LoadRepository();
     }
 
-    
-    public IRelayCommand OpenRecentRepositoryCommand { get; }
-    private void OnOpenRecentRepository(RecentlyUsedRepositoryViewModel a)
+
+    /// <summary>
+    /// Open the ChooseRepositoryWindow and load that repository
+    /// </summary>
+    public IRelayCommand ChooseRepositoryCommand { get; }
+    private async Task OnChooseRepositoryAsync()
     {
-        //Messenger.Send(new RepositoryChosenMessage
-        //{
-        //    AccountName = a.
-        //})
+        repositoryOptions = dialogService.ShowDialog<ChooseRepositoryWindow, ChooseRepositoryViewModel>(model =>
+        {
+            model.LocalDirectoryFullName = repositoryOptions.LocalDirectory.FullName;
+            model.AccountName            = repositoryOptions.AccountName;
+            model.AccountKey             = repositoryOptions.AccountKey;
+            model.ContainerName          = repositoryOptions.ContainerName;
+            model.Passphrase             = repositoryOptions.Passphrase;
+        });
+
+        await LoadRepository();
+    }
+
+
+    /// <summary>
+    /// Load the repository chosen from the recent repositories menu
+    /// </summary>
+    public IRelayCommand OpenRecentRepositoryCommand { get; }
+    private async Task OnOpenRecentRepositoryAsync(RecentlyUsedRepositoryViewModel repo)
+    {
+        repositoryOptions = repo;
+
+        await LoadRepository();
+    }
+
+
+    /// <summary>
+    /// Load the Repository from the RepositoryOptions
+    /// </summary>
+    private async Task LoadRepository()
+    {
+        try
+        {
+            // Set the loading indicator
+            IsLoading = true;
+
+            // Load RepositoryFacade
+            Repository = await facade
+                .ForStorageAccount(repositoryOptions.AccountName, repositoryOptions.AccountKey)
+                .ForRepositoryAsync(repositoryOptions.ContainerName, repositoryOptions.Passphrase);
+            LocalDirectory = repositoryOptions.LocalDirectory;
+
+            // in case of success, save to settings
+            settings.AddLastUsedRepository(repositoryOptions);
+
+            OnPropertyChanged(nameof(RecentRepositories));
+        }
+        catch (ArgumentException e)
+        {
+            MessageBox.Show("Invalid password.", App.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, App.Name, MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
 
@@ -369,8 +396,12 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         {
             MessageBox.Show("An error occured. Check the log.", App.Name, MessageBoxButton.OK, MessageBoxImage.Exclamation);
         }
+
+        // Clear the selected items
+        foreach (var i in SelectedItems.ToArray()) // cast to array since we ll be modifying the collection
+            i.IsSelected = false;
     }
-    private bool CanRestore() => selectedItems.Any();
+    private bool CanRestore() => SelectedItems.Any();
 
 
     public IRelayCommand AboutCommand { get; }
@@ -378,7 +409,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
     {
         var explorerVersion = Environment.GetEnvironmentVariable("ClickOnce_CurrentVersion") ?? "0.0.0.0"; // https://stackoverflow.com/a/75263211/1582323  //System.Deployment. System.Reflection.Assembly.GetEntryAssembly().GetName().Version; doesnt work
 
-        var coreVersion = typeof(Arius.Core.Facade.Facade).Assembly.GetName().Version;
+        var coreVersion = typeof(Facade).Assembly.GetName().Version;
 
         MessageBox.Show($"Arius Explorer v{explorerVersion}\nArius Core v{coreVersion}", App.Name, MessageBoxButton.OK, MessageBoxImage.Information);
     }
@@ -388,18 +419,24 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         => settings.RecentRepositories.Skip(1).Select(r => new RecentlyUsedRepositoryViewModel(r));
 
 
-    public partial class RecentlyUsedRepositoryViewModel : ObservableObject
+    public partial class RecentlyUsedRepositoryViewModel : ObservableObject, IRepositoryOptionsProvider
     {
-        private readonly RepositoryOptionsDto r;
+        private readonly RepositoryOptionsDto ro;
 
-        public RecentlyUsedRepositoryViewModel(RepositoryOptionsDto r)
+        public RecentlyUsedRepositoryViewModel(RepositoryOptionsDto ro)
         {
-            this.r = r;
+            this.ro = ro;
         }
+
+        public DirectoryInfo LocalDirectory => ro.LocalDirectory;
+        public string        AccountName    => ro.AccountName;
+        public string        AccountKey     => ro.AccountKey;
+        public string        ContainerName  => ro.ContainerName;
+        public string        Passphrase     => ro.Passphrase;
 
         public override string ToString()
         {
-            return $"{r.LocalDirectory} : {r.AccountName}/{r.ContainerName}";
+            return $"{ro.LocalDirectory} : {ro.AccountName}/{ro.ContainerName}";
         }
     }
 

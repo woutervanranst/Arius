@@ -1,6 +1,9 @@
 ﻿using Arius.UI.Extensions;
-using Arius.UI.ViewModels;
+using Arius.UI.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.UI.Utils;
@@ -49,17 +52,39 @@ internal class ApplicationSettings
         }
     }
 
-    public void AddLastUsedRepository(RepositoryChosenMessage ro)
+    public void AddLastUsedRepository(IRepositoryOptionsProvider ro)
     {
         using var context  = GetContext();
-        var rodto = context.RecentRepositories.Find(ro.LocalDirectory.FullName, ro.AccountName, ro.ContainerName) ?? new RepositoryOptionsDto();
+        var rodto = context.RecentRepositories.SingleOrDefault(r => 
+            r.LocalDirectory == ro.LocalDirectory && 
+            r.AccountName == ro.AccountName && 
+            r.ContainerName == ro.ContainerName);
 
-        rodto.LocalDirectory      = ro.LocalDirectory.FullName;
-        rodto.AccountName         = ro.AccountName;
-        rodto.AccountKeyProtected = ro.AccountKey.Protect();
-        rodto.ContainerName       = ro.ContainerName;
-        rodto.PassphraseProtected = ro.Passphrase.Protect();
-        rodto.LastOpened          = DateTime.Now;
+        if (rodto is null)
+        {
+            // Add a new entry
+            rodto                     = new RepositoryOptionsDto
+            {
+                LocalDirectory      = ro.LocalDirectory,
+                AccountName         = ro.AccountName,
+                AccountKeyProtected = ro.AccountKey.Protect(),
+                ContainerName       = ro.ContainerName,
+                PassphraseProtected = ro.Passphrase.Protect(),
+                LastOpened          = DateTime.Now
+            };
+        }
+        else
+        {
+            // Update
+            //rodto.LocalDirectory      = ro.LocalDirectory;        // do not update this key property
+            //rodto.AccountName         = ro.AccountName;           // do not update this key property
+            rodto.AccountKeyProtected = ro.AccountKey.Protect();
+            //rodto.ContainerName       = ro.ContainerName;         // do not update this key property
+            rodto.PassphraseProtected = ro.Passphrase.Protect();
+            rodto.LastOpened          = DateTime.Now;
+        }
+
+        
 
         if (!context.RecentRepositories.Contains(rodto))
             context.RecentRepositories.Add(rodto);
@@ -115,11 +140,20 @@ internal class ApplicationSettingsDbContext : DbContext
         var romb = modelBuilder.Entity<RepositoryOptionsDto>();
         romb.ToTable("RecentRepositories");
         romb.HasKey(e => new { e.LocalDirectory, e.AccountName, e.ContainerName });
+        romb.Property(e => e.LocalDirectory).HasConversion(new DirectoryInfoConverter());
 
         var smb = modelBuilder.Entity<Setting>();
         smb.ToTable("Settings");
         smb.HasKey(e => e.Key);
     }
+}
+
+public class DirectoryInfoConverter : ValueConverter<DirectoryInfo, string>
+{
+    public DirectoryInfoConverter() : base(
+            dirInfo => dirInfo.FullName, // Convert DirectoryInfo to string
+            path => new DirectoryInfo(path)) // Convert string to DirectoryInfo
+    { }
 }
 
 internal record Setting
@@ -128,9 +162,9 @@ internal record Setting
     public string Value { get; set; }
 }
 
-internal record RepositoryOptionsDto
+internal record RepositoryOptionsDto : IRepositoryOptionsProvider
 {
-    public string LocalDirectory { get; set; }
+    public DirectoryInfo LocalDirectory { get; set; }
 
     public string AccountName         { get; set; }
     public string AccountKeyProtected { get; set; }
@@ -138,4 +172,9 @@ internal record RepositoryOptionsDto
     public string PassphraseProtected { get; set; }
 
     public DateTime LastOpened { get; set; }
+
+    [NotMapped]
+    public string AccountKey => AccountKeyProtected.Unprotect();
+    [NotMapped]
+    public string Passphrase => PassphraseProtected.Unprotect();
 }
