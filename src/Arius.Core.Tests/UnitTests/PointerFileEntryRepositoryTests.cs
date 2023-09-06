@@ -6,7 +6,6 @@ using NUnit.Framework;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using static Arius.Core.Repositories.RepositoryBuilder;
 
 namespace Arius.Core.Tests.UnitTests;
@@ -16,8 +15,8 @@ class PointerFileEntryRepositoryTests
     [Test]
     public async Task Kak()
     {
-        var db   = new MockedStateDbContextFactory(@"C:\Users\woute\AppData\Local\Arius\states\music\v2.sqlite");
-        var repo = new Repository(NullLogger<Repository>.Instance, new MockedRepositoryOptions(), db, null);
+        var db   = new MockedStateDbContextFactory2(@"C:\Users\woute\AppData\Local\Arius\states\music\v2.sqlite");
+        var repo = new Repository(NullLogger<Repository>.Instance, new MockedRepositoryOptions2(), db, null);
         var f    = RepositoryFacade.Create(NullLoggerFactory.Instance, repo);
 
 
@@ -26,11 +25,11 @@ class PointerFileEntryRepositoryTests
 }
 
 
-class MockedStateDbContextFactory : IStateDbContextFactory
+class MockedStateDbContextFactory2 : IStateDbContextFactory
 {
     private readonly string dbPath;
 
-    public MockedStateDbContextFactory(string dbPath)
+    public MockedStateDbContextFactory2(string dbPath)
     {
         this.dbPath = dbPath;
     }
@@ -56,9 +55,9 @@ class MockedStateDbContextFactory : IStateDbContextFactory
     }
 }
 
-record MockedRepositoryOptions : RepositoryOptions
+record MockedRepositoryOptions2 : RepositoryOptions
 {
-    public MockedRepositoryOptions() : base(string.Empty, string.Empty, string.Empty, string.Empty)
+    public MockedRepositoryOptions2() : base(string.Empty, string.Empty, string.Empty, string.Empty)
     {
     }
 }
