@@ -5,9 +5,9 @@ namespace Arius.UI.Views;
 /// <summary>
 /// Interaction logic for RepositoryChooserWindow.xaml
 /// </summary>
-public partial class RepositoryChooserWindow : Window
+public partial class ChooseRepositoryWindow : Window
 {
-    public RepositoryChooserWindow()
+    public ChooseRepositoryWindow()
     {
         InitializeComponent();
     }

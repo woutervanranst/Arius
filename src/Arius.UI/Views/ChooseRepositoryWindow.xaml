@@ -1,4 +1,4 @@
-﻿<Window x:Class="Arius.UI.Views.RepositoryChooserWindow"
+﻿<Window x:Class="Arius.UI.Views.ChooseRepositoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -46,7 +46,7 @@
                 <Label Grid.Row="0"  Grid.ColumnSpan="3" HorizontalContentAlignment="Center" HorizontalAlignment="Center" FontWeight="Bold" FontSize="20">Local</Label>
 
                 <Label Grid.Row="1" Grid.Column="0">Local path:</Label>
-                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectory}" />
+                <TextBox Grid.Row="1" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding LocalDirectoryFullName}" />
                 <Button Grid.Row="1" Grid.Column="2" Margin="1" Width="35"  Command="{Binding SelectLocalDirectoryCommand}">...</Button>
             </Grid>
 
@@ -94,7 +94,7 @@
                 </TextBox>
 
                 <Label Grid.Row="3" Grid.Column="0" HorizontalAlignment="Left" Content="Container:"/>
-                <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding SelectedContainerName}" />
+                <ComboBox Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" ItemsSource="{Binding ContainerNames}" SelectedItem="{Binding ContainerName}" />
 
                 <Label Grid.Row="4" Grid.Column="0" HorizontalAlignment="Left" Content="Passphrase:"/>
                 <TextBox Grid.Row="4" Grid.Column="1" HorizontalAlignment="Stretch" Margin="1" Text="{Binding Passphrase}" />

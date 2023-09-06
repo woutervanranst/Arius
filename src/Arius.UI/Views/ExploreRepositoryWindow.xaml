@@ -1,4 +1,4 @@
-﻿<Window x:Class="Arius.UI.Views.RepositoryExplorerWindow"
+﻿<Window x:Class="Arius.UI.Views.ExploreRepositoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,11 +6,18 @@
         xmlns:local="clr-namespace:Arius.UI"
         xmlns:utils="clr-namespace:Arius.UI.Utils"
         xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
+        xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
         xmlns:views="clr-namespace:Arius.UI.Views"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
         Title="{Binding WindowName}" 
         Height="1024" Width="1280">
+
+    <behaviors:Interaction.Triggers>
+        <behaviors:EventTrigger EventName="Loaded">
+            <behaviors:InvokeCommandAction Command="{Binding LoadedCommand}" />
+        </behaviors:EventTrigger>
+    </behaviors:Interaction.Triggers>
 
     <Window.Resources>
         <utils:BytesToReadableSizeConverter x:Key="BytesToReadableSizeConverter" />
