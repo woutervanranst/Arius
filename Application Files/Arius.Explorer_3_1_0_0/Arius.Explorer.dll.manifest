@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">
-  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="3.0.8.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
+  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="3.1.0.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
   <description asmv2:iconFile="Resources\iceberg.ico" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <application />
   <entryPoint>
@@ -54,31 +54,31 @@
       </hash>
     </dependentAssembly>
   </dependency>
-  <file name="Arius.Core.dll" size="272384">
+  <file name="Arius.Core.dll" size="281600">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>W8Q3iMjbAwhEZnlbsm/c4wqyp1R4dZDTo7Q1DLuyup4=</dsig:DigestValue>
+      <dsig:DigestValue>bkLwA05/k2aCz1KRzLDhMzc/3+RvPbnMYuUnbBQgpus=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.deps.json" size="66036">
+  <file name="Arius.Explorer.deps.json" size="66693">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>UUB1qsDGNK9XeVgXnNvHUYmxeL+zITi7Wes1wfFOXDc=</dsig:DigestValue>
+      <dsig:DigestValue>sk5cfnrjH5X21ttcqpeuA3H8nE5DYgSx7AmRqNt7Er0=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.dll" size="246272">
+  <file name="Arius.Explorer.dll" size="266240">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>L0x7dKK7dH6UeQzaz2dz8lp3y5dQYp7kPdok6AIY0MQ=</dsig:DigestValue>
+      <dsig:DigestValue>LmGDu8TVwvFnVRrF2Doe0JowQS2xMc4IBkywqqBleZE=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll.config" size="1268">
@@ -459,6 +459,15 @@
       <dsig:DigestValue>q4ruoDSCjV/QJY9ZkzV6uxvEvZUVrDbyUjU3SSh5SlE=</dsig:DigestValue>
     </hash>
   </file>
+  <file name="Microsoft.Xaml.Behaviors.dll" size="145272">
+    <hash>
+      <dsig:Transforms>
+        <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
+      </dsig:Transforms>
+      <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
+      <dsig:DigestValue>j3gq16397qqTMYMGWqegvpOHq85gOOkSRV54UnsErco=</dsig:DigestValue>
+    </hash>
+  </file>
   <file name="Nito.AsyncEx.Coordination.dll" size="40960">
     <hash>
       <dsig:Transforms>
@@ -819,13 +828,13 @@
       <dsig:DigestValue>KTyl2GNY+yzgDaAsY+78s0Ron8DGNrYcl8PxsVqAqlE=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="WouterVanRanst.Utils.dll" size="25600">
+  <file name="WouterVanRanst.Utils.dll" size="26112">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>vJBsIwNH5hFDuwJdHtDM9FfL/0mZfwNbP+oOjSLjY2A=</dsig:DigestValue>
+      <dsig:DigestValue>NxiBBgkBGA2A5Rp6qDs7Ybm9ZcDdzt2x6FhhWkoDJq0=</dsig:DigestValue>
     </hash>
   </file>
 </asmv1:assembly>
