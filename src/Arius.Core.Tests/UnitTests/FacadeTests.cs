@@ -6,7 +6,6 @@ using NUnit.Framework;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using static Arius.Core.Repositories.RepositoryBuilder;
 
 namespace Arius.Core.Tests.UnitTests;
