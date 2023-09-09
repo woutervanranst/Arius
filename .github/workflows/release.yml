@@ -145,8 +145,15 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:$VERSION"
+          LATEST_IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/arius:latest"
+          
           docker build -t $IMAGE_NAME -f Arius.Cli/Dockerfile .
+          
+          docker tag $IMAGE_NAME $LATEST_IMAGE_NAME
+
           docker push $IMAGE_NAME
+          docker push $LATEST_IMAGE_NAME
+
 
 
   release:
