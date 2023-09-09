@@ -232,17 +232,23 @@ internal partial class Repository
             if (ce.AccessTier == AccessTier.Archive)
                 return; // do not do mass hydration of archive tiers
 
+            // Get the tier as per policy
+            var actualTargetAccessTier = ChunkBlob.GetPolicyAccessTier(ce.AccessTier.Value, ce.ArchivedLength);
+
+            if (ce.AccessTier.Value == actualTargetAccessTier)
+                return; // there is no change, do not update the tier
+
             // Update the actual blob
             var ch = new ChunkHash(ce.Hash);
-            await container.Chunks.GetBlob(ch).SetAccessTierAsync(targetAccessTier);
+            await container.Chunks.GetBlob(ch).SetAccessTierAsync(actualTargetAccessTier);
             
             // Update the DB
-            ce.AccessTier = targetAccessTier;
+            var previousTier = ce.AccessTier.Value;
+            ce.AccessTier = actualTargetAccessTier;
 
-            logger.LogInformation($"Chunk {ch} - set tier to '{targetAccessTier}'");
+            logger.LogInformation($"Chunk {ch} of size {ce.ArchivedLength.GetBytesReadable()} updated tier from {previousTier} to '{actualTargetAccessTier}'");
         });
 
         await db.SaveChangesAsync(); // TODO quid losing a lot of data?
-
     }
 }
