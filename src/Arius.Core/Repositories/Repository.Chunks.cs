@@ -233,7 +233,7 @@ internal partial class Repository
                 return; // do not do mass hydration of archive tiers
 
             // Get the tier as per policy
-            var actualTargetAccessTier = ChunkBlob.GetPolicyAccessTier(ce.AccessTier.Value, ce.ArchivedLength);
+            var actualTargetAccessTier = ChunkBlob.GetPolicyAccessTier(targetAccessTier, ce.ArchivedLength);
 
             if (ce.AccessTier.Value == actualTargetAccessTier)
                 return; // there is no change, do not update the tier
