@@ -214,20 +214,32 @@ internal partial class Repository
         //command.Parameters.AddWithValue("@Prefix", prefix);
 
         var sql = $@"
-            WITH RECURSIVE SlashCounter AS (
+            WITH RECURSIVE
+            OrderedEntries AS (
+                SELECT {relativeNameColumnName}, VersionUtc
+                FROM {pointerFileEntriesTableName}
+                WHERE {relativeNameColumnName} LIKE @prefix || '%'
+                ORDER BY {relativeNameColumnName}, VersionUtc DESC
+            ),
+
+            LatestVersionEntries AS (
+                SELECT {relativeNameColumnName} as {relativeNameColumnName}, MAX(VersionUtc) as LatestVersion
+                FROM OrderedEntries
+                GROUP BY {relativeNameColumnName}
+            ),
+
+            SlashCounter AS (
                 SELECT 
                     1 AS Counter,
                     instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') AS SlashPosition,
-                    {relativeNameColumnName},
+                    l.{relativeNameColumnName},
                     PrefixEnd
                 FROM (
                     SELECT
-                        instr({relativeNameColumnName}, @prefix) + length(@prefix) - 1 AS PrefixEnd,
-                        {relativeNameColumnName}
+                        instr(l.{relativeNameColumnName}, @prefix) + length(@prefix) - 1 AS PrefixEnd,
+                        l.{relativeNameColumnName}
                     FROM
-                        {pointerFileEntriesTableName}
-                    WHERE
-                        {relativeNameColumnName} LIKE @prefix || '%'
+                        LatestVersionEntries l
                 )
                 WHERE SlashPosition > 0
 
@@ -235,10 +247,11 @@ internal partial class Repository
 
                 SELECT 
                     Counter + 1,
-                    instr(substr({relativeNameColumnName}, PrefixEnd + 1 + sc.SlashPosition), '/') + sc.SlashPosition AS NextSlashPosition,
+                    instr(substr(l.{relativeNameColumnName}, PrefixEnd + 1 + sc.SlashPosition), '/') + sc.SlashPosition AS NextSlashPosition,
                     sc.{relativeNameColumnName},
                     sc.PrefixEnd
                 FROM SlashCounter sc
+                JOIN LatestVersionEntries l ON sc.{relativeNameColumnName} = l.{relativeNameColumnName}
                 WHERE sc.SlashPosition > 0
                 AND Counter < @slashCount
             ),
