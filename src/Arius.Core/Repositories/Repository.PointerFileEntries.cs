@@ -223,7 +223,7 @@ internal partial class Repository
             ),
 
             LatestVersionEntries AS (
-                SELECT {relativeNameColumnName} as {relativeNameColumnName}, MAX(VersionUtc) as LatestVersion
+                SELECT {relativeNameColumnName}, MAX(VersionUtc) as LatestVersion
                 FROM OrderedEntries
                 GROUP BY {relativeNameColumnName}
             ),
@@ -231,8 +231,8 @@ internal partial class Repository
             SlashCounter AS (
                 SELECT 
                     1 AS Counter,
-                    instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') AS SlashPosition,
-                    l.{relativeNameColumnName},
+                    instr(substr(sq.{relativeNameColumnName}, PrefixEnd + 1), '/') AS SlashPosition,
+                    sq.{relativeNameColumnName},
                     PrefixEnd
                 FROM (
                     SELECT
@@ -240,7 +240,7 @@ internal partial class Repository
                         l.{relativeNameColumnName}
                     FROM
                         LatestVersionEntries l
-                )
+                ) AS sq
                 WHERE SlashPosition > 0
 
                 UNION ALL
