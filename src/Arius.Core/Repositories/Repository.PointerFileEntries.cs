@@ -178,8 +178,6 @@ internal partial class Repository
 
     public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth)
     {
-        // TODO needs to be adapted to account for deleted versions
-
         await using var db = GetStateDbContext();
 
         var connectionString = db.Database.GetConnectionString();
@@ -187,45 +185,28 @@ internal partial class Repository
         await using var connection = new SqliteConnection(connectionString);
         await connection.OpenAsync();
 
-        var pointerFileEntriesTableName = db.Model.FindEntityType(typeof(PointerFileEntry)).GetTableName();
-        var relativeNameColumnName = db.Model.FindEntityType(typeof(PointerFileEntry))
-            .FindProperty(nameof(PointerFileEntry.RelativeName))
-            .GetColumnName();
-
-        //var sql = $@"
-        //    WITH PrefixLocations AS (
-        //        SELECT
-        //            instr({relativeNameColumnName}, @Prefix) + length(@Prefix) - 1 AS PrefixEnd,
-        //            {relativeNameColumnName}
-        //        FROM
-        //            {pointerFileEntriesTableName}
-        //        WHERE
-        //            {relativeNameColumnName} LIKE @Prefix || '%'
-        //    )
-
-        //    SELECT DISTINCT
-        //        substr({relativeNameColumnName}, PrefixEnd + 1, instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') - 1) AS Result
-        //    FROM
-        //        PrefixLocations
-        //    WHERE
-        //        instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') > 0;";
-
-        //await using var command = new SqliteCommand(sql, connection);
-        //command.Parameters.AddWithValue("@Prefix", prefix);
+        var pfeModel                    = db.Model.FindEntityType(typeof(PointerFileEntry));
+        var pointerFileEntriesTableName = pfeModel.GetTableName();
+        var relativeNameColumnName      = pfeModel.FindProperty(nameof(PointerFileEntry.RelativeName)).GetColumnName();
+        var isDeletedColumnName         = pfeModel.FindProperty(nameof(PointerFileEntry.IsDeleted)).GetColumnName();
 
         var sql = $@"
             WITH RECURSIVE
             OrderedEntries AS (
-                SELECT {relativeNameColumnName}, VersionUtc
+                SELECT {relativeNameColumnName}, VersionUtc, IsDeleted
                 FROM {pointerFileEntriesTableName}
                 WHERE {relativeNameColumnName} LIKE @prefix || '%'
-                ORDER BY {relativeNameColumnName}, VersionUtc DESC
             ),
 
             LatestVersionEntries AS (
-                SELECT {relativeNameColumnName}, MAX(VersionUtc) as LatestVersion
-                FROM OrderedEntries
-                GROUP BY {relativeNameColumnName}
+                SELECT 
+                    oe.RelativeName, 
+                    MAX(oe.VersionUtc) as LatestVersion,
+                    (SELECT IsDeleted FROM OrderedEntries 
+                     WHERE RelativeName = oe.RelativeName 
+                     ORDER BY VersionUtc DESC LIMIT 1) AS IsDeleted
+                FROM OrderedEntries oe
+                GROUP BY oe.RelativeName
             ),
 
             SlashCounter AS (
@@ -240,6 +221,8 @@ internal partial class Repository
                         l.{relativeNameColumnName}
                     FROM
                         LatestVersionEntries l
+                    WHERE
+                        l.IsDeleted = 0
                 ) AS sq
                 WHERE SlashPosition > 0
 
