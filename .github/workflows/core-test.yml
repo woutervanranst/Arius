@@ -45,7 +45,7 @@ jobs:
           ${{ runner.os }}-dotnet-
     - name: Test
       run: |
-      if [ "${{ matrix.os }}" = "Windows-latest" ]; then
+        if [ "${{ matrix.os }}" = "Windows-latest" ]; then
           dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
           
           REM we filter out a test that is searching for openssl and gzip
