@@ -13,13 +13,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli", "Arius.Cli\Ariu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.BehaviorTests", "Arius.Core.BehaviorTests\Arius.Core.BehaviorTests.csproj", "{06124932-B052-4E61-9DFE-45216A034B96}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WouterVanRanst.Utils", "WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj", "{21E68A8C-38DA-4CCC-83A9-DC4ECA0A4DE0}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.UI", "Arius.UI\Arius.UI.csproj", "{F0BFA079-FF76-4A49-9E25-3186752E3760}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.UI.Tests", "Arius.UI.Tests\Arius.UI.Tests.csproj", "{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.UI.Tests", "Arius.UI.Tests\Arius.UI.Tests.csproj", "{08C6DEE8-0E16-4F4D-AEE0-87F588C81F3A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.DbMigrationV2V3", "Arius.Core.DbMigrationV2V3\Arius.Core.DbMigrationV2V3.csproj", "{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.DbMigrationV2V3", "Arius.Core.DbMigrationV2V3\Arius.Core.DbMigrationV2V3.csproj", "{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -47,10 +45,6 @@ Global
 		{06124932-B052-4E61-9DFE-45216A034B96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06124932-B052-4E61-9DFE-45216A034B96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06124932-B052-4E61-9DFE-45216A034B96}.Release|Any CPU.Build.0 = Release|Any CPU
-		{21E68A8C-38DA-4CCC-83A9-DC4ECA0A4DE0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{21E68A8C-38DA-4CCC-83A9-DC4ECA0A4DE0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{21E68A8C-38DA-4CCC-83A9-DC4ECA0A4DE0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{21E68A8C-38DA-4CCC-83A9-DC4ECA0A4DE0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F0BFA079-FF76-4A49-9E25-3186752E3760}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F0BFA079-FF76-4A49-9E25-3186752E3760}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F0BFA079-FF76-4A49-9E25-3186752E3760}.Release|Any CPU.ActiveCfg = Release|Any CPU

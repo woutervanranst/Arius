@@ -30,7 +30,7 @@ class ByteBoundaryChunkerTests : TestBase
         var smallByteArray = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 1, 2, 3, 0, 0, 5, 6, 7, 0, 0, 1, 2, 3 };
         var smallStream = new MemoryStream(smallByteArray);
         var chunks = chunker.Chunk(smallStream).ToArray();
-            
+
         Assert.IsTrue(chunks.Length == 4);
         Assert.AreEqual(smallByteArray, chunks.SelectMany(b => b.Bytes).ToArray());
 
