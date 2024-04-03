@@ -45,9 +45,10 @@ jobs:
           ${{ runner.os }}-dotnet-
 
     - name: Test
+      # NOTE: with the --filter, we exclude a unit test that is looking for openssl and gzip - this takes too long on windows
       run: |
         dotnet test Arius.Core.BehaviorTests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-        dotnet test Arius.Core.Tests -c Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover --filter FullyQualifiedName!=Arius.Core.Tests.UnitTests.CryptoTests.DecryptWithOpenSsl_File_Equal
       env:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
