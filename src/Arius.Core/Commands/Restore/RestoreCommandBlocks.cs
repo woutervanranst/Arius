@@ -44,7 +44,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
 
     protected override async Task TaskBodyImplAsync(DirectoryInfo root)
     {
-        var pointerFiles = AsyncEnumerable.Empty<PointerFile>();
+        IAsyncEnumerable<PointerFile> pointerFiles;
 
         if (options.Synchronize)
         {
