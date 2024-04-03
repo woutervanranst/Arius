@@ -25,13 +25,13 @@ class ArchiveSteps : TestBase
         FileSystem.CreateBinaryFileIfNotExists(binaryRelativeName, size);
     }
 
-    [Given(@"a BinaryFile {word} duplicate of BinaryFile {word}")]
+    [Given(@"a BinaryFile {string} duplicate of BinaryFile {string}")]
     public void GivenABinaryFileDuplicateOfBinaryFile(string binaryRelativeName, string sourceBinaryRelativeName)
     {
         FileSystem.DuplicateBinaryFile(binaryRelativeName, sourceBinaryRelativeName);
     }
 
-    [Given(@"a Pointer of BinaryFile {word} duplicate of the Pointer of BinaryFile {word}")]
+    [Given(@"a Pointer of BinaryFile {string} duplicate of the Pointer of BinaryFile {string}")]
     private static void GivenAPointerFileDuplicateOfThePointerOfBinaryFile(string relativeBinaryName, string sourceRelativeBinaryName)
     {
         FileSystem.DuplicatePointerFile(relativeBinaryName, sourceRelativeBinaryName);
