@@ -4,7 +4,7 @@ using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
+using NSubstitute;
 using NUnit.Framework;
 using System;
 using System.IO;
@@ -128,38 +128,39 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandWithParameters_CommandCalled([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        var (facade, _, repositoryFacade, _, _, executeArchiveCommand, executeRestoreCommandExpr, dispose) = GetMocks();
+        var (facade, repositoryFacade) = GetSubstitutes();
 
         if (command == "archive")
         {
             command = new MockedArchiveCommandOptions { }.ToString();
-            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
+            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
 
-            repositoryFacade.Verify(executeArchiveCommand, Times.Once());
+            Received.InOrder(() => repositoryFacade.ExecuteArchiveCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<DateTime>()));
         }
         else if (command == "restore")
         {
             command = new MockedRestoreCommandOptions { Synchronize = true }.ToString();
-            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
+            await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
 
-            repositoryFacade.Verify(executeRestoreCommandExpr, Times.Once());
+            Received.InOrder(() => repositoryFacade.ExecuteRestoreCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<DateTime>()));
         }
         else
             throw new NotImplementedException();
 
-        repositoryFacade.Verify(dispose, Times.Exactly(1));
-        repositoryFacade.VerifyNoOtherCalls();
+        repositoryFacade.Received(1).Dispose(Arg.Any<bool>());
+        repositoryFacade.DidNotReceiveWithAnyArgs().ExecuteRehydrateCommandAsync();
     }
+
 
     [Test]
     public async Task Cli_CommandWithoutAccountNameAndAccountKey_EnvironmentVariablesUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
         var accountName = "haha1";
-        var accountKey = "haha2";
+        var accountKey  = "haha2";
         Environment.SetEnvironmentVariable(Program.AriusAccountNameEnvironmentVariableName, accountName);
         Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, accountKey);
 
-        var (facade, _, _, _, _, _, _, _) = GetMocks();
+        var (facade, _) = GetSubstitutes();
 
         if (command == "archive")
             command = new MockedArchiveCommandOptions { AccountName = null, AccountKey = null }.ToString();
@@ -168,8 +169,10 @@ internal class UnitTests
         else
             throw new NotImplementedException();
 
-        await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade.Object));
-        facade.Verify(x => x.ForStorageAccount(accountName, accountKey), Times.Once);
+        await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
+
+        // Verify that ForStorageAccount was called with specific arguments
+        facade.Received(1).ForStorageAccount(accountName, accountKey);
     }
 
     [Test]
@@ -245,7 +248,7 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandRunningInContainerPathNotSpecified_RootArchivePathUsed([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        var (facade, _, repositoryFacade, _, _, executeArchiveCommand, executeRestoreCommandExpr, dispose) = GetMocks();
+        var (facade, repositoryFacade) = GetSubstitutes();
 
         string ric = "false";
         try
@@ -256,14 +259,14 @@ internal class UnitTests
             if (command == "archive")
             {
                 var o = new MockedArchiveCommandOptions { Path = null };
-                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade.Object));
-                repositoryFacade.Verify(x => x.ExecuteArchiveCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>()), Times.Once);
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade));
+                repositoryFacade.Received(1).ExecuteArchiveCommandAsync(Arg.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<DateTime>());
             }
             else if (command == "restore")
             {
                 var o = new MockedRestoreCommandOptions { Path = null, Synchronize = true };
-                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade.Object));
-                repositoryFacade.Verify(x => x.ExecuteRestoreCommandAsync(It.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>()));
+                await Program.Main(o.ToString().Split(' '), services => services.AddSingleton<Facade>(facade));
+                repositoryFacade.Received(1).ExecuteRestoreCommandAsync(Arg.Is<DirectoryInfo>(di => di.FullName == new DirectoryInfo("/archive").FullName), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<DateTime>());
             }
             else
                 throw new NotImplementedException();
@@ -274,73 +277,28 @@ internal class UnitTests
         }
     }
 
-    private (Mock<Facade> FacadeMock, Mock<StorageAccountFacade> StorageAccountFacadeMock, Mock<RepositoryFacade> RepositoryFacadeMock,
-        dynamic ForStorageAccountExpr, dynamic ForRepositoryAsyncExpr,
-        dynamic ExecuteArchiveCommandExpr, dynamic ExecuteRestoreCommandExpr, dynamic DisposeExpr) GetMocks()
+
+    private static (Facade, RepositoryFacade) GetSubstitutes()
     {
-        //// Mock IStorageAccountOptions
-        //var mockStorageAccountOptions = new Mock<IStorageAccountOptions>();
-        //// Add setup for methods as required.
+        // Substitute RepositoryFacade
+        var repositoryFacade = Substitute.For<RepositoryFacade>();
+        repositoryFacade.ExecuteArchiveCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<DateTime>())
+            .Returns(Task.FromResult((CommandResultStatus.Success, new ArchiveCommandStatistics())));
+        repositoryFacade.ExecuteRestoreCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<DateTime>())
+            .Returns(Task.FromResult(CommandResultStatus.Success));
 
-        
-        //// Mock IRepositoryOptions
-        //var mockRepositoryOptions = new Mock<IRepositoryOptions>();
-        //// Add setup for methods as required.
+        // Substitute StorageAccountFacade
+        var storageAccountFacade = Substitute.For<StorageAccountFacade>();
+        storageAccountFacade.ForRepositoryAsync(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromResult(repositoryFacade));
 
-        
-        //// Mock Repository
-        //var mockRepository = new Mock<Repository>();
-        //// Add setup for methods as required.
+        // Substitute Facade
+        var facade = Substitute.For<Facade>();
+        facade
+            .ForStorageAccount(Arg.Any<string>(), Arg.Any<string>())
+            .Returns(storageAccountFacade);
 
-
-        // Mock RepositoryFacade
-        var mockRepositoryFacade = new Mock<RepositoryFacade>();
-        //mockRepositoryFacade.Setup(x => x.GetVersions()).Returns(new List<string> { "v1", "v2" }.ToAsyncEnumerable());
-
-        Expression<Func<RepositoryFacade, Task<(CommandResultStatus, ArchiveCommandStatistics)>>> executeArchiveCommandAsyncExpr = x => x.ExecuteArchiveCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<DateTime>());
-        mockRepositoryFacade.Setup(executeArchiveCommandAsyncExpr)
-            .ReturnsAsync((CommandResultStatus.Success, new ArchiveCommandStatistics()))
-            .Verifiable();
-
-        Expression<Func<RepositoryFacade, Task<CommandResultStatus>>> executeRestoreCommandAsyncExpr = x => x.ExecuteRestoreCommandAsync(It.IsAny<DirectoryInfo>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime>());
-        mockRepositoryFacade.Setup(executeRestoreCommandAsyncExpr)
-            .ReturnsAsync(CommandResultStatus.Success)
-            .Verifiable();
-
-        //mockRepositoryFacade.Setup(x => x.ExecuteRehydrateCommandAsync())
-        //    .ReturnsAsync(1);
-
-        Expression<Action<RepositoryFacade>> disposeExpr = x => x.Dispose(It.IsAny<bool>());
-        mockRepositoryFacade.Setup(disposeExpr)
-            .Verifiable();
-        
-
-        // Mock StorageAccountFacade
-        var mockStorageAccountFacade = new Mock<StorageAccountFacade>();
-        //mockStorageAccountFacade.Setup(x => x.GetContainerNamesAsync()).ReturnsAsync(new List<string> { "test1", "test2" }.ToAsyncEnumerable());
-
-
-        Expression<Func<StorageAccountFacade, Task<RepositoryFacade>>> forRepositoryAsyncExpr = x => x.ForRepositoryAsync(It.IsAny<string>(), It.IsAny<string>());
-        mockStorageAccountFacade.Setup(forRepositoryAsyncExpr)
-            .ReturnsAsync(mockRepositoryFacade.Object)
-            .Verifiable();
-        //mockStorageAccountFacade.Setup(x => x.ForRepositoryAsync(It.IsAny<IRepositoryOptions>())).ReturnsAsync(mockRepositoryFacade.Object);
-
-        // Mock NewFacade
-        var mockNewFacade = new Mock<Facade>();
-        Expression<Func<Facade, StorageAccountFacade>> forStorageAccountExpr = x => x.ForStorageAccount(It.IsAny<string>(), It.IsAny<string>());
-        mockNewFacade.Setup(forStorageAccountExpr)
-            //.Callback<string, string>((an, ak) => (passedAccountName, passedAccountKey) = (an, ak))
-            .Returns(mockStorageAccountFacade.Object)
-            .Verifiable();
-
-        //mockNewFacade.Verify();
-            
-        //mockNewFacade.Setup(x => x.ForStorageAccount(It.IsAny<IStorageAccountOptions>())).Returns(mockStorageAccountFacade.Object);
-
-        return (mockNewFacade, mockStorageAccountFacade, mockRepositoryFacade,
-            forStorageAccountExpr, forRepositoryAsyncExpr,
-            executeArchiveCommandAsyncExpr, executeRestoreCommandAsyncExpr, disposeExpr);
+        return (facade, repositoryFacade);
     }
 
 
