@@ -1,9 +1,7 @@
-﻿using System;
-using Arius.Core.Services;
+﻿using Arius.Core.Services;
 using NUnit.Framework;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging.Abstractions;
 using WouterVanRanst.Utils;
 
 namespace Arius.Core.Tests.UnitTests;
@@ -71,7 +69,7 @@ class CryptoTests : TestBase
     }
 
     [Test]
-    public async Task DecryptWithOpenSsl_File_Equal()
+    public async Task DecryptWithOpenSsl_File_Equal() // NOTE: this test is excluded in the github actions on 'windows-latest' because searching for 'openssl.exe' and 'gzip.exe' takes too long
     {
         // Ensure compatibility with openssl
         var openssl = ExternalProcess.FindFullName("openssl.exe", "openssl"); //add 'C:\Program Files\OpenSSL-Win64\bin' or 'C:\Program Files\Git\mingw64\bin\' to the PATH - install https://wiki.openssl.org/index.php/Binaries

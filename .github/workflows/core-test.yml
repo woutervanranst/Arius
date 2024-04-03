@@ -45,8 +45,17 @@ jobs:
           ${{ runner.os }}-dotnet-
     - name: Test
       run: |
-        dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-        dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+      if [ "${{ matrix.os }}" = "Windows-latest" ]; then
+          dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+          
+          REM we filter out a test that is searching for openssl and gzip
+          dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover --filter FullyQualifiedName!=Arius.Core.Tests.UnitTests.CryptoTests.DecryptWithOpenSsl_File_Equal
+        else
+          dotnet test Arius.Core.BehaviorTests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+          dotnet test Arius.Core.Tests /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+        fi
+
+        
       env:
         ARIUS_ACCOUNT_NAME: ariusci
         ARIUS_ACCOUNT_KEY: ${{ secrets.ARIUS_ACCOUNT_KEY }}
