@@ -2,7 +2,6 @@ using Arius.Core.Models;
 using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
-using TechTalk.SpecFlow.Assist;
 
 namespace Arius.Core.BehaviorTests.StepDefinitions;
 
