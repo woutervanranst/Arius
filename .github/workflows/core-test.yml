@@ -30,7 +30,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 4.x
+        dotnet-version: 8.x
 
     # Cache NuGet packages
     # NOTE: with the --filter, we exclude a unit test that is looking for openssl and gzip - this takes too long on windows
