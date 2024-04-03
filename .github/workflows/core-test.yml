@@ -23,19 +23,19 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       # with:
       #  submodules: true # Check out WouterVanRanst.Utils
 
     - name: Setup .NET Core
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 7.x
+        dotnet-version: 4.x
 
     # Cache NuGet packages
     # NOTE: with the --filter, we exclude a unit test that is looking for openssl and gzip - this takes too long on windows
     - name: Cache .NET packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.nuget/packages
