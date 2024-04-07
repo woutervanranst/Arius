@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Arius.Core.Models;
-using Arius.Core.Repositories.StateDb;
 
 namespace Arius.Core.Extensions;
 

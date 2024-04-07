@@ -1,9 +1,7 @@
 ﻿using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
 
 namespace Arius.Core.Commands.Archive;
 

@@ -1,5 +1,4 @@
 using Arius.Cli.Commands;
-using Arius.Core.Commands;
 using Spectre.Console.Cli;
 using System;
 using System.IO;

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using System.Threading.Tasks;
-using Arius.Core.Services;
 using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Models;

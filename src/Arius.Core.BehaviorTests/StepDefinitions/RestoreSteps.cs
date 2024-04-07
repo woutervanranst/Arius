@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Arius.Core.Models;
 using Azure.Storage.Blobs.Models;
 

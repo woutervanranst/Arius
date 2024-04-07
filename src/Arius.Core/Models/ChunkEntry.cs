@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using Arius.Core.Repositories.StateDb;
 using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Models;

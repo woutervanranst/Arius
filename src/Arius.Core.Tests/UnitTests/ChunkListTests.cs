@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Models;
-using Arius.Core.Repositories;
 using Arius.Core.Repositories.BlobRepository;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;

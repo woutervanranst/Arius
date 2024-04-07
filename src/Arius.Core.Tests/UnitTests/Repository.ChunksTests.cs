@@ -1,5 +1,4 @@
-﻿using Arius.Core.Repositories;
-using Arius.Core.Services;
+﻿using Arius.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;

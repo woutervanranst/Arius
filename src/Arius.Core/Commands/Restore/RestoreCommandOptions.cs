@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Text;
 using Arius.Core.Facade;
 
 namespace Arius.Core.Commands.Restore;

@@ -1,7 +1,5 @@
 ﻿using Arius.Core.Extensions;
-using Arius.Core.Facade;
 using Arius.Core.Models;
-using Arius.Core.Repositories.StateDb;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
