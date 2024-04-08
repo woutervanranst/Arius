@@ -132,8 +132,8 @@ internal class UnitTests
 
         if (command == "archive")
         {
+            command = new MockedArchiveCommandOptions { }.ToString();
             await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
-            command = new MockedArchiveCommandOptions().ToString();
 
             Received.InOrder(() => repositoryFacade.ExecuteArchiveCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<DateTime>()));
         }

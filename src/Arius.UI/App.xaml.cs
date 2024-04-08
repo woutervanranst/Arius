@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using MessageBox = System.Windows.MessageBox;
+using Application = System.Windows.Application;
 
 namespace Arius.UI;
 
