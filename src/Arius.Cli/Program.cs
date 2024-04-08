@@ -174,7 +174,7 @@ public static class Program
 
         AnsiConsole.Write("Compressing logs... ");
 
-        var tarDir = LogDirectory.CreateSubdirectory(Path.GetRandomFileName());
+        var tarDir = LogDirectory.CreateSubdirectory(Path.GetRandomFileName()); // TODO: look at https://github.com/icsharpcode/SharpZipLib/wiki/GZip-and-Tar-Samples#createFull
         foreach (var lf in logfiles)
             lf.MoveTo(Path.Combine(tarDir.FullName, lf.Name));
 
