@@ -1,7 +1,7 @@
-﻿using Arius.Core.Facade;
-using Azure.Storage.Blobs.Models;
-using System;
+﻿using System;
 using System.IO;
+using Arius.Core.Facade;
+using Azure.Storage.Blobs.Models;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -64,9 +64,9 @@ internal record ArchiveCommandOptions : RepositoryOptions
 
         if (Path is null)
             throw new ArgumentException("Path is not specified", nameof(Path));
-        else if (Path is not DirectoryInfo)
+        if (Path is not DirectoryInfo)
             throw new ArgumentException("Path must be a directory", nameof(Path));
-        else if (!Path.Exists)
+        if (!Path.Exists)
             throw new ArgumentException($"Directory {Path} does not exist.", nameof(Path));
 
         if (Tier != AccessTier.Hot && 

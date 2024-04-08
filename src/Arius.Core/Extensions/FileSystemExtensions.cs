@@ -1,8 +1,8 @@
-﻿using Arius.Core.Models;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Models;
 
 namespace Arius.Core.Extensions;
 

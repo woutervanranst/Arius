@@ -1,10 +1,10 @@
-﻿using Arius.Core.Commands;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using NUnit.Framework;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Tests;
 

@@ -1,11 +1,11 @@
-﻿using Arius.Core.Facade;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Arius.Core.Facade;
 using Arius.Core.Repositories;
 using Arius.Core.Repositories.StateDb;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using static Arius.Core.Repositories.RepositoryBuilder;
 
 namespace Arius.Core.Tests.UnitTests;

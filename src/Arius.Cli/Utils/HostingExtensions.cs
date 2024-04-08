@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Spectre.Console.Cli;
-using System;
-using System.Threading.Tasks;
 
 namespace Arius.Cli.Utils;
 

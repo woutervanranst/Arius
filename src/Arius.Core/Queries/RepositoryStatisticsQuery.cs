@@ -1,6 +1,6 @@
-﻿using Arius.Core.Repositories;
+﻿using System.Threading.Tasks;
+using Arius.Core.Repositories;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Queries;
 
@@ -33,7 +33,7 @@ internal class RepositoryStatisticsQuery: AsyncQuery<RepositoryStatisticsQueryOp
     protected override async Task<(QueryResultStatus Status, IQueryRepositoryStatisticsResult? Result)> ExecuteImplAsync(RepositoryStatisticsQueryOptions options)
     {
         var s = await repository.GetStatisticsAsync();
-        var r = new RepositoryStatistics()
+        var r = new RepositoryStatistics
         {
             TotalSize   = s.ChunkSize,
             TotalFiles  = s.CurrentPointerFileEntryCount,

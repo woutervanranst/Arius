@@ -1,8 +1,8 @@
-﻿using Arius.Core.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Arius.Core.Models;
 
 namespace Arius.Core.Services.Chunkers;
 

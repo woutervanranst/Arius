@@ -1,12 +1,12 @@
-﻿using Arius.Core.Extensions;
+﻿using System;
+using System.Linq;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Linq;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -135,7 +135,7 @@ internal partial class ArchiveCommand : AsyncCommand<ArchiveCommandOptions>
         var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(this,
             sourceFunc: async () =>
             {
-                var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
+                var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
                 var pfes = repo.GetCurrentPointerFileEntriesAsync(includeDeleted: false)
                     .Where(pfe => pfe.VersionUtc < options.VersionUtc) // that were not created in the current run (those are assumed to be up to date)
                     .ToEnumerable(); 

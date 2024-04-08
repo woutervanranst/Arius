@@ -1,20 +1,20 @@
-﻿using Arius.Core.Commands;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
+using Arius.Core.Extensions;
 using Arius.Core.Queries;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using PostSharp.Patterns.Contracts;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Arius.Core.Extensions;
 
 /*
  * This is required for the Arius.Cli.Tests module

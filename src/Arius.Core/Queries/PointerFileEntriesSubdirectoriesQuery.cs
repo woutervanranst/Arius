@@ -1,9 +1,9 @@
-﻿using Arius.Core.Repositories;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using Arius.Core.Extensions;
+using Arius.Core.Repositories;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Queries;
 

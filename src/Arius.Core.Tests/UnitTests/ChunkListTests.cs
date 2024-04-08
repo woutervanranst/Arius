@@ -1,11 +1,11 @@
-﻿using Arius.Core.Models;
-using Arius.Core.Repositories.BlobRepository;
-using Azure.Storage.Blobs.Models;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Arius.Core.Models;
+using Arius.Core.Repositories.BlobRepository;
+using Azure.Storage.Blobs.Models;
+using NUnit.Framework;
 
 namespace Arius.Core.Tests.UnitTests;
 

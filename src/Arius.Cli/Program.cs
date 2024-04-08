@@ -1,3 +1,10 @@
+using System;
+using System.Formats.Tar;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
 using Arius.Core.Facade;
@@ -7,13 +14,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using System;
-using System.Formats.Tar;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using WouterVanRanst.Utils.Extensions;
 
 [assembly: InternalsVisibleTo("Arius.Cli.Tests")]
@@ -172,7 +172,7 @@ public static class Program
         if (logfiles.None())
             return; // If there are no log files, return early
 
-        AnsiConsole.Write($"Compressing logs... ");
+        AnsiConsole.Write("Compressing logs... ");
 
         var tarDir = LogDirectory.CreateSubdirectory(Path.GetRandomFileName());
         foreach (var lf in logfiles)

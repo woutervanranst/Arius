@@ -1,5 +1,5 @@
-﻿using Azure.Storage.Blobs;
-using System;
+﻿using System;
+using Azure.Storage.Blobs;
 
 namespace Arius.Core.Facade;
 

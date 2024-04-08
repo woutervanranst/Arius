@@ -174,7 +174,7 @@ public sealed class SimpleCustomConsoleFormatter : ConsoleFormatter, IDisposable
     private ConsoleColors GetLogLevelConsoleColors(LogLevel logLevel)
     {
         bool disableColors = (FormatterOptions.ColorBehavior == LoggerColorBehavior.Disabled) ||
-                             (FormatterOptions.ColorBehavior == LoggerColorBehavior.Default && System.Console.IsOutputRedirected);
+                             (FormatterOptions.ColorBehavior == LoggerColorBehavior.Default && Console.IsOutputRedirected);
         if (disableColors)
         {
             return new ConsoleColors(null, null);

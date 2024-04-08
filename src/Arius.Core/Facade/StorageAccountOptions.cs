@@ -1,7 +1,7 @@
 ﻿using System;
 using Arius.Core.Commands;
-using Azure.Storage.Blobs;
 using Azure.Storage;
+using Azure.Storage.Blobs;
 
 namespace Arius.Core.Facade;
 

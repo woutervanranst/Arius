@@ -1,9 +1,9 @@
-﻿using Arius.Core.Services;
+﻿using System.IO;
+using System.Threading.Tasks;
+using Arius.Core.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Tests.UnitTests;
 

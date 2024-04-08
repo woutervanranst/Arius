@@ -1,15 +1,15 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Azure;
-using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Azure;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 

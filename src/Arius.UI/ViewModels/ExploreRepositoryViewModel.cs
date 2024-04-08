@@ -1,4 +1,9 @@
-﻿using Arius.Core.Facade;
+﻿using System.Collections.ObjectModel;
+using System.IO;
+using System.Text;
+using System.Windows;
+using System.Windows.Threading;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Queries;
 using Arius.Core.Services;
@@ -10,12 +15,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.Mvvm.Messaging.Messages;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Text;
-using System.Windows;
-using System.Windows.Threading;
 using WouterVanRanst.Utils.Extensions;
+using Application = System.Windows.Application;
 using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using MessageBox = System.Windows.MessageBox;
@@ -137,8 +138,8 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         {
             if (SetProperty(ref selectedFolder, value))
             {
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(LoadArchiveProperties, DispatcherPriority.Background);
+                Application.Current.Dispatcher.InvokeAsync(LoadEntriesAsync, DispatcherPriority.Background);
+                Application.Current.Dispatcher.InvokeAsync(LoadArchiveProperties, DispatcherPriority.Background);
             }
         }
     }
@@ -228,7 +229,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
                 var key = Path.Combine(folderViewModel.RelativeDirectoryName, name);
                 folderViewModel.TryGetItemViewModel(key,
                     out var itemViewModel,
-                    () => new ItemViewModel() { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
+                    () => new ItemViewModel { Name = name }); // NOTE: we need this factory pattern, or otherwise the ItemViewModel is inserted with an empty name which screws up the sorting
                 return itemViewModel;
             }
 
@@ -341,7 +342,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         try
         {
             // Set the loading indicator
-            IsLoading = true;
+            IsLoading         = true;
 
             // Load RepositoryFacade
             Repository = await facade
@@ -369,7 +370,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         }
         finally
         {
-            IsLoading = false;
+            IsLoading         = false;
         }
     }
 

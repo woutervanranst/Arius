@@ -1,10 +1,10 @@
-﻿using Arius.Core.Facade;
+﻿using System;
+using System.Threading.Tasks;
+using Arius.Core.Facade;
 using Arius.Core.Repositories.BlobRepository;
 using Azure.Core;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories;
 
@@ -17,8 +17,8 @@ internal partial class RepositoryBuilder
         this.logger = logger;
     }
 
-    private RepositoryOptions options   = default;
-    private BlobContainer     container = default;
+    private RepositoryOptions options;
+    private BlobContainer     container;
 
     public RepositoryBuilder WithOptions(RepositoryOptions options)
     {
@@ -48,7 +48,7 @@ internal partial class RepositoryBuilder
 
     public async Task<Repository> BuildAsync()
     {
-        if (options == default(RepositoryOptions))
+        if (options == default)
             throw new ArgumentException("Options not set");
 
         // Ensure the Blob Container exists
@@ -68,7 +68,7 @@ internal partial class RepositoryBuilder
          *      -- this is a throttling error most likely, hence specifiying exponential backoff
          *      as per https://docs.microsoft.com/en-us/azure/architecture/best-practices/retry-service-specific#blobs-queues-and-files
          */
-        return new BlobClientOptions()
+        return new BlobClientOptions
         {
             Retry =
             {

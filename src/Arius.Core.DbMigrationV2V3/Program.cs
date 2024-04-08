@@ -130,7 +130,7 @@ namespace Arius.Core.DbMigrationV2V3
             await CryptoService.CompressAndEncryptAsync(ssv3, tsv3, passphrase);
 
             await v3BlobClient.SetAccessTierAsync(AccessTier.Cold);
-            await v3BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = CryptoService.ContentType });
+            await v3BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
             await v3BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "3" } });
         }
     }

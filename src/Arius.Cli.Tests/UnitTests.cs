@@ -1,4 +1,9 @@
-﻿using Arius.Core.Commands;
+﻿using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Arius.Cli.Utils;
+using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Facade;
 using Azure.Storage.Blobs.Models;
@@ -6,10 +11,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NUnit.Framework;
-using System;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Tests;
@@ -70,11 +71,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_NoCommand_NoErrorCommandOverview()
     {
-        Utils.AnsiConsoleExtensions.StartNewRecording();
+        AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main(Array.Empty<string>());
 
-        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(0);
         consoleText.Should().ContainAll("USAGE", "COMMANDS", "archive", "restore"/*, "rehydrate"*/);
@@ -83,11 +84,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandWithoutParameters_RuntimeException([Values("archive", "restore"/*, "rehydrate"*/)] string command)
     {
-        Utils.AnsiConsoleExtensions.StartNewRecording();
+        AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main(command.AsArray());
 
-        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         consoleText.Should().Contain("Command error:");
@@ -97,11 +98,11 @@ internal class UnitTests
     [Test]
     public async Task Cli_CommandExplanation_OK([Values("archive", "restore" /*, "rehydrate"*/)] string command)
     {
-        Utils.AnsiConsoleExtensions.StartNewRecording();
+        AnsiConsoleExtensions.StartNewRecording();
 
         var r = await Program.Main($"{command} -h".Split(' '));
 
-        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(0);
         consoleText.Should().Contain($"arius {command} [PATH] [OPTIONS]");
@@ -111,12 +112,12 @@ internal class UnitTests
     [Test]
     public async Task Cli_NonExistingCommand_ParseException()
     {
-        Utils.AnsiConsoleExtensions.StartNewRecording();
+        AnsiConsoleExtensions.StartNewRecording();
 
         var args = "unexistingcommand";
         var r = await Program.Main(args.Split(' '));
 
-        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         consoleText.Should().Contain("Error: Unknown command");
@@ -131,8 +132,8 @@ internal class UnitTests
 
         if (command == "archive")
         {
-            command = new MockedArchiveCommandOptions { }.ToString();
             await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
+            command = new MockedArchiveCommandOptions().ToString();
 
             Received.InOrder(() => repositoryFacade.ExecuteArchiveCommandAsync(Arg.Any<DirectoryInfo>(), Arg.Any<bool>(), Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<DateTime>()));
         }
@@ -168,7 +169,7 @@ internal class UnitTests
         else
             throw new NotImplementedException();
 
-        await Program.Main(command.Split(' '), services => services.AddSingleton<Facade>(facade));
+        await Program.Main(command.Split(' '), services => services.AddSingleton(facade));
 
         // Verify that ForStorageAccount was called with specific arguments
         facade.Received(1).ForStorageAccount(accountName, accountKey);
@@ -181,7 +182,7 @@ internal class UnitTests
         var accountKey = Environment.GetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName);
         Environment.SetEnvironmentVariable(Program.AriusAccountKeyEnvironmentVariableName, null);
 
-        Utils.AnsiConsoleExtensions.StartNewRecording();
+        AnsiConsoleExtensions.StartNewRecording();
 
         int r;
 
@@ -193,7 +194,7 @@ internal class UnitTests
             throw new NotImplementedException();
 
         r = await Program.Main(command.Split(' '));
-        var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+        var consoleText = AnsiConsoleExtensions.ExportNewText();
 
         r.Should().Be(-1);
         //Program.Instance.e.Should().BeOfType<InvalidOperationException>();
@@ -213,7 +214,7 @@ internal class UnitTests
             ric = Environment.GetEnvironmentVariable(RUNNING_IN_CONTAINER);
             Environment.SetEnvironmentVariable(RUNNING_IN_CONTAINER, "true");
 
-            Utils.AnsiConsoleExtensions.StartNewRecording();
+            AnsiConsoleExtensions.StartNewRecording();
 
             int r;
             //Exception? e;
@@ -231,7 +232,7 @@ internal class UnitTests
             else
                 throw new NotImplementedException();
 
-            var consoleText = Utils.AnsiConsoleExtensions.ExportNewText();
+            var consoleText = AnsiConsoleExtensions.ExportNewText();
 
             r.Should().Be(-1);
             //e.Should().BeOfType<InvalidOperationException>();

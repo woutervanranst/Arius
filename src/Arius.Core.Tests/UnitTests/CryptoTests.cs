@@ -1,7 +1,7 @@
-﻿using Arius.Core.Services;
-using NUnit.Framework;
-using System.IO;
+﻿using System.IO;
 using System.Threading.Tasks;
+using Arius.Core.Services;
+using NUnit.Framework;
 using WouterVanRanst.Utils;
 
 namespace Arius.Core.Tests.UnitTests;

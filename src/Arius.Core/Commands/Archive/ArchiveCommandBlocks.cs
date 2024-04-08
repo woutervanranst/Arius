@@ -1,12 +1,4 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
-using Arius.Core.Repositories;
-using Arius.Core.Services;
-using Arius.Core.Services.Chunkers;
-using Azure.Storage.Blobs.Models;
-using ConcurrentCollections;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +6,14 @@ using System.IO;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
-
+using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Repositories;
+using Arius.Core.Services;
+using Arius.Core.Services.Chunkers;
+using Azure.Storage.Blobs.Models;
+using ConcurrentCollections;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Archive;
 
@@ -196,7 +195,7 @@ internal partial class ArchiveCommand
                 stats.AddLocalRepositoryStatistic(deltaFiles: 0, deltaSize: 0); //if we're keeping the local binaries, there are no deltas due to the archive operation
 
             // [Concurrently] Build a local cache of the remote binaries -- ensure we call BinaryExistsAsync only once
-            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.BinaryHash, async (_) => await repo.BinaryExistsAsync(bf.BinaryHash)); //TODO since this is now backed by a database, we do not need to cache this locally?
+            var binaryExistsRemote = await remoteBinaries.GetOrAdd(bf.BinaryHash, async _ => await repo.BinaryExistsAsync(bf.BinaryHash)); //TODO since this is now backed by a database, we do not need to cache this locally?
             if (binaryExistsRemote)
             {
                 // 1 Exists remote

@@ -1,6 +1,6 @@
-﻿using Arius.Core.Services;
+﻿using System.IO;
+using Arius.Core.Services;
 using NUnit.Framework;
-using System.IO;
 
 namespace Arius.Core.Tests.UnitTests;
 

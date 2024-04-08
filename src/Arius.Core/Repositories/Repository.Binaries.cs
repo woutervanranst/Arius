@@ -1,11 +1,11 @@
-﻿using System.Linq;
-using Arius.Core.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 

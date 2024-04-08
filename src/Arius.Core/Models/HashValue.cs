@@ -17,9 +17,9 @@ internal abstract record Hash
     /// Print the first 8 characters of the value
     /// </summary>
     /// <returns></returns>
-    private /* marked as private to discourage use */ string ToShortString() => SHA256Extensions.BytesToHexString(Value[..4]);
+    private /* marked as private to discourage use */ string ToShortString() => Value[..4].BytesToHexString();
 
-    private /* marked as private to discourage use */ string ToLongString() => SHA256Extensions.BytesToHexString(Value);
+    private /* marked as private to discourage use */ string ToLongString() => Value.BytesToHexString();
 
     public override int GetHashCode()
     {

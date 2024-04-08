@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
-using Spectre.Console.Cli;
-using System;
+﻿using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Spectre.Console.Cli;
 
 namespace Arius.Cli.Commands;
 

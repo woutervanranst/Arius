@@ -1,3 +1,7 @@
+using System;
+using System.ComponentModel;
+using System.IO;
+using System.Threading.Tasks;
 using Arius.Cli.Utils;
 using Arius.Core.Extensions;
 using Arius.Core.Facade;
@@ -5,10 +9,6 @@ using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using Spectre.Console.Cli;
-using System;
-using System.ComponentModel;
-using System.IO;
-using System.Threading.Tasks;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Cli.Commands;

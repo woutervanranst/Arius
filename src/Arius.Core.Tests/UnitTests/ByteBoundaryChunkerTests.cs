@@ -1,10 +1,10 @@
-﻿using Arius.Core.Models;
+﻿using System;
+using System.IO;
+using System.Linq;
+using Arius.Core.Models;
 using Arius.Core.Services;
 using Arius.Core.Services.Chunkers;
 using NUnit.Framework;
-using System;
-using System.IO;
-using System.Linq;
 
 namespace Arius.Core.Tests.UnitTests;
 

@@ -1,6 +1,6 @@
-﻿using Arius.Core.Models;
+﻿using System.Text.RegularExpressions;
+using Arius.Core.Models;
 using Arius.Core.Services;
-using System.Text.RegularExpressions;
 using Arius.Core.Services.Chunkers;
 using Microsoft.Extensions.Logging.Abstractions;
 

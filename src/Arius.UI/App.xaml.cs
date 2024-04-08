@@ -1,4 +1,8 @@
-﻿using Arius.Core.Facade;
+﻿using System.IO;
+using System.Reflection;
+using System.Windows;
+using System.Windows.Threading;
+using Arius.Core.Facade;
 using Arius.UI.Messages;
 using Arius.UI.Services;
 using Arius.UI.Utils;
@@ -8,11 +12,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.IO;
-using System.Reflection;
-using System.Windows;
-using System.Windows.Threading;
-using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI;

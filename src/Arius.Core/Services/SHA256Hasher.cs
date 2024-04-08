@@ -1,9 +1,9 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Facade;
-using Arius.Core.Models;
-using System.IO;
+﻿using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using Arius.Core.Extensions;
+using Arius.Core.Facade;
+using Arius.Core.Models;
 
 namespace Arius.Core.Services;
 

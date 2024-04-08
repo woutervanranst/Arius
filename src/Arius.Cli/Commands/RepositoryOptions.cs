@@ -1,6 +1,6 @@
+using System.ComponentModel;
 using Arius.Cli.Utils;
 using Spectre.Console.Cli;
-using System.ComponentModel;
 
 namespace Arius.Cli.Commands;
 

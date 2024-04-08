@@ -1,13 +1,13 @@
-﻿using Arius.Core.Facade;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Queries;
 
@@ -38,7 +38,7 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
     private readonly ILoggerFactory loggerFactory;
     private readonly Repository repository;
 
-    private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks = default;
+    private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks;
 
     public PointerFileEntriesQuery(ILoggerFactory loggerFactory, Repository repository)
     {

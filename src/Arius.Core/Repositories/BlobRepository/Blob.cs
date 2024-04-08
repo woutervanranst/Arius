@@ -1,12 +1,12 @@
-﻿using Arius.Core.Models;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
+using Arius.Core.Models;
 using Azure;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Nito.AsyncEx;
 using PostSharp.Constraints;
-using System;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Arius.Core.Repositories.BlobRepository;
 
@@ -66,12 +66,11 @@ internal class Blob
         //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
 
         if (throwOnExists) 
-            return await client.OpenWriteAsync(overwrite: true, options: new BlockBlobOpenWriteOptions()
+            return await client.OpenWriteAsync(overwrite: true, options: new BlockBlobOpenWriteOptions
             {
-                OpenConditions = new BlobRequestConditions() { IfNoneMatch = new ETag("*")} // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+                OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*")} // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
             } );
-        else
-            return await client.OpenWriteAsync(overwrite: true);
+        return await client.OpenWriteAsync(overwrite: true);
     }
 
 
@@ -79,16 +78,16 @@ internal class Blob
     public async Task             SetAccessTierAsync(AccessTier accessTier) => await client.SetAccessTierAsync(accessTier);
 
 
-    private string? contentTypeOverride = null;
+    private      string?      contentTypeOverride;
     public async Task<string> GetContentType() => contentTypeOverride ?? (await properties.Task)!.ContentType; // NOTE Properties can be null in case of a non-existing blob but that should not happen here
     public async Task SetContentTypeAsync(string contentType)
     {
-        await client.SetHttpHeadersAsync(new BlobHttpHeaders() { ContentType = contentType });
+        await client.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = contentType });
         contentTypeOverride = contentType;
     }
 
     
-    private long? originalLengthMetadataOverride = null;
+    private long? originalLengthMetadataOverride;
     public async Task<long?> GetOriginalLengthMetadata()
     {
         if (originalLengthMetadataOverride is not null)
