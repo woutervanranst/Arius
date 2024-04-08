@@ -343,6 +343,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         {
             // Set the loading indicator
             IsLoading         = true;
+            ArchiveStatistics = $"Downloading repository {repositoryOptions.AccountName}/{repositoryOptions.ContainerName}...";
 
             // Load RepositoryFacade
             Repository = await facade
@@ -371,6 +372,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
         finally
         {
             IsLoading         = false;
+            ArchiveStatistics = string.Empty;
         }
     }
 
