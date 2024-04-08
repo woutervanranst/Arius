@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <asmv1:assembly xsi:schemaLocation="urn:schemas-microsoft-com:asm.v1 assembly.adaptive.xsd" manifestVersion="1.0" xmlns:asmv1="urn:schemas-microsoft-com:asm.v1" xmlns="urn:schemas-microsoft-com:asm.v2" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:co.v1="urn:schemas-microsoft-com:clickonce.v1" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#" xmlns:co.v2="urn:schemas-microsoft-com:clickonce.v2">
-  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="3.1.11.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
+  <asmv1:assemblyIdentity name="Arius.Explorer.exe" version="3.2.0.0" publicKeyToken="0000000000000000" language="neutral" processorArchitecture="msil" type="win32" />
   <description asmv2:iconFile="Resources\iceberg.ico" xmlns="urn:schemas-microsoft-com:asm.v1" />
   <application />
   <entryPoint>
@@ -54,31 +54,31 @@
       </hash>
     </dependentAssembly>
   </dependency>
-  <file name="Arius.Core.dll" size="281088">
+  <file name="Arius.Core.dll" size="281600">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>hvNLvULz3I36dNOTX2zeWps+ucgTUNRkO7NbXkACXkc=</dsig:DigestValue>
+      <dsig:DigestValue>ipj+y3CsFMGy0fxdgS4pUgPDHqnaaspT6KKhWBtNZtE=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.deps.json" size="59160">
+  <file name="Arius.Explorer.deps.json" size="59153">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>XzCnB4dZiWceXNDgWSUpepzlVvUAMDMNHyenva+Fqcc=</dsig:DigestValue>
+      <dsig:DigestValue>7k91zgaOwoZhTVUuPaS7n2PPHsu3hW55darKWnpk51g=</dsig:DigestValue>
     </hash>
   </file>
-  <file name="Arius.Explorer.dll" size="266240">
+  <file name="Arius.Explorer.dll" size="266752">
     <hash>
       <dsig:Transforms>
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>2kU9GFsl3JpUH/PrTo8pimV4McpXV6TuzTELN/28sEo=</dsig:DigestValue>
+      <dsig:DigestValue>WqDCA1UGR6LgIxoYkP/SvMjwyt9g89nMarFo2LutY9Q=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.dll.config" size="1268">
@@ -96,7 +96,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>vNXaBFW6XrM4bqUBq5MtoE6c4LTyS1lYAkySXf7ICVc=</dsig:DigestValue>
+      <dsig:DigestValue>gvRcK5DOljeqVIpXRTVE9m1DmdAEiPONJpbmFl0+CI4=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Arius.Explorer.runtimeconfig.json" size="527">
@@ -537,7 +537,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>v+jHdkOP8813w1+X5aASTl2x1iqScif+/s0ju8zHXu4=</dsig:DigestValue>
+      <dsig:DigestValue>S31RdlD2Llx/EVzcCGlzjvZJ9mGXigr32rNesk8pDFw=</dsig:DigestValue>
     </hash>
   </file>
   <file name="PostSharp.Patterns.Aggregation.dll" size="103000">
@@ -546,7 +546,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>w3JkyP08Lc+33SybxGDO6GhUaVSEwK1cWKF0II8/YMI=</dsig:DigestValue>
+      <dsig:DigestValue>NYzGzoKbplUGWe9S0/7Li18uxyOpQQTqkLSGNcJnVzU=</dsig:DigestValue>
     </hash>
   </file>
   <file name="PostSharp.Patterns.Common.dll" size="415320">
@@ -555,7 +555,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>WtmYWDhio5+CN/URcN2b6GBFghu0y84yryDskJbB/28=</dsig:DigestValue>
+      <dsig:DigestValue>nN9CspMSHhpMWGNlrwdioG4twxbqvdYukbDoveiDA1c=</dsig:DigestValue>
     </hash>
   </file>
   <file name="PostSharp.Patterns.Model.dll" size="245848">
@@ -564,7 +564,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>hdw9gI3DC1LmahD5P2L997v38m3iiDdI+cdH5fHO8KQ=</dsig:DigestValue>
+      <dsig:DigestValue>ocIIW9sQr0uSDaiJbGubBhQlK7bfkv/lY6vVPXd4OQM=</dsig:DigestValue>
     </hash>
   </file>
   <file name="Resources\iceberg.ico" size="184903">
@@ -825,7 +825,7 @@
         <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
       </dsig:Transforms>
       <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-      <dsig:DigestValue>a8LLvF+QhAcQUGmyDWyO9nGZmHnujQAjU29zLFxIyVs=</dsig:DigestValue>
+      <dsig:DigestValue>H3yEY8S28NgCCLsHO1iSdrchoD6ai8Bp7BwV2kG7V3E=</dsig:DigestValue>
     </hash>
   </file>
 </asmv1:assembly>
