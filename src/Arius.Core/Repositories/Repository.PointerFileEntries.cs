@@ -102,19 +102,19 @@ internal partial class Repository
     public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAsync(
         DateTime pointInTimeUtc, 
         bool includeDeleted,
-        string? relativeDirectory = null,
+        string? relativePathFilter = null,
         bool includeChunkEntry = false)
     {
         return GetPointerFileEntriesAtPointInTimeAsync(
                 pointInTimeUtc: pointInTimeUtc, 
-                relativeDirectory: relativeDirectory,
+                relativePathFilter: relativePathFilter,
                 includeChunkEntry: includeChunkEntry)
             .Where(pfe => includeDeleted || !pfe.IsDeleted);
     }
 
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtPointInTimeAsync(DateTime pointInTimeUtc,
-        string? relativeDirectory = null,
+        string? relativePathFilter = null,
         bool includeChunkEntry = false)
     {
         var versionUtc = await GetVersionAsync(pointInTimeUtc);
@@ -124,13 +124,13 @@ internal partial class Repository
 
         await foreach (var entry in GetPointerFileEntriesAtVersionAsync(
                            versionUtc: versionUtc.Value, 
-                           relativeDirectory: relativeDirectory, 
+                           relativePathFilter: relativePathFilter, 
                            includeChunkEntry: includeChunkEntry))
             yield return entry;
     }
 
     private async IAsyncEnumerable<PointerFileEntry> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc,
-        string? relativeDirectory = null,
+        string? relativePathFilter = null, // either a directory or a file
         bool includeChunkEntry = false)
     {
         await using var db = GetStateDbContext();
@@ -143,8 +143,8 @@ internal partial class Repository
         entries = entries.Where(pfe => pfe.VersionUtc <= versionUtc);
 
         // Apply the filters from the filter object
-        if (relativeDirectory is not null)
-            entries = entries.Where(entry => entry.RelativeName.StartsWith(relativeDirectory) && !entry.RelativeName.Substring(relativeDirectory.Length).Contains("/"));
+        if (relativePathFilter is not null)
+            entries = entries.Where(entry => entry.RelativeName.StartsWith(relativePathFilter) && !entry.RelativeName.Substring(relativePathFilter.Length).Contains("/"));
 
         // Perform the grouping and ordering within the same query to limit the amount of data pulled into memory
         var groupedAndOrdered = entries

@@ -64,7 +64,7 @@ internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, I
             await foreach (var pfe in repository.GetPointerFileEntriesAsync(
                                pointInTimeUtc: DateTime.Now,
                                includeDeleted: false,
-                               relativeDirectory: options.RelativeDirectory,
+                               relativePathFilter: options.RelativeDirectory,
                                includeChunkEntry: true))
             {
                 yield return new PointerFileEntryQueryResult

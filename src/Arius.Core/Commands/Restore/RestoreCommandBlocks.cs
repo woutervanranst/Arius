@@ -86,7 +86,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     {
         var existingPointerFileEntries = new HashSet<string>();
         
-        await foreach (var pfe in repo.GetPointerFileEntriesAsync(options.PointInTimeUtc, includeDeleted: false))
+        await foreach (var pfe in repo.GetPointerFileEntriesAsync(pointInTimeUtc: options.PointInTimeUtc, includeDeleted: false))
         {
             var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
 
@@ -118,9 +118,9 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         foreach (var relativeName in options.RelativeNames)
         {
             var pfe = await repo.GetPointerFileEntriesAsync(
-                options.PointInTimeUtc,
+                pointInTimeUtc: options.PointInTimeUtc,
                 includeDeleted: false,
-                relativeDirectory: relativeName).SingleAsync();
+                relativePathFilter: relativeName).SingleAsync();
 
             var (_, pf) = fileService.CreatePointerFileIfNotExists(options.Path, pfe);
 
