@@ -144,7 +144,8 @@ internal partial class Repository
 
         // Apply the filters from the filter object
         if (relativePathFilter is not null)
-            entries = entries.Where(entry => entry.RelativeName.StartsWith(relativePathFilter) && !entry.RelativeName.Substring(relativePathFilter.Length).Contains("/"));
+            entries = entries.Where(entry => entry.RelativeName.StartsWith(relativePathFilter) && 
+                                             entry.RelativeName.Substring(relativePathFilter.Length).IndexOf('/') == 0); // get the PFEs that are DIRECTLY in the subdirectory (not in nested subdirectories)
 
         // Perform the grouping and ordering within the same query to limit the amount of data pulled into memory
         var groupedAndOrdered = entries
@@ -153,7 +154,7 @@ internal partial class Repository
 
         await foreach (var entry in groupedAndOrdered.AsAsyncEnumerable())
             if (entry != null)
-                yield return entry;
+                yield return entry; // TODO to doublecheck - are IsDeleted files also returned?
 
         //private async Task<IEnumerable<PointerFileEntry>> GetPointerFileEntriesAtVersionAsync(DateTime versionUtc)
         //{
