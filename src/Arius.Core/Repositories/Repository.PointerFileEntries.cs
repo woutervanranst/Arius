@@ -174,7 +174,7 @@ internal partial class Repository
         //}
     }
 
-    public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth)
+    public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth, DateTime versionUtc)
     {
         await foreach (var relativeName in GetRelativeNames().Distinct())
             yield return $"{prefix}{relativeName}";

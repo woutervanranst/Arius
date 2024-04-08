@@ -262,11 +262,12 @@ public class RepositoryFacade : IDisposable
     /// </summary>
     /// <param name="prefix">The platform-specific prefix</param>
     /// <param name="depth">The depth in the directory structure to return</param>
+    /// <param name="versionUtc">If specified, the version. If not specified will default to the latest version</param>
     /// <returns></returns>
-    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth)
+    public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth, DateTime? versionUtc = default)
     {
         prefix = prefix.ToPlatformNeutralPath();
-        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth };
+        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth, VersionUtc = versionUtc ?? DateTime.UtcNow };
         var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
