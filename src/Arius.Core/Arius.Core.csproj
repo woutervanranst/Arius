@@ -12,7 +12,7 @@
 		<PackageReference Include="PostSharp.Patterns.Model" Version="2024.0.7" />
 		<PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
-		<PackageReference Include="WouterVanRanst.Utils" Version="1.0.6" />
+		<PackageReference Include="WouterVanRanst.Utils" Version="1.0.7" />
 	</ItemGroup>
 
 	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->

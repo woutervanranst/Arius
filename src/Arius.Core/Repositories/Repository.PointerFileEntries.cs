@@ -176,91 +176,58 @@ internal partial class Repository
 
     public async IAsyncEnumerable<string> GetPointerFileEntriesSubdirectoriesAsync(string prefix, int depth)
     {
-        // TODO needs to be adapted to account for deleted versions
+        await foreach (var relativeName in GetRelativeNames().Distinct())
+            yield return $"{prefix}{relativeName}";
 
-        await using var db = GetStateDbContext();
-
-        var connectionString = db.Database.GetConnectionString();
-
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
-
-        var pointerFileEntriesTableName = db.Model.FindEntityType(typeof(PointerFileEntry)).GetTableName();
-        var relativeNameColumnName = db.Model.FindEntityType(typeof(PointerFileEntry))
-            .FindProperty(nameof(PointerFileEntry.RelativeName))
-            .GetColumnName();
-
-        //var sql = $@"
-        //    WITH PrefixLocations AS (
-        //        SELECT
-        //            instr({relativeNameColumnName}, @Prefix) + length(@Prefix) - 1 AS PrefixEnd,
-        //            {relativeNameColumnName}
-        //        FROM
-        //            {pointerFileEntriesTableName}
-        //        WHERE
-        //            {relativeNameColumnName} LIKE @Prefix || '%'
-        //    )
-
-        //    SELECT DISTINCT
-        //        substr({relativeNameColumnName}, PrefixEnd + 1, instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') - 1) AS Result
-        //    FROM
-        //        PrefixLocations
-        //    WHERE
-        //        instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') > 0;";
-
-        //await using var command = new SqliteCommand(sql, connection);
-        //command.Parameters.AddWithValue("@Prefix", prefix);
-
-        var sql = $@"
-            WITH RECURSIVE SlashCounter AS (
-                SELECT 
-                    1 AS Counter,
-                    instr(substr({relativeNameColumnName}, PrefixEnd + 1), '/') AS SlashPosition,
-                    {relativeNameColumnName},
-                    PrefixEnd
-                FROM (
-                    SELECT
-                        instr({relativeNameColumnName}, @prefix) + length(@prefix) - 1 AS PrefixEnd,
-                        {relativeNameColumnName}
-                    FROM
-                        {pointerFileEntriesTableName}
-                    WHERE
-                        {relativeNameColumnName} LIKE @prefix || '%'
-                )
-                WHERE SlashPosition > 0
-
-                UNION ALL
-
-                SELECT 
-                    Counter + 1,
-                    instr(substr({relativeNameColumnName}, PrefixEnd + 1 + sc.SlashPosition), '/') + sc.SlashPosition AS NextSlashPosition,
-                    sc.{relativeNameColumnName},
-                    sc.PrefixEnd
-                FROM SlashCounter sc
-                WHERE sc.SlashPosition > 0
-                AND Counter < @slashCount
-            ),
-
-            MaxSlashPosition AS (
-                SELECT {relativeNameColumnName}, PrefixEnd, MAX(SlashPosition) AS FinalSlashPosition
-                FROM SlashCounter
-                WHERE Counter = @slashCount
-                GROUP BY {relativeNameColumnName}, PrefixEnd
-            )
-
-            SELECT DISTINCT
-                substr({relativeNameColumnName}, PrefixEnd + 1, COALESCE(FinalSlashPosition, 0) - 1) AS Result
-            FROM MaxSlashPosition;
-            ";
-
-        await using var command = new SqliteCommand(sql, connection);
-        command.Parameters.AddWithValue("@prefix", prefix);
-        command.Parameters.AddWithValue("@slashCount", depth);
+        yield break;
 
 
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-            yield return $"{prefix}{reader.GetString(0)}";
+        async IAsyncEnumerable<string> GetRelativeNames()
+        {
+            await using var db = GetStateDbContext();
+
+            var connectionString = db.Database.GetConnectionString();
+
+            await using var connection = new SqliteConnection(connectionString);
+            await connection.OpenAsync();
+
+            var pointerFileEntriesTableName = db.Model.FindEntityType(typeof(PointerFileEntry)).GetTableName();
+            var relativeNameColumnName = db.Model.FindEntityType(typeof(PointerFileEntry))
+                .FindProperty(nameof(PointerFileEntry.RelativeName))
+                .GetColumnName();
+
+            var sql = $"""
+                       SELECT
+                           {relativeNameColumnName},
+                           MAX(VersionUtc) as LatestVersionUtc
+                       FROM
+                           {pointerFileEntriesTableName}
+                       WHERE
+                           VersionUtc <= @version
+                           AND
+                           {relativeNameColumnName} LIKE @prefix || '%' -- append % - SQLite syntax
+                       GROUP BY
+                           {relativeNameColumnName}
+                       HAVING
+                           IsDeleted = false
+                       """;
+
+
+            await using var command = new SqliteCommand(sql, connection);
+            command.Parameters.AddWithValue("@prefix", prefix);
+            command.Parameters.AddWithValue("@version", versionUtc);
+
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var rn0 = reader.GetString(0)[prefix.Length..].Split(PathExtensions.PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
+                var rn1 = rn0.Take(Math.Min(depth, rn0.Length - 1)); // return the subdirectories, but not the filename itself
+                var rn2 = rn1.Join(PathExtensions.PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
+
+                yield return rn2;
+            }
+        }
     }
 
     /// <summary>
