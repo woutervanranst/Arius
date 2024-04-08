@@ -225,7 +225,8 @@ internal partial class Repository
                 var rn1 = rn0.Take(Math.Min(depth, rn0.Length - 1)); // return the subdirectories, but not the filename itself
                 var rn2 = rn1.Join(PathExtensions.PLATFORM_NEUTRAL_DIRECTORY_SEPARATOR_CHAR);
 
-                yield return rn2;
+                if (!string.IsNullOrWhiteSpace(rn2)) // rn2 is "" in case there are files in the 'prefix' directory
+                    yield return rn2;
             }
         }
     }
