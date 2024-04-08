@@ -14,7 +14,7 @@ namespace Arius.Core.Commands;
 internal abstract class BlockBase
 {
     public static IEnumerable<Task> AllTasks => tasks.AsEnumerable(); //Put this on the nongeneric base class to have access to it via BlockBase.AllTasks. Cannot access static members on generic classes.
-    protected static readonly ConcurrentBag<Task> tasks = new();
+    protected static readonly ConcurrentBag<Task> tasks = [];
 
     internal static void Reset()
     {

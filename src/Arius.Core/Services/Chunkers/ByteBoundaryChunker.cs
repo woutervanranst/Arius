@@ -15,8 +15,8 @@ internal class ByteBoundaryChunker : Chunker
         : base(hashValueProvider)
     {
         this.bufferSize = bufferSize;
-        MinChunkSize = minChunkSize;
-        Delimiter = new byte[] { 0, 0 };
+        MinChunkSize    = minChunkSize;
+        Delimiter       = [0, 0];
     }
 
     public byte[] Delimiter { get; }

@@ -110,7 +110,7 @@ class ChunkListTests : TestBase
         var chs = Enumerable.Range(0, 1000).Select(_ => new ChunkHash(Guid.NewGuid().ToByteArray())).ToArray();
 
         // simulate an invalid Chunklist
-        var ms = new MemoryStream(new byte[] { 1, 2, 3 });
+        var ms = new MemoryStream([1, 2, 3]);
         var bc = TestSetup.Container.GetBlobClient(GetChunkListBlobName(bh));
         bc.Upload(ms);
 

@@ -127,7 +127,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
     }
 
     [ObservableProperty]
-    private ObservableCollection<FolderViewModel> rootNode = new(); // this will really only contain one node but the TreeView binds to a collection
+    private ObservableCollection<FolderViewModel> rootNode = []; // this will really only contain one node but the TreeView binds to a collection
     private readonly Dictionary<string, FolderViewModel> foldersDict = new(); // a lookup dictionary with the folder's relative path as key
 
     public FolderViewModel SelectedFolder
@@ -282,7 +282,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
 
     // Item ListView
     [ObservableProperty]
-    private ObservableCollection<ItemViewModel> selectedItems = new();
+    private ObservableCollection<ItemViewModel> selectedItems = [];
 
     public string SelectedItemsText => $"{SelectedItems.Count} item(s) selected, {SelectedItems.Sum(item => item.OriginalLength).GetBytesReadable(0)}";
 
@@ -461,7 +461,7 @@ internal partial class ExploreRepositoryViewModel : ObservableRecipient, IDispos
     {
         public FolderViewModel()
         {
-            Folders = new ObservableCollection<FolderViewModel>();
+            Folders = [];
             Items   = new SortedObservableCollection<ItemViewModel>(new NaturalStringComparer());
         }
 

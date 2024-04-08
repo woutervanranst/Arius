@@ -101,7 +101,7 @@ internal static class TestSetup
         Stats.Add(new(chunkEntryCount, binaryCount, pfeCount, clCount));
     }
     public record AriusRepositoryStats(int ChunkEntryCount, int BinaryCount, int PointerFileEntryCount, int ChunkListCount);
-    public static List<AriusRepositoryStats> Stats { get; } = new();
+    public static List<AriusRepositoryStats> Stats { get; } = [];
 
 
     // --------- POINTERFILEENRY HELPERS ---------

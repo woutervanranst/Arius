@@ -1,5 +1,6 @@
 using Arius.Cli.Commands;
 using Arius.Cli.Utils;
+using Arius.Core.Facade;
 using Karambolo.Extensions.Logging.File;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using Arius.Core.Facade;
 using WouterVanRanst.Utils.Extensions;
 
 [assembly: InternalsVisibleTo("Arius.Cli.Tests")]
@@ -118,12 +118,15 @@ public static class Program
                 {
                     options.RootPath = LogDirectory.FullName;
 
-                    options.Files = new[] { new LogFileOptions
-                    {
-                        Path          = $"arius-{LogTimestamp.ToString("o").Replace(":", "-")}-<counter>.log",
-                        CounterFormat = "00",
-                        MaxFileSize   = 1024 * 1024 * 100 // 100 MB max file size
-                    }};
+                    options.Files =
+                    [
+                        new LogFileOptions
+                        {
+                            Path          = $"arius-{LogTimestamp.ToString("o").Replace(":", "-")}-<counter>.log",
+                            CounterFormat = "00",
+                            MaxFileSize   = 1024 * 1024 * 100 // 100 MB max file size
+                        }
+                    ];
 
                     options.TextBuilder = SingleLineLogEntryTextBuilder.Default;
                 });
