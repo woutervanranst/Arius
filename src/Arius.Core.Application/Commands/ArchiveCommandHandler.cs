@@ -1,6 +1,7 @@
 ﻿using MediatR;
 
 namespace Arius.Core.Application.Commands;
+
 public class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
 

@@ -3,10 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31423.177
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests", "Arius.Core.Tests\Arius.Core.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core", "Arius.Core\Arius.Core.csproj", "{3DB1FF8B-9671-412B-BE82-8530CA65FF19}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli.Tests", "Arius.Cli.Tests\Arius.Cli.Tests.csproj", "{156346A7-B035-40C2-84AB-9BEAB6D6301C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli", "Arius.Cli\Arius.Cli.csproj", "{B0186E2E-8775-4406-B0FC-AF82E22F7418}"
@@ -19,21 +15,21 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.UI.Tests", "Arius.UI.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.DbMigrationV2V3", "Arius.Core.DbMigrationV2V3\Arius.Core.DbMigrationV2V3.csproj", "{F6D931EE-5E69-44B1-8E6F-E6109E4CB2EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Domain", "Arius.Core.Domain\Arius.Core.Domain.csproj", "{FE39D0D8-57D8-4198-865B-2BF2D0625F93}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Domain", "Arius.Core.Domain\Arius.Core.Domain.csproj", "{FE39D0D8-57D8-4198-865B-2BF2D0625F93}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Application", "Arius.Core.Application\Arius.Core.Application.csproj", "{3CCB1346-7A16-47AA-A04F-49AF35B9F383}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Application", "Arius.Core.Application\Arius.Core.Application.csproj", "{3CCB1346-7A16-47AA-A04F-49AF35B9F383}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Infrastucture", "Arius.Core.Infrastucture\Arius.Core.Infrastucture.csproj", "{2DA73EC1-FA78-47DA-9CFD-7F1FE6856240}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Infrastucture", "Arius.Core.Infrastucture\Arius.Core.Infrastucture.csproj", "{2DA73EC1-FA78-47DA-9CFD-7F1FE6856240}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Interfaces", "Arius.Core.Interfaces\Arius.Core.Interfaces.csproj", "{C4A0F03C-AACE-459E-BE2E-E7E9DCFA3F75}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arius.Core", "Arius.Core", "{87864C0B-E403-474D-8E94-075001002E8C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Interfaces", "Arius.Core.Interfaces\Arius.Core.Interfaces.csproj", "{C4A0F03C-AACE-459E-BE2E-E7E9DCFA3F75}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{916E6B90-A609-4FFE-99E4-275D17C9474B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchUnitTests", "ArchUnitTests\ArchUnitTests.csproj", "{AED24726-A748-47FC-B72B-4141FA31CE17}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArchUnitTests", "ArchUnitTests\ArchUnitTests.csproj", "{AED24726-A748-47FC-B72B-4141FA31CE17}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arius.Cli", "Arius.Cli", "{27304F9E-4784-4608-9A60-183799A093D2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arius.Core", "Arius.Core", "{A1810495-46C2-442D-9A74-DFDAACDC2503}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,14 +37,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9E7B808A-155C-4474-B658-F814A24592F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9E7B808A-155C-4474-B658-F814A24592F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9E7B808A-155C-4474-B658-F814A24592F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9E7B808A-155C-4474-B658-F814A24592F1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3DB1FF8B-9671-412B-BE82-8530CA65FF19}.Release|Any CPU.Build.0 = Release|Any CPU
 		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{156346A7-B035-40C2-84AB-9BEAB6D6301C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -98,11 +86,12 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{156346A7-B035-40C2-84AB-9BEAB6D6301C} = {916E6B90-A609-4FFE-99E4-275D17C9474B}
 		{B0186E2E-8775-4406-B0FC-AF82E22F7418} = {27304F9E-4784-4608-9A60-183799A093D2}
-		{FE39D0D8-57D8-4198-865B-2BF2D0625F93} = {87864C0B-E403-474D-8E94-075001002E8C}
-		{3CCB1346-7A16-47AA-A04F-49AF35B9F383} = {87864C0B-E403-474D-8E94-075001002E8C}
-		{2DA73EC1-FA78-47DA-9CFD-7F1FE6856240} = {87864C0B-E403-474D-8E94-075001002E8C}
-		{C4A0F03C-AACE-459E-BE2E-E7E9DCFA3F75} = {87864C0B-E403-474D-8E94-075001002E8C}
+		{FE39D0D8-57D8-4198-865B-2BF2D0625F93} = {A1810495-46C2-442D-9A74-DFDAACDC2503}
+		{3CCB1346-7A16-47AA-A04F-49AF35B9F383} = {A1810495-46C2-442D-9A74-DFDAACDC2503}
+		{2DA73EC1-FA78-47DA-9CFD-7F1FE6856240} = {A1810495-46C2-442D-9A74-DFDAACDC2503}
+		{C4A0F03C-AACE-459E-BE2E-E7E9DCFA3F75} = {A1810495-46C2-442D-9A74-DFDAACDC2503}
 		{AED24726-A748-47FC-B72B-4141FA31CE17} = {916E6B90-A609-4FFE-99E4-275D17C9474B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
