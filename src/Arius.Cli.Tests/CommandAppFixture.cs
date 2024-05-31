@@ -1,7 +1,6 @@
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using Spectre.Console.Cli;
 
 namespace Arius.Cli.Tests;
 
@@ -16,8 +15,8 @@ public class CommandAppFixture : IDisposable
         Mediator = Substitute.For<IMediator>();
         services.AddSingleton(Mediator);
 
-        CommandApp.ConfigureServices(services);
-        CommandApp = CommandApp.CreateCommandApp(services);
+        Program.ConfigureServices(services);
+        CommandApp = Program.CreateCommandApp(services);
     }
 
     public void Dispose()

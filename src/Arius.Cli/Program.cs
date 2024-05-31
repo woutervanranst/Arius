@@ -8,9 +8,9 @@ using Spectre.Console.Cli;
 
 namespace Arius.Cli;
 
-internal class CommandApp
+internal class Program
 {
-    static int Main(string[] args)
+    internal static int Main(string[] args)
     {
         var services = new ServiceCollection();
         ConfigureServices(services);
@@ -25,10 +25,10 @@ internal class CommandApp
         services.AddScoped<ArchiveCommandCli>();
     }
 
-    public static Spectre.Console.Cli.CommandApp CreateCommandApp(IServiceCollection services)
+    public static CommandApp CreateCommandApp(IServiceCollection services)
     {
         var registrar = new TypeRegistrar(services);
-        var app       = new Spectre.Console.Cli.CommandApp(registrar);
+        var app       = new CommandApp(registrar);
 
         app.Configure(config => { config.AddCommand<ArchiveCommandCli>("archive"); });
 
