@@ -31,7 +31,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arius.Cli", "Arius.Cli", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Arius.Core", "Arius.Core", "{A1810495-46C2-442D-9A74-DFDAACDC2503}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Application.Tests", "Arius.Core.Application.Tests\Arius.Core.Application.Tests.csproj", "{999923BC-8CAE-437E-878B-381E6617103F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Application.Tests", "Arius.Core.Application.Tests\Arius.Core.Application.Tests.csproj", "{999923BC-8CAE-437E-878B-381E6617103F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Arius.Core.Application.Benchmark", "Arius.Core.Application.Benchmark\Arius.Core.Application.Benchmark.csproj", "{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -87,6 +89,10 @@ Global
 		{999923BC-8CAE-437E-878B-381E6617103F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{999923BC-8CAE-437E-878B-381E6617103F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{999923BC-8CAE-437E-878B-381E6617103F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -100,6 +106,7 @@ Global
 		{C4A0F03C-AACE-459E-BE2E-E7E9DCFA3F75} = {A1810495-46C2-442D-9A74-DFDAACDC2503}
 		{AED24726-A748-47FC-B72B-4141FA31CE17} = {916E6B90-A609-4FFE-99E4-275D17C9474B}
 		{999923BC-8CAE-437E-878B-381E6617103F} = {916E6B90-A609-4FFE-99E4-275D17C9474B}
+		{429BCEED-FE6E-4443-B7AC-C8ECC4E7EA21} = {916E6B90-A609-4FFE-99E4-275D17C9474B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {22910351-E3F5-4C66-8C47-ADC931D02A83}
