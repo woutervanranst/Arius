@@ -6,4 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Arius.Web.Application\Arius.Web.Application.csproj" />
+    <ProjectReference Include="..\Arius.Web.Infrastructure\Arius.Web.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
