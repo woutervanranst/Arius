@@ -24,10 +24,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.20.1" />
+		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
 
-		<PackageReference Include="Spectre.Console" Version="0.48.0" />
-		<PackageReference Include="Spectre.Console.Cli" Version="0.48.0" />
+		<PackageReference Include="Spectre.Console" Version="0.49.1" />
+		<PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
 
 		<!-- References for Karambolo, as per https://github.com/adams85/filelogger/issues/19 -->
 		<PackageReference Include="Karambolo.Extensions.Logging.File" Version="3.5.0" />
