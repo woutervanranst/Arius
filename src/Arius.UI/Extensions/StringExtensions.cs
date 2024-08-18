@@ -2,12 +2,12 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Arius.UI.Extensions
+namespace Arius.UI.Extensions;
+
+internal static class StringExtensions
 {
-    internal static class StringExtensions
+    public static string Protect(this string value)
     {
-        public static string Protect(this string value)
-        {
             if (string.IsNullOrEmpty(value))
                 return value;
 
@@ -17,8 +17,8 @@ namespace Arius.UI.Extensions
             return protectedData;
         }
 
-        public static string Unprotect(this string value)
-        {
+    public static string Unprotect(this string value)
+    {
             if (string.IsNullOrEmpty(value))
                 return value;
 
@@ -27,5 +27,4 @@ namespace Arius.UI.Extensions
             string data = Encoding.UTF8.GetString(ProtectedData.Unprotect(protectedData, entropy, DataProtectionScope.CurrentUser));
             return data;
         }
-    }
 }

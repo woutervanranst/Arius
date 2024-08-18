@@ -9,12 +9,12 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using WouterVanRanst.Utils.Extensions;
 
-namespace Arius.Core.DbMigrationV2V3
+namespace Arius.Core.DbMigrationV2V3;
+
+internal class Program
 {
-    internal class Program
+    static async Task Main(string[] args)
     {
-        static async Task Main(string[] args)
-        {
             var accountName   = "";
             var accountKey    = "";
             var containerName = "";
@@ -26,8 +26,8 @@ namespace Arius.Core.DbMigrationV2V3
                 await MirateContainerAsync(bsc, blobContainerItem.Name, passphrase);
         }
 
-        private static async Task MirateContainerAsync(BlobServiceClient bsc, string containerName, string passphrase)
-        {
+    private static async Task MirateContainerAsync(BlobServiceClient bsc, string containerName, string passphrase)
+    {
             var container = bsc.GetBlobContainerClient(containerName);
 
             var lastStateBlobName = await container.GetBlobsAsync(prefix: $"{BlobContainer.STATE_DBS_FOLDER_NAME}")
@@ -117,8 +117,7 @@ namespace Arius.Core.DbMigrationV2V3
                 //await v3db.DisposeAsync();
 
                 await v3db.Database.ExecuteSqlRawAsync("VACUUM;");
-                //await v3db.Database.CloseConnectionAsync(); 
-            }
+                //await v3db.Database.CloseConnectionAsync();      }
 
             SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/26580#issuecomment-1042924993
 
@@ -133,5 +132,4 @@ namespace Arius.Core.DbMigrationV2V3
             await v3BlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = CryptoService.ContentType });
             await v3BlobClient.SetMetadataAsync(new Dictionary<string, string> { { "MigrationResult", lastStateBlobName }, { "DatabaseVersion", "3" } });
         }
-    }
 }
