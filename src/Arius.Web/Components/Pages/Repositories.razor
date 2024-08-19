@@ -1,0 +1,54 @@
+﻿@page "/repositories"
+@using Arius.Web.Application
+@using Arius.Web.Core
+@inject RepositoryOptionsService RepositoryOptionsService
+@inject NavigationManager        Navigation
+
+<h3>Repositories</h3>
+
+<button class="btn btn-primary" @onclick="NavigateToAddRepository">Add Repository</button>
+
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Path</th>
+        <th>Account Name</th>
+        <th>Container Name</th>
+        <th>Tier</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    @if (repositoryOptions != null)
+    {
+        @foreach (var repoConfig in repositoryOptions)
+        {
+            <tr>
+                <td>@repoConfig.Path</td>
+                <td>@repoConfig.AccountName</td>
+                <td>@repoConfig.ContainerName</td>
+                <td>@repoConfig.Tier</td>
+                <td>
+                    <a href="/edit-repository/@repoConfig.Id">Edit</a> |
+                    <a href="/remove-repository/@repoConfig.Id">Remove</a>
+                </td>
+            </tr>
+        }
+    }
+    </tbody>
+</table>
+
+@code {
+    private IEnumerable<RepositoryOptions> repositoryOptions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        repositoryOptions = await RepositoryOptionsService.GetRepositoryOptionsAsync();
+    }
+
+    private void NavigateToAddRepository()
+    {
+        Navigation.NavigateTo("/add-repository");
+    }
+}

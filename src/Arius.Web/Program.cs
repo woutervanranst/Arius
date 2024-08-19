@@ -17,6 +17,13 @@ public class Program
 
         var app = builder.Build();
 
+        // Ensure the database is created and applies any pending migrations
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            dbContext.Database.Migrate();
+        }
+
         // Configure the HTTP request pipeline
         ConfigureMiddleware(app);
 
@@ -34,8 +41,8 @@ public class Program
             options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
 
         // Register application services
-        services.AddScoped<IBackupConfigurationRepository, BackupConfigurationRepository>();
-        services.AddScoped<BackupConfigurationService>();
+        services.AddScoped<IRepositoryOptionsRepository, RepositoryOptionsRepository>();
+        services.AddScoped<RepositoryOptionsService>();
     }
 
     private static void ConfigureMiddleware(WebApplication app)

@@ -1,6 +1,6 @@
 ﻿namespace Arius.Web.Core;
 
-public class BackupConfiguration
+public class RepositoryOptions
 {
     public int    Id            { get; set; }
     public string Path          { get; set; }

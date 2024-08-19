@@ -3,32 +3,32 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Web.Infrastructure;
 
-public class BackupConfigurationRepository : IBackupConfigurationRepository
+public class RepositoryOptionsRepository : IRepositoryOptionsRepository
 {
     private readonly ApplicationDbContext _context;
 
-    public BackupConfigurationRepository(ApplicationDbContext context)
+    public RepositoryOptionsRepository(ApplicationDbContext context)
     {
         _context = context;
     }
 
-    public async Task<BackupConfiguration> GetByIdAsync(int id)
+    public async Task<RepositoryOptions> GetByIdAsync(int id)
     {
         return await _context.BackupConfigurations.FindAsync(id);
     }
 
-    public async Task<IEnumerable<BackupConfiguration>> GetAllAsync()
+    public async Task<IEnumerable<RepositoryOptions>> GetAllAsync()
     {
         return await _context.BackupConfigurations.ToListAsync();
     }
 
-    public async Task AddAsync(BackupConfiguration config)
+    public async Task AddAsync(RepositoryOptions config)
     {
         _context.BackupConfigurations.Add(config);
         await _context.SaveChangesAsync();
     }
 
-    public async Task UpdateAsync(BackupConfiguration config)
+    public async Task UpdateAsync(RepositoryOptions config)
     {
         _context.BackupConfigurations.Update(config);
         await _context.SaveChangesAsync();

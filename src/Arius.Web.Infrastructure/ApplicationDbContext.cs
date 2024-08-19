@@ -10,15 +10,15 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<BackupConfiguration> BackupConfigurations { get; set; }
+    public DbSet<RepositoryOptions> BackupConfigurations { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<BackupConfiguration>().Property(b => b.AccountKey).HasConversion(
+        modelBuilder.Entity<RepositoryOptions>().Property(b => b.AccountKey).HasConversion(
             v => Encrypt(v),
             v => Decrypt(v));
-        modelBuilder.Entity<BackupConfiguration>().Property(b => b.Passphrase).HasConversion(
+        modelBuilder.Entity<RepositoryOptions>().Property(b => b.Passphrase).HasConversion(
             v => Encrypt(v),
             v => Decrypt(v));
     }
