@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
     <ProjectReference Include="..\Arius.Web.Core\Arius.Web.Core.csproj" />
   </ItemGroup>
 

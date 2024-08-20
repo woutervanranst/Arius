@@ -6,7 +6,7 @@ using MediatR;
 
 namespace Arius.Core.Commands.Archive;
 
-internal record ArchiveCommand : RepositoryOptions, IRequest<CommandResultStatus>
+internal record ArchiveCommand : RepositoryOptions //, IRequest<CommandResultStatus>
 {
     public ArchiveCommand(RepositoryOptions options, DirectoryInfo root, bool fastHash, bool removeLocal, string tier, bool dedup, DateTime versionUtc) : base(options)
     {

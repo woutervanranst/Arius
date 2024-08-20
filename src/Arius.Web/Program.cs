@@ -1,3 +1,4 @@
+using Arius.Core.Facade;
 using Arius.Web.Application;
 using Arius.Web.Components;
 using Arius.Web.Core;
@@ -43,6 +44,8 @@ public class Program
         // Register application services
         services.AddScoped<IRepositoryOptionsRepository, RepositoryOptionsRepository>();
         services.AddScoped<RepositoryOptionsService>();
+
+        services.AddArius();
     }
 
     private static void ConfigureMiddleware(WebApplication app)

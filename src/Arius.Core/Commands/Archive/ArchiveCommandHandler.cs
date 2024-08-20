@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Archive;
 
-internal partial class ArchiveCommandHandler : AsyncCommand<ArchiveCommand>, IRequestHandler<ArchiveCommand, CommandResultStatus>
+internal partial class ArchiveCommandHandler : AsyncCommand<ArchiveCommand> //, IRequestHandler<ArchiveCommand, CommandResultStatus>
 {
     public ArchiveCommandHandler(ILoggerFactory loggerFactory, Repository repo, ArchiveCommandStatistics statisticsProvider)
     {
