@@ -1,6 +1,8 @@
 ﻿using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using Arius.Core.Domain.Storage;
+using Arius.Core.Infrastructure.Storage.Azure;
 
 namespace Arius.Core.Facade;
 
@@ -20,6 +22,8 @@ public static class IServiceCollectionExtensions
             // Add pipeline validation behavior
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));
         });
+
+        services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
 
 
         return services;

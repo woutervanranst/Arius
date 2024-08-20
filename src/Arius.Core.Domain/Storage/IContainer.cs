@@ -2,6 +2,7 @@
 
 public interface IContainer
 {
-    string                    Name { get; }
-    Task<IEnumerable<string>> ListBlobsAsync(CancellationToken cancellationToken = default); // Or a more complex Blob abstraction
+    IStorageAccount StorageAccount { get; }
+    string          Name           { get; }
+    IRepository     GetRepository(string passphrase);
 }

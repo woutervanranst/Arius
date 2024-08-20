@@ -12,15 +12,17 @@ internal class AzureStorageAccount : IStorageAccount
     public AzureStorageAccount(StorageAccountCredentials credentials)
     {
         blobServiceClient = new BlobServiceClient(new Uri($"https://{credentials.AccountName}.blob.core.windows.net"), new StorageSharedKeyCredential(credentials.AccountName, credentials.AccountKey));
+        AccountKey        = credentials.AccountKey;
     }
 
     public string AccountName => blobServiceClient.AccountName;
+    public string AccountKey  { get; }
 
-    public async IAsyncEnumerable<IContainer> ListContainersAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<IContainer> ListContainers([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var containerItem in blobServiceClient.GetBlobContainersAsync(cancellationToken: cancellationToken))
         {
-            yield return new AzureContainer(blobServiceClient.GetBlobContainerClient(containerItem.Name));
+            yield return new AzureContainer(this, blobServiceClient.GetBlobContainerClient(containerItem.Name));
         }
     }
 }

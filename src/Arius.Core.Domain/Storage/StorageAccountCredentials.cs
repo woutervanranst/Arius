@@ -4,8 +4,14 @@ namespace Arius.Core.Domain.Storage;
 
 public record StorageAccountCredentials
 {
-    public required string AccountName { get; init; }
-    public required string AccountKey  { get; init; }
+    public StorageAccountCredentials(string accountName, string accountKey)
+    {
+        AccountName = accountName;
+        AccountKey = accountKey;
+    }
+
+    public string AccountName { get; }
+    public string AccountKey  { get; }
 }
 
 public class StorageAccountCredentialsValidator : AbstractValidator<StorageAccountCredentials>

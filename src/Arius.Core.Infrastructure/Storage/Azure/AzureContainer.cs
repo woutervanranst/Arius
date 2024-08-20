@@ -5,24 +5,20 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureContainer : IContainer
 {
+    private readonly AzureStorageAccount storageAccount;
     private readonly BlobContainerClient blobContainerClient;
 
-    public AzureContainer(BlobContainerClient blobContainerClient)
+    public AzureContainer(AzureStorageAccount storageAccount, BlobContainerClient blobContainerClient)
     {
+        this.storageAccount      = storageAccount;
         this.blobContainerClient = blobContainerClient;
     }
 
-    public string Name => blobContainerClient.Name;
+    public IStorageAccount StorageAccount => storageAccount;
+    public string          Name           => blobContainerClient.Name;
 
-    public async Task<IEnumerable<string>> ListBlobsAsync(CancellationToken cancellationToken = default)
+    public IRepository GetRepository(string passphrase)
     {
-        var blobs = new List<string>();
-
-        await foreach (var blobItem in blobContainerClient.GetBlobsAsync(cancellationToken: cancellationToken))
-        {
-            blobs.Add(blobItem.Name);
-        }
-
-        return blobs;
+        return new AzureRepository(this, blobContainerClient, passphrase);
     }
 }

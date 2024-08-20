@@ -96,8 +96,7 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
         {
             IsLoading = true;
 
-            var s = new StorageAccountCredentials { AccountName = AccountName, AccountKey = AccountKey };
-            var q = new ContainerNamesQuery { StorageAccountCredentials = s, MaxRetries = 0 };
+            var q = new ContainerNamesQuery(AccountName, AccountKey);
             var r = await mediator.Send(q);
             ContainerNames = new ObservableCollection<string>(await r.ToListAsync());
 

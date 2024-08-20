@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Domain.Storage;
-using Arius.Core.Facade;
 using Arius.Core.Queries.ContainerNames;
 using Arius.Web.Core;
 using MediatR;
@@ -24,16 +23,7 @@ public class RepositoryOptionsService
 
     public async Task AddRepositoryOptionsAsync(RepositoryOptions config)
     {
-        var s = new StorageAccountCredentials
-        {
-            AccountName = config.AccountName,
-            AccountKey  = config.AccountKey
-        };
-        var q = new ContainerNamesQuery
-        {
-            StorageAccountCredentials = s,
-            MaxRetries  = 1
-        };
+        var q = new ContainerNamesQuery(config.AccountName, config.AccountKey);
 
         var r = await mediator.Send(q);
 

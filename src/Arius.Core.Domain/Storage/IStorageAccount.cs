@@ -2,6 +2,7 @@
 
 public interface IStorageAccount
 {
-    string                       AccountName { get; }
-    IAsyncEnumerable<IContainer> ListContainersAsync(CancellationToken cancellationToken = default);
+    string AccountName { get; }
+    string AccountKey  { get; }
+    IAsyncEnumerable<IContainer> ListContainers(CancellationToken cancellationToken = default);
 }
