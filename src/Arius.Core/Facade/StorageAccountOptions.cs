@@ -5,7 +5,13 @@ using Azure.Storage.Blobs;
 
 namespace Arius.Core.Facade;
 
-internal record StorageAccountOptions : CommandOptions
+public interface IStorageAccountOptions
+{
+    public string AccountName { get; }
+    public string AccountKey  { get; }
+}
+
+internal record StorageAccountOptions : CommandOptions, IStorageAccountOptions
 {
     public StorageAccountOptions(string accountName, string accountKey)
     {

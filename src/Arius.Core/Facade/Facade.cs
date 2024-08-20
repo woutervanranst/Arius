@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Arius.Core.Queries.PointerFileEntriesSubdirectories;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -269,8 +270,8 @@ public class RepositoryFacade : IDisposable
     public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth, DateTime? versionUtc = default)
     {
         prefix = prefix.ToPlatformNeutralPath();
-        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth, VersionUtc = versionUtc ?? DateTime.UtcNow };
-        var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
+        var o = new PointerFileEntriesSubdirectoriesQuery { Prefix = prefix, Depth = depth, VersionUtc = versionUtc ?? DateTime.UtcNow };
+        var q = new PointerFileEntriesSubdirectoriesQueryHandler(loggerFactory, Repository);
         var r = q.Execute(o);
 
         return r.Result.Select(r => r.ToPlatformSpecificPath());
@@ -278,7 +279,7 @@ public class RepositoryFacade : IDisposable
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
     {
-        var o = new RepositoryStatisticsQueryHandler();
+        var o = new RepositoryStatisticsQuery();
         var q = new RepositoryStatisticsQueryHandler(loggerFactory, Repository);
         var r = await q.ExecuteAsync(o);
 

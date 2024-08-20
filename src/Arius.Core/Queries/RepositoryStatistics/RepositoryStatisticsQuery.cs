@@ -1,6 +1,6 @@
 ﻿namespace Arius.Core.Queries.RepositoryStatistics;
 
-internal record RepositoryStatisticsQueryOptions : QueryOptions
+internal record RepositoryStatisticsQuery : QueryOptions
 {
     public override void Validate()
     {

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Queries.RepositoryStatistics;
 
-internal class RepositoryStatisticsQueryHandler : AsyncQuery<RepositoryStatisticsQueryOptions, IQueryRepositoryStatisticsResult>
+internal class RepositoryStatisticsQueryHandler : AsyncQuery<RepositoryStatisticsQuery, IQueryRepositoryStatisticsResult>
 {
     private readonly Repository repository;
 
@@ -13,7 +13,7 @@ internal class RepositoryStatisticsQueryHandler : AsyncQuery<RepositoryStatistic
         this.repository = repository;
     }
 
-    protected override async Task<(QueryResultStatus Status, IQueryRepositoryStatisticsResult? Result)> ExecuteImplAsync(RepositoryStatisticsQueryOptions options)
+    protected override async Task<(QueryResultStatus Status, IQueryRepositoryStatisticsResult? Result)> ExecuteImplAsync(RepositoryStatisticsQuery options)
     {
         var s = await repository.GetStatisticsAsync();
         var r = new RepositoryStatistics
