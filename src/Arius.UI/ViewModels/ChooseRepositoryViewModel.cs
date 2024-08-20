@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Arius.Core.Domain.Storage;
 using Arius.Core.Facade;
 using Arius.Core.Queries.ContainerNames;
 using Arius.UI.Messages;
@@ -95,7 +96,8 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
         {
             IsLoading = true;
 
-            var q = new ContainerNamesQuery { AccountName = AccountName, AccountKey = AccountKey, MaxRetries = 0 };
+            var s = new StorageAccountCredentials { AccountName = AccountName, AccountKey = AccountKey };
+            var q = new ContainerNamesQuery { StorageAccountCredentials = s, MaxRetries = 0 };
             var r = await mediator.Send(q);
             ContainerNames = new ObservableCollection<string>(await r.ToListAsync());
 

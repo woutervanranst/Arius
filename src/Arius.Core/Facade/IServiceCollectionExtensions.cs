@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace Arius.Core.Facade;
 
-public static class Bootstrap
+public static class IServiceCollectionExtensions
 {
     public static IServiceCollection AddArius(this IServiceCollection services)
     {

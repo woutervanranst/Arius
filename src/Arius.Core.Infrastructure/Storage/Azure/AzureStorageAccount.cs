@@ -9,9 +9,9 @@ internal class AzureStorageAccount : IStorageAccount
 {
     private readonly BlobServiceClient blobServiceClient;
 
-    public AzureStorageAccount(string accountName, string accountKey)
+    public AzureStorageAccount(StorageAccountCredentials credentials)
     {
-        blobServiceClient = new BlobServiceClient(new Uri($"https://{accountName}.blob.core.windows.net"), new StorageSharedKeyCredential(accountName, accountKey));
+        blobServiceClient = new BlobServiceClient(new Uri($"https://{credentials.AccountName}.blob.core.windows.net"), new StorageSharedKeyCredential(credentials.AccountName, credentials.AccountKey));
     }
 
     public string AccountName => blobServiceClient.AccountName;
