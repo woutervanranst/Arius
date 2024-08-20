@@ -5,7 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Arius.Core.Facade;
 using Arius.Core.Models;
-using Arius.Core.Queries;
+using Arius.Core.Queries.PointerFilesEntries;
 using Arius.Core.Services;
 using Arius.UI.Models;
 using Arius.UI.Services;

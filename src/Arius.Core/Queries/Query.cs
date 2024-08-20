@@ -19,7 +19,7 @@ public enum QueryResultStatus
     //Cancelled = -2
 }
 
-internal abstract class Query<TOptions, TResult> where TOptions : QueryOptions
+internal abstract class Query<TOptions, TResult> where TOptions : QueryOptions // TODO deprecate me
 {
     /// <summary>
     /// Execute the Query

@@ -1,20 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Arius.Core.Commands;
+﻿using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
-using Arius.Core.Queries;
+using Arius.Core.Queries.ContainerNames;
+using Arius.Core.Queries.PointerFilesEntries;
+using Arius.Core.Queries.RepositoryStatistics;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using PostSharp.Patterns.Contracts;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -76,8 +78,8 @@ public class StorageAccountFacade
 
     public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
     {
-        var o   = new QueryContainerNamesOptions { MaxRetries = maxRetries };
-        var q = new ContainerNamesQuery(loggerFactory.CreateLogger<ContainerNamesQuery>(), storageAccountOptions);
+        var o   = new ContainerNamesQuery { MaxRetries = maxRetries };
+        var q = new ContainerNamesQueryHandler(loggerFactory.CreateLogger<ContainerNamesQueryHandler>(), storageAccountOptions);
 
 
         return q.Execute(o).Result;
@@ -248,8 +250,8 @@ public class RepositoryFacade : IDisposable
 
     public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(string? relativeDirectory = null)
     {
-        var o = new PointerFileEntriesQueryOptions { RelativeDirectory = relativeDirectory };
-        var q = new PointerFileEntriesQuery(loggerFactory, Repository);
+        var o = new PointerFileEntriesQuery { RelativeDirectory = relativeDirectory };
+        var q = new PointerFileEntriesQueryHandler(loggerFactory, Repository);
         var r = q.Execute(o);
 
         return r.Result;
@@ -276,8 +278,8 @@ public class RepositoryFacade : IDisposable
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
     {
-        var o = new RepositoryStatisticsQueryOptions();
-        var q = new RepositoryStatisticsQuery(loggerFactory, Repository);
+        var o = new RepositoryStatisticsQueryHandler();
+        var q = new RepositoryStatisticsQueryHandler(loggerFactory, Repository);
         var r = await q.ExecuteAsync(o);
 
         return r.Result;
