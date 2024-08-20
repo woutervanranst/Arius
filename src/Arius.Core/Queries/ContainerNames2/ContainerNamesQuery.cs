@@ -3,25 +3,25 @@ using MediatR;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
-namespace Arius.Core.Queries.ContainerNames2;
+namespace Arius.Core.Queries.ContainerNames;
 
-public record ContainerNamesQuery2 : IRequest<IAsyncEnumerable<string>>, IStorageAccountOptions
+public record ContainerNamesQuery : IRequest<IAsyncEnumerable<string>>, IStorageAccountOptions
 {
     public required string AccountName { get; init; }
     public required string AccountKey  { get; init; }
     public required int    MaxRetries  { get; init; }
 }
 
-internal class ContainerNamesQuery2Handler : IRequestHandler<ContainerNamesQuery2, IAsyncEnumerable<string>>
+internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery, IAsyncEnumerable<string>>
 {
-    private readonly ILogger<ContainerNamesQuery2Handler> logger;
+    private readonly ILogger<ContainerNamesQueryHandler> logger;
 
-    public ContainerNamesQuery2Handler(ILogger<ContainerNamesQuery2Handler> logger)
+    public ContainerNamesQueryHandler(ILogger<ContainerNamesQueryHandler> logger)
     {
         this.logger = logger;
     }
 
-    public async Task<IAsyncEnumerable<string>> Handle(ContainerNamesQuery2 request, CancellationToken cancellationToken)
+    public async Task<IAsyncEnumerable<string>> Handle(ContainerNamesQuery request, CancellationToken cancellationToken)
     {
         return GetContainerNames(cancellationToken);
 

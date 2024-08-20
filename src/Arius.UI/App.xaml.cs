@@ -49,6 +49,7 @@ public partial class App
 
     private void ConfigureServices(IServiceCollection services)
     {
+        services.AddArius();
         services.AddSingleton<Facade>(new Facade(NullLoggerFactory.Instance));
         services.AddSingleton<ApplicationSettings>(new ApplicationSettings(Path.Combine(ApplicationDataPath, "arius.explorer.settings.sqlite")));
 

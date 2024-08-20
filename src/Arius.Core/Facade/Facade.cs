@@ -3,21 +3,16 @@ using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
-using Arius.Core.Queries.ContainerNames;
+using Arius.Core.Queries.PointerFileEntriesSubdirectories;
 using Arius.Core.Queries.PointerFilesEntries;
 using Arius.Core.Queries.RepositoryStatistics;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
 using PostSharp.Constraints;
 using PostSharp.Patterns.Contracts;
-using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
-using Arius.Core.Queries.PointerFileEntriesSubdirectories;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -75,15 +70,6 @@ public class StorageAccountFacade
     {
         this.loggerFactory         = loggerFactory;
         this.storageAccountOptions = options;
-    }
-
-    public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
-    {
-        var o   = new ContainerNamesQuery { MaxRetries = maxRetries };
-        var q = new ContainerNamesQueryHandler(loggerFactory.CreateLogger<ContainerNamesQueryHandler>(), storageAccountOptions);
-
-
-        return q.Execute(o).Result;
     }
 
     /// <summary>

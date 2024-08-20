@@ -22,7 +22,7 @@ public class RepositoryOptionsService
 
     public async Task AddRepositoryOptionsAsync(RepositoryOptions config)
     {
-        var q = new Arius.Core.Queries.ContainerNames2.ContainerNamesQuery2
+        var q = new Arius.Core.Queries.ContainerNames.ContainerNamesQuery
         {
             AccountName = config.AccountName,
             AccountKey  = config.AccountKey,

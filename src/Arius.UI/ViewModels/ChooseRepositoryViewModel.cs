@@ -4,11 +4,13 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Arius.Core.Facade;
+using Arius.Core.Queries.ContainerNames;
 using Arius.UI.Messages;
 using Arius.UI.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using MediatR;
 using MessageBox = System.Windows.MessageBox;
 using Application = System.Windows.Application;
 
@@ -16,12 +18,11 @@ namespace Arius.UI.ViewModels;
 
 internal partial class ChooseRepositoryViewModel : ObservableRecipient, IRepositoryOptionsProvider
 {
-    private readonly Facade                 facade;
+    private readonly IMediator mediator;
 
-    public ChooseRepositoryViewModel(Facade facade)
+    public ChooseRepositoryViewModel(IMediator mediator)
     {
-        this.facade = facade;
-
+        this.mediator               = mediator;
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
     }
@@ -94,8 +95,9 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
         {
             IsLoading = true;
 
-            var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
-            ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
+            var q = new ContainerNamesQuery { AccountName = AccountName, AccountKey = AccountKey, MaxRetries = 0 };
+            var r = await mediator.Send(q);
+            ContainerNames = new ObservableCollection<string>(await r.ToListAsync());
 
             if (ContainerName is null && ContainerNames.Count > 0)
                 ContainerName = ContainerNames[0];
