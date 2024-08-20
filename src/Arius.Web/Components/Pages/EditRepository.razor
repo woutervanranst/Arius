@@ -7,55 +7,53 @@
 <h3>Edit Repository</h3>
 
 <EditForm Model="repositoryOptions" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator/>
-    <ValidationSummary/>
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-    <div class="form-group">
-        <label for="path">Path</label>
-        <InputText id="path" class="form-control" @bind-Value="repositoryOptions.Path"/>
+    <table class="table table-bordered">
+        <tbody>
+            <tr>
+                <td><label for="path">Path</label></td>
+                <td><InputText id="path" class="form-control" @bind-Value="repositoryOptions.Path" /></td>
+            </tr>
+            <tr>
+                <td><label for="accountName">Blob Account Name</label></td>
+                <td><InputText id="accountName" class="form-control" @bind-Value="repositoryOptions.AccountName" /></td>
+            </tr>
+            <tr>
+                <td><label for="accountKey">Blob Account Key</label></td>
+                <td><InputText id="accountKey" class="form-control" @bind-Value="repositoryOptions.AccountKey" /></td>
+            </tr>
+            <tr>
+                <td><label for="containerName">Blob Container Name</label></td>
+                <td><InputText id="containerName" class="form-control" @bind-Value="repositoryOptions.ContainerName" /></td>
+            </tr>
+            <tr>
+                <td><label for="passphrase">Passphrase</label></td>
+                <td><InputText id="passphrase" class="form-control" @bind-Value="repositoryOptions.Passphrase" /></td>
+            </tr>
+            <tr>
+                <td><label for="tier">Tier</label></td>
+                <td><InputText id="tier" class="form-control" @bind-Value="repositoryOptions.Tier" /></td>
+            </tr>
+            <tr>
+                <td><label for="removeLocal">Remove Local</label></td>
+                <td><InputCheckbox id="removeLocal" @bind-Value="repositoryOptions.RemoveLocal" /></td>
+            </tr>
+            <tr>
+                <td><label for="dedup">Dedup</label></td>
+                <td><InputCheckbox id="dedup" @bind-Value="repositoryOptions.Dedup" /></td>
+            </tr>
+            <tr>
+                <td><label for="fastHash">Fast Hash</label></td>
+                <td><InputCheckbox id="fastHash" @bind-Value="repositoryOptions.FastHash" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="text-center">
+        <button type="submit" class="btn btn-primary">Save</button>
     </div>
-
-    <div class="form-group">
-        <label for="accountName">Blob Account Name</label>
-        <InputText id="accountName" class="form-control" @bind-Value="repositoryOptions.AccountName"/>
-    </div>
-
-    <div class="form-group">
-        <label for="accountKey">Blob Account Key</label>
-        <InputText id="accountKey" class="form-control" @bind-Value="repositoryOptions.AccountKey"/>
-    </div>
-
-    <div class="form-group">
-        <label for="containerName">Blob Container Name</label>
-        <InputText id="containerName" class="form-control" @bind-Value="repositoryOptions.ContainerName"/>
-    </div>
-
-    <div class="form-group">
-        <label for="passphrase">Passphrase</label>
-        <InputText id="passphrase" class="form-control" @bind-Value="repositoryOptions.Passphrase"/>
-    </div>
-
-    <div class="form-group">
-        <label for="tier">Tier</label>
-        <InputText id="tier" class="form-control" @bind-Value="repositoryOptions.Tier"/>
-    </div>
-
-    <div class="form-group">
-        <label for="removeLocal">Remove Local</label>
-        <InputCheckbox id="removeLocal" @bind-Value="repositoryOptions.RemoveLocal"/>
-    </div>
-
-    <div class="form-group">
-        <label for="dedup">Dedup</label>
-        <InputCheckbox id="dedup" @bind-Value="repositoryOptions.Dedup"/>
-    </div>
-
-    <div class="form-group">
-        <label for="fastHash">Fast Hash</label>
-        <InputCheckbox id="fastHash" @bind-Value="repositoryOptions.FastHash"/>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save</button>
 </EditForm>
 
 @code {
