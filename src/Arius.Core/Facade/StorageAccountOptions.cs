@@ -1,5 +1,4 @@
-﻿using System;
-using Arius.Core.Commands;
+﻿using Arius.Core.Commands;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 
@@ -38,6 +37,20 @@ internal static class StorageAccountOptionsExtensions
     {
         return new BlobServiceClient(new Uri($"https://{storageAccount.AccountName}.blob.core.windows.net/"),
             new StorageSharedKeyCredential(storageAccount.AccountName, storageAccount.AccountKey));
+    }
+
+    public static BlobServiceClient GetBlobServiceClient(this StorageAccountOptions storageAccount, int maxRetries, TimeSpan networkTimeout)
+    {
+        var o = new BlobClientOptions
+        {
+            Retry =
+            {
+                MaxRetries     = maxRetries,
+                NetworkTimeout = networkTimeout,
+            }
+        };
+
+        return GetBlobServiceClient(storageAccount, o);
     }
     public static BlobServiceClient GetBlobServiceClient(this StorageAccountOptions storageAccount, BlobClientOptions options)
     {

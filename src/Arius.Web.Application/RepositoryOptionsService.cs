@@ -9,7 +9,9 @@ public class RepositoryOptionsService
     private readonly IRepositoryOptionsRepository repositoryOptionsRepository;
     private readonly IMediator                    mediator;
 
-    public RepositoryOptionsService(IRepositoryOptionsRepository repositoryOptionsRepository, IMediator mediator)
+    public RepositoryOptionsService(
+        IRepositoryOptionsRepository repositoryOptionsRepository, 
+        IMediator mediator)
     {
         this.repositoryOptionsRepository = repositoryOptionsRepository;
         this.mediator                    = mediator;
@@ -28,6 +30,8 @@ public class RepositoryOptionsService
         };
 
         var r = await mediator.Send(q);
+
+        var rr = await r.ToListAsync();
 
 
         await repositoryOptionsRepository.AddAsync(config);
