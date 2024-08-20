@@ -42,7 +42,8 @@ public class Program
             options.UseSqlite(configuration.GetConnectionString("DefaultConnection")));
 
         // Register application services
-        services.AddScoped<IRepositoryOptionsRepository, RepositoryOptionsRepository>();
+        services.AddScoped<IStorageAccountRepository, StorageAccountRepository>();
+        services.AddScoped<IRepositoryRepository, RepositoryRepository>();
         services.AddScoped<RepositoryService>();
 
         services.AddArius();

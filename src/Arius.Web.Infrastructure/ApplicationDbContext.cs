@@ -10,17 +10,33 @@ public class ApplicationDbContext : DbContext
     {
     }
 
-    public DbSet<RepositoryOptions> BackupConfigurations { get; set; }
+    public DbSet<StorageAccount> StorageAccounts { get; set; }
+    public DbSet<Repository>     Repositories    { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<RepositoryOptions>().Property(b => b.AccountKey).HasConversion(
+
+        // Configure the one-to-many relationship between StorageAccount and Repository
+        modelBuilder.Entity<Repository>()
+            .HasOne(r => r.StorageAccount)
+            .WithMany(sa => sa.Repositories)
+            .HasForeignKey(r => r.StorageAccountId);
+
+        // Configure encryption for AccountKey and Passphrase fields
+        modelBuilder.Entity<StorageAccount>().Property(sa => sa.AccountKey).HasConversion(
             v => Encrypt(v),
             v => Decrypt(v));
-        modelBuilder.Entity<RepositoryOptions>().Property(b => b.Passphrase).HasConversion(
+
+        modelBuilder.Entity<Repository>().Property(r => r.Passphrase).HasConversion(
             v => Encrypt(v),
             v => Decrypt(v));
+
+        // Configure enum mapping
+        modelBuilder.Entity<Repository>().Property(r => r.Tier)
+            .HasConversion(
+                v => v.ToString(),
+                v => (StorageTier)Enum.Parse(typeof(StorageTier), v));
     }
 
     private string Encrypt(string value)

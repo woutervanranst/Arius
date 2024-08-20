@@ -1,4 +1,4 @@
-﻿@page "/add-repository"
+﻿@page "/add-repository/{storageAccountId:int}"
 @using Arius.Web.Application
 @using Arius.Web.Core
 @inject RepositoryService RepositoryService
@@ -6,56 +6,65 @@
 
 <h3>Add Repository</h3>
 
-<EditForm Model="repositoryOptions" OnValidSubmit="HandleValidSubmit">
+<EditForm Model="repository" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
     <div class="form-group">
-        <label for="path">Path</label>
-        <InputText id="path" class="form-control" @bind-Value="repositoryOptions.Path" />
+        <label for="localPath">Local Path</label>
+        <InputText id="localPath" class="form-control" @bind-Value="repository.LocalPath" />
     </div>
-    <div class="form-group">
-        <label for="accountName">Account Name</label>
-        <InputText id="accountName" class="form-control" @bind-Value="repositoryOptions.AccountName" />
-    </div>
-    <div class="form-group">
-        <label for="accountKey">Account Key</label>
-        <InputText id="accountKey" class="form-control" @bind-Value="repositoryOptions.AccountKey" />
-    </div>
-    <div class="form-group">
-        <label for="passphrase">Passphrase</label>
-        <InputText id="passphrase" class="form-control" @bind-Value="repositoryOptions.Passphrase" />
-    </div>
+
     <div class="form-group">
         <label for="containerName">Container Name</label>
-        <InputText id="containerName" class="form-control" @bind-Value="repositoryOptions.ContainerName" />
+        <InputText id="containerName" class="form-control" @bind-Value="repository.ContainerName" />
     </div>
+
+    <div class="form-group">
+        <label for="passphrase">Passphrase</label>
+        <InputText id="passphrase" class="form-control" @bind-Value="repository.Passphrase" />
+    </div>
+
     <div class="form-group">
         <label for="tier">Tier</label>
-        <InputText id="tier" class="form-control" @bind-Value="repositoryOptions.Tier" />
+        <InputSelect id="tier" class="form-control" @bind-Value="repository.Tier">
+            @foreach (var tier in Enum.GetValues(typeof(StorageTier)))
+            {
+                <option value="@tier">@tier</option>
+            }
+        </InputSelect>
     </div>
+
     <div class="form-group">
         <label for="removeLocal">Remove Local</label>
-        <InputCheckbox id="removeLocal" class="form-check-input" @bind-Value="repositoryOptions.RemoveLocal" />
+        <InputCheckbox id="removeLocal" @bind-Value="repository.RemoveLocal" />
     </div>
+
     <div class="form-group">
-        <label for="dedup">Deduplication</label>
-        <InputCheckbox id="dedup" class="form-check-input" @bind-Value="repositoryOptions.Dedup" />
+        <label for="dedup">Dedup</label>
+        <InputCheckbox id="dedup" @bind-Value="repository.Dedup" />
     </div>
+
     <div class="form-group">
         <label for="fastHash">Fast Hash</label>
-        <InputCheckbox id="fastHash" class="form-check-input" @bind-Value="repositoryOptions.FastHash" />
+        <InputCheckbox id="fastHash" @bind-Value="repository.FastHash" />
     </div>
 
     <button type="submit" class="btn btn-primary">Save</button>
 </EditForm>
 
 @code {
-    private readonly RepositoryOptions repositoryOptions = new();
+    private            Repository repository = new();
+    [Parameter] public int        StorageAccountId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        repository.StorageAccountId = StorageAccountId;
+    }
 
     private async Task HandleValidSubmit()
     {
-        await RepositoryService.AddRepositoryAsync(repositoryOptions);
+        await RepositoryService.AddRepositoryAsync(repository);
         Navigation.NavigateTo("/repositories");
     }
 }

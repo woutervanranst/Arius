@@ -1,15 +1,35 @@
 ﻿namespace Arius.Web.Core;
 
-public class RepositoryOptions
+public class StorageAccount
 {
-    public int    Id            { get; set; }
-    public string Path          { get; set; }
-    public string AccountName   { get; set; }
-    public string AccountKey    { get; set; } // Encrypted
-    public string Passphrase    { get; set; } // Encrypted
-    public string ContainerName { get; set; }
-    public bool   RemoveLocal   { get; set; }
-    public string Tier          { get; set; } // Hot, Cool, Cold, Archive
-    public bool   Dedup         { get; set; }
-    public bool   FastHash      { get; set; }
+    public int    Id          { get; set; }
+    public string AccountName { get; set; }
+    public string AccountKey  { get; set; } // Encrypted
+
+    // Navigation property
+    public ICollection<Repository> Repositories { get; set; }
+}
+
+public class Repository
+{
+    public int         Id               { get; set; }
+    public int         StorageAccountId { get; set; } // Foreign key
+    public string      LocalPath        { get; set; }
+    public string      ContainerName    { get; set; }
+    public string      Passphrase       { get; set; } // Encrypted
+    public bool        RemoveLocal      { get; set; }
+    public StorageTier Tier             { get; set; }
+    public bool        Dedup            { get; set; }
+    public bool        FastHash         { get; set; }
+
+    // Navigation property
+    public StorageAccount StorageAccount { get; set; }
+}
+
+public enum StorageTier
+{
+    Hot,
+    Cool,
+    Cold,
+    Archive
 }

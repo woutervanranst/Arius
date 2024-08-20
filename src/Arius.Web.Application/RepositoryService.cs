@@ -1,35 +1,90 @@
-﻿using Arius.Core.Queries.ContainerNames;
-using Arius.Web.Core;
-using MediatR;
+﻿using Arius.Web.Core;
 
 namespace Arius.Web.Application;
 
+//public class RepositoryService
+//{
+//    private readonly IMediator                    mediator;
+
+//    public RepositoryService(IRepositoryOptionsRepository repositories, IMediator mediator)
+//    {
+//        this.mediator     = mediator;
+//    }
+
+//    public async Task AddRepositoryAsync(RepositoryOptions config)
+//    {
+//        //var q = new ContainerNamesQuery(config.AccountName, config.AccountKey);
+
+//        //var r = await mediator.Send(q);
+
+//        //var rr = await r.ToListAsync();
+//    }
+//}
+
 public class RepositoryService
 {
-    private readonly IRepositoryOptionsRepository repositories;
-    private readonly IMediator                    mediator;
+    private readonly IStorageAccountRepository _storageAccountRepository;
+    private readonly IRepositoryRepository     _repositoryRepository;
 
-    public RepositoryService(IRepositoryOptionsRepository repositories, IMediator mediator)
+    public RepositoryService(
+        IStorageAccountRepository storageAccountRepository,
+        IRepositoryRepository repositoryRepository)
     {
-        this.repositories = repositories;
-        this.mediator     = mediator;
+        _storageAccountRepository = storageAccountRepository;
+        _repositoryRepository     = repositoryRepository;
     }
 
-    public Task<RepositoryOptions>              GetRepositoryByIdAsync(int id) => repositories.GetByIdAsync(id);
-    public Task<IEnumerable<RepositoryOptions>> GetAllRepositoriesAsync()         => repositories.GetAllAsync();
+    // StorageAccount Methods
 
-    public async Task AddRepositoryAsync(RepositoryOptions config)
+    public async Task<List<StorageAccount>> GetStorageAccountsAsync()
     {
-        //var q = new ContainerNamesQuery(config.AccountName, config.AccountKey);
-
-        //var r = await mediator.Send(q);
-
-        //var rr = await r.ToListAsync();
-
-
-        await repositories.AddAsync(config);
+        return await _storageAccountRepository.GetAllAsync();
     }
 
-    public Task UpdateRepositoryAsync(RepositoryOptions config) => repositories.UpdateAsync(config);
-    public Task RemoveRepositoryAsync(int id)                   => repositories.DeleteAsync(id);
+    public async Task<StorageAccount> GetStorageAccountByIdAsync(int id)
+    {
+        return await _storageAccountRepository.GetByIdAsync(id);
+    }
+
+    public async Task AddStorageAccountAsync(StorageAccount storageAccount)
+    {
+        await _storageAccountRepository.AddAsync(storageAccount);
+    }
+
+    public async Task UpdateStorageAccountAsync(StorageAccount storageAccount)
+    {
+        await _storageAccountRepository.UpdateAsync(storageAccount);
+    }
+
+    public async Task DeleteStorageAccountAsync(int id)
+    {
+        await _storageAccountRepository.DeleteAsync(id);
+    }
+
+    // Repository Methods
+
+    public async Task<List<Repository>> GetRepositoriesAsync()
+    {
+        return await _repositoryRepository.GetAllAsync();
+    }
+
+    public async Task<Repository> GetRepositoryByIdAsync(int id)
+    {
+        return await _repositoryRepository.GetByIdAsync(id);
+    }
+
+    public async Task AddRepositoryAsync(Repository repository)
+    {
+        await _repositoryRepository.AddAsync(repository);
+    }
+
+    public async Task UpdateRepositoryAsync(Repository repository)
+    {
+        await _repositoryRepository.UpdateAsync(repository);
+    }
+
+    public async Task DeleteRepositoryAsync(int id)
+    {
+        await _repositoryRepository.DeleteAsync(id);
+    }
 }
