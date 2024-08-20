@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Archive;
 
-internal partial class ArchiveCommand
+internal partial class ArchiveCommandHandler
 {
     private class IndexBlock : TaskBlockBase<DirectoryInfo>
     {
@@ -32,22 +32,22 @@ internal partial class ArchiveCommand
         private readonly Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile;
         private readonly Action                                                    onBinaryFileIndexCompleted;
 
-        public IndexBlock(ArchiveCommand command,
+        public IndexBlock(ArchiveCommandHandler commandHandler,
             Func<DirectoryInfo> sourceFunc,
             Action onCompleted,
 
             int maxDegreeOfParallelism,
-            ArchiveCommandOptions options,
+            ArchiveCommand options,
             FileService fileService,
             Func<PointerFile, Task> onIndexedPointerFile,
             Func<(BinaryFile BinaryFile, bool AlreadyBackedUp), Task> onIndexedBinaryFile,
             Action onBinaryFileIndexCompleted,
             TaskCompletionSource binaryFileUploadCompletedTaskCompletionSource) 
-                : base(command.loggerFactory, sourceFunc, onCompleted)
+                : base(commandHandler.loggerFactory, sourceFunc, onCompleted)
         {
-            this.stats                                         = command.stats;
-            this.fileSystemService                             = command.fileSystemService;
-            this.repo                                          = command.repo;
+            this.stats                                         = commandHandler.stats;
+            this.fileSystemService                             = commandHandler.fileSystemService;
+            this.repo                                          = commandHandler.repo;
             this.fileService                                   = fileService;
             this.fastHash                                      = options.FastHash;
             this.maxDegreeOfParallelism                        = maxDegreeOfParallelism;
@@ -147,18 +147,18 @@ internal partial class ArchiveCommand
 
     private class UploadBinaryFileBlock : ChannelTaskBlockBase<BinaryFile>
     {
-        public UploadBinaryFileBlock(ArchiveCommand command,
+        public UploadBinaryFileBlock(ArchiveCommandHandler commandHandler,
             Func<ChannelReader<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            ArchiveCommandOptions options,
+            ArchiveCommand options,
             IHashValueProvider hashValueProvider,
             Func<BinaryFile, Task> onBinaryExists)
-            : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+            : base(commandHandler.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats   = command.stats;
-            this.repo    = command.repo;
+            this.stats   = commandHandler.stats;
+            this.repo    = commandHandler.repo;
             this.options = options;
 
             chunker = new ByteBoundaryChunker(hashValueProvider);
@@ -168,7 +168,7 @@ internal partial class ArchiveCommand
 
         private readonly ArchiveCommandStatistics stats;
         private readonly Repository               repo;
-        private readonly ArchiveCommandOptions   options;
+        private readonly ArchiveCommand   options;
         private readonly Chunker                  chunker;
 
         private readonly Func<BinaryFile, Task> onBinaryExists;
@@ -388,7 +388,7 @@ internal partial class ArchiveCommand
 
     private class CreatePointerFileIfNotExistsBlock : ChannelTaskBlockBase<BinaryFile>
     {
-        public CreatePointerFileIfNotExistsBlock(ArchiveCommand command,
+        public CreatePointerFileIfNotExistsBlock(ArchiveCommandHandler commandHandler,
             Func<ChannelReader<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Action onCompleted,
@@ -396,9 +396,9 @@ internal partial class ArchiveCommand
             FileService fileService,
             Func<BinaryFile, Task> onSuccesfullyBackedUp,
             Func<PointerFile, Task> onPointerFileCreated)
-                : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+                : base(commandHandler.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats                 = command.stats;
+            this.stats                 = commandHandler.stats;
             this.fileService           = fileService;
             this.onSuccesfullyBackedUp = onSuccesfullyBackedUp;
             this.onPointerFileCreated  = onPointerFileCreated;
@@ -427,16 +427,16 @@ internal partial class ArchiveCommand
 
     private class CreatePointerFileEntryIfNotExistsBlock : ChannelTaskBlockBase<PointerFile>
     {
-        public CreatePointerFileEntryIfNotExistsBlock(ArchiveCommand command,
+        public CreatePointerFileEntryIfNotExistsBlock(ArchiveCommandHandler commandHandler,
             Func<ChannelReader<PointerFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            ArchiveCommandOptions options) 
-                : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+            ArchiveCommand options) 
+                : base(commandHandler.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats      = command.stats;
-            this.repo       = command.repo;
+            this.stats      = commandHandler.stats;
+            this.repo       = commandHandler.repo;
             this.versionUtc = options.VersionUtc;
         }
 
@@ -473,13 +473,13 @@ internal partial class ArchiveCommand
 
     private class DeleteBinaryFilesBlock : ChannelTaskBlockBase<BinaryFile>
     {
-        public DeleteBinaryFilesBlock(ArchiveCommand command,
+        public DeleteBinaryFilesBlock(ArchiveCommandHandler commandHandler,
             Func<ChannelReader<BinaryFile>> sourceFunc,
             int maxDegreeOfParallelism,
             Action onCompleted)
-                : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+                : base(commandHandler.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats = command.stats;
+            this.stats = commandHandler.stats;
         }
 
         private readonly ArchiveCommandStatistics stats;
@@ -503,17 +503,17 @@ internal partial class ArchiveCommand
 
     private class CreateDeletedPointerFileEntryForDeletedPointerFilesBlock : ChannelTaskBlockBase<PointerFileEntry>
     {
-        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ArchiveCommand command,
+        public CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(ArchiveCommandHandler commandHandler,
             Func<Task<ChannelReader<PointerFileEntry>>> sourceFunc,
             int maxDegreeOfParallelism,
             Action onCompleted,
 
-            ArchiveCommandOptions options,
+            ArchiveCommand options,
             FileService fileService)
-                : base(command.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
+                : base(commandHandler.loggerFactory, sourceFunc, maxDegreeOfParallelism, onCompleted)
         {
-            this.stats       = command.stats;
-            this.repo        = command.repo;
+            this.stats       = commandHandler.stats;
+            this.repo        = commandHandler.repo;
             this.fileService = fileService;
             this.root        = options.Path;
             this.versionUtc  = options.VersionUtc;
@@ -543,16 +543,16 @@ internal partial class ArchiveCommand
 
     private class UpdateTierBlock : TaskBlockBase
     {
-        public UpdateTierBlock(ArchiveCommand command,
+        public UpdateTierBlock(ArchiveCommandHandler commandHandler,
             Func<Repository> sourceFunc,
             Action onCompleted,
 
             int maxDegreeOfParallelism,
-            ArchiveCommandOptions options) 
-                : base(command.loggerFactory, onCompleted)
+            ArchiveCommand options) 
+                : base(commandHandler.loggerFactory, onCompleted)
         {
             this.maxDegreeOfParallelism = maxDegreeOfParallelism;
-            this.repo                   = command.repo;
+            this.repo                   = commandHandler.repo;
             this.targetAccessTier       = options.Tier;
         }
 

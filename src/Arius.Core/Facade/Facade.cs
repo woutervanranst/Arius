@@ -153,7 +153,7 @@ public class RepositoryFacade : IDisposable
     /// <exception cref="ArgumentException">Throws an ArgumentException in case of an invalid option</exception>
     public static void ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, string tier = default, bool dedup = false, DateTime versionUtc = default)
     {
-        var o = new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var o = new ArchiveCommand(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
         o.Validate();
     }
 
@@ -168,11 +168,11 @@ public class RepositoryFacade : IDisposable
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommandOptions(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var aco = new ArchiveCommand(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
 
         var sp = new ArchiveCommandStatistics();
 
-        var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
+        var cmd = new ArchiveCommandHandler(loggerFactory, Repository, sp);
 
         var r = await cmd.ExecuteAsync(aco);
 
@@ -190,7 +190,7 @@ public class RepositoryFacade : IDisposable
     {
         // TODO align handling of versionUtc == default and DateTime? pointInTime
 
-        var o = new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var o = new RestoreCommand(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc);
         o.Validate();
     }
 
@@ -202,9 +202,9 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestoreCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var rco = new RestoreCommand(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
 
-        var cmd = new RestoreCommand(loggerFactory, Repository);
+        var cmd = new RestoreCommandHandler(loggerFactory, Repository);
 
         return await cmd.ExecuteAsync(rco);
     }
@@ -217,9 +217,9 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
+        var rco = new RestorePointerFileEntriesCommand(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
 
-        var cmd = new RestoreCommand(loggerFactory, Repository);
+        var cmd = new RestoreCommandHandler(loggerFactory, Repository);
 
         return await cmd.ExecuteAsync(rco);
     }
@@ -230,9 +230,9 @@ public class RepositoryFacade : IDisposable
     {
         throw new NotImplementedException();
 
-        var rco = new RehydrateCommandOptions(Repository);
+        var rco = new RehydrateCommand(Repository);
 
-        var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
+        var cmd = new RehydrateCommandHandler(loggerFactory.CreateLogger<RehydrateCommandHandler>());
 
         return await cmd.ExecuteAsync(rco);
     }
