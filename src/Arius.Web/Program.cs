@@ -43,7 +43,7 @@ public class Program
 
         // Register application services
         services.AddScoped<IRepositoryOptionsRepository, RepositoryOptionsRepository>();
-        services.AddScoped<RepositoryOptionsService>();
+        services.AddScoped<RepositoryService>();
 
         services.AddArius();
     }

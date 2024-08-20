@@ -1,8 +1,8 @@
 ﻿@page "/repositories"
 @using Arius.Web.Application
 @using Arius.Web.Core
-@inject RepositoryOptionsService RepositoryOptionsService
-@inject NavigationManager        Navigation
+@inject RepositoryService RepositoryService
+@inject NavigationManager Navigation
 
 <h3>Repositories</h3>
 
@@ -43,7 +43,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        repositoryOptions = await RepositoryOptionsService.GetRepositoryOptionsAsync();
+        repositoryOptions = await RepositoryService.GetAllRepositoriesAsync();
     }
 
     private void NavigateToAddRepository()
