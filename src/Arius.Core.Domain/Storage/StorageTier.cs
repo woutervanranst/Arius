@@ -1,4 +1,4 @@
-﻿namespace Arius.Web.Domain;
+﻿namespace Arius.Core.Domain.Storage;
 
 public enum StorageTier
 {

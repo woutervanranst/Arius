@@ -4,6 +4,7 @@ using Arius.Web.Components;
 using Arius.Web.Domain;
 using Arius.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Syncfusion.Blazor;
 
 namespace Arius.Web;
 
@@ -36,6 +37,10 @@ public class Program
         // Add Razor Components services
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
+
+        // Add SyncFusion
+        Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1NCaF1cXGNCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdnWXdccXRWRmBZUk10WkE=");
+        services.AddSyncfusionBlazor();
 
         // Configure DbContext with connection string
         services.AddDbContext<ApplicationDbContext>(options =>

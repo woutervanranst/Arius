@@ -1,71 +1,45 @@
 ﻿@page "/edit-repository/{id:int}"
 @using Arius.Web.Application
-@using Arius.Web.Domain
 @inject RepositoryService RepositoryService
 @inject NavigationManager Navigation
+@using Syncfusion.Blazor.DataForm
 
 <h3>Edit Repository</h3>
 
-<EditForm Model="repository" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div class="form-group">
-        <label for="localPath">Local Path</label>
-        <InputText id="localPath" class="form-control" @bind-Value="repository.LocalPath" />
-    </div>
-
-    <div class="form-group">
-        <label for="containerName">Container Name</label>
-        <InputText id="containerName" class="form-control" @bind-Value="repository.ContainerName" />
-    </div>
-
-    <div class="form-group">
-        <label for="passphrase">Passphrase</label>
-        <InputText id="passphrase" class="form-control" @bind-Value="repository.Passphrase" />
-    </div>
-
-    <div class="form-group">
-        <label for="tier">Tier</label>
-        <InputSelect id="tier" class="form-control" @bind-Value="repository.Tier">
-            @foreach (var tier in Enum.GetValues(typeof(StorageTier)).Cast<StorageTier>())
-            {
-                <option value="@tier">@tier</option>
-            }
-        </InputSelect>
-    </div>
-
-    <div class="form-group">
-        <label for="removeLocal">Remove Local</label>
-        <InputCheckbox id="removeLocal" @bind-Value="repository.RemoveLocal" />
-    </div>
-
-    <div class="form-group">
-        <label for="dedup">Dedup</label>
-        <InputCheckbox id="dedup" @bind-Value="repository.Dedup" />
-    </div>
-
-    <div class="form-group">
-        <label for="fastHash">Fast Hash</label>
-        <InputCheckbox id="fastHash" @bind-Value="repository.FastHash" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save</button>
-</EditForm>
+<SfDataForm ID="RepositoryForm"
+            Model="@repositoryViewModel"
+            OnValidSubmit="HandleValidSubmit">
+    <FormValidator>
+        <DataAnnotationsValidator></DataAnnotationsValidator>
+    </FormValidator>
+    <FormItems>
+        <FormAutoGenerateItems></FormAutoGenerateItems>
+    </FormItems>
+</SfDataForm>
 
 @code {
-    private Repository repository = new();
+    private RepositoryViewModel repositoryViewModel = new();
 
-    [Parameter] public int Id { get; set; }
+    [Parameter] 
+    public int Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        repository = await RepositoryService.GetRepositoryByIdAsync(Id);
+        var repository = await RepositoryService.GetRepositoryByIdAsync(Id);
+        repositoryViewModel = repository.ToViewModel();
     }
 
-    private async Task HandleValidSubmit()
+    private async Task HandleValidSubmit(EditContext context)
     {
+        var repository = repositoryViewModel.ToDomainModel();
         await RepositoryService.UpdateRepositoryAsync(repository);
         Navigation.NavigateTo("/repositories");
     }
+
+    // private void SubmitForm()
+    // {
+    //     RepositoryForm.Submit();
+    // }
+
+    // private SfDataForm<RepositoryViewModel> RepositoryForm { get; set; }
 }

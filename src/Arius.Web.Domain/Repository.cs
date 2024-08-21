@@ -1,4 +1,6 @@
-﻿namespace Arius.Web.Domain;
+﻿using Arius.Core.Domain.Storage;
+
+namespace Arius.Web.Domain;
 
 public class Repository
 {
