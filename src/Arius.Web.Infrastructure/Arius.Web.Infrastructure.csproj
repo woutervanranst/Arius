@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Arius.Web.Core\Arius.Web.Core.csproj" />
+    <ProjectReference Include="..\Arius.Web.Domain\Arius.Web.Domain.csproj" />
   </ItemGroup>
 
 </Project>

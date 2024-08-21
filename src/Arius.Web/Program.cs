@@ -1,7 +1,7 @@
 using Arius.Core.Facade;
 using Arius.Web.Application;
 using Arius.Web.Components;
-using Arius.Web.Core;
+using Arius.Web.Domain;
 using Arius.Web.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 

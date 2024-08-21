@@ -1,4 +1,4 @@
-﻿using Arius.Web.Core;
+﻿using Arius.Web.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Web.Infrastructure;

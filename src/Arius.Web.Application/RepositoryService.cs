@@ -1,4 +1,4 @@
-﻿using Arius.Web.Core;
+﻿using Arius.Web.Domain;
 
 namespace Arius.Web.Application;
 
