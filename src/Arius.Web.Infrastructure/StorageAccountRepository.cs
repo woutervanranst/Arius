@@ -30,7 +30,16 @@ public class StorageAccountRepository : IStorageAccountRepository
 
     public async Task UpdateAsync(StorageAccount storageAccount)
     {
-        _context.StorageAccounts.Update(storageAccount);
+        var existingEntity = await _context.StorageAccounts.FindAsync(storageAccount.Id);
+
+        if (existingEntity == null)
+            throw new InvalidOperationException($"StorageAccount with Id {storageAccount.Id} not found.");
+
+        if (existingEntity.AccountName != storageAccount.AccountName)
+            throw new InvalidOperationException($"Cannot change AccountName.");
+        
+        existingEntity.AccountKey  = storageAccount.AccountKey;
+
         await _context.SaveChangesAsync();
     }
 
