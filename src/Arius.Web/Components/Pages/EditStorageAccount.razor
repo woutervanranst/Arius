@@ -10,24 +10,23 @@
 
 <SfDataForm ID="StorageAccountForm"
             Model="@storageAccountViewModel"
-            OnValidSubmit="HandleValidSubmit">
+            OnValidSubmit="HandleValidSubmitAsync">
     <FormValidator>
         <DataAnnotationsValidator/>
     </FormValidator>
     <FormItems>
         <FormItem Field="@nameof(storageAccountViewModel.AccountName)" EditorType="FormEditorType.TextBox" IsEnabled="false"></FormItem>
         
-        @* https://support.syncfusion.com/kb/article/14948/how-to-add-a-password-toggle-icon-to-the-sftextbox-component-with-syncfusion-blazor *@
         
-        <FormItem Field="@nameof(storageAccountViewModel.AccountKey)" LabelText="haha">
+        @* https://support.syncfusion.com/kb/article/14948/how-to-add-a-password-toggle-icon-to-the-sftextbox-component-with-syncfusion-blazor *@
+        <FormItem Field="@nameof(storageAccountViewModel.AccountKey)">
             <Template>
-                @* <div class="e-float-input e-control-wrapper"> *@
-                <label for="passwordBox" class="e-form-label">Account Key</label>
-                <SfTextBox ID="passwordBox"
+                <label for="accountKeyTextBox" class="e-form-label">Account Key</label>
+                <SfTextBox ID="accountKeyTextBox"
                            @bind-Value="storageAccountViewModel.AccountKey"
-                           @ref="TextBoxObj"
-                           Type="@TextBoxType"
-                           Created="@Created">
+                           @ref="AccountKeyTextBox"
+                           Type="@AccountKeyTextBoxType"
+                           Created="@AddIconAsync">
                 </SfTextBox>
                 @* </div> *@
             </Template>
@@ -36,20 +35,11 @@
     </FormItems>
 </SfDataForm>
 
-<script>
-    function showhidePassword(textBoxId) {
-        const textBox = document.getElementById(textBoxId);
-        const icon = textBox.parentElement.querySelector('.e-input-group-icon');
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
-    }
-</script>
-
 @code {
     private StorageAccountViewModel storageAccountViewModel = new();
     
-    [Parameter]
-    public int            Id { get; set; }
+    [Parameter] 
+    public int Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,7 +47,7 @@
         storageAccountViewModel = storageAccount.ToViewModel();
     }
 
-    private async Task HandleValidSubmit()
+    private async Task HandleValidSubmitAsync()
     {
         var storageAccount = storageAccountViewModel.ToDomainModel();
         await RepositoryService.UpdateStorageAccountAsync(storageAccount);
@@ -65,19 +55,20 @@
     }
 
 
+    // Account Key Password field
 
-    SfTextBox TextBoxObj;
+    SfTextBox AccountKeyTextBox;
     bool      IsPasswordVisible = false;
-    InputType TextBoxType => IsPasswordVisible ? InputType.Text : InputType.Password;
+    InputType AccountKeyTextBoxType => IsPasswordVisible ? InputType.Text : InputType.Password;
 
-    public async Task Created()
+    public async Task AddIconAsync()
     {
-        await TextBoxObj.AddIconAsync("append", "fas fa-eye-slash", new Dictionary<string, object>() { { "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, PasswordClick) } });
+        await AccountKeyTextBox.AddIconAsync("append", "fas fa-eye-slash", new Dictionary<string, object>() { { "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, PasswordClickAsync) } });
     }
-
-    public async Task PasswordClick()
+    
+    public async Task PasswordClickAsync()
     {
-        await JSRuntime.InvokeAsync<object>("showhidePassword", "passwordBox");
+        await JSRuntime.InvokeAsync<object>("showhidePassword", "accountKeyTextBox");
         IsPasswordVisible = !IsPasswordVisible;
     }
 }
