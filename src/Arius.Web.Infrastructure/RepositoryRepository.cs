@@ -34,7 +34,19 @@ public class RepositoryRepository : IRepositoryRepository
 
     public async Task UpdateAsync(Repository repository)
     {
-        _context.Repositories.Update(repository);
+        var existingEntity = await _context.Repositories.FindAsync(repository.Id);
+
+        if (existingEntity == null)
+            throw new InvalidOperationException($"Repository with Id {repository.Id} not found.");
+
+        existingEntity.LocalPath     = repository.LocalPath;
+        existingEntity.ContainerName = repository.ContainerName;
+        existingEntity.Passphrase    = repository.Passphrase;
+        existingEntity.Tier          = repository.Tier;
+        existingEntity.RemoveLocal   = repository.RemoveLocal;
+        existingEntity.Dedup         = repository.Dedup;
+        existingEntity.FastHash      = repository.FastHash;
+
         await _context.SaveChangesAsync();
     }
 
