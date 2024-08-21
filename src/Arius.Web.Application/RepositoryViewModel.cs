@@ -1,6 +1,5 @@
 ﻿using Arius.Core.Domain.Storage;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Arius.Web.Application;
 

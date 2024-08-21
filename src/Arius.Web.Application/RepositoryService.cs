@@ -23,68 +23,68 @@ namespace Arius.Web.Application;
 
 public class RepositoryService
 {
-    private readonly IStorageAccountRepository _storageAccountRepository;
-    private readonly IRepositoryRepository     _repositoryRepository;
+    private readonly IStorageAccountRepository storageAccountRepository;
+    private readonly IRepositoryRepository     repositoryRepository;
 
     public RepositoryService(
         IStorageAccountRepository storageAccountRepository,
         IRepositoryRepository repositoryRepository)
     {
-        _storageAccountRepository = storageAccountRepository;
-        _repositoryRepository     = repositoryRepository;
+        this.storageAccountRepository = storageAccountRepository;
+        this.repositoryRepository     = repositoryRepository;
     }
 
     // StorageAccount Methods
 
     public async Task<List<StorageAccount>> GetStorageAccountsAsync()
     {
-        return await _storageAccountRepository.GetAllAsync();
+        return await storageAccountRepository.GetAllAsync();
     }
 
     public async Task<StorageAccount> GetStorageAccountByIdAsync(int id)
     {
-        return await _storageAccountRepository.GetByIdAsync(id);
+        return await storageAccountRepository.GetByIdAsync(id);
     }
 
     public async Task AddStorageAccountAsync(StorageAccount storageAccount)
     {
-        await _storageAccountRepository.AddAsync(storageAccount);
+        await storageAccountRepository.AddAsync(storageAccount);
     }
 
     public async Task UpdateStorageAccountAsync(StorageAccount storageAccount)
     {
-        await _storageAccountRepository.UpdateAsync(storageAccount);
+        await storageAccountRepository.UpdateAsync(storageAccount);
     }
 
     public async Task DeleteStorageAccountAsync(int id)
     {
-        await _storageAccountRepository.DeleteAsync(id);
+        await storageAccountRepository.DeleteAsync(id);
     }
 
     // Repository Methods
 
     public async Task<List<Repository>> GetRepositoriesAsync()
     {
-        return await _repositoryRepository.GetAllAsync();
+        return await repositoryRepository.GetAllAsync();
     }
 
     public async Task<Repository> GetRepositoryByIdAsync(int id)
     {
-        return await _repositoryRepository.GetByIdAsync(id);
+        return await repositoryRepository.GetByIdAsync(id);
     }
 
     public async Task AddRepositoryAsync(Repository repository)
     {
-        await _repositoryRepository.AddAsync(repository);
+        await repositoryRepository.AddAsync(repository);
     }
 
     public async Task UpdateRepositoryAsync(Repository repository)
     {
-        await _repositoryRepository.UpdateAsync(repository);
+        await repositoryRepository.UpdateAsync(repository);
     }
 
     public async Task DeleteRepositoryAsync(int id)
     {
-        await _repositoryRepository.DeleteAsync(id);
+        await repositoryRepository.DeleteAsync(id);
     }
 }

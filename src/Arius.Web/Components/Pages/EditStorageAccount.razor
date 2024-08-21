@@ -1,39 +1,37 @@
 ﻿@page "/edit-storage-account/{id:int}"
 @using Arius.Web.Application
-@using Arius.Web.Domain
 @inject RepositoryService RepositoryService
 @inject NavigationManager Navigation
+@using Syncfusion.Blazor.DataForm
 
 <h3>Edit Storage Account</h3>
 
-<EditForm Model="storageAccount" OnValidSubmit="HandleValidSubmit">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-
-    <div class="form-group">
-        <label for="accountName">Account Name</label>
-        <InputText id="accountName" class="form-control" @bind-Value="storageAccount.AccountName" />
-    </div>
-
-    <div class="form-group">
-        <label for="accountKey">Account Key</label>
-        <InputText id="accountKey" class="form-control" @bind-Value="storageAccount.AccountKey" />
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save</button>
-</EditForm>
+<SfDataForm ID="StorageAccountForm"
+            Model="@storageAccountViewModel"
+            OnValidSubmit="HandleValidSubmit">
+    <FormValidator>
+        <DataAnnotationsValidator/>
+    </FormValidator>
+    <FormItems>
+        <FormAutoGenerateItems/>
+    </FormItems>
+</SfDataForm>
 
 @code {
-    private            StorageAccount storageAccount = new();
-    [Parameter] public int            Id { get; set; }
+    private StorageAccountViewModel storageAccountViewModel = new();
+    
+    [Parameter]
+    public int            Id { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        storageAccount = await RepositoryService.GetStorageAccountByIdAsync(Id);
+        var storageAccount = await RepositoryService.GetStorageAccountByIdAsync(Id);
+        storageAccountViewModel = storageAccount.ToViewModel();
     }
 
     private async Task HandleValidSubmit()
     {
+        var storageAccount = storageAccountViewModel.ToDomainModel();
         await RepositoryService.UpdateStorageAccountAsync(storageAccount);
         Navigation.NavigateTo("/repositories");
     }

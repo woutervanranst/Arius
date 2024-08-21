@@ -2,7 +2,7 @@
 
 namespace Arius.Web.Application;
 
-public static class RepositoryMappingExtensions
+public static class RepositoryExtensions
 {
     public static RepositoryViewModel ToViewModel(this Repository repository)
     {
