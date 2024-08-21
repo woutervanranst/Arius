@@ -43,20 +43,20 @@ else
 {
     <table class="table table-bordered mt-3">
         <thead>
-            <tr>
-                <th>Local Path</th>
-                <th>Container Name</th>
-                <th>Storage Account</th>
-                <th>Actions</th>
-            </tr>
+        <tr>
+            <th>Storage Account</th>
+            <th>Container Name</th>
+            <th>Local Path</th>
+            <th>Actions</th>
+        </tr>
         </thead>
         <tbody>
             @foreach (var repository in repositories)
             {
                 <tr>
-                    <td>@repository.LocalPath</td>
-                    <td>@repository.ContainerName</td>
                     <td>@repository.StorageAccount.AccountName</td>
+                    <td>@repository.ContainerName</td>
+                    <td>@repository.LocalPath</td>
                     <td>
                         <button class="btn btn-secondary btn-sm" @onclick="() => EditRepository(repository.Id)">Edit</button>
                         <button class="btn btn-danger btn-sm" @onclick="() => DeleteRepository(repository.Id)">Delete</button>
