@@ -8,8 +8,6 @@ using Arius.Core.Queries.PointerFilesEntries;
 using Arius.Core.Queries.RepositoryStatistics;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using PostSharp.Constraints;
-using PostSharp.Patterns.Contracts;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -27,6 +25,7 @@ using System.Runtime.CompilerServices;
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
+[assembly: InternalsVisibleTo("Arius.ArchUnit")]
 
 [assembly: InternalsVisibleTo("Arius.Core.DbMigrationV2V3")]
 
@@ -36,8 +35,7 @@ public class Facade
 {
     private readonly ILoggerFactory    loggerFactory;
 
-    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
-    internal Facade()
+    internal Facade() // added only for Moq
     {
     }
     public Facade(ILoggerFactory loggerFactory)
@@ -52,7 +50,7 @@ public class Facade
     }
 
 
-    public   virtual StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
+    public   virtual StorageAccountFacade ForStorageAccount(string accountName, string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
     internal virtual StorageAccountFacade ForStorageAccount(StorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
 }
 
@@ -61,9 +59,8 @@ public class StorageAccountFacade
 {
     private readonly ILoggerFactory        loggerFactory;
     private readonly StorageAccountOptions storageAccountOptions;
-
-    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
-    internal StorageAccountFacade()
+    
+    internal StorageAccountFacade() // added only for Moq
     {
     }
     internal StorageAccountFacade(ILoggerFactory loggerFactory, StorageAccountOptions options)
@@ -80,7 +77,7 @@ public class StorageAccountFacade
     /// <param name="containerName"></param>
     /// <param name="passphrase"></param>
     /// <returns></returns>
-    public   virtual async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    public   virtual async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
     internal virtual async Task<RepositoryFacade> ForRepositoryAsync(RepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
     ///// <summary>
@@ -99,8 +96,7 @@ public class RepositoryFacade : IDisposable
 {
     private readonly ILoggerFactory loggerFactory;
 
-    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
-    internal RepositoryFacade()
+    internal RepositoryFacade() // added only for Moq
     {
     }
     private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
@@ -109,8 +105,7 @@ public class RepositoryFacade : IDisposable
         this.loggerFactory = loggerFactory;
     }
 
-    [ComponentInternal(typeof(StorageAccountFacade))]
-    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options) // [ComponentInternal(typeof(StorageAccountFacade))]
     {
         var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
             .WithOptions(options)
@@ -286,8 +281,7 @@ public class RepositoryFacade : IDisposable
         Dispose(false);
     }
 
-    [ComponentInternal("Arius.Cli.Tests")] // should be protected
-    internal virtual void Dispose(bool disposing)
+    internal virtual void Dispose(bool disposing) // [ComponentInternal("Arius.Cli.Tests")] // should be protected
     {
         if (disposing)
             Repository.Dispose();

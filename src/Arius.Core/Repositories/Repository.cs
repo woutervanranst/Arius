@@ -2,7 +2,6 @@
 using Arius.Core.Models;
 using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Repositories.StateDb;
-using PostSharp.Constraints;
 
 namespace Arius.Core.Repositories;
 
@@ -11,13 +10,11 @@ internal partial class Repository : IDisposable
     private readonly ILogger<Repository> logger;
     private readonly BlobContainer       container;
 
-    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
-    public Repository()
+    public Repository() // added only for Moq
     {
     }
 
-    [ComponentInternal(typeof(RepositoryBuilder))]
-    public Repository(ILogger<Repository> logger, RepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainer container)
+    public Repository(ILogger<Repository> logger, RepositoryOptions options, RepositoryBuilder.IStateDbContextFactory dbContextFactory, BlobContainer container) // [ComponentInternal(typeof(RepositoryBuilder))]
     {
         this.logger           = logger;
         this.dbContextFactory = dbContextFactory;

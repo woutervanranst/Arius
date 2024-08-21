@@ -1,27 +1,23 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
-using Arius.Core.Models;
+﻿using Arius.Core.Models;
 using Azure;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Nito.AsyncEx;
-using PostSharp.Constraints;
+using System.IO;
 
 namespace Arius.Core.Repositories.BlobRepository;
 
 
-[ComponentInternal(typeof(Repository),      // only the Repository should be able to access these low level methods
-    typeof(StateContainerFolder), typeof(BlobContainerFolder<>), typeof(ChunkBlobContainerFolder), typeof(ChunkListBlobContainerFolder), // and the folders
-    typeof(ChunkBlob), typeof(ChunkListBlob),               // and the inherited classes
-    typeof(RepositoryBuilder))]
+//[ComponentInternal(typeof(Repository),      // only the Repository should be able to access these low level methods
+//    typeof(StateContainerFolder), typeof(BlobContainerFolder<>), typeof(ChunkBlobContainerFolder), typeof(ChunkListBlobContainerFolder), // and the folders
+//    typeof(ChunkBlob), typeof(ChunkListBlob),               // and the inherited classes
+//    typeof(RepositoryBuilder))]
 internal class Blob
 {
     protected readonly BlockBlobClient            client;
     private readonly   AsyncLazy<BlobProperties?> properties;
 
-    [ComponentInternal(typeof(BlobContainerFolder<>), typeof(ChunkBlob), typeof(ChunkListBlob))]
-    public Blob(BlockBlobClient client)
+    public Blob(BlockBlobClient client) // [ComponentInternal(typeof(BlobContainerFolder<>), typeof(ChunkBlob), typeof(ChunkListBlob))]
     {
         this.client     = client;
         FullName   = client.Name;
