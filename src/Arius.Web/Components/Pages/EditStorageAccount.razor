@@ -2,7 +2,9 @@
 @using Arius.Web.Application
 @inject RepositoryService RepositoryService
 @inject NavigationManager Navigation
+@inject IJSRuntime        JSRuntime
 @using Syncfusion.Blazor.DataForm
+@using Syncfusion.Blazor.Inputs
 
 <h3>Edit Storage Account</h3>
 
@@ -13,9 +15,66 @@
         <DataAnnotationsValidator/>
     </FormValidator>
     <FormItems>
-        <FormAutoGenerateItems/>
+        <FormItem Field="@nameof(storageAccountViewModel.AccountName)" EditorType="FormEditorType.TextBox"></FormItem>
+        <FormItem Field="@nameof(storageAccountViewModel.AccountKey)" EditorType="FormEditorType.TextBox">
+            <Template>
+                <SfTextBox ID="passwordBox" 
+                           @bind-Value="storageAccountViewModel.AccountKey" 
+                           Type="@TextBoxType" 
+                           Placeholder="Enter Account Key" 
+                           Created="@Created"
+                           @ref="TextBoxObj"></SfTextBox>
+                <div>
+                    <SfCheckBox @bind-Checked="IsPasswordVisible" Label="Show Account Key" Change="OnShowPasswordChange"/>
+                </div>
+
+            </Template>
+        </FormItem>
+        @* <FormItem>
+            <FormItem Field="@nameof(storageAccountViewModel.AccountName)" EditorType="FormEditorType.TextBox"></FormItem>
+            <FormItem>
+            <FormLabel>Account Key</FormLabel>
+            <FormComponent>
+                <SfTextBox ID="passwordBox" @bind-Value="storageAccountViewModel.AccountKey" Type="@TextBoxType" Placeholder="Enter Account Key" Created="@Created"></SfTextBox>
+            </FormComponent>
+            <div>
+                <SfCheckBox @bind-Checked="IsPasswordVisible" Label="Show Account Key" Change="OnShowPasswordChange"/>
+            </div>
+        </FormItem> *@
+         
     </FormItems>
+    @* <FormAutoGenerateItems>
+        <FormItem>
+            <FormLabel>Account Name</FormLabel>
+            <FormComponent>
+                <SfTextBox @bind-Value="storageAccountViewModel.AccountName" Placeholder="Enter account name" />
+            </FormComponent>
+        </FormItem>
+        <FormItem>
+            <FormLabel>Account Key</FormLabel>
+            <FormComponent>
+                <SfMaskedTextBox @bind-Value="storageAccountViewModel.AccountKey"
+                                 Placeholder="Enter account key"
+                                 Mask="*"
+                                 PromptChar="*"
+                                 Type="@inputType" />
+                <SfTextBox ID="passwordBox" @ref="TextBoxObj" Type="@TextBoxType" Placeholder="Enter Password" Created="@Created"></SfTextBox>
+            </FormComponent>
+            <div>
+                <SfCheckBox @bind-Checked="isPasswordVisible" Label="Show Account Key" Change="OnShowPasswordChange"/>
+            </div>
+        </FormItem>
+    </FormAutoGenerateItems> *@
 </SfDataForm>
+
+<script>
+    function showhidePassword(textBoxId) {
+        const textBox = document.getElementById(textBoxId);
+        const icon = textBox.parentElement.querySelector('.e-input-group-icon');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    }
+</script>
 
 @code {
     private StorageAccountViewModel storageAccountViewModel = new();
@@ -34,5 +93,22 @@
         var storageAccount = storageAccountViewModel.ToDomainModel();
         await RepositoryService.UpdateStorageAccountAsync(storageAccount);
         Navigation.NavigateTo("/repositories");
+    }
+
+
+
+    SfTextBox TextBoxObj;
+    bool      IsPasswordVisible = false;
+    InputType TextBoxType => IsPasswordVisible ? InputType.Text : InputType.Password;
+
+    public async Task Created()
+    {
+        await TextBoxObj.AddIconAsync("prepend", "fas fa-eye-slash", new Dictionary<string, object>() { { "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, PasswordClick) } });
+    }
+
+    public async Task PasswordClick()
+    {
+        await JSRuntime.InvokeAsync<object>("showhidePassword", "passwordBox");
+        IsPasswordVisible = !IsPasswordVisible;
     }
 }
