@@ -39,7 +39,6 @@ internal class ContainerNamesQueryValidator : AbstractValidator<ContainerNamesQu
     }
 }
 
-
 internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery, IAsyncEnumerable<string>>
 {
     private readonly IStorageAccountFactory              storageAccountFactory;

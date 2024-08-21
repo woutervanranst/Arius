@@ -1,4 +1,6 @@
-﻿using Arius.Web.Domain;
+﻿using Arius.Core.Commands.ValidateStorageAccountCredentials;
+using Arius.Web.Domain;
+using MediatR;
 
 namespace Arius.Web.Application;
 
@@ -25,13 +27,16 @@ public class RepositoryService
 {
     private readonly IStorageAccountRepository storageAccountRepository;
     private readonly IRepositoryRepository     repositoryRepository;
+    private readonly IMediator                 mediator;
 
     public RepositoryService(
         IStorageAccountRepository storageAccountRepository,
-        IRepositoryRepository repositoryRepository)
+        IRepositoryRepository repositoryRepository,
+        IMediator mediator)
     {
         this.storageAccountRepository = storageAccountRepository;
         this.repositoryRepository     = repositoryRepository;
+        this.mediator                 = mediator;
     }
 
     // StorageAccount Methods
@@ -51,15 +56,26 @@ public class RepositoryService
         await storageAccountRepository.AddAsync(storageAccount);
     }
 
-    public async Task UpdateStorageAccountAsync(StorageAccount storageAccount)
+    public async Task<(bool Success, string? ErrorMessage)> UpdateStorageAccountAsync(StorageAccount storageAccount)
     {
+        var q = new ValidateStorageAccountCredentialsCommand
+        {
+            AccountName = storageAccount.AccountName,
+            AccountKey  = storageAccount.AccountKey
+        };
+
+        if (!await mediator.Send(q))
+            return (false, "Invalid credentials");
+
         await storageAccountRepository.UpdateAsync(storageAccount);
+        return (true, null);
     }
 
     public async Task DeleteStorageAccountAsync(int id)
     {
         await storageAccountRepository.DeleteAsync(id);
     }
+
 
     // Repository Methods
 
