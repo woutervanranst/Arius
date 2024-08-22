@@ -19,6 +19,6 @@ internal class AzureContainer : IContainer
 
     public IRepository GetRepository(string passphrase)
     {
-        return new AzureRepository(this, blobContainerClient, passphrase);
+        return new AzureRepository(blobContainerClient, passphrase);
     }
 }

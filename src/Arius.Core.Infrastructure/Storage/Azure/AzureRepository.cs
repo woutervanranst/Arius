@@ -1,7 +1,7 @@
 ﻿using Arius.Core.Domain.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using System.Linq;
+using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
@@ -45,9 +45,19 @@ internal class AzureRepository : IRepository
     //    return blobs;
     //}
 
-    public IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
+    public async IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
     {
-        return StateFolder.GetBlobs().Select(blob => new RepositoryVersion(blob.Name, blob.AccessTier.ToStorageTier()));
+        await foreach (var blob in StateFolder.GetBlobs())
+        {
+            var accessTier = await blob.GetStorageTierAsync();
+
+            yield return new RepositoryVersion(blob.Name, accessTier);
+        }
+    }
+
+    public IBlob GetRepositoryVersionBlob(RepositoryVersion repositoryVersion)
+    {
+        return StateFolder.GetBlob(repositoryVersion.Name);
     }
 }
 
@@ -66,19 +76,115 @@ internal class AzureContainerFolder
     {
         return blobContainerClient
             .GetBlobsAsync(prefix: $"{folderName}/")
-            .Select(bi => new AzureBlob(bi));
+            .Select(bi => new AzureBlob(bi, blobContainerClient));
+    }
+
+    public AzureBlob GetBlob(string name)
+    {
+        return new AzureBlob(blobContainerClient.GetBlobClient($"{folderName}/{name}"));
     }
 }
 
-internal class AzureBlob
+internal class AzureBlob : IBlob
 {
-    private readonly BlobItem blobItem;
+    private readonly BlobItem? blobItem;
+    private readonly BlobClient? blobClient;
+    private readonly AsyncLazy<BlobClient> lazyBlobClient;
+    private readonly AsyncLazy<BlobCommonProperties> lazyCommonProperties;
 
-    public AzureBlob(BlobItem blobItem)
+    internal record BlobCommonProperties
     {
-        this.blobItem = blobItem;
+        public long                         ContentLength { get; init; }
+        public AccessTier?                  AccessTier    { get; init; }
+        public string?                      ContentType   { get; init; }
+        public IDictionary<string, string>? Metadata      { get; init; }
     }
 
-    public string      Name       => blobItem.Name;
-    public AccessTier? AccessTier => blobItem.Properties.AccessTier;
+    public AzureBlob(BlobClient blobClient)
+    {
+        this.blobClient = blobClient;
+        lazyBlobClient = new AsyncLazy<BlobClient>(() => Task.FromResult(blobClient));
+        lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(async () =>
+        {
+            var properties = await blobClient.GetPropertiesAsync();
+            return new BlobCommonProperties
+            {
+                ContentLength = properties.Value.ContentLength,
+                AccessTier    = properties.Value.AccessTier,
+                ContentType   = properties.Value.ContentType,
+                Metadata      = properties.Value.Metadata
+            };
+        });
+    }
+
+    public AzureBlob(BlobItem blobItem, BlobContainerClient containerClient)
+    {
+        this.blobItem = blobItem;
+        lazyBlobClient = new AsyncLazy<BlobClient>(() => Task.FromResult(containerClient.GetBlobClient(blobItem.Name)));
+
+        // Lazy initialization of commonProperties using blobItem.Properties
+        lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(() => Task.FromResult(new BlobCommonProperties
+        {
+            ContentLength = blobItem.Properties.ContentLength ?? 0,
+            AccessTier    = blobItem.Properties.AccessTier,
+            ContentType   = blobItem.Properties.ContentType,
+            Metadata      = blobItem.Metadata
+        }));
+    }
+
+    public string FullName => blobItem?.Name ?? blobClient!.Name;
+
+    public string Name => Path.GetFileName(FullName);
+
+    //public Uri Uri => blobClient?.Uri ?? lazyBlobClient.Value.Result.Uri;
+
+    public async Task<long> GetContentLengthAsync() => (await lazyCommonProperties).ContentLength;
+
+    public async Task<StorageTier> GetStorageTierAsync() => (await lazyCommonProperties).AccessTier.ToStorageTier();
+
+    public async Task SetStorageTierAsync(StorageTier value)
+    {
+        var client = await lazyBlobClient;
+        await client.SetAccessTierAsync(value.ToAccessTier());
+    }
+
+    //public async Task<string?> GetContentTypeAsync() => (await lazyCommonProperties).ContentType;
+
+    //public async Task SetContentTypeAsync(string value)
+    //{
+    //    var client = await lazyBlobClient;
+    //    await client.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = value });
+    //}
+
+    //public async Task<IDictionary<string, string>> GetMetadataAsync() => (await lazyCommonProperties).Metadata ?? new Dictionary<string, string>();
+
+    public async Task<bool> ExistsAsync()
+    {
+        var client = await lazyBlobClient;
+        return await client.ExistsAsync();
+    }
+
+    //public async Task DeleteAsync()
+    //{
+    //    var client = await lazyBlobClient;
+    //    await client.DeleteIfExistsAsync();
+    //}
+
+    //public async Task<Stream> OpenReadAsync()
+    //{
+    //    var client = await lazyBlobClient;
+    //    return await client.OpenReadAsync();
+    //}
+
+    //public async Task<Stream> OpenWriteAsync(bool throwOnExists = true)
+    //{
+    //    var client = await lazyBlobClient;
+    //    return await client.OpenWriteAsync(overwrite: !throwOnExists);
+    //}
+
+    //public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options)
+    //{
+    //    var client = await lazyBlobClient;
+    //    return await client.StartCopyFromUriAsync(source, options);
+    //}
 }
