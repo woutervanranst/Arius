@@ -1,8 +1,7 @@
-﻿using System.Collections.Generic;
-using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Storage;
 using MediatR;
 
-namespace Arius.Core.Queries.GetStateDbVersions;
+namespace Arius.Core.New.Queries.GetStateDbVersions;
 
 public record GetRepositoryVersionsQuery : IRequest<IAsyncEnumerable<RepositoryVersion>>
 {

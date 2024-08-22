@@ -1,8 +1,7 @@
 ﻿using FluentValidation;
 using MediatR;
-using System.Collections.Generic;
 
-namespace Arius.Core.Facade;
+namespace Arius.Core.New;
 
 public class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>

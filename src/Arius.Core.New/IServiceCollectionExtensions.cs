@@ -4,7 +4,7 @@ using System.Reflection;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Storage.Azure;
 
-namespace Arius.Core.Facade;
+namespace Arius.Core.New;
 
 public static class IServiceCollectionExtensions
 {

@@ -1,8 +1,7 @@
 ﻿using Arius.Core.Domain.Storage;
 using MediatR;
-using ArgumentException = System.ArgumentException;
 
-namespace Arius.Core.Commands.DownloadStateDb;
+namespace Arius.Core.New.Commands.DownloadStateDb;
 
 public interface IDownloadStateDbCommand : IRequest<Unit>
 {

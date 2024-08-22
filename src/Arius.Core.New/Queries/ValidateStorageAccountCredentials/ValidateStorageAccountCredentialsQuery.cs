@@ -2,7 +2,7 @@
 using FluentValidation;
 using MediatR;
 
-namespace Arius.Core.Queries.ValidateStorageAccountCredentials;
+namespace Arius.Core.New.Queries.ValidateStorageAccountCredentials;
 
 public class ValidateStorageAccountCredentialsQuery : IRequest<bool>
 {

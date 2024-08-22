@@ -1,10 +1,9 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using System.Runtime.CompilerServices;
+using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 
-namespace Arius.Core.Queries.ContainerNames;
+namespace Arius.Core.New.Queries.ContainerNames;
 
 public record ContainerNamesQuery : IRequest<IAsyncEnumerable<string>>
 {

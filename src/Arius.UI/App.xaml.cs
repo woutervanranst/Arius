@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 using Arius.Core.Facade;
+using Arius.Core.New;
 using Arius.UI.Messages;
 using Arius.UI.Services;
 using Arius.UI.Utils;

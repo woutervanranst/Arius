@@ -14,7 +14,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
     <ProjectReference Include="..\Arius.Web.Application\Arius.Web.Application.csproj" />
     <ProjectReference Include="..\Arius.Web.Domain\Arius.Web.Domain.csproj" />
     <ProjectReference Include="..\Arius.Web.Infrastructure\Arius.Web.Infrastructure.csproj" />

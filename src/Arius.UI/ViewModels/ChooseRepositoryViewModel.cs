@@ -1,19 +1,18 @@
-﻿using System.Collections.ObjectModel;
-using System.IO;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Threading;
-using Arius.Core.Domain.Storage;
-using Arius.Core.Facade;
-using Arius.Core.Queries.ContainerNames;
+﻿using Arius.Core.Domain.Storage;
 using Arius.UI.Messages;
 using Arius.UI.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using MediatR;
-using MessageBox = System.Windows.MessageBox;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+using Arius.Core.New.Queries.ContainerNames;
 using Application = System.Windows.Application;
+using MessageBox = System.Windows.MessageBox;
 
 namespace Arius.UI.ViewModels;
 

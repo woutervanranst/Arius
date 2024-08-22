@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Domain.Storage;
-using Arius.Core.Queries.ValidateStorageAccountCredentials;
+using Arius.Core.New.Queries.ValidateStorageAccountCredentials;
 using Arius.Web.Domain;
 using MediatR;
 
