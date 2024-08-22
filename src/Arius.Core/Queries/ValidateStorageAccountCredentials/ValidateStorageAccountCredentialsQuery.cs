@@ -2,39 +2,39 @@
 using FluentValidation;
 using MediatR;
 
-namespace Arius.Core.Commands.ValidateStorageAccountCredentials;
+namespace Arius.Core.Queries.ValidateStorageAccountCredentials;
 
-public class ValidateStorageAccountCredentialsCommand : IRequest<bool>
+public class ValidateStorageAccountCredentialsQuery : IRequest<bool>
 {
     public required string AccountName { get; init; }
-    public required string AccountKey  { get; init; }
+    public required string AccountKey { get; init; }
 }
 
-internal class ValidateStorageAccountCredentialsCommandValidator : AbstractValidator<ValidateStorageAccountCredentialsCommand>
+internal class ValidateStorageAccountCredentialsQueryValidator : AbstractValidator<ValidateStorageAccountCredentialsQuery>
 {
-    public ValidateStorageAccountCredentialsCommandValidator()
+    public ValidateStorageAccountCredentialsQueryValidator()
     {
         RuleFor(command => new StorageAccountCredentials(command.AccountName, command.AccountKey))
             .SetValidator(new StorageAccountCredentialsValidator());
     }
 }
 
-internal class ValidateStorageAccountCredentialsCommandHandler : IRequestHandler<ValidateStorageAccountCredentialsCommand, bool>
+internal class ValidateStorageAccountCredentialsQueryHandler : IRequestHandler<ValidateStorageAccountCredentialsQuery, bool>
 {
     private readonly IStorageAccountFactory storageAccountFactory;
 
-    public ValidateStorageAccountCredentialsCommandHandler(IStorageAccountFactory storageAccountFactory)
+    public ValidateStorageAccountCredentialsQueryHandler(IStorageAccountFactory storageAccountFactory)
     {
         this.storageAccountFactory = storageAccountFactory;
     }
 
-    public async Task<bool> Handle(ValidateStorageAccountCredentialsCommand request, CancellationToken cancellationToken)
+    public async Task<bool> Handle(ValidateStorageAccountCredentialsQuery request, CancellationToken cancellationToken)
     {
-        await new ValidateStorageAccountCredentialsCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
-        
+        await new ValidateStorageAccountCredentialsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
+
         try
         {
-            var credentials    = new StorageAccountCredentials(request.AccountName, request.AccountKey);
+            var credentials = new StorageAccountCredentials(request.AccountName, request.AccountKey);
             var storageAccount = storageAccountFactory.Create(credentials, 0, TimeSpan.FromSeconds(2));
 
             // Attempt to list containers as a validation step

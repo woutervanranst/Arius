@@ -1,4 +1,4 @@
-﻿using Arius.Core.Commands.ValidateStorageAccountCredentials;
+﻿using Arius.Core.Queries.ValidateStorageAccountCredentials;
 using Arius.Web.Domain;
 using MediatR;
 
@@ -58,7 +58,7 @@ public class RepositoryService
 
     public async Task<(bool Success, string? ErrorMessage)> UpdateStorageAccountAsync(StorageAccount storageAccount)
     {
-        var q = new ValidateStorageAccountCredentialsCommand
+        var q = new ValidateStorageAccountCredentialsQuery
         {
             AccountName = storageAccount.AccountName,
             AccountKey  = storageAccount.AccountKey
