@@ -6,15 +6,14 @@ namespace Arius.Core.Queries.ValidateStorageAccountCredentials;
 
 public class ValidateStorageAccountCredentialsQuery : IRequest<bool>
 {
-    public required string AccountName { get; init; }
-    public required string AccountKey { get; init; }
+    public required StorageAccountOptions StorageAccount { get; init; }
 }
 
 internal class ValidateStorageAccountCredentialsQueryValidator : AbstractValidator<ValidateStorageAccountCredentialsQuery>
 {
     public ValidateStorageAccountCredentialsQueryValidator()
     {
-        RuleFor(command => new StorageAccountOptions{ AccountName = command.AccountName, AccountKey = command.AccountKey })
+        RuleFor(command => new StorageAccountOptions{AccountName = command.StorageAccount.AccountName, AccountKey = command.StorageAccount.AccountKey })
             .SetValidator(new StorageAccountOptionsValidator());
     }
 }
@@ -34,8 +33,12 @@ internal class ValidateStorageAccountCredentialsQueryHandler : IRequestHandler<V
 
         try
         {
-            var credentials = new StorageAccountOptions{ AccountName = request.AccountName, AccountKey = request.AccountKey };
-            var storageAccount = storageAccountFactory.Create(credentials, 0, TimeSpan.FromSeconds(2));
+            var o = new StorageAccountOptions
+            {
+                AccountName = request.StorageAccount.AccountName,
+                AccountKey  = request.StorageAccount.AccountKey
+            };
+            var storageAccount = storageAccountFactory.Create(o, 0, TimeSpan.FromSeconds(2));
 
             // Attempt to list containers as a validation step
             await foreach (var _ in storageAccount.ListContainers(cancellationToken))

@@ -4,8 +4,8 @@ namespace Arius.Core.Domain.Storage;
 
 public record StorageAccountOptions
 {
-    public string AccountName { get; init; }
-    public string AccountKey  { get; init; }
+    public required string AccountName { get; init; }
+    public required string AccountKey  { get; init; }
 }
 
 public class StorageAccountOptionsValidator : AbstractValidator<StorageAccountOptions>

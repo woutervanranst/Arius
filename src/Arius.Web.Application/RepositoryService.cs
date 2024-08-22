@@ -1,4 +1,5 @@
-﻿using Arius.Core.Queries.ValidateStorageAccountCredentials;
+﻿using Arius.Core.Domain.Storage;
+using Arius.Core.Queries.ValidateStorageAccountCredentials;
 using Arius.Web.Domain;
 using MediatR;
 
@@ -60,8 +61,11 @@ public class RepositoryService
     {
         var q = new ValidateStorageAccountCredentialsQuery
         {
-            AccountName = storageAccount.AccountName,
-            AccountKey  = storageAccount.AccountKey
+            StorageAccount = new StorageAccountOptions
+            {
+                AccountName = storageAccount.AccountName,
+                AccountKey  = storageAccount.AccountKey
+            }
         };
 
         if (!await mediator.Send(q))

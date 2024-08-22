@@ -8,25 +8,7 @@ namespace Arius.Core.Queries.ContainerNames;
 
 public record ContainerNamesQuery : IRequest<IAsyncEnumerable<string>>
 {
-    public ContainerNamesQuery(string accountName, string accountKey)
-    {
-        AccountName = accountName;
-        AccountKey  = accountKey;
-    }
-
-    public ContainerNamesQuery(StorageAccountOptions storageAccountOptions)
-    {
-        AccountName = storageAccountOptions.AccountName;
-        AccountKey  = storageAccountOptions.AccountKey;
-    }
-    public ContainerNamesQuery(IStorageAccount storageAccount)
-    {
-        AccountName = storageAccount.AccountName;
-        AccountKey  = storageAccount.AccountKey;
-    }
-
-    public string AccountName { get; }
-    public string AccountKey  { get; }
+    public required StorageAccountOptions StorageAccount { get; init; }
 }
 
 
@@ -34,7 +16,11 @@ internal class ContainerNamesQueryValidator : AbstractValidator<ContainerNamesQu
 {
     public ContainerNamesQueryValidator()
     {
-        RuleFor(query => new StorageAccountOptions { AccountName = query.AccountName, AccountKey = query.AccountKey })
+        RuleFor(query => new StorageAccountOptions
+            {
+                AccountName = query.StorageAccount.AccountName,
+                AccountKey  = query.StorageAccount.AccountKey
+            })
             .SetValidator(new StorageAccountOptionsValidator());
     }
 }
@@ -58,7 +44,7 @@ internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery,
 
         async IAsyncEnumerable<string> GetContainerNames([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var credentials    = new StorageAccountOptions{ AccountName = request.AccountName, AccountKey = request.AccountKey };
+            var credentials    = new StorageAccountOptions{AccountName = request.StorageAccount.AccountName, AccountKey = request.StorageAccount.AccountKey };
             var storageAccount = storageAccountFactory.Create(credentials);
 
             await foreach (var container in storageAccount.ListContainers(cancellationToken))
