@@ -7,7 +7,7 @@ public record ContainerOptions : StorageAccountOptions
     public required string ContainerName { get; init; }
 }
 
-internal class ContainerOptionsValidator : AbstractValidator<ContainerOptions>
+public class ContainerOptionsValidator : AbstractValidator<ContainerOptions>
 {
     public ContainerOptionsValidator()
     {
