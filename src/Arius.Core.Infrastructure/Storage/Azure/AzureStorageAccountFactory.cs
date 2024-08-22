@@ -5,12 +5,12 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 public class AzureStorageAccountFactory : IStorageAccountFactory
 {
-    public IStorageAccount Create(StorageAccountCredentials credentials)
+    public IStorageAccount Create(StorageAccountOptions storageAccountOptions)
     {
-        return new AzureStorageAccount(credentials);
+        return new AzureStorageAccount(storageAccountOptions);
     }
 
-    public IStorageAccount Create(StorageAccountCredentials credentials, int maxRetries, TimeSpan timeout)
+    public IStorageAccount Create(StorageAccountOptions storageAccountOptions, int maxRetries, TimeSpan timeout)
     {
         var o = new BlobClientOptions
         {
@@ -21,6 +21,6 @@ public class AzureStorageAccountFactory : IStorageAccountFactory
             }
         };
 
-        return new AzureStorageAccount(credentials, o);
+        return new AzureStorageAccount(storageAccountOptions, o);
     }
 }

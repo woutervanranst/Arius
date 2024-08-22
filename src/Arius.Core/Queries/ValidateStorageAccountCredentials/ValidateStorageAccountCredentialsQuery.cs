@@ -14,8 +14,8 @@ internal class ValidateStorageAccountCredentialsQueryValidator : AbstractValidat
 {
     public ValidateStorageAccountCredentialsQueryValidator()
     {
-        RuleFor(command => new StorageAccountCredentials(command.AccountName, command.AccountKey))
-            .SetValidator(new StorageAccountCredentialsValidator());
+        RuleFor(command => new StorageAccountOptions{ AccountName = command.AccountName, AccountKey = command.AccountKey })
+            .SetValidator(new StorageAccountOptionsValidator());
     }
 }
 
@@ -34,7 +34,7 @@ internal class ValidateStorageAccountCredentialsQueryHandler : IRequestHandler<V
 
         try
         {
-            var credentials = new StorageAccountCredentials(request.AccountName, request.AccountKey);
+            var credentials = new StorageAccountOptions{ AccountName = request.AccountName, AccountKey = request.AccountKey };
             var storageAccount = storageAccountFactory.Create(credentials, 0, TimeSpan.FromSeconds(2));
 
             // Attempt to list containers as a validation step

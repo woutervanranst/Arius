@@ -2,6 +2,6 @@
 
 public interface IStorageAccountFactory
 {
-    IStorageAccount Create(StorageAccountCredentials credentials);
-    IStorageAccount Create(StorageAccountCredentials credentials, int maxRetries, TimeSpan timeout);
+    IStorageAccount Create(StorageAccountOptions storageAccountOptions);
+    IStorageAccount Create(StorageAccountOptions storageAccountOptions, int maxRetries, TimeSpan timeout);
 }

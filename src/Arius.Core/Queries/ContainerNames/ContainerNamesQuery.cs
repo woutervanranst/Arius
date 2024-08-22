@@ -14,10 +14,10 @@ public record ContainerNamesQuery : IRequest<IAsyncEnumerable<string>>
         AccountKey  = accountKey;
     }
 
-    public ContainerNamesQuery(StorageAccountCredentials storageAccountCredentials)
+    public ContainerNamesQuery(StorageAccountOptions storageAccountOptions)
     {
-        AccountName = storageAccountCredentials.AccountName;
-        AccountKey  = storageAccountCredentials.AccountKey;
+        AccountName = storageAccountOptions.AccountName;
+        AccountKey  = storageAccountOptions.AccountKey;
     }
     public ContainerNamesQuery(IStorageAccount storageAccount)
     {
@@ -34,8 +34,8 @@ internal class ContainerNamesQueryValidator : AbstractValidator<ContainerNamesQu
 {
     public ContainerNamesQueryValidator()
     {
-        RuleFor(query => new StorageAccountCredentials(query.AccountName, query.AccountKey))
-            .SetValidator(new StorageAccountCredentialsValidator());
+        RuleFor(query => new StorageAccountOptions { AccountName = query.AccountName, AccountKey = query.AccountKey })
+            .SetValidator(new StorageAccountOptionsValidator());
     }
 }
 
@@ -58,7 +58,7 @@ internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery,
 
         async IAsyncEnumerable<string> GetContainerNames([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var credentials    = new StorageAccountCredentials(request.AccountName, request.AccountKey);
+            var credentials    = new StorageAccountOptions{ AccountName = request.AccountName, AccountKey = request.AccountKey };
             var storageAccount = storageAccountFactory.Create(credentials);
 
             await foreach (var container in storageAccount.ListContainers(cancellationToken))

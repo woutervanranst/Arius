@@ -2,21 +2,15 @@
 
 namespace Arius.Core.Domain.Storage;
 
-public record StorageAccountCredentials
+public record StorageAccountOptions
 {
-    public StorageAccountCredentials(string accountName, string accountKey)
-    {
-        AccountName = accountName;
-        AccountKey = accountKey;
-    }
-
-    public string AccountName { get; }
-    public string AccountKey  { get; }
+    public string AccountName { get; init; }
+    public string AccountKey  { get; init; }
 }
 
-public class StorageAccountCredentialsValidator : AbstractValidator<StorageAccountCredentials>
+public class StorageAccountOptionsValidator : AbstractValidator<StorageAccountOptions>
 {
-    public StorageAccountCredentialsValidator()
+    public StorageAccountOptionsValidator()
     {
         RuleFor(x => x.AccountName)
             .NotEmpty()
