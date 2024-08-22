@@ -41,7 +41,7 @@ internal class ValidateStorageAccountCredentialsQueryHandler : IRequestHandler<V
             var storageAccount = storageAccountFactory.GetStorageAccount(o, 0, TimeSpan.FromSeconds(2));
 
             // Attempt to list containers as a validation step
-            await foreach (var _ in storageAccount.ListContainers(cancellationToken))
+            await foreach (var _ in storageAccount.GetContainers(cancellationToken))
             {
                 break; // Successfully accessed the account
             }

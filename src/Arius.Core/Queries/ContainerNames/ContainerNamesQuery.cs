@@ -47,7 +47,7 @@ internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery,
             var credentials    = new StorageAccountOptions{AccountName = request.StorageAccount.AccountName, AccountKey = request.StorageAccount.AccountKey };
             var storageAccount = storageAccountFactory.GetStorageAccount(credentials);
 
-            await foreach (var container in storageAccount.ListContainers(cancellationToken))
+            await foreach (var container in storageAccount.GetContainers(cancellationToken))
             {
                 yield return container.Name;
             }

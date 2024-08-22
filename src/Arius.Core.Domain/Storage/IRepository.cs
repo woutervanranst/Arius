@@ -2,6 +2,7 @@
 
 public interface IRepository
 {
-    IContainer                Container  { get; }
-    Task<IEnumerable<string>> ListBlobsAsync(CancellationToken cancellationToken = default);
+    //IContainer                Container  { get; }
+    //Task<IEnumerable<string>> ListBlobsAsync(CancellationToken cancellationToken = default);
+    IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions();
 }
