@@ -1,6 +1,5 @@
 ﻿using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
-using Azure.Core;
 using MediatR;
 
 namespace Arius.Core.New.Commands.DownloadStateDb;
@@ -23,13 +22,16 @@ public record DownloadStateDbCommand : DownloadStateDbCommandBase
 internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadLatestStateDbCommand, Unit>, IRequestHandler<DownloadStateDbCommand, Unit>
 {
     private readonly IStorageAccountFactory                storageAccountFactory;
+    private readonly ICryptoService                        cryptoService;
     private readonly ILogger<DownloadLatestStateDbCommand> logger;
 
-    public DownloadStateDbCommandHandler(IStorageAccountFactory storageAccountFactory, ILogger<DownloadLatestStateDbCommand> logger)
+    public DownloadStateDbCommandHandler(IStorageAccountFactory storageAccountFactory, ICryptoService cryptoService, ILogger<DownloadLatestStateDbCommand> logger)
     {
         this.storageAccountFactory = storageAccountFactory;
+        this.cryptoService         = cryptoService;
         this.logger                = logger;
     }
+
     public async Task<Unit> Handle(DownloadLatestStateDbCommand request, CancellationToken cancellationToken)
     {
         var repository = storageAccountFactory.GetRepository(request.Repository);
@@ -47,7 +49,6 @@ internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadLatestSta
         await DownloadAsync(blob, request.LocalPath, request.Repository.Passphrase, cancellationToken);
 
         return Unit.Value;
-
     }
 
     public async Task<Unit> Handle(DownloadStateDbCommand request, CancellationToken cancellationToken)
@@ -63,9 +64,9 @@ internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadLatestSta
 
     private async Task DownloadAsync(IBlob blob, string localPath, string passphrase, CancellationToken cancellationToken)
     {
-        await using var ss         = await blob.OpenReadAsync(cancellationToken);
+        await using var ss = await blob.OpenReadAsync(cancellationToken);
         await using var ts = File.Create(localPath);
-        await CryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+        await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
         logger.LogInformation($"Successfully downloaded latest state '{blob.Name}' to '{localPath}'");
     }

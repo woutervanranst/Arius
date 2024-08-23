@@ -4,7 +4,13 @@ using System.Text;
 
 namespace Arius.Core.New.Services;
 
-public static class CryptoService
+public interface ICryptoService
+{
+    Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase);
+    Task DecryptAndDecompressAsync(Stream source, Stream target, string passphrase);
+}
+
+public class CryptoService : ICryptoService
 {
     private const string OPENSSL_SALT_PREFIX = "Salted__";
     private static readonly byte[] OPENSSL_SALT_PREFIX_BYTES = Encoding.ASCII.GetBytes(OPENSSL_SALT_PREFIX);
@@ -17,7 +23,7 @@ public static class CryptoService
 
     public static readonly string ContentType = "application/aes256cbc+gzip";
 
-    public static async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
+    public async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
     {
         /* SET UP ENCRYPTION
          * 
@@ -66,7 +72,7 @@ public static class CryptoService
         await source.CopyToAsync(gzs);
     }
 
-    public static async Task DecryptAndDecompressAsync(Stream source, Stream target, string passphrase)
+    public async Task DecryptAndDecompressAsync(Stream source, Stream target, string passphrase)
     {
         // Read the salt from the beginning of the source stream
         var salt = new byte[saltSize];
@@ -85,43 +91,43 @@ public static class CryptoService
     }
 
 
-    public static string Encrypt(string plainText, string passphrase)
-    {
-        DeriveBytes(passphrase, out var salt, out var key, out var iv);
+    //public string Encrypt(string plainText, string passphrase)
+    //{
+    //    DeriveBytes(passphrase, out var salt, out var key, out var iv);
 
-        using var aes = CreateAes(key, iv);
-        using var encryptor = aes.CreateEncryptor();
-        using var target = new MemoryStream();
-        using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+    //    using var aes = CreateAes(key, iv);
+    //    using var encryptor = aes.CreateEncryptor();
+    //    using var target = new MemoryStream();
+    //    using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
 
-        var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
+    //    var plainTextBytes = Encoding.UTF8.GetBytes(plainText);
 
-        cs.Write(plainTextBytes, 0, plainTextBytes.Length);
-        cs.FlushFinalBlock();
+    //    cs.Write(plainTextBytes, 0, plainTextBytes.Length);
+    //    cs.FlushFinalBlock();
 
-        var cipherTextBytes = salt.Concat(target.ToArray()).ToArray();
-        var r = Convert.ToBase64String(cipherTextBytes);
+    //    var cipherTextBytes = salt.Concat(target.ToArray()).ToArray();
+    //    var r = Convert.ToBase64String(cipherTextBytes);
 
-        return r;
-    }
+    //    return r;
+    //}
 
-    public static string Decrypt(string cipherText, string passphrase)
-    {
-        var cipherTextBytes = Convert.FromBase64String(cipherText);
+    //public string Decrypt(string cipherText, string passphrase)
+    //{
+    //    var cipherTextBytes = Convert.FromBase64String(cipherText);
 
-        DeriveBytes(passphrase, cipherTextBytes[0..8], out var key, out var iv);
+    //    DeriveBytes(passphrase, cipherTextBytes[0..8], out var key, out var iv);
 
-        using var aes = CreateAes(key, iv);
-        using var decryptor = aes.CreateDecryptor();
-        using var source = new MemoryStream(cipherTextBytes[8..]);
-        using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
-        using var target = new MemoryStream();
-        using var sr = new StreamReader(cs, Encoding.UTF8);
+    //    using var aes = CreateAes(key, iv);
+    //    using var decryptor = aes.CreateDecryptor();
+    //    using var source = new MemoryStream(cipherTextBytes[8..]);
+    //    using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
+    //    using var target = new MemoryStream();
+    //    using var sr = new StreamReader(cs, Encoding.UTF8);
 
-        var plainText = sr.ReadToEnd();
+    //    var plainText = sr.ReadToEnd();
 
-        return plainText;
-    }
+    //    return plainText;
+    //}
 
     private static Aes CreateAes(byte[] key, byte[] iv)
     {

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Storage.Azure;
+using Arius.Core.New.Services;
 
 namespace Arius.Core.New;
 
@@ -24,7 +25,7 @@ public static class IServiceCollectionExtensions
         });
 
         services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
-
+        services.AddSingleton<ICryptoService, CryptoService>();
 
         return services;
     }
