@@ -20,7 +20,7 @@ public interface IBlob
     //Task<IDictionary<string, string>> GetMetadataAsync();
     //Task<bool>                        ExistsAsync();
     //Task                              DeleteAsync();
-    //Task<Stream>                      OpenReadAsync();
+    Task<Stream> OpenReadAsync(CancellationToken cancellationToken);
     //Task<Stream>                      OpenWriteAsync(bool throwOnExists = true);
     //Task<CopyFromUriOperation>        StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options);
     //Uri                               Uri { get; }

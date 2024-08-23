@@ -45,14 +45,9 @@ internal class AzureRepository : IRepository
     //    return blobs;
     //}
 
-    public async IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
+    public IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
     {
-        await foreach (var blob in StateFolder.GetBlobs())
-        {
-            var accessTier = await blob.GetStorageTierAsync();
-
-            yield return new RepositoryVersion(blob.Name, accessTier);
-        }
+        return StateFolder.GetBlobs().Select(blob => new RepositoryVersion { Name = blob.Name });
     }
 
     public IBlob GetRepositoryVersionBlob(RepositoryVersion repositoryVersion)
@@ -89,7 +84,7 @@ internal class AzureBlob : IBlob
 {
     private readonly BlobItem? blobItem;
     private readonly BlobClient? blobClient;
-    private readonly AsyncLazy<BlobClient> lazyBlobClient;
+    private readonly AsyncLazy<BlobClient> lazyBlobClient; // TODO REMOVE lazyBlobClient
     private readonly AsyncLazy<BlobCommonProperties> lazyCommonProperties;
 
     internal record BlobCommonProperties
@@ -170,11 +165,11 @@ internal class AzureBlob : IBlob
     //    await client.DeleteIfExistsAsync();
     //}
 
-    //public async Task<Stream> OpenReadAsync()
-    //{
-    //    var client = await lazyBlobClient;
-    //    return await client.OpenReadAsync();
-    //}
+    public async Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
+    {
+        var client = await lazyBlobClient;
+        return await client.OpenReadAsync(cancellationToken:cancellationToken);
+    }
 
     //public async Task<Stream> OpenWriteAsync(bool throwOnExists = true)
     //{

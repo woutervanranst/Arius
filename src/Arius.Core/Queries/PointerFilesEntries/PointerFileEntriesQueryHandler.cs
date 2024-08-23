@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Arius.Core.Facade;
+﻿using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
+using System.Collections.Generic;
 
 namespace Arius.Core.Queries.PointerFilesEntries;
 
