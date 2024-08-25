@@ -1,65 +1,93 @@
 ﻿using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
+using Azure;
 using MediatR;
 
 namespace Arius.Core.New.Commands.DownloadStateDb;
 
-public abstract record DownloadStateDbCommandBase : IRequest<Unit>
+public record DownloadStateDbCommand : IRequest<DownloadStateDbCommandResult>
 {
-    public required RepositoryOptions Repository { get; init; }
-    public required string            LocalPath  { get; init; }
+    public required RepositoryOptions  Repository { get; init; }
+    public          RepositoryVersion? Version    { get; init; }
+    public required string             LocalPath  { get; init; }
 }
 
-public record DownloadLatestStateDbCommand : DownloadStateDbCommandBase
+public record DownloadStateDbCommandResult
 {
+    public required DownloadStateDbCommandResultType Type    { get; init; }
+    public          RepositoryVersion?               Version { get; init; }
 }
 
-public record DownloadStateDbCommand : DownloadStateDbCommandBase
+public enum DownloadStateDbCommandResultType
 {
-    public required RepositoryVersion Version    { get; init; }
+    NoStatesYet,
+    LatestDownloaded,
+    RequestedVersionDownloaded
 }
 
-internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadLatestStateDbCommand, Unit>, IRequestHandler<DownloadStateDbCommand, Unit>
+internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadStateDbCommand, DownloadStateDbCommandResult>
 {
-    private readonly IStorageAccountFactory                storageAccountFactory;
-    private readonly ICryptoService                        cryptoService;
-    private readonly ILogger<DownloadLatestStateDbCommand> logger;
+    private readonly IStorageAccountFactory                 storageAccountFactory;
+    private readonly ICryptoService                         cryptoService;
+    private readonly ILogger<DownloadStateDbCommandHandler> logger;
 
-    public DownloadStateDbCommandHandler(IStorageAccountFactory storageAccountFactory, ICryptoService cryptoService, ILogger<DownloadLatestStateDbCommand> logger)
+    public DownloadStateDbCommandHandler(IStorageAccountFactory storageAccountFactory, ICryptoService cryptoService, ILogger<DownloadStateDbCommandHandler> logger)
     {
         this.storageAccountFactory = storageAccountFactory;
         this.cryptoService         = cryptoService;
         this.logger                = logger;
     }
 
-    public async Task<Unit> Handle(DownloadLatestStateDbCommand request, CancellationToken cancellationToken)
+    public async Task<DownloadStateDbCommandResult> Handle(DownloadStateDbCommand request, CancellationToken cancellationToken)
     {
         var repository = storageAccountFactory.GetRepository(request.Repository);
 
-        var latestRepositoryVersion = await repository
-            .GetRepositoryVersions()
-            .OrderBy(b => b.Name)
-            .LastOrDefaultAsync(cancellationToken: cancellationToken);
+        if (request.Version is null)
+        {
+            // Download the latest version
+            var latestRepositoryVersion = await repository
+                .GetRepositoryVersions()
+                .OrderBy(b => b.Name)
+                .LastOrDefaultAsync(cancellationToken: cancellationToken);
 
-        if (latestRepositoryVersion == null) // TODO test this
-            return Unit.Value;
+            if (latestRepositoryVersion == null)
+                return new DownloadStateDbCommandResult
+                {
+                    Type = DownloadStateDbCommandResultType.NoStatesYet
+                };
+            else
+            {
+                var blob = repository.GetRepositoryVersionBlob(latestRepositoryVersion);
 
-        var blob = repository.GetRepositoryVersionBlob(latestRepositoryVersion);
+                await DownloadAsync(blob, request.LocalPath, request.Repository.Passphrase, cancellationToken);
 
-        await DownloadAsync(blob, request.LocalPath, request.Repository.Passphrase, cancellationToken);
+                return new DownloadStateDbCommandResult
+                {
+                    Type    = DownloadStateDbCommandResultType.LatestDownloaded,
+                    Version = latestRepositoryVersion
+                };
+            }
+        }
+        else
+        {
+            // Download the requested version
+            try
+            {
+                var blob = repository.GetRepositoryVersionBlob(request.Version);
 
-        return Unit.Value;
-    }
+                await DownloadAsync(blob, request.LocalPath, request.Repository.Passphrase, cancellationToken);
 
-    public async Task<Unit> Handle(DownloadStateDbCommand request, CancellationToken cancellationToken)
-    {
-        var repository = storageAccountFactory.GetRepository(request.Repository);
-
-        var blob = repository.GetRepositoryVersionBlob(request.Version);
-        
-        await DownloadAsync(blob, request.LocalPath, request.Repository.Passphrase, cancellationToken);
-
-        return Unit.Value;
+                return new DownloadStateDbCommandResult
+                {
+                    Type    = DownloadStateDbCommandResultType.RequestedVersionDownloaded,
+                    Version = request.Version
+                };
+            }
+            catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+            {
+                throw new ArgumentException("The requested version was not found", nameof(request.Version), e);
+            }
+        }
     }
 
     private async Task DownloadAsync(IBlob blob, string localPath, string passphrase, CancellationToken cancellationToken)
