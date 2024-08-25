@@ -103,6 +103,22 @@ public abstract class AriusFixture : IDisposable
             mockedTestRepositoryOptions.Value : 
             realTestRepositoryOptions.Value;
 
+    public StorageAccountOptions GetStorageAccountOptions(ServiceConfiguration serviceConfiguration) => 
+        new()
+        {
+            AccountName = GetTestRepositoryOptions(serviceConfiguration).AccountName,
+            AccountKey  = GetTestRepositoryOptions(serviceConfiguration).AccountKey
+        };
+
+    public RepositoryOptions GetRepositoryOptions(ServiceConfiguration serviceConfiguration) => 
+        new()
+        {
+            AccountName   = GetTestRepositoryOptions(serviceConfiguration).AccountName,
+            AccountKey    = GetTestRepositoryOptions(serviceConfiguration).AccountKey,
+            ContainerName = GetTestRepositoryOptions(serviceConfiguration).ContainerName,
+            Passphrase    = GetTestRepositoryOptions(serviceConfiguration).Passphrase
+        };
+
     protected abstract void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration);
 
     public void Dispose()

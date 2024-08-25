@@ -7,11 +7,11 @@ namespace Arius.Core.New.UnitTests;
 
 public class GetRepositoryVersionsQueryHandlerTests : IClassFixture<CommandHandlerFixture>
 {
-    private readonly CommandHandlerFixture _fixture;
+    private readonly CommandHandlerFixture fixture;
 
     public GetRepositoryVersionsQueryHandlerTests(CommandHandlerFixture fixture)
     {
-        _fixture = fixture;
+        this.fixture = fixture;
     }
 
     [Theory]
@@ -20,28 +20,21 @@ public class GetRepositoryVersionsQueryHandlerTests : IClassFixture<CommandHandl
     public async Task Handle_ShouldReturnRepositoryVersions(ServiceConfiguration configuration)
     {
         // Arrange
-        var storageAccountFactory = _fixture.GetStorageAccountFactory(configuration);
-        var options               = _fixture.GetTestRepositoryOptions(configuration);
-        var mediator              = _fixture.GetMediator(configuration);
+        var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
+        var mediator              = fixture.GetMediator(configuration);
         var storageAccount        = Substitute.For<IRepository>();
 
         var request = new GetRepositoryVersionsQuery
         {
-            Repository = new RepositoryOptions
-            {
-                AccountName   = options.AccountName,
-                AccountKey    = options.AccountKey,
-                ContainerName = options.ContainerName,
-                Passphrase    = options.Passphrase
-            }
+            Repository = fixture.GetRepositoryOptions(configuration)
         };
 
         if (configuration == ServiceConfiguration.Mocked)
         {
             var repositoryVersions = new List<RepositoryVersion>
             {
-                new RepositoryVersion { Name = "v1.0" },
-                new RepositoryVersion { Name = "v2.0" }
+                new() { Name = "v1.0" },
+                new() { Name = "v2.0" }
             };
 
             storageAccountFactory.GetRepository(Arg.Any<RepositoryOptions>()).Returns(storageAccount);

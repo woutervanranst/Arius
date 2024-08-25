@@ -21,17 +21,12 @@ public class ContainerNamesQueryHandlerTests : IClassFixture<CommandHandlerFixtu
     {
         // Arrange
         var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
-        var options               = fixture.GetTestRepositoryOptions(configuration);
         var mediator              = fixture.GetMediator(configuration);
         var storageAccount        = Substitute.For<IStorageAccount>();
 
         var request = new ContainerNamesQuery
         {
-            StorageAccount = new StorageAccountOptions
-            {
-                AccountName = options.AccountName,
-                AccountKey  = options.AccountKey
-            }
+            StorageAccount = fixture.GetStorageAccountOptions(configuration)
         };
 
         if (configuration == ServiceConfiguration.Mocked)

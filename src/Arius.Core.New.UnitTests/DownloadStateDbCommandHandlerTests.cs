@@ -52,20 +52,13 @@ public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<CommandHa
     public async Task Handle_DownloadStateDbCommand_ShouldDownloadBlob(ServiceConfiguration configuration)
     {
         // Arrange
-        var options               = fixture.GetTestRepositoryOptions(configuration);
         var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
         var mediator              = fixture.GetMediator(configuration);
 
         var localPath = Path.Combine(fixture.UnitTestRoot.FullName, $"test{Random.Shared.Next()}.db");
         var command = new DownloadLatestStateDbCommand
         {
-            Repository = new RepositoryOptions
-            {
-                AccountName   = options.AccountName,
-                AccountKey    = options.AccountKey,
-                ContainerName = options.ContainerName,
-                Passphrase    = options.Passphrase
-            },
+            Repository = fixture.GetRepositoryOptions(configuration),
             LocalPath = localPath
         };
 
