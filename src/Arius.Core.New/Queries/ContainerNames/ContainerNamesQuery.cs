@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Arius.Core.New.Queries.ContainerNames;
 
-public record ContainerNamesQuery : IRequest<IAsyncEnumerable<string>>
+public record ContainerNamesQuery : IStreamRequest<string>
 {
     public required StorageAccountOptions StorageAccount { get; init; }
 }
@@ -24,7 +24,7 @@ internal class ContainerNamesQueryValidator : AbstractValidator<ContainerNamesQu
     }
 }
 
-internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery, IAsyncEnumerable<string>>
+internal class ContainerNamesQueryHandler : IStreamRequestHandler<ContainerNamesQuery, string>
 {
     private readonly IStorageAccountFactory              storageAccountFactory;
     private readonly ILogger<ContainerNamesQueryHandler> logger;
@@ -35,21 +35,16 @@ internal class ContainerNamesQueryHandler : IRequestHandler<ContainerNamesQuery,
         this.logger                = logger;
     }
 
-    public async Task<IAsyncEnumerable<string>> Handle(ContainerNamesQuery request, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> Handle(ContainerNamesQuery request, CancellationToken cancellationToken)
     {
         await new ContainerNamesQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        return GetContainerNames(cancellationToken);
+        var credentials    = new StorageAccountOptions { AccountName = request.StorageAccount.AccountName, AccountKey = request.StorageAccount.AccountKey };
+        var storageAccount = storageAccountFactory.GetStorageAccount(credentials);
 
-        async IAsyncEnumerable<string> GetContainerNames([EnumeratorCancellation] CancellationToken cancellationToken)
+        await foreach (var container in storageAccount.GetContainers(cancellationToken))
         {
-            var credentials    = new StorageAccountOptions{AccountName = request.StorageAccount.AccountName, AccountKey = request.StorageAccount.AccountKey };
-            var storageAccount = storageAccountFactory.GetStorageAccount(credentials);
-
-            await foreach (var container in storageAccount.GetContainers(cancellationToken))
-            {
-                yield return container.Name;
-            }
+            yield return container.Name;
         }
     }
 }

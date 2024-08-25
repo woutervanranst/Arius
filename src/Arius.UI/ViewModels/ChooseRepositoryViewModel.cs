@@ -103,8 +103,8 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
                     AccountKey  = AccountKey
                 }
             };
-            var r = await mediator.Send(q);
-            ContainerNames = new ObservableCollection<string>(await r.ToListAsync());
+            var r = await mediator.CreateStream(q).ToListAsync();
+            ContainerNames = new ObservableCollection<string>(r);
 
             if (ContainerName is null && ContainerNames.Count > 0)
                 ContainerName = ContainerNames[0];

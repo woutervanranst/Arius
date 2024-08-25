@@ -1,11 +1,10 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Commands.DownloadStateDb;
-using Arius.Core.New.UnitTests;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
 
-namespace Arius.Tests.Fixtures;
+namespace Arius.Core.New.UnitTests;
 
 public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<CommandHandlerFixture>
 {
