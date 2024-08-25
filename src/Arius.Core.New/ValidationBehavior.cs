@@ -1,8 +1,10 @@
-﻿using FluentValidation;
+﻿using System.Diagnostics;
+using FluentValidation;
 using MediatR;
 
 namespace Arius.Core.New;
 
+[DebuggerStepThrough]
 public class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : class

@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
 using Azure;
+using FluentValidation;
 using MediatR;
 
 namespace Arius.Core.New.Commands.DownloadStateDb;
@@ -10,6 +11,17 @@ public record DownloadStateDbCommand : IRequest<DownloadStateDbCommandResult>
     public required RepositoryOptions  Repository { get; init; }
     public          RepositoryVersion? Version    { get; init; }
     public required string             LocalPath  { get; init; }
+}
+
+internal class DownloadStateDbCommandValidator : AbstractValidator<DownloadStateDbCommand>
+{
+    public DownloadStateDbCommandValidator()
+    {
+        RuleFor(command => command.Repository).SetValidator(new RepositoryOptionsValidator());
+        RuleFor(command => command.LocalPath)
+            .NotEmpty()
+            .Must(localPath => !File.Exists(localPath)).WithMessage("The localpath already exists.");
+    }
 }
 
 public record DownloadStateDbCommandResult
@@ -40,6 +52,8 @@ internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadStateDbCo
 
     public async Task<DownloadStateDbCommandResult> Handle(DownloadStateDbCommand request, CancellationToken cancellationToken)
     {
+        await new DownloadStateDbCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
+
         var repository = storageAccountFactory.GetRepository(request.Repository);
 
         if (request.Version is null)

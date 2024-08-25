@@ -3,8 +3,8 @@ using Arius.Core.New.Commands.DownloadStateDb;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure;
 using FluentAssertions;
+using FluentValidation;
 using NSubstitute;
-using System;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -161,5 +161,30 @@ public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<RequestHa
         storageAccount.GetRepositoryVersions().Returns(new[] { version1, version2, version3 }.ToAsyncEnumerable());
 
         storageAccount.GetRepositoryVersionBlob(Arg.Any<RepositoryVersion>()).Returns(blob);
+    }
+
+    [Fact]
+    public async Task Handle_WhenLocalPathAlreadyExists_ShouldFailValidation()
+    {
+        // Arrange
+        var mediator = fixture.GetMediator(ServiceConfiguration.Mocked);
+
+        var existingFilePath = Path.Combine(Path.GetTempPath(), $"existing-file-{Random.Shared.Next()}.db");
+        File.Create(existingFilePath); // Ensure the file exists
+
+        var command = new DownloadStateDbCommand
+        {
+            Repository = fixture.GetRepositoryOptions(ServiceConfiguration.Mocked), // doesnt matter really
+            LocalPath = existingFilePath
+        };
+
+        // Act
+        Func<Task> act = async () => await mediator.Send(command);
+
+        // Assert
+        await act.Should().ThrowAsync<ValidationException>();
+
+        //// Cleanup
+        //File.Delete(existingFilePath);
     }
 }
