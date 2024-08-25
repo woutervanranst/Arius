@@ -3,12 +3,12 @@ using MediatR;
 
 namespace Arius.Core.New.Queries.GetStateDbVersions;
 
-public record GetRepositoryVersionsQuery : IRequest<IAsyncEnumerable<RepositoryVersion>>
+public record GetRepositoryVersionsQuery : IStreamRequest<RepositoryVersion>
 {
     public required RepositoryOptions Repository { get; init; }
 }
 
-internal class GetRepositoryVersionsQueryHandler : IRequestHandler<GetRepositoryVersionsQuery, IAsyncEnumerable<RepositoryVersion>>
+internal class GetRepositoryVersionsQueryHandler : IStreamRequestHandler<GetRepositoryVersionsQuery, RepositoryVersion>
 {
     private readonly IStorageAccountFactory storageAccountFactory;
 
@@ -17,7 +17,7 @@ internal class GetRepositoryVersionsQueryHandler : IRequestHandler<GetRepository
         this.storageAccountFactory = storageAccountFactory;
     }
 
-    public async Task<IAsyncEnumerable<RepositoryVersion>> Handle(GetRepositoryVersionsQuery request, CancellationToken cancellationToken)
+    public IAsyncEnumerable<RepositoryVersion> Handle(GetRepositoryVersionsQuery request, CancellationToken cancellationToken)
     {
         return storageAccountFactory.GetRepository(request.Repository).GetRepositoryVersions();
     }
