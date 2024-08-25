@@ -4,7 +4,9 @@ using Arius.Core.New.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
+using Arius.Core.Infrastructure.Repositories;
 
 ///*
 // * This is required to test the internals of the Arius.Core assembly
@@ -16,8 +18,10 @@ namespace Arius.Core.New;
 
 public static class IServiceCollectionExtensions
 {
-    public static IServiceCollection AddArius(this IServiceCollection services)
+    public static IServiceCollection AddArius(this IServiceCollection services, Action<AriusConfiguration> configureOptions)
     {
+        services.Configure(configureOptions); // TODO add validation
+
         // Add FluentValidation validators
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -33,6 +37,7 @@ public static class IServiceCollectionExtensions
 
         services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
         services.AddSingleton<ICryptoService, CryptoService>();
+        services.AddSingleton<IStateDbRepositoryFactory, SqliteStateDbRepositoryFactory>();
 
         return services;
     }

@@ -1,8 +1,11 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
 using Azure;
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.New.Commands.DownloadStateDb;
 
@@ -43,7 +46,7 @@ internal class DownloadStateDbCommandHandler : IRequestHandler<DownloadStateDbCo
     private readonly ICryptoService                         cryptoService;
     private readonly ILogger<DownloadStateDbCommandHandler> logger;
 
-    public DownloadStateDbCommandHandler(IStorageAccountFactory storageAccountFactory, ICryptoService cryptoService, ILogger<DownloadStateDbCommandHandler> logger)
+    public DownloadStateDbCommandHandler(IStateDbRepositoryFactory c, IStorageAccountFactory storageAccountFactory, ICryptoService cryptoService, ILogger<DownloadStateDbCommandHandler> logger)
     {
         this.storageAccountFactory = storageAccountFactory;
         this.cryptoService         = cryptoService;

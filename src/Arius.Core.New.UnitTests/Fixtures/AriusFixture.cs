@@ -50,7 +50,7 @@ public abstract class AriusFixture : IDisposable
             mockedTestRepositoryOptions = new Lazy<TestRepositoryOptions>(configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!);
 
             // Register the actual services
-            services.AddArius();
+            services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
             services.AddLogging();
 
             // Add additional services
@@ -73,7 +73,7 @@ public abstract class AriusFixture : IDisposable
             realTestRepositoryOptions = new Lazy<TestRepositoryOptions>(configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!);
 
             // Register the actual services
-            services.AddArius();
+            services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
             services.AddLogging();
 
             // Add additional services
