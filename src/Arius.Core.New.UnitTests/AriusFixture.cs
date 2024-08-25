@@ -11,7 +11,6 @@ namespace Arius.Core.New.UnitTests;
 public abstract class AriusFixture : IDisposable
 {
     public Lazy<TestRepositoryOptions> mockedTestRepositoryOptions;
-
     public Lazy<TestRepositoryOptions> realTestRepositoryOptions;
 
     private Lazy<IMediator>              mockedMediator;
@@ -23,6 +22,8 @@ public abstract class AriusFixture : IDisposable
     private Lazy<IServiceProvider> mockedServiceProvider;
     private Lazy<IServiceProvider> realServiceProvider;
 
+    public DirectoryInfo UnitTestRoot { get; }
+
 
     protected AriusFixture()
     {
@@ -32,6 +33,9 @@ public abstract class AriusFixture : IDisposable
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddUserSecrets<AriusFixture>(optional: true)
             .Build();
+
+        UnitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
+        UnitTestRoot.Create();
 
         InitializeMockedServices();
         InitializeRealServices();
@@ -84,31 +88,22 @@ public abstract class AriusFixture : IDisposable
         }
     }
 
-    public IStorageAccountFactory GetStorageAccountFactory(ServiceConfiguration serviceConfiguration) => 
+    public IStorageAccountFactory GetStorageAccountFactory(ServiceConfiguration serviceConfiguration) =>
         serviceConfiguration == ServiceConfiguration.Mocked ? 
             mockedStorageAccountFactory.Value : 
-            serviceConfiguration == ServiceConfiguration.Real ? 
-                realStorageAccountFactory.Value : 
-                throw new ArgumentOutOfRangeException(nameof(serviceConfiguration), serviceConfiguration, null);
+            realStorageAccountFactory.Value; 
 
     public IMediator GetMediator(ServiceConfiguration serviceConfiguration) => 
         serviceConfiguration == ServiceConfiguration.Mocked ? 
-            mockedMediator.Value : serviceConfiguration == ServiceConfiguration.Real ? 
-                realMediator.Value : 
-                throw new ArgumentOutOfRangeException(nameof(serviceConfiguration), serviceConfiguration, null);
+            mockedMediator.Value : 
+            realMediator.Value;
 
     public TestRepositoryOptions GetTestRepositoryOptions(ServiceConfiguration serviceConfiguration) => 
         serviceConfiguration == ServiceConfiguration.Mocked ? 
             mockedTestRepositoryOptions.Value : 
-            serviceConfiguration == ServiceConfiguration.Real ? 
-                realTestRepositoryOptions.Value : 
-                throw new ArgumentOutOfRangeException(nameof(serviceConfiguration), serviceConfiguration, null);
+            realTestRepositoryOptions.Value;
 
-
-    protected virtual void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration)
-    {
-        // Override this method to add additional services
-    }
+    protected abstract void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration);
 
     public void Dispose()
     {
@@ -120,8 +115,6 @@ public class CommandHandlerFixture : AriusFixture
 {
     protected override void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration)
     {
-        base.ConfigureServices(services, serviceConfiguration);
-
         if (serviceConfiguration == ServiceConfiguration.Mocked)
         {
             // Substitute for the dependencies

@@ -57,7 +57,7 @@ public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<CommandHa
         var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
         var mediator              = fixture.GetMediator(configuration);
 
-        var localPath = @"c:\ariustest\wouter.db";
+        var localPath = Path.Combine(fixture.UnitTestRoot.FullName, $"test{Random.Shared.Next()}.db");
         var command = new DownloadLatestStateDbCommand
         {
             Repository = new RepositoryOptions
