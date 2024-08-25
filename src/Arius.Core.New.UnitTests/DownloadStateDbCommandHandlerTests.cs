@@ -1,16 +1,17 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Commands.DownloadStateDb;
+using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
 using MediatR;
 using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
-public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<CommandHandlerFixture>
+public sealed class DownloadStateDbCommandHandlerTests : IClassFixture<RequestHandlerFixture>
 {
-    private readonly CommandHandlerFixture fixture;
+    private readonly RequestHandlerFixture fixture;
 
-    public DownloadStateDbCommandHandlerTests(CommandHandlerFixture fixture)
+    public DownloadStateDbCommandHandlerTests(RequestHandlerFixture fixture)
     {
         this.fixture = fixture;
     }

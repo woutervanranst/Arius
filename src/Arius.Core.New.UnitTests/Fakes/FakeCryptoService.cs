@@ -1,8 +1,8 @@
 using Arius.Core.New.Services;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.New.UnitTests.Fakes;
 
-public class MockCryptoService : ICryptoService
+internal class FakeCryptoService : ICryptoService
 {
     public async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
     {

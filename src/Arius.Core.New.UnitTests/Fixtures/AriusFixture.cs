@@ -1,12 +1,12 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
-using Arius.Tests.Fixtures;
+using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.New.UnitTests.Fixtures;
 
 public abstract class AriusFixture : IDisposable
 {
@@ -127,7 +127,7 @@ public abstract class AriusFixture : IDisposable
     }
 }
 
-public class CommandHandlerFixture : AriusFixture
+public class RequestHandlerFixture : AriusFixture
 {
     protected override void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration)
     {
@@ -136,7 +136,7 @@ public class CommandHandlerFixture : AriusFixture
             // Substitute for the dependencies
 
             services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
-            services.AddSingleton<ICryptoService, MockCryptoService>();
+            services.AddSingleton<ICryptoService, FakeCryptoService>();
         }
     }
 }

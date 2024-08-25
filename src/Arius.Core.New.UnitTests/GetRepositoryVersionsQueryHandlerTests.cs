@@ -1,15 +1,16 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.GetStateDbVersions;
+using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
 using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
-public class GetRepositoryVersionsQueryHandlerTests : IClassFixture<CommandHandlerFixture>
+public class GetRepositoryVersionsQueryHandlerTests : IClassFixture<RequestHandlerFixture>
 {
-    private readonly CommandHandlerFixture fixture;
+    private readonly RequestHandlerFixture fixture;
 
-    public GetRepositoryVersionsQueryHandlerTests(CommandHandlerFixture fixture)
+    public GetRepositoryVersionsQueryHandlerTests(RequestHandlerFixture fixture)
     {
         this.fixture = fixture;
     }

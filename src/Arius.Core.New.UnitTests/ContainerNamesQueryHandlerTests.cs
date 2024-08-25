@@ -1,15 +1,16 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.ContainerNames;
+using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
 using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
-public class ContainerNamesQueryHandlerTests : IClassFixture<CommandHandlerFixture>
+public class ContainerNamesQueryHandlerTests : IClassFixture<RequestHandlerFixture>
 {
-    private readonly CommandHandlerFixture fixture;
+    private readonly RequestHandlerFixture fixture;
 
-    public ContainerNamesQueryHandlerTests(CommandHandlerFixture fixture)
+    public ContainerNamesQueryHandlerTests(RequestHandlerFixture fixture)
     {
         this.fixture = fixture;
     }
