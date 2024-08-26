@@ -5,6 +5,6 @@ public record AriusConfiguration
     public required DirectoryInfo LocalConfigRoot { get; set; }
 
 
-    private DirectoryInfo StateDbRoot                              => LocalConfigRoot.CreateSubdirectory("StateDbs");
-    public DirectoryInfo GetStateDbForRepositoryName(string containerName) => StateDbRoot.CreateSubdirectory(containerName);
+    private DirectoryInfo StateDbRoot                                                  => LocalConfigRoot.CreateSubdirectory("StateDbs");
+    public  DirectoryInfo GetLocalStateDbFolderForRepositoryName(string containerName) => StateDbRoot.CreateSubdirectory(containerName);
 }
