@@ -1,9 +1,15 @@
+using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.Services;
 using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
@@ -118,6 +124,11 @@ public abstract class AriusFixture : IDisposable
             ContainerName = GetTestRepositoryOptions(serviceConfiguration).ContainerName,
             Passphrase    = GetTestRepositoryOptions(serviceConfiguration).Passphrase
         };
+
+    public IStateDbRepositoryFactory GetStateDbRepositoryFactory(ServiceConfiguration serviceConfiguration) =>
+        serviceConfiguration == ServiceConfiguration.Mocked ?
+            mockedServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>() :
+            realServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>();
 
     protected abstract void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration);
 

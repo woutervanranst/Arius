@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Domain;
 
-internal record PointerFileEntry
+public record PointerFileEntry
 {
     public byte[] HashValue { get; init; }
 
@@ -10,11 +10,6 @@ internal record PointerFileEntry
     public Hash Hash => new(HashValue);
 
     public string RelativeName { get; init; }
-
-    /// <summary>
-    /// Version (in Universal Time)
-    /// </summary>
-    public DateTime VersionUtc { get; init; }
 
     public DateTime? CreationTimeUtc  { get; init; }
     public DateTime? LastWriteTimeUtc { get; init; }

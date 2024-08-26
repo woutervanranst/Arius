@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Domain.Storage;
-using Arius.Core.New.Commands.DownloadStateDb;
 using FluentValidation;
 using MediatR;
 
@@ -66,13 +65,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        // Download latest state database
-        var downloadStateDbCommand = new DownloadStateDbCommand
-        {
-            Repository = request.Repository,
-            LocalPath  = request.LocalRoot.FullName
-        };
+        throw new NotImplementedException();
 
-        await mediator.Send(downloadStateDbCommand);
+        //// Download latest state database
+        //var downloadStateDbCommand = new DownloadStateDbCommand
+        //{
+        //    Repository = request.Repository,
+        //    LocalPath  = request.LocalRoot.FullName
+        //};
+
+        //await mediator.Send(downloadStateDbCommand);
     }
 }

@@ -5,9 +5,16 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 public class AzureStorageAccountFactory : IStorageAccountFactory
 {
+    private readonly AzureContainerFactory containerFactory;
+
+    public AzureStorageAccountFactory(AzureContainerFactory containerFactory)
+    {
+        this.containerFactory = containerFactory;
+    }
+
     public IStorageAccount GetStorageAccount(StorageAccountOptions storageAccountOptions)
     {
-        return new AzureStorageAccount(storageAccountOptions);
+        return new AzureStorageAccount(storageAccountOptions, containerFactory);
     }
 
     public IStorageAccount GetStorageAccount(StorageAccountOptions storageAccountOptions, int maxRetries, TimeSpan timeout)
@@ -21,6 +28,6 @@ public class AzureStorageAccountFactory : IStorageAccountFactory
             }
         };
 
-        return new AzureStorageAccount(storageAccountOptions, o);
+        return new AzureStorageAccount(storageAccountOptions, containerFactory);
     }
 }

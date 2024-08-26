@@ -7,37 +7,33 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureStorageAccount : IStorageAccount
 {
-    private readonly BlobServiceClient blobServiceClient;
+    private readonly AzureContainerFactory containerFactory;
+    private readonly BlobServiceClient     blobServiceClient;
     
-    public AzureStorageAccount(StorageAccountOptions storageAccountOptions, BlobClientOptions options)
+    public AzureStorageAccount(StorageAccountOptions storageAccountOptions, AzureContainerFactory containerFactory, BlobClientOptions options)
     {
+        this.containerFactory = containerFactory;
         blobServiceClient = new BlobServiceClient(
             new Uri($"https://{storageAccountOptions.AccountName}.blob.core.windows.net"),
             new StorageSharedKeyCredential(storageAccountOptions.AccountName, storageAccountOptions.AccountKey),
             options);
-
-        //AccountKey = storageAccountOptions.AccountKey;
     }
 
-    public AzureStorageAccount(StorageAccountOptions storageAccountOptions)
-        : this(storageAccountOptions, new BlobClientOptions())
+    public AzureStorageAccount(StorageAccountOptions storageAccountOptions, AzureContainerFactory containerFactory)
+        : this(storageAccountOptions, containerFactory, new BlobClientOptions())
     {
     }
 
-
-    //public string AccountName => blobServiceClient.AccountName;
-    //public string AccountKey  { get; }
 
     public IContainer GetContainer(string containerName)
     {
-        return new AzureContainer(this, blobServiceClient.GetBlobContainerClient(containerName));
+        return containerFactory.Create(this, blobServiceClient, containerName);
     }
 
-    public async IAsyncEnumerable<IContainer> GetContainers([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public IAsyncEnumerable<IContainer> GetContainers([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var containerItem in blobServiceClient.GetBlobContainersAsync(cancellationToken: cancellationToken))
-        {
-            yield return new AzureContainer(this, blobServiceClient.GetBlobContainerClient(containerItem.Name));
-        }
+        return blobServiceClient
+            .GetBlobContainersAsync(cancellationToken: cancellationToken)
+            .Select(containerItem => GetContainer(containerItem.Name));
     }
 }

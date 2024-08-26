@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Services;
 using Arius.Core.Infrastructure.Repositories;
 
 ///*
@@ -36,8 +37,10 @@ public static class IServiceCollectionExtensions
         });
 
         services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
-        services.AddSingleton<ICryptoService, CryptoService>();
+        services.AddSingleton<AzureContainerFactory>();
+        services.AddSingleton<AzureRepositoryFactory>();
         services.AddSingleton<IStateDbRepositoryFactory, SqliteStateDbRepositoryFactory>();
+        services.AddSingleton<ICryptoService, CryptoService>();
 
         return services;
     }

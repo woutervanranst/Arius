@@ -5,13 +5,15 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureContainer : IContainer
 {
-    private readonly AzureStorageAccount storageAccount;
-    private readonly BlobContainerClient blobContainerClient;
+    private readonly AzureStorageAccount    storageAccount;
+    private readonly BlobContainerClient    blobContainerClient;
+    private readonly AzureRepositoryFactory azureRepositoryFactory;
 
-    public AzureContainer(AzureStorageAccount storageAccount, BlobContainerClient blobContainerClient)
+    public AzureContainer(AzureStorageAccount storageAccount, BlobContainerClient blobContainerClient, AzureRepositoryFactory azureRepositoryFactory)
     {
-        this.storageAccount      = storageAccount;
-        this.blobContainerClient = blobContainerClient;
+        this.storageAccount         = storageAccount;
+        this.blobContainerClient    = blobContainerClient;
+        this.azureRepositoryFactory = azureRepositoryFactory;
     }
 
     public IStorageAccount StorageAccount => storageAccount;
@@ -19,6 +21,6 @@ internal class AzureContainer : IContainer
 
     public IRepository GetRepository(string passphrase)
     {
-        return new AzureRepository(blobContainerClient, passphrase);
+        return azureRepositoryFactory.Create(blobContainerClient, passphrase);
     }
 }

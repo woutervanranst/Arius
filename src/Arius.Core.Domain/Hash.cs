@@ -1,6 +1,6 @@
 ﻿namespace Arius.Core.Domain;
 
-internal record Hash // IEquatable is implicitly implemented
+public record Hash // IEquatable is implicitly implemented
 {
     public Hash(byte[] value)
     {
