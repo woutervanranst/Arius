@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Services;
 using Azure;

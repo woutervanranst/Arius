@@ -1,14 +1,18 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Services;
+using Arius.Core.Domain.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureRepository : IRepository
 {
-    private readonly BlobContainerClient blobContainerClient;
-    private readonly string              passphrase;
+    private readonly BlobContainerClient      blobContainerClient;
+    private readonly string                   passphrase;
+    private readonly ICryptoService           cryptoService;
+    private readonly ILogger<AzureRepository> logger;
 
     private readonly AzureContainerFolder StateFolder;
     private readonly AzureContainerFolder ChunkListsFolder;
@@ -20,30 +24,18 @@ internal class AzureRepository : IRepository
     private const string CHUNKS_FOLDER_NAME            = "chunks";
     private const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
 
-    public AzureRepository(/*IContainer container, */BlobContainerClient blobContainerClient, string passphrase)
+    public AzureRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRepository> logger)
     {
         this.blobContainerClient = blobContainerClient;
         this.passphrase          = passphrase;
-        //Container                = container;
+        this.cryptoService       = cryptoService;
+        this.logger              = logger;
 
         StateFolder            = new AzureContainerFolder(blobContainerClient, STATE_DBS_FOLDER_NAME);
         ChunkListsFolder       = new AzureContainerFolder(blobContainerClient, CHUNK_LISTS_FOLDER_NAME);
         ChunksFolder           = new AzureContainerFolder(blobContainerClient, CHUNKS_FOLDER_NAME);
         RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, REHYDRATED_CHUNKS_FOLDER_NAME);
     }
-    //public IContainer Container  { get; }
-
-    //public async Task<IEnumerable<string>> ListBlobsAsync(CancellationToken cancellationToken = default)
-    //{
-    //    var blobs = new List<string>();
-
-    //    await foreach (var blobItem in blobContainerClient.GetBlobs(cancellationToken: cancellationToken))
-    //    {
-    //        blobs.Add(blobItem.Name);
-    //    }
-
-    //    return blobs;
-    //}
 
     public IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
     {
@@ -53,6 +45,15 @@ internal class AzureRepository : IRepository
     public IBlob GetRepositoryVersionBlob(RepositoryVersion repositoryVersion)
     {
         return StateFolder.GetBlob(repositoryVersion.Name);
+    }
+
+    public async Task DownloadAsync(IBlob blob, string localPath, string passphrase, CancellationToken cancellationToken = default)
+    {
+        await using var ss = await blob.OpenReadAsync(cancellationToken);
+        await using var ts = File.Create(localPath);
+        await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+
+        logger.LogInformation($"Successfully downloaded latest state '{blob.Name}' to '{localPath}'");
     }
 }
 

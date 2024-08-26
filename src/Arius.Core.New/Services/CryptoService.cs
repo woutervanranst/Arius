@@ -1,14 +1,9 @@
 ﻿using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using Arius.Core.Domain.Services;
 
 namespace Arius.Core.New.Services;
-
-public interface ICryptoService
-{
-    Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase);
-    Task DecryptAndDecompressAsync(Stream source, Stream target, string passphrase);
-}
 
 public class CryptoService : ICryptoService
 {
