@@ -3,9 +3,7 @@ using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Azure;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using WouterVanRanst.Utils;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
@@ -30,76 +28,57 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
     {
         // TODO Validation
 
-        var repository = storageAccountFactory.GetRepository(repositoryOptions);
+        var repository         = storageAccountFactory.GetRepository(repositoryOptions);
+        var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
 
-        var fullName = await GetLocalRepositoryFullName();
+        version ??= await GetLatestVersionAsync(repository) 
+                    ?? new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
 
-        /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
-         *  NOTE if it still fails, try 'pragma temp_store=memory'
-         */
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={fullName};Cache=Shared",
-            sqliteOptions =>
-            {
-                sqliteOptions.CommandTimeout(60); //set command timeout to 60s to avoid concurrency errors on 'table is locked'
-            });
+        var fullName = await GetLocalRepositoryFullNameAsync(repository, localStateDbFolder, version, repositoryOptions.Passphrase);
 
-        // Create the repository with the configured DbContext
-        return new StateDbRepository(optionsBuilder.Options);
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>()
+            .UseSqlite($"Data Source={fullName};Cache=Shared", sqliteOptions => sqliteOptions.CommandTimeout(60));
 
-        async Task<string> GetLocalRepositoryFullName()
+        return new StateDbRepository(optionsBuilder.Options, version);
+    }
+
+    private async Task<RepositoryVersion?> GetLatestVersionAsync(IRepository repository)
+    {
+        return await repository
+            .GetRepositoryVersions()
+            .OrderBy(b => b.Name)
+            .LastOrDefaultAsync();
+    }
+
+    private async Task<string> GetLocalRepositoryFullNameAsync(IRepository repository, DirectoryInfo stateDbFolder, RepositoryVersion version, string passphrase)
+    {
+        var localPath = stateDbFolder.GetFullName(version.GetFileSystemName());
+
+        if (File.Exists(localPath))
+            return localPath;
+
+        try
         {
-            var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
-
-            if (version is null)
-            {
-                var latestVersion = await GetLatestVersionAsync();
-                if (latestVersion == null)
-                {
-                    // No states yet remotely - this is a fresh archive
-                    return localStateDbFolder.GetFullFileName($"{DateTime.UtcNow:s}");
-                }
-                return await GetLocallyCachedAsync(localStateDbFolder, latestVersion);
-            }
-            else
-            {
-                return await GetLocallyCachedAsync(localStateDbFolder, version);
-            }
-
-            async Task<RepositoryVersion?> GetLatestVersionAsync()
-            {
-                return await repository
-                    .GetRepositoryVersions()
-                    .OrderBy(b => b.Name)
-                    .LastOrDefaultAsync();
-            }
-
-            async Task<string> GetLocallyCachedAsync(DirectoryInfo stateDbFolder, RepositoryVersion version)
-            {
-                var localPath = stateDbFolder.GetFullFileName(version.Name);
-
-                if (File.Exists(localPath))
-                {
-                    // Cached locally, ASSUME it’s the same version
-                    return localPath;
-                }
-
-                try
-                {
-                    var blob = repository.GetRepositoryVersionBlob(version);
-                    await repository.DownloadAsync(blob, localPath, repositoryOptions.Passphrase);
-                    return localPath;
-                }
-                catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
-                {
-                    throw new ArgumentException("The requested version was not found", nameof(version), e);
-                }
-                catch (InvalidDataException e)
-                {
-                    throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
-                }
-            }
+            var blob = repository.GetRepositoryVersionBlob(version);
+            await repository.DownloadAsync(blob, localPath, passphrase);
+            return localPath;
         }
+        catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+        {
+            throw new ArgumentException("The requested version was not found", nameof(version), e);
+        }
+        catch (InvalidDataException e)
+        {
+            throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
+        }
+    }
+}
+
+public static class RepositoryVersionExtensions
+{
+    public static string GetFileSystemName(this RepositoryVersion version)
+    {
+        return version.Name.Replace(":", "");
     }
 }
 
@@ -191,14 +170,23 @@ internal class StateDbRepository : IStateDbRepository
 {
     private readonly DbContextOptions<SqliteStateDbContext> dbContextOptions;
 
-    public StateDbRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions)
+    public StateDbRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions, RepositoryVersion version)
     {
+        Version               = version;
         this.dbContextOptions = dbContextOptions;
+
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        context.Database.EnsureCreated();
+        context.Database.Migrate();
     }
+
+    public RepositoryVersion Version { get; }
 
     public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntries()
     {
-        using var context = new SqliteStateDbContext(dbContextOptions);
+        var context = new SqliteStateDbContext(dbContextOptions); // not with using, maybe detach them all?
         return context.PointerFileEntries.ToAsyncEnumerable();
     }
+
+    public IAsyncEnumerable<string> GetBinaryEntries() => AsyncEnumerable.Empty<string>();
 }

@@ -9,5 +9,7 @@ public interface IStateDbRepositoryFactory
 
 public interface IStateDbRepository
 {
-
+    RepositoryVersion                  Version { get; }
+    IAsyncEnumerable<PointerFileEntry> GetPointerFileEntries();
+    IAsyncEnumerable<string>           GetBinaryEntries();
 }

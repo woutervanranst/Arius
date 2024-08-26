@@ -130,6 +130,11 @@ public abstract class AriusFixture : IDisposable
             mockedServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>() :
             realServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>();
 
+    public AriusConfiguration GetAriusConfiguration(ServiceConfiguration serviceConfiguration) =>
+        serviceConfiguration == ServiceConfiguration.Mocked ?
+            mockedServiceProvider.Value.GetRequiredService<IOptions<AriusConfiguration>>().Value :
+            realServiceProvider.Value.GetRequiredService<IOptions<AriusConfiguration>>().Value;
+
     protected abstract void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration);
 
     public void Dispose()
