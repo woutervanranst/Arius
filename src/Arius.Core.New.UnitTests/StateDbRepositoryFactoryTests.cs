@@ -1,7 +1,14 @@
+using Arius.Core.New.UnitTests.Fixtures;
+
 namespace Arius.Core.New.UnitTests;
 
-public sealed class StateDbRepositoryFactoryTests : MockTestBase
+public sealed class StateDbRepositoryFactoryTests : TestBase
 {
+    protected override IAriusFixture ConfigureFixture()
+    {
+        return new MockAriusFixture();
+    }
+
     [Fact]
     public async Task CreateAsync_WhenNewRepository_NewLocalDatabaseInitializedNotDownloaded()
     {

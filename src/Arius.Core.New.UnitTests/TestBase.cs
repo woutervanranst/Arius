@@ -10,14 +10,16 @@ using WouterVanRanst.Utils;
 
 namespace Arius.Core.New.UnitTests;
 
-public abstract class MockTestBase
+public abstract class TestBase
 {
     protected IAriusFixture Fixture { get; }
 
-    protected MockTestBase()
+    protected TestBase()
     {
-        Fixture = new MockAriusFixture();
+        Fixture = ConfigureFixture();
     }
+
+    protected abstract IAriusFixture ConfigureFixture();
 
     protected void GivenLocalFilesystem()
     {
