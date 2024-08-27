@@ -2,10 +2,13 @@ using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Infrastructure.Repositories;
+using Arius.Core.New.Services;
 using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 

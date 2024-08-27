@@ -1,5 +1,4 @@
-﻿using System.IO.Abstractions;
-using Arius.Core.Domain;
+﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Azure;
@@ -11,22 +10,16 @@ namespace Arius.Core.Infrastructure.Repositories;
 public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 {
     private readonly IStorageAccountFactory                  storageAccountFactory;
-    private readonly IFileSystem                             fileSystem;
     private readonly AriusConfiguration                      config;
     private readonly ILogger<SqliteStateDbRepositoryFactory> logger;
 
     public SqliteStateDbRepositoryFactory(
         IStorageAccountFactory storageAccountFactory,
         IOptions<AriusConfiguration> config,
-        IFileSystem fileSystem,
         ILogger<SqliteStateDbRepositoryFactory> logger)
-
-
-
 
     {
         this.storageAccountFactory = storageAccountFactory;
-        this.fileSystem            = fileSystem;
         this.config                = config.Value;
         this.logger                = logger;
     }
@@ -59,9 +52,9 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
     private async Task<string> GetLocalRepositoryFullNameAsync(IRepository repository, DirectoryInfo stateDbFolder, RepositoryVersion version, string passphrase)
     {
-        var localPath = fileSystem.Path.Combine(stateDbFolder.FullName, version.GetFileSystemName());
+        var localPath = stateDbFolder.GetFullName(version.GetFileSystemName());
 
-        if (fileSystem.File.Exists(localPath))
+        if (File.Exists(localPath))
             return localPath;
 
         try

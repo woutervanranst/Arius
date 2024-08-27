@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="11.9.2" />
-    <PackageReference Include="TestableIO.System.IO.Abstractions" Version="21.0.29" />
     <PackageReference Include="WouterVanRanst.Utils" Version="1.0.7" />
   </ItemGroup>
 

@@ -12,7 +12,6 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
-    <PackageReference Include="TestableIO.System.IO.Abstractions" Version="21.0.29" />
   </ItemGroup>
 
   <ItemGroup>
