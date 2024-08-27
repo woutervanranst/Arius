@@ -209,18 +209,30 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     public async Task CreateAsync_WhenSpecificVersionDoesNotExist_ShouldThrowArgumentException()
     {
         // Arrange
-        GivenLocalFilesystem();
-        var requestedVersion = new RepositoryVersion { Name = "v3.0" };
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
-        var blob = Substitute.For<IBlob>();
-        repository.GetRepositoryVersionBlob(requestedVersion).Returns(blob);
-        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(Task.FromException(new RequestFailedException(404, "message", "BlobNotFound", null)));
+        GivenLocalFilesystemWithVersions("v1.0", "v2.0");
+        GivenAzureRepositoryWithoutVersion("v3.0");
 
         // Act
-        Func<Task> act = async () => await WhenCreatingStateDb(requestedVersion);
+        Func<Task> act = async () => await WhenCreatingStateDbAsync("v3.0");
 
         // Assert
-        await act.Should().ThrowAsync<ArgumentException>().WithMessage("The requested version was not found*");
+        await ThenArgumentExceptionShouldBeThrownAsync(act, "The requested version was not found*");
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenSpecificVersionExistsLocally_ShouldNotDownloadAndUseLocalVersion()
+    {
+        // Arrange
+        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
+        GivenLocalStateDbCached("v1.1");
+
+        // Act
+        var result = await WhenCreatingStateDbAsync("v1.1");
+
+        // Assert
+        result.Should().NotBeNull();
+        ThenStateDbVersionShouldBe(result, "v1.1");
+        ThenLocalStateDbShouldExist(result);
+        ThenDownloadShouldNotBeCalled();
     }
 }
