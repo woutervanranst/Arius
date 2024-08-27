@@ -23,6 +23,9 @@ public abstract class TestBase
 
     protected abstract IAriusFixture ConfigureFixture();
 
+
+    // --- GIVEN
+
     protected void GivenLocalFilesystem()
     {
         // No need to initialize anything
@@ -106,6 +109,9 @@ public abstract class TestBase
             });
     }
 
+
+    // --- WHEN
+
     protected async Task<IStateDbRepository> WhenCreatingStateDb(string versionName = null)
     {
         var factory           = Fixture.StateDbRepositoryFactory;
@@ -123,6 +129,9 @@ public abstract class TestBase
     {
         return Fixture.Mediator.CreateStream(request);
     }
+
+
+    // --- THEN
 
     protected void ThenStateDbVersionShouldBe(IStateDbRepository stateDbRepository, string expectedVersion)
     {
@@ -165,6 +174,9 @@ public abstract class TestBase
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage($"*{expectedMessagePart}*");
     }
+
+
+    // --- HELPERS
 
     private string GetLocalStateDbForRepositoryFullName(IAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
     {

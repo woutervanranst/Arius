@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
 
