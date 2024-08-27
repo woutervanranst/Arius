@@ -16,8 +16,33 @@ public abstract class SqliteStateDbRepositoryFactoryTestsBase
 
     protected void GivenLocalFilesystem()
     {
-        // Initialize the fixture with a local filesystem
         Fixture = new MockAriusFixture();
+    }
+
+    protected void GivenLocalFilesystemWithVersions(params string[] versionNames)
+    {
+        GivenLocalFilesystem();
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var versions = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
+        repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+
+        foreach (var versionName in versionNames)
+        {
+            var version    = new RepositoryVersion { Name = versionName };
+            var dbFullName = GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, version);
+
+            CreateLocalDatabase(dbFullName);
+        }
+
+        void CreateLocalDatabase(string dbFullName)
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+            optionsBuilder.UseSqlite($"Data Source={dbFullName}");
+
+            using var context = new SqliteStateDbContext(optionsBuilder.Options);
+            context.Database.EnsureCreated();
+            context.Database.Migrate();
+        }
     }
 
     protected void GivenAzureRepositoryWithNoVersions()
@@ -26,29 +51,28 @@ public abstract class SqliteStateDbRepositoryFactoryTestsBase
         repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
-    protected void GivenAzureRepositoryWithVersions(params RepositoryVersion[] versions)
+    protected void GivenAzureRepositoryWithVersions(params string[] versionNames)
     {
         var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var versions = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
     }
 
-    protected void GivenLocalStateDbCached(RepositoryVersion version)
+    protected void GivenAzureRepositoryWithoutVersion(string versionName)
     {
-        var dbFullName = GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, version);
-        
-        // CreateValidSqliteDatabase
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={dbFullName}");
-
-        using var context = new SqliteStateDbContext(optionsBuilder.Options);
-        context.Database.EnsureCreated();
-        context.Database.Migrate();
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var blob = Substitute.For<IBlob>();
+        var version = new RepositoryVersion { Name = versionName };
+        repository.GetRepositoryVersionBlob(version).Returns(blob);
+        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromException(new RequestFailedException(404, "message", "BlobNotFound", null)));
     }
 
-    protected async Task<IStateDbRepository> WhenCreatingStateDb(RepositoryVersion? version = null)
+    protected async Task<IStateDbRepository> WhenCreatingStateDb(string versionName = null)
     {
         var factory = Fixture.StateDbRepositoryFactory;
         var repositoryOptions = Fixture.RepositoryOptions;
+        var version = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
     }
 
@@ -86,6 +110,12 @@ public abstract class SqliteStateDbRepositoryFactoryTestsBase
     {
         var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
         repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    protected async Task ThenArgumentExceptionShouldBeThrownAsync(Func<Task> act, string expectedMessagePart)
+    {
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage($"*{expectedMessagePart}*");
     }
 
     private string GetLocalStateDbForRepositoryFullName(MockAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
