@@ -224,7 +224,6 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     {
         // Arrange
         GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
-        GivenLocalStateDbCached("v1.1");
 
         // Act
         var result = await WhenCreatingStateDbAsync("v1.1");
