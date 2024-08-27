@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain;
+﻿using System.IO.Abstractions;
+using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Azure;
@@ -28,51 +29,81 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
     {
         // TODO Validation
 
-        var repository         = storageAccountFactory.GetRepository(repositoryOptions);
-        var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
+        var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
-        version ??= await GetLatestVersionAsync(repository) 
-                    ?? new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
+        var (fullName, _) = await GetLocalRepositoryFullName();
 
-        var fullName = await GetLocalRepositoryFullNameAsync(repository, localStateDbFolder, version, repositoryOptions.Passphrase);
 
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>()
-            .UseSqlite($"Data Source={fullName};Cache=Shared", sqliteOptions => sqliteOptions.CommandTimeout(60));
+        /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
+         *  NOTE if it still fails, try 'pragma temp_store=memory'
+         */
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        optionsBuilder.UseSqlite($"Data Source={fullName};Cache=Shared",
+            sqliteOptions =>
+            {
+                sqliteOptions.CommandTimeout(60); //set command timeout to 60s to avoid concurrency errors on 'table is locked'
+            });
 
+        // Create the repository with the configured DbContext
         return new StateDbRepository(optionsBuilder.Options, version);
-    }
 
-    private async Task<RepositoryVersion?> GetLatestVersionAsync(IRepository repository)
-    {
-        return await repository
-            .GetRepositoryVersions()
-            .OrderBy(b => b.Name)
-            .LastOrDefaultAsync();
-    }
-
-    private async Task<string> GetLocalRepositoryFullNameAsync(IRepository repository, DirectoryInfo stateDbFolder, RepositoryVersion version, string passphrase)
-    {
-        var localPath = stateDbFolder.GetFullName(version.GetFileSystemName());
-
-        if (File.Exists(localPath))
-            return localPath;
-
-        try
+        async Task<(string,RepositoryVersion)> GetLocalRepositoryFullName()
         {
-            var blob = repository.GetRepositoryVersionBlob(version);
-            await repository.DownloadAsync(blob, localPath, passphrase);
-            return localPath;
-        }
-        catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
-        {
-            throw new ArgumentException("The requested version was not found", nameof(version), e);
-        }
-        catch (InvalidDataException e)
-        {
-            throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
+            var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
+
+            if (version is null)
+            {
+                var latestVersion = await GetLatestVersionAsync();
+                if (latestVersion == null)
+                {
+                    // No states yet remotely - this is a fresh archive
+                    version = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
+                    return (localStateDbFolder.GetFullName(version.Name), version);
+                }
+                return (await GetLocallyCachedAsync(localStateDbFolder, latestVersion), latestVersion);
+            }
+            else
+            {
+                return (await GetLocallyCachedAsync(localStateDbFolder, version), version);
+            }
+
+            async Task<RepositoryVersion?> GetLatestVersionAsync()
+            {
+                return await repository
+                    .GetRepositoryVersions()
+                    .OrderBy(b => b.Name)
+                    .LastOrDefaultAsync();
+            }
+
+            async Task<string> GetLocallyCachedAsync(IDirectoryInfo stateDbFolder, RepositoryVersion version)
+            {
+                var localPath = stateDbFolder.GetFullName(version.Name);
+
+                if (File.Exists(localPath))
+                {
+                    // Cached locally, ASSUME it’s the same version
+                    return localPath;
+                }
+
+                try
+                {
+                    var blob = repository.GetRepositoryVersionBlob(version);
+                    await repository.DownloadAsync(blob, localPath, repositoryOptions.Passphrase);
+                    return localPath;
+                }
+                catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
+                {
+                    throw new ArgumentException("The requested version was not found", nameof(version), e);
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
+                }
+            }
         }
     }
 }
+
 
 public static class RepositoryVersionExtensions
 {

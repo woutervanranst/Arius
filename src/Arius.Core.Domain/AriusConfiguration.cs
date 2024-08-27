@@ -1,10 +1,12 @@
-﻿namespace Arius.Core.Domain;
+﻿using System.IO.Abstractions;
+
+namespace Arius.Core.Domain;
 
 public record AriusConfiguration
 {
-    public required DirectoryInfo LocalConfigRoot { get; set; }
+    public required IDirectoryInfo LocalConfigRoot { get; set; }
 
 
-    private DirectoryInfo StateDbRoot                                                  => LocalConfigRoot.CreateSubdirectory("StateDbs");
-    public  DirectoryInfo GetLocalStateDbFolderForRepositoryName(string containerName) => StateDbRoot.CreateSubdirectory(containerName);
+    private IDirectoryInfo StateDbRoot                                                  => LocalConfigRoot.CreateSubdirectory("StateDbs");
+    public  IDirectoryInfo GetLocalStateDbFolderForRepositoryName(string containerName) => StateDbRoot.CreateSubdirectory(containerName);
 }
