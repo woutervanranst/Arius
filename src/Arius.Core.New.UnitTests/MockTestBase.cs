@@ -12,7 +12,7 @@ namespace Arius.Core.New.UnitTests;
 
 public abstract class MockTestBase
 {
-    protected MockAriusFixture Fixture { get; }
+    protected IAriusFixture Fixture { get; }
 
     protected MockTestBase()
     {
@@ -135,7 +135,7 @@ public abstract class MockTestBase
             .WithMessage($"*{expectedMessagePart}*");
     }
 
-    private string GetLocalStateDbForRepositoryFullName(MockAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
+    private string GetLocalStateDbForRepositoryFullName(IAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
     {
         return fixture.AriusConfiguration
             .GetLocalStateDbFolderForRepository(repositoryOptions)
