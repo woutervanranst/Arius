@@ -1,5 +1,4 @@
-﻿using System.IO.Abstractions;
-using Arius.Core.Domain;
+﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Azure;
@@ -31,8 +30,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
         var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
-        var (fullName, _) = await GetLocalRepositoryFullName();
-
+        var fullName = await GetLocalRepositoryFullName();
 
         /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'
@@ -47,7 +45,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
         // Create the repository with the configured DbContext
         return new StateDbRepository(optionsBuilder.Options, version);
 
-        async Task<(string,RepositoryVersion)> GetLocalRepositoryFullName()
+        async Task<string> GetLocalRepositoryFullName()
         {
             var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
 
@@ -57,14 +55,14 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
                 if (latestVersion == null)
                 {
                     // No states yet remotely - this is a fresh archive
-                    version = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
-                    return (localStateDbFolder.GetFullName(version.Name), version);
+                    version = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" }; // TODO: this is a side effect
+                    return localStateDbFolder.GetFullName(version.GetFileSystemName());
                 }
-                return (await GetLocallyCachedAsync(localStateDbFolder, latestVersion), latestVersion);
+                return await GetLocallyCachedAsync(localStateDbFolder, latestVersion);
             }
             else
             {
-                return (await GetLocallyCachedAsync(localStateDbFolder, version), version);
+                return await GetLocallyCachedAsync(localStateDbFolder, version);
             }
 
             async Task<RepositoryVersion?> GetLatestVersionAsync()
@@ -75,7 +73,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
                     .LastOrDefaultAsync();
             }
 
-            async Task<string> GetLocallyCachedAsync(IDirectoryInfo stateDbFolder, RepositoryVersion version)
+            async Task<string> GetLocallyCachedAsync(DirectoryInfo stateDbFolder, RepositoryVersion version)
             {
                 var localPath = stateDbFolder.GetFullName(version.Name);
 

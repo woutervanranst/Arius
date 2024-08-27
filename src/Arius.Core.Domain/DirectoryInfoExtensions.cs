@@ -1,10 +1,8 @@
-﻿using System.IO.Abstractions;
+﻿namespace WouterVanRanst.Utils;
 
-namespace WouterVanRanst.Utils;
-
-public static class DirectoryInfoExtensions
+public static class IDirectoryInfoExtensions
 {
-    public static string GetFullName(this IDirectoryInfo directoryInfo, string fileName)
+    public static string GetFullName(this DirectoryInfo directoryInfo, string fileName)
     {
         return Path.Combine(directoryInfo.FullName, fileName);
     }

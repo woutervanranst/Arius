@@ -2,140 +2,96 @@ using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
-using Arius.Core.Infrastructure.Repositories;
-using Arius.Core.New.Services;
 using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
 
-public abstract class AriusFixture : IDisposable
+using System;
+
+public interface IAriusFixture : IDisposable
 {
-    public Lazy<TestRepositoryOptions> mockedTestRepositoryOptions;
-    public Lazy<TestRepositoryOptions> realTestRepositoryOptions;
+    DirectoryInfo            UnitTestRoot             { get; }
+    IStorageAccountFactory    StorageAccountFactory    { get; }
+    IMediator                 Mediator                 { get; }
+    TestRepositoryOptions     TestRepositoryOptions    { get; }
+    StorageAccountOptions     StorageAccountOptions    { get; }
+    RepositoryOptions         RepositoryOptions        { get; }
+    IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+    AriusConfiguration        AriusConfiguration       { get; }
+}
 
-    private Lazy<IMediator>              mockedMediator;
-    private Lazy<IStorageAccountFactory> mockedStorageAccountFactory;
+public class MockAriusFixture : IAriusFixture
+{
+    public DirectoryInfo         UnitTestRoot          { get; }
+    public IStorageAccountFactory StorageAccountFactory { get; }
+    public IMediator              Mediator              { get; }
+    public TestRepositoryOptions  TestRepositoryOptions { get; }
 
-    private Lazy<IMediator>              realMediator;
-    private Lazy<IStorageAccountFactory> realStorageAccountFactory;
+    public StorageAccountOptions StorageAccountOptions =>
+        new()
+        {
+            AccountName = TestRepositoryOptions.AccountName,
+            AccountKey  = TestRepositoryOptions.AccountKey
+        };
 
-    private Lazy<IServiceProvider> mockedServiceProvider;
-    private Lazy<IServiceProvider> realServiceProvider;
+    public RepositoryOptions RepositoryOptions =>
+        new()
+        {
+            AccountName   = TestRepositoryOptions.AccountName,
+            AccountKey    = TestRepositoryOptions.AccountKey,
+            ContainerName = TestRepositoryOptions.ContainerName,
+            Passphrase    = TestRepositoryOptions.Passphrase
+        };
 
-    public DirectoryInfo UnitTestRoot { get; }
+    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+    public AriusConfiguration        AriusConfiguration       { get; }
 
-
-    protected AriusFixture()
+    public MockAriusFixture()
     {
         // Setup the configuration
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<AriusFixture>(optional: true)
+            .AddUserSecrets<MockAriusFixture>(optional: true)
             .Build();
 
         UnitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
         UnitTestRoot.Create();
 
-        InitializeMockedServices();
-        InitializeRealServices();
+        // Setup the service collection
+        var services = new ServiceCollection();
 
+        // Add configuration to the service collection
+        TestRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
 
-        void InitializeMockedServices()
-        {
-            // Setup the service collection
-            var services = new ServiceCollection();
+        // Register the mocked services
+        services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
+        services.AddLogging();
 
-            // Add configuration to the service collection
-            mockedTestRepositoryOptions = new Lazy<TestRepositoryOptions>(configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!);
+        // Add additional services
+        ConfigureServices(services);
 
-            // Register the actual services
-            services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
-            services.AddLogging();
+        // Build the service provider
+        var serviceProvider = services.BuildServiceProvider();
 
-            // Add additional services
-            ConfigureServices(services, ServiceConfiguration.Mocked);
-
-            // Build the service provider
-            mockedServiceProvider = new Lazy<IServiceProvider>(services.BuildServiceProvider());
-
-            // Get the required services
-            mockedStorageAccountFactory = new Lazy<IStorageAccountFactory>(mockedServiceProvider.Value.GetRequiredService<IStorageAccountFactory>());
-            mockedMediator              = new Lazy<IMediator>(mockedServiceProvider.Value.GetRequiredService<IMediator>());
-        }
-
-        void InitializeRealServices()
-        {
-            // Setup the service collection
-            var services = new ServiceCollection();
-
-            // Add configuration to the service collection
-            realTestRepositoryOptions = new Lazy<TestRepositoryOptions>(configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!);
-
-            // Register the actual services
-            services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
-            services.AddLogging();
-
-            // Add additional services
-            ConfigureServices(services, ServiceConfiguration.Real);
-
-            // Build the service provider
-            realServiceProvider = new Lazy<IServiceProvider>(services.BuildServiceProvider());
-
-            // Get the required services
-            realStorageAccountFactory = new Lazy<IStorageAccountFactory>(realServiceProvider.Value.GetRequiredService<IStorageAccountFactory>());
-            realMediator              = new Lazy<IMediator>(realServiceProvider.Value.GetRequiredService<IMediator>());
-        }
+        // Get the required services
+        StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
+        Mediator                 = serviceProvider.GetRequiredService<IMediator>();
+        StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();
+        AriusConfiguration       = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
     }
 
-    public IStorageAccountFactory GetStorageAccountFactory(ServiceConfiguration serviceConfiguration) =>
-        serviceConfiguration == ServiceConfiguration.Mocked ? 
-            mockedStorageAccountFactory.Value : 
-            realStorageAccountFactory.Value; 
-
-    public IMediator GetMediator(ServiceConfiguration serviceConfiguration) => 
-        serviceConfiguration == ServiceConfiguration.Mocked ? 
-            mockedMediator.Value : 
-            realMediator.Value;
-
-    public TestRepositoryOptions GetTestRepositoryOptions(ServiceConfiguration serviceConfiguration) => 
-        serviceConfiguration == ServiceConfiguration.Mocked ? 
-            mockedTestRepositoryOptions.Value : 
-            realTestRepositoryOptions.Value;
-
-    public StorageAccountOptions GetStorageAccountOptions(ServiceConfiguration serviceConfiguration) => 
-        new()
-        {
-            AccountName = GetTestRepositoryOptions(serviceConfiguration).AccountName,
-            AccountKey  = GetTestRepositoryOptions(serviceConfiguration).AccountKey
-        };
-
-    public RepositoryOptions GetRepositoryOptions(ServiceConfiguration serviceConfiguration) => 
-        new()
-        {
-            AccountName   = GetTestRepositoryOptions(serviceConfiguration).AccountName,
-            AccountKey    = GetTestRepositoryOptions(serviceConfiguration).AccountKey,
-            ContainerName = GetTestRepositoryOptions(serviceConfiguration).ContainerName,
-            Passphrase    = GetTestRepositoryOptions(serviceConfiguration).Passphrase
-        };
-
-    public IStateDbRepositoryFactory GetStateDbRepositoryFactory(ServiceConfiguration serviceConfiguration) =>
-        serviceConfiguration == ServiceConfiguration.Mocked ?
-            mockedServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>() :
-            realServiceProvider.Value.GetRequiredService<IStateDbRepositoryFactory>();
-
-    public AriusConfiguration GetAriusConfiguration(ServiceConfiguration serviceConfiguration) =>
-        serviceConfiguration == ServiceConfiguration.Mocked ?
-            mockedServiceProvider.Value.GetRequiredService<IOptions<AriusConfiguration>>().Value :
-            realServiceProvider.Value.GetRequiredService<IOptions<AriusConfiguration>>().Value;
-
-    protected abstract void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration);
+    protected virtual void ConfigureServices(IServiceCollection services)
+    {
+        // Add mocked services here
+        services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
+        services.AddSingleton<ICryptoService, FakeCryptoService>();
+    }
 
     public void Dispose()
     {
@@ -143,22 +99,73 @@ public abstract class AriusFixture : IDisposable
     }
 }
 
-public class RequestHandlerFixture : AriusFixture
+public class RealAriusFixture : IAriusFixture
 {
-    protected override void ConfigureServices(IServiceCollection services, ServiceConfiguration serviceConfiguration)
-    {
-        if (serviceConfiguration == ServiceConfiguration.Mocked)
-        {
-            // Substitute for the dependencies
+    private readonly IServiceProvider serviceProvider;
 
-            services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
-            services.AddSingleton<ICryptoService, FakeCryptoService>();
-        }
+    public DirectoryInfo         UnitTestRoot          { get; }
+    public IStorageAccountFactory StorageAccountFactory { get; }
+    public IMediator              Mediator              { get; }
+    public TestRepositoryOptions  TestRepositoryOptions { get; }
+    public StorageAccountOptions StorageAccountOptions =>
+        new()
+        {
+            AccountName = TestRepositoryOptions.AccountName,
+            AccountKey = TestRepositoryOptions.AccountKey
+        };
+    public RepositoryOptions RepositoryOptions =>
+        new()
+        {
+            AccountName = TestRepositoryOptions.AccountName,
+            AccountKey = TestRepositoryOptions.AccountKey,
+            ContainerName = TestRepositoryOptions.ContainerName,
+            Passphrase = TestRepositoryOptions.Passphrase
+        };
+    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+    public AriusConfiguration AriusConfiguration { get; }
+
+    public RealAriusFixture()
+    {
+        // Setup the configuration
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddUserSecrets<RealAriusFixture>(optional: true)
+            .Build();
+
+        UnitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
+        UnitTestRoot.Create();
+
+        // Setup the service collection
+        var services = new ServiceCollection();
+
+        // Add configuration to the service collection
+        TestRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
+
+        // Register the real services
+        services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
+        services.AddLogging();
+
+        // Add additional services
+        ConfigureServices(services);
+
+        // Build the service provider
+        serviceProvider = services.BuildServiceProvider();
+
+        // Get the required services
+        StorageAccountFactory = serviceProvider.GetRequiredService<IStorageAccountFactory>();
+        Mediator = serviceProvider.GetRequiredService<IMediator>();
+        StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();
+        AriusConfiguration = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
+    }
+
+    protected virtual void ConfigureServices(IServiceCollection services)
+    {
+        // Add real services here
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if necessary
     }
 }
-
-public enum ServiceConfiguration
-{
-    Mocked,
-    Real
-}    
