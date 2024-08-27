@@ -5,6 +5,7 @@ using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using File = System.IO.File;
 
 namespace Arius.Core.Infrastructure.Repositories;
 

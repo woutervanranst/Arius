@@ -2,7 +2,6 @@
 using Arius.Core.Domain.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;

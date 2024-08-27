@@ -1,5 +1,6 @@
 ﻿using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 using FluentValidation;
 using MediatR;
 
@@ -53,11 +54,16 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
+    private readonly IFileSystem                    fileSystem;
     private readonly IStateDbRepositoryFactory      stateDbRepositoryFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
-    public ArchiveCommandHandler(IStateDbRepositoryFactory stateDbRepositoryFactory, ILogger<ArchiveCommandHandler> logger)
+    public ArchiveCommandHandler(
+        IFileSystem fileSystem,
+        IStateDbRepositoryFactory stateDbRepositoryFactory, 
+        ILogger<ArchiveCommandHandler> logger)
     {
+        this.fileSystem               = fileSystem;
         this.stateDbRepositoryFactory = stateDbRepositoryFactory;
         this.logger                   = logger;
     }
@@ -69,6 +75,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // Download latest state database
         var stateDbRepository = await stateDbRepositoryFactory.CreateAsync(request.Repository);
 
+        //Index the request.LocalRoot
 
         //var downloadStateDbCommand = new DownloadStateDbCommand
         //{
@@ -83,4 +90,49 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         throw new NotImplementedException();
 
     }
+
+    private IEnumerable<(PointerFile? pf, BinaryFile? bf)> EnumerateAllowsFiles(DirectoryInfo root)
+    {
+        var seenFiles = new HashSet<string>();
+
+        foreach (var file in fileSystem.EnumerateFiles(root))
+        {
+            if (!seenFiles.Add(file.BinaryFileFullName))
+                continue;
+
+            if (file.IsPointerFile)
+            {
+                // PointerFile exists
+                var pf = file.GetPointerFile();
+
+                if (pf.GetBinaryFile() is { Exists: true } bf)
+                {
+                    // BinaryFile exists too
+                    yield return (pf, bf);
+                }
+                else
+                {
+                    // BinaryFile does not exist
+                    yield return (pf, null);
+                }
+            }
+            else
+            {
+                // BinaryFile exists
+                var bf = file.GetBinaryFile();
+
+                if (bf.GetPointerFile() is { Exists : true } pf)
+                {
+                    // PointerFile exists too
+                    yield return (pf, bf);
+                }
+                else
+                {
+                    // BinaryFile does not exist
+                    yield return (null, bf);
+                }
+            }
+        }
+    }
 }
+
