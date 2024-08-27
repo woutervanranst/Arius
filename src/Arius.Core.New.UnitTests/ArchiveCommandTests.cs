@@ -10,8 +10,8 @@ public class ArchiveCommandTests : TestBase
     protected override IAriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
-            .WithMockedStorageAccountFactory()
-            .WithFakeCryptoService()
+            //.WithMockedStorageAccountFactory()
+            //.WithFakeCryptoService()
             .WithPopulatedSourceFolder()
             .Build();
     }

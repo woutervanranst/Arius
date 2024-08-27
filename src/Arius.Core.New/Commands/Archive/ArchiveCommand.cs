@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
 
@@ -52,22 +53,23 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
-    private readonly IMediator                      mediator;
+    private readonly IStateDbRepositoryFactory      stateDbRepositoryFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
-    public ArchiveCommandHandler(IMediator mediator, ILogger<ArchiveCommandHandler> logger)
+    public ArchiveCommandHandler(IStateDbRepositoryFactory stateDbRepositoryFactory, ILogger<ArchiveCommandHandler> logger)
     {
-        this.mediator = mediator;
-        this.logger   = logger;
+        this.stateDbRepositoryFactory = stateDbRepositoryFactory;
+        this.logger                   = logger;
     }
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        throw new NotImplementedException();
+        // Download latest state database
+        var stateDbRepository = await stateDbRepositoryFactory.CreateAsync(request.Repository);
 
-        //// Download latest state database
+
         //var downloadStateDbCommand = new DownloadStateDbCommand
         //{
         //    Repository = request.Repository,
@@ -75,5 +77,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         //};
 
         //await mediator.Send(downloadStateDbCommand);
+
+
+
+        throw new NotImplementedException();
+
     }
 }
