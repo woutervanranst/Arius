@@ -1,6 +1,8 @@
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.UnitTests.Fixtures;
+using Azure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
@@ -8,293 +10,83 @@ using WouterVanRanst.Utils;
 
 namespace Arius.Core.New.UnitTests;
 
-public sealed class SqliteStateDbRepositoryFactoryTests
+public abstract class SqliteStateDbRepositoryFactoryTestsBase
 {
-    private readonly MockAriusFixture fixture;
+    protected MockAriusFixture Fixture;
 
-    public SqliteStateDbRepositoryFactoryTests()
+    protected void GivenLocalFilesystem()
     {
-        fixture    = new MockAriusFixture();
+        // Initialize the fixture with a local filesystem
+        Fixture = new MockAriusFixture();
     }
 
-    [Fact]
-    public async Task CreateAsync_WhenNoVersionsAvailable_ShouldReturnNewFileName()
+    protected void GivenAzureRepositoryWithNoVersions()
     {
-        // Arrange
-        var factory           = fixture.StateDbRepositoryFactory;
-        var repositoryOptions = fixture.RepositoryOptions;
-
-        var repository = fixture.StorageAccountFactory.GetRepository(repositoryOptions);
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
         repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+    }
 
-        var startTime = DateTime.UtcNow.TruncateToSeconds();
+    protected void GivenAzureRepositoryWithVersions(params RepositoryVersion[] versions)
+    {
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+    }
 
-        // Act
-        var result = await factory.CreateAsync(repositoryOptions);
+    protected void GivenLocalStateDbCached(RepositoryVersion version)
+    {
+        var dbFullName = GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, version);
+        
+        // CreateValidSqliteDatabase
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        optionsBuilder.UseSqlite($"Data Source={dbFullName}");
 
-        // Assert
-        var endTime = DateTime.UtcNow.TruncateToSeconds();
+        using var context = new SqliteStateDbContext(optionsBuilder.Options);
+        context.Database.EnsureCreated();
+        context.Database.Migrate();
+    }
 
-        DateTime.Parse(result.Version.Name)
+    protected async Task<IStateDbRepository> WhenCreatingStateDb(RepositoryVersion? version = null)
+    {
+        var factory = Fixture.StateDbRepositoryFactory;
+        var repositoryOptions = Fixture.RepositoryOptions;
+        return await factory.CreateAsync(repositoryOptions, version);
+    }
+
+    protected void ThenStateDbVersionShouldBe(IStateDbRepository stateDbRepository, string expectedVersion)
+    {
+        stateDbRepository.Version.Name.Should().Be(expectedVersion);
+    }
+
+    protected void ThenStateDbVersionShouldBeBetween(IStateDbRepository stateDbRepository, DateTime startTime, DateTime endTime)
+    {
+        DateTime.Parse(stateDbRepository.Version.Name)
             .Should()
-            .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime); // Allow for some slack time in the version name comparison
+            .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);
+    }
 
-        File.Exists(GetLocalStateDbForRepositoryFullName(fixture, repositoryOptions, result.Version))
+    protected void ThenLocalStateDbShouldExist(IStateDbRepository stateDbRepository)
+    {
+        File.Exists(GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, stateDbRepository.Version))
             .Should().BeTrue();
+    }
 
-        (await result.GetPointerFileEntries().CountAsync()).Should().Be(0);
-        (await result.GetBinaryEntries().CountAsync()).Should().Be(0);
+    protected void ThenStateDbShouldBeEmpty(IStateDbRepository stateDbRepository)
+    {
+        stateDbRepository.GetPointerFileEntries().CountAsync().Result.Should().Be(0);
+        stateDbRepository.GetBinaryEntries().CountAsync().Result.Should().Be(0);
+    }
+
+    protected void ThenDownloadShouldNotBeCalled()
+    {
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
         repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
-    //private readonly RequestHandlerFixture fixture;
-
-    //public SqliteStateDbRepositoryFactoryTests(RequestHandlerFixture fixture)
-    //{
-    //    this.fixture = fixture;
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenNoVersionsAvailable_ShouldReturnNewFileName(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var repositoryOptions = fixture.GetRepositoryOptions(configuration);
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
-    //    }
-
-    //    var startTime = DateTime.UtcNow.TruncateToSeconds();
-
-    //    // Act
-    //    var result = await factory.CreateAsync(repositoryOptions);
-
-    //    // Assert
-    //    var endTime = DateTime.UtcNow.TruncateToSeconds();
-
-    //    DateTime.Parse(result.Version.Name)
-    //        .Should()
-    //        .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime); // Allow for some slack time in the version name comparison
-
-    //    File.Exists(GetLocalStateDbForRepositoryFullName(configuration, repositoryOptions, result.Version))
-    //        .Should().BeTrue();
-
-    //    (await result.GetPointerFileEntries().CountAsync()).Should().Be(0);
-    //    (await result.GetBinaryEntries().CountAsync()).Should().Be(0);
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenNoVersionSpecifiedAndLatestVersionNotCached_ShouldDownloadLatestVersion(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var repositoryOptions = fixture.GetRepositoryOptions(configuration);
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var latestVersion = new RepositoryVersion { Name = "v2.0" };
-    //        var repository    = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-
-    //        // Mocking multiple versions
-    //        repository.GetRepositoryVersions().Returns(new[]
-    //        {
-    //            new RepositoryVersion { Name = "v1.0" },
-    //            new RepositoryVersion { Name = "v1.1" },
-    //            latestVersion
-    //        }.ToAsyncEnumerable());
-
-    //        var blob = Substitute.For<IBlob>();
-    //        repository.GetRepositoryVersionBlob(latestVersion).Returns(blob);
-    //    }
-
-    //    // Act
-    //    var result = await factory.CreateAsync(repositoryOptions);
-
-    //    // Assert
-    //    result.Version.Name.Should().Be("v2.0");
-
-    //    File.Exists(GetLocalStateDbForRepositoryFullName(configuration, repositoryOptions, result.Version))
-    //        .Should().BeTrue();
-
-    //    // Verify DownloadAsync was called
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        await repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
-    //    }
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenLatestVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var    factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var    repositoryOptions = fixture.GetRepositoryOptions(configuration);
-    //    string cachedFilePath;
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository    = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        var latestVersion = new RepositoryVersion { Name = "v2.0" };
-    //        cachedFilePath = GetLocalStateDbForRepositoryFullName(configuration, repositoryOptions, latestVersion);
-
-    //        repository.GetRepositoryVersions().Returns(new[]
-    //        {
-    //            new RepositoryVersion { Name = "v1.0" },
-    //            new RepositoryVersion { Name = "v1.1" },
-    //            latestVersion
-    //        }.ToAsyncEnumerable());
-
-    //        // Create the cached file
-    //        CreateValidSqliteDatabase(cachedFilePath);
-    //        //File.Create(cachedFilePath);
-    //    }
-    //    else
-    //    {
-    //        // Real services
-    //        cachedFilePath = "";
-    //        throw new NotImplementedException();
-    //    }
-
-    //    // Act
-    //    var result = await factory.CreateAsync(repositoryOptions);
-
-    //    // Assert
-    //    result.Version.Name.Should().Be("v2.0");
-
-    //    // Verify DownloadAsync was NOT called since it's cached
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        await repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
-    //    }
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenSpecificVersionNotCached_ShouldDownloadAndCacheSpecificVersion(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var repositoryOptions = fixture.GetRepositoryOptions(configuration);
-    //    var requestedVersion  = new RepositoryVersion { Name = "v1.1" };
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-
-    //        repository.GetRepositoryVersions().Returns(new[]
-    //        {
-    //            new RepositoryVersion { Name = "v1.0" },
-    //            requestedVersion,
-    //            new RepositoryVersion { Name = "v2.0" }
-    //        }.ToAsyncEnumerable());
-
-    //        var blob = Substitute.For<IBlob>();
-    //        repository.GetRepositoryVersionBlob(requestedVersion).Returns(blob);
-    //    }
-
-    //    // Act
-    //    var result = await factory.CreateAsync(repositoryOptions, requestedVersion);
-
-    //    // Assert
-    //    result.Should().NotBeNull();
-    //    result.Version.Should().NotBeNull();
-    //    result.Version.Name.Should().Be("v1.1");
-
-    //    File.Exists(GetLocalStateDbForRepositoryFullName(configuration, repositoryOptions, result.Version))
-    //        .Should().BeTrue();
-
-    //    // Verify DownloadAsync was called
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        await repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
-    //    }
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenSpecificVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var repositoryOptions = fixture.GetRepositoryOptions(configuration);
-    //    var requestedVersion  = new RepositoryVersion { Name = "v1.1" };
-    //    var cachedFilePath    = GetLocalStateDbForRepositoryFullName(configuration, repositoryOptions, requestedVersion);
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-
-    //        repository.GetRepositoryVersions().Returns(new[]
-    //        {
-    //            new RepositoryVersion { Name = "v1.0" },
-    //            requestedVersion,
-    //            new RepositoryVersion { Name = "v2.0" }
-    //        }.ToAsyncEnumerable());
-
-    //        // Create the cached file
-    //        CreateValidSqliteDatabase(cachedFilePath);
-    //    }
-
-    //    // Act
-    //    var result = await factory.CreateAsync(repositoryOptions, requestedVersion);
-
-    //    // Assert
-    //    result.Should().NotBeNull();
-    //    result.Version.Should().NotBeNull();
-    //    result.Version.Name.Should().Be("v1.1");
-
-    //    File.Exists(cachedFilePath).Should().BeTrue();
-
-    //    // Verify DownloadAsync was NOT called since it's cached
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-    //        await repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
-    //    }
-    //}
-
-    //[Theory]
-    //[InlineData(ServiceConfiguration.Mocked)]
-    //[InlineData(ServiceConfiguration.Real)]
-    //public async Task CreateAsync_WhenSpecificVersionDoesNotExist_ShouldThrowArgumentException(ServiceConfiguration configuration)
-    //{
-    //    // Arrange
-    //    var factory           = fixture.GetStateDbRepositoryFactory(configuration);
-    //    var repositoryOptions = fixture.GetRepositoryOptions(configuration);
-    //    var requestedVersion  = new RepositoryVersion { Name = "v3.0" };
-
-    //    if (configuration == ServiceConfiguration.Mocked)
-    //    {
-    //        var repository = fixture.GetStorageAccountFactory(configuration).GetRepository(repositoryOptions);
-
-    //        var blob = Substitute.For<IBlob>();
-    //        repository.GetRepositoryVersionBlob(requestedVersion).Returns(blob);
-
-    //        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>())
-    //            .Returns(Task.FromException(new RequestFailedException(404, "message", "BlobNotFound", null)));
-    //    }
-
-    //    // Act
-    //    Func<Task> act = async () => await factory.CreateAsync(repositoryOptions, requestedVersion);
-
-    //    // Assert
-    //    await act.Should().ThrowAsync<ArgumentException>().WithMessage("The requested version was not found*");
-    //}
-
+    protected void ThenDownloadShouldBeCalled()
+    {
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
+    }
 
     private string GetLocalStateDbForRepositoryFullName(MockAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
     {
@@ -302,14 +94,133 @@ public sealed class SqliteStateDbRepositoryFactoryTests
             .GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName)
             .GetFullName(version.GetFileSystemName());
     }
+}
 
-    private void CreateValidSqliteDatabase(string filePath)
+public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositoryFactoryTestsBase
+{
+    [Fact]
+    public async Task CreateAsync_WhenNoVersionsAvailable_ShouldReturnNewFileName()
     {
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={filePath}");
+        // Arrange
+        GivenLocalFilesystem();
+        GivenAzureRepositoryWithNoVersions();
 
-        using var context = new SqliteStateDbContext(optionsBuilder.Options);
-        context.Database.EnsureCreated();
-        context.Database.Migrate();
+        var startTime = DateTime.UtcNow.TruncateToSeconds();
+
+        // Act
+        var result = await WhenCreatingStateDb();
+
+        // Assert
+        var endTime = DateTime.UtcNow.TruncateToSeconds();
+
+        ThenStateDbVersionShouldBeBetween(result, startTime, endTime);
+        ThenLocalStateDbShouldExist(result);
+        ThenStateDbShouldBeEmpty(result);
+        ThenDownloadShouldNotBeCalled();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenNoVersionSpecifiedAndLatestVersionNotCached_ShouldDownloadLatestVersion()
+    {
+        // Arrange
+        GivenLocalFilesystem();
+        var latestVersion = new RepositoryVersion { Name = "v2.0" };
+        GivenAzureRepositoryWithVersions(
+            new RepositoryVersion { Name = "v1.0" },
+            new RepositoryVersion { Name = "v1.1" },
+            latestVersion
+        );
+
+        // Act
+        var result = await WhenCreatingStateDb();
+
+        // Assert
+        ThenStateDbVersionShouldBe(result, "v2.0");
+        ThenLocalStateDbShouldExist(result);
+        ThenDownloadShouldBeCalled();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenLatestVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion()
+    {
+        // Arrange
+        GivenLocalFilesystem();
+        var latestVersion = new RepositoryVersion { Name = "v2.0" };
+        GivenAzureRepositoryWithVersions(
+            new RepositoryVersion { Name = "v1.0" },
+            new RepositoryVersion { Name = "v1.1" },
+            latestVersion
+        );
+        GivenLocalStateDbCached(latestVersion);
+
+        // Act
+        var result = await WhenCreatingStateDb();
+
+        // Assert
+        ThenStateDbVersionShouldBe(result, "v2.0");
+        ThenDownloadShouldNotBeCalled();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenSpecificVersionNotCached_ShouldDownloadAndCacheSpecificVersion()
+    {
+        // Arrange
+        GivenLocalFilesystem();
+        var requestedVersion = new RepositoryVersion { Name = "v1.1" };
+        GivenAzureRepositoryWithVersions(
+            new RepositoryVersion { Name = "v1.0" },
+            requestedVersion,
+            new RepositoryVersion { Name = "v2.0" }
+        );
+
+        // Act
+        var result = await WhenCreatingStateDb(requestedVersion);
+
+        // Assert
+        result.Should().NotBeNull();
+        ThenStateDbVersionShouldBe(result, "v1.1");
+        ThenLocalStateDbShouldExist(result);
+        ThenDownloadShouldBeCalled();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenSpecificVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion()
+    {
+        // Arrange
+        GivenLocalFilesystem();
+        var requestedVersion = new RepositoryVersion { Name = "v1.1" };
+        GivenAzureRepositoryWithVersions(
+            new RepositoryVersion { Name = "v1.0" },
+            requestedVersion,
+            new RepositoryVersion { Name = "v2.0" }
+        );
+        GivenLocalStateDbCached(requestedVersion);
+
+        // Act
+        var result = await WhenCreatingStateDb(requestedVersion);
+
+        // Assert
+        result.Should().NotBeNull();
+        ThenStateDbVersionShouldBe(result, "v1.1");
+        ThenDownloadShouldNotBeCalled();
+    }
+
+    [Fact]
+    public async Task CreateAsync_WhenSpecificVersionDoesNotExist_ShouldThrowArgumentException()
+    {
+        // Arrange
+        GivenLocalFilesystem();
+        var requestedVersion = new RepositoryVersion { Name = "v3.0" };
+        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var blob = Substitute.For<IBlob>();
+        repository.GetRepositoryVersionBlob(requestedVersion).Returns(blob);
+        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromException(new RequestFailedException(404, "message", "BlobNotFound", null)));
+
+        // Act
+        Func<Task> act = async () => await WhenCreatingStateDb(requestedVersion);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>().WithMessage("The requested version was not found*");
     }
 }

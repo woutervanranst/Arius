@@ -51,14 +51,14 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
             if (version is null)
             {
-                var latestVersion = await GetLatestVersionAsync();
-                if (latestVersion == null)
+                version = await GetLatestVersionAsync(); //  TODO this is a side effect
+                if (version == null)
                 {
                     // No states yet remotely - this is a fresh archive
                     version = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" }; // TODO: this is a side effect
                     return localStateDbFolder.GetFullName(version.GetFileSystemName());
                 }
-                return await GetLocallyCachedAsync(localStateDbFolder, latestVersion);
+                return await GetLocallyCachedAsync(localStateDbFolder, version);
             }
             else
             {
