@@ -2,6 +2,7 @@ using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.Queries.ContainerNames;
+using Arius.Core.New.Queries.GetStateDbVersions;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure;
 using FluentAssertions;
@@ -114,6 +115,11 @@ public abstract class TestBase
     }
 
     protected IAsyncEnumerable<string> WhenMediatorRequest(ContainerNamesQuery request)
+    {
+        return Fixture.Mediator.CreateStream(request);
+    }
+
+    protected IAsyncEnumerable<RepositoryVersion> WhenMediatorRequest(GetRepositoryVersionsQuery request)
     {
         return Fixture.Mediator.CreateStream(request);
     }

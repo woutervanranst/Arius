@@ -1,58 +1,31 @@
-using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.GetStateDbVersions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
-using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
-public class GetRepositoryVersionsQueryHandlerTests : IClassFixture<RequestHandlerFixture>
+public class GetRepositoryVersionsQueryHandlerTests : TestBase
 {
-    private readonly RequestHandlerFixture fixture;
-
-    public GetRepositoryVersionsQueryHandlerTests(RequestHandlerFixture fixture)
+    protected override IAriusFixture ConfigureFixture()
     {
-        this.fixture = fixture;
+        return new MockAriusFixture();
     }
 
-    [Theory]
-    [InlineData(ServiceConfiguration.Mocked)]
-    [InlineData(ServiceConfiguration.Real)]
-    public async Task Handle_ShouldReturnRepositoryVersions(ServiceConfiguration configuration)
+    [Fact]
+    public async Task Handle_ShouldReturnRepositoryVersions()
     {
         // Arrange
-        var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
-        var mediator              = fixture.GetMediator(configuration);
-        var storageAccount        = Substitute.For<IRepository>();
+        GivenAzureRepositoryWithVersions("v1.0", "v2.0");
 
         var request = new GetRepositoryVersionsQuery
         {
-            Repository = fixture.GetRepositoryOptions(configuration)
+            Repository = Fixture.RepositoryOptions
         };
 
-        if (configuration == ServiceConfiguration.Mocked)
-        {
-            var repositoryVersions = new List<RepositoryVersion>
-            {
-                new() { Name = "v1.0" },
-                new() { Name = "v2.0" }
-            };
-
-            storageAccountFactory.GetRepository(Arg.Any<RepositoryOptions>()).Returns(storageAccount);
-            storageAccount.GetRepositoryVersions().Returns(repositoryVersions.ToAsyncEnumerable());
-        }
-
         // Act
-        var result = await mediator.CreateStream(request).ToListAsync();
+        var result = await WhenMediatorRequest(request).ToListAsync();
 
         // Assert
-        if (configuration == ServiceConfiguration.Mocked)
-        {
-            result.Select(r => r.Name).Should().ContainInOrder("v1.0", "v2.0");
-        }
-        else
-        {
-            throw new NotImplementedException();
-        }
+        result.Select(r => r.Name).Should().ContainInOrder("v1.0", "v2.0");
     }
 }
