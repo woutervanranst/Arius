@@ -31,25 +31,22 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
         var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
-        var (fullName, effectiveVersion) = await GetLocalStateDbFullName(repository, repositoryOptions, version);
+        var (fullName, effectiveVersion) = await GetLocalStateDbFullNameAsync(repository, repositoryOptions, version);
 
         /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'
+         *
+         * Set command timeout to 60s to avoid concurrency errors on 'table is locked' 
          */
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={fullName};Cache=Shared",
-            sqliteOptions =>
-            {
-                sqliteOptions.CommandTimeout(60); //set command timeout to 60s to avoid concurrency errors on 'table is locked'
-            });
+        optionsBuilder.UseSqlite($"Data Source={fullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
 
-        // Create the repository with the configured DbContext
         return new StateDbRepository(optionsBuilder.Options, effectiveVersion);
     }
 
-    private async Task<(string fullName, RepositoryVersion effectiveVersion)> GetLocalStateDbFullName(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
+    private async Task<(string fullName, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
     {
-        var localStateDbFolder = config.GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName);
+        var localStateDbFolder = config.GetLocalStateDbFolderForRepository(repositoryOptions);
 
         if (requestedVersion is null)
         {
@@ -76,7 +73,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
         }
     }
 
-    private async Task<string> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
+    private static async Task<string> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
         var localPath = stateDbFolder.GetFullName(version.Name);
 

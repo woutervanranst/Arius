@@ -1,6 +1,6 @@
 namespace Arius.Core.New.UnitTests;
 
-public sealed class SqliteStateDbRepositoryFactoryTests : MockTestBase
+public sealed class StateDbRepositoryFactoryTests : MockTestBase
 {
     [Fact]
     public async Task CreateAsync_WhenNewRepository_NewLocalDatabaseInitializedNotDownloaded()

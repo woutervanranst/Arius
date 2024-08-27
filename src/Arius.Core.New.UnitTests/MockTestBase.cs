@@ -138,7 +138,7 @@ public abstract class MockTestBase
     private string GetLocalStateDbForRepositoryFullName(MockAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
     {
         return fixture.AriusConfiguration
-            .GetLocalStateDbFolderForRepositoryName(repositoryOptions.ContainerName)
+            .GetLocalStateDbFolderForRepository(repositoryOptions)
             .GetFullName(version.GetFileSystemName());
     }
 }

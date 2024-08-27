@@ -1,4 +1,6 @@
-﻿namespace Arius.Core.Domain;
+﻿using Arius.Core.Domain.Storage;
+
+namespace Arius.Core.Domain;
 
 public record AriusConfiguration
 {
@@ -6,5 +8,5 @@ public record AriusConfiguration
 
 
     private DirectoryInfo StateDbRoot                                                  => LocalConfigRoot.CreateSubdirectory("StateDbs");
-    public  DirectoryInfo GetLocalStateDbFolderForRepositoryName(string containerName) => StateDbRoot.CreateSubdirectory(containerName);
+    public  DirectoryInfo GetLocalStateDbFolderForRepository(RepositoryOptions repositoryOptions) => StateDbRoot.CreateSubdirectory(repositoryOptions.ContainerName);
 }
