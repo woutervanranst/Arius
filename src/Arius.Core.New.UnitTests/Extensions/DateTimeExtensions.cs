@@ -1,4 +1,4 @@
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.New.UnitTests.Extensions;
 
 internal static class DateTimeExtensions
 {

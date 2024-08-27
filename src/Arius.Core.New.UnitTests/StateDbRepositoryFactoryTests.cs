@@ -1,3 +1,4 @@
+using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
 
 namespace Arius.Core.New.UnitTests;

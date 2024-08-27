@@ -1,5 +1,4 @@
 using Arius.Core.Domain.Services;
-using Arius.Core.New.Services;
 
 namespace Arius.Core.New.UnitTests.Fakes;
 

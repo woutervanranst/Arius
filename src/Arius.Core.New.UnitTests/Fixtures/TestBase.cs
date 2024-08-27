@@ -3,14 +3,13 @@ using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
-using Arius.Core.New.UnitTests.Fixtures;
 using Azure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using WouterVanRanst.Utils;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.New.UnitTests.Fixtures;
 
 public abstract class TestBase
 {
@@ -65,12 +64,11 @@ public abstract class TestBase
         {
             var c = Substitute.For<IContainer>();
             c.Name.Returns(n);
-            
+
             return c;
         });
         storageAccount.GetContainers(Arg.Any<CancellationToken>())
             .Returns(containers.ToAsyncEnumerable());
-
     }
 
     protected void GivenAzureRepositoryWithNoVersions()
@@ -94,6 +92,7 @@ public abstract class TestBase
                 {
                     throw new RequestFailedException(404, "Blob not found", "BlobNotFound", null);
                 }
+
                 return Substitute.For<IBlob>();
             });
 
@@ -105,6 +104,7 @@ public abstract class TestBase
                 {
                     return Task.FromException(new RequestFailedException(404, "Blob not found", "BlobNotFound", null));
                 }
+
                 return Task.CompletedTask;
             });
     }
