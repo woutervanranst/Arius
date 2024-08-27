@@ -15,22 +15,92 @@ using System;
 
 public interface IAriusFixture : IDisposable
 {
-    DirectoryInfo            UnitTestRoot             { get; }
-    IStorageAccountFactory    StorageAccountFactory    { get; }
-    IMediator                 Mediator                 { get; }
-    TestRepositoryOptions     TestRepositoryOptions    { get; }
+    //DirectoryInfo             UnitTestRoot             { get; }
+    IStorageAccountFactory StorageAccountFactory { get; }
+
+    IMediator Mediator { get; }
+
+    //TestRepositoryOptions     TestRepositoryOptions    { get; }
     StorageAccountOptions     StorageAccountOptions    { get; }
     RepositoryOptions         RepositoryOptions        { get; }
     IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
     AriusConfiguration        AriusConfiguration       { get; }
 }
 
-public class MockAriusFixture : IAriusFixture
+public class FixtureBuilder
 {
-    public DirectoryInfo         UnitTestRoot          { get; }
-    public IStorageAccountFactory StorageAccountFactory { get; }
-    public IMediator              Mediator              { get; }
-    public TestRepositoryOptions  TestRepositoryOptions { get; }
+    private readonly IServiceCollection    services;
+    private readonly IConfigurationRoot    configuration;
+    private readonly DirectoryInfo         unitTestRoot;
+    private          TestRepositoryOptions testRepositoryOptions;
+
+    private FixtureBuilder()
+    {
+        services = new ServiceCollection();
+        configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddUserSecrets<FixtureBuilder>(optional: true)
+            .Build();
+
+        unitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
+        unitTestRoot.Create();
+
+        testRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
+
+        services.AddArius(c => c.LocalConfigRoot = unitTestRoot);
+        services.AddLogging();
+    }
+
+    public static FixtureBuilder Create() => new FixtureBuilder();
+
+    public FixtureBuilder WithMockedStorageAccountFactory()
+    {
+        services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
+        return this;
+    }
+
+    public FixtureBuilder WithRealStorageAccountFactory()
+    {
+        // Assuming the real implementation is registered by default in AddArius
+        return this;
+    }
+
+    public FixtureBuilder WithFakeCryptoService()
+    {
+        services.AddSingleton<ICryptoService, FakeCryptoService>();
+        return this;
+    }
+
+    public FixtureBuilder WithRealCryptoService()
+    {
+        // Assuming the real implementation is registered by default in AddArius
+        return this;
+    }
+
+    public IAriusFixture Build()
+    {
+        var serviceProvider = services.BuildServiceProvider();
+
+        return new AriusFixture(
+            unitTestRoot,
+            serviceProvider.GetRequiredService<IStorageAccountFactory>(),
+            serviceProvider.GetRequiredService<IMediator>(),
+            testRepositoryOptions,
+            serviceProvider.GetRequiredService<IStateDbRepositoryFactory>(),
+            serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value
+        );
+    }
+}
+
+public class AriusFixture : IAriusFixture
+{
+    public DirectoryInfo             UnitTestRoot             { get; }
+    public IStorageAccountFactory    StorageAccountFactory    { get; }
+    public IMediator                 Mediator                 { get; }
+    public TestRepositoryOptions     TestRepositoryOptions    { get; }
+    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+    public AriusConfiguration        AriusConfiguration       { get; }
 
     public StorageAccountOptions StorageAccountOptions =>
         new()
@@ -48,124 +118,24 @@ public class MockAriusFixture : IAriusFixture
             Passphrase    = TestRepositoryOptions.Passphrase
         };
 
-    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
-    public AriusConfiguration        AriusConfiguration       { get; }
-
-    public MockAriusFixture()
+    public AriusFixture(
+        DirectoryInfo unitTestRoot,
+        IStorageAccountFactory storageAccountFactory,
+        IMediator mediator,
+        TestRepositoryOptions testRepositoryOptions,
+        IStateDbRepositoryFactory stateDbRepositoryFactory,
+        AriusConfiguration ariusConfiguration)
     {
-        // Setup the configuration
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<MockAriusFixture>(optional: true)
-            .Build();
-
-        UnitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
-        UnitTestRoot.Create();
-
-        // Setup the service collection
-        var services = new ServiceCollection();
-
-        // Add configuration to the service collection
-        TestRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
-
-        // Register the mocked services
-        services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
-        services.AddLogging();
-
-        // Add additional services
-        ConfigureServices(services);
-
-        // Build the service provider
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Get the required services
-        StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
-        Mediator                 = serviceProvider.GetRequiredService<IMediator>();
-        StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();
-        AriusConfiguration       = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
-    }
-
-    protected virtual void ConfigureServices(IServiceCollection services)
-    {
-        // Add mocked services here
-        services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
-        services.AddSingleton<ICryptoService, FakeCryptoService>();
+        UnitTestRoot             = unitTestRoot;
+        StorageAccountFactory    = storageAccountFactory;
+        Mediator                 = mediator;
+        TestRepositoryOptions    = testRepositoryOptions;
+        StateDbRepositoryFactory = stateDbRepositoryFactory;
+        AriusConfiguration       = ariusConfiguration;
     }
 
     public void Dispose()
     {
-        // Cleanup if necessary
-    }
-}
-
-public class RealAriusFixture : IAriusFixture
-{
-    private readonly IServiceProvider serviceProvider;
-
-    public DirectoryInfo         UnitTestRoot          { get; }
-    public IStorageAccountFactory StorageAccountFactory { get; }
-    public IMediator              Mediator              { get; }
-    public TestRepositoryOptions  TestRepositoryOptions { get; }
-    public StorageAccountOptions StorageAccountOptions =>
-        new()
-        {
-            AccountName = TestRepositoryOptions.AccountName,
-            AccountKey = TestRepositoryOptions.AccountKey
-        };
-    public RepositoryOptions RepositoryOptions =>
-        new()
-        {
-            AccountName = TestRepositoryOptions.AccountName,
-            AccountKey = TestRepositoryOptions.AccountKey,
-            ContainerName = TestRepositoryOptions.ContainerName,
-            Passphrase = TestRepositoryOptions.Passphrase
-        };
-    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
-    public AriusConfiguration AriusConfiguration { get; }
-
-    public RealAriusFixture()
-    {
-        // Setup the configuration
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<RealAriusFixture>(optional: true)
-            .Build();
-
-        UnitTestRoot = new DirectoryInfo(Path.Combine(@"C:\AriusTest", $"UnitTests-{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}"));
-        UnitTestRoot.Create();
-
-        // Setup the service collection
-        var services = new ServiceCollection();
-
-        // Add configuration to the service collection
-        TestRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
-
-        // Register the real services
-        services.AddArius(c => c.LocalConfigRoot = UnitTestRoot);
-        services.AddLogging();
-
-        // Add additional services
-        ConfigureServices(services);
-
-        // Build the service provider
-        serviceProvider = services.BuildServiceProvider();
-
-        // Get the required services
-        StorageAccountFactory = serviceProvider.GetRequiredService<IStorageAccountFactory>();
-        Mediator = serviceProvider.GetRequiredService<IMediator>();
-        StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();
-        AriusConfiguration = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
-    }
-
-    protected virtual void ConfigureServices(IServiceCollection services)
-    {
-        // Add real services here
-    }
-
-    public void Dispose()
-    {
-        // Cleanup if necessary
+        // Implement cleanup logic if necessary
     }
 }
