@@ -1,6 +1,7 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Repositories;
+using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
 using Azure;
@@ -128,6 +129,11 @@ public abstract class TestBase
     protected IAsyncEnumerable<RepositoryVersion> WhenMediatorRequest(GetRepositoryVersionsQuery request)
     {
         return Fixture.Mediator.CreateStream(request);
+    }
+
+    protected async Task WhenMediatorRequest(ArchiveCommand request)
+    {
+        await Fixture.Mediator.Send(request);
     }
 
 
