@@ -154,12 +154,7 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     {
         // Arrange
         GivenLocalFilesystem();
-        var latestVersion = new RepositoryVersion { Name = "v2.0" };
-        GivenAzureRepositoryWithVersions(
-            new RepositoryVersion { Name = "v1.0" },
-            new RepositoryVersion { Name = "v1.1" },
-            latestVersion
-        );
+        GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
         var result = await WhenCreatingStateDb();
@@ -174,14 +169,7 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     public async Task CreateAsync_WhenLatestVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion()
     {
         // Arrange
-        GivenLocalFilesystem();
-        var latestVersion = new RepositoryVersion { Name = "v2.0" };
-        GivenAzureRepositoryWithVersions(
-            new RepositoryVersion { Name = "v1.0" },
-            new RepositoryVersion { Name = "v1.1" },
-            latestVersion
-        );
-        GivenLocalStateDbCached(latestVersion);
+        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
         var result = await WhenCreatingStateDb();
@@ -196,15 +184,10 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     {
         // Arrange
         GivenLocalFilesystem();
-        var requestedVersion = new RepositoryVersion { Name = "v1.1" };
-        GivenAzureRepositoryWithVersions(
-            new RepositoryVersion { Name = "v1.0" },
-            requestedVersion,
-            new RepositoryVersion { Name = "v2.0" }
-        );
+        GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb(requestedVersion);
+        var result = await WhenCreatingStateDb("v1.1");
 
         // Assert
         result.Should().NotBeNull();
@@ -217,17 +200,10 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
     public async Task CreateAsync_WhenSpecificVersionCached_ShouldReturnCachedRepositoryWithCorrectVersion()
     {
         // Arrange
-        GivenLocalFilesystem();
-        var requestedVersion = new RepositoryVersion { Name = "v1.1" };
-        GivenAzureRepositoryWithVersions(
-            new RepositoryVersion { Name = "v1.0" },
-            requestedVersion,
-            new RepositoryVersion { Name = "v2.0" }
-        );
-        GivenLocalStateDbCached(requestedVersion);
+        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb(requestedVersion);
+        var result = await WhenCreatingStateDb("v1.1");
 
         // Assert
         result.Should().NotBeNull();
@@ -243,7 +219,7 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
         GivenAzureRepositoryWithoutVersion("v3.0");
 
         // Act
-        Func<Task> act = async () => await WhenCreatingStateDbAsync("v3.0");
+        Func<Task> act = async () => await WhenCreatingStateDb("v3.0");
 
         // Assert
         await ThenArgumentExceptionShouldBeThrownAsync(act, "The requested version was not found*");
@@ -256,7 +232,7 @@ public sealed class SqliteStateDbRepositoryFactoryTests : SqliteStateDbRepositor
         GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDbAsync("v1.1");
+        var result = await WhenCreatingStateDb("v1.1");
 
         // Assert
         result.Should().NotBeNull();
