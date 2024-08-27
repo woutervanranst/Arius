@@ -1,61 +1,31 @@
-using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
-using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
-public class ContainerNamesQueryHandlerTests : IClassFixture<RequestHandlerFixture>
+public class ContainerNamesQueryHandlerTests : TestBase
 {
-    private readonly RequestHandlerFixture fixture;
-
-    public ContainerNamesQueryHandlerTests(RequestHandlerFixture fixture)
+    protected override IAriusFixture ConfigureFixture()
     {
-        this.fixture = fixture;
+        return new MockAriusFixture();
     }
 
-    [Theory]
-    [InlineData(ServiceConfiguration.Mocked)]
-    [InlineData(ServiceConfiguration.Real)]
-    public async Task Handle_ShouldReturnContainerNames(ServiceConfiguration configuration)
+    [Fact]
+    public async Task Handle_ShouldReturnContainerNames()
     {
         // Arrange
-        var storageAccountFactory = fixture.GetStorageAccountFactory(configuration);
-        var mediator              = fixture.GetMediator(configuration);
-        var storageAccount        = Substitute.For<IStorageAccount>();
+        GivenAzureStorageAccountWithContainers("container1", "container2");
 
         var request = new ContainerNamesQuery
         {
-            StorageAccount = fixture.GetStorageAccountOptions(configuration)
+            StorageAccount = Fixture.StorageAccountOptions
         };
 
-        if (configuration == ServiceConfiguration.Mocked)
-        {
-            var containers = new List<IContainer>
-            {
-                Substitute.For<IContainer>(),
-                Substitute.For<IContainer>(),
-            };
-
-            containers[0].Name.Returns("container1");
-            containers[1].Name.Returns("container2");
-
-            storageAccountFactory.GetStorageAccount(Arg.Any<StorageAccountOptions>()).Returns(storageAccount);
-            storageAccount.GetContainers(Arg.Any<CancellationToken>()).Returns(containers.ToAsyncEnumerable());
-        }
-
         // Act
-        var result  = await mediator.CreateStream(request).ToListAsync();
-        
+        var result = await WhenMediatorRequest(request).ToListAsync();
+
         // Assert
-        if (configuration == ServiceConfiguration.Mocked)
-        {
-            result.Should().ContainInOrder("container1", "container2");
-        }
-        else
-        {
-            throw new NotImplementedException();
-        }
+        result.Should().ContainInOrder("container1", "container2");
     }
 }

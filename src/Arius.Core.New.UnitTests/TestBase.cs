@@ -1,6 +1,7 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Repositories;
+using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure;
 using FluentAssertions;
@@ -51,6 +52,23 @@ public abstract class TestBase
         }
     }
 
+    protected void GivenAzureStorageAccountWithContainers(params string[] containerNames)
+    {
+        var storageAccount = Substitute.For<IStorageAccount>();
+        Fixture.StorageAccountFactory.GetStorageAccount(Arg.Any<StorageAccountOptions>()).Returns(storageAccount);
+
+        var containers = containerNames.Select(n =>
+        {
+            var c = Substitute.For<IContainer>();
+            c.Name.Returns(n);
+            
+            return c;
+        });
+        storageAccount.GetContainers(Arg.Any<CancellationToken>())
+            .Returns(containers.ToAsyncEnumerable());
+
+    }
+
     protected void GivenAzureRepositoryWithNoVersions()
     {
         var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
@@ -93,6 +111,11 @@ public abstract class TestBase
         var repositoryOptions = Fixture.RepositoryOptions;
         var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
+    }
+
+    protected IAsyncEnumerable<string> WhenMediatorRequest(ContainerNamesQuery request)
+    {
+        return Fixture.Mediator.CreateStream(request);
     }
 
     protected void ThenStateDbVersionShouldBe(IStateDbRepository stateDbRepository, string expectedVersion)
