@@ -2,6 +2,7 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Azure;
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -26,7 +27,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
     public async Task<IStateDbRepository> CreateAsync(RepositoryOptions repositoryOptions, RepositoryVersion? version = null)
     {
-        // TODO Validation
+        await new RepositoryOptionsValidator().ValidateAndThrowAsync(repositoryOptions);
 
         var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
