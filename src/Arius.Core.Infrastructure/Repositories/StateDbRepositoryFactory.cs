@@ -75,7 +75,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
     private static async Task<string> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
-        var localPath = stateDbFolder.GetFullName(version.Name);
+        var localPath = stateDbFolder.GetFullName(version.GetFileSystemName());
 
         if (File.Exists(localPath))
         {
