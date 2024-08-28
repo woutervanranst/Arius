@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using System.Buffers;
@@ -6,12 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 
 namespace Arius.Core.Infrastructure;
-
-internal interface IHashValueProvider // TODO Move to Domain
-{
-    Task<Hash> GetHashAsync(BinaryFile bf);
-    bool       IsValid(Hash h);
-}
 
 internal class SHA256Hasher : IHashValueProvider, IDisposable
 {
@@ -109,7 +104,6 @@ internal class SHA256Hasher : IHashValueProvider, IDisposable
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
     }
 }
-
 
 
 //    //TODO what with in place update of binary file (hash changed)?
