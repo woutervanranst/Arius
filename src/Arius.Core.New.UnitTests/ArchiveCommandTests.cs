@@ -6,16 +6,20 @@ namespace Arius.Core.New.UnitTests;
 
 public class ArchiveCommandTests : TestBase
 {
-    protected override AriusFixture ConfigureFixture()
+    protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
             //.WithMockedStorageAccountFactory()
             //.WithFakeCryptoService()
-            .WithPopulatedSourceFolder()
             .Build();
     }
 
-    [Fact]
+    protected override void ConfigureOnceForFixture()
+    {
+        GivenPopulatedSourceFolder();
+}
+
+[Fact]
     public async Task Handle()
     {
         // Arrange

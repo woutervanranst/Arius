@@ -1,14 +1,16 @@
+using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
+using Arius.Core.New.UnitTests.Extensions;
 using Azure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-using WouterVanRanst.Utils;
 using WouterVanRanst.Utils.Extensions;
 using File = System.IO.File;
 
@@ -20,10 +22,12 @@ public abstract class TestBase
 
     protected TestBase()
     {
-        Fixture = ConfigureFixture();
+        Fixture = GetFixture();
+        ConfigureOnceForFixture();
     }
 
-    protected abstract AriusFixture ConfigureFixture();
+    protected abstract AriusFixture GetFixture();
+    protected abstract void ConfigureOnceForFixture();
 
 
     // --- GIVEN
@@ -110,6 +114,49 @@ public abstract class TestBase
 
                 return Task.CompletedTask;
             });
+    }
+
+    public void GivenPopulatedSourceFolder()
+    {
+        Fixture.SourceFolder.CopyTo(Fixture.TestRunRootFolder, recursive: true);
+    }
+
+    public void GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    {
+        var fileFullName = Fixture.TestRunSourceDirectory.GetFileFullName(binaryFileRelativeName);
+
+        FileUtils.CreateRandomFile(fileFullName, sizeInBytes);
+        SetAttributes(attributes, fileFullName);
+
+        static void SetAttributes(FileAttributes attributes, string filePath)
+        {
+            File.SetAttributes(filePath, attributes);
+
+            var actualAtts = File.GetAttributes(filePath);
+            if (actualAtts != attributes)
+                throw new InvalidOperationException($"Could not set attributes for {filePath}");
+        }
+    }
+
+    public void GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    {
+        GivenSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
+
+        var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceDirectory, binaryFileRelativeName);
+        var h    = Fixture.HashValueProvider.GetHashAsync(bf).Result;
+        var bfwh = bf.GetBinaryFileWithHash(h);
+        var pfwh = bfwh.GetPointerFileWithHash();
+        pfwh.Save();
+    }
+
+    public void GivenSourceFolderHavingRandomFileWithPointerFile(string pointerFileRelativeName, Hash h)
+    {
+        var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceDirectory, pointerFileRelativeName, h);
+
+        if (!pfwh.IsPointerFile) // check the extension
+            throw new InvalidOperationException("This is not a pointer file");
+
+        pfwh.Save();
     }
 
 

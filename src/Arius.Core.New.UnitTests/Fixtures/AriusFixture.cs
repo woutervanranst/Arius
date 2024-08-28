@@ -36,7 +36,6 @@ public class FixtureBuilder
     private readonly DirectoryInfo      testRoot;
     private readonly DirectoryInfo      testRunRoot;
     
-    private readonly DirectoryInfo         testRunSourceDirectory;
     private readonly TestRepositoryOptions testRepositoryOptions;
     private readonly IHashValueProvider    hashValueProvider;
 
@@ -55,8 +54,6 @@ public class FixtureBuilder
         testRunRoot = testRoot.GetSubDirectory("UnitTests").GetSubDirectory($"{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}").CreateIfNotExists();
 
         sourceDirectory = testRunRoot.GetSubDirectory("Source").CreateIfNotExists();
-
-        testRunSourceDirectory = testRunRoot.GetSubDirectory("Source").CreateIfNotExists();
 
         testRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
 
@@ -92,60 +89,6 @@ public class FixtureBuilder
         return this;
     }
 
-    public FixtureBuilder WithPopulatedSourceFolder()
-    {
-        sourceDirectory.CopyTo(testRunSourceDirectory, recursive: true);
-
-        return this;
-    }
-
-    public FixtureBuilder WithSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
-    {
-        var filePath = Path.Combine(testRunSourceDirectory.FullName, binaryFileRelativeName);
-        //var fileDirectory = Path.GetDirectoryName(filePath);
-        //if (fileDirectory != null)
-        //    Directory.CreateDirectory(fileDirectory);
-
-        FileUtils.CreateRandomFile(filePath, sizeInBytes);
-        SetAttributes(attributes, filePath);
-
-        return this;
-
-        static void SetAttributes(FileAttributes attributes, string filePath)
-        {
-            File.SetAttributes(filePath, attributes);
-
-            var actualAtts = File.GetAttributes(filePath);
-            if (actualAtts != attributes)
-                throw new InvalidOperationException($"Could not set attributes for {filePath}");
-        }
-    }
-
-    public FixtureBuilder WithSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
-    {
-        WithSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
-
-        var bf   = BinaryFile.FromRelativeName(testRunSourceDirectory, binaryFileRelativeName);
-        var h    = hashValueProvider.GetHashAsync(bf).Result;
-        var bfwh = bf.GetBinaryFileWithHash(h);
-        var pfwh = bfwh.GetPointerFileWithHash();
-        pfwh.Save();
-
-        return this;
-    }
-
-    public FixtureBuilder WithSourceFolderHavingRandomFileWithPointerFile(string pointerFileRelativeName, Hash h)
-    {
-        var pfwh = PointerFileWithHash.FromRelativeName(testRunSourceDirectory, pointerFileRelativeName, h);
-
-        if (!pfwh.IsPointerFile) // check the extension
-            throw new InvalidOperationException("This is not a pointer file");
-
-        pfwh.Save();
-
-        return this;
-    }
-
     public AriusFixture Build()
     {
         var serviceProvider = services.BuildServiceProvider();
@@ -162,12 +105,13 @@ public class FixtureBuilder
 
 public class AriusFixture : IDisposable
 {
-    public  IHashValueProvider    HashValueProvider     { get; }
-    private TestRepositoryOptions TestRepositoryOptions { get; }
-    public  DirectoryInfo         SourceFolder          { get; }
-    public  DirectoryInfo         TestRunRootFolder     { get; }
+    public  IHashValueProvider    HashValueProvider      { get; }
+    private TestRepositoryOptions TestRepositoryOptions  { get; }
+    public  DirectoryInfo         SourceFolder           { get; }
+    public  DirectoryInfo         TestRunRootFolder      { get; }
+    public  DirectoryInfo         TestRunSourceDirectory { get; }
 
-    public  IStorageAccountFactory    StorageAccountFactory    { get; }
+    public IStorageAccountFactory    StorageAccountFactory    { get; }
     public  IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
     public  IMediator                 Mediator                 { get; }
     public  AriusConfiguration        AriusConfiguration       { get; }
@@ -179,10 +123,11 @@ public class AriusFixture : IDisposable
         DirectoryInfo sourceFolder,
         DirectoryInfo testRunRootFolder)
     {
-        HashValueProvider     = hashValueProvider;
-        TestRepositoryOptions = testRepositoryOptions;
-        SourceFolder          = sourceFolder;
-        TestRunRootFolder     = testRunRootFolder;
+        HashValueProvider      = hashValueProvider;
+        TestRepositoryOptions  = testRepositoryOptions;
+        SourceFolder           = sourceFolder;
+        TestRunRootFolder      = testRunRootFolder;
+        TestRunSourceDirectory = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 
         StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
         StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();

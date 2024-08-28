@@ -2,19 +2,21 @@ using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
-using WouterVanRanst.Utils;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.New.UnitTests;
 
 public class HashValueProviderTests : TestBase
 {
-    protected override AriusFixture ConfigureFixture()
+    protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
-            .WithPopulatedSourceFolder()
             .Build();
+    }
 
+    protected override void ConfigureOnceForFixture()
+    {
+        GivenPopulatedSourceFolder();
     }
 
     [Fact]
