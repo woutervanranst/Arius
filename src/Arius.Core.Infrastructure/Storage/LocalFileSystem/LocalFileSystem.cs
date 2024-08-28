@@ -3,7 +3,7 @@ using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
-internal class LocalFileSystem : IFileSystem
+public class LocalFileSystem : IFileSystem
 {
     private readonly ILogger<LocalFileSystem> logger;
 

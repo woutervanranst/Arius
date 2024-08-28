@@ -14,7 +14,12 @@ public record ArchiveCommand : IRequest
     public required RepositoryVersion VersionName { get; init; }
 
 
-    internal int IndexBlock_Parallelism => Environment.ProcessorCount * 8; //index AND hash options. A low count doesnt achieve a high throughput when there are a lot of small files
+    internal int FilesToHash_BufferSize => 1000;
+
+    internal int Hash_Parallelism => Environment.ProcessorCount * 8; // A low count doesnt achieve a high throughput when there are a lot of small files
+
+
+
 
     internal int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 

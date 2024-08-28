@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Repositories;
+﻿using System.Threading.Channels;
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage.FileSystem;
 using FluentValidation;
 using MediatR;
@@ -26,25 +27,61 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
         // Download latest state database
-        var stateDbRepository = await stateDbRepositoryFactory.CreateAsync(request.Repository);
+        var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
 
-        //Index the request.LocalRoot
+        // Index the request.LocalRoot
+        var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
+        var indexTask = Task.Run(async () =>
+        {
+            foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
+            {
+                await filesToHash.Writer.WriteAsync(fp, cancellationToken);
+                await Task.Delay(1000000);
+            }
 
-        //var downloadStateDbCommand = new DownloadStateDbCommand
-        //{
-        //    Repository = request.Repository,
-        //    LocalPath  = request.LocalRoot.FullName
-        //};
+            filesToHash.Writer.Complete();
+        }, cancellationToken);
 
-        //await mediator.Send(downloadStateDbCommand);
+        // Hash the filepairs
+        var hashTask = Parallel.ForEachAsync(
+            filesToHash.Reader.ReadAllAsync(cancellationToken),
+            GetParallelOptions(request.Hash_Parallelism),  async (pair, token) =>
+            {
+                await Task.CompletedTask;
+            });
+
+        await Task.WhenAll(indexTask, stateDbRepositoryTask);
+
+        var stateDbRepository = await stateDbRepositoryTask;
+
+        return;
 
 
+        static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
+        {
+            return Channel.CreateBounded<T>(GetBoundedChannelOptions(capacity, singleWriter));
+        }
+        
+        static BoundedChannelOptions GetBoundedChannelOptions(int capacity, bool singleWriter)
+        {
+            return new BoundedChannelOptions(capacity)
+            {
+                FullMode                      = BoundedChannelFullMode.Wait,
+                AllowSynchronousContinuations = false,
+                SingleWriter                  = singleWriter,
+                SingleReader                  = false
+            };
+        }
 
-        throw new NotImplementedException();
-
+        ParallelOptions GetParallelOptions(int maxDegreeOfParallelism)
+        {
+            return new ParallelOptions() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
+        }
     }
 
-    internal static IEnumerable<(PointerFile? pf, BinaryFile? bf)> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
+    internal record FilePair(PointerFile? PointerFile, BinaryFile? BinaryFile);
+
+    internal static IEnumerable<FilePair> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
     {
         var seenFiles        = new HashSet<string>();
         var currentDirectory = root.FullName;
@@ -69,12 +106,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (pf.GetBinaryFile(root) is { Exists: true } bf)
                 {
                     // BinaryFile exists too
-                    yield return (pf, bf);
+                    yield return new(pf, bf);
                 }
                 else
                 {
                     // BinaryFile does not exist
-                    yield return (pf, null);
+                    yield return new(pf, null);
                 }
             }
             else
@@ -85,12 +122,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (bf.GetPointerFile(root) is { Exists : true } pf)
                 {
                     // PointerFile exists too
-                    yield return (pf, bf);
+                    yield return new(pf, bf);
                 }
                 else
                 {
                     // BinaryFile does not exist
-                    yield return (null, bf);
+                    yield return new(null, bf);
                 }
             }
         }

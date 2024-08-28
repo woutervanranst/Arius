@@ -8,6 +8,8 @@ using Arius.Core.New.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
 namespace Arius.Core.New;
 
@@ -34,7 +36,9 @@ public static class IServiceCollectionExtensions
         services.AddSingleton<AzureContainerFactory>();
         services.AddSingleton<AzureRepositoryFactory>();
         services.AddSingleton<IStateDbRepositoryFactory, SqliteStateDbRepositoryFactory>();
+
         services.AddSingleton<ICryptoService, CryptoService>();
+        services.AddSingleton<IFileSystem, LocalFileSystem>();
 
         return services;
     }

@@ -79,11 +79,11 @@ public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
         };
 
         // Act
-        var stagedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.SourceFolder).ToList();
+        var indexedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.SourceFolder).ToList();
 
         // Assert
-        var actualResults = stagedFiles
-            .Select(sf => (sf.pf?.RelativeNamePlatformNeutral, sf.bf?.RelativeNamePlatformNeutral)).ToList();
+        var actualResults = indexedFiles
+            .Select(fp => (fp.PointerFile?.RelativeNamePlatformNeutral, fp.BinaryFile?.RelativeNamePlatformNeutral)).ToList();
 
         actualResults.SequenceEqual(expectedResults).Should().BeTrue();
     }
