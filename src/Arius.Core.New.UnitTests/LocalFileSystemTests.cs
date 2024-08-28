@@ -7,7 +7,7 @@ namespace Arius.Core.New.UnitTests;
 
 public class LocalFileSystemTests : TestBase
 {
-    protected override IAriusFixture ConfigureFixture()
+    protected override AriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
             .WithSourceFolderHaving(

@@ -14,16 +14,16 @@ namespace Arius.Core.New.UnitTests.Fixtures;
 
 using System;
 
-public interface IAriusFixture : IDisposable
-{
-    IStorageAccountFactory    StorageAccountFactory    { get; }
-    StorageAccountOptions     StorageAccountOptions    { get; }
-    IMediator                 Mediator                 { get; }
-    RepositoryOptions         RepositoryOptions        { get; }
-    IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
-    AriusConfiguration        AriusConfiguration       { get; }
-    DirectoryInfo             SourceFolder             { get; }
-}
+//public interface IAriusFixture : IDisposable
+//{
+//    IStorageAccountFactory    StorageAccountFactory    { get; }
+//    StorageAccountOptions     StorageAccountOptions    { get; }
+//    IMediator                 Mediator                 { get; }
+//    RepositoryOptions         RepositoryOptions        { get; }
+//    IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+//    AriusConfiguration        AriusConfiguration       { get; }
+//    DirectoryInfo             SourceFolder             { get; }
+//}
 
 public class FixtureBuilder
 {
@@ -133,7 +133,7 @@ public class FixtureBuilder
         }
     }
 
-    public IAriusFixture Build()
+    public AriusFixture Build()
     {
         var serviceProvider = services.BuildServiceProvider();
 
@@ -148,7 +148,7 @@ public class FixtureBuilder
     }
 }
 
-public class AriusFixture : IAriusFixture
+public class AriusFixture : IDisposable
 {
     public IStorageAccountFactory    StorageAccountFactory    { get; }
     public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }

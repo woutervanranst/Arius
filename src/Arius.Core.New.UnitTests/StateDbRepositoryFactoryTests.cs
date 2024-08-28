@@ -5,7 +5,7 @@ namespace Arius.Core.New.UnitTests;
 
 public sealed class StateDbRepositoryFactoryTests : TestBase
 {
-    protected override IAriusFixture ConfigureFixture()
+    protected override AriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
             .WithMockedStorageAccountFactory()

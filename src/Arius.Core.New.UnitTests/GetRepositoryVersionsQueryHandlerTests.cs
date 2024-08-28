@@ -6,7 +6,7 @@ namespace Arius.Core.New.UnitTests;
 
 public class GetRepositoryVersionsQueryHandlerTests : TestBase
 {
-    protected override IAriusFixture ConfigureFixture()
+    protected override AriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
             .WithMockedStorageAccountFactory()

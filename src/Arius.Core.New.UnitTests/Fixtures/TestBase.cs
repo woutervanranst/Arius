@@ -15,14 +15,14 @@ namespace Arius.Core.New.UnitTests.Fixtures;
 
 public abstract class TestBase
 {
-    protected IAriusFixture Fixture { get; }
+    protected AriusFixture Fixture { get; }
 
     protected TestBase()
     {
         Fixture = ConfigureFixture();
     }
 
-    protected abstract IAriusFixture ConfigureFixture();
+    protected abstract AriusFixture ConfigureFixture();
 
 
     // --- GIVEN
@@ -185,7 +185,7 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    private string GetLocalStateDbForRepositoryFullName(IAriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
+    private string GetLocalStateDbForRepositoryFullName(AriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
     {
         return fixture.AriusConfiguration
             .GetLocalStateDbFolderForRepository(repositoryOptions)

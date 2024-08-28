@@ -9,7 +9,7 @@ namespace Arius.Core.New.UnitTests;
 
 public class ArchiveCommandTests : TestBase
 {
-    protected override IAriusFixture ConfigureFixture()
+    protected override AriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
             //.WithMockedStorageAccountFactory()
@@ -41,7 +41,7 @@ public class ArchiveCommandTests : TestBase
 
 public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
 {
-    protected override IAriusFixture ConfigureFixture()
+    protected override AriusFixture ConfigureFixture()
     {
         return FixtureBuilder.Create()
             .WithSourceFolderHaving(
