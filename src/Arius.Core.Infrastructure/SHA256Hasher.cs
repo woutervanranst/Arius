@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
+using System.Buffers;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -15,16 +16,11 @@ internal interface IHashValueProvider
 internal class SHA256Hasher : IHashValueProvider, IDisposable
 {
     private readonly byte[] _saltBytes;
-    private readonly SHA256 sha256 = SHA256.Create();
+    private readonly SHA256 _sha256 = SHA256.Create();
+    private const int BufferSize = 81920; // 80 KB buffer
 
-    public SHA256Hasher(RepositoryOptions options) : this(options.Passphrase)
-    {
-    }
-
-    public SHA256Hasher(string salt) : this(Encoding.ASCII.GetBytes(salt))
-    {
-    }
-
+    public SHA256Hasher(RepositoryOptions options) : this(options.Passphrase) { }
+    public SHA256Hasher(string salt) : this(Encoding.ASCII.GetBytes(salt)) { }
     public SHA256Hasher(byte[] salt) => _saltBytes = salt;
 
     public async Task<Hash> GetHashAsync(BinaryFile bf)
@@ -37,33 +33,82 @@ internal class SHA256Hasher : IHashValueProvider, IDisposable
 
     private async Task<byte[]> GetHashValueAsync(string fullName)
     {
-        await using var fs = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
-        return await CalculateHashAsync(fs);
-    }
+        using var       saltStream         = new MemoryStream(_saltBytes);
+        await using var fileStream         = new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var concatenatedStream = new OptimizedConcatenatedStream([saltStream, fileStream]);
 
-    private async Task<byte[]> CalculateHashAsync(Stream stream)
-    {
-        sha256.Initialize();
-        sha256.TransformBlock(_saltBytes, 0, _saltBytes.Length, null, 0);
-
-        var buffer = new byte[4096];
-        int    bytesRead;
-        do
-        {
-            bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
-            sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
-        } while (bytesRead > 0);
-
-        sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
-        return sha256.Hash;
+        return await concatenatedStream.CalculateSHA256HashAsync(_sha256);
     }
 
     public void Dispose()
     {
-        sha256.Dispose();
+        _sha256.Dispose();
     }
 }
 
+internal class OptimizedConcatenatedStream : Stream
+{
+    private readonly Queue<Stream> _streams;
+
+    public OptimizedConcatenatedStream(IEnumerable<Stream> streams)
+    {
+        _streams = new Queue<Stream>(streams);
+    }
+
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var totalBytesRead = 0;
+
+        while (count > 0 && _streams.Count > 0)
+        {
+            var bytesRead = _streams.Peek().Read(buffer, offset, count);
+            if (bytesRead == 0)
+            {
+                _streams.Dequeue().Dispose();
+                continue;
+            }
+
+            totalBytesRead += bytesRead;
+            offset += bytesRead;
+            count -= bytesRead;
+        }
+
+        return totalBytesRead;
+    }
+
+    private const int BufferSize = 81920; // 80 KB buffer
+
+    public async Task<byte[]> CalculateSHA256HashAsync(SHA256 sha256)
+    {
+        var buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
+        try
+        {
+            int bytesRead;
+            while ((bytesRead = Read(buffer, 0, buffer.Length)) > 0)
+            {
+                sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+            }
+
+            sha256.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            return sha256.Hash;
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer);
+        }
+    }
+
+    public override void Flush() { }
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+    public override void SetLength(long value) => throw new NotSupportedException();
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+}
 
 //using System.Text;
 //using Arius.Core.Domain;
