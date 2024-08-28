@@ -1,4 +1,6 @@
-﻿namespace Arius.Core.Domain.Storage.FileSystem;
+﻿using Arius.Core.Domain.Extensions;
+
+namespace Arius.Core.Domain.Storage.FileSystem;
 
 public interface IFileSystem
 {
@@ -18,9 +20,11 @@ public record File
     {
     }
 
-    public string FullName { get; }
-    public string Path     { get; }
-    public string Name     { get; }
+    public string  FullName                                  => fileInfo.FullName.ToPlatformNeutralPath();
+    public string? Path                                      => fileInfo.DirectoryName?.ToPlatformNeutralPath();
+    public string  Name                                      => fileInfo.Name;
+    public string  GetRelativePath(string relativeTo)        => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName).ToPlatformNeutralPath();
+    public string  GetRelativePath(DirectoryInfo relativeTo) => GetRelativePath(relativeTo.FullName);
 
     public bool Exists => System.IO.File.Exists(FullName);
 
@@ -35,7 +39,7 @@ public record File
     public bool IsPointerFile => fileInfo.FullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
     public bool IsBinaryFile  => !IsPointerFile;
 
-    public string BinaryFileFullName => fileInfo.FullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+    public string BinaryFileFullName => fileInfo.FullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase).ToPlatformNeutralPath();
 
     public PointerFile GetPointerFile()
     {
@@ -52,6 +56,8 @@ public record File
 
         return new BinaryFile(fileInfo);
     }
+
+    public sealed override string ToString() => FullName;
 }
 
 public record PointerFile : File

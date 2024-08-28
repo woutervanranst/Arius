@@ -92,6 +92,47 @@ public class FixtureBuilder
         return this;
     }
 
+    public record FileDescription(string RelativePath, long SizeInBytes, FileAttributes Attributes);
+
+    public FixtureBuilder WithSourceFolderHaving(params FileDescription[] files)
+    {
+        sourceDirectory = testRunRoot.GetSubDirectory("Source");
+        sourceDirectory.Create();
+
+        foreach (var (relativePath, sizeInBytes, attributes) in files)
+        {
+            var filePath      = Path.Combine(sourceDirectory.FullName, relativePath);
+            var fileDirectory = Path.GetDirectoryName(filePath);
+
+            if (fileDirectory != null)
+            {
+                Directory.CreateDirectory(fileDirectory);
+            }
+
+            CreateRandomFile(filePath, sizeInBytes);
+            File.SetAttributes(filePath, attributes);
+
+            var actualAtts = File.GetAttributes(filePath);
+            if (actualAtts != attributes)
+                throw new InvalidOperationException($"Could not set attributes for {filePath}");
+        }
+
+        return this;
+
+        static void CreateRandomFile(string fileFullName, long sizeInBytes)
+        {
+            // https://stackoverflow.com/q/4432178/1582323
+
+            var f = new FileInfo(fileFullName);
+            f.Directory.CreateIfNotExists();
+
+            byte[] data = new byte[sizeInBytes];
+            var    rng  = new Random();
+            rng.NextBytes(data);
+            File.WriteAllBytes(fileFullName, data);
+        }
+    }
+
     public IAriusFixture Build()
     {
         var serviceProvider = services.BuildServiceProvider();

@@ -15,6 +15,18 @@ internal class LocalFileSystem : IFileSystem
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
     private static readonly HashSet<string> ExcludedFiles       = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
 
+    /// <summary>
+    /// Recursively enumerates files in a specified directory, applying filters to skip hidden, system, or excluded files and directories.
+    /// This method performs a depth-first traversal of the directory tree.
+    /// </summary>
+    /// <param name="directory">The root directory from which to start enumerating files.</param>
+    /// <returns>An <see cref="IEnumerable{File}"/> containing the files found in the directory and its subdirectories, filtered based on certain criteria.</returns>
+    /// <remarks>
+    /// The method first enumerates all files in the current directory that meet the filtering criteria.
+    /// After processing the files in the current directory, it then recursively enters each subdirectory,
+    /// applying the same logic, thus traversing the directory tree in a depth-first manner.
+    /// This means it fully explores the contents of each subdirectory before moving on to the next sibling directory.
+    /// </remarks>
     public IEnumerable<File> EnumerateFiles(DirectoryInfo directory)
     {
         if (ShouldSkipDirectory(directory))
