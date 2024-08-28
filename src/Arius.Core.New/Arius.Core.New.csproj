@@ -10,13 +10,8 @@
 		<PackageReference Include="Nito.AsyncEx.Tasks" Version="5.1.2" />
 		<PackageReference Include="ParallelExtensionsExtras.NetFxStandard" Version="2.1.0" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
-		<PackageReference Include="WouterVanRanst.Utils" Version="1.0.7" />
 	</ItemGroup>
 
-	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
-	<ItemGroup Condition="'$(Configuration)'=='Release'">
-		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
-	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Arius.Core.Domain\Arius.Core.Domain.csproj" />
 		<ProjectReference Include="..\Arius.Core.Infrastructure\Arius.Core.Infrastructure.csproj" />

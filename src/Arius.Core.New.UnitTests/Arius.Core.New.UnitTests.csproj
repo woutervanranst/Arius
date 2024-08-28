@@ -25,7 +25,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="System.Text.Json" Version="8.0.4" />
-    <PackageReference Include="WouterVanRanst.Utils" Version="1.0.7" />
     <PackageReference Include="xunit" Version="2.9.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <PrivateAssets>all</PrivateAssets>
@@ -36,6 +35,14 @@
   <ItemGroup>
     <ProjectReference Include="..\Arius.Core.New\Arius.Core.New.csproj" />
   </ItemGroup>
+
+	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release --><!--
+	<ItemGroup Condition="'$(Configuration)'=='Release'">
+		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
+	</ItemGroup>
+	<ItemGroup Condition="'$(Configuration)'=='Debug'">
+		<ProjectReference Include="..\..\..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+	</ItemGroup>-->
 
   <ItemGroup>
     <Using Include="Xunit" />

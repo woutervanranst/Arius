@@ -9,6 +9,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using WouterVanRanst.Utils;
+using WouterVanRanst.Utils.Extensions;
 using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
