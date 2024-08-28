@@ -130,7 +130,8 @@ public class FixtureBuilder
             serviceProvider.GetRequiredService<IMediator>(),
             serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value,
             testRepositoryOptions,
-            sourceDirectory
+            sourceDirectory,
+            testRunRoot
         );
     }
 }
@@ -142,6 +143,7 @@ public class AriusFixture : IDisposable
     public IMediator                 Mediator                 { get; }
     public AriusConfiguration        AriusConfiguration       { get; }
     public DirectoryInfo             SourceFolder             { get; }
+    public DirectoryInfo             TestRunRootFolder        { get; }
 
     private readonly TestRepositoryOptions testRepositoryOptions;
 
@@ -152,7 +154,8 @@ public class AriusFixture : IDisposable
         IMediator mediator,
         AriusConfiguration ariusConfiguration,
         TestRepositoryOptions testRepositoryOptions,
-        DirectoryInfo sourceFolder)
+        DirectoryInfo sourceFolder,
+        DirectoryInfo testRunRootFolder)
     {
         StorageAccountFactory      = storageAccountFactory;
         StateDbRepositoryFactory   = stateDbRepositoryFactory;
@@ -160,6 +163,7 @@ public class AriusFixture : IDisposable
         AriusConfiguration         = ariusConfiguration;
         this.testRepositoryOptions = testRepositoryOptions;
         SourceFolder               = sourceFolder;
+        TestRunRootFolder          = testRunRootFolder;
     }
 
 
