@@ -33,14 +33,6 @@ public class LocalFileSystemTests : TestBase
         // Arrange
         var fs = new LocalFileSystem(NullLogger<LocalFileSystem>.Instance);
 
-        // Act
-        var files = fs.EnumerateFiles(Fixture.SourceFolder).ToList();
-
-        // Assert
-        Assert.NotNull(files);
-        Assert.Equal(5, files.Count); // Only five normal files should be returned, excluding hidden and excluded files
-
-        // Assert the order and paths
         var expectedRelativePaths = new[]
         {
             "file1.txt",
@@ -49,6 +41,13 @@ public class LocalFileSystemTests : TestBase
             "subdir/file4.txt",
             "subdir2/file9.txt"
         };
+
+        // Act
+        var files = fs.EnumerateFiles(Fixture.SourceFolder).ToList();
+
+        // Assert
+        Assert.NotNull(files);
+        Assert.Equal(5, files.Count); // Only five normal files should be returned, excluding hidden and excluded files
 
         var actualRelativePaths = files
             .Select(f => f.GetRelativeNamePlatformNeutral(Fixture.SourceFolder));

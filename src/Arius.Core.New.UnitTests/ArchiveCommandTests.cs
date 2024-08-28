@@ -2,6 +2,7 @@ using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.UnitTests.Fixtures;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.New.UnitTests;
@@ -38,7 +39,7 @@ public class ArchiveCommandTests : TestBase
     }
 }
 
-public class ArchiveCommandBlocks_Index_Tests : TestBase
+public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
 {
     protected override IAriusFixture ConfigureFixture()
     {
@@ -53,19 +54,37 @@ public class ArchiveCommandBlocks_Index_Tests : TestBase
                 
                 new FixtureBuilder.FileDescription("folder1/file4.bin", 0, FileAttributes.Normal),                    // Binary file in a folder
                 
-                new FixtureBuilder.FileDescription("folder2/file4.bin.pointer.arius", 0, FileAttributes.Normal)             // Pointer file with the same name in another folder
+                new FixtureBuilder.FileDescription("folder2/file4.bin.pointer.arius", 0, FileAttributes.Normal),             // Pointer file with the same name in another folder
+
+                new FixtureBuilder.FileDescription("folder3/file5.bin", 0, FileAttributes.Normal),                    
+                new FixtureBuilder.FileDescription("folder3/file5.bin.pointer.arius", 0, FileAttributes.Normal)       
             )
             .Build();
     }
 
     [Fact]
-    public void Index_StagedFiles_AsExpected()
+    public void IndexFiles_WithStagedFiles_ShouldMatchAccordingly()
     {
         // Arrange
         var fs = new LocalFileSystem(NullLogger<LocalFileSystem>.Instance);
-        
+
+        var expectedResults = new List<(string? PointerFile, string? BinaryFile)>
+        {
+            (null,                              "file1.bin"),           // Binary file without a pointer
+            ("file2.bin.pointer.arius",         null),                  // Pointer file without a binary file
+            ("file3.bin.pointer.arius",         "file3.bin"),           // Matching binary and pointer files
+            (null,                              "folder1/file4.bin"),   // Files with the same name in different directories
+            ("folder2/file4.bin.pointer.arius", null),                  // Files with the same name in different directories
+            ("folder3/file5.bin.pointer.arius", "folder3/file5.bin")    // Matching binary and pointer files in a folder
+        };
+
         // Act
         var stagedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.SourceFolder).ToList();
 
+        // Assert
+        var actualResults = stagedFiles
+            .Select(sf => (sf.pf?.RelativeNamePlatformNeutral, sf.bf?.RelativeNamePlatformNeutral)).ToList();
+
+        actualResults.SequenceEqual(expectedResults).Should().BeTrue();
     }
 }
