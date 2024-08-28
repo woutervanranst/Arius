@@ -38,7 +38,7 @@ public class Sha256HasherBenchmarks
     [Benchmark]
     public async Task<string> HashSmallFileArius4()
     {
-        return (await arius4Hasher.GetHashAsync(new BinaryFile(null, smallFile))).Value.BytesToHexString();
+        return (await arius4Hasher.GetHashAsync(BinaryFile.FromFullName(null, smallFile))).Value.BytesToHexString();
     }
 
     [Benchmark]
@@ -50,6 +50,6 @@ public class Sha256HasherBenchmarks
     [Benchmark]
     public async Task<string> HashLargeFileArius4()
     {
-        return (await arius4Hasher.GetHashAsync(new BinaryFile(null, largeFile))).Value.BytesToHexString();
+        return (await arius4Hasher.GetHashAsync(BinaryFile.FromFullName(null, largeFile))).Value.BytesToHexString();
     }
 }

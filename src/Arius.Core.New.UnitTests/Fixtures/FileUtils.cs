@@ -1,5 +1,4 @@
 using WouterVanRanst.Utils.Extensions;
-using static Arius.Core.New.Commands.Archive.ArchiveCommandHandler;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
 
