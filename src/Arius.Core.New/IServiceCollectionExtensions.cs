@@ -1,19 +1,13 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Services;
+using Arius.Core.Domain.Storage;
+using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.New.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using Arius.Core.Domain;
-using Arius.Core.Domain.Repositories;
-using Arius.Core.Domain.Services;
-using Arius.Core.Infrastructure.Repositories;
-
-///*
-// * This is required to test the internals of the Arius.Core assembly
-// */
-//[assembly: InternalsVisibleTo("Arius.Core.New.UnitTests")]
-//[assembly: InternalsVisibleTo("Arius.ArchUnit")]
 
 namespace Arius.Core.New;
 
