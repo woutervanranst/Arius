@@ -23,4 +23,6 @@ public record Hash // IEquatable is implicitly implemented
 
         return Value.AsSpan().SequenceEqual(other.Value.AsSpan());
     }
+
+    public override string ToString() => Value.BytesToHexString();
 }

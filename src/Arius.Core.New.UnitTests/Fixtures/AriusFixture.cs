@@ -98,9 +98,9 @@ public class FixtureBuilder
         return this;
     }
 
-    public FixtureBuilder WithSourceFolderHavingRandomFile(string relativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    public FixtureBuilder WithSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
-        var filePath = Path.Combine(testRunSourceDirectory.FullName, relativeName);
+        var filePath = Path.Combine(testRunSourceDirectory.FullName, binaryFileRelativeName);
         //var fileDirectory = Path.GetDirectoryName(filePath);
         //if (fileDirectory != null)
         //    Directory.CreateDirectory(fileDirectory);
@@ -109,25 +109,37 @@ public class FixtureBuilder
         SetAttributes(attributes, filePath);
 
         return this;
+
+        static void SetAttributes(FileAttributes attributes, string filePath)
+        {
+            File.SetAttributes(filePath, attributes);
+
+            var actualAtts = File.GetAttributes(filePath);
+            if (actualAtts != attributes)
+                throw new InvalidOperationException($"Could not set attributes for {filePath}");
+        }
     }
 
-    private static void SetAttributes(FileAttributes attributes, string filePath)
+    public FixtureBuilder WithSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
-        File.SetAttributes(filePath, attributes);
+        WithSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
 
-        var actualAtts = File.GetAttributes(filePath);
-        if (actualAtts != attributes)
-            throw new InvalidOperationException($"Could not set attributes for {filePath}");
-    }
-
-    public FixtureBuilder WithSourceFolderHavingRandomFileWithPointerFile(string relativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
-    {
-        WithSourceFolderHavingRandomFile(relativeName, sizeInBytes, attributes);
-
-        var bf   = BinaryFile.FromRelativeName(testRunSourceDirectory, relativeName);
+        var bf   = BinaryFile.FromRelativeName(testRunSourceDirectory, binaryFileRelativeName);
         var h    = hashValueProvider.GetHashAsync(bf).Result;
         var bfwh = bf.GetBinaryFileWithHash(h);
         var pfwh = bfwh.GetPointerFileWithHash();
+        pfwh.Save();
+
+        return this;
+    }
+
+    public FixtureBuilder WithSourceFolderHavingRandomFileWithPointerFile(string pointerFileRelativeName, Hash h)
+    {
+        var pfwh = PointerFileWithHash.FromRelativeName(testRunSourceDirectory, pointerFileRelativeName, h);
+
+        if (!pfwh.IsPointerFile) // check the extension
+            throw new InvalidOperationException("This is not a pointer file");
+
         pfwh.Save();
 
         return this;
@@ -139,6 +151,7 @@ public class FixtureBuilder
 
         return new AriusFixture(
             serviceProvider,
+            hashValueProvider,
             testRepositoryOptions,
             sourceDirectory,
             testRunRoot
@@ -148,6 +161,7 @@ public class FixtureBuilder
 
 public class AriusFixture : IDisposable
 {
+    public  IHashValueProvider    HashValueProvider     { get; }
     private TestRepositoryOptions TestRepositoryOptions { get; }
     public  DirectoryInfo         SourceFolder          { get; }
     public  DirectoryInfo         TestRunRootFolder     { get; }
@@ -159,10 +173,12 @@ public class AriusFixture : IDisposable
 
     public AriusFixture(
         IServiceProvider serviceProvider,
+        IHashValueProvider hashValueProvider,
         TestRepositoryOptions testRepositoryOptions,
         DirectoryInfo sourceFolder,
         DirectoryInfo testRunRootFolder)
     {
+        HashValueProvider     = hashValueProvider;
         TestRepositoryOptions = testRepositoryOptions;
         SourceFolder          = sourceFolder;
         TestRunRootFolder     = testRunRootFolder;
