@@ -21,10 +21,10 @@ public class HashValueProviderTests : TestBase
 
         var salt      = "woutervanranst";
 
-        var arius3Hasher = new Arius.Core.Services.SHA256Hasher(salt);
-        var arius3HasherHash = arius3Hasher.GetBinaryHash(file).Value.BytesToHexString();
+        //var arius3Hasher = new Arius.Core.Services.SHA256Hasher(salt);
+        //var arius3HasherHash = arius3Hasher.GetBinaryHash(file).Value.BytesToHexString();
 
-        //var arius3HasherHash = "88e667ac1167d96e7c42ec65daf9c096d374263a313c60b6d307ec3938300f98";
+        var arius3HasherHash = "88e667ac1167d96e7c42ec65daf9c096d374263a313c60b6d307ec3938300f98";
 
         var arius4Hasher = new Arius.Core.Infrastructure.SHA256Hasher(salt);
         var arius4HasherHash     = (await arius4Hasher.GetHashAsync(new BinaryFile(null, file))).Value.BytesToHexString();
