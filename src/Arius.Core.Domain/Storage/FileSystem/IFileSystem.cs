@@ -25,10 +25,11 @@ public record File
     public string? Path                                      => fileInfo.DirectoryName;
     public string? PathPlatformNeutral                       => Path?.ToPlatformNeutralPath();
     public string  Name                                      => fileInfo.Name;
-    public string  GetRelativePath(string relativeTo)        => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName);
-    public string  GetRelativePathPlatformNeutral(string relativeTo)        => GetRelativePath(relativeTo).ToPlatformNeutralPath();
-    public string  GetRelativePath(DirectoryInfo relativeTo) => GetRelativePath(relativeTo.FullName);
-    public string  GetRelativePathPlatformNeutral(DirectoryInfo relativeTo) => GetRelativePathPlatformNeutral(relativeTo.FullName);
+
+    public string GetRelativeName(string relativeTo)                       => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName);
+    public string GetRelativeNamePlatformNeutral(string relativeTo)        => GetRelativeName(relativeTo).ToPlatformNeutralPath();
+    public string GetRelativeName(DirectoryInfo relativeTo)                => GetRelativeName(relativeTo.FullName);
+    public string GetRelativeNamePlatformNeutral(DirectoryInfo relativeTo) => GetRelativeNamePlatformNeutral(relativeTo.FullName);
 
     public bool Exists => System.IO.File.Exists(FullName);
 
@@ -49,50 +50,77 @@ public record File
     public string PointerFileFullName => IsPointerFile ? FullName : FullName + PointerFile.Extension;
     public string PointerFileFullNamePlatformNeutral => PointerFileFullName.ToPlatformNeutralPath();
 
-    public PointerFile GetPointerFile()
+    public PointerFile GetPointerFile(DirectoryInfo root)
     {
         if (IsPointerFile)
             // this File is a PointerFile, return it as is
-            return new PointerFile(fileInfo);
+            return new PointerFile(root, fileInfo);
         else
             // this File is a BinaryFile, return the equivalent PointerFile
-            return new PointerFile(PointerFileFullName);
+            return new PointerFile(root, PointerFileFullName);
     }
 
-    public BinaryFile  GetBinaryFile()
+    public BinaryFile  GetBinaryFile(DirectoryInfo root)
     {
         if (IsBinaryFile)
             // this File is a BinaryFile, return as is
-            return new BinaryFile(fileInfo);
+            return new BinaryFile(root, fileInfo);
         else
             // this File is a PointerFile, return the equivalent BinaryFile
-            return new BinaryFile(BinaryFileFullName);
+            return new BinaryFile(root, BinaryFileFullName);
     }
 
     public override string ToString() => FullName;
 }
 
-public record PointerFile : File
+public abstract record RelativeFile : File
 {
-    public static readonly string Extension = ".pointer.arius";
+    private readonly DirectoryInfo root;
 
-    public PointerFile(FileInfo fileInfo) : base(fileInfo)
+    public RelativeFile(DirectoryInfo root, FileInfo fileInfo) : base(fileInfo)
     {
+        this.root = root;
     }
 
-    public PointerFile(string fullName) : base(fullName)
+    public RelativeFile(DirectoryInfo root, string fullName) : base(fullName)
     {
+        this.root = root;
     }
+
+    public string RelativeName                => base.GetRelativeName(root);
+    public string RelativeNamePlatformNeutral => base.GetRelativeNamePlatformNeutral(root);
+
+    public override string ToString() => RelativeName;
 }
 
-public record BinaryFile : File
+public record PointerFile : RelativeFile
 {
-    public BinaryFile(FileInfo fileInfo) : base(fileInfo)
+    public static readonly string        Extension = ".pointer.arius";
+
+    public PointerFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
     {
     }
-    public BinaryFile(string fullName) : base(fullName)
+
+    public PointerFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
     }
+
+    public override string ToString() => RelativeName;
+}
+
+
+
+public record BinaryFile : RelativeFile
+{
+    public BinaryFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
+    {
+    }
+
+    public BinaryFile(DirectoryInfo root, string fullName) : base(root,fullName)
+    {
+    }
+
+    public override string ToString() => RelativeName;
 }
 
 internal static class FileExtensions

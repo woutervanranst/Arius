@@ -51,7 +51,7 @@ public class LocalFileSystemTests : TestBase
         };
 
         var actualRelativePaths = files
-            .Select(f => f.GetRelativePath(Fixture.SourceFolder));
+            .Select(f => f.GetRelativeNamePlatformNeutral(Fixture.SourceFolder));
 
         actualRelativePaths.SequenceEqual(expectedRelativePaths)
             .Should().BeTrue();

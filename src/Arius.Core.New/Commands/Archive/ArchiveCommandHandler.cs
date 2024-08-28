@@ -64,9 +64,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             if (file.IsPointerFile)
             {
                 // this is a PointerFile
-                var pf = file.GetPointerFile();
+                var pf = file.GetPointerFile(root);
 
-                if (pf.GetBinaryFile() is { Exists: true } bf)
+                if (pf.GetBinaryFile(root) is { Exists: true } bf)
                 {
                     // BinaryFile exists too
                     yield return (pf, bf);
@@ -80,9 +80,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             else
             {
                 // this is a BinaryFile
-                var bf = file.GetBinaryFile();
+                var bf = file.GetBinaryFile(root);
 
-                if (bf.GetPointerFile() is { Exists : true } pf)
+                if (bf.GetPointerFile(root) is { Exists : true } pf)
                 {
                     // PointerFile exists too
                     yield return (pf, bf);
