@@ -51,7 +51,8 @@ public class Program
         services.AddScoped<IRepositoryRepository, RepositoryRepository>();
         services.AddScoped<RepositoryService>();
 
-        services.AddArius();
+        throw new NotImplementedException();
+        services.AddArius(c => c.LocalConfigRoot = null);
     }
 
     private static void ConfigureMiddleware(WebApplication app)

@@ -1,5 +1,3 @@
-using WouterVanRanst.Utils.Extensions;
-
 namespace Arius.Core.New.UnitTests.Extensions;
 
 public class FileUtils

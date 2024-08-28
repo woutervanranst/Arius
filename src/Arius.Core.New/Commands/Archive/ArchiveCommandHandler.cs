@@ -1,6 +1,8 @@
 ﻿using System.Threading.Channels;
 using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Services;
 using FluentValidation;
 using MediatR;
 
@@ -14,7 +16,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public ArchiveCommandHandler(
         IFileSystem fileSystem,
-        IStateDbRepositoryFactory stateDbRepositoryFactory, 
+        IStateDbRepositoryFactory stateDbRepositoryFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.fileSystem               = fileSystem;
@@ -43,14 +45,19 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
 
         // Hash the filepairs
+        var hvp = new SHA256Hasher(request.Repository.Passphrase);
         var hashTask = Parallel.ForEachAsync(
             filesToHash.Reader.ReadAllAsync(cancellationToken),
-            GetParallelOptions(request.Hash_Parallelism),  async (pair, token) =>
+            GetParallelOptions(request.Hash_Parallelism),
+            async (pair, token) =>
             {
+                var filePairWithHash = HashFilesAsync(request.FastHash, hvp, pair);
+
+
                 await Task.CompletedTask;
             });
 
-        await Task.WhenAll(indexTask, stateDbRepositoryTask);
+        await Task.WhenAll(stateDbRepositoryTask, indexTask, hashTask);
 
         var stateDbRepository = await stateDbRepositoryTask;
 
@@ -61,7 +68,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             return Channel.CreateBounded<T>(GetBoundedChannelOptions(capacity, singleWriter));
         }
-        
+
         static BoundedChannelOptions GetBoundedChannelOptions(int capacity, bool singleWriter)
         {
             return new BoundedChannelOptions(capacity)
@@ -80,6 +87,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     }
 
     internal record FilePair(PointerFile? PointerFile, BinaryFile? BinaryFile);
+
+    internal record FilePairWithHash(PointerFileWithHash? PointerFile, BinaryFileWithHash? BinaryFile)
+    {
+        public static implicit operator FilePair(FilePairWithHash filePairWithHash)
+        {
+            return new FilePair(filePairWithHash.PointerFile, filePairWithHash.BinaryFile);
+        }
+    }
 
     internal static IEnumerable<FilePair> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
     {
@@ -131,5 +146,52 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 }
             }
         }
+    }
+
+    internal static async Task<FilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, FilePair pair)
+    {
+        if (pair.PointerFile is not null && pair.BinaryFile is not null)
+        {
+            // A PointerFile with corresponding BinaryFile
+            if (fastHash)
+            {
+                // FastHash option - take the hash from the PointerFile
+                if (pair.PointerFile.LastWriteTimeUtc == pair.BinaryFile.LastWriteTimeUtc)
+                {
+                    // The file has not been modified
+                    var pfwh0 = pair.PointerFile.GetPointerFileWithHash();
+                    var bfwh0 = pair.BinaryFile.GetBinaryFileWithHash(pfwh0.Hash);
+
+                    return new(pfwh0, bfwh0);
+                }
+            }
+
+            // Fasthash is off, or the File has been modified
+            var h1    = await hvp.GetHashAsync(pair.BinaryFile);
+            var bfwh1 = pair.BinaryFile.GetBinaryFileWithHash(h1);
+
+            var pfwh1 = pair.PointerFile.GetPointerFileWithHash();
+            if (pfwh1.Hash != bfwh1.Hash)
+                throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+
+            return new(pfwh1, bfwh1);
+        }
+        else if (pair.PointerFile is not null && pair.BinaryFile is null)
+        {
+            // A PointerFile without a BinaryFile
+            var pfwh = pair.PointerFile.GetPointerFileWithHash();
+
+            return new(pfwh, null);
+        }
+        else if (pair.PointerFile is null && pair.BinaryFile is not null)
+        {
+            // A BinaryFile without a PointerFile
+            var h = await hvp.GetHashAsync(pair.BinaryFile);
+            var bfwh = pair.BinaryFile.GetBinaryFileWithHash(h);
+
+            return new(null, bfwh);
+        }
+        else
+            throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 }

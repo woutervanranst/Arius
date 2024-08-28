@@ -121,12 +121,14 @@ public abstract class TestBase
         Fixture.SourceFolder.CopyTo(Fixture.TestRunRootFolder, recursive: true);
     }
 
-    public void GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    internal ArchiveCommandHandler.FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
         var fileFullName = Fixture.TestRunSourceDirectory.GetFileFullName(binaryFileRelativeName);
 
         FileUtils.CreateRandomFile(fileFullName, sizeInBytes);
         SetAttributes(attributes, fileFullName);
+
+        return new(null, BinaryFile.FromFullName(null, fileFullName));
 
         static void SetAttributes(FileAttributes attributes, string filePath)
         {
@@ -138,7 +140,7 @@ public abstract class TestBase
         }
     }
 
-    public void GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    internal ArchiveCommandHandler.FilePairWithHash GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
         GivenSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
 
@@ -147,9 +149,11 @@ public abstract class TestBase
         var bfwh = bf.GetBinaryFileWithHash(h);
         var pfwh = bfwh.GetPointerFileWithHash();
         pfwh.Save();
+
+        return new(pfwh, bfwh);
     }
 
-    public void GivenSourceFolderHavingRandomFileWithPointerFile(string pointerFileRelativeName, Hash h)
+    internal ArchiveCommandHandler.FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
     {
         var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceDirectory, pointerFileRelativeName, h);
 
@@ -157,6 +161,8 @@ public abstract class TestBase
             throw new InvalidOperationException("This is not a pointer file");
 
         pfwh.Save();
+
+        return new (pfwh, null);
     }
 
 

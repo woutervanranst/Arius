@@ -2,15 +2,14 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.Infrastructure.Storage.Azure;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Services;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.Infrastructure.Services;
-using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
 namespace Arius.Core.New;
 

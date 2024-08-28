@@ -8,23 +8,27 @@ namespace Arius.Core.New.UnitTests;
 
 public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
 {
-    protected override AriusFixture ConfigureFixture()
+    protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
-            .WithSourceFolderHavingRandomFile("file1.bin", 0, FileAttributes.Normal)                            // Binary file without a pointer
+        return FixtureBuilder.Create().Build();
+    }
 
-            .WithSourceFolderHavingRandomFile("file2.bin.pointer.arius", 0, FileAttributes.Normal)                    // Pointer file without a binary file
+    protected override void ConfigureOnceForFixture()
+    {
+        GivenSourceFolderHavingRandomFile("file1.bin", 0, FileAttributes.Normal);                          // Binary file without a pointer
 
-            .WithSourceFolderHavingRandomFile("file3.bin", 0, FileAttributes.Normal)                            // Binary file with a matching pointer file
-            .WithSourceFolderHavingRandomFile("file3.bin.pointer.arius", 0, FileAttributes.Normal)             // Pointer file with a matching binary file
+        GivenSourceFolderHavingRandomFile("file2.bin.pointer.arius", 0, FileAttributes.Normal);            // Pointer file without a binary file
 
-            .WithSourceFolderHavingRandomFile("folder1/file4.bin", 0, FileAttributes.Normal)                    // Binary file in a folder
+        GivenSourceFolderHavingRandomFile("file3.bin", 0, FileAttributes.Normal);                          // Binary file with a matching pointer file
+        GivenSourceFolderHavingRandomFile("file3.bin.pointer.arius", 0, FileAttributes.Normal);            // Pointer file with a matching binary file
 
-            .WithSourceFolderHavingRandomFile("folder2/file4.bin.pointer.arius", 0, FileAttributes.Normal)             // Pointer file with the same name in another folder
+        GivenSourceFolderHavingRandomFile("folder1/file4.bin", 0, FileAttributes.Normal);                  // Binary file in a folder
 
-            .WithSourceFolderHavingRandomFile("folder3/file5.bin", 0, FileAttributes.Normal)
-            .WithSourceFolderHavingRandomFile("folder3/file5.bin.pointer.arius", 0, FileAttributes.Normal)
-            .Build();
+        GivenSourceFolderHavingRandomFile("folder2/file4.bin.pointer.arius", 0, FileAttributes.Normal);    // Pointer file with the same name in another folder
+
+        GivenSourceFolderHavingRandomFile("folder3/file5.bin", 0, FileAttributes.Normal);
+        GivenSourceFolderHavingRandomFile("folder3/file5.bin.pointer.arius", 0, FileAttributes.Normal);
+
     }
 
     [Fact]
