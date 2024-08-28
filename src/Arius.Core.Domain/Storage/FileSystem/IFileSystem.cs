@@ -20,11 +20,15 @@ public record File
     {
     }
 
-    public string  FullName                                  => fileInfo.FullName.ToPlatformNeutralPath();
-    public string? Path                                      => fileInfo.DirectoryName?.ToPlatformNeutralPath();
+    public string  FullName                                  => fileInfo.FullName;
+    public string  FullNamePlatformNeutral                   => FullName.ToPlatformNeutralPath();
+    public string? Path                                      => fileInfo.DirectoryName;
+    public string? PathPlatformNeutral                       => Path?.ToPlatformNeutralPath();
     public string  Name                                      => fileInfo.Name;
-    public string  GetRelativePath(string relativeTo)        => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName).ToPlatformNeutralPath();
+    public string  GetRelativePath(string relativeTo)        => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName);
+    public string  GetRelativePathPlatformNeutral(string relativeTo)        => GetRelativePath(relativeTo).ToPlatformNeutralPath();
     public string  GetRelativePath(DirectoryInfo relativeTo) => GetRelativePath(relativeTo.FullName);
+    public string  GetRelativePathPlatformNeutral(DirectoryInfo relativeTo) => GetRelativePathPlatformNeutral(relativeTo.FullName);
 
     public bool Exists => System.IO.File.Exists(FullName);
 
@@ -39,25 +43,33 @@ public record File
     public bool IsPointerFile => fileInfo.FullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
     public bool IsBinaryFile  => !IsPointerFile;
 
-    public string BinaryFileFullName => fileInfo.FullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase).ToPlatformNeutralPath();
+    public string BinaryFileFullName => fileInfo.FullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+    public string BinaryFileFullNamePlatformNeutral => BinaryFileFullName.ToPlatformNeutralPath();
+
+    public string PointerFileFullName => IsPointerFile ? FullName : FullName + PointerFile.Extension;
+    public string PointerFileFullNamePlatformNeutral => PointerFileFullName.ToPlatformNeutralPath();
 
     public PointerFile GetPointerFile()
     {
-        if (!IsPointerFile)
-            throw new InvalidOperationException("This is not a PointerFile");
-
-        return new PointerFile(fileInfo);
+        if (IsPointerFile)
+            // this File is a PointerFile, return it as is
+            return new PointerFile(fileInfo);
+        else
+            // this File is a BinaryFile, return the equivalent PointerFile
+            return new PointerFile(PointerFileFullName);
     }
 
     public BinaryFile  GetBinaryFile()
     {
-        if (!IsBinaryFile)
-            throw new InvalidOperationException("This is a PointerFile");
-
-        return new BinaryFile(fileInfo);
+        if (IsBinaryFile)
+            // this File is a BinaryFile, return as is
+            return new BinaryFile(fileInfo);
+        else
+            // this File is a PointerFile, return the equivalent BinaryFile
+            return new BinaryFile(BinaryFileFullName);
     }
 
-    public sealed override string ToString() => FullName;
+    public override string ToString() => FullName;
 }
 
 public record PointerFile : File
@@ -67,11 +79,18 @@ public record PointerFile : File
     public PointerFile(FileInfo fileInfo) : base(fileInfo)
     {
     }
+
+    public PointerFile(string fullName) : base(fullName)
+    {
+    }
 }
 
 public record BinaryFile : File
 {
     public BinaryFile(FileInfo fileInfo) : base(fileInfo)
+    {
+    }
+    public BinaryFile(string fullName) : base(fullName)
     {
     }
 }
