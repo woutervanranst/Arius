@@ -109,7 +109,7 @@ public class FixtureBuilder
                 Directory.CreateDirectory(fileDirectory);
             }
 
-            CreateRandomFile(filePath, sizeInBytes);
+            FileUtils.CreateRandomFile(filePath, sizeInBytes);
             File.SetAttributes(filePath, attributes);
 
             var actualAtts = File.GetAttributes(filePath);
@@ -118,19 +118,6 @@ public class FixtureBuilder
         }
 
         return this;
-
-        static void CreateRandomFile(string fileFullName, long sizeInBytes)
-        {
-            // https://stackoverflow.com/q/4432178/1582323
-
-            var f = new FileInfo(fileFullName);
-            f.Directory.CreateIfNotExists();
-
-            byte[] data = new byte[sizeInBytes];
-            var    rng  = new Random();
-            rng.NextBytes(data);
-            File.WriteAllBytes(fileFullName, data);
-        }
     }
 
     public AriusFixture Build()
