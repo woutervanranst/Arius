@@ -248,7 +248,7 @@ public record BinaryFileWithHash : BinaryFile
 
     public Hash Hash { get; }
 
-    public PointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFileInfo(root, fileInfo, Hash);
+    public PointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(root, FullName + PointerFile.Extension, Hash);
 
     public override string ToString() => RelativeName;
 }
