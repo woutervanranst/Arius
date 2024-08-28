@@ -1,14 +1,14 @@
-﻿using Arius.Core.Domain;
+﻿using System.Buffers;
+using System.Security.Cryptography;
+using System.Text;
+using Arius.Core.Domain;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using System.Buffers;
-using System.Security.Cryptography;
-using System.Text;
 
-namespace Arius.Core.Infrastructure;
+namespace Arius.Core.Infrastructure.Services;
 
-internal class SHA256Hasher : IHashValueProvider, IDisposable
+public class SHA256Hasher : IHashValueProvider, IDisposable
 {
     private readonly byte[] saltBytes;
     private readonly SHA256 sha256 = SHA256.Create();
