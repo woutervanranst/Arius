@@ -189,6 +189,6 @@ public abstract class TestBase
     {
         return fixture.AriusConfiguration
             .GetLocalStateDbFolderForRepository(repositoryOptions)
-            .GetFullName(version.GetFileSystemName());
+            .GetFileFullName(version.GetFileSystemName());
     }
 }

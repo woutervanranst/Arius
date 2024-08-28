@@ -56,7 +56,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
-                return (localStateDbFolder.GetFullName(effectiveVersion.GetFileSystemName()), effectiveVersion);
+                return (localStateDbFolder.GetFileFullName(effectiveVersion.GetFileSystemName()), effectiveVersion);
             }
             return (await GetLocallyCachedAsync(repository, repositoryOptions, localStateDbFolder, effectiveVersion), effectiveVersion);
         }
@@ -76,7 +76,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
     private static async Task<string> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
-        var localPath = stateDbFolder.GetFullName(version.GetFileSystemName());
+        var localPath = stateDbFolder.GetFileFullName(version.GetFileSystemName());
 
         if (File.Exists(localPath))
         {
