@@ -1,5 +1,5 @@
 ﻿using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.New.UnitTests.Extensions;
 using BenchmarkDotNet.Attributes;
 using WouterVanRanst.Utils.Extensions;
 
