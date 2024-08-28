@@ -124,7 +124,7 @@ public class FixtureBuilder
     {
         WithSourceFolderHavingRandomFile(relativeName, sizeInBytes, attributes);
 
-        var bf   = BinaryFile.FromRelative(testRunSourceDirectory, relativeName);
+        var bf   = BinaryFile.FromRelativeName(testRunSourceDirectory, relativeName);
         var h    = hashValueProvider.GetHashAsync(bf).Result;
         var bfwh = bf.GetBinaryFileWithHash(h);
         var pfwh = bfwh.GetPointerFileWithHash();
