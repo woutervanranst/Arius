@@ -55,7 +55,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
             if (effectiveVersion == null)
             {
                 // No states yet remotely - this is a fresh archive
-                effectiveVersion = new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };
+                effectiveVersion = DateTime.UtcNow;
                 return (localStateDbFolder.GetFileFullName(effectiveVersion.GetFileSystemName()), effectiveVersion);
             }
             return (await GetLocallyCachedAsync(repository, repositoryOptions, localStateDbFolder, effectiveVersion), effectiveVersion);
