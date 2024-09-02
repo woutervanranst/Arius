@@ -8,17 +8,55 @@ using MediatR;
 
 namespace Arius.Core.New.Commands.Archive;
 
+public abstract record ArchiveCommandNotification : INotification
+{
+    protected ArchiveCommandNotification(ArchiveCommand command)
+    {
+        Command = command;
+    }
+
+    public ArchiveCommand Command { get; }
+}
+
+public record FilePairFoundNotification : ArchiveCommandNotification
+{
+    public FilePairFoundNotification(ArchiveCommand command) : base(command)
+    {
+    }
+
+    public required FilePair FilePair { get; init; }
+}
+
+public record FilePairHashedNotification : ArchiveCommandNotification
+{
+    public FilePairHashedNotification(ArchiveCommand command) : base(command)
+    {
+    }
+
+    public required FilePairWithHash FilePairWithHash { get; init; }
+}
+
+public record ArchiveCommandDone : ArchiveCommandNotification
+{
+    public ArchiveCommandDone(ArchiveCommand command) : base(command)
+    {
+    }
+}
+
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
+    private readonly IMediator                      mediator;
     private readonly IFileSystem                    fileSystem;
     private readonly IStateDbRepositoryFactory      stateDbRepositoryFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
     public ArchiveCommandHandler(
+        IMediator mediator,
         IFileSystem fileSystem,
         IStateDbRepositoryFactory stateDbRepositoryFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
+        this.mediator                 = mediator;
         this.fileSystem               = fileSystem;
         this.stateDbRepositoryFactory = stateDbRepositoryFactory;
         this.logger                   = logger;
@@ -30,6 +68,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         // Download latest state database
         var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
+        //await stateDbRepositoryTask;
 
         // 1. Index the request.LocalRoot
         var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
@@ -37,6 +76,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
             {
+                await mediator.Publish(new FilePairFoundNotification(request) { FilePair = fp }, cancellationToken);
+                logger.LogInformation("Found {fp}", fp);
                 await filesToHash.Writer.WriteAsync(fp, cancellationToken);
             }
 
@@ -53,6 +94,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             async (pair, ct) =>
             {
                 var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, pair);
+                await mediator.Publish(new FilePairHashedNotification(request) { FilePairWithHash = filePairWithHash }, ct);
 
                 var pfwh = CreatePointerIfNotExist(filePairWithHash);
 
@@ -88,6 +130,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         await Task.WhenAll(indexTask, hashTask);
 
+        await mediator.Publish(new ArchiveCommandDone(request), cancellationToken);
 
         return;
 
