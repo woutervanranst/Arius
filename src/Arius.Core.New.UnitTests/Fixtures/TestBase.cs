@@ -121,7 +121,7 @@ public abstract class TestBase
         Fixture.SourceFolder.CopyTo(Fixture.TestRunRootFolder, recursive: true);
     }
 
-    internal ArchiveCommandHandler.FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    internal FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
         var fileFullName = Fixture.TestRunSourceDirectory.GetFileFullName(binaryFileRelativeName);
 
@@ -140,7 +140,7 @@ public abstract class TestBase
         }
     }
 
-    internal ArchiveCommandHandler.FilePairWithHash GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    internal FilePairWithHash GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
         GivenSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
 
@@ -153,7 +153,7 @@ public abstract class TestBase
         return new(pfwh, bfwh);
     }
 
-    internal ArchiveCommandHandler.FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
+    internal FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
     {
         var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceDirectory, pointerFileRelativeName, h);
 

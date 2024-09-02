@@ -217,4 +217,8 @@ internal class StateDbRepository : IStateDbRepository
     }
 
     public IAsyncEnumerable<string> GetBinaryEntries() => AsyncEnumerable.Empty<string>();
+    public Task<bool> BinaryExistsAsync(Hash binaryFileHash)
+    {
+        throw new NotImplementedException();
+    }
 }

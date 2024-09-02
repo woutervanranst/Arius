@@ -114,15 +114,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    internal record FilePair(PointerFile? PointerFile, BinaryFile? BinaryFile);
-
-    internal record FilePairWithHash(PointerFileWithHash? PointerFile, BinaryFileWithHash? BinaryFile)
-    {
-        public static implicit operator FilePair(FilePairWithHash filePairWithHash)
-        {
-            return new FilePair(filePairWithHash.PointerFile, filePairWithHash.BinaryFile);
-        }
-    }
 
     internal static IEnumerable<FilePair> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
     {

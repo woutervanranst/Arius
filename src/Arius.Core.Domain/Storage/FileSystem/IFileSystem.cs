@@ -252,3 +252,38 @@ public record BinaryFileWithHash : BinaryFile
 
     public override string ToString() => RelativeName;
 }
+
+public class FilePair
+{
+    public FilePair(PointerFile? pointerFile, BinaryFile? binaryFile)
+    {
+        PointerFile = pointerFile;
+        BinaryFile  = binaryFile;
+    }
+
+    
+    public PointerFile? PointerFile { get; }
+    public BinaryFile?  BinaryFile  { get;}
+
+    public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName;
+}
+
+public class FilePairWithHash: FilePair
+{
+    public FilePairWithHash(PointerFileWithHash? pointerFile, BinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
+    {
+        this.PointerFile = pointerFile;
+        this.BinaryFile  = binaryFile;
+    }
+    
+    public new PointerFileWithHash? PointerFile { get; }
+    public new BinaryFileWithHash?  BinaryFile  { get; }
+
+    public Hash Hash => BinaryFile?.Hash ?? PointerFile!.Hash;
+
+    
+    //public static implicit operator FilePair(FilePairWithHash filePairWithHash)
+    //{
+    //    return new FilePair(filePairWithHash.PointerFile, filePairWithHash.BinaryFile);
+    //}
+}
