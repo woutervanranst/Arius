@@ -26,7 +26,7 @@ public static class IServiceCollectionExtensions
         services.AddMediatR(config =>
         {
             // Add Handlers
-            config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
+            config.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
 
             // Add pipeline validation behavior
             config.AddOpenBehavior(typeof(ValidationBehavior<,>));
