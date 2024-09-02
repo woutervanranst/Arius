@@ -51,8 +51,7 @@ public class Program
         services.AddScoped<IRepositoryRepository, RepositoryRepository>();
         services.AddScoped<RepositoryService>();
 
-        throw new NotImplementedException();
-        services.AddArius(c => c.LocalConfigRoot = null);
+        services.AddArius(c => c.LocalConfigRoot = new DirectoryInfo(configuration.GetValue<string>("LocalConfigRoot")));
     }
 
     private static void ConfigureMiddleware(WebApplication app)
