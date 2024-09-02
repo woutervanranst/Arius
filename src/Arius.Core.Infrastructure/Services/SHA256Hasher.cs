@@ -10,9 +10,9 @@ namespace Arius.Core.Infrastructure.Services;
 
 public class SHA256Hasher : IHashValueProvider, IDisposable
 {
-    private readonly byte[] saltBytes;
-    private readonly SHA256 sha256 = SHA256.Create();
-    private const int BUFFER_SIZE = 81920; // 80 KB buffer
+    private readonly byte[]              saltBytes;
+    private readonly ThreadLocal<SHA256> sha256      = new(SHA256.Create);
+    private const    int                 BUFFER_SIZE = 81920; // 80 KB buffer
 
     public SHA256Hasher(RepositoryOptions options) : this(options.Passphrase) { }
     public SHA256Hasher(string salt) : this(Encoding.ASCII.GetBytes(salt)) { }
@@ -44,11 +44,11 @@ public class SHA256Hasher : IHashValueProvider, IDisposable
             int bytesRead;
             while ((bytesRead = s.Read(buffer, 0, buffer.Length)) > 0)
             {
-                sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
+                sha256.Value.TransformBlock(buffer, 0, bytesRead, null, 0);
             }
 
-            sha256.TransformFinalBlock([], 0, 0);
-            return sha256.Hash;
+            sha256.Value.TransformFinalBlock([], 0, 0);
+            return sha256.Value.Hash;
         }
         finally
         {
@@ -58,6 +58,10 @@ public class SHA256Hasher : IHashValueProvider, IDisposable
 
     public void Dispose()
     {
+        if (sha256.IsValueCreated)
+        {
+            sha256.Value.Dispose();
+        }
         sha256.Dispose();
     }
 
