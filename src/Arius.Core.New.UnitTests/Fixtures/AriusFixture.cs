@@ -2,17 +2,13 @@ using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
-using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
-using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
-using WouterVanRanst.Utils.Extensions;
-using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
 
