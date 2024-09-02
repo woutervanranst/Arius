@@ -7,10 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Syncfusion.Blazor.DataForm" Version="26.2.10" />
-    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="26.2.10" />
-    <PackageReference Include="Syncfusion.Blazor.Notifications" Version="26.2.10" />
-    <PackageReference Include="Syncfusion.Blazor.Themes" Version="26.2.10" />
+    <PackageReference Include="Syncfusion.Blazor.DataForm" Version="26.2.11" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="26.2.11" />
+    <PackageReference Include="Syncfusion.Blazor.Notifications" Version="26.2.11" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="26.2.11" />
   </ItemGroup>
 
   <ItemGroup>
