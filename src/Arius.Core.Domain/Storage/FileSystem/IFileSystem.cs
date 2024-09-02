@@ -1,6 +1,5 @@
-﻿using System.Text.Json;
-using Arius.Core.Domain.Extensions;
-using Arius.Core.Domain.Services;
+﻿using Arius.Core.Domain.Extensions;
+using System.Text.Json;
 
 namespace Arius.Core.Domain.Storage.FileSystem;
 
@@ -266,6 +265,8 @@ public class FilePair
     public BinaryFile?  BinaryFile  { get;}
 
     public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName;
+
+    public override string ToString() => RelativeName;
 }
 
 public class FilePairWithHash: FilePair
