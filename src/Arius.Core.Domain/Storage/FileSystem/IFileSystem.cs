@@ -86,6 +86,14 @@ public record File
             return BinaryFile.FromFullName(root, BinaryFileFullName);
     }
 
+    public virtual bool Equals(File? other)
+    {
+        return other is not null &&
+               string.Equals(this.FullName, other.FullName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override int GetHashCode() => FullName.GetHashCode();
+
     public override string ToString() => FullName;
 }
 
@@ -108,6 +116,15 @@ public abstract record RelativeFile : File
 
     public PointerFile GetPointerFile() => base.GetPointerFile(root);
     public BinaryFile  GetBinaryFile()  => base.GetBinaryFile(root);
+
+    public virtual bool Equals(RelativeFile? other)
+    {
+        return other is not null 
+               && base.Equals((File)other)
+               && string.Equals(this.root?.FullName, other.root?.FullName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), root?.FullName);
 
     public override string ToString() => RelativeName;
 }
@@ -252,7 +269,7 @@ public record BinaryFileWithHash : BinaryFile
     public override string ToString() => RelativeName;
 }
 
-public class FilePair
+public record FilePair
 {
     public FilePair(PointerFile? pointerFile, BinaryFile? binaryFile)
     {
@@ -266,10 +283,26 @@ public class FilePair
 
     public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName;
 
-    public override string ToString() => RelativeName;
+    public override string ToString()
+    {
+        if (PointerFile is not null && BinaryFile is not null)
+        {
+            return $"FilePair PF+BF '{RelativeName}'";
+        }
+        else if (PointerFile is null && BinaryFile is not null)
+        {
+            return $"FilePair BF '{RelativeName}'";
+        }
+        else if (PointerFile is not null && BinaryFile is null)
+        {
+            return $"FilePair PF '{RelativeName}'";
+        }
+        else
+            throw new InvalidOperationException("PointerFile and BinaryFile are both null");
+    }
 }
 
-public class FilePairWithHash: FilePair
+public record FilePairWithHash : FilePair
 {
     public FilePairWithHash(PointerFileWithHash? pointerFile, BinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
     {
@@ -282,9 +315,21 @@ public class FilePairWithHash: FilePair
 
     public Hash Hash => BinaryFile?.Hash ?? PointerFile!.Hash;
 
-    
-    //public static implicit operator FilePair(FilePairWithHash filePairWithHash)
-    //{
-    //    return new FilePair(filePairWithHash.PointerFile, filePairWithHash.BinaryFile);
-    //}
+    public override string ToString()
+    {
+        if (PointerFile is not null && BinaryFile is not null)
+        {
+            return $"FilePairWithHash PF+BF '{RelativeName}' ({PointerFile.Hash.ToShortString()})";
+        }
+        else if (PointerFile is null && BinaryFile is not null)
+        {
+            return $"FilePairWithHash BF '{RelativeName}' ({BinaryFile.Hash.ToShortString()})";
+        }
+        else if (PointerFile is not null && BinaryFile is null)
+        {
+            return $"FilePairWithHash PF '{RelativeName}' ({PointerFile.Hash.ToShortString()})";
+        }
+        else
+            throw new InvalidOperationException("PointerFile and BinaryFile are both null");
+    }
 }

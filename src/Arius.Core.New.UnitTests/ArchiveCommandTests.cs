@@ -17,9 +17,9 @@ public class ArchiveCommandTests : TestBase
     protected override void ConfigureOnceForFixture()
     {
         GivenPopulatedSourceFolder();
-}
+    }
 
-[Fact]
+    [Fact]
     public async Task Handle()
     {
         // Arrange

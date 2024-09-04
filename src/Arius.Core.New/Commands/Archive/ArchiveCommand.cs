@@ -6,13 +6,12 @@ namespace Arius.Core.New.Commands.Archive;
 
 public record ArchiveCommand : IRequest
 {
-    public required RepositoryOptions Repository  { get; init; }
-    public required bool              FastHash    { get; init; }
-    public required bool              RemoveLocal { get; init; }
-    public required StorageTier       Tier        { get; init; }
-    public required DirectoryInfo     LocalRoot   { get; init; }
-    public required RepositoryVersion VersionName { get; init; }
-
+    public required RepositoryOptions  Repository  { get; init; }
+    public required bool               FastHash    { get; init; }
+    public required bool               RemoveLocal { get; init; }
+    public required StorageTier        Tier        { get; init; }
+    public required DirectoryInfo      LocalRoot   { get; init; }
+    public          RepositoryVersion? VersionName { get; init; }
 
     internal int FilesToHash_BufferSize => 1000;
 

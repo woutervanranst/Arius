@@ -27,6 +27,14 @@ public record FilePairFoundNotification : ArchiveCommandNotification
     public required FilePair FilePair { get; init; }
 }
 
+public record FilePairHashingNotification : ArchiveCommandNotification
+{
+    public FilePairHashingNotification(ArchiveCommand command) : base(command)
+    {
+    }
+
+    public required FilePair FilePair { get; init; }
+}
 public record FilePairHashedNotification : ArchiveCommandNotification
 {
     public FilePairHashedNotification(ArchiveCommand command) : base(command)
@@ -36,9 +44,9 @@ public record FilePairHashedNotification : ArchiveCommandNotification
     public required FilePairWithHash FilePairWithHash { get; init; }
 }
 
-public record ArchiveCommandDone : ArchiveCommandNotification
+public record ArchiveCommandDoneNotification : ArchiveCommandNotification
 {
-    public ArchiveCommandDone(ArchiveCommand command) : base(command)
+    public ArchiveCommandDoneNotification(ArchiveCommand command) : base(command)
     {
     }
 }
@@ -68,7 +76,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         // Download latest state database
         var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
-        //await stateDbRepositoryTask;
 
         // 1. Index the request.LocalRoot
         var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
@@ -76,6 +83,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
             {
+                await Task.Delay(2300);
+                
                 await mediator.Publish(new FilePairFoundNotification(request) { FilePair = fp }, cancellationToken);
                 logger.LogInformation("Found {fp}", fp);
                 await filesToHash.Writer.WriteAsync(fp, cancellationToken);
@@ -91,19 +100,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var hashTask = Parallel.ForEachAsync(
             filesToHash.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.Hash_Parallelism),
-            async (pair, ct) =>
+            async (filePair, ct) =>
             {
-                var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, pair);
+                await mediator.Publish(new FilePairHashingNotification(request) { FilePair = filePair }, ct);
+                var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, filePair);
                 await mediator.Publish(new FilePairHashedNotification(request) { FilePairWithHash = filePairWithHash }, ct);
 
-                var pfwh = CreatePointerIfNotExist(filePairWithHash);
+                var filePairWithHashAndPointerFile = CreatePointerIfNotExist(filePairWithHash);
 
-                if (filePairWithHash.BinaryFile is not null)
+                if (filePairWithHashAndPointerFile.BinaryFile is not null)
                     // There is a binary file that may need to be uploaded
-                    await binariesToUpload.Writer.WriteAsync(filePairWithHash, ct);
-                else if (filePairWithHash.BinaryFile is null && filePairWithHash.PointerFile is not null)
+                    await binariesToUpload.Writer.WriteAsync(filePairWithHashAndPointerFile, ct);
+                else if (filePairWithHashAndPointerFile.BinaryFile is null && filePairWithHashAndPointerFile.PointerFile is not null)
                     // There is only a pointerfileentry to be created
-                    await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHash.PointerFile, ct);
+                    await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHashAndPointerFile.PointerFile, ct);
             });
 
         hashTask.ContinueWith(_ => binariesToUpload.Writer.Complete());
@@ -114,23 +124,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var uploadTask = Parallel.ForEachAsync(
             binariesToUpload.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
-            async (pair, ct) =>
+            async (filePairWithHash, ct) =>
             {
                 // if not present on the remote
-                if (await stateDbRepository.BinaryExistsAsync(pair.BinaryFile.Hash))
+                if (stateDbRepository.BinaryExists(filePairWithHash.BinaryFile!.Hash))
                 {
                     // TODO binariesThatWillBeUploaded -- 
                     //await stateDbRepository.UploadBinaryFileAsync(bfwh);
                 }
-                
-                await pointerFileEntriesToCreate.Writer.WriteAsync(pair.PointerFile, ct);
+
+                await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHash.PointerFile, ct);
             });
 
         Task.WhenAll(hashTask, uploadTask).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
 
         await Task.WhenAll(indexTask, hashTask);
 
-        await mediator.Publish(new ArchiveCommandDone(request), cancellationToken);
+        await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 
         return;
 
@@ -257,17 +267,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 
-    internal static PointerFileWithHash CreatePointerIfNotExist(FilePairWithHash pair)
+    /// <summary>
+    /// Ensure the PointerFile is created
+    /// </summary>
+    /// <param name="pair"></param>
+    /// <returns>A pair where the PointerFile is not null</returns>
+    /// <exception cref="InvalidOperationException"></exception>
+    internal static FilePairWithHash CreatePointerIfNotExist(FilePairWithHash pair)
     {
         if (pair.PointerFile is not null && pair.BinaryFile is not null)
         {
             // A PointerFile with corresponding BinaryFile
-            return pair.PointerFile;
+            return pair;
         }
         else if (pair.PointerFile is not null && pair.BinaryFile is null)
         {
             // A PointerFile without a BinaryFile
-            return pair.PointerFile;
+            return pair;
         }
         else if (pair.PointerFile is null && pair.BinaryFile is not null)
         {
@@ -275,9 +291,30 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var pfwh = pair.BinaryFile.GetPointerFileWithHash();
             pfwh.Save();
 
-            return pfwh;
+            return new FilePairWithHash(pfwh, pair.BinaryFile);
         }
         else
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
+
+        //if (pair.PointerFile is not null && pair.BinaryFile is not null)
+        //{
+        //    // A PointerFile with corresponding BinaryFile
+        //    return pair.PointerFile;
+        //}
+        //else if (pair.PointerFile is not null && pair.BinaryFile is null)
+        //{
+        //    // A PointerFile without a BinaryFile
+        //    return pair.PointerFile;
+        //}
+        //else if (pair.PointerFile is null && pair.BinaryFile is not null)
+        //{
+        //    // A BinaryFile without a PointerFile
+        //    var pfwh = pair.BinaryFile.GetPointerFileWithHash();
+        //    pfwh.Save();
+
+        //    return pfwh;
+        //}
+        //else
+        //    throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 }

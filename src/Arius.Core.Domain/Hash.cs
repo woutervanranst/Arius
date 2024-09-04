@@ -1,6 +1,6 @@
 ﻿namespace Arius.Core.Domain;
 
-public record Hash // IEquatable is implicitly implemented
+public record Hash
 {
     public Hash(byte[] value)
     {
@@ -24,5 +24,18 @@ public record Hash // IEquatable is implicitly implemented
         return Value.AsSpan().SequenceEqual(other.Value.AsSpan());
     }
 
-    public override string ToString() => Value.BytesToHexString();
+    public override string ToString() => ToLongString();
+
+    /// <summary>`
+    /// Print the first 8 characters of the value
+    /// </summary>
+    /// <returns></returns>
+    public string ToShortString() => Value[..4].BytesToHexString();
+
+    public string ToLongString() => Value.BytesToHexString();
+
+    public static implicit operator Hash(byte[] hash)
+    {
+        return new Hash(hash);
+    }
 }

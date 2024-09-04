@@ -1,0 +1,144 @@
+﻿@page "/jobs"
+@using Arius.Core.Domain.Storage
+@using Arius.Core.New.Commands.Archive
+@using MediatR
+@using Microsoft.AspNetCore.SignalR.Client
+@using Syncfusion.Blazor.ProgressBar
+@inject IMediator         Mediator
+
+@inject NavigationManager NavigationManager
+
+<h3>Jobs</h3>
+
+<button class="btn btn-secondary btn-sm" @onclick="StartArchiveCommand">Start</button>
+
+@_fileCounter
+
+
+
+<div class="row">
+    <div class="col-md-2">
+        <label>Index</label>
+    </div>
+    <div class="col-md-10">
+        <SfProgressBar Type="ProgressType.Linear" IsStriped="true" Height="60" IsActive="true" Value="100" Minimum="0" Maximum="100">
+            <ProgressBarAnimation Enable="true" Duration="2000" Delay="0" />
+        </SfProgressBar>    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-sm-3">
+        <label>Hash</label>
+    </div>
+    <div class="col-sm-6">
+        <SfProgressBar Type="ProgressType.Linear" IsStriped="true" Height="60" IsActive="true" Value="100" Minimum="0" Maximum="100">
+            <ProgressBarAnimation Enable="true" Duration="2000" Delay="0" />
+            @* <ProgressBarEvents TextRender="TextHandler"></ProgressBarEvents> *@
+        </SfProgressBar>
+    </div>
+    <div class="col-sm-3">
+        <label>Hash</label>
+    </div>
+</div>
+
+<h2>Recent Files:</h2>
+<ul>
+    @foreach (var file in _recentFiles)
+    {
+        <li>@file</li>
+    }
+</ul>
+
+
+
+
+@code {
+    private HubConnection hubConnection;
+    private int           _fileCounter;
+    private List<string>  _recentFiles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/jobsHub"))
+            .Build();
+
+        // hubConnection.On<IFileProcessingClient>(client => client.FileFound, OnFileFound);
+        // hubConnection.On<IFileProcessingClient>(client => client.FileProcessed, OnFileProcessed);
+        // hubConnection.On<IFileProcessingClient>(client => client.FileProcessingCompleted, OnProcessingCompleted);
+
+        hubConnection.On<int, List<string>>("FileFound", (counter, files) =>
+        {
+            _fileCounter = counter;
+            _recentFiles = files;
+            InvokeAsync(StateHasChanged);
+        });
+
+        hubConnection.On<string>("FileProcessed", fileName =>
+        {
+            // Handle file processed notification
+        });
+
+        hubConnection.On("FileProcessingCompleted", () =>
+        {
+            // Handle processing completed notification
+        });
+
+        await hubConnection.StartAsync();
+
+        // Request the current progress when connecting
+        await hubConnection.SendAsync("SendCurrentProgress");
+    }
+
+    private void StartArchiveCommand()
+    {
+        var r = new RepositoryOptions()
+        {
+            AccountName   = "ariusci",
+            ContainerName = "test2",
+            Passphrase    = "test"
+        };
+        var c = new ArchiveCommand()
+        {
+            Repository  = r,
+            FastHash    = false,
+            LocalRoot   = new DirectoryInfo(@"C:\AriusTest\Source"),
+            RemoveLocal = false,
+            Tier        = StorageTier.Archive,
+            VersionName = "Test"
+        };
+
+        Mediator.Send(c);
+    }
+
+    // private Task OnFileFound(int fileCounter, IReadOnlyCollection<string> recentFiles)
+    // {
+    //     _fileCounter = fileCounter;
+    //     _recentFiles = recentFiles.ToList();
+    //     StateHasChanged();
+    //     return Task.CompletedTask;
+    // }
+
+    // private Task OnFileProcessed(string fileName)
+    // {
+    //     // Handle file processed notification
+    //     return Task.CompletedTask;
+    // }
+
+    // private Task OnProcessingCompleted()
+    // {
+    //     // Handle processing completed notification
+    //     return Task.CompletedTask;
+    // }
+
+    public async ValueTask DisposeAsync()
+    {
+        await hubConnection.DisposeAsync();
+    }
+
+    public void TextHandler(TextRenderEventArgs arg)
+    {
+        arg.Text = "Hashing";
+    }
+
+}

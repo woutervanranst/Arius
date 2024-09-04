@@ -14,6 +14,9 @@ public class Program
     {
         var builder = WebApplication.CreateBuilder(args);
 
+        // Add SignalR
+        builder.Services.AddSignalR();
+
         // Configure Services
         ConfigureServices(builder.Services, builder.Configuration);
 
@@ -25,6 +28,8 @@ public class Program
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             dbContext.Database.Migrate();
         }
+
+        app.MapHub<FileProcessingHub>("/jobsHub");
 
         // Configure the HTTP request pipeline
         ConfigureMiddleware(app);
@@ -50,6 +55,7 @@ public class Program
         services.AddScoped<IStorageAccountRepository, StorageAccountRepository>();
         services.AddScoped<IRepositoryRepository, RepositoryRepository>();
         services.AddScoped<RepositoryService>();
+        services.AddSingleton<FileProcessingService>();
 
         services.AddArius(c => c.LocalConfigRoot = new DirectoryInfo(configuration.GetValue<string>("LocalConfigRoot")));
     }

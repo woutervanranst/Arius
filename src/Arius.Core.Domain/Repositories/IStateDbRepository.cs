@@ -6,6 +6,6 @@ public interface IStateDbRepository
 {
     RepositoryVersion                  Version { get; }
     IAsyncEnumerable<PointerFileEntry> GetPointerFileEntries();
-    IAsyncEnumerable<string>           GetBinaryEntries();
-    Task<bool>                         BinaryExistsAsync(Hash binaryFileHash);
+    IAsyncEnumerable<BinaryProperties> GetBinaryProperties();
+    bool                               BinaryExists(Hash binaryFileHash);
 }

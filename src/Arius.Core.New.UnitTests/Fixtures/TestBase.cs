@@ -215,7 +215,7 @@ public abstract class TestBase
     protected void ThenStateDbShouldBeEmpty(IStateDbRepository stateDbRepository)
     {
         stateDbRepository.GetPointerFileEntries().CountAsync().Result.Should().Be(0);
-        stateDbRepository.GetBinaryEntries().CountAsync().Result.Should().Be(0);
+        stateDbRepository.GetBinaryProperties().CountAsync().Result.Should().Be(0);
     }
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
