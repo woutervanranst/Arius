@@ -170,21 +170,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     internal static IEnumerable<FilePair> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
     {
-        var seenFiles        = new HashSet<string>();
-        var currentDirectory = root.FullName;
-
         foreach (var file in fileSystem.EnumerateFiles(root))
         {
-            // Check if the directory has changed, if so clear the seenFiles HashSet
-            if (!string.Equals(currentDirectory, file.Path, StringComparison.OrdinalIgnoreCase))
-            {
-                seenFiles.Clear();
-                currentDirectory = file.Path; // Update the current directory to the file's directory
-            }
-
-            if (!seenFiles.Add(file.BinaryFileFullName))
-                continue;
-
             if (file.IsPointerFile)
             {
                 // this is a PointerFile
@@ -192,12 +179,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                 if (pf.GetBinaryFile(root) is { Exists: true } bf)
                 {
-                    // BinaryFile exists too
+                    // 1. BinaryFile exists too
                     yield return new(pf, bf);
                 }
                 else
                 {
-                    // BinaryFile does not exist
+                    // 2. BinaryFile does not exist
                     yield return new(pf, null);
                 }
             }
@@ -206,18 +193,67 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // this is a BinaryFile
                 var bf = file.GetBinaryFile(root);
 
-                if (bf.GetPointerFile(root) is { Exists : true } pf)
+                if (bf.GetPointerFile(root) is { Exists: true } pf)
                 {
-                    // PointerFile exists too
-                    yield return new(pf, bf);
+                    // 3. PointerFile exists too -- DO NOT YIELD ANYTHING; this pair has been yielded in (1)
+                    continue;
                 }
                 else
                 {
-                    // BinaryFile does not exist
+                    // 4. BinaryFile does not exist
                     yield return new(null, bf);
                 }
             }
         }
+
+        //var seenFiles        = new HashSet<string>();
+        //var currentDirectory = root.FullName;
+
+        //foreach (var file in fileSystem.EnumerateFiles(root))
+        //{
+        //    // Check if the directory has changed, if so clear the seenFiles HashSet
+        //    if (!string.Equals(currentDirectory, file.Path, StringComparison.OrdinalIgnoreCase))
+        //    {
+        //        seenFiles.Clear();
+        //        currentDirectory = file.Path; // Update the current directory to the file's directory
+        //    }
+
+        //    if (!seenFiles.Add(file.BinaryFileFullName))
+        //        continue;
+
+        //    if (file.IsPointerFile)
+        //    {
+        //        // this is a PointerFile
+        //        var pf = file.GetPointerFile(root);
+
+        //        if (pf.GetBinaryFile(root) is { Exists: true } bf)
+        //        {
+        //            // BinaryFile exists too
+        //            yield return new(pf, bf);
+        //        }
+        //        else
+        //        {
+        //            // BinaryFile does not exist
+        //            yield return new(pf, null);
+        //        }
+        //    }
+        //    else
+        //    {
+        //        // this is a BinaryFile
+        //        var bf = file.GetBinaryFile(root);
+
+        //        if (bf.GetPointerFile(root) is { Exists : true } pf)
+        //        {
+        //            // PointerFile exists too
+        //            yield return new(pf, bf);
+        //        }
+        //        else
+        //        {
+        //            // BinaryFile does not exist
+        //            yield return new(null, bf);
+        //        }
+        //    }
+        //}
     }
 
     internal static async Task<FilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, FilePair pair)
