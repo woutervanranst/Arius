@@ -1,8 +1,11 @@
-﻿namespace Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Storage.FileSystem;
+
+namespace Arius.Core.Domain.Storage;
 
 public interface IRepository
 {
     IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions();
     IBlob                               GetRepositoryVersionBlob(RepositoryVersion repositoryVersion);
-    Task                                DownloadAsync(IBlob blob, string localPath, string passphrase, CancellationToken cancellationToken = default);
+    Task<BinaryProperties>              UploadChunkAsync(IBinaryFileWithHash file, CancellationToken cancellationToken = default);
+    Task                                DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
 }

@@ -1,7 +1,12 @@
-﻿using Arius.Core.Domain.Services;
+﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
+using Azure;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
@@ -46,13 +51,43 @@ internal class AzureRepository : IRepository
         return StateFolder.GetBlob(repositoryVersion.Name);
     }
 
-    public async Task DownloadAsync(IBlob blob, string localPath, string passphrase, CancellationToken cancellationToken = default)
+    public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, CancellationToken cancellationToken = default)
+    {
+        var             b  = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
+
+        var r = await UploadAsync(file, b, cancellationToken);
+
+        var bp = new BinaryProperties
+        {
+            Hash              = file.Hash,
+            OriginalLength    = r.originalLength,
+            ArchivedLength    = r.archivedLength,
+            IncrementalLength = 0, // TODO
+            StorageTier       = StorageTier.Hot // TODO
+        };
+
+
+        // TODO Set contenttype, metadata, accesstier, ...
+
+        return bp;
+    }
+
+    private async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, CancellationToken cancellationToken = default)
+    {
+        await using var ts = await target.OpenWriteAsync();
+        await using var ss = source.OpenRead();
+        await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+
+        return (ss.Length, ts.Position); // ts.Length is not supported
+    }
+
+    public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
-        await using var ts = File.Create(localPath);
+        await using var ts = file.OpenRead();
         await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
-        logger.LogInformation($"Successfully downloaded latest state '{blob.Name}' to '{localPath}'");
+        logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);
     }
 }
 
@@ -76,15 +111,14 @@ internal class AzureContainerFolder
 
     public AzureBlob GetBlob(string name)
     {
-        return new AzureBlob(blobContainerClient.GetBlobClient($"{folderName}/{name}"));
+        return new AzureBlob(blobContainerClient.GetBlockBlobClient($"{folderName}/{name}"));
     }
 }
 
 internal class AzureBlob : IBlob
 {
-    private readonly BlobItem? blobItem;
-    private readonly BlobClient? blobClient;
-    private readonly AsyncLazy<BlobClient> lazyBlobClient; // TODO REMOVE lazyBlobClient
+    private readonly BlobItem?                       blobItem;
+    private readonly BlockBlobClient                 blockBlobClient;
     private readonly AsyncLazy<BlobCommonProperties> lazyCommonProperties;
 
     internal record BlobCommonProperties
@@ -95,13 +129,12 @@ internal class AzureBlob : IBlob
         public IDictionary<string, string>? Metadata      { get; init; }
     }
 
-    public AzureBlob(BlobClient blobClient)
+    public AzureBlob(BlockBlobClient blockBlobClient)
     {
-        this.blobClient = blobClient;
-        lazyBlobClient = new AsyncLazy<BlobClient>(() => Task.FromResult(blobClient));
+        this.blockBlobClient = blockBlobClient;
         lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(async () =>
         {
-            var properties = await blobClient.GetPropertiesAsync();
+            var properties = await blockBlobClient.GetPropertiesAsync();
             return new BlobCommonProperties
             {
                 ContentLength = properties.Value.ContentLength,
@@ -115,7 +148,7 @@ internal class AzureBlob : IBlob
     public AzureBlob(BlobItem blobItem, BlobContainerClient containerClient)
     {
         this.blobItem = blobItem;
-        lazyBlobClient = new AsyncLazy<BlobClient>(() => Task.FromResult(containerClient.GetBlobClient(blobItem.Name)));
+        this.blockBlobClient = containerClient.GetBlockBlobClient(blobItem.Name);
 
         // Lazy initialization of commonProperties using blobItem.Properties
         lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(() => Task.FromResult(new BlobCommonProperties
@@ -127,11 +160,11 @@ internal class AzureBlob : IBlob
         }));
     }
 
-    public string FullName => blobItem?.Name ?? blobClient!.Name;
+    public string FullName => blobItem?.Name ?? blockBlobClient!.Name;
 
     public string Name => Path.GetFileName(FullName);
 
-    //public Uri Uri => blobClient?.Uri ?? lazyBlobClient.Value.Result.Uri;
+    //public Uri Uri => blockBlobClient?.Uri ?? lazyBlobClient.Value.Result.Uri;
 
     public async Task<long> GetContentLengthAsync() => (await lazyCommonProperties).ContentLength;
 
@@ -139,8 +172,7 @@ internal class AzureBlob : IBlob
 
     public async Task SetStorageTierAsync(StorageTier value)
     {
-        var client = await lazyBlobClient;
-        await client.SetAccessTierAsync(value.ToAccessTier());
+        await blockBlobClient.SetAccessTierAsync(value.ToAccessTier());
     }
 
     //public async Task<string?> GetContentTypeAsync() => (await lazyCommonProperties).ContentType;
@@ -155,8 +187,7 @@ internal class AzureBlob : IBlob
 
     public async Task<bool> ExistsAsync()
     {
-        var client = await lazyBlobClient;
-        return await client.ExistsAsync();
+        return await blockBlobClient.ExistsAsync();
     }
 
     //public async Task DeleteAsync()
@@ -167,15 +198,23 @@ internal class AzureBlob : IBlob
 
     public async Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
     {
-        var client = await lazyBlobClient;
-        return await client.OpenReadAsync(cancellationToken:cancellationToken);
+        return await blockBlobClient.OpenReadAsync(cancellationToken:cancellationToken);
     }
 
-    //public async Task<Stream> OpenWriteAsync(bool throwOnExists = true)
-    //{
-    //    var client = await lazyBlobClient;
-    //    return await client.OpenWriteAsync(overwrite: !throwOnExists);
-    //}
+    /// <summary>
+    /// Open the blob for writing.
+    /// </summary>
+    /// <param name="throwOnExists">If specified, and the blob already exists, a RequestFailedException with Status HttpStatusCode.Conflict is thrown</param>
+    public async Task<Stream> OpenWriteAsync(bool throwOnExists = true)
+    {
+        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+        if (throwOnExists)
+            return await blockBlobClient.OpenWriteAsync(overwrite: true, options: new BlockBlobOpenWriteOptions
+            {
+                OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") } // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+            });
+        return await blockBlobClient.OpenWriteAsync(overwrite: true);
+    }
 
     //public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options)
     //{
