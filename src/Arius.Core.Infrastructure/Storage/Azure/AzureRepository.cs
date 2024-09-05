@@ -84,7 +84,7 @@ internal class AzureRepository : IRepository
     public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
-        await using var ts = file.OpenRead();
+        await using var ts = file.OpenWrite();
         await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
         logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);

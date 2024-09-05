@@ -130,6 +130,7 @@ public abstract class TestBase
 
         return new(null, BinaryFile.FromFullName(null, fileFullName));
 
+
         static void SetAttributes(FileAttributes attributes, string filePath)
         {
             File.SetAttributes(filePath, attributes);

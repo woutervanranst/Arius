@@ -122,13 +122,16 @@ public record File : IFile // TODO make internal
         FileMode.Open,
         FileAccess.Read,
         FileShare.Read,
-        bufferSize: 8192, // 8 KB buffer size (optimal for most use cases)
+        bufferSize: 32768, // 32 KB buffer size
         useAsync: true); // Enable async I/O for better performance with large files
 
-    public Stream OpenWrite()
-    {
-        throw new NotImplementedException();
-    }
+    public Stream OpenWrite() => new FileStream(
+        fileInfo.FullName,
+        FileMode.OpenOrCreate,
+        FileAccess.Write,
+        FileShare.None,
+        bufferSize: 32768, // 32 KB buffer size
+        useAsync: true); // Enable async I/O for better performance with large files
 
     public virtual bool Equals(File? other)
     {
@@ -370,7 +373,7 @@ public record FilePair
 
     public bool IsBinaryFileWithPointerFile => PointerFile is not null && BinaryFile is not null;
     public bool IsPointerFileOnly           => PointerFile is not null && BinaryFile is null;
-    public bool IsBinaryFileOnly            => PointerFile is null && BinaryFile is null;
+    public bool IsBinaryFileOnly            => PointerFile is null && BinaryFile is not null;
 
     public bool HasPointerFile => PointerFile is not null;
     public bool HasBinaryFile  => BinaryFile is not null;
