@@ -8,6 +8,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
+using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
@@ -34,7 +35,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
         var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
-        var (fullName, effectiveVersion) = await GetLocalStateDbFullNameAsync(repository, repositoryOptions, version);
+        var (file, effectiveVersion) = await GetLocalStateDbFullNameAsync(repository, repositoryOptions, version);
 
         /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'
@@ -42,12 +43,12 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
          * Set command timeout to 60s to avoid concurrency errors on 'table is locked' 
          */
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={fullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
+        optionsBuilder.UseSqlite($"Data Source={file.FullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
 
         return new StateDbRepository(optionsBuilder.Options, effectiveVersion);
     }
 
-    private async Task<(string fullName, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
+    private async Task<(IFile fullName, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
     {
         var localStateDbFolder = config.GetLocalStateDbFolderForRepository(repositoryOptions);
 
@@ -58,7 +59,7 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTime.UtcNow;
-                return (localStateDbFolder.GetFileFullName(effectiveVersion.GetFileSystemName()), effectiveVersion);
+                return (localStateDbFolder.GetFile(effectiveVersion.GetFileSystemName()), effectiveVersion);
             }
             return (await GetLocallyCachedAsync(repository, repositoryOptions, localStateDbFolder, effectiveVersion), effectiveVersion);
         }
@@ -76,21 +77,21 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
         }
     }
 
-    private static async Task<string> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
+    private static async Task<IFile> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
-        var localPath = stateDbFolder.GetFileFullName(version.GetFileSystemName());
+        var localFile = stateDbFolder.GetFile(version.GetFileSystemName());
 
-        if (System.IO.File.Exists(localPath))
+        if (localFile.Exists)
         {
             // Cached locally, ASSUME it’s the same version
-            return localPath;
+            return localFile;
         }
 
         try
         {
             var blob = repository.GetRepositoryVersionBlob(version);
-            await repository.DownloadAsync(blob, localPath, repositoryOptions.Passphrase);
-            return localPath;
+            await repository.DownloadAsync(blob, localFile);
+            return localFile;
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
         {
@@ -100,6 +101,14 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
         {
             throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
         }
+    }
+}
+
+public static class DirectoryInfoExtensions
+{
+    public static IFile GetFile(this DirectoryInfo directoryInfo, string relativeName)
+    {
+        return File.FromRelativeName(directoryInfo, relativeName);
     }
 }
 

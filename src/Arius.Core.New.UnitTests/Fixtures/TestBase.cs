@@ -103,7 +103,7 @@ public abstract class TestBase
                 return Substitute.For<IBlob>();
             });
 
-        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>())
+        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
             .Returns(info =>
             {
                 var blob = info.Arg<IBlob>();
@@ -221,13 +221,13 @@ public abstract class TestBase
     protected void ThenDownloadShouldNotHaveBeenCalled()
     {
         var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
-        repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
+        repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 
     protected void ThenDownloadShouldHaveBeenCalled()
     {
         var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
-        repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<string>(), Arg.Any<string>());
+        repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 
     protected async Task ThenArgumentExceptionShouldBeThrownAsync(Func<Task> act, string expectedMessagePart)

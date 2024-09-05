@@ -8,7 +8,38 @@ public interface IFileSystem
     public IEnumerable<File> EnumerateFiles(DirectoryInfo directory);
 }
 
-public record File
+public interface IFile
+{
+    string  FullName                { get; }
+    string  FullNamePlatformNeutral { get; }
+    string? Path                    { get; }
+    string? PathPlatformNeutral     { get; }
+    string  Name                    { get; }
+    bool    Exists                  { get; }
+
+    DateTime CreationTimeUtc { get; set; }
+
+    DateTime LastWriteTimeUtc { get; set; }
+
+    bool   IsPointerFile                      { get; }
+    bool   IsBinaryFile                       { get; }
+    string BinaryFileFullName                 { get; }
+    string BinaryFileFullNamePlatformNeutral  { get; }
+    string PointerFileFullName                { get; }
+    string PointerFileFullNamePlatformNeutral { get; }
+
+    string      GetRelativeName(string relativeTo);
+    string      GetRelativeNamePlatformNeutral(string relativeTo);
+    string      GetRelativeName(DirectoryInfo relativeTo);
+    string      GetRelativeNamePlatformNeutral(DirectoryInfo relativeTo);
+    PointerFile GetPointerFile(DirectoryInfo root);
+    BinaryFile  GetBinaryFile(DirectoryInfo root);
+
+    Stream OpenRead();
+    Stream OpenWrite();
+}
+
+public record File : IFile // TODO make internal
 {
     protected readonly FileInfo fileInfo;
 
@@ -86,6 +117,19 @@ public record File
             return BinaryFile.FromFullName(root, BinaryFileFullName);
     }
 
+    public Stream OpenRead() => new FileStream(
+        fileInfo.FullName,
+        FileMode.Open,
+        FileAccess.Read,
+        FileShare.Read,
+        bufferSize: 8192, // 8 KB buffer size (optimal for most use cases)
+        useAsync: true); // Enable async I/O for better performance with large files
+
+    public Stream OpenWrite()
+    {
+        throw new NotImplementedException();
+    }
+
     public virtual bool Equals(File? other)
     {
         return other is not null &&
@@ -97,7 +141,14 @@ public record File
     public override string ToString() => FullName;
 }
 
-public abstract record RelativeFile : File
+public interface IRelativeFile : IFile
+{
+    public string RelativeName { get; }
+
+    // TODO other properties
+}
+
+public abstract record RelativeFile : File, IRelativeFile
 {
     protected readonly DirectoryInfo root;
 
@@ -189,7 +240,7 @@ public record PointerFile : RelativeFile
     public override string ToString() => RelativeName;
 }
 
-public interface IFileWithHash
+public interface IFileWithHash : IFile
 {
     public Hash Hash { get; }
 }
@@ -251,7 +302,11 @@ public record BinaryFile : RelativeFile
     public override string ToString() => RelativeName;
 }
 
-public record BinaryFileWithHash : BinaryFile, IFileWithHash
+public interface IBinaryFileWithHash : IFileWithHash
+{
+}
+
+public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
 {
     protected BinaryFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
     {
