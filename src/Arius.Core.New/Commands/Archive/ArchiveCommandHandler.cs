@@ -1,10 +1,13 @@
-﻿using System.Threading.Channels;
+﻿using System.Collections.Concurrent;
+using System.Threading.Channels;
+using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
 using FluentValidation;
 using MediatR;
+using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.New.Commands.Archive;
 
@@ -74,7 +77,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        // Download latest state database
+        // Start download of the latest state database
         var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
 
         // 1. Index the request.LocalRoot
@@ -83,7 +86,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
             {
-                await Task.Delay(2300);
+                await Task.Delay(2000);
                 
                 await mediator.Publish(new FilePairFoundNotification(request) { FilePair = fp }, cancellationToken);
                 logger.LogInformation("Found {fp}", fp);
@@ -94,51 +97,148 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
 
         // 2. Hash the filepairs
-        var binariesToUpload           = GetBoundedChannel<FilePairWithHash>(request.BinariesToUpload_BufferSize, false);
-        var pointerFileEntriesToCreate = GetBoundedChannel<PointerFileWithHash>(request.PointerFileEntriesToCreate_BufferSize, false);
-        var hvp                        = new SHA256Hasher(request.Repository.Passphrase);
+        var hashedFilePairs = GetBoundedChannel<FilePairWithHash>(request.BinariesToUpload_BufferSize, false);
+        var hvp              = new SHA256Hasher(request.Repository.Passphrase);
         var hashTask = Parallel.ForEachAsync(
             filesToHash.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.Hash_Parallelism),
             async (filePair, ct) =>
             {
                 await mediator.Publish(new FilePairHashingNotification(request) { FilePair = filePair }, ct);
+                await Task.Delay(2000);
                 var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, filePair);
                 await mediator.Publish(new FilePairHashedNotification(request) { FilePairWithHash = filePairWithHash }, ct);
-
-                var filePairWithHashAndPointerFile = CreatePointerIfNotExist(filePairWithHash);
-
-                if (filePairWithHashAndPointerFile.BinaryFile is not null)
-                    // There is a binary file that may need to be uploaded
-                    await binariesToUpload.Writer.WriteAsync(filePairWithHashAndPointerFile, ct);
-                else if (filePairWithHashAndPointerFile.BinaryFile is null && filePairWithHashAndPointerFile.PointerFile is not null)
-                    // There is only a pointerfileentry to be created
-                    await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHashAndPointerFile.PointerFile, ct);
+                
+                await hashedFilePairs.Writer.WriteAsync(filePairWithHash, ct);
             });
 
-        hashTask.ContinueWith(_ => binariesToUpload.Writer.Complete());
+        hashTask.ContinueWith(_ => hashedFilePairs.Writer.Complete());
 
         var stateDbRepository = await stateDbRepositoryTask;
 
-        // 3. Upload the binaries that are not present on the remote
-        var uploadTask = Parallel.ForEachAsync(
-            binariesToUpload.Reader.ReadAllAsync(cancellationToken),
-            GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
-            async (filePairWithHash, ct) =>
+        // 3. Do STUFF
+        //////// 3. Upload the binaries that are not present on the remote
+
+        var binariesToUpload           = GetBoundedChannel<BinaryFileWithHash>(request.BinariesToUpload_BufferSize, false);
+        var pointerFileEntriesToCreate = GetBoundedChannel<PointerFileEntry>(request.PointerFileEntriesToCreate_BufferSize, false);
+        var latentPointers             = new ConcurrentBag<PointerFileWithHash>();
+
+        var uploadingBinaries = new Dictionary<Hash, List<BinaryFileWithHash>>();
+
+        var someTask2 = Task.Run(async () => // NOTE this task runs single threaded / as mutex between the stateDbRepository and uploadingBinaries
+        {
+            await foreach (var pwh in hashedFilePairs.Reader.ReadAllAsync(cancellationToken))
             {
-                // if not present on the remote
-                if (stateDbRepository.BinaryExists(filePairWithHash.BinaryFile!.Hash))
+                if (pwh.HasBinaryFile)
                 {
-                    // TODO binariesThatWillBeUploaded -- 
-                    //await stateDbRepository.UploadBinaryFileAsync(bfwh);
+                    // The binary exists locally
+                    if (!stateDbRepository.BinaryExists(pwh.BinaryFile!))
+                    {
+                        // but not remote --> needs to be uploaded
+                        if (pwh.HasExistingPointerFile)
+                        {
+                            // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
+                            latentPointers.Add(pwh.PointerFile!);
+                        }
+                        else
+                        {
+                            // do we need to start the upload or is this hash already being uploaded?
+                            var binaryToUpload = uploadingBinaries.TryAdd(pwh.Hash, [pwh.BinaryFile!]);
+                            if (binaryToUpload)
+                            {
+                                // 2.1 Does not yet exist remote and not yet being created --> upload
+                                logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely. To upload and create pointer.");
+
+                                await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
+
+                                //stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: ce.IncrementalLength);
+                            }
+                            else
+                            {
+                                uploadingBinaries[pwh.Hash].Add(pwh.BinaryFile!);
+                                logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely but is already being uploaded");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        //Binary exists locally and remote
+                        //await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!);
+                    }
                 }
+            }
+        }, cancellationToken);
 
-                await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHash.PointerFile, ct);
-            });
 
-        Task.WhenAll(hashTask, uploadTask).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
+        //// at this point we know that the binary has been uploaded -- we can create the pointerfileentry
+        //await pointerFileEntriesToCreate.Writer.WriteAsync()
+
+
+
+        //var someTask = Parallel.ForEachAsync(
+        //    hashedFilePairs.Reader.ReadAllAsync(cancellationToken),
+        //    GetParallelOptions(request.SOME_PARALLELISM),
+        //    async (pwh, ct) =>
+        //    {
+
+
+
+
+        //        if (pwh.PointerFile is not null && pwh.BinaryFile is not null)
+        //        {
+        //            // A PointerFile with corresponding BinaryFile
+        //        }
+        //        else if (pwh.PointerFile is not null && pwh.BinaryFile is null)
+        //        {
+        //            // A PointerFile without a BinaryFile
+        //        }
+        //        else if (pwh.PointerFile is null && pwh.BinaryFile is not null)
+        //        {
+        //            // A BinaryFile without a PointerFile
+        //            //var pfwh = filePairWithHash.BinaryFile.GetPointerFileWithHash();
+        //            //pfwh.Save();
+
+        //            //return new FilefilePairWithHashWithHash(pfwh, filePairWithHash.BinaryFile);
+        //        }
+        //        else
+        //            //throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
+
+        //        if (filePairWithHashAndPointerFile.BinaryFile is not null)
+        //            // There is a binary file that may need to be uploaded
+        //            await hashedFilePairs.Writer.WriteAsync(filePairWithHashAndPointerFile, ct);
+        //        else if (filePairWithHashAndPointerFile.BinaryFile is null && filePairWithHashAndPointerFile.PointerFile is not null)
+        //            // There is only a pointerfileentry to be created
+        //            await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHashAndPointerFile.PointerFile, ct);
+
+
+
+
+        //        // if not present on the remote
+        //        if (stateDbRepository.BinaryExists(pwh.BinaryFile!.Hash))
+        //        {
+        //            // TODO binariesThatWillBeUploaded -- 
+        //            //await stateDbRepository.UploadBinaryFileAsync(bfwh);
+        //        }
+
+        //        await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.PointerFile, ct);
+        //    });
+
+        // upload Task --> Set completion source !!
+        //var ce = await UploadAsync(bf);
+        //uploadingBinaries[filePairWithHash.Hash].SetResult();
+
+
+
+        Task.WhenAll(hashTask/*, someTask*/).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
 
         await Task.WhenAll(indexTask, hashTask);
+
+        //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
+        foreach (var pf in latentPointers)
+        {
+            if (!stateDbRepository.BinaryExists(pf.Hash))
+                throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
+        }
 
         await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 
@@ -164,6 +264,28 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         ParallelOptions GetParallelOptions(int maxDegreeOfParallelism)
         {
             return new ParallelOptions() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
+        }
+
+        bool DoWeNeedToStartUploadingThis(Hash h)
+        {
+            lock (uploadingBinaries)
+            {
+                if (!stateDbRepository.BinaryExists(h))
+                    return uploadingBinaries.TryAdd(h, []);
+                else
+                    return false;
+            }
+        }
+        void HasBeenUploaded(Hash h, BinaryProperties bp)
+        {
+            lock (uploadingBinaries)
+            {
+                stateDbRepository.AddBinary(bp);
+                var r = uploadingBinaries.Remove(h);
+
+                if (!r)
+                    throw new InvalidOperationException($"Tried to remove {h} but it was not present");
+            }
         }
     }
 
@@ -258,13 +380,13 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     internal static async Task<FilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, FilePair pair)
     {
-        if (pair.PointerFile is not null && pair.BinaryFile is not null)
+        if (pair.IsBinaryFileWithPointerFile)
         {
             // A PointerFile with corresponding BinaryFile
             if (fastHash)
             {
                 // FastHash option - take the hash from the PointerFile
-                if (pair.PointerFile.LastWriteTimeUtc == pair.BinaryFile.LastWriteTimeUtc)
+                if (pair.PointerFile!.LastWriteTimeUtc == pair.BinaryFile!.LastWriteTimeUtc)
                 {
                     // The file has not been modified
                     var pfwh0 = pair.PointerFile.GetPointerFileWithHash();
@@ -275,27 +397,27 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
 
             // Fasthash is off, or the File has been modified
-            var h1    = await hvp.GetHashAsync(pair.BinaryFile);
-            var bfwh1 = pair.BinaryFile.GetBinaryFileWithHash(h1);
+            var h1    = await hvp.GetHashAsync(pair.BinaryFile!);
+            var bfwh1 = pair.BinaryFile!.GetBinaryFileWithHash(h1);
 
-            var pfwh1 = pair.PointerFile.GetPointerFileWithHash();
+            var pfwh1 = pair.PointerFile!.GetPointerFileWithHash();
             if (pfwh1.Hash != bfwh1.Hash)
                 throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
             return new(pfwh1, bfwh1);
         }
-        else if (pair.PointerFile is not null && pair.BinaryFile is null)
+        else if (pair.IsPointerFileOnly)
         {
             // A PointerFile without a BinaryFile
-            var pfwh = pair.PointerFile.GetPointerFileWithHash();
+            var pfwh = pair.PointerFile!.GetPointerFileWithHash();
 
             return new(pfwh, null);
         }
-        else if (pair.PointerFile is null && pair.BinaryFile is not null)
+        else if (pair.IsBinaryFileOnly)
         {
             // A BinaryFile without a PointerFile
-            var h = await hvp.GetHashAsync(pair.BinaryFile);
-            var bfwh = pair.BinaryFile.GetBinaryFileWithHash(h);
+            var h = await hvp.GetHashAsync(pair.BinaryFile!);
+            var bfwh = pair.BinaryFile!.GetBinaryFileWithHash(h);
 
             return new(null, bfwh);
         }
@@ -303,54 +425,54 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 
-    /// <summary>
-    /// Ensure the PointerFile is created
-    /// </summary>
-    /// <param name="pair"></param>
-    /// <returns>A pair where the PointerFile is not null</returns>
-    /// <exception cref="InvalidOperationException"></exception>
-    internal static FilePairWithHash CreatePointerIfNotExist(FilePairWithHash pair)
-    {
-        if (pair.PointerFile is not null && pair.BinaryFile is not null)
-        {
-            // A PointerFile with corresponding BinaryFile
-            return pair;
-        }
-        else if (pair.PointerFile is not null && pair.BinaryFile is null)
-        {
-            // A PointerFile without a BinaryFile
-            return pair;
-        }
-        else if (pair.PointerFile is null && pair.BinaryFile is not null)
-        {
-            // A BinaryFile without a PointerFile
-            var pfwh = pair.BinaryFile.GetPointerFileWithHash();
-            pfwh.Save();
+    ///// <summary>
+    ///// Ensure the PointerFile is created
+    ///// </summary>
+    ///// <param name="pair"></param>
+    ///// <returns>A pair where the PointerFile is not null</returns>
+    ///// <exception cref="InvalidOperationException"></exception>
+    //internal static FilePairWithHash CreatePointerIfNotExist(FilePairWithHash pair)
+    //{
+    //    if (pair.PointerFile is not null && pair.BinaryFile is not null)
+    //    {
+    //        // A PointerFile with corresponding BinaryFile
+    //        return pair;
+    //    }
+    //    else if (pair.PointerFile is not null && pair.BinaryFile is null)
+    //    {
+    //        // A PointerFile without a BinaryFile
+    //        return pair;
+    //    }
+    //    else if (pair.PointerFile is null && pair.BinaryFile is not null)
+    //    {
+    //        // A BinaryFile without a PointerFile
+    //        var pfwh = pair.BinaryFile.GetPointerFileWithHash();
+    //        pfwh.Save();
 
-            return new FilePairWithHash(pfwh, pair.BinaryFile);
-        }
-        else
-            throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
+    //        return new FilePairWithHash(pfwh, pair.BinaryFile);
+    //    }
+    //    else
+    //        throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
 
-        //if (pair.PointerFile is not null && pair.BinaryFile is not null)
-        //{
-        //    // A PointerFile with corresponding BinaryFile
-        //    return pair.PointerFile;
-        //}
-        //else if (pair.PointerFile is not null && pair.BinaryFile is null)
-        //{
-        //    // A PointerFile without a BinaryFile
-        //    return pair.PointerFile;
-        //}
-        //else if (pair.PointerFile is null && pair.BinaryFile is not null)
-        //{
-        //    // A BinaryFile without a PointerFile
-        //    var pfwh = pair.BinaryFile.GetPointerFileWithHash();
-        //    pfwh.Save();
+    //    //if (pair.PointerFile is not null && pair.BinaryFile is not null)
+    //    //{
+    //    //    // A PointerFile with corresponding BinaryFile
+    //    //    return pair.PointerFile;
+    //    //}
+    //    //else if (pair.PointerFile is not null && pair.BinaryFile is null)
+    //    //{
+    //    //    // A PointerFile without a BinaryFile
+    //    //    return pair.PointerFile;
+    //    //}
+    //    //else if (pair.PointerFile is null && pair.BinaryFile is not null)
+    //    //{
+    //    //    // A BinaryFile without a PointerFile
+    //    //    var pfwh = pair.BinaryFile.GetPointerFileWithHash();
+    //    //    pfwh.Save();
 
-        //    return pfwh;
-        //}
-        //else
-        //    throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
-    }
+    //    //    return pfwh;
+    //    //}
+    //    //else
+    //    //    throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
+    //}
 }

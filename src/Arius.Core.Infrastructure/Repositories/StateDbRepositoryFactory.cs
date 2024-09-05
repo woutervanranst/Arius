@@ -245,6 +245,11 @@ internal class StateDbRepository : IStateDbRepository
         return context.BinaryProperties.Select(dto => dto.ToEntity()).ToAsyncEnumerable();
     }
 
+    public bool BinaryExists(IFileWithHash f)
+    {
+        return BinaryExists(f.Hash);
+    }
+
     public bool BinaryExists(Hash binaryFileHash)
     {
         using var context = new SqliteStateDbContext(dbContextOptions);

@@ -189,7 +189,12 @@ public record PointerFile : RelativeFile
     public override string ToString() => RelativeName;
 }
 
-public record PointerFileWithHash : PointerFile
+public interface IFileWithHash
+{
+    public Hash Hash { get; }
+}
+
+public record PointerFileWithHash : PointerFile, IFileWithHash
 {
     private readonly Hash hash;
 
@@ -246,7 +251,7 @@ public record BinaryFile : RelativeFile
     public override string ToString() => RelativeName;
 }
 
-public record BinaryFileWithHash : BinaryFile
+public record BinaryFileWithHash : BinaryFile, IFileWithHash
 {
     protected BinaryFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
     {
@@ -269,6 +274,14 @@ public record BinaryFileWithHash : BinaryFile
     public override string ToString() => RelativeName;
 }
 
+public enum FilePairType
+{
+    PointerFileOnly,
+    BinaryFileOnly,
+    BinaryFileWithPointerFile,
+    None
+}
+
 public record FilePair
 {
     public FilePair(PointerFile? pointerFile, BinaryFile? binaryFile)
@@ -282,6 +295,33 @@ public record FilePair
     public BinaryFile?  BinaryFile  { get;}
 
     public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName;
+
+    public FilePairType Type
+    {
+        get
+        {
+            if (PointerFile is not null && BinaryFile is not null)
+                return FilePairType.BinaryFileWithPointerFile;
+            else if (PointerFile is not null && BinaryFile is null)
+                return FilePairType.PointerFileOnly;
+            else if (PointerFile is null && BinaryFile is not null)
+                return FilePairType.BinaryFileOnly;
+            else if (PointerFile is null && BinaryFile is null)
+                return FilePairType.None;
+
+            throw new InvalidOperationException();
+        }
+    }
+
+    public bool IsBinaryFileWithPointerFile => PointerFile is not null && BinaryFile is not null;
+    public bool IsPointerFileOnly           => PointerFile is not null && BinaryFile is null;
+    public bool IsBinaryFileOnly            => PointerFile is null && BinaryFile is null;
+
+    public bool HasPointerFile => PointerFile is not null;
+    public bool HasBinaryFile  => BinaryFile is not null;
+
+    public bool HasExistingPointerFile => PointerFile is not null && PointerFile.Exists;
+    public bool HasExistingBinaryFile  => BinaryFile is not null && BinaryFile.Exists;
 
     public override string ToString()
     {
