@@ -20,7 +20,7 @@ public class ConcurrentConsumingTaskCollectionTests
 
         // Act
         var processedTasks = new List<string>();
-        await foreach (var result in taskQueue.ConsumingEnumerable())
+        await foreach (var result in taskQueue.GetConsumingEnumerable())
         {
             processedTasks.Add(result);
         }
@@ -41,7 +41,7 @@ public class ConcurrentConsumingTaskCollectionTests
 
         // Act
         var processedTasks = new List<string>();
-        await foreach (var result in taskQueue.ConsumingEnumerable())
+        await foreach (var result in taskQueue.GetConsumingEnumerable())
         {
             processedTasks.Add(result);
         }
@@ -71,7 +71,7 @@ public class ConcurrentConsumingTaskCollectionTests
 
         // Act
         var processedTasks = new List<string>();
-        await foreach (var result in taskQueue.ConsumingEnumerable())
+        await foreach (var result in taskQueue.GetConsumingEnumerable())
         {
             processedTasks.Add(result);
         }
@@ -97,7 +97,7 @@ public class ConcurrentConsumingTaskCollectionTests
 
         // Act
         var processedTasks = new List<string>();
-        await foreach (var result in taskQueue.ConsumingEnumerable(cts.Token))
+        await foreach (var result in taskQueue.GetConsumingEnumerable(cts.Token))
         {
             processedTasks.Add(result);
         }
@@ -126,7 +126,7 @@ public class ConcurrentConsumingTaskCollectionTests
         var processedTasks = new List<string>();
         var consumer1 = Task.Run(async () =>
         {
-            await foreach (var result in taskQueue.ConsumingEnumerable())
+            await foreach (var result in taskQueue.GetConsumingEnumerable())
             {
                 processedTasks.Add(result);
             }
@@ -134,7 +134,7 @@ public class ConcurrentConsumingTaskCollectionTests
 
         var consumer2 = Task.Run(async () =>
         {
-            await foreach (var result in taskQueue.ConsumingEnumerable())
+            await foreach (var result in taskQueue.GetConsumingEnumerable())
             {
                 processedTasks.Add(result);
             }
@@ -168,7 +168,7 @@ public class ConcurrentConsumingTaskCollectionTests
         var processedTasks = new List<string>();
 
         // Act
-        await foreach (var result in taskQueue.ConsumingEnumerable())
+        await foreach (var result in taskQueue.GetConsumingEnumerable())
         {
             processedTasks.Add(result);
         }

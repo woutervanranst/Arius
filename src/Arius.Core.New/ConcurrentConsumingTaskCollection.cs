@@ -1,4 +1,5 @@
-﻿using ConcurrentCollections;
+﻿using System.Collections.Concurrent;
+using ConcurrentCollections;
 using System.Runtime.CompilerServices;
 
 /// <summary>
@@ -57,7 +58,7 @@ internal sealed class ConcurrentConsumingTaskCollection<T>
     /// </summary>
     /// <param name="cancellationToken">A cancellation token that can be used to stop consuming tasks.</param>
     /// <returns>An asynchronous enumerable of task results.</returns>
-    public async IAsyncEnumerable<T> ConsumingEnumerableAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<T> GetConsumingEnumerable([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         while (!IsCompleted)
         {
