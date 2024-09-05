@@ -47,9 +47,9 @@ public class FixtureBuilder
             .Build();
 
         testRoot = new DirectoryInfo(@"C:\AriusTest");
-        testRunRoot = testRoot.GetSubDirectory("UnitTests").GetSubDirectory($"{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}").CreateIfNotExists();
+        testRunRoot = testRoot.GetSubDirectory("UnitTestRuns").GetSubDirectory($"{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}").CreateIfNotExists();
 
-        sourceDirectory = testRunRoot.GetSubDirectory("Source").CreateIfNotExists();
+        sourceDirectory = testRoot.GetSubDirectory("Source").CreateIfNotExists();
 
         testRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
 

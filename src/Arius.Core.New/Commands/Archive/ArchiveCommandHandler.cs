@@ -91,7 +91,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
             {
-                await Task.Delay(2000);
+                //await Task.Delay(2000);
                 
                 await mediator.Publish(new FilePairFoundNotification(request) { FilePair = fp }, cancellationToken);
                 logger.LogInformation("Found {fp}", fp);
@@ -111,7 +111,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             async (filePair, ct) =>
             {
                 await mediator.Publish(new FilePairHashingNotification(request) { FilePair = filePair }, ct);
-                await Task.Delay(2000);
+                //await Task.Delay(2000);
                 var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, filePair);
                 await mediator.Publish(new FilePairHashedNotification(request) { FilePairWithHash = filePairWithHash }, ct);
                 
@@ -234,7 +234,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         Task.WhenAll(hashTask/*, someTask*/).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
 
-        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
+        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinaryTask, pointerFileCreationTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
 
         //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
         foreach (var pf in latentPointers)

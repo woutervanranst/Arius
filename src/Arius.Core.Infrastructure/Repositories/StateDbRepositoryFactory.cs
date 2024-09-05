@@ -6,6 +6,7 @@ using Arius.Core.Domain.Storage.FileSystem;
 using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
 using File = Arius.Core.Domain.Storage.FileSystem.File;
@@ -138,6 +139,17 @@ internal record BinaryPropertiesDto
     public         long                             IncrementalLength  { get; init; }
     public         StorageTier                      StorageTier        { get; init; }
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
+}
+
+internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteStateDbContext> // used only for EF Core tools (e.g. dotnet ef migrations add ...)
+{
+    public SqliteStateDbContext CreateDbContext(string[] args)
+    {
+        var builder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        builder.UseSqlite();
+
+        return new SqliteStateDbContext(builder.Options);
+    }
 }
 
 internal class SqliteStateDbContext : DbContext

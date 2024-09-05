@@ -53,7 +53,7 @@ internal class AzureRepository : IRepository
 
     public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, CancellationToken cancellationToken = default)
     {
-        var             b  = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
+        var b = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
 
         var r = await UploadAsync(file, b, cancellationToken);
 
