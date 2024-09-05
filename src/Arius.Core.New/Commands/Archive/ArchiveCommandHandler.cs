@@ -1,6 +1,7 @@
 ﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
+using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
 using FluentValidation;
@@ -59,17 +60,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     private readonly IMediator                      mediator;
     private readonly IFileSystem                    fileSystem;
     private readonly IStateDbRepositoryFactory      stateDbRepositoryFactory;
+    private readonly IStorageAccountFactory         storageAccountFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
     public ArchiveCommandHandler(
         IMediator mediator,
         IFileSystem fileSystem,
         IStateDbRepositoryFactory stateDbRepositoryFactory,
+        IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.mediator                 = mediator;
         this.fileSystem               = fileSystem;
         this.stateDbRepositoryFactory = stateDbRepositoryFactory;
+        this.storageAccountFactory    = storageAccountFactory;
         this.logger                   = logger;
     }
 
@@ -79,6 +83,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         // Start download of the latest state database
         var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
+
 
         // 1. Index the request.LocalRoot
         var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
@@ -95,6 +100,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             filesToHash.Writer.Complete();
         }, cancellationToken);
+
 
         // 2. Hash the filepairs
         var hashedFilePairs = GetBoundedChannel<FilePairWithHash>(request.BinariesToUpload_BufferSize, false);
@@ -116,6 +122,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var stateDbRepository = await stateDbRepositoryTask;
 
+
         // 3. Decide whether binaries need uploading
         var binariesToUpload           = GetBoundedChannel<BinaryFileWithHash>(request.BinariesToUpload_BufferSize, false);
         var pointerFileEntriesToCreate = GetBoundedChannel<BinaryFileWithHash>(request.PointerFileEntriesToCreate_BufferSize, false);
@@ -124,14 +131,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var uploadingBinaries = new Dictionary<Hash, TaskCompletionSource>();
         var addUploadedBinariesToPointerFileQueueTasks = new ConcurrentBag<Task>();
 
-        var uploadRouterTask = Task.Run(async () => // NOTE this task runs single threaded / as mutex between the stateDbRepository and uploadingBinaries
+        var uploadRouterTask = Task.Run(async () =>
         {
             await foreach (var pwh in hashedFilePairs.Reader.ReadAllAsync(cancellationToken))
             {
                 if (pwh.HasBinaryFile)
                 {
                     // The binary exists locally
-                    switch (DoWeNeedToStartUploadingThis(pwh.Hash))
+                    var r = DetermineUploadStatus(pwh.Hash);
+
+                    if (pwh.HasExistingPointerFile && r is not UploadStatus.Uploaded)
+                    {
+                        // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
+                        latentPointers.Add(pwh.PointerFile!);
+                    }
+
+                    switch (r)
                     {
                         case UploadStatus.NotStarted:
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
@@ -152,8 +167,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                                 await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
                             }, cancellationToken));
 
-
-
                             break;
                         case UploadStatus.Uploaded:
                             // 2.3 Is already uploaded
@@ -165,106 +178,40 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         default:
                             throw new ArgumentOutOfRangeException();
                     }
-
-
-                    //if (DoWeNeedToStartUploadingThis(pwh.Hash))
-                    //{
-                    //    // but not remote --> needs to be uploaded
-                    //    // 2.1 Does not yet exist remote and not yet being created --> upload
-                    //    logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely. To upload and create pointer.");
-
-                    //    await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
-
-                    //    //stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: ce.IncrementalLength);
-                    //}
-                    //else
-                    //{
-                    //    // Already exists on the remote OR is already being uploaded
-                    //    // Does not yet exist remote but is already being uploaded
-                    //    logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely but is already being uploaded");
-                    //    uploadingBinaries[pwh.Hash].WaitingBinaryFiles.Add(pwh.BinaryFile!);
-                    //}
-
-
-
-
-                    //if (!stateDbRepository.BinaryExists(pwh.BinaryFile!))
-                    //{
-                    //    // but not remote --> needs to be uploaded
-                    //    if (pwh.HasExistingPointerFile)
-                    //    {
-                    //        // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
-                    //        latentPointers.Add(pwh.PointerFile!);
-                    //    }
-                    //    else
-                    //    {
-                    //        // do we need to start the upload or is this hash already being uploaded?
-                    //        var binaryToUpload = uploadingBinaries.TryAdd(pwh.Hash, [pwh.BinaryFile!]);
-                    //        if (binaryToUpload)
-                    //        {
-                    //            // 2.1 Does not yet exist remote and not yet being created --> upload
-                    //            logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely. To upload and create pointer.");
-
-                    //            await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
-
-                    //            //stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: ce.IncrementalLength);
-                    //        }
-                    //        else
-                    //        {
-                    //            uploadingBinaries[pwh.Hash].Add(pwh.BinaryFile!);
-                    //            logger.LogInformation($"Binary for {pwh.RelativeName} does not exist remotely but is already being uploaded");
-                    //        }
-                    //    }
-                    //}
-                    //else
-                    //{
-                    //    //Binary exists locally and remote
-                    //    //await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!);
-                    //}
                 }
             }
+        }, cancellationToken);
+
+
+        // 4. Upload the binaries
+        var repository = storageAccountFactory.GetRepository(request.Repository);
+        var uploadBinaryTask = Parallel.ForEachAsync(
+            binariesToUpload.Reader.ReadAllAsync(cancellationToken),
+            GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
+            async (bfwh, ct) =>
+            {
+                    var bp = await repository.UploadChunkAsync(bfwh, ct);
+
+                    HasBeenUploaded(bp);
+
+                    await pointerFileEntriesToCreate.Writer.WriteAsync(bfwh, ct);
+            }
+        );
+
+        // 5. Create PointerFileEntries and PointerFiles
+
+        var pointerFileCreationTask = Task.Run(async () =>
+        {
+            await foreach (var pwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
+            {
+            }
+
         }, cancellationToken);
 
 
         //// at this point we know that the binary has been uploaded -- we can create the pointerfileentry
         //await pointerFileEntriesToCreate.Writer.WriteAsync()
 
-
-
-        //var someTask = Parallel.ForEachAsync(
-        //    hashedFilePairs.Reader.ReadAllAsync(cancellationToken),
-        //    GetParallelOptions(request.SOME_PARALLELISM),
-        //    async (pwh, ct) =>
-        //    {
-
-
-
-
-        //        if (pwh.PointerFile is not null && pwh.BinaryFile is not null)
-        //        {
-        //            // A PointerFile with corresponding BinaryFile
-        //        }
-        //        else if (pwh.PointerFile is not null && pwh.BinaryFile is null)
-        //        {
-        //            // A PointerFile without a BinaryFile
-        //        }
-        //        else if (pwh.PointerFile is null && pwh.BinaryFile is not null)
-        //        {
-        //            // A BinaryFile without a PointerFile
-        //            //var pfwh = filePairWithHash.BinaryFile.GetPointerFileWithHash();
-        //            //pfwh.Save();
-
-        //            //return new FilefilePairWithHashWithHash(pfwh, filePairWithHash.BinaryFile);
-        //        }
-        //        else
-        //            //throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
-
-        //        if (filePairWithHashAndPointerFile.BinaryFile is not null)
-        //            // There is a binary file that may need to be uploaded
-        //            await hashedFilePairs.Writer.WriteAsync(filePairWithHashAndPointerFile, ct);
-        //        else if (filePairWithHashAndPointerFile.BinaryFile is null && filePairWithHashAndPointerFile.PointerFile is not null)
-        //            // There is only a pointerfileentry to be created
-        //            await pointerFileEntriesToCreate.Writer.WriteAsync(filePairWithHashAndPointerFile.PointerFile, ct);
 
 
 
@@ -280,7 +227,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         //    });
 
         // upload Task --> Set completion source !!
-        //var ce = await UploadAsync(bf);
+        //var ce = await UploadChunkAsync(bf);
         //uploadingBinaries[filePairWithHash.Hash].SetResult();
 
 
@@ -322,53 +269,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             return new ParallelOptions() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
         }
 
-        //bool DoWeNeedToStartUploadingThis(Hash h)
-        //{
-        //    lock (uploadingBinaries)
-        //    {
-        //        if (!stateDbRepository.BinaryExists(h))
-        //             // ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
-        //            return uploadingBinaries.TryAdd(h, (new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously), new ConcurrentBag<BinaryFile>()));
-        //        else
-        //            return false;
-        //    }
-        //}
-        UploadStatus DoWeNeedToStartUploadingThis(Hash h)
+        UploadStatus DetermineUploadStatus(Hash h)
         {
             lock (uploadingBinaries)
             {
                 if (stateDbRepository.BinaryExists(h))
+                    // Binary exists remotely
                     return UploadStatus.Uploaded;
                 else
                 {
                     var notUploading = uploadingBinaries.TryAdd(h, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); // ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
                     if (notUploading)
+                        // Binary does not exist remotely and is not being uploaded
                         return UploadStatus.NotStarted;
                     else
+                    // Binary does not exist remotely but is already being uploaded
                         return UploadStatus.Uploading;
                 }
-            }
-        }
-
-        async Task bla()
-        {
-            var completedUpload = await uploadingTasks.WhenAny();
-
-
-
-            //var r = uploadingTasks.TryRemove(completedUpload);
-            //if (!r)
-            //    throw new InvalidOperationException("Tried to remove a task from the uploadingTasks but it failed -- was it not present?");
-
-            //uploadingTasks.re
-            //var z = await Task.WhenAny(uploadingTasks);
-            //uploadingTasks.TryTake(z)
-            //var tt = await Task.WhenAny()
-            //var t = await Task.WhenAny(uploadingBinaries.Values.Select(t => t.TaskCompletionSource.Task))
-
-            lock (uploadingBinaries)
-            {
-                //Task.when
             }
         }
 

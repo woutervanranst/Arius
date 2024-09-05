@@ -23,8 +23,6 @@ public record ArchiveCommand : IRequest
     internal int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
     internal int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
-    internal int TransferChunked_ChunkBufferSize             => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    internal int TransferChunked_ParallelChunkTransfers      => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
 
     internal int PointersToCreate_BufferSize => 1000;
 
