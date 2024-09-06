@@ -46,7 +46,6 @@ internal class AzureRepository : IRepository
         return StateFolder.GetBlob(repositoryVersion.Name);
     }
 
-    public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, CancellationToken cancellationToken = default)
     public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)
     {
         var b = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
