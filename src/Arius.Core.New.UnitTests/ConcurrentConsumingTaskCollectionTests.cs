@@ -1,7 +1,3 @@
-using Microsoft.Coyote;
-using Microsoft.Coyote.Actors;
-using Microsoft.Coyote.SystematicTesting;
-
 namespace Arius.Core.New.UnitTests;
 public class ConcurrentConsumingTaskCollectionTests
 {
