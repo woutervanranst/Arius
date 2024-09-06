@@ -40,7 +40,7 @@ public record ArchiveCommand : IRequest
 
     internal int UpdateTierBlock_Parallelism => 10;
 
-    internal readonly Dictionary<long, StorageTier> storageTiering = new()
+    internal readonly Dictionary<long, StorageTier> StorageTiering = new()
     {
         { 1024L * 1024, StorageTier.Cold },    // Files less than 1MB -> Cool Tier
     };

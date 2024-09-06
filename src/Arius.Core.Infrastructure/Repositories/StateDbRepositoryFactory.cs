@@ -286,14 +286,15 @@ internal class StateDbRepository : IStateDbRepository
         context.BinaryProperties.Add(bp.ToDto());
     }
 
-    public bool BinaryExists(IFileWithHash f)
-    {
-        return BinaryExists(f.Hash);
-    }
-
     public bool BinaryExists(Hash binaryFileHash)
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
         return context.BinaryProperties.Any(bp => bp.Hash == binaryFileHash.Value);
+    }
+
+    public void AddPointerFileEntry(PointerFileEntry pfe)
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        context.PointerFileEntries.Add(pfe.ToDto());
     }
 }

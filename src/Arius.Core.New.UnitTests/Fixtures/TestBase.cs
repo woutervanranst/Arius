@@ -118,7 +118,7 @@ public abstract class TestBase
 
     public void GivenPopulatedSourceFolder()
     {
-        Fixture.SourceFolder.CopyTo(Fixture.TestRunRootFolder, recursive: true);
+        Fixture.TestRootSourceFolder.CopyTo(Fixture.TestRunSourceFolder, recursive: true);
     }
 
     internal FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
@@ -148,20 +148,17 @@ public abstract class TestBase
         var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, binaryFileRelativeName);
         var h    = Fixture.HashValueProvider.GetHashAsync(bf).Result;
         var bfwh = bf.GetBinaryFileWithHash(h);
-        var pfwh = bfwh.GetPointerFileWithHash();
-        pfwh.Save();
+        var pfwh = PointerFileWithHash.Create(bfwh);
 
         return new(pfwh, bfwh);
     }
 
     internal FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
     {
-        var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, pointerFileRelativeName, h);
+        var pfwh = PointerFileWithHash.Create(Fixture.TestRunSourceFolder, pointerFileRelativeName, h, DateTime.UtcNow, DateTime.UtcNow);
 
         if (!pfwh.IsPointerFile) // check the extension
             throw new InvalidOperationException("This is not a pointer file");
-
-        pfwh.Save();
 
         return new (pfwh, null);
     }

@@ -1,5 +1,4 @@
 ﻿using Arius.Core.Domain.Storage;
-using Arius.Core.Domain.Storage.FileSystem;
 
 namespace Arius.Core.Domain.Repositories;
 
@@ -13,5 +12,5 @@ public interface IStateDbRepository
     long CountBinaryProperties();
     void AddBinary(BinaryProperties bp);
     bool BinaryExists(Hash binaryFileHash);
-    bool BinaryExists(IFileWithHash f);
+    void AddPointerFileEntry(PointerFileEntry pfe);
 }

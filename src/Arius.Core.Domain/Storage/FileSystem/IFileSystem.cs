@@ -17,9 +17,9 @@ public interface IFile
     string  Name                    { get; }
     bool    Exists                  { get; }
 
-    DateTime CreationTimeUtc { get; set; }
+    DateTime? CreationTimeUtc { get; set; }
 
-    DateTime LastWriteTimeUtc { get; set; }
+    DateTime? LastWriteTimeUtc { get; set; }
 
     bool   IsPointerFile                      { get; }
     bool   IsBinaryFile                       { get; }
@@ -68,16 +68,34 @@ public record File : IFile // TODO make internal
 
     public bool Exists => System.IO.File.Exists(FullName);
 
-    public DateTime CreationTimeUtc
+    public DateTime? CreationTimeUtc
     {
-        get => System.IO.File.GetCreationTimeUtc(FullName);
-        set => System.IO.File.SetCreationTimeUtc(FullName, value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
+        get => Exists ? System.IO.File.GetCreationTimeUtc(FullName) : null;
+        set
+        {
+            if (Exists)
+                System.IO.File.SetCreationTimeUtc(FullName, value.Value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
+            else
+                throw new InvalidOperationException("The file does not exist");
+        }
     }
 
-    public DateTime LastWriteTimeUtc
+    //public DateTime LastWriteTimeUtc
+    //{
+    //    get => System.IO.File.GetLastWriteTimeUtc(FullName);
+    //    set => System.IO.File.SetLastWriteTimeUtc(FullName, value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
+    //}
+
+    public DateTime? LastWriteTimeUtc
     {
-        get => System.IO.File.GetLastWriteTimeUtc(FullName);
-        set => System.IO.File.SetLastWriteTimeUtc(FullName, value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
+        get => Exists ? System.IO.File.GetLastWriteTimeUtc(FullName) : null;
+        set
+        {
+            if (Exists)
+                System.IO.File.SetLastWriteTimeUtc(FullName, value.Value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
+            else
+                throw new InvalidOperationException("The file does not exist");
+        }
     }
 
     //public long Length { get; }
@@ -146,6 +164,8 @@ public record File : IFile // TODO make internal
 
 public interface IRelativeFile : IFile
 {
+    public DirectoryInfo Root { get; }
+
     public string RelativeName { get; }
 
     // TODO other properties
@@ -153,32 +173,32 @@ public interface IRelativeFile : IFile
 
 public abstract record RelativeFile : File, IRelativeFile
 {
-    protected readonly DirectoryInfo root;
 
     protected RelativeFile(DirectoryInfo root, FileInfo fileInfo) : base(fileInfo)
     {
-        this.root = root;
+        Root = root;
     }
 
     protected RelativeFile(DirectoryInfo root, string fullName) : base(fullName)
     {
-        this.root = root;
+        Root = root;
     }
 
-    public string RelativeName                => base.GetRelativeName(root);
-    public string RelativeNamePlatformNeutral => base.GetRelativeNamePlatformNeutral(root);
+    public DirectoryInfo Root                        { get; }
+    public string        RelativeName                => base.GetRelativeName(Root);
+    public string        RelativeNamePlatformNeutral => base.GetRelativeNamePlatformNeutral(Root);
 
-    public PointerFile GetPointerFile() => base.GetPointerFile(root);
-    public BinaryFile  GetBinaryFile()  => base.GetBinaryFile(root);
+    public PointerFile GetPointerFile() => base.GetPointerFile(Root);
+    public BinaryFile  GetBinaryFile()  => base.GetBinaryFile(Root);
 
     public virtual bool Equals(RelativeFile? other)
     {
         return other is not null 
                && base.Equals((File)other)
-               && string.Equals(this.root?.FullName, other.root?.FullName, StringComparison.OrdinalIgnoreCase);
+               && string.Equals(this.Root?.FullName, other.Root?.FullName, StringComparison.OrdinalIgnoreCase);
     }
 
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), root?.FullName);
+    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Root?.FullName);
 
     public override string ToString() => RelativeName;
 }
@@ -206,7 +226,7 @@ public record PointerFile : RelativeFile
     public PointerFileWithHash GetPointerFileWithHash()
     {
         var h = ReadPointerFile(FullName);
-        return PointerFileWithHash.FromFileInfo(root, fileInfo, h);
+        return PointerFileWithHash.FromFileInfo(Root, fileInfo, h);
     }
 
     protected static Hash ReadPointerFile(string fullName)
@@ -227,18 +247,7 @@ public record PointerFile : RelativeFile
             throw new ArgumentException($"'{fullName}' is not a valid PointerFile", e);
         }
     }
-    protected static void WritePointerFile(PointerFileWithHash pfwh)
-    {
-        Directory.CreateDirectory(pfwh.Path);
-
-        var pfc = new PointerFileContents(pfwh.Hash.Value.BytesToHexString());
-        var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
-        System.IO.File.WriteAllBytes(pfwh.FullName, json);
-
-        //pfwh.CreationTimeUtc  = creationTimeUtc;
-        //pfwh.LastWriteTimeUtc = lastWriteTimeUtc;
-    }
-    private record PointerFileContents(string BinaryHash);
+    protected record PointerFileContents(string BinaryHash);
 
     public override string ToString() => RelativeName;
 }
@@ -250,13 +259,10 @@ public interface IFileWithHash : IFile
 
 public record PointerFileWithHash : PointerFile, IFileWithHash
 {
-    private readonly Hash hash;
-
     protected PointerFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
     {
         Hash = hash;
     }
-
     protected PointerFileWithHash(DirectoryInfo root, string fullName, Hash hash) : base(root, fullName)
     {
         Hash = hash;
@@ -269,9 +275,22 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
     /// <summary>
     /// Write the PointerFile to disk
     /// </summary>
-    public void Save()
+    public static PointerFileWithHash Create(BinaryFileWithHash bfwh) => Create(bfwh.Root, bfwh.RelativeName + PointerFile.Extension, bfwh.Hash, bfwh.CreationTimeUtc.Value, bfwh.LastWriteTimeUtc.Value);
+    public static PointerFileWithHash Create(DirectoryInfo root, PointerFileEntry pfe) => Create(root, pfe.RelativeName + PointerFile.Extension, pfe.Hash, pfe.CreationTimeUtc, pfe.LastWriteTimeUtc);
+    public static PointerFileWithHash Create(DirectoryInfo root, string relativeName, Hash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
     {
-        PointerFile.WritePointerFile(this);
+        var pfwh = FromRelativeName(root, relativeName, hash);
+
+        Directory.CreateDirectory(pfwh.Path);
+
+        var pfc = new PointerFileContents(hash.Value.BytesToHexString());
+        var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
+        System.IO.File.WriteAllBytes(pfwh.FullName, json);
+
+        pfwh.CreationTimeUtc  = creationTimeUtc;
+        pfwh.LastWriteTimeUtc = lastWriteTimeUtc;
+
+        return pfwh;
     }
 
     public Hash Hash { get; }
@@ -300,7 +319,7 @@ public record BinaryFile : RelativeFile
     /// </summary>
     /// <param name="h"></param>
     /// <returns></returns>
-    public BinaryFileWithHash GetBinaryFileWithHash(Hash h) => BinaryFileWithHash.FromFileInfo(root, fileInfo, h);
+    public BinaryFileWithHash GetBinaryFileWithHash(Hash h) => BinaryFileWithHash.FromFileInfo(Root, fileInfo, h);
 
     public override string ToString() => RelativeName;
 }
@@ -327,9 +346,11 @@ public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
 
     public Hash Hash { get; }
 
-    public PointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(root, FullName + PointerFile.Extension, Hash);
+    //public PointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(root, FullName + PointerFile.Extension, Hash);
+    public PointerFileEntry    GetPointerFileEntry()    => PointerFileEntry.FromBinaryFileWithHash(this);
 
-    public override string ToString() => RelativeName;
+
+    public override string           ToString() => RelativeName;
 }
 
 public enum FilePairType

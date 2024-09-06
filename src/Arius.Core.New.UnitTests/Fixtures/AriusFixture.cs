@@ -22,7 +22,7 @@ using System;
 //    RepositoryOptions         RepositoryOptions        { get; }
 //    IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
 //    AriusConfiguration        AriusConfiguration       { get; }
-//    DirectoryInfo             SourceFolder             { get; }
+//    DirectoryInfo             TestRootSourceFolder             { get; }
 //}
 
 public class FixtureBuilder
@@ -35,7 +35,7 @@ public class FixtureBuilder
     private readonly TestRepositoryOptions testRepositoryOptions;
     private readonly IHashValueProvider    hashValueProvider;
 
-    private DirectoryInfo         sourceDirectory;
+    private DirectoryInfo         testRootSourceDirectory;
 
     private FixtureBuilder()
     {
@@ -49,7 +49,7 @@ public class FixtureBuilder
         testRoot = new DirectoryInfo(@"C:\AriusTest");
         testRunRoot = testRoot.GetSubDirectory("UnitTestRuns").GetSubDirectory($"{DateTime.Now:yyMMddHHmmss}-{Random.Shared.Next()}").CreateIfNotExists();
 
-        sourceDirectory = testRoot.GetSubDirectory("Source").CreateIfNotExists();
+        testRootSourceDirectory = testRoot.GetSubDirectory("Source").CreateIfNotExists();
 
         testRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
 
@@ -93,7 +93,7 @@ public class FixtureBuilder
             serviceProvider,
             hashValueProvider,
             testRepositoryOptions,
-            sourceDirectory,
+            testRootSourceDirectory,
             testRunRoot
         );
     }
@@ -103,7 +103,7 @@ public class AriusFixture : IDisposable
 {
     public  IHashValueProvider    HashValueProvider     { get; }
     private TestRepositoryOptions TestRepositoryOptions { get; }
-    public  DirectoryInfo         SourceFolder          { get; }
+    public  DirectoryInfo         TestRootSourceFolder          { get; }
     public  DirectoryInfo         TestRunRootFolder     { get; }
     public  DirectoryInfo         TestRunSourceFolder   { get; }
 
@@ -117,12 +117,12 @@ public class AriusFixture : IDisposable
         IServiceProvider serviceProvider,
         IHashValueProvider hashValueProvider,
         TestRepositoryOptions testRepositoryOptions,
-        DirectoryInfo sourceFolder,
+        DirectoryInfo testRootSourceFolder,
         DirectoryInfo testRunRootFolder)
     {
         HashValueProvider     = hashValueProvider;
         TestRepositoryOptions = testRepositoryOptions;
-        SourceFolder          = sourceFolder;
+        TestRootSourceFolder  = testRootSourceFolder;
         TestRunRootFolder     = testRunRootFolder;
         TestRunSourceFolder   = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 

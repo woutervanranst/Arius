@@ -5,22 +5,22 @@ namespace Arius.Core.Domain;
 
 public record PointerFileEntry
 {
-    public static PointerFileEntry FromBinaryFile(BinaryFileWithHash bf)
+    public static PointerFileEntry FromBinaryFileWithHash(BinaryFileWithHash bfwh)
     {
         return new PointerFileEntry
         {
-            Hash             = bf.Hash,
-            RelativeName     = bf.RelativeName,
-            CreationTimeUtc  = bf.CreationTimeUtc,
-            LastWriteTimeUtc = bf.LastWriteTimeUtc
+            Hash             = bfwh.Hash,
+            RelativeName     = bfwh.RelativeName,
+            CreationTimeUtc  = bfwh.CreationTimeUtc ?? throw new ArgumentException($"{nameof(bfwh.CreationTimeUtc)} is null"),
+            LastWriteTimeUtc = bfwh.LastWriteTimeUtc ?? throw new ArgumentException($"{nameof(bfwh.LastWriteTimeUtc)} is null")
         };
     }
     public required Hash Hash { get; init; }
 
     public required string RelativeName { get; init; }
 
-    public required DateTime? CreationTimeUtc  { get; init; }
-    public required DateTime? LastWriteTimeUtc { get; init; }
+    public required DateTime CreationTimeUtc  { get; init; }
+    public required DateTime LastWriteTimeUtc { get; init; }
 }
 
 public record BinaryProperties

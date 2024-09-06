@@ -29,7 +29,7 @@ public class ArchiveCommandTests : TestBase
             FastHash    = false,
             RemoveLocal = false,
             Tier        = StorageTier.Hot,
-            LocalRoot   = Fixture.SourceFolder,
+            LocalRoot   = Fixture.TestRunSourceFolder,
             VersionName = new RepositoryVersion { Name = "v1.0" }
         };
 

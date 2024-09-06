@@ -50,7 +50,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var p1 = GivenSourceFolderHavingRandomFileWithPointerFile("file1.bin", 100);
 
         // ensure the last write time is DIFFERENT
-        p1.PointerFile!.LastWriteTimeUtc = p1.BinaryFile!.LastWriteTimeUtc.AddSeconds(-1);
+        p1.PointerFile!.LastWriteTimeUtc = p1.BinaryFile!.LastWriteTimeUtc.Value.AddSeconds(-1);
 
         var hvp = Substitute.For<IHashValueProvider>();
         hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(p1.BinaryFile.Hash);
@@ -76,7 +76,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(someHash);
 
         // Act
-        Func<Task> act = async () => await ArchiveCommandHandler.HashFilesAsync(true, hvp, p1);
+        Func<Task> act = async () => await ArchiveCommandHandler.HashFilesAsync(false, hvp, p1);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();

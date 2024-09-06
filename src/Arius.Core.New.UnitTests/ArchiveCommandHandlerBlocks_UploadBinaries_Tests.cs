@@ -26,7 +26,7 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
             FastHash    = false,
             RemoveLocal = false,
             Tier        = StorageTier.Hot,
-            LocalRoot   = Fixture.SourceFolder,
+            LocalRoot   = Fixture.TestRootSourceFolder,
             VersionName = new RepositoryVersion { Name = "v1.0" }
         };
         var st = c.StorageTiering;

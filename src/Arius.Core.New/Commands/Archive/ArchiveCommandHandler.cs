@@ -20,7 +20,8 @@ public record FilePairFoundNotification(ArchiveCommand Command, FilePair FilePai
 public record FilePairHashingStartedNotification(ArchiveCommand Command, FilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingCompletedNotification(ArchiveCommand Command, FilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileStartedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
-public record UploadBinaryFileCompletedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
+public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, long OriginalLength, long ArchivedLength, double uploadSpeedMBps) : ArchiveCommandNotification(Command);
+public record CreatedPointerFileNotification(ArchiveCommand Command, IFileWithHash PointerFile) : ArchiveCommandNotification(Command);
 public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 
 
@@ -159,11 +160,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
             async (bfwh, ct) =>
             {
-                    var bp = await repository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.storageTiering, request.Tier, s), ct);
+                await mediator.Publish(new UploadBinaryFileStartedNotification(request), ct);
 
-                    HasBeenUploaded(bp);
+                var stopwatch = Stopwatch.StartNew();
+                var bp = await repository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.StorageTiering, request.Tier, s), ct);
+                stopwatch.Stop();
+                
+                var elapsedTimeInSeconds = stopwatch.Elapsed.TotalSeconds;
+                var uploadSpeedMbps = ByteSize.FromBytes(bp.ArchivedLength).Megabytes / elapsedTimeInSeconds;
 
-                    await pointerFileEntriesToCreate.Writer.WriteAsync(bfwh, ct);
+                await mediator.Publish(new UploadBinaryFileCompletedNotification(request, bp.OriginalLength, bp.ArchivedLength, uploadSpeedMbps), ct);
+
+                logger.LogInformation("Uploaded {hash} ({binaryFile}) in {elapsedTimeInSeconds} seconds @ {speed:F2} MBps", bfwh.Hash, bfwh.RelativeName, elapsedTimeInSeconds, uploadSpeedMbps);
+
+                HasBeenUploaded(bp);
+
+                await pointerFileEntriesToCreate.Writer.WriteAsync(bfwh, ct);
             }
         );
 
@@ -171,37 +183,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var pointerFileCreationTask = Task.Run(async () =>
         {
-            await foreach (var pwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var bfwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
             {
+                // 1. Create the PointerFile
+                var pfwh = PointerFileWithHash.Create(bfwh);
+                await mediator.Publish(new CreatedPointerFileNotification(request, pfwh), cancellationToken);
+
+                // 2. Create the PointerFileEntry
+                var pfe = PointerFileEntry.FromBinaryFileWithHash(bfwh);
+                stateDbRepository.AddPointerFileEntry(pfe);
             }
 
         }, cancellationToken);
 
 
-        //// at this point we know that the binary has been uploaded -- we can create the pointerfileentry
-        //await pointerFileEntriesToCreate.Writer.WriteAsync()
 
-
-
-
-
-        //        // if not present on the remote
-        //        if (stateDbRepository.BinaryExists(pwh.BinaryFile!.Hash))
-        //        {
-        //            // TODO binariesThatWillBeUploaded -- 
-        //            //await stateDbRepository.UploadBinaryFileAsync(bfwh);
-        //        }
-
-        //        await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.PointerFile, ct);
-        //    });
-
-        // upload Task --> Set completion source !!
-        //var ce = await UploadBinaryFileAsync(bf);
-        //uploadingBinaries[filePairWithHash.Hash].SetResult();
-
-
-
-        Task.WhenAll(hashTask/*, someTask*/).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
+        Task.WhenAll(hashTask, uploadRouterTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll(), uploadBinariesTask).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
 
         await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, pointerFileCreationTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
 
@@ -263,6 +260,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             lock (uploadingBinaries)
             {
                 stateDbRepository.AddBinary(bp);
+                uploadingBinaries[bp.Hash].SetResult();
                 var r = uploadingBinaries.Remove(bp.Hash, out var value);
 
                 if (!r)

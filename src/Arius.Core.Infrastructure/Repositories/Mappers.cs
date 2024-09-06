@@ -21,8 +21,8 @@ internal static class Mappers
         {
             Hash             = pfe.Hash,
             RelativeName     = pfe.RelativeName,
-            CreationTimeUtc  = pfe.CreationTimeUtc,
-            LastWriteTimeUtc = pfe.LastWriteTimeUtc,
+            CreationTimeUtc  = pfe.CreationTimeUtc ?? throw new ArgumentException($"{nameof(pfe.CreationTimeUtc)} is null"),
+            LastWriteTimeUtc = pfe.LastWriteTimeUtc ?? throw new ArgumentException($"{nameof(pfe.LastWriteTimeUtc)} is null")
             //BinaryProperties = pfe.BinaryProperties.ToEntity()
         };
     }
