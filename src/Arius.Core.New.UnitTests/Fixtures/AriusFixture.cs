@@ -4,8 +4,6 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Services;
 using Arius.Core.New.UnitTests.Fakes;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -121,11 +119,11 @@ public class AriusFixture : IDisposable
         DirectoryInfo sourceFolder,
         DirectoryInfo testRunRootFolder)
     {
-        HashValueProvider      = hashValueProvider;
-        TestRepositoryOptions  = testRepositoryOptions;
-        SourceFolder           = sourceFolder;
-        TestRunRootFolder      = testRunRootFolder;
-        TestRunSourceFolder = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
+        HashValueProvider     = hashValueProvider;
+        TestRepositoryOptions = testRepositoryOptions;
+        SourceFolder          = sourceFolder;
+        TestRunRootFolder     = testRunRootFolder;
+        TestRunSourceFolder   = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 
         StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
         StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();
@@ -150,8 +148,6 @@ public class AriusFixture : IDisposable
             ContainerName = TestRepositoryOptions.ContainerName,
             Passphrase    = TestRepositoryOptions.Passphrase
         };
-
-
 
     public void Dispose()
     {
