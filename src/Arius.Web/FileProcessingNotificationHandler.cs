@@ -21,7 +21,7 @@ public sealed class ArchiveCommandNotificationHandler<T>
         var result = notification switch
         {
             FilePairFoundNotification found     => s.HandleFilePairFoundNotification(found, cancellationToken),
-            FilePairHashedNotification hashed   => s.HandleFilePairHashedNotification(hashed, cancellationToken),
+            FilePairHashingCompletedNotification hashed   => s.HandleFilePairHashedNotification(hashed, cancellationToken),
             ArchiveCommandDoneNotification done => s.HandleArchiveCommandDoneNotification(done, cancellationToken),
             _                                   => throw new InvalidOperationException("No event handler found for notification type")
         };
@@ -85,7 +85,7 @@ public sealed class FileProcessingService
         return Task.CompletedTask;
     }
 
-    public Task HandleFilePairHashedNotification(FilePairHashedNotification notification, CancellationToken cancellationToken)
+    public Task HandleFilePairHashedNotification(FilePairHashingCompletedNotification notification, CancellationToken cancellationToken)
     {
         files[notification.FilePairWithHash] = "HASHED";
         //files.TryUpdate(notification.FilePairWithHash, "HASHED", "FOUND");

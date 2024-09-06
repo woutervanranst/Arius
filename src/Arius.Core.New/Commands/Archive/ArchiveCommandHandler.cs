@@ -8,52 +8,21 @@ using FluentValidation;
 using MediatR;
 using Nito.AsyncEx;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Threading.Channels;
+using Humanizer;
+using Humanizer.Bytes;
 
 namespace Arius.Core.New.Commands.Archive;
 
-public abstract record ArchiveCommandNotification : INotification
-{
-    protected ArchiveCommandNotification(ArchiveCommand command)
-    {
-        Command = command;
-    }
+public abstract record ArchiveCommandNotification(ArchiveCommand Command) : INotification;
+public record FilePairFoundNotification(ArchiveCommand Command, FilePair FilePair) : ArchiveCommandNotification(Command);
+public record FilePairHashingStartedNotification(ArchiveCommand Command, FilePair FilePair) : ArchiveCommandNotification(Command);
+public record FilePairHashingCompletedNotification(ArchiveCommand Command, FilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record UploadBinaryFileStartedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
+public record UploadBinaryFileCompletedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
+public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 
-    public ArchiveCommand Command { get; }
-}
-
-public record FilePairFoundNotification : ArchiveCommandNotification
-{
-    public FilePairFoundNotification(ArchiveCommand command) : base(command)
-    {
-    }
-
-    public required FilePair FilePair { get; init; }
-}
-
-public record FilePairHashingNotification : ArchiveCommandNotification
-{
-    public FilePairHashingNotification(ArchiveCommand command) : base(command)
-    {
-    }
-
-    public required FilePair FilePair { get; init; }
-}
-public record FilePairHashedNotification : ArchiveCommandNotification
-{
-    public FilePairHashedNotification(ArchiveCommand command) : base(command)
-    {
-    }
-
-    public required FilePairWithHash FilePairWithHash { get; init; }
-}
-
-public record ArchiveCommandDoneNotification : ArchiveCommandNotification
-{
-    public ArchiveCommandDoneNotification(ArchiveCommand command) : base(command)
-    {
-    }
-}
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
@@ -93,7 +62,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 //await Task.Delay(2000);
                 
-                await mediator.Publish(new FilePairFoundNotification(request) { FilePair = fp }, cancellationToken);
+                await mediator.Publish(new FilePairFoundNotification(request, fp), cancellationToken);
                 logger.LogInformation("Found {fp}", fp);
                 await filesToHash.Writer.WriteAsync(fp, cancellationToken);
             }
@@ -110,10 +79,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             GetParallelOptions(request.Hash_Parallelism),
             async (filePair, ct) =>
             {
-                await mediator.Publish(new FilePairHashingNotification(request) { FilePair = filePair }, ct);
+                await mediator.Publish(new FilePairHashingStartedNotification(request, filePair), ct);
                 //await Task.Delay(2000);
                 var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, filePair);
-                await mediator.Publish(new FilePairHashedNotification(request) { FilePairWithHash = filePairWithHash }, ct);
+                await mediator.Publish(new FilePairHashingCompletedNotification(request, filePairWithHash), ct);
                 
                 await hashedFilePairs.Writer.WriteAsync(filePairWithHash, ct);
             });

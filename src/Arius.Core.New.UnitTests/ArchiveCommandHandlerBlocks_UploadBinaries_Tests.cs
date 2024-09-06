@@ -29,7 +29,7 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
             LocalRoot   = Fixture.SourceFolder,
             VersionName = new RepositoryVersion { Name = "v1.0" }
         };
-        var st = c.storageTiering;
+        var st = c.StorageTiering;
 
         ArchiveCommandHandler.GetEffectiveStorageTier(st, StorageTier.Archive, 1).Should().Be(StorageTier.Cold);
         ArchiveCommandHandler.GetEffectiveStorageTier(st, StorageTier.Archive, 1024 * 1024 + 1).Should().Be(StorageTier.Archive);
