@@ -2,7 +2,6 @@ using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
-using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -36,5 +35,25 @@ public class HashValueProviderTests : TestBase
         var arius4HasherHash     = (await arius4Hasher.GetHashAsync(BinaryFile.FromFullName(null, file))).Value.BytesToHexString();
 
         arius3HasherHash.Should().Be(arius4HasherHash);
+    }
+}
+
+public class AzureBlobTests : TestBase
+{
+    protected override AriusFixture GetFixture()
+    {
+        return FixtureBuilder.Create()
+            .Build();
+    }
+
+    protected override void ConfigureOnceForFixture()
+    {
+    }
+
+    [Fact]
+    public void Ha()
+    {
+        var saf = Fixture.Repository;
+
     }
 }

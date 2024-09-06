@@ -39,7 +39,7 @@ public abstract class TestBase
 
     protected void GivenLocalFilesystemWithVersions(params string[] versionNames)
     {
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.Repository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -80,13 +80,13 @@ public abstract class TestBase
 
     protected void GivenAzureRepositoryWithNoVersions()
     {
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.Repository;
         repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
     protected void GivenAzureRepositoryWithVersions(params string[] versionNames)
     {
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.Repository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -227,7 +227,7 @@ public abstract class TestBase
 
     protected void ThenDownloadShouldHaveBeenCalled()
     {
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.Repository;
         repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 

@@ -282,7 +282,8 @@ internal class StateDbRepository : IStateDbRepository
 
     public void AddBinary(BinaryProperties bp)
     {
-        throw new NotImplementedException();
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        context.BinaryProperties.Add(bp.ToDto());
     }
 
     public bool BinaryExists(IFileWithHash f)
