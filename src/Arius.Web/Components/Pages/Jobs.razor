@@ -95,6 +95,7 @@
         var r = new RepositoryOptions()
         {
             AccountName   = "ariusci",
+            AccountKey    = "",
             ContainerName = "test2",
             Passphrase    = "test"
         };
@@ -105,7 +106,7 @@
             LocalRoot   = new DirectoryInfo(@"C:\AriusTest\Source"),
             RemoveLocal = false,
             Tier        = StorageTier.Archive,
-            VersionName = "Test"
+            VersionName = new RepositoryVersion { Name = "Test" }
         };
 
         Mediator.Send(c);
