@@ -43,7 +43,7 @@ public class LocalFileSystem : IFileSystem
                 continue;
             }
 
-            yield return File.FromFileInfo(fi);
+            yield return File.FromFullName(fi.FullName);
         }
 
         foreach (var subDir in directory.EnumerateDirectories())

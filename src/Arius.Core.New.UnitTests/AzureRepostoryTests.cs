@@ -21,7 +21,7 @@ public class AzureRepostoryTests : TestBase
         var fp  = GivenSourceFolderHavingRandomFile("f", 100);
         //var hvp = new SHA256Hasher(Fixture.RepositoryOptions);
         //var h   = hvp.GetHashAsync(fp.BinaryFile!).Result;
-        bfwh = fp.BinaryFile.GetBinaryFileWithHash(new Hash("abc".StringToBytes()));
+        bfwh = BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
     }
 
     private BinaryFileWithHash bfwh;

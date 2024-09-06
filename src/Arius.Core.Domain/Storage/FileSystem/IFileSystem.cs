@@ -51,7 +51,7 @@ public record File : IFile // TODO make internal
     {
     }
 
-    public static File FromFileInfo(FileInfo fi)             => new(fi);
+    //public static File FromFileInfo(FileInfo fi)             => new(fi);
     public static File FromFullName(string fullName)         => new(fullName);
     public static File FromRelativeName(DirectoryInfo root, string relativeName) => new(System.IO.Path.Combine(root.FullName, relativeName));
 
@@ -79,12 +79,6 @@ public record File : IFile // TODO make internal
                 throw new InvalidOperationException("The file does not exist");
         }
     }
-
-    //public DateTime LastWriteTimeUtc
-    //{
-    //    get => System.IO.File.GetLastWriteTimeUtc(FullName);
-    //    set => System.IO.File.SetLastWriteTimeUtc(FullName, value); //FileInfo does not work on Linux according to https://stackoverflow.com/a/17126045/1582323
-    //}
 
     public DateTime? LastWriteTimeUtc
     {
@@ -119,7 +113,7 @@ public record File : IFile // TODO make internal
     {
         if (IsPointerFile)
             // this File is a PointerFile, return it as is
-            return PointerFile.FromFileInfo(root, fileInfo);
+            return PointerFile.FromFullName(root, fileInfo.FullName);
         else
             // this File is a BinaryFile, return the equivalent PointerFile
             return PointerFile.FromFullName(root, PointerFileFullName);
@@ -129,7 +123,7 @@ public record File : IFile // TODO make internal
     {
         if (IsBinaryFile)
             // this File is a BinaryFile, return as is
-            return BinaryFile.FromFileInfo(root, fileInfo);
+            return BinaryFile.FromFullName(root, fileInfo.FullName);
         else
             // this File is a PointerFile, return the equivalent BinaryFile
             return BinaryFile.FromFullName(root, BinaryFileFullName);
@@ -215,39 +209,10 @@ public record PointerFile : RelativeFile
     {
     }
 
-    public static PointerFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
+    //public static PointerFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
     public static PointerFile FromFullName(DirectoryInfo root, string fullName)         => new(root, fullName);
     public static PointerFile FromRelativeName(DirectoryInfo root, string relativeName) => new(root, System.IO.Path.Combine(root.FullName, relativeName));
 
-    /// <summary>
-    /// Get a PointerFile with Hash by reading the value in the PointerFile
-    /// </summary>
-    /// <returns></returns>
-    public PointerFileWithHash GetPointerFileWithHash()
-    {
-        var h = ReadPointerFile(FullName);
-        return PointerFileWithHash.FromFileInfo(Root, fileInfo, h);
-    }
-
-    protected static Hash ReadPointerFile(string fullName)
-    {
-        if (!System.IO.File.Exists(fullName))
-            throw new ArgumentException($"'{fullName}' does not exist");
-
-        try
-        {
-            var json = System.IO.File.ReadAllBytes(fullName);
-            var pfc  = JsonSerializer.Deserialize<PointerFileContents>(json);
-            var h    = new Hash(pfc.BinaryHash.HexStringToBytes());
-
-            return h;
-        }
-        catch (JsonException e)
-        {
-            throw new ArgumentException($"'{fullName}' is not a valid PointerFile", e);
-        }
-    }
-    protected record PointerFileContents(string BinaryHash);
 
     public override string ToString() => RelativeName;
 }
@@ -268,10 +233,32 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
         Hash = hash;
     }
 
-    public static PointerFileWithHash FromFileInfo(DirectoryInfo root, FileInfo fi, Hash h)             => new(root, fi, h);
+    //public static PointerFileWithHash FromFileInfo(DirectoryInfo root, FileInfo fi, Hash h)             => new(root, fi, h);
     public static PointerFileWithHash FromFullName(DirectoryInfo root, string fullName, Hash h)         => new(root, fullName, h);
     public static PointerFileWithHash FromRelativeName(DirectoryInfo root, string relativeName, Hash h) => new(root, System.IO.Path.Combine(root.FullName, relativeName), h);
 
+    /// <summary>
+    /// Get a PointerFile with Hash by reading the value in the PointerFile
+    /// </summary>
+    /// <returns></returns>
+    public static PointerFileWithHash FromExistingPointerFile(PointerFile pf)
+    {
+        if (!System.IO.File.Exists(pf.FullName))
+            throw new ArgumentException($"'{pf.FullName}' does not exist");
+
+        try
+        {
+            var json = System.IO.File.ReadAllBytes(pf.FullName);
+            var pfc  = JsonSerializer.Deserialize<PointerFileContents>(json);
+            var h    = new Hash(pfc.BinaryHash.HexStringToBytes());
+
+            return PointerFileWithHash.FromFullName(pf.Root, pf.FullName, h);
+        }
+        catch (JsonException e)
+        {
+            throw new ArgumentException($"'{pf.FullName}' is not a valid PointerFile", e);
+        }
+    }
     /// <summary>
     /// Write the PointerFile to disk
     /// </summary>
@@ -292,6 +279,8 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
 
         return pfwh;
     }
+    private record PointerFileContents(string BinaryHash);
+
 
     public Hash Hash { get; }
 
@@ -310,16 +299,10 @@ public record BinaryFile : RelativeFile
     {
     }
 
-    public static BinaryFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
+    //public static BinaryFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
     public static BinaryFile FromFullName(DirectoryInfo root, string fullName)         => new(root, fullName);
     public static BinaryFile FromRelativeName(DirectoryInfo root, string relativeName) => new(root, System.IO.Path.Combine(root.FullName, relativeName));
     
-    /// <summary>
-    /// Get a BinaryFile with the provided Hash value
-    /// </summary>
-    /// <param name="h"></param>
-    /// <returns></returns>
-    public BinaryFileWithHash GetBinaryFileWithHash(Hash h) => BinaryFileWithHash.FromFileInfo(Root, fileInfo, h);
 
     public override string ToString() => RelativeName;
 }
@@ -340,9 +323,10 @@ public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
         Hash = hash;
     }
 
-    public static BinaryFileWithHash FromFileInfo(DirectoryInfo root, FileInfo fi, Hash h)             => new(root, fi, h);
+    //public static BinaryFileWithHash FromFileInfo(DirectoryInfo root, FileInfo fi, Hash h)             => new(root, fi, h);
     public static BinaryFileWithHash FromFullName(DirectoryInfo root, string fullName, Hash h)         => new(root, fullName, h);
     public static BinaryFileWithHash FromRelativeName(DirectoryInfo root, string relativeName, Hash h) => new(root, System.IO.Path.Combine(root.FullName, relativeName), h);
+    public static BinaryFileWithHash FromBinaryFile(BinaryFile bf, Hash h)                             => new(bf.Root, bf.FullName, h);
 
     public Hash Hash { get; }
 

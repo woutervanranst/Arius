@@ -387,8 +387,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (pair.PointerFile!.LastWriteTimeUtc == pair.BinaryFile!.LastWriteTimeUtc)
                 {
                     // The file has not been modified
-                    var pfwh0 = pair.PointerFile.GetPointerFileWithHash();
-                    var bfwh0 = pair.BinaryFile.GetBinaryFileWithHash(pfwh0.Hash);
+                    var pfwh0 = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile);
+                    var bfwh0 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile, pfwh0.Hash);
 
                     return new(pfwh0, bfwh0);
                 }
@@ -396,9 +396,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             // Fasthash is off, or the File has been modified
             var h1    = await hvp.GetHashAsync(pair.BinaryFile!);
-            var bfwh1 = pair.BinaryFile!.GetBinaryFileWithHash(h1);
+            var bfwh1 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile!, h1);
 
-            var pfwh1 = pair.PointerFile!.GetPointerFileWithHash();
+            var pfwh1 = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile!);
             if (pfwh1.Hash != bfwh1.Hash)
                 throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
@@ -407,7 +407,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         else if (pair.IsPointerFileOnly)
         {
             // A PointerFile without a BinaryFile
-            var pfwh = pair.PointerFile!.GetPointerFileWithHash();
+            var pfwh = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile!);
 
             return new(pfwh, null);
         }
@@ -415,7 +415,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             // A BinaryFile without a PointerFile
             var h = await hvp.GetHashAsync(pair.BinaryFile!);
-            var bfwh = pair.BinaryFile!.GetBinaryFileWithHash(h);
+            var bfwh = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile!, h);
 
             return new(null, bfwh);
         }

@@ -11,7 +11,6 @@ using Azure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-using WouterVanRanst.Utils.Extensions;
 using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
@@ -147,7 +146,7 @@ public abstract class TestBase
 
         var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, binaryFileRelativeName);
         var h    = Fixture.HashValueProvider.GetHashAsync(bf).Result;
-        var bfwh = bf.GetBinaryFileWithHash(h);
+        var bfwh = BinaryFileWithHash.FromBinaryFile(bf, h);
         var pfwh = PointerFileWithHash.Create(bfwh);
 
         return new(pfwh, bfwh);
