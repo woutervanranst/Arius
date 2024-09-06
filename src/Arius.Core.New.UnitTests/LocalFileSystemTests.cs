@@ -45,14 +45,14 @@ public class LocalFileSystemTests : TestBase
         };
 
         // Act
-        var files = fs.EnumerateFiles(Fixture.SourceFolder).ToList();
+        var files = fs.EnumerateFiles(Fixture.TestRunSourceFolder).ToList();
 
         // Assert
         Assert.NotNull(files);
         Assert.Equal(5, files.Count); // Only five normal files should be returned, excluding hidden and excluded files
 
         var actualRelativePaths = files
-            .Select(f => f.GetRelativeNamePlatformNeutral(Fixture.SourceFolder));
+            .Select(f => f.GetRelativeNamePlatformNeutral(Fixture.TestRunSourceFolder));
 
         actualRelativePaths.SequenceEqual(expectedRelativePaths)
             .Should().BeTrue();

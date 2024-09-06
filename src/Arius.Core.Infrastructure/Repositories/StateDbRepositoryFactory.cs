@@ -251,19 +251,38 @@ internal class StateDbRepository : IStateDbRepository
 
     public RepositoryVersion Version { get; }
 
-    public IAsyncEnumerable<PointerFileEntry> GetPointerFileEntries()
+    public long CountPointerFileEntries()
     {
-        //var context = new SqliteStateDbContext(dbContextOptions); // not with using, maybe detach them all?
-        //return context.PointerFileEntries.ToAsyncEnumerable();
-
         using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.PointerFileEntries.Select(dto => dto.ToEntity()).ToAsyncEnumerable();
+        return context.PointerFileEntries.LongCount();
     }
 
-    public IAsyncEnumerable<BinaryProperties> GetBinaryProperties()
+    //public IEnumerable<PointerFileEntry> GetPointerFileEntries()
+    //{
+    //    //var context = new SqliteStateDbContext(dbContextOptions); // not with using, maybe detach them all?
+    //    //return context.PointerFileEntries.ToAsyncEnumerable();
+
+    //    using var context = new SqliteStateDbContext(dbContextOptions);
+    //    foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
+    //        yield return pfe;
+    //}
+
+    public long CountBinaryProperties()
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.BinaryProperties.Select(dto => dto.ToEntity()).ToAsyncEnumerable();
+        return context.BinaryProperties.LongCount();
+    }
+
+    //public IEnumerable<BinaryProperties> GetBinaryProperties()
+    //{
+    //    using var context = new SqliteStateDbContext(dbContextOptions);
+    //    foreach (var bp in context.BinaryProperties.Select(dto => dto.ToEntity()))
+    //        yield return bp;
+    //}
+
+    public void AddBinary(BinaryProperties bp)
+    {
+        throw new NotImplementedException();
     }
 
     public bool BinaryExists(IFileWithHash f)

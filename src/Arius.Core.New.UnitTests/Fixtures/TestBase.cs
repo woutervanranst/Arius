@@ -57,7 +57,7 @@ public abstract class TestBase
             optionsBuilder.UseSqlite($"Data Source={dbFullName}");
 
             using var context = new SqliteStateDbContext(optionsBuilder.Options);
-            context.Database.EnsureCreated();
+            //context.Database.EnsureCreated();
             context.Database.Migrate();
         }
     }
@@ -215,8 +215,8 @@ public abstract class TestBase
 
     protected void ThenStateDbShouldBeEmpty(IStateDbRepository stateDbRepository)
     {
-        stateDbRepository.GetPointerFileEntries().CountAsync().Result.Should().Be(0);
-        stateDbRepository.GetBinaryProperties().CountAsync().Result.Should().Be(0);
+        stateDbRepository.CountPointerFileEntries().Should().Be(0);
+        stateDbRepository.CountBinaryProperties().Should().Be(0);
     }
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
