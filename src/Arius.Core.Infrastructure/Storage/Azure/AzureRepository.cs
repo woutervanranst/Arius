@@ -2,12 +2,7 @@
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
-using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
@@ -18,10 +13,10 @@ internal class AzureRepository : IRepository
     private readonly ICryptoService           cryptoService;
     private readonly ILogger<AzureRepository> logger;
 
-    private readonly AzureContainerFolder StateFolder;
-    private readonly AzureContainerFolder ChunkListsFolder;
-    private readonly AzureContainerFolder ChunksFolder;
-    private readonly AzureContainerFolder RehydratedChunksFolder;
+    internal AzureContainerFolder StateFolder            { get; }
+    internal AzureContainerFolder ChunkListsFolder       { get; }
+    internal AzureContainerFolder ChunksFolder           { get; }
+    internal AzureContainerFolder RehydratedChunksFolder { get; }
 
     private const string STATE_DBS_FOLDER_NAME         = "states";
     private const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
@@ -74,14 +69,23 @@ internal class AzureRepository : IRepository
 
     private async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, CancellationToken cancellationToken = default)
     {
-        await using var ts = await target.OpenWriteAsync();
-        await using var ss = source.OpenRead();
+        await using var ss       = source.OpenRead();
+        var             metadata = AzureBlob.CreateMetadata(ss.Length);
+        await using var ts       = await target.OpenWriteAsync(cancellationToken: cancellationToken);
         await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
 
         return (ss.Length, ts.Position); // ts.Length is not supported
     }
 
     public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
+    {
+        if (blob is AzureBlob azureBlob)
+            await DownloadAsync(azureBlob, file, cancellationToken);
+        else
+            throw new NotSupportedException($"'{blob.GetType()}' is not supported");
+    }
+
+    public async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
         await using var ts = file.OpenWrite();

@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using Arius.Core.Domain.Services;
+using Arius.Core.Domain.Storage;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -67,14 +68,14 @@ internal class AzureBlob : IBlob
         await blockBlobClient.SetAccessTierAsync(value.ToAccessTier());
     }
 
-    //public async Task<string?> GetContentTypeAsync() => (await lazyCommonProperties).ContentType;
+    public async Task<string?> GetContentTypeAsync() => (await lazyCommonProperties).ContentType;
 
-    public async Task SetContentTypeAsync(string value)
-    {
-        await blockBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = value });
-    }
+    //public async Task SetContentTypeAsync(string value)
+    //{
+    //    await blockBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = value });
+    //}
 
-    //public async Task<IDictionary<string, string>> GetMetadataAsync() => (await lazyCommonProperties).Metadata ?? new Dictionary<string, string>();
+    public async Task<IDictionary<string, string>> GetMetadataAsync() => (await lazyCommonProperties).Metadata ?? new Dictionary<string, string>();
 
     public async Task<bool> ExistsAsync()
     {
@@ -96,17 +97,25 @@ internal class AzureBlob : IBlob
     /// Open the blob for writing.
     /// </summary>
     /// <param name="throwOnExists">If specified, and the blob already exists, a RequestFailedException with Status HttpStatusCode.Conflict is thrown</param>
-    public async Task<Stream> OpenWriteAsync(CancellationToken cancellationToken = default, bool throwOnExists = true)
+    public async Task<Stream> OpenWriteAsync(string contentType = ICryptoService.ContentType, IDictionary<string, string>? metadata = default, bool throwOnExists = true, CancellationToken cancellationToken = default)
     {
+        var bbowo = new BlockBlobOpenWriteOptions();
+
         //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
         if (throwOnExists)
-            return await blockBlobClient.OpenWriteAsync(overwrite: true, options: new BlockBlobOpenWriteOptions
-            {
-                OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") } // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-                //,
-                //HttpHeaders = new BlobHttpHeaders() { ContentType = }
-            }, cancellationToken: cancellationToken);
-        return await blockBlobClient.OpenWriteAsync(overwrite: true, cancellationToken: cancellationToken);
+            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+        if (metadata is not null)
+            bbowo.Metadata = metadata;
+        bbowo.HttpHeaders = new BlobHttpHeaders { ContentType = contentType };
+        
+        return await blockBlobClient.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+    }
+
+    internal const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
+
+    public static IDictionary<string, string> CreateMetadata(long originalLength)
+    {
+        return new Dictionary<string, string> { { ORIGINAL_CONTENT_LENGTH_METADATA_KEY, originalLength.ToString() } };
     }
 
     //public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options)

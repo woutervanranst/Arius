@@ -16,8 +16,6 @@ public class CryptoService : ICryptoService
     private const int blockSize = 128;
     private const int saltSize = 8;
 
-    public static readonly string ContentType = "application/aes256cbc+gzip";
-
     public async Task CompressAndEncryptAsync(Stream source, Stream target, string passphrase)
     {
         /* SET UP ENCRYPTION

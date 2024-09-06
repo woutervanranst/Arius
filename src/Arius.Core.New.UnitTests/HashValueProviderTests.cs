@@ -37,23 +37,3 @@ public class HashValueProviderTests : TestBase
         arius3HasherHash.Should().Be(arius4HasherHash);
     }
 }
-
-public class AzureBlobTests : TestBase
-{
-    protected override AriusFixture GetFixture()
-    {
-        return FixtureBuilder.Create()
-            .Build();
-    }
-
-    protected override void ConfigureOnceForFixture()
-    {
-    }
-
-    [Fact]
-    public void Ha()
-    {
-        var saf = Fixture.Repository;
-
-    }
-}
