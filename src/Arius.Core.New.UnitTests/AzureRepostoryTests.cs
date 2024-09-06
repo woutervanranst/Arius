@@ -1,4 +1,5 @@
 using Arius.Core.Domain;
+using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.Azure;
@@ -24,6 +25,33 @@ public class AzureRepostoryTests : TestBase
     }
 
     private BinaryFileWithHash bfwh;
+
+    [Fact]
+    public async Task UploadAsync_HappyPath()
+    {
+        // Arrange
+        var r = (AzureRepository)Fixture.Repository;
+
+        // Act
+        var bp = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
+
+        // Assert
+        bp.Should().NotBeNull();
+
+        bp.Hash.Should().Be(bfwh.Hash);
+        bp.OriginalLength.Should().Be(100);
+        bp.ArchivedLength.Should().NotBe(0);
+        bp.IncrementalLength.Should().Be(bp.ArchivedLength);
+        bp.StorageTier.Should().Be(StorageTier.Hot);
+
+        var b = r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());
+
+        (await b.ExistsAsync()).Should().BeTrue();
+        (await b.GetOriginalContentLengthAsync()).Should().Be(100);
+        (await b.GetContentLengthAsync()).Should().NotBe(0);
+        (await b.GetContentTypeAsync()).Should().Be(ICryptoService.ContentType);
+        (await b.GetStorageTierAsync()).Should().Be(StorageTier.Hot);
+    }
 
     [Fact]
     [Trait("Integration", "True")]
