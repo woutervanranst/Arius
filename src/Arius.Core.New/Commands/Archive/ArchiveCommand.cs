@@ -39,6 +39,11 @@ public record ArchiveCommand : IRequest
     internal int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
     internal int UpdateTierBlock_Parallelism => 10;
+
+    internal readonly Dictionary<long, StorageTier> storageTiering = new()
+    {
+        { 1024L * 1024, StorageTier.Cold },    // Files less than 1MB -> Cool Tier
+    };
 }
 
 internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>

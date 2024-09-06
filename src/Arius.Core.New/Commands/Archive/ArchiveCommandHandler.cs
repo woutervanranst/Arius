@@ -185,12 +185,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         // 4. Upload the binaries
         var repository = storageAccountFactory.GetRepository(request.Repository);
-        var uploadBinaryTask = Parallel.ForEachAsync(
+        var uploadBinariesTask = Parallel.ForEachAsync(
             binariesToUpload.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
             async (bfwh, ct) =>
             {
-                    var bp = await repository.UploadChunkAsync(bfwh, ct);
+                    var bp = await repository.UploadChunkAsync(bfwh, s => GetEffectiveStorageTier(request.storageTiering, request.Tier, s), ct);
 
                     HasBeenUploaded(bp);
 
@@ -234,7 +234,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         Task.WhenAll(hashTask/*, someTask*/).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
 
-        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinaryTask, pointerFileCreationTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
+        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, pointerFileCreationTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
 
         //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
         foreach (var pf in latentPointers)
@@ -300,6 +300,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     throw new InvalidOperationException($"Tried to remove {bp.Hash} but it was not present");
             }
         }
+    }
+
+    
+    public static StorageTier GetEffectiveStorageTier(Dictionary<long, StorageTier> tiering, StorageTier preferredTier, long size)
+    {
+        // Use the dictionary to determine if the size falls under a defined tier
+        foreach (var entry in tiering)
+            if (size <= entry.Key)
+                return entry.Value;
+
+        return preferredTier;
     }
 
     private enum UploadStatus

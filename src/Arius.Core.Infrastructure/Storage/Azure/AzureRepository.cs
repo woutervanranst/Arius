@@ -47,10 +47,14 @@ internal class AzureRepository : IRepository
     }
 
     public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, CancellationToken cancellationToken = default)
+    public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)
     {
         var b = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
 
         var r = await UploadAsync(file, b, cancellationToken);
+
+        var t = effectiveTier(r.archivedLength);
+        await b.SetStorageTierAsync(t);
 
         var bp = new BinaryProperties
         {
@@ -69,9 +73,8 @@ internal class AzureRepository : IRepository
 
     private async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, CancellationToken cancellationToken = default)
     {
-        await using var ss       = source.OpenRead();
-        var             metadata = AzureBlob.CreateMetadata(ss.Length);
-        await using var ts       = await target.OpenWriteAsync(cancellationToken: cancellationToken);
+        await using var ss = source.OpenRead();
+        await using var ts = await target.OpenWriteAsync(cancellationToken: cancellationToken);
         await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
 
         return (ss.Length, ts.Position); // ts.Length is not supported
