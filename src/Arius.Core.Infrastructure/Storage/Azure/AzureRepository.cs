@@ -1,7 +1,9 @@
-﻿using Arius.Core.Domain;
+﻿using System.Net;
+using Arius.Core.Domain;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
+using Azure;
 using Azure.Storage.Blobs;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
@@ -46,12 +48,14 @@ internal class AzureRepository : IRepository
         return StateFolder.GetBlob(repositoryVersion.Name);
     }
 
-    public async Task<BinaryProperties> UploadChunkAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)
+    public async Task<BinaryProperties> UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)
     {
+        logger.LogInformation("Uploading Binary {hash}...", file.Hash);
+
         var b = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
 
         var r = await UploadAsync(file, b, cancellationToken);
-
+        
         var t = effectiveTier(r.archivedLength);
         await b.SetStorageTierAsync(t);
 
@@ -60,23 +64,50 @@ internal class AzureRepository : IRepository
             Hash              = file.Hash,
             OriginalLength    = r.originalLength,
             ArchivedLength    = r.archivedLength,
-            IncrementalLength = 0, // TODO
-            StorageTier       = StorageTier.Hot // TODO
+            IncrementalLength = r.archivedLength,
+            StorageTier       = t
         };
 
-
-        // TODO Set contenttype, metadata, accesstier, ...
+        logger.LogInformation("Uploading Binary {hash}... done", file.Hash);
 
         return bp;
     }
 
     private async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, CancellationToken cancellationToken = default)
     {
-        await using var ss = source.OpenRead();
-        await using var ts = await target.OpenWriteAsync(cancellationToken: cancellationToken);
-        await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+        RestartUpload:
 
-        return (ss.Length, ts.Position); // ts.Length is not supported
+        try
+        {
+            await using var ss       = source.OpenRead();
+            var             metadata = AzureBlob.CreateMetadata(ss.Length);
+            await using var ts = await target.OpenWriteAsync(
+                contentType: ICryptoService.ContentType,
+                metadata: metadata,
+                throwOnExists: true,
+                cancellationToken: cancellationToken);
+            await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+
+            return (ss.Length, ts.Position); // ts.Length is not supported
+        }
+        catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
+        {
+            // The blob already exists
+            if (await target.GetContentTypeAsync() != ICryptoService.ContentType || await target.GetContentLengthAsync() == 0)
+            {
+                logger.LogWarning($"Corrupt Binary {target.FullName}. Deleting and uploading again");
+                await target.DeleteAsync();
+
+                goto RestartUpload;
+            }
+            else
+            {
+                // graceful handling if the chunk is already uploaded but it does not yet exist in the database
+                logger.LogWarning($"A valid Binary '{target.FullName}' already existed, perhaps from a previous/crashed run?");
+
+                return (await target.GetOriginalContentLengthAsync() ?? 0, await target.GetContentLengthAsync());
+            }
+        }
     }
 
     public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
@@ -87,7 +118,7 @@ internal class AzureRepository : IRepository
             throw new NotSupportedException($"'{blob.GetType()}' is not supported");
     }
 
-    public async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
+    private async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
         await using var ts = file.OpenWrite();

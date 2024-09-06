@@ -190,7 +190,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
             async (bfwh, ct) =>
             {
-                    var bp = await repository.UploadChunkAsync(bfwh, s => GetEffectiveStorageTier(request.storageTiering, request.Tier, s), ct);
+                    var bp = await repository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.storageTiering, request.Tier, s), ct);
 
                     HasBeenUploaded(bp);
 
@@ -227,7 +227,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         //    });
 
         // upload Task --> Set completion source !!
-        //var ce = await UploadChunkAsync(bf);
+        //var ce = await UploadBinaryFileAsync(bf);
         //uploadingBinaries[filePairWithHash.Hash].SetResult();
 
 

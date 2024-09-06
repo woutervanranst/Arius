@@ -1,6 +1,7 @@
 using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure;
+using FluentAssertions;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -37,6 +38,7 @@ public class AzureBlobTests : TestBase
         // Assert
         var retrievedMetadata = await azureBlob.GetMetadataAsync();
         Assert.Equal("123", retrievedMetadata[AzureBlob.ORIGINAL_CONTENT_LENGTH_METADATA_KEY]);
+        (await azureBlob.GetOriginalContentLengthAsync()).Should().Be(123);
     }
 
     [Fact]

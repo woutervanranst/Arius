@@ -12,7 +12,7 @@ internal class AzureBlob : IBlob
 {
     private readonly BlobItem?                       blobItem;
     private readonly BlockBlobClient                 blockBlobClient;
-    private readonly AsyncLazy<BlobCommonProperties> lazyCommonProperties;
+    private          AsyncLazy<BlobCommonProperties> lazyCommonProperties;
 
     internal record BlobCommonProperties
     {
@@ -25,17 +25,7 @@ internal class AzureBlob : IBlob
     public AzureBlob(BlockBlobClient blockBlobClient)
     {
         this.blockBlobClient = blockBlobClient;
-        lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(async () =>
-        {
-            var properties = await blockBlobClient.GetPropertiesAsync();
-            return new BlobCommonProperties
-            {
-                ContentLength = properties.Value.ContentLength,
-                AccessTier    = properties.Value.AccessTier,
-                ContentType   = properties.Value.ContentType,
-                Metadata      = properties.Value.Metadata
-            };
-        });
+        Refresh();
     }
 
     public AzureBlob(BlobItem blobItem, BlobContainerClient containerClient)
@@ -53,6 +43,24 @@ internal class AzureBlob : IBlob
         }));
     }
 
+    /// <summary>
+    /// Refreshes the state of the object (the metadata)
+    /// </summary>
+    public void Refresh()
+    {
+        lazyCommonProperties = new AsyncLazy<BlobCommonProperties>(async () =>
+        {
+            var properties = await blockBlobClient.GetPropertiesAsync();
+            return new BlobCommonProperties
+            {
+                ContentLength = properties.Value.ContentLength,
+                AccessTier    = properties.Value.AccessTier,
+                ContentType   = properties.Value.ContentType,
+                Metadata      = properties.Value.Metadata
+            };
+        });
+    }
+
     public string FullName => blobItem?.Name ?? blockBlobClient!.Name;
 
     public string Name => Path.GetFileName(FullName);
@@ -61,37 +69,50 @@ internal class AzureBlob : IBlob
 
     public async Task<long> GetContentLengthAsync() => (await lazyCommonProperties).ContentLength;
 
-    public async Task<StorageTier> GetStorageTierAsync() => (await lazyCommonProperties).AccessTier.ToStorageTier();
+    public async Task<StorageTier> GetStorageTierAsync()                  => (await lazyCommonProperties).AccessTier.ToStorageTier();
+    public async Task              SetStorageTierAsync(StorageTier value) => await blockBlobClient.SetAccessTierAsync(value.ToAccessTier());
 
-    public async Task SetStorageTierAsync(StorageTier value)
+
+    public async   Task<string?> GetContentTypeAsync()             => (await lazyCommonProperties).ContentType;
+    internal async Task          SetContentTypeAsync(string value) => await blockBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = value });
+
+
+    public async Task<bool> ExistsAsync() => await blockBlobClient.ExistsAsync();
+
+
+    public async Task DeleteAsync() => await blockBlobClient.DeleteIfExistsAsync();
+
+    // --- METADATA
+
+    public async Task<long?> GetOriginalContentLengthAsync()
     {
-        await blockBlobClient.SetAccessTierAsync(value.ToAccessTier());
+        var m = await GetMetadataAsync();
+
+        if (m.TryGetValue(ORIGINAL_CONTENT_LENGTH_METADATA_KEY, out string? length))
+            return long.Parse(length);
+        else
+            return null;
+    }
+    internal async Task<IDictionary<string, string>> GetMetadataAsync() => (await lazyCommonProperties).Metadata ?? new Dictionary<string, string>();
+    internal async Task UpsertMetadata(string key, string value)
+    {
+        var m = await GetMetadataAsync();
+
+        m[key] = value;
+
+        await blockBlobClient.SetMetadataAsync(m);
+    }
+    internal const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
+
+    public static IDictionary<string, string> CreateMetadata(long originalLength)
+    {
+        return new Dictionary<string, string> { { ORIGINAL_CONTENT_LENGTH_METADATA_KEY, originalLength.ToString() } };
     }
 
-    public async Task<string?> GetContentTypeAsync() => (await lazyCommonProperties).ContentType;
 
-    //public async Task SetContentTypeAsync(string value)
-    //{
-    //    await blockBlobClient.SetHttpHeadersAsync(new BlobHttpHeaders { ContentType = value });
-    //}
-
-    public async Task<IDictionary<string, string>> GetMetadataAsync() => (await lazyCommonProperties).Metadata ?? new Dictionary<string, string>();
-
-    public async Task<bool> ExistsAsync()
-    {
-        return await blockBlobClient.ExistsAsync();
-    }
-
-    //public async Task DeleteAsync()
-    //{
-    //    var client = await lazyBlobClient;
-    //    await client.DeleteIfExistsAsync();
-    //}
-
-    public async Task<Stream> OpenReadAsync(CancellationToken cancellationToken)
-    {
-        return await blockBlobClient.OpenReadAsync(cancellationToken:cancellationToken);
-    }
+    // --- STREAMS
+    
+    public async Task<Stream> OpenReadAsync(CancellationToken cancellationToken = default) => await blockBlobClient.OpenReadAsync(cancellationToken: cancellationToken);
 
     /// <summary>
     /// Open the blob for writing.
@@ -109,13 +130,6 @@ internal class AzureBlob : IBlob
         bbowo.HttpHeaders = new BlobHttpHeaders { ContentType = contentType };
         
         return await blockBlobClient.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
-    }
-
-    internal const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
-
-    public static IDictionary<string, string> CreateMetadata(long originalLength)
-    {
-        return new Dictionary<string, string> { { ORIGINAL_CONTENT_LENGTH_METADATA_KEY, originalLength.ToString() } };
     }
 
     //public async Task<CopyFromUriOperation> StartCopyFromUriAsync(Uri source, BlobCopyFromUriOptions options)
