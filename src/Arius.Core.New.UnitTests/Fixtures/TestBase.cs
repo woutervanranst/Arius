@@ -123,7 +123,7 @@ public abstract class TestBase
 
     internal FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
-        var fileFullName = Fixture.TestRunSourceDirectory.GetFileFullName(binaryFileRelativeName);
+        var fileFullName = Fixture.TestRunSourceFolder.GetFileFullName(binaryFileRelativeName);
 
         FileUtils.CreateRandomFile(fileFullName, sizeInBytes);
         SetAttributes(attributes, fileFullName);
@@ -145,7 +145,7 @@ public abstract class TestBase
     {
         GivenSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
 
-        var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceDirectory, binaryFileRelativeName);
+        var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, binaryFileRelativeName);
         var h    = Fixture.HashValueProvider.GetHashAsync(bf).Result;
         var bfwh = bf.GetBinaryFileWithHash(h);
         var pfwh = bfwh.GetPointerFileWithHash();
@@ -156,7 +156,7 @@ public abstract class TestBase
 
     internal FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
     {
-        var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceDirectory, pointerFileRelativeName, h);
+        var pfwh = PointerFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, pointerFileRelativeName, h);
 
         if (!pfwh.IsPointerFile) // check the extension
             throw new InvalidOperationException("This is not a pointer file");

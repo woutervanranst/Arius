@@ -4,6 +4,8 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Infrastructure.Services;
 using Arius.Core.New.UnitTests.Fakes;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -101,16 +103,16 @@ public class FixtureBuilder
 
 public class AriusFixture : IDisposable
 {
-    public  IHashValueProvider    HashValueProvider      { get; }
-    private TestRepositoryOptions TestRepositoryOptions  { get; }
-    public  DirectoryInfo         SourceFolder           { get; }
-    public  DirectoryInfo         TestRunRootFolder      { get; }
-    public  DirectoryInfo         TestRunSourceDirectory { get; }
+    public  IHashValueProvider    HashValueProvider     { get; }
+    private TestRepositoryOptions TestRepositoryOptions { get; }
+    public  DirectoryInfo         SourceFolder          { get; }
+    public  DirectoryInfo         TestRunRootFolder     { get; }
+    public  DirectoryInfo         TestRunSourceFolder   { get; }
 
     public IStorageAccountFactory    StorageAccountFactory    { get; }
-    public  IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
-    public  IMediator                 Mediator                 { get; }
-    public  AriusConfiguration        AriusConfiguration       { get; }
+    public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
+    public IMediator                 Mediator                 { get; }
+    public AriusConfiguration        AriusConfiguration       { get; }
 
     public AriusFixture(
         IServiceProvider serviceProvider,
@@ -123,7 +125,7 @@ public class AriusFixture : IDisposable
         TestRepositoryOptions  = testRepositoryOptions;
         SourceFolder           = sourceFolder;
         TestRunRootFolder      = testRunRootFolder;
-        TestRunSourceDirectory = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
+        TestRunSourceFolder = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 
         StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
         StateDbRepositoryFactory = serviceProvider.GetRequiredService<IStateDbRepositoryFactory>();

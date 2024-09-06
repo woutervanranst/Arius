@@ -48,7 +48,7 @@ public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
         };
 
         // Act
-        var indexedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.SourceFolder).ToList();
+        var indexedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.TestRunSourceFolder).ToList();
 
         // Assert
         var actualResults = indexedFiles
