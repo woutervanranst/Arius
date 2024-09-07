@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.New.UnitTests;
 
-public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
+public class LocalFileSystemTests_2 : TestBase
 {
     protected override AriusFixture GetFixture()
     {
@@ -48,7 +48,7 @@ public class ArchiveCommandHandlerBlocks_IndexFiles_Tests : TestBase
         };
 
         // Act
-        var indexedFiles = ArchiveCommandHandler.IndexFiles(fs, Fixture.TestRunSourceFolder).ToList();
+        var indexedFiles = fs.EnumerateFilePairs(Fixture.TestRunSourceFolder).ToList();
 
         // Assert
         var actualResults = indexedFiles

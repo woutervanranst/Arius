@@ -10,6 +10,7 @@ using Nito.AsyncEx;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Humanizer;
 using Humanizer.Bytes;
 
@@ -59,7 +60,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
         var indexTask = Task.Run(async () =>
         {
-            foreach (var fp in IndexFiles(fileSystem, request.LocalRoot))
+            foreach (var fp in fileSystem.EnumerateFilePairs(request.LocalRoot))
             {
                 //await Task.Delay(2000);
                 
@@ -287,94 +288,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         Uploaded
     }
 
-
-    internal static IEnumerable<FilePair> IndexFiles(IFileSystem fileSystem, DirectoryInfo root)
-    {
-        foreach (var file in fileSystem.EnumerateFiles(root))
-        {
-            if (file.IsPointerFile)
-            {
-                // this is a PointerFile
-                var pf = file.GetPointerFile(root);
-
-                if (pf.GetBinaryFile(root) is { Exists: true } bf)
-                {
-                    // 1. BinaryFile exists too
-                    yield return new(pf, bf);
-                }
-                else
-                {
-                    // 2. BinaryFile does not exist
-                    yield return new(pf, null);
-                }
-            }
-            else
-            {
-                // this is a BinaryFile
-                var bf = file.GetBinaryFile(root);
-
-                if (bf.GetPointerFile(root) is { Exists: true } pf)
-                {
-                    // 3. PointerFile exists too -- DO NOT YIELD ANYTHING; this pair has been yielded in (1)
-                    continue;
-                }
-                else
-                {
-                    // 4. BinaryFile does not exist
-                    yield return new(null, bf);
-                }
-            }
-        }
-
-        //var seenFiles        = new HashSet<string>();
-        //var currentDirectory = root.FullName;
-
-        //foreach (var file in fileSystem.EnumerateFiles(root))
-        //{
-        //    // Check if the directory has changed, if so clear the seenFiles HashSet
-        //    if (!string.Equals(currentDirectory, file.Path, StringComparison.OrdinalIgnoreCase))
-        //    {
-        //        seenFiles.Clear();
-        //        currentDirectory = file.Path; // Update the current directory to the file's directory
-        //    }
-
-        //    if (!seenFiles.Add(file.BinaryFileFullName))
-        //        continue;
-
-        //    if (file.IsPointerFile)
-        //    {
-        //        // this is a PointerFile
-        //        var pf = file.GetPointerFile(root);
-
-        //        if (pf.GetBinaryFile(root) is { Exists: true } bf)
-        //        {
-        //            // BinaryFile exists too
-        //            yield return new(pf, bf);
-        //        }
-        //        else
-        //        {
-        //            // BinaryFile does not exist
-        //            yield return new(pf, null);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        // this is a BinaryFile
-        //        var bf = file.GetBinaryFile(root);
-
-        //        if (bf.GetPointerFile(root) is { Exists : true } pf)
-        //        {
-        //            // PointerFile exists too
-        //            yield return new(pf, bf);
-        //        }
-        //        else
-        //        {
-        //            // BinaryFile does not exist
-        //            yield return new(null, bf);
-        //        }
-        //    }
-        //}
-    }
 
     internal static async Task<FilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, FilePair pair)
     {

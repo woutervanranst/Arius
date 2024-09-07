@@ -14,17 +14,6 @@ namespace Arius.Core.New.UnitTests.Fixtures;
 
 using System;
 
-//public interface IAriusFixture : IDisposable
-//{
-//    IStorageAccountFactory    StorageAccountFactory    { get; }
-//    StorageAccountOptions     StorageAccountOptions    { get; }
-//    IMediator                 Mediator                 { get; }
-//    RepositoryOptions         RepositoryOptions        { get; }
-//    IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
-//    AriusConfiguration        AriusConfiguration       { get; }
-//    DirectoryInfo             TestRootSourceFolder             { get; }
-//}
-
 public class FixtureBuilder
 {
     private readonly IServiceCollection services;

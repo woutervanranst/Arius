@@ -1,11 +1,10 @@
-using Arius.Core.Domain;
 using Arius.Core.Domain.Storage.FileSystem;
 using FluentAssertions;
 using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.New.UnitTests;
 
-public class IFileSystemTests
+public class FileTests
 {
     [Fact]
     public void Equals_TwoBinaryFilesWithSameFileInfo_ShouldBeEqual()
@@ -43,18 +42,5 @@ public class IFileSystemTests
 
         dict.Add(bf1, true);
         Assert.Throws<ArgumentException>(() => dict.Add(bf2, true));
-    }
-}
-
-public class HashTests
-{
-    [Fact]
-    public void Equals_SameValue_ShouldBeEqual()
-    {
-        var h1 = new Hash("ABCD".StringToBytes());
-        var h2 = new Hash("ABCD".StringToBytes());
-
-        h1.Equals(h2).Should().BeTrue();
-        h1.GetHashCode().Should().Be(h2.GetHashCode());
     }
 }

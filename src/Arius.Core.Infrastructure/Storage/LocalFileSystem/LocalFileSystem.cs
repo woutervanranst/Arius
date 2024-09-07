@@ -3,6 +3,12 @@ using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
+public interface IFileSystem
+{
+    public IEnumerable<File>     EnumerateFiles(DirectoryInfo directory);
+    public IEnumerable<FilePair> EnumerateFilePairs(DirectoryInfo directory);
+}
+
 public class LocalFileSystem : IFileSystem
 {
     private readonly ILogger<LocalFileSystem> logger;
@@ -67,6 +73,45 @@ public class LocalFileSystem : IFileSystem
         {
             return (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
                    ExcludedFiles.Contains(Path.GetFileName(file.FullName));
+        }
+    }
+
+    public IEnumerable<FilePair> EnumerateFilePairs(DirectoryInfo directory)
+    {
+        foreach (var file in EnumerateFiles(directory))
+        {
+            if (file.IsPointerFile)
+            {
+                // this is a PointerFile
+                var pf = file.GetPointerFile(directory);
+
+                if (pf.GetBinaryFile(directory) is { Exists: true } bf)
+                {
+                    // 1. BinaryFile exists too
+                    yield return new(pf, bf);
+                }
+                else
+                {
+                    // 2. BinaryFile does not exist
+                    yield return new(pf, null);
+                }
+            }
+            else
+            {
+                // this is a BinaryFile
+                var bf = file.GetBinaryFile(directory);
+
+                if (bf.GetPointerFile(directory) is { Exists: true } pf)
+                {
+                    // 3. PointerFile exists too -- DO NOT YIELD ANYTHING; this pair has been yielded in (1)
+                    continue;
+                }
+                else
+                {
+                    // 4. BinaryFile does not exist
+                    yield return new(null, bf);
+                }
+            }
         }
     }
 }

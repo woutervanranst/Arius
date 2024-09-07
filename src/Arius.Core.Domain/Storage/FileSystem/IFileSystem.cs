@@ -3,11 +3,6 @@ using System.Text.Json;
 
 namespace Arius.Core.Domain.Storage.FileSystem;
 
-public interface IFileSystem
-{
-    public IEnumerable<File> EnumerateFiles(DirectoryInfo directory);
-}
-
 public interface IFile
 {
     string  FullName                { get; }

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Arius.Core.New.UnitTests;
 
-public class LocalFileSystemTests : TestBase
+public class LocalFileSystemTests_1 : TestBase
 {
     protected override AriusFixture GetFixture()
     {
