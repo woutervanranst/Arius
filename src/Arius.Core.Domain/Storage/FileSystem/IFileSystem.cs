@@ -43,12 +43,13 @@ public record File : IFile // TODO make internal
 {
     protected readonly FileInfo fileInfo;
 
-    protected File(FileInfo fileInfo)
+    //protected File(FileInfo fileInfo)
+    //{
+    //    this.fileInfo = fileInfo;
+    //}
+    protected File(string fullName)
     {
-        this.fileInfo = fileInfo;
-    }
-    protected File(string fullName) : this(new FileInfo(fullName))
-    {
+        this.fileInfo = new FileInfo(fullName);
     }
 
     //public static File FromFileInfo(FileInfo fi)             => new(fi);
@@ -168,10 +169,10 @@ public interface IRelativeFile : IFile
 public abstract record RelativeFile : File, IRelativeFile
 {
 
-    protected RelativeFile(DirectoryInfo root, FileInfo fileInfo) : base(fileInfo)
-    {
-        Root = root;
-    }
+    //protected RelativeFile(DirectoryInfo root, FileInfo fileInfo) : base(fileInfo)
+    //{
+    //    Root = root;
+    //}
 
     protected RelativeFile(DirectoryInfo root, string fullName) : base(fullName)
     {
@@ -201,9 +202,9 @@ public record PointerFile : RelativeFile
 {
     public static readonly string        Extension = ".pointer.arius";
 
-    protected PointerFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
-    {
-    }
+    //protected PointerFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
+    //{
+    //}
 
     protected PointerFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
@@ -224,10 +225,10 @@ public interface IFileWithHash : IFile
 
 public record PointerFileWithHash : PointerFile, IFileWithHash
 {
-    protected PointerFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
-    {
-        Hash = hash;
-    }
+    //protected PointerFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
+    //{
+    //    Hash = hash;
+    //}
     protected PointerFileWithHash(DirectoryInfo root, string fullName, Hash hash) : base(root, fullName)
     {
         Hash = hash;
@@ -291,9 +292,9 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
 
 public record BinaryFile : RelativeFile
 {
-    protected BinaryFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
-    {
-    }
+    //protected BinaryFile(DirectoryInfo root, FileInfo fileInfo) : base(root, fileInfo)
+    //{
+    //}
 
     protected BinaryFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
@@ -313,10 +314,10 @@ public interface IBinaryFileWithHash : IFileWithHash
 
 public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
 {
-    protected BinaryFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
-    {
-        Hash = hash;
-    }
+    //protected BinaryFileWithHash(DirectoryInfo root, FileInfo fileInfo, Hash hash) : base(root, fileInfo)
+    //{
+    //    Hash = hash;
+    //}
 
     protected BinaryFileWithHash(DirectoryInfo root, string fullName, Hash hash) : base(root, fullName)
     {
