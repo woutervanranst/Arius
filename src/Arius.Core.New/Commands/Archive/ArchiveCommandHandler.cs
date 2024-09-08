@@ -204,7 +204,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
 
 
-        // 5. Create PointerFileEntries and PointerFiles
+        // 6. Create PointerFileEntries and PointerFiles
+        var binaryFilesToDelete = GetBoundedChannel<BinaryFileWithHash>(request.BinariesToDelete_BufferSize, true);
         var pointerFileCreationTask = Task.Run(async () =>
         {
             await foreach (var bfwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
@@ -216,12 +217,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 2. Create the PointerFileEntry
                 var pfe = PointerFileEntry.FromBinaryFileWithHash(bfwh);
                 stateDbRepository.AddPointerFileEntry(pfe);
+
+                await binaryFilesToDelete.Writer.WriteAsync(bfwh, cancellationToken);
             }
+
+            binaryFilesToDelete.Writer.Complete();
 
         }, cancellationToken);
 
 
-        // 6. Remove PointerFileEntries that do not exist on disk
+        // 7. Remove PointerFileEntries that do not exist on disk
         var removeDeletedPointerFileEntriesTask = Task.Run(async () =>
         {
             await pointerFileCreationTask; // C51
@@ -230,7 +235,50 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
 
 
-        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask);
+        // 8. Delete BinaryFiles
+        var deleteBinaryFilesTask = Task.Run(async () =>
+        {
+            await foreach (var bfwh in binaryFilesToDelete.Reader.ReadAllAsync(cancellationToken))
+            {
+                if (request.RemoveLocal)
+                {
+                    bfwh.Delete();
+                    logger.LogInformation("{flagName}: Deleted {bf}", nameof(request.RemoveLocal), bfwh);
+                }
+            }
+        }, cancellationToken);
+
+        // 9. Update Tier
+        var updateTierTask = Task.Run(async () =>
+        {
+            //await Parallel.ForEachAsync(repository.GetChunks(), GetParallelOptions(request.UpdateTierBlock_Parallelism), async (b, ct) =>
+            //{
+
+            //});
+
+            //await uploadBinariesTask;
+
+            var chunksToUpdate = stateDbRepository.GetBinaryProperties().Where(bp => bp.StorageTier != request.Tier);
+
+            await Parallel.ForEachAsync(chunksToUpdate, GetParallelOptions(request.UpdateTierBlock_Parallelism), async (bp, ct) =>
+            {
+                if (bp.StorageTier == StorageTier.Archive)
+                    return;  // do not do mass hydration of archive tiers
+
+                var effectiveTier = GetEffectiveStorageTier(request.StorageTiering, request.Tier, bp.ArchivedLength);
+
+                if (bp.StorageTier == effectiveTier)
+                    return;
+
+                await repository.SetChunkStorageTierAsync(bp.Hash, effectiveTier, ct);
+                stateDbRepository.UpdateBinaryStorageTier(bp.Hash, effectiveTier);
+
+                logger.LogInformation("Updated Chunk {chunk} of size {size} from {originalTier} to {newTier}", bp.Hash, bp.ArchivedLength, bp.StorageTier, effectiveTier);
+            });
+        }, cancellationToken);
+
+
+        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask);
 
         await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 

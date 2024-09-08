@@ -7,15 +7,14 @@ public interface IStateDbRepository
     RepositoryVersion Version { get; }
 
 
-    
-    //IEnumerable<BinaryProperties> GetBinaryProperties();
-    long CountPointerFileEntries();
-    long CountBinaryProperties();
-    void AddBinary(BinaryProperties bp);
-    bool BinaryExists(Hash binaryFileHash);
+    IEnumerable<BinaryProperties> GetBinaryProperties();
+    long                          CountBinaryProperties();
+    void                          AddBinary(BinaryProperties bp);
+    bool                          BinaryExists(Hash binaryFileHash);
+    void                          UpdateBinaryStorageTier(Hash hash, StorageTier effectiveTier);
 
     IEnumerable<PointerFileEntry> GetPointerFileEntries();
-
-    void AddPointerFileEntry(PointerFileEntry pfe);
-    void DeletePointerFileEntry(PointerFileEntry pfe);
+    long                          CountPointerFileEntries();
+    void                          AddPointerFileEntry(PointerFileEntry pfe);
+    void                          DeletePointerFileEntry(PointerFileEntry pfe);
 }

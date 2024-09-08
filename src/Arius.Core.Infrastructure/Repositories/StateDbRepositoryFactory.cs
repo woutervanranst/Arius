@@ -257,6 +257,19 @@ internal class StateDbRepository : IStateDbRepository
         return context.PointerFileEntries.LongCount();
     }
 
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries()
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
+            yield return pfe;
+    }
+
+    public IEnumerable<BinaryProperties> GetBinaryProperties()
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        foreach (var bp in context.BinaryProperties.Select(dto => dto.ToEntity()))
+            yield return bp;
+    }
 
     public long CountBinaryProperties()
     {
@@ -275,6 +288,7 @@ internal class StateDbRepository : IStateDbRepository
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
         context.BinaryProperties.Add(bp.ToDto());
+        context.SaveChanges();
     }
 
     public bool BinaryExists(Hash binaryFileHash)
@@ -283,17 +297,30 @@ internal class StateDbRepository : IStateDbRepository
         return context.BinaryProperties.Any(bp => bp.Hash == binaryFileHash.Value);
     }
 
+    public void UpdateBinaryStorageTier(Hash hash, StorageTier effectiveTier)
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+
+        var dto = context.BinaryProperties.Find(hash) 
+                  ?? throw new InvalidOperationException($"Could not find BinaryProperties with hash {hash}");
+
+        dto.StorageTier = effectiveTier;
+        context.SaveChanges();
+    }
+
     public void AddPointerFileEntry(PointerFileEntry pfe)
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
         context.PointerFileEntries.Add(pfe.ToDto());
+        context.SaveChanges();
     }
 
     public void DeletePointerFileEntry(PointerFileEntry pfe)
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
 
-        var dto = context.PointerFileEntries.Find(pfe.Hash.Value, pfe.RelativeName);
+        var dto = context.PointerFileEntries.Find(pfe.Hash.Value, pfe.RelativeName) 
+                  ?? throw new InvalidOperationException($"Could not find PointerFileEntry with hash {pfe.Hash} and {pfe.RelativeName}");
 
         context.PointerFileEntries.Remove(dto);
         context.SaveChanges();

@@ -32,11 +32,14 @@ public interface IFile
 
     Stream OpenRead();
     Stream OpenWrite();
+
+    void Delete();
 }
 
 public record File : IFile // TODO make internal
 {
-    protected readonly FileInfo fileInfo;
+    private readonly string fullName;
+    //protected readonly FileInfo fileInfo;
 
     //protected File(FileInfo fileInfo)
     //{
@@ -44,20 +47,21 @@ public record File : IFile // TODO make internal
     //}
     protected File(string fullName)
     {
-        this.fileInfo = new FileInfo(fullName);
+        this.fullName = fullName;
+        //this.fileInfo = new FileInfo(fullName);
     }
 
     //public static File FromFileInfo(FileInfo fi)             => new(fi);
     public static File FromFullName(string fullName)         => new(fullName);
     public static File FromRelativeName(DirectoryInfo root, string relativeName) => new(System.IO.Path.Combine(root.FullName, relativeName));
 
-    public string  FullName                                  => fileInfo.FullName;
-    public string  FullNamePlatformNeutral                   => FullName.ToPlatformNeutralPath();
-    public string? Path                                      => fileInfo.DirectoryName;
-    public string? PathPlatformNeutral                       => Path?.ToPlatformNeutralPath();
-    public string  Name                                      => fileInfo.Name;
+    public string  FullName                => fullName;
+    public string  FullNamePlatformNeutral => FullName.ToPlatformNeutralPath();
+    public string? Path                    => System.IO.Path.GetDirectoryName(fullName);
+    public string? PathPlatformNeutral     => Path?.ToPlatformNeutralPath();
+    public string  Name                    => System.IO.Path.GetFileName(fullName);
 
-    public string GetRelativeName(string relativeTo)                       => System.IO.Path.GetRelativePath(relativeTo, fileInfo.FullName);
+    public string GetRelativeName(string relativeTo)                       => System.IO.Path.GetRelativePath(relativeTo, fullName);
     public string GetRelativeNamePlatformNeutral(string relativeTo)        => GetRelativeName(relativeTo).ToPlatformNeutralPath();
     public string GetRelativeName(DirectoryInfo relativeTo)                => GetRelativeName(relativeTo.FullName);
     public string GetRelativeNamePlatformNeutral(DirectoryInfo relativeTo) => GetRelativeNamePlatformNeutral(relativeTo.FullName);
@@ -96,10 +100,10 @@ public record File : IFile // TODO make internal
     //public IEnumerable<File> GetFiles();
     //public IEnumerable<File> GetDirectories();
 
-    public bool IsPointerFile => fileInfo.FullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+    public bool IsPointerFile => fullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
     public bool IsBinaryFile  => !IsPointerFile;
 
-    public string BinaryFileFullName => fileInfo.FullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+    public string BinaryFileFullName => fullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
     public string BinaryFileFullNamePlatformNeutral => BinaryFileFullName.ToPlatformNeutralPath();
 
     public string PointerFileFullName => IsPointerFile ? FullName : FullName + PointerFile.Extension;
@@ -109,7 +113,7 @@ public record File : IFile // TODO make internal
     {
         if (IsPointerFile)
             // this File is a PointerFile, return it as is
-            return PointerFile.FromFullName(root, fileInfo.FullName);
+            return PointerFile.FromFullName(root, fullName);
         else
             // this File is a BinaryFile, return the equivalent PointerFile
             return PointerFile.FromFullName(root, PointerFileFullName);
@@ -119,14 +123,14 @@ public record File : IFile // TODO make internal
     {
         if (IsBinaryFile)
             // this File is a BinaryFile, return as is
-            return BinaryFile.FromFullName(root, fileInfo.FullName);
+            return BinaryFile.FromFullName(root, fullName);
         else
             // this File is a PointerFile, return the equivalent BinaryFile
             return BinaryFile.FromFullName(root, BinaryFileFullName);
     }
 
     public Stream OpenRead() => new FileStream(
-        fileInfo.FullName,
+        fullName,
         FileMode.Open,
         FileAccess.Read,
         FileShare.Read,
@@ -134,12 +138,17 @@ public record File : IFile // TODO make internal
         useAsync: true); // Enable async I/O for better performance with large files
 
     public Stream OpenWrite() => new FileStream(
-        fileInfo.FullName,
+        fullName,
         FileMode.OpenOrCreate,
         FileAccess.Write,
         FileShare.None,
         bufferSize: 32768, // 32 KB buffer size
         useAsync: true); // Enable async I/O for better performance with large files
+
+    public void Delete()
+    {
+        System.IO.File.Delete(fullName);
+    }
 
     public virtual bool Equals(File? other)
     {

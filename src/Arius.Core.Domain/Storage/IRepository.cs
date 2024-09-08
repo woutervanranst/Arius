@@ -8,4 +8,6 @@ public interface IRepository
     IBlob                               GetRepositoryVersionBlob(RepositoryVersion repositoryVersion);
     Task<BinaryProperties>              UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default);
     Task                                DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
+    
+    Task                                    SetChunkStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default);
 }
