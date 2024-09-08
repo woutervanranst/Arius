@@ -118,6 +118,13 @@ internal class AzureRepository : IRepository
             throw new NotSupportedException($"'{blob.GetType()}' is not supported");
     }
 
+    public async Task SetChunkStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default)
+    {
+        var b = ChunksFolder.GetBlob(hash.Value.BytesToHexString());
+
+        await b.SetStorageTierAsync(effectiveTier);
+    }
+
     private async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
