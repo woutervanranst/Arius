@@ -257,15 +257,6 @@ internal class StateDbRepository : IStateDbRepository
         return context.PointerFileEntries.LongCount();
     }
 
-    //public IEnumerable<PointerFileEntry> GetPointerFileEntries()
-    //{
-    //    //var context = new SqliteStateDbContext(dbContextOptions); // not with using, maybe detach them all?
-    //    //return context.PointerFileEntries.ToAsyncEnumerable();
-
-    //    using var context = new SqliteStateDbContext(dbContextOptions);
-    //    foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
-    //        yield return pfe;
-    //}
 
     public long CountBinaryProperties()
     {
@@ -296,5 +287,15 @@ internal class StateDbRepository : IStateDbRepository
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
         context.PointerFileEntries.Add(pfe.ToDto());
+    }
+
+    public void DeletePointerFileEntry(PointerFileEntry pfe)
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+
+        var dto = context.PointerFileEntries.Find(pfe.Hash.Value, pfe.RelativeName);
+
+        context.PointerFileEntries.Remove(dto);
+        context.SaveChanges();
     }
 }

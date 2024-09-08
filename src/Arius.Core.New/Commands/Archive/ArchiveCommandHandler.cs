@@ -4,15 +4,15 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using FluentValidation;
+using Humanizer.Bytes;
 using MediatR;
 using Nito.AsyncEx;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
-using Arius.Core.Infrastructure.Storage.LocalFileSystem;
-using Humanizer;
-using Humanizer.Bytes;
+using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.New.Commands.Archive;
 
@@ -66,10 +66,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 
                 await mediator.Publish(new FilePairFoundNotification(request, fp), cancellationToken);
                 logger.LogInformation("Found {fp}", fp);
-                await filesToHash.Writer.WriteAsync(fp, cancellationToken);
+                await filesToHash.Writer.WriteAsync(fp, cancellationToken); // A10
             }
 
-            filesToHash.Writer.Complete();
+            filesToHash.Writer.Complete(); // C10
         }, cancellationToken);
 
 
@@ -86,10 +86,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, filePair);
                 await mediator.Publish(new FilePairHashingCompletedNotification(request, filePairWithHash), ct);
                 
-                await hashedFilePairs.Writer.WriteAsync(filePairWithHash, ct);
+                await hashedFilePairs.Writer.WriteAsync(filePairWithHash, ct); // 20
             });
 
-        hashTask.ContinueWith(_ => hashedFilePairs.Writer.Complete());
+        hashTask.ContinueWith(_ => hashedFilePairs.Writer.Complete(), cancellationToken); // C20
 
         var stateDbRepository = await stateDbRepositoryTask;
 
@@ -114,7 +114,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     if (pwh.HasExistingPointerFile && r is not UploadStatus.Uploaded)
                     {
                         // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
-                        latentPointers.Add(pwh.PointerFile!);
+                        latentPointers.Add(pwh.PointerFile!); // A31
                     }
 
                     switch (r)
@@ -123,7 +123,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
                             logger.LogInformation("Binary for {relativeName} does not exist remotely. Starting upload.", pwh.RelativeName);
 
-                            await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
+                            await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A32
 
                             //stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: ce.IncrementalLength);
                             break;
@@ -135,15 +135,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             {
                                 logger.LogInformation("Binary for {relativeName} has been uploaded.", pwh.RelativeName);
 
-                                await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
-                            }, cancellationToken));
+                                await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A332
+                            }, cancellationToken)); // A331
 
                             break;
                         case UploadStatus.Uploaded:
                             // 2.3 Is already uploaded
                             logger.LogInformation("Binary for {relativeName} already exists remotely.", pwh.RelativeName);
 
-                            await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken);
+                            await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A35
 
                             break;
                         default:
@@ -151,8 +151,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     }
                 }
             }
-        }, cancellationToken);
 
+            binariesToUpload.Writer.Complete(); // C30
+        }, cancellationToken);
+        
 
         // 4. Upload the binaries
         var repository = storageAccountFactory.GetRepository(request.Repository);
@@ -174,14 +176,35 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                 logger.LogInformation("Uploaded {hash} ({binaryFile}) in {elapsedTimeInSeconds} seconds @ {speed:F2} MBps", bfwh.Hash, bfwh.RelativeName, elapsedTimeInSeconds, uploadSpeedMbps);
 
-                HasBeenUploaded(bp);
+                HasBeenUploaded(bp); // A41
 
-                await pointerFileEntriesToCreate.Writer.WriteAsync(bfwh, ct);
+                await pointerFileEntriesToCreate.Writer.WriteAsync(bfwh, ct); // A40
             }
         );
 
-        // 5. Create PointerFileEntries and PointerFiles
+        Task.WhenAll(uploadBinariesTask, uploadRouterTask)
+            .ContinueWith(async _ =>
+            {
+                //await uploadRouterTask;
+                await addUploadedBinariesToPointerFileQueueTasks.WhenAll();
+                pointerFileEntriesToCreate.Writer.Complete();
+            }, cancellationToken); // C40
 
+
+        //5. Now that all binaries are uploaded, check the 'stale' pointers (pointers that were present but did not have a remote binary)
+        var latentPointerTask = Task.Run(async () =>
+        {
+            await uploadBinariesTask; // C41 
+
+            foreach (var pf in latentPointers)
+            {
+                if (!stateDbRepository.BinaryExists(pf.Hash))
+                    throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
+            }
+        }, cancellationToken);
+
+
+        // 5. Create PointerFileEntries and PointerFiles
         var pointerFileCreationTask = Task.Run(async () =>
         {
             await foreach (var bfwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
@@ -198,17 +221,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
 
 
-
-        Task.WhenAll(hashTask, uploadRouterTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll(), uploadBinariesTask).ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete());
-
-        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, pointerFileCreationTask, addUploadedBinariesToPointerFileQueueTasks.WhenAll());
-
-        //Iterate over all 'stale' pointers (pointers that were present but did not have a remote binary
-        foreach (var pf in latentPointers)
+        // 6. Remove PointerFileEntries that do not exist on disk
+        var removeDeletedPointerFileEntriesTask = Task.Run(async () =>
         {
-            if (!stateDbRepository.BinaryExists(pf.Hash))
-                throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
-        }
+            await pointerFileCreationTask; // C51
+
+            RemoveDeletedPointerFileEntries(request, stateDbRepository);
+        }, cancellationToken);
+
+
+        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask);
 
         await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 
@@ -231,10 +253,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             };
         }
 
-        ParallelOptions GetParallelOptions(int maxDegreeOfParallelism)
-        {
-            return new ParallelOptions() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
-        }
+        ParallelOptions GetParallelOptions(int maxDegreeOfParallelism) => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
 
         UploadStatus DetermineUploadStatus(Hash h)
         {
@@ -270,7 +289,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    
+
+
+
     public static StorageTier GetEffectiveStorageTier(Dictionary<long, StorageTier> tiering, StorageTier preferredTier, long size)
     {
         // Use the dictionary to determine if the size falls under a defined tier
@@ -334,5 +355,19 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
         else
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
+    }
+
+    private static void RemoveDeletedPointerFileEntries(ArchiveCommand request, IStateDbRepository stateDbRepository)
+    {
+        foreach (var pfe in stateDbRepository.GetPointerFileEntries())
+        {
+            var f = File.FromRelativeName(request.LocalRoot, pfe.RelativeName);
+
+            if (!f.Exists)
+            {
+                // The PointerFile does not exist on disk
+                stateDbRepository.DeletePointerFileEntry(pfe);
+            }
+        }
     }
 }
