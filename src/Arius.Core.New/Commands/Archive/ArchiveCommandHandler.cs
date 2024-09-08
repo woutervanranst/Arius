@@ -220,9 +220,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                 await binaryFilesToDelete.Writer.WriteAsync(bfwh, cancellationToken);
             }
-
-            binaryFilesToDelete.Writer.Complete();
-
+             
+            binaryFilesToDelete.Writer.Complete(); // C52
         }, cancellationToken);
 
 
@@ -248,15 +247,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
         }, cancellationToken);
 
+
         // 9. Update Tier
         var updateTierTask = Task.Run(async () =>
         {
-            //await Parallel.ForEachAsync(repository.GetChunks(), GetParallelOptions(request.UpdateTierBlock_Parallelism), async (b, ct) =>
-            //{
-
-            //});
-
-            //await uploadBinariesTask;
+            //await Parallel.ForEachAsync(repository.GetChunks(), GetParallelOptions(request.UpdateTierBlock_Parallelism), async (b, ct) => {});
 
             var chunksToUpdate = stateDbRepository.GetBinaryProperties().Where(bp => bp.StorageTier != request.Tier);
 
