@@ -6,7 +6,7 @@ namespace Arius.Core.Domain.Storage.FileSystem;
 public interface IFile
 {
     string  FullName                { get; }
-    string  FullNamePlatformNeutral { get; }
+    //string  FullNamePlatformNeutral { get; }
     string? Path                    { get; }
     string? PathPlatformNeutral     { get; }
     string  Name                    { get; }
@@ -19,9 +19,10 @@ public interface IFile
     bool   IsPointerFile                      { get; }
     bool   IsBinaryFile                       { get; }
     string BinaryFileFullName                 { get; }
-    string BinaryFileFullNamePlatformNeutral  { get; }
+    //string BinaryFileFullNamePlatformNeutral  { get; }
     string PointerFileFullName                { get; }
-    string PointerFileFullNamePlatformNeutral { get; }
+    //string PointerFileFullNamePlatformNeutral { get; }
+    long   Length                             { get; }
 
     string      GetRelativeName(string relativeTo);
     string      GetRelativeNamePlatformNeutral(string relativeTo);
@@ -33,7 +34,8 @@ public interface IFile
     Stream OpenRead();
     Stream OpenWrite();
 
-    void Delete();
+    IFile CopyTo(string destinationName);
+    void  Delete();
 }
 
 public record File : IFile // TODO make internal
@@ -41,12 +43,11 @@ public record File : IFile // TODO make internal
     private readonly string fullName;
     //protected readonly FileInfo fileInfo;
 
-    //protected File(FileInfo fileInfo)
-    //{
-    //    this.fileInfo = fileInfo;
-    //}
     protected File(string fullName)
     {
+        if (!System.IO.Path.IsPathFullyQualified(fullName))
+            throw new ArgumentException($"'{fullName}' is not a fully qualified path");
+
         this.fullName = fullName;
         //this.fileInfo = new FileInfo(fullName);
     }
@@ -56,7 +57,7 @@ public record File : IFile // TODO make internal
     public static File FromRelativeName(DirectoryInfo root, string relativeName) => new(System.IO.Path.Combine(root.FullName, relativeName));
 
     public string  FullName                => fullName;
-    public string  FullNamePlatformNeutral => FullName.ToPlatformNeutralPath();
+    //public string  FullNamePlatformNeutral => FullName.ToPlatformNeutralPath();
     public string? Path                    => System.IO.Path.GetDirectoryName(fullName);
     public string? PathPlatformNeutral     => Path?.ToPlatformNeutralPath();
     public string  Name                    => System.IO.Path.GetFileName(fullName);
@@ -92,11 +93,8 @@ public record File : IFile // TODO make internal
         }
     }
 
-    //public long Length { get; }
-    //public DateTime LastWriteTimeUtc { get; }
-    //public bool IsHiddenOrSystem { get; }
+    public long Length => new FileInfo(FullName).Length;
     //public bool IsIgnoreFile { get; }
-    //public bool IsDirectory { get; }
     //public IEnumerable<File> GetFiles();
     //public IEnumerable<File> GetDirectories();
 
@@ -104,10 +102,10 @@ public record File : IFile // TODO make internal
     public bool IsBinaryFile  => !IsPointerFile;
 
     public string BinaryFileFullName => fullName.RemoveSuffix(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
-    public string BinaryFileFullNamePlatformNeutral => BinaryFileFullName.ToPlatformNeutralPath();
+    //public string BinaryFileFullNamePlatformNeutral => BinaryFileFullName.ToPlatformNeutralPath();
 
     public string PointerFileFullName => IsPointerFile ? FullName : FullName + PointerFile.Extension;
-    public string PointerFileFullNamePlatformNeutral => PointerFileFullName.ToPlatformNeutralPath();
+    //public string PointerFileFullNamePlatformNeutral => PointerFileFullName.ToPlatformNeutralPath();
 
     public PointerFile GetPointerFile(DirectoryInfo root)
     {
@@ -147,8 +145,12 @@ public record File : IFile // TODO make internal
 
     public void Delete()
     {
-        System.IO.File.Delete(fullName);
+        var newFullName = System.IO.Path.Combine(Path!, destinationName);
+        System.IO.File.Copy(FullName, newFullName);
+        return FromFullName(newFullName);
     }
+
+    public void Delete() => System.IO.File.Delete(fullName);
 
     public virtual bool Equals(File? other)
     {
@@ -159,6 +161,62 @@ public record File : IFile // TODO make internal
     public override int GetHashCode() => FullName.GetHashCode();
 
     public override string ToString() => FullName;
+}
+
+public record StateDatabaseFile : File
+{
+    public static readonly string Extension     = ".ariusdb";
+    public static readonly string TempExtension = ".ariusdb.tmp";
+
+    public RepositoryVersion Version { get; }
+
+    private StateDatabaseFile(string fullName, RepositoryVersion version) : base(fullName)
+    {
+        if (!fullName.EndsWith(Extension, StringComparison.OrdinalIgnoreCase) && 
+            !fullName.EndsWith(TempExtension, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"'{fullName}' is not a valid StateDatabaseFile");
+
+        this.Version = version;
+        this.IsTemp  = fullName.EndsWith(TempExtension, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static StateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version, bool isTemp) => new(System.IO.Path.Combine(stateDbFolder.FullName, GetFileSystemName(version, isTemp)), version);
+
+    public static StateDatabaseFile FromFullName(DirectoryInfo stateDbFolder, string fullName)
+    {
+        var version = GetVersion(fullName);
+        return new(fullName, version);
+    }
+    public bool IsTemp { get; }
+
+    public StateDatabaseFile GetTempCopy()
+    {
+        if (IsTemp)
+            throw new InvalidOperationException("This is already a temp file");
+
+        var f = base.CopyTo(GetFileSystemName(Version, true));
+
+        return new(f.FullName, Version);
+    }
+
+    private static string GetFileSystemName(RepositoryVersion version, bool temp)
+    {
+        return $"{version.Name.Replace(":", "")}{(temp ? TempExtension : Extension)}";
+    }
+
+    private static RepositoryVersion GetVersion(string name)
+    {
+        var n = System.IO.Path.GetFileName(name).RemoveSuffix(TempExtension).RemoveSuffix(Extension);
+        if (DateTime.TryParseExact(n, "yyyy-MM-ddTHHmmss", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsedDateTime))
+        {
+            return parsedDateTime;
+        }
+        else
+        {
+            return new RepositoryVersion { Name = n };
+        }
+
+    }
 }
 
 public interface IRelativeFile : IFile
@@ -212,6 +270,8 @@ public record PointerFile : RelativeFile
 
     protected PointerFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
+        if (!fullName.EndsWith(Extension, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"'{fullName}' is not a valid PointerFile");
     }
 
     //public static PointerFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
@@ -302,6 +362,8 @@ public record BinaryFile : RelativeFile
 
     protected BinaryFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
+        if (fullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException($"'{fullName}' is a PointerFile not a BinaryFile");
     }
 
     //public static BinaryFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);

@@ -3,7 +3,7 @@
 public record RepositoryVersion
 {
     public required string Name { get; init; }
-    //public async Task<StorageTier> GetStorageTierAsync() => await Blob.GetStorageTierAsync();
+    
     public static implicit operator RepositoryVersion(DateTime name)
     {
         return new RepositoryVersion { Name = $"{DateTime.UtcNow:s}" };

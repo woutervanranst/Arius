@@ -2,7 +2,6 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.Infrastructure.Extensions;
 using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -34,7 +33,8 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
 
         var repository = storageAccountFactory.GetRepository(repositoryOptions);
 
-        var (file, effectiveVersion) = await GetLocalStateDbFullNameAsync(repository, repositoryOptions, version);
+        var (sdbf, effectiveVersion) = await GetLocalStateDbFullNameAsync(repository, repositoryOptions, version);
+        sdbf = sdbf.IsTemp ? sdbf : sdbf.GetTempCopy();
 
         /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'
@@ -42,12 +42,12 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
          * Set command timeout to 60s to avoid concurrency errors on 'table is locked' 
          */
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={file.FullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
+        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
 
         return new StateDbRepository(optionsBuilder.Options, effectiveVersion);
     }
 
-    private async Task<(IFile fullName, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
+    private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
     {
         var localStateDbFolder = config.GetLocalStateDbFolderForRepository(repositoryOptions);
 
@@ -58,13 +58,13 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTime.UtcNow;
-                return (localStateDbFolder.GetFile(effectiveVersion.GetFileSystemName()), effectiveVersion);
+                return (StateDatabaseFile.FromRepositoryVersion(localStateDbFolder, effectiveVersion, true), effectiveVersion);
             }
-            return (await GetLocallyCachedAsync(repository, repositoryOptions, localStateDbFolder, effectiveVersion), effectiveVersion);
+            return (await GetLocallyCachedAsync(repository, localStateDbFolder, effectiveVersion), effectiveVersion);
         }
         else
         {
-            return (await GetLocallyCachedAsync(repository, repositoryOptions, localStateDbFolder, requestedVersion), requestedVersion);
+            return (await GetLocallyCachedAsync(repository, localStateDbFolder, requestedVersion), requestedVersion);
         }
 
         async Task<RepositoryVersion?> GetLatestVersionAsync()
@@ -76,21 +76,21 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
         }
     }
 
-    private static async Task<IFile> GetLocallyCachedAsync(IRepository repository, RepositoryOptions repositoryOptions, DirectoryInfo stateDbFolder, RepositoryVersion version)
+    private static async Task<StateDatabaseFile> GetLocallyCachedAsync(IRepository repository, DirectoryInfo localStateDbFolder, RepositoryVersion version)
     {
-        var localFile = stateDbFolder.GetFile(version.GetFileSystemName());
+        var sdbf = StateDatabaseFile.FromRepositoryVersion(localStateDbFolder, version, false);
 
-        if (localFile.Exists)
+        if (sdbf.Exists)
         {
             // Cached locally, ASSUME it’s the same version
-            return localFile;
+            return sdbf;
         }
 
         try
         {
             var blob = repository.GetRepositoryVersionBlob(version);
-            await repository.DownloadAsync(blob, localFile);
-            return localFile;
+            await repository.DownloadAsync(blob, sdbf);
+            return sdbf;
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
         {

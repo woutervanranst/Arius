@@ -10,6 +10,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         return FixtureBuilder.Create()
             .WithMockedStorageAccountFactory()
             .WithFakeCryptoService()
+            .WithContainerName("bla")
             .Build();
     }
 
@@ -27,13 +28,13 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         var startTime = DateTime.UtcNow.TruncateToSeconds();
 
         // Act
-        var result = await WhenCreatingStateDb();
+        var result = await WhenStateDbRepositoryFactoryCreateAsync();
 
         // Assert
         var endTime = DateTime.UtcNow.TruncateToSeconds();
 
-        ThenStateDbVersionShouldBeBetween(result, startTime, endTime);
-        ThenLocalStateDbShouldExist(result);
+        ThenStateDbVersionShouldBeBetween(result.Version, startTime, endTime);
+        ThenLocalStateDbsShouldExist(tempVersionCount: 1, cachedVersionCount: 0);
         ThenStateDbShouldBeEmpty(result);
         ThenDownloadShouldNotHaveBeenCalled();
     }
@@ -46,11 +47,11 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb();
+        var result = await WhenStateDbRepositoryFactoryCreateAsync();
 
         // Assert
-        ThenStateDbVersionShouldBe(result, "v2.0");
-        ThenLocalStateDbShouldExist(result);
+        ThenStateDbVersionShouldBe(result.Version, "v2.0");
+        ThenLocalStateDbsShouldExist(tempVersions: ["v2.0"], cachedVersions: ["v2.0"], distinctCount: 1);
         ThenDownloadShouldHaveBeenCalled();
     }
 
@@ -61,10 +62,11 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb();
+        var result = await WhenStateDbRepositoryFactoryCreateAsync();
 
         // Assert
-        ThenStateDbVersionShouldBe(result, "v2.0");
+        ThenStateDbVersionShouldBe(result.Version, "v2.0");
+        ThenLocalStateDbsShouldExist(["v2.0"], ["v1.0", "v1.1", "v2.0"], tempVersionCount: 1, cachedVersionCount: 3, distinctCount: 3);
         ThenDownloadShouldNotHaveBeenCalled();
     }
 
@@ -75,11 +77,11 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb("v1.1");
+        var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
 
         // Assert
-        ThenStateDbVersionShouldBe(result, "v1.1");
-        ThenLocalStateDbShouldExist(result);
+        ThenStateDbVersionShouldBe(result.Version, "v1.1");
+        ThenLocalStateDbsShouldExist(["v1.1"], ["v1.0", "v1.1", "v2.0"], tempVersionCount: 1, cachedVersionCount: 3, distinctCount: 3);
         ThenDownloadShouldNotHaveBeenCalled();
     }
 
@@ -91,11 +93,11 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb("v1.1");
+        var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
 
         // Assert
-        ThenStateDbVersionShouldBe(result, "v1.1");
-        ThenLocalStateDbShouldExist(result);
+        ThenStateDbVersionShouldBe(result.Version, "v1.1");
+        ThenLocalStateDbsShouldExist(["v1.1"], ["v1.1"], tempVersionCount: 1, cachedVersionCount: 1, distinctCount: 1);
         ThenDownloadShouldHaveBeenCalled();
     }
 
@@ -106,10 +108,11 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
 
         // Act
-        var result = await WhenCreatingStateDb("v1.1");
+        var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
 
         // Assert
-        ThenStateDbVersionShouldBe(result, "v1.1");
+        ThenStateDbVersionShouldBe(result.Version, "v1.1");
+        ThenLocalStateDbsShouldExist(["v1.1"], ["v1.0", "v1.1", "v2.0"], tempVersionCount: 1, cachedVersionCount: 3, distinctCount: 3);
         ThenDownloadShouldNotHaveBeenCalled();
     }
 
@@ -121,7 +124,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         GivenAzureRepositoryWithVersions("v1.0", "v2.0");
 
         // Act
-        Func<Task> act = async () => await WhenCreatingStateDb("v3.0");
+        Func<Task> act = async () => await WhenStateDbRepositoryFactoryCreateAsync("v3.0");
 
         // Assert
         await ThenArgumentExceptionShouldBeThrownAsync(act, "The requested version was not found*");

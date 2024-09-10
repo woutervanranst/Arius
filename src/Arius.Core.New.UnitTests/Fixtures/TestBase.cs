@@ -46,19 +46,9 @@ public abstract class TestBase
         foreach (var versionName in versionNames)
         {
             var version    = new RepositoryVersion { Name = versionName };
-            var dbFullName = GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, version);
+            var sdbf = GetStateDatabaseFileForRepository(Fixture, version, false); //isTemp = false - we 'pretend' these are cached files
 
-            CreateLocalDatabase(dbFullName);
-        }
-
-        void CreateLocalDatabase(string dbFullName)
-        {
-            var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-            optionsBuilder.UseSqlite($"Data Source={dbFullName}");
-
-            using var context = new SqliteStateDbContext(optionsBuilder.Options);
-            //context.Database.EnsureCreated();
-            context.Database.Migrate();
+            CreateLocalDatabase(sdbf);
         }
     }
 
@@ -110,6 +100,11 @@ public abstract class TestBase
                 if (blob == null)
                 {
                     return Task.FromException(new RequestFailedException(404, "Blob not found", "BlobNotFound", null));
+                }
+                else
+                {
+                    var sdbf = info.Arg<IFile>() as StateDatabaseFile;
+                    CreateLocalDatabase(sdbf);
                 }
 
                 return Task.CompletedTask;
@@ -166,7 +161,7 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<IStateDbRepository> WhenCreatingStateDb(string versionName = null)
+    protected async Task<IStateDbRepository> WhenStateDbRepositoryFactoryCreateAsync(string versionName = null)
     {
         var factory           = Fixture.StateDbRepositoryFactory;
         var repositoryOptions = Fixture.RepositoryOptions;
@@ -202,22 +197,36 @@ public abstract class TestBase
 
     // --- THEN
 
-    protected void ThenStateDbVersionShouldBe(IStateDbRepository stateDbRepository, string expectedVersion)
+    protected void ThenStateDbVersionShouldBe(RepositoryVersion version, string expectedVersion)
     {
-        stateDbRepository.Version.Name.Should().Be(expectedVersion);
+        version.Name.Should().Be(expectedVersion);
     }
 
-    protected void ThenStateDbVersionShouldBeBetween(IStateDbRepository stateDbRepository, DateTime startTime, DateTime endTime)
+    protected void ThenStateDbVersionShouldBeBetween(RepositoryVersion version, DateTime startTime, DateTime endTime)
     {
-        DateTime.Parse(stateDbRepository.Version.Name)
+        DateTime.Parse(version.Name)
             .Should()
             .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);
     }
 
-    protected void ThenLocalStateDbShouldExist(IStateDbRepository stateDbRepository)
+    protected void ThenLocalStateDbsShouldExist(string[]? tempVersions = null, string[]? cachedVersions = null, 
+        int? tempVersionCount = null, int? cachedVersionCount = null, int? distinctCount = null)
     {
-        File.Exists(GetLocalStateDbForRepositoryFullName(Fixture, Fixture.RepositoryOptions, stateDbRepository.Version))
-            .Should().BeTrue();
+        var dbfs   = GetAllStateDatabaseFilesForRepository(Fixture).ToArray();
+        var temp   = dbfs.Where(dbf => dbf.IsTemp).ToArray();
+        var cached = dbfs.Where(dbf => !dbf.IsTemp).ToArray();
+
+        if (tempVersionCount is not null)
+            temp.Length.Should().Be(tempVersionCount);
+        if (cachedVersionCount is not null)
+            cached.Length.Should().Be(cachedVersionCount);
+        if (distinctCount is not null)
+            dbfs.Select(dbf => dbf.Version.Name).Distinct().Count().Should().Be(distinctCount);
+
+        if (tempVersions is not null)
+            temp.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(tempVersions);
+        if (cachedVersions is not null)
+            cached.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
     }
 
     protected void ThenStateDbShouldBeEmpty(IStateDbRepository stateDbRepository)
@@ -247,10 +256,31 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    private string GetLocalStateDbForRepositoryFullName(AriusFixture fixture, RepositoryOptions repositoryOptions, RepositoryVersion version)
+    private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
     {
-        return fixture.AriusConfiguration
-            .GetLocalStateDbFolderForRepository(repositoryOptions)
-            .GetFileFullName(version.GetFileSystemName());
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.RepositoryOptions);
+        var x = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version, isTemp);
+        return x;
+    }
+
+    public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
+    {
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.RepositoryOptions);
+        foreach (var fi in stateDbFolder
+                     .GetFiles("*.*", SearchOption.AllDirectories)
+                     .Where(fi => fi.Name.EndsWith(StateDatabaseFile.Extension) || fi.Name.EndsWith(StateDatabaseFile.TempExtension)))
+        {
+            yield return StateDatabaseFile.FromFullName(stateDbFolder, fi.FullName);
+        }
+    }
+
+    private static void CreateLocalDatabase(StateDatabaseFile sdbf)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
+
+        using var context = new SqliteStateDbContext(optionsBuilder.Options);
+        //context.Database.EnsureCreated();
+        context.Database.Migrate();
     }
 }
