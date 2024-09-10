@@ -10,7 +10,6 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureRepository : IRepository
 {
-    private readonly BlobContainerClient      blobContainerClient;
     private readonly string                   passphrase;
     private readonly ICryptoService           cryptoService;
     private readonly ILogger<AzureRepository> logger;
@@ -27,7 +26,6 @@ internal class AzureRepository : IRepository
 
     public AzureRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRepository> logger)
     {
-        this.blobContainerClient = blobContainerClient;
         this.passphrase          = passphrase;
         this.cryptoService       = cryptoService;
         this.logger              = logger;
