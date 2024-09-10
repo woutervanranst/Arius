@@ -161,7 +161,7 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<IStateDbRepository> WhenStateDbRepositoryFactoryCreateAsync(string versionName = null)
+    protected async Task<IStateDbRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
         var factory           = Fixture.StateDbRepositoryFactory;
         var repositoryOptions = Fixture.RepositoryOptions;
@@ -197,9 +197,9 @@ public abstract class TestBase
 
     // --- THEN
 
-    protected void ThenStateDbVersionShouldBe(RepositoryVersion version, string expectedVersion)
+    protected void ThenStateDbVersionShouldBe(IStateDbRepository repository, string expectedVersion)
     {
-        version.Name.Should().Be(expectedVersion);
+        repository.Version.Name.Should().Be(expectedVersion);
     }
 
     protected void ThenStateDbVersionShouldBeBetween(RepositoryVersion version, DateTime startTime, DateTime endTime)
