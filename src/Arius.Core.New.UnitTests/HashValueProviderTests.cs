@@ -10,6 +10,7 @@ public class HashValueProviderTests : TestBase
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
+            .WithUniqueContainerName()
             .Build();
     }
 

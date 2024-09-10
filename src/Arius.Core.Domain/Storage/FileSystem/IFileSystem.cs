@@ -245,8 +245,8 @@ public abstract record RelativeFile : File, IRelativeFile
     public string        RelativeName                => base.GetRelativeName(Root);
     public string        RelativeNamePlatformNeutral => base.GetRelativeNamePlatformNeutral(Root);
 
-    public PointerFile GetPointerFile() => base.GetPointerFile(Root);
-    public BinaryFile  GetBinaryFile()  => base.GetBinaryFile(Root);
+    //public PointerFile GetPointerFile() => base.GetPointerFile(Root);
+    //public BinaryFile  GetBinaryFile()  => base.GetBinaryFile(Root);
 
     public virtual bool Equals(RelativeFile? other)
     {
@@ -301,7 +301,8 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
     //public static PointerFileWithHash FromFileInfo(DirectoryInfo root, FileInfo fi, Hash h)             => new(root, fi, h);
     public static PointerFileWithHash FromFullName(DirectoryInfo root, string fullName, Hash h)         => new(root, fullName, h);
     public static PointerFileWithHash FromRelativeName(DirectoryInfo root, string relativeName, Hash h) => new(root, System.IO.Path.Combine(root.FullName, relativeName), h);
-
+    public static PointerFileWithHash FromBinaryFileWithHash(BinaryFileWithHash bfwh)                   => new(bfwh.Root, bfwh.FullName, bfwh.Hash);
+    
     /// <summary>
     /// Get a PointerFile with Hash by reading the value in the PointerFile
     /// </summary>

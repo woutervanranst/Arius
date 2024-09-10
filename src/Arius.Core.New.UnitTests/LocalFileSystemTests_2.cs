@@ -1,5 +1,5 @@
+using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
-using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,25 +10,17 @@ public class LocalFileSystemTests_2 : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create().Build();
+        return FixtureBuilder.Create().WithUniqueContainerName().Build();
     }
 
     protected override void ConfigureOnceForFixture()
     {
-        GivenSourceFolderHavingRandomFile("file1.bin", 0, FileAttributes.Normal);                          // Binary file without a pointer
-
-        GivenSourceFolderHavingRandomFile("file2.bin.pointer.arius", 0, FileAttributes.Normal);            // Pointer file without a binary file
-
-        GivenSourceFolderHavingRandomFile("file3.bin", 0, FileAttributes.Normal);                          // Binary file with a matching pointer file
-        GivenSourceFolderHavingRandomFile("file3.bin.pointer.arius", 0, FileAttributes.Normal);            // Pointer file with a matching binary file
-
-        GivenSourceFolderHavingRandomFile("folder1/file4.bin", 0, FileAttributes.Normal);                  // Binary file in a folder
-
-        GivenSourceFolderHavingRandomFile("folder2/file4.bin.pointer.arius", 0, FileAttributes.Normal);    // Pointer file with the same name in another folder
-
-        GivenSourceFolderHavingRandomFile("folder3/file5.bin", 0, FileAttributes.Normal);
-        GivenSourceFolderHavingRandomFile("folder3/file5.bin.pointer.arius", 0, FileAttributes.Normal);
-
+        GivenSourceFolderHavingFilePair("file1.bin",                       FilePairType.BinaryFileOnly,            0, FileAttributes.Normal); // Binary file without a pointer
+        GivenSourceFolderHavingFilePair("file2.bin.pointer.arius",         FilePairType.PointerFileOnly,           0, FileAttributes.Normal); // Pointer file without a binary file
+        GivenSourceFolderHavingFilePair("file3.bin",                       FilePairType.BinaryFileWithPointerFile, 0, FileAttributes.Normal); // Binary file with a matching pointer file
+        GivenSourceFolderHavingFilePair("folder1/file4.bin",               FilePairType.BinaryFileOnly,            0, FileAttributes.Normal); // Binary file in a folder
+        GivenSourceFolderHavingFilePair("folder2/file4.bin.pointer.arius", FilePairType.PointerFileOnly,           0, FileAttributes.Normal); // Pointer file with the same name in another folder
+        GivenSourceFolderHavingFilePair("folder3/file5.bin",               FilePairType.BinaryFileWithPointerFile, 0, FileAttributes.Normal);
     }
 
     [Fact]
@@ -54,6 +46,6 @@ public class LocalFileSystemTests_2 : TestBase
         var actualResults = indexedFiles
             .Select(fp => (fp.PointerFile?.RelativeNamePlatformNeutral, fp.BinaryFile?.RelativeNamePlatformNeutral)).ToList();
 
-        actualResults.SequenceEqual(expectedResults).Should().BeTrue();
+        actualResults.Should().BeEquivalentTo(expectedResults);
     }
 }

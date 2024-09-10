@@ -116,15 +116,28 @@ public abstract class TestBase
         Fixture.TestRootSourceFolder.CopyTo(Fixture.TestRunSourceFolder, recursive: true);
     }
 
-    internal FilePair GivenSourceFolderHavingRandomFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
+    internal FilePairWithHash GivenSourceFolderHavingFilePair(string relativeName, FilePairType type, int sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
-        var fileFullName = Fixture.TestRunSourceFolder.GetFileFullName(binaryFileRelativeName);
+        BinaryFileWithHash?  bfwh = null;
+        PointerFileWithHash? pfwh = null;
 
-        FileUtils.CreateRandomFile(fileFullName, sizeInBytes);
-        SetAttributes(attributes, fileFullName);
+        switch (type)
+        {
+            case FilePairType.BinaryFileWithPointerFile:
+                bfwh = GetBinaryFileWithHash();
+                pfwh = PointerFileWithHash.Create(bfwh);
+                break;
+            case FilePairType.PointerFileOnly:
+                pfwh = GetPointerFileWithHash();
+                break;
+            case FilePairType.BinaryFileOnly:
+                bfwh = GetBinaryFileWithHash();
+                break;
+            default:
+                throw new InvalidOperationException("Must have either a binary file or a pointer file");
+        }
 
-        return new(null, BinaryFile.FromFullName(null, fileFullName));
-
+        return new(pfwh, bfwh);
 
         static void SetAttributes(FileAttributes attributes, string filePath)
         {
@@ -134,28 +147,25 @@ public abstract class TestBase
             if (actualAtts != attributes)
                 throw new InvalidOperationException($"Could not set attributes for {filePath}");
         }
-    }
 
-    internal FilePairWithHash GivenSourceFolderHavingRandomFileWithPointerFile(string binaryFileRelativeName, long sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
-    {
-        GivenSourceFolderHavingRandomFile(binaryFileRelativeName, sizeInBytes, attributes);
+        BinaryFileWithHash GetBinaryFileWithHash()
+        {
+            var bf = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, relativeName);
+            FileUtils.CreateRandomFile(bf.FullName, sizeInBytes);
+            SetAttributes(attributes, bf.FullName);
 
-        var bf   = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, binaryFileRelativeName);
-        var h    = Fixture.HashValueProvider.GetHashAsync(bf).Result;
-        var bfwh = BinaryFileWithHash.FromBinaryFile(bf, h);
-        var pfwh = PointerFileWithHash.Create(bfwh);
+            var h = Fixture.HashValueProvider.GetHashAsync(bf).Result;
+            return BinaryFileWithHash.FromBinaryFile(bf, h);
+        }
 
-        return new(pfwh, bfwh);
-    }
+        PointerFileWithHash GetPointerFileWithHash()
+        {
+            var randomBytes = new byte[32];
+            Random.Shared.NextBytes(randomBytes);
+            var h = new Hash(randomBytes);
 
-    internal FilePairWithHash GivenSourceFolderHavingPointerFile(string pointerFileRelativeName, Hash h)
-    {
-        var pfwh = PointerFileWithHash.Create(Fixture.TestRunSourceFolder, pointerFileRelativeName, h, DateTime.UtcNow, DateTime.UtcNow);
-
-        if (!pfwh.IsPointerFile) // check the extension
-            throw new InvalidOperationException("This is not a pointer file");
-
-        return new (pfwh, null);
+            return PointerFileWithHash.Create(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow);
+        }
     }
 
 

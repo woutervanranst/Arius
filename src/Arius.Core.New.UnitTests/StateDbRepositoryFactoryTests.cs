@@ -10,7 +10,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         return FixtureBuilder.Create()
             .WithMockedStorageAccountFactory()
             .WithFakeCryptoService()
-            .WithContainerName("bla")
+            .WithUniqueContainerName()
             .Build();
     }
 

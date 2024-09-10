@@ -12,7 +12,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create().Build();
+        return FixtureBuilder.Create().WithUniqueContainerName().Build();
     }
 
     protected override void ConfigureOnceForFixture()
@@ -26,7 +26,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     public async Task HashFilesAsync_WhenFastHashWithPointerFileAndBinaryFileWithSameLastWriteTime_Fasthashed()
     {
         // Arrange
-        var p1 = GivenSourceFolderHavingRandomFileWithPointerFile("file1.bin", 100);
+        var p1 = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileWithPointerFile, 100);
 
         // ensure the last write time is the SAME
         p1.PointerFile!.LastWriteTimeUtc = p1.BinaryFile!.LastWriteTimeUtc;
@@ -47,7 +47,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     public async Task HashFilesAsync_WhenFastHashWithPointerFileAndBinaryFileWithDifferentLastWriteTime_HashValueProviderCalled()
     {
         // Arrange
-        var p1 = GivenSourceFolderHavingRandomFileWithPointerFile("file1.bin", 100);
+        var p1 = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileWithPointerFile, 100);
 
         // ensure the last write time is DIFFERENT
         p1.PointerFile!.LastWriteTimeUtc = p1.BinaryFile!.LastWriteTimeUtc.Value.AddSeconds(-1);
@@ -69,7 +69,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     public async Task HashFilesAsync_WhenWhenMismatchedPointerFile_Exception()
     {
         // Arrange
-        var p1 = GivenSourceFolderHavingRandomFileWithPointerFile("file1.bin", 100);
+        var p1 = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileWithPointerFile, 100);
 
         var hvp      = Substitute.For<IHashValueProvider>();
         var someHash = new Hash("abc".StringToBytes());
@@ -86,7 +86,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     public async Task HashFilesAsync_WhenPointerFileAndBinaryFile_HashValueProviderCalled()
     {
         // Arrange
-        var p1 = GivenSourceFolderHavingRandomFileWithPointerFile("file1.bin", 100);
+        var p1 = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileWithPointerFile, 100);
 
         var hvp = Substitute.For<IHashValueProvider>();
         hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(p1.BinaryFile.Hash);
@@ -105,8 +105,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     public async Task HandleFilesAsync_WhenPointerFileWithoutBinaryFile_OnlyPointerFile()
     {
         // Arrange
-        var someHash = new Hash("abc".StringToBytes());
-        var p0       = GivenSourceFolderHavingPointerFile("file1.pointer.arius", someHash);
+        var p0       = GivenSourceFolderHavingFilePair("file1.pointer.arius", FilePairType.PointerFileOnly, 0);
         var hvp      = Substitute.For<IHashValueProvider>();
 
         // Act
@@ -115,7 +114,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         // Assert
         p2.Should().NotBeNull();
         p2.PointerFile.Should().NotBeNull();
-        p2.PointerFile.Hash.Should().Be(someHash);
+        p2.PointerFile.Hash.Should().Be(p0.Hash);
         p2.BinaryFile.Should().BeNull();
         hvp.DidNotReceive().GetHashAsync(Arg.Any<BinaryFile>());
     }
@@ -125,7 +124,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
     {
         // Arrange
         var someHash = new Hash("abc".StringToBytes());
-        var p0       = GivenSourceFolderHavingRandomFile("file1.bin", 100);
+        var p0       = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileOnly, 100);
         var hvp      = Substitute.For<IHashValueProvider>();
         hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(someHash);
 

@@ -10,6 +10,7 @@ public class AzureBlobTests : TestBase
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
+            .WithUniqueContainerName()
             .Build();
     }
 

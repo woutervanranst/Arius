@@ -10,7 +10,7 @@ public class ArchiveCommandTests : TestBase
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
-            .WithContainerName("bla")
+            .WithUniqueContainerName()
             //.WithMockedStorageAccountFactory()
             //.WithFakeCryptoService()
             .Build();

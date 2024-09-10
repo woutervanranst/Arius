@@ -11,6 +11,7 @@ public class ContainerNamesQueryHandlerTests : TestBase
         return FixtureBuilder.Create()
             .WithMockedStorageAccountFactory()
             .WithFakeCryptoService()
+            .WithUniqueContainerName()
             .Build();
     }
 

@@ -62,8 +62,10 @@ public class FixtureBuilder
         return this;
     }
 
-    public FixtureBuilder WithContainerName(string containerName)
+    public FixtureBuilder WithUniqueContainerName()
     {
+        var containerName = $"test-{DateTime.UtcNow:s}".Replace(":", "").Replace("T", "");
+
         testRepositoryOptions = testRepositoryOptions with { ContainerName = containerName };
         return this;
     }
@@ -143,7 +145,7 @@ public class AriusFixture : IDisposable
         {
             AccountName   = TestRepositoryOptions.AccountName,
             AccountKey    = TestRepositoryOptions.AccountKey,
-            ContainerName = TestRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"), //$"{TestRepositoryOptions.ContainerName}-{DateTime.UtcNow:s}".Replace(":", ""),
+            ContainerName = TestRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"),
             Passphrase    = TestRepositoryOptions.Passphrase
         };
 

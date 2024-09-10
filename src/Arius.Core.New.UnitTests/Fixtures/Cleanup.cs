@@ -7,7 +7,7 @@ public class Cleanup : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create().Build();
+        return FixtureBuilder.Create().WithUniqueContainerName().Build();
     }
 
     protected override void ConfigureOnceForFixture()

@@ -13,12 +13,13 @@ public class AzureRepostoryTests : TestBase
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
+            .WithUniqueContainerName()
             .Build();
     }
 
     protected override void ConfigureOnceForFixture()
     {
-        var fp  = GivenSourceFolderHavingRandomFile("f", 100);
+        var fp  = GivenSourceFolderHavingFilePair("f", FilePairType.BinaryFileOnly, 100);
         //var hvp = new SHA256Hasher(Fixture.RepositoryOptions);
         //var h   = hvp.GetHashAsync(fp.BinaryFile!).Result;
         bfwh = BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));

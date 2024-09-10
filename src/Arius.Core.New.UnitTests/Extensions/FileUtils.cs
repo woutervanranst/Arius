@@ -9,8 +9,8 @@ public class FileUtils
         var f = new FileInfo(fullName);
         f.Directory.CreateIfNotExists();
 
-        byte[] data = new byte[sizeInBytes];
-        var    rng  = new Random();
+        var data = new byte[sizeInBytes];
+        var rng  = new Random();
         rng.NextBytes(data);
         File.WriteAllBytes(fullName, data);
     }
@@ -23,7 +23,7 @@ public class FileUtils
 
         var buffer = new byte[8192]; // 8 KB buffer
 
-        long remainingBytes = sizeInBytes;
+        var remainingBytes = sizeInBytes;
         while (remainingBytes > 0)
         {
             var bytesToWrite = remainingBytes > buffer.Length ? buffer.Length : (int)remainingBytes;
