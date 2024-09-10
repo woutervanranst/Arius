@@ -22,7 +22,7 @@ public class GetRepositoryVersionsQueryHandlerTests : TestBase
     public async Task Handle_ShouldReturnRepositoryVersions()
     {
         // Arrange
-        GivenAzureRepositoryWithVersions("v1.0", "v2.0");
+        GivenAzureRepositoryWithVersions(["v1.0", "v2.0"]);
 
         var request = new GetRepositoryVersionsQuery
         {

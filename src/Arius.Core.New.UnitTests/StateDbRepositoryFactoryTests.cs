@@ -34,7 +34,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
         var endTime = DateTime.UtcNow.TruncateToSeconds();
 
         ThenStateDbVersionShouldBeBetween(repository.Version, startTime, endTime);
-        ThenLocalStateDbsShouldExist(tempVersionCount: 1, cachedVersionCount: 0);
+        ThenLocalStateDbsShouldExist(tempVersionCount: 1, cachedVersionCount: 0, distinctCount: 1);
         ThenStateDbShouldBeEmpty(repository);
         ThenDownloadShouldNotHaveBeenCalled();
     }
