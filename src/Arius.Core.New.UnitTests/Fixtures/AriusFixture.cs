@@ -64,8 +64,8 @@ public class FixtureBuilder
 
     public FixtureBuilder WithUniqueContainerName()
     {
-        var containerName = $"test-{DateTime.UtcNow:s}".Replace(":", "").Replace("T", "");
-
+        var containerName = $"test-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
+        
         testRepositoryOptions = testRepositoryOptions with { ContainerName = containerName };
         return this;
     }

@@ -22,7 +22,7 @@ public class AzureRepostoryTests : TestBase
         var fp  = GivenSourceFolderHavingFilePair("f", FilePairType.BinaryFileOnly, 100);
         //var hvp = new SHA256Hasher(Fixture.RepositoryOptions);
         //var h   = hvp.GetHashAsync(fp.BinaryFile!).Result;
-        bfwh = BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
+        bfwh = fp.BinaryFile!; // BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
     }
 
     private BinaryFileWithHash bfwh;
