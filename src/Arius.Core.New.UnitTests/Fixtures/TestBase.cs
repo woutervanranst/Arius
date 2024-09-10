@@ -6,6 +6,7 @@ using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
+using Arius.Core.New.Queries.RepositoryStatistics;
 using Arius.Core.New.UnitTests.Extensions;
 using Azure;
 using FluentAssertions;
@@ -187,6 +188,16 @@ public abstract class TestBase
     {
         await Fixture.Mediator.Send(request);
     }
+
+    protected async Task<RepositoryStatisticsQueryResponse> WhenMediatorRequest(RepositoryStatisticsQuery request)
+    {
+        return await Fixture.Mediator.Send(request);
+    }
+
+    //protected async Task<TResponse> WhenMediatorRequest<TResponse>(IRequest<TResponse> request)
+    //{
+    //    return await Fixture.Mediator.Send(request);
+    //}
 
 
     // --- THEN

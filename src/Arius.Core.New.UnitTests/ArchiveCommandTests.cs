@@ -1,5 +1,6 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Commands.Archive;
+using Arius.Core.New.Queries.RepositoryStatistics;
 using Arius.Core.New.UnitTests.Fixtures;
 
 namespace Arius.Core.New.UnitTests;
@@ -9,6 +10,7 @@ public class ArchiveCommandTests : TestBase
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
+            .WithContainerName("bla")
             //.WithMockedStorageAccountFactory()
             //.WithFakeCryptoService()
             .Build();
@@ -23,6 +25,12 @@ public class ArchiveCommandTests : TestBase
     public async Task Handle()
     {
         // Arrange
+        var q = new RepositoryStatisticsQuery
+        {
+            Repository = Fixture.RepositoryOptions
+        };
+        var s0 = await WhenMediatorRequest(q);
+
         var c = new ArchiveCommand
         {
             Repository  = Fixture.RepositoryOptions,
@@ -37,5 +45,8 @@ public class ArchiveCommandTests : TestBase
         await WhenMediatorRequest(c);
 
         // Assert
+
+        var s1 = await WhenMediatorRequest(q);
+    }
     }
 }

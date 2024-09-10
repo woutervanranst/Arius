@@ -137,7 +137,7 @@ internal record BinaryPropertiesDto
     public         long                             OriginalLength     { get; init; }
     public         long                             ArchivedLength     { get; init; }
     public         long                             IncrementalLength  { get; init; }
-    public         StorageTier                      StorageTier        { get; init; }
+    public         StorageTier                      StorageTier        { get; set; }
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }
 
@@ -275,6 +275,12 @@ internal class StateDbRepository : IStateDbRepository
     {
         using var context = new SqliteStateDbContext(dbContextOptions);
         return context.BinaryProperties.LongCount();
+    }
+
+    public long GetArchiveSize()
+    {
+        using var context = new SqliteStateDbContext(dbContextOptions);
+        return context.BinaryProperties.Sum(bp => bp.ArchivedLength);
     }
 
     //public IEnumerable<BinaryProperties> GetBinaryProperties()

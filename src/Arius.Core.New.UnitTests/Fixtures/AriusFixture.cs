@@ -20,8 +20,8 @@ public class FixtureBuilder
     private readonly IConfigurationRoot configuration;
     private readonly DirectoryInfo      testRoot;
     private readonly DirectoryInfo      testRunRoot;
-    
-    private readonly TestRepositoryOptions testRepositoryOptions;
+
+    private          TestRepositoryOptions testRepositoryOptions;
     private readonly IHashValueProvider    hashValueProvider;
 
     private DirectoryInfo         testRootSourceDirectory;
@@ -59,6 +59,12 @@ public class FixtureBuilder
     public FixtureBuilder WithRealStorageAccountFactory()
     {
         // Assuming the real implementation is registered by default in AddArius
+        return this;
+    }
+
+    public FixtureBuilder WithContainerName(string containerName)
+    {
+        testRepositoryOptions = testRepositoryOptions with { ContainerName = containerName };
         return this;
     }
 
@@ -137,7 +143,7 @@ public class AriusFixture : IDisposable
         {
             AccountName   = TestRepositoryOptions.AccountName,
             AccountKey    = TestRepositoryOptions.AccountKey,
-            ContainerName = TestRepositoryOptions.ContainerName,
+            ContainerName = TestRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"), //$"{TestRepositoryOptions.ContainerName}-{DateTime.UtcNow:s}".Replace(":", ""),
             Passphrase    = TestRepositoryOptions.Passphrase
         };
 
