@@ -37,7 +37,7 @@ public abstract class TestBase
         // No need to initialize anything
     }
 
-    protected void GivenLocalFilesystemWithVersions(params string[] versionNames)
+    protected void GivenLocalFilesystemWithVersions(string[] versionNames)
     {
         var repository = Fixture.Repository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
@@ -74,7 +74,7 @@ public abstract class TestBase
         repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
-    protected void GivenAzureRepositoryWithVersions(params string[] versionNames)
+    protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
         var repository = Fixture.Repository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();

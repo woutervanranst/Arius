@@ -44,7 +44,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     {
         // Arrange
         GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
+        GivenAzureRepositoryWithVersions(["v1.0", "v1.1", "v2.0"]);
 
         // Act
         var result = await WhenStateDbRepositoryFactoryCreateAsync();
@@ -59,7 +59,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     public async Task CreateAsync_WhenLatestVersionCached_ShouldNotDownloadLatestVersion()
     {
         // Arrange
-        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
+        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
 
         // Act
         var result = await WhenStateDbRepositoryFactoryCreateAsync();
@@ -74,7 +74,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     public async Task CreateAsync_WhenSpecificVersionExistsLocally_ShouldNotDownloadSpecificVersion()
     {
         // Arrange
-        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
+        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
 
         // Act
         var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
@@ -90,7 +90,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     {
         // Arrange
         GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions("v1.0", "v1.1", "v2.0");
+        GivenAzureRepositoryWithVersions(["v1.0", "v1.1", "v2.0"]);
 
         // Act
         var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
@@ -105,7 +105,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     public async Task CreateAsync_WhenVersionSpecifiedButCached_ShouldNotDownloadSpecificVersion()
     {
         // Arrange
-        GivenLocalFilesystemWithVersions("v1.0", "v1.1", "v2.0");
+        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
 
         // Act
         var result = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
@@ -121,7 +121,7 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     {
         // Arrange
         GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions("v1.0", "v2.0");
+        GivenAzureRepositoryWithVersions(["v1.0", "v2.0"]);
 
         // Act
         Func<Task> act = async () => await WhenStateDbRepositoryFactoryCreateAsync("v3.0");
