@@ -1,15 +1,13 @@
 ﻿using Arius.Core.Domain;
-using Arius.Core.Domain.Extensions;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Extensions;
 using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
-using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
@@ -105,42 +103,6 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
     }
 }
 
-public static class DirectoryInfoExtensions
-{
-    public static IFile GetFile(this DirectoryInfo directoryInfo, string relativeName)
-    {
-        return File.FromRelativeName(directoryInfo, relativeName);
-    }
-}
-
-
-public static class RepositoryVersionExtensions
-{
-    public static string GetFileSystemName(this RepositoryVersion version)
-    {
-        return version.Name.Replace(":", "");
-    }
-}
-
-internal record PointerFileEntryDto
-{
-    public         byte[]              Hash             { get; init; }
-    public         string              RelativeName     { get; init; }
-    public         DateTime?           CreationTimeUtc  { get; init; }
-    public         DateTime?           LastWriteTimeUtc { get; init; }
-    public virtual BinaryPropertiesDto BinaryProperties { get; init; }
-}
-
-internal record BinaryPropertiesDto
-{
-    public         byte[]                           Hash               { get; init; }
-    public         long                             OriginalLength     { get; init; }
-    public         long                             ArchivedLength     { get; init; }
-    public         long                             IncrementalLength  { get; init; }
-    public         StorageTier                      StorageTier        { get; set; }
-    public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
-}
-
 internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteStateDbContext> // used only for EF Core tools (e.g. dotnet ef migrations add ...)
 {
     public SqliteStateDbContext CreateDbContext(string[] args)
@@ -149,186 +111,5 @@ internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteSt
         builder.UseSqlite();
 
         return new SqliteStateDbContext(builder.Options);
-    }
-}
-
-internal class SqliteStateDbContext : DbContext
-{
-    public SqliteStateDbContext(DbContextOptions<SqliteStateDbContext> options)
-        : base(options)
-    {
-    }
-
-    public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
-    public virtual DbSet<BinaryPropertiesDto> BinaryProperties   { get; set; }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        var cemb = modelBuilder.Entity<BinaryPropertiesDto>();
-        cemb.ToTable("BinaryProperties");
-        cemb.HasKey(c => c.Hash);
-        cemb.HasIndex(c => c.Hash).IsUnique();
-
-        cemb.Property(c => c.StorageTier)
-            .HasConversion(new AccessTierConverter());
-
-
-        var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
-        pfemb.ToTable("PointerFileEntries");
-        pfemb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
-
-        pfemb.HasIndex(pfe => pfe.Hash);     // NOT unique
-        pfemb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
-
-        pfemb.Property(pfe => pfe.RelativeName)
-            .HasConversion(new RemovePointerFileExtensionConverter());
-
-        // PointerFileEntries * -- 1 Chunk
-        pfemb.HasOne(pfe => pfe.BinaryProperties)
-            .WithMany(c => c.PointerFileEntries)
-            .HasForeignKey(pfe => pfe.Hash);
-    }
-
-    private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
-    {
-        public RemovePointerFileExtensionConverter()
-            : base(
-                v => v.RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase).ToPlatformNeutralPath(), // Convert from Model to Provider (code to db)
-                v => $"{v}{PointerFile.Extension}".ToPlatformSpecificPath()) // Convert from Provider to Model (db to code)
-        {
-        }
-    }
-
-    private class AccessTierConverter : ValueConverter<StorageTier, int>
-    {
-        public AccessTierConverter() : base(
-            tier => ConvertTierToNumber(tier),
-            number => ConvertNumberToTier(number))
-        { }
-
-        private static int ConvertTierToNumber(StorageTier tier)
-        {
-            return tier switch
-            {
-                StorageTier.Archive => 10,
-                StorageTier.Cold    => 20,
-                StorageTier.Cool    => 30,
-                StorageTier.Hot     => 40,
-                _                   => throw new ArgumentOutOfRangeException(nameof(tier), tier, "Unknown storage tier")
-            };
-        }
-
-        private static StorageTier ConvertNumberToTier(int number)
-        {
-            return number switch
-            {
-                10 => StorageTier.Archive,
-                20 => StorageTier.Cold,
-                30 => StorageTier.Cool,
-                40 => StorageTier.Hot,
-                _  => throw new ArgumentOutOfRangeException(nameof(number), number, "Unknown storage tier")
-            };
-        }
-    }
-}
-
-
-internal class StateDbRepository : IStateDbRepository
-{
-    private readonly DbContextOptions<SqliteStateDbContext> dbContextOptions;
-
-    public StateDbRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions, RepositoryVersion version)
-    {
-        Version               = version;
-        this.dbContextOptions = dbContextOptions;
-
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        //context.Database.EnsureCreated();
-        context.Database.Migrate();
-    }
-
-    public RepositoryVersion Version { get; }
-
-    public long CountPointerFileEntries()
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.PointerFileEntries.LongCount();
-    }
-
-    public IEnumerable<PointerFileEntry> GetPointerFileEntries()
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
-            yield return pfe;
-    }
-
-    public IEnumerable<BinaryProperties> GetBinaryProperties()
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        foreach (var bp in context.BinaryProperties.Select(dto => dto.ToEntity()))
-            yield return bp;
-    }
-
-    public long CountBinaryProperties()
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.BinaryProperties.LongCount();
-    }
-
-    public long GetArchiveSize()
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.BinaryProperties.Sum(bp => bp.ArchivedLength);
-    }
-
-    //public IEnumerable<BinaryProperties> GetBinaryProperties()
-    //{
-    //    using var context = new SqliteStateDbContext(dbContextOptions);
-    //    foreach (var bp in context.BinaryProperties.Select(dto => dto.ToEntity()))
-    //        yield return bp;
-    //}
-
-    public void AddBinary(BinaryProperties bp)
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        context.BinaryProperties.Add(bp.ToDto());
-        context.SaveChanges();
-    }
-
-    public bool BinaryExists(Hash binaryFileHash)
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        return context.BinaryProperties.Any(bp => bp.Hash == binaryFileHash.Value);
-    }
-
-    public void UpdateBinaryStorageTier(Hash hash, StorageTier effectiveTier)
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-
-        var dto = context.BinaryProperties.Find(hash) 
-                  ?? throw new InvalidOperationException($"Could not find BinaryProperties with hash {hash}");
-
-        dto.StorageTier = effectiveTier;
-        context.SaveChanges();
-    }
-
-    public void AddPointerFileEntry(PointerFileEntry pfe)
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-        context.PointerFileEntries.Add(pfe.ToDto());
-        context.SaveChanges();
-    }
-
-    public void DeletePointerFileEntry(PointerFileEntry pfe)
-    {
-        using var context = new SqliteStateDbContext(dbContextOptions);
-
-        var dto = context.PointerFileEntries.Find(pfe.Hash.Value, pfe.RelativeName) 
-                  ?? throw new InvalidOperationException($"Could not find PointerFileEntry with hash {pfe.Hash} and {pfe.RelativeName}");
-
-        context.PointerFileEntries.Remove(dto);
-        context.SaveChanges();
     }
 }
