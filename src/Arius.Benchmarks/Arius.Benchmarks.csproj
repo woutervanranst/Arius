@@ -14,7 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Arius.Core.Infrastructure\Arius.Core.Infrastructure.csproj" />
     <ProjectReference Include="..\Arius.Core.New.UnitTests\Arius.Core.New.UnitTests.csproj" />
-    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
   </ItemGroup>
 
 </Project>
