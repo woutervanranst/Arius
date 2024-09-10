@@ -25,7 +25,7 @@ internal static class Program
             ;
 
             // Run the benchmarks only when not debugging
-            var summary = BenchmarkRunner.Run<FileStreamBenchmark>(config);
+            var summary = BenchmarkRunner.Run<FileStreamBenchmark2>(config);
         //}
     }
 }
