@@ -17,6 +17,9 @@
 	<ItemGroup Condition="'$(Configuration)'=='Release'">
 		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
 	</ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+	</ItemGroup>
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework> <!--NOTE check reqnroll and postsharp support -->

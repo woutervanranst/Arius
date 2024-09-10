@@ -61,7 +61,7 @@ internal partial class RepositoryBuilder
             {
                 // Create new DB
                 await using var db = new StateDbContext(localDbPath);
-                localDbPath.CreateDirectoryIfNotExists();
+                new DirectoryInfo(localDbPath).Create();
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");

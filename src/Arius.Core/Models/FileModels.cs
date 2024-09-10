@@ -86,7 +86,7 @@ internal record BinaryFile : FileBase, IChunk
     /// <summary>
     /// Length (in bytes) of the File
     /// </summary>
-    public long Length => FullName.Length();
+    public long Length => new FileInfo(FullName).Length;
 
     public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true)); // TODO read the comments on useAsync and benchmark whether this is actually faster
 }
