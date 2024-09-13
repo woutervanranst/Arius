@@ -1,10 +1,10 @@
 ﻿@* @page "/remove-repository/{id:int}"
 @using Arius.Web.Application
 @using Arius.Web.Core
-@inject CloudRepositoryService CloudRepositoryService
+@inject CloudRepositoryOptionsService CloudRepositoryOptionsService
 @inject NavigationManager        Navigation
 
-<h3>Remove CloudRepository</h3>
+<h3>Remove CloudRepositoryOptions</h3>
 
 <p>Are you sure you want to delete the following backup configuration?</p>
 
@@ -21,16 +21,16 @@
 @code {
     [Parameter] public int Id { get; set; }
 
-    private CloudRepositoryOptions backupConfiguration;
+    private CloudRepositoryOptionsOptions backupConfiguration;
 
     protected override async Task OnInitializedAsync()
     {
-        backupConfiguration = await CloudRepositoryService.GetCloudCloudRepositoryByIdAsync(Id);
+        backupConfiguration = await CloudRepositoryOptionsService.GetCloudCloudRepositoryOptionsByIdAsync(Id);
     }
 
     private async Task DeleteConfiguration()
     {
-        await CloudRepositoryService.RemoveCloudRepositoryAsync(Id);
+        await CloudRepositoryOptionsService.RemoveCloudRepositoryOptionsAsync(Id);
         Navigation.NavigateTo("/repositories");
     }
 

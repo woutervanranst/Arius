@@ -8,7 +8,7 @@ using Microsoft.VisualBasic.FileIO;
 
 namespace Arius.Core.New.UnitTests;
 
-public sealed class StateRepositoryTests : TestBase
+public sealed class LocalStateRepositoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {

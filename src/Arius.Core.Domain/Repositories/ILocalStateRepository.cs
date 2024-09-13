@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Domain.Repositories;
 
-public interface IStateRepository
+public interface ILocalStateRepository
 {
     RepositoryVersion Version    { get; }
     bool              HasChanges { get; }

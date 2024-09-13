@@ -171,9 +171,9 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<IStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
+    protected async Task<ILocalStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
-        var factory           = Fixture.StateRepositoryFactory;
+        var factory           = Fixture.RemoteStateRepository;
         var repositoryOptions = Fixture.CloudRepositoryOptions;
         var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
@@ -207,7 +207,7 @@ public abstract class TestBase
 
     // --- THEN
 
-    protected void ThenStateDbVersionShouldBe(IStateRepository repository, string expectedVersion)
+    protected void ThenStateDbVersionShouldBe(ILocalStateRepository repository, string expectedVersion)
     {
         repository.Version.Name.Should().Be(expectedVersion);
     }
@@ -239,10 +239,10 @@ public abstract class TestBase
             cached.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
     }
 
-    protected void ThenStateDbShouldBeEmpty(IStateRepository stateRepository)
+    protected void ThenStateDbShouldBeEmpty(ILocalStateRepository localStateRepository)
     {
-        stateRepository.CountPointerFileEntries().Should().Be(0);
-        stateRepository.CountBinaryProperties().Should().Be(0);
+        localStateRepository.CountPointerFileEntries().Should().Be(0);
+        localStateRepository.CountBinaryProperties().Should().Be(0);
     }
 
     protected void ThenDownloadShouldNotHaveBeenCalled()

@@ -81,7 +81,7 @@ public class RepositoryService
     }
 
 
-    // CloudRepository Methods
+    // CloudRepositoryOptions Methods
 
     public async Task<List<Repository>> GetRepositoriesAsync()
     {

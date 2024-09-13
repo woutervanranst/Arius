@@ -35,7 +35,7 @@ public static class IServiceCollectionExtensions
         services.AddSingleton<IStorageAccountFactory, AzureStorageAccountFactory>();
         services.AddSingleton<AzureContainerFactory>();
         services.AddSingleton<AzureRepositoryFactory>();
-        services.AddSingleton<IStateRepositoryFactory, SqliteStateRepositoryFactory>();
+        services.AddSingleton<IRemoteStateRepository, SqliteRemoteStateRepository>();
 
         services.AddSingleton<ICryptoService, CryptoService>();
         services.AddSingleton<IFileSystem, LocalFileSystem>();
