@@ -163,30 +163,39 @@ public record File : IFile // TODO make internal
     public override string ToString() => FullName;
 }
 
-public record StateDatabaseFile : File
+public interface IStateDatabaseFile : IFile
 {
     public static readonly string Extension     = ".ariusdb";
     public static readonly string TempExtension = ".ariusdb.tmp";
+    RepositoryVersion             Version { get; }
+}
 
-    public RepositoryVersion Version { get; }
-
+public record StateDatabaseFile : File, IStateDatabaseFile
+{
     private StateDatabaseFile(string fullName, RepositoryVersion version) : base(fullName)
     {
-        if (!fullName.EndsWith(Extension, StringComparison.OrdinalIgnoreCase) && 
-            !fullName.EndsWith(TempExtension, StringComparison.OrdinalIgnoreCase))
+        if (!fullName.EndsWith(IStateDatabaseFile.Extension,    StringComparison.OrdinalIgnoreCase) && 
+            !fullName.EndsWith(IStateDatabaseFile.TempExtension, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException($"'{fullName}' is not a valid StateDatabaseFile");
 
         this.Version = version;
-        this.IsTemp  = fullName.EndsWith(TempExtension, StringComparison.OrdinalIgnoreCase);
+        this.IsTemp  = fullName.EndsWith(IStateDatabaseFile.TempExtension, StringComparison.OrdinalIgnoreCase);
     }
 
-    public static StateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version, bool isTemp) => new(System.IO.Path.Combine(stateDbFolder.FullName, GetFileSystemName(version, isTemp)), version);
+    //public static StateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version, bool isTemp)                               => new(System.IO.Path.Combine(stateDbFolder.FullName, GetFileSystemName(version, isTemp)), version);
+    public static StateDatabaseFile FromRepositoryVersion(AriusConfiguration config, RemoteRepositoryOptions options, RepositoryVersion version, bool isTemp)
+    {
+        var stateDbFolder = config.GetLocalStateDatabaseFolderForRepositoryOptions(options);
+        return new(System.IO.Path.Combine(stateDbFolder.FullName, GetFileSystemName(version, isTemp)), version);
+    }
 
     public static StateDatabaseFile FromFullName(DirectoryInfo stateDbFolder, string fullName)
     {
         var version = GetVersion(fullName);
         return new(fullName, version);
     }
+
+    public RepositoryVersion Version { get; }
     public bool IsTemp { get; }
 
     public StateDatabaseFile GetTempCopy()
@@ -201,12 +210,12 @@ public record StateDatabaseFile : File
 
     private static string GetFileSystemName(RepositoryVersion version, bool temp)
     {
-        return $"{version.Name.Replace(":", "")}{(temp ? TempExtension : Extension)}";
+        return $"{version.Name.Replace(":", "")}{(temp ? IStateDatabaseFile.TempExtension : IStateDatabaseFile.Extension)}";
     }
 
     private static RepositoryVersion GetVersion(string name)
     {
-        var n = System.IO.Path.GetFileName(name).RemoveSuffix(TempExtension).RemoveSuffix(Extension);
+        var n = System.IO.Path.GetFileName(name).RemoveSuffix(IStateDatabaseFile.TempExtension).RemoveSuffix(IStateDatabaseFile.Extension);
         if (DateTime.TryParseExact(n, "yyyy-MM-ddTHHmmss", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsedDateTime))
         {
             return parsedDateTime;

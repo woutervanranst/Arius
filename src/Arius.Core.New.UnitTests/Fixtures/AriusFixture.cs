@@ -40,7 +40,7 @@ public class FixtureBuilder
 
         testRootSourceDirectory = testRoot.GetSubDirectory("Source").CreateIfNotExists();
 
-        testRemoteRepositoryOptions = configuration.GetSection("RemoteRepositoryOptions").Get<TestRemoteRepositoryOptions>()!;
+        testRemoteRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>()!;
 
         hashValueProvider = new SHA256Hasher("unittest");
 

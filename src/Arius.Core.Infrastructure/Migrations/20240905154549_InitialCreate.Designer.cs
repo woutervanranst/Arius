@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Arius.Core.Infrastructure.Migrations
 {
-    [DbContext(typeof(SqliteStateDbContext))]
+    [DbContext(typeof(SqliteStateDatabaseContext))]
     [Migration("20240905154549_InitialCreate")]
     partial class InitialCreate
     {

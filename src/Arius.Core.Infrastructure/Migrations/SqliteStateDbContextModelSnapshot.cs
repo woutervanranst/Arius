@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Arius.Core.Infrastructure.Migrations
 {
-    [DbContext(typeof(SqliteStateDbContext))]
+    [DbContext(typeof(SqliteStateDatabaseContext))]
     partial class SqliteStateDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

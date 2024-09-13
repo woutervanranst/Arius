@@ -1,12 +1,14 @@
 ﻿using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 
 namespace Arius.Core.Domain.Repositories;
 
 public interface ILocalStateRepository
 {
-    RepositoryVersion Version    { get; }
-    bool              HasChanges { get; }
-    void              Vacuum();
+    IStateDatabaseFile StateDatabaseFile { get; }
+    RepositoryVersion  Version           { get; }
+    bool               HasChanges        { get; }
+    void               Vacuum();
 
 
     IEnumerable<BinaryProperties> GetBinaryProperties();

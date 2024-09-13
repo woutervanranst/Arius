@@ -1,48 +1,62 @@
 ﻿using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
-using Arius.Core.Infrastructure.Extensions;
+using Arius.Core.Domain.Storage.FileSystem;
 using Humanizer;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
-internal class LocalStateRepository : ILocalStateRepository
+internal class SqliteLocalStateRepository : ILocalStateRepository
 {
-    private readonly DbContextOptions<SqliteStateDbContext> dbContextOptions;
-    private readonly ILogger<LocalStateRepository>             logger;
+    private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
+    private readonly ILogger<SqliteLocalStateRepository>          logger;
 
-    public LocalStateRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions, RepositoryVersion version, ILogger<LocalStateRepository> logger)
+    public SqliteLocalStateRepository(StateDatabaseFile stateDatabaseFile, RepositoryVersion version, ILogger<SqliteLocalStateRepository> logger)
     {
-        Version               = version;
-        this.dbContextOptions = dbContextOptions;
-        this.logger           = logger;
+        /*  Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
+         *  NOTE if it still fails, try 'pragma temp_store=memory'
+         *  Set command timeout to 60s to avoid concurrency errors on 'table is locked' */
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
+        dbContextOptions = optionsBuilder
+            .UseSqlite($"Data Source={stateDatabaseFile.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
+            .Options;
 
-        using var context = new SqliteStateDbContext(dbContextOptions, _ => { });
-        //context.Database.EnsureCreated();
+        Version           = version;
+        StateDatabaseFile = stateDatabaseFile;
+        this.logger       = logger;
+
+        using var context = GetContext();
         context.Database.Migrate();
     }
 
-    private SqliteStateDbContext GetContext() => new(dbContextOptions, OnChanges);
+    private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
 
     private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
 
-    public RepositoryVersion Version    { get; }
-    public bool              HasChanges { get; private set; }
+    public IStateDatabaseFile StateDatabaseFile { get; }
+    public RepositoryVersion  Version           { get; }
+    public bool               HasChanges        { get; private set; }
 
     public void Vacuum()
     {
-        var originalDbPath = dbContextOptions.GetDatabasePath();
-
-        var originalLength = new FileInfo(originalDbPath).Length;
+        // Flush all connections before vacuuming, ensuring correct database file size
+        SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+        var originalLength = StateDatabaseFile.Length;
 
         using (var context = GetContext())
         {
             var sql = "VACUUM;";
             context.Database.ExecuteSqlRaw(sql);
+
+            if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
+                throw new InvalidOperationException("Checkpoint failed due to active readers");
         }
 
-        var vacuumedLength = new FileInfo(originalDbPath).Length;
+        // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
+        SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+        var vacuumedLength = StateDatabaseFile.Length;
 
         if (originalLength != vacuumedLength)
             logger.LogInformation($"Vacuumed database from {originalLength.Bytes().Humanize()} to {vacuumedLength.Bytes().Humanize()}, saved {(originalLength - vacuumedLength).Bytes().Humanize()}");
@@ -85,7 +99,7 @@ internal class LocalStateRepository : ILocalStateRepository
 
     //public IEnumerable<BinaryProperties> GetBinaryProperties()
     //{
-    //    using var context = new SqliteStateDbContext(dbContextOptions);
+    //    using var context = new SqliteStateDatabaseContext(dbContextOptions);
     //    foreach (var bp in context.BinaryProperties.Select(dto => dto.ToEntity()))
     //        yield return bp;
     //}

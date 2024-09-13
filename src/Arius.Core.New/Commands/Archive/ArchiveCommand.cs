@@ -50,7 +50,7 @@ internal class ArchiveCommandValidator : AbstractValidator<ArchiveCommand>
 {
     public ArchiveCommandValidator()
     {
-        RuleFor(command => command.Repository).SetValidator(new RepositoryOptionsValidator());
+        RuleFor(command => command.RemoteRepositoryOptions).SetValidator(new RepositoryOptionsValidator());
         RuleFor(command => command.LocalRoot)
             .NotEmpty()
             .Must(localRoot => localRoot.Exists).WithMessage("The local root does not exist.");

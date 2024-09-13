@@ -2,7 +2,9 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
@@ -25,11 +27,11 @@ internal record BinaryPropertiesDto
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }
 
-internal class SqliteStateDbContext : DbContext
+internal class SqliteStateDatabaseContext : DbContext
 {
     private readonly Action<int> onChanges;
 
-    public SqliteStateDbContext(DbContextOptions<SqliteStateDbContext> options, Action<int> onChanges)
+    public SqliteStateDatabaseContext(DbContextOptions<SqliteStateDatabaseContext> options, Action<int> onChanges)
         : base(options)
     {
         this.onChanges = onChanges;

@@ -102,16 +102,18 @@ internal class AzureBlob : IBlob
 
         await blockBlobClient.SetMetadataAsync(m);
     }
-    internal const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
 
-    public static IDictionary<string, string> CreateMetadata(long originalLength)
-    {
-        return new Dictionary<string, string> { { ORIGINAL_CONTENT_LENGTH_METADATA_KEY, originalLength.ToString() } };
-    }
+    internal const string ORIGINAL_CONTENT_LENGTH_METADATA_KEY = "OriginalContentLength";
+    public static IDictionary<string, string> CreateChunkMetadata(long originalLength) 
+        => new Dictionary<string, string> { { ORIGINAL_CONTENT_LENGTH_METADATA_KEY, originalLength.ToString() } };
+
+    internal const string STATE_DATABASE_VERSION_METADATA_KEY = "DatabaseVersion";
+    public static IDictionary<string, string> CreateStateDatabaseMetadata()
+        => new Dictionary<string, string> { { STATE_DATABASE_VERSION_METADATA_KEY, "4" } };
 
 
     // --- STREAMS
-    
+
     public async Task<Stream> OpenReadAsync(CancellationToken cancellationToken = default) => await blockBlobClient.OpenReadAsync(cancellationToken: cancellationToken);
 
     /// <summary>

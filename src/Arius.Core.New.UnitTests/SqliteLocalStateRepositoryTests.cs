@@ -6,7 +6,7 @@ using FluentAssertions;
 
 namespace Arius.Core.New.UnitTests;
 
-public sealed class LocalStateRepositoryTests : TestBase
+public sealed class SqliteLocalStateRepositoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
@@ -51,7 +51,7 @@ public sealed class LocalStateRepositoryTests : TestBase
             repository.DeletePointerFileEntry(pfe);
         }
 
-        var dbFile = Fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions).GetFiles("*" + StateDatabaseFile.TempExtension).Single();
+        var dbFile = Fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions).GetFiles("*" + IStateDatabaseFile.TempExtension).Single();
         dbFile.Refresh();
         var originalLength = dbFile.Length;
 

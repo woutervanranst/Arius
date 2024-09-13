@@ -276,7 +276,7 @@ public abstract class TestBase
         var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
-                     .Where(fi => fi.Name.EndsWith(StateDatabaseFile.Extension) || fi.Name.EndsWith(StateDatabaseFile.TempExtension)))
+                     .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension) || fi.Name.EndsWith(IStateDatabaseFile.TempExtension)))
         {
             yield return StateDatabaseFile.FromFullName(stateDbFolder, fi.FullName);
         }
@@ -284,10 +284,10 @@ public abstract class TestBase
 
     private static void CreateLocalDatabase(StateDatabaseFile sdbf)
     {
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
 
-        using var context = new SqliteStateDbContext(optionsBuilder.Options, _ => {});
+        using var context = new SqliteStateDatabaseContext(optionsBuilder.Options, _ => {});
         //context.Database.EnsureCreated();
         context.Database.Migrate();
     }

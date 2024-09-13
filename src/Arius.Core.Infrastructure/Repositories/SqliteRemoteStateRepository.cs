@@ -38,15 +38,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(cloudRepository, remoteRepositoryOptions, version);
         sdbf = sdbf.IsTemp ? sdbf : sdbf.GetTempCopy();
 
-        /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
-         *  NOTE if it still fails, try 'pragma temp_store=memory'
-         *
-         * Set command timeout to 60s to avoid concurrency errors on 'table is locked' 
-         */
-        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); });
-
-        return new LocalStateRepository(optionsBuilder.Options, effectiveVersion, loggerFactory.CreateLogger<LocalStateRepository>());
+        return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
     private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? requestedVersion)
@@ -113,14 +105,6 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
         localStateRepository.Vacuum();
 
-        var blob            = remoteRepository.GetStateDatabaseBlobForVersion(localStateRepository.Version);
-
-        var localStateDbFolder = config.GetLocalStateDatabaseFolderForRepositoryOptions(cloudRepositoryOptions);
-        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, cloudRepositoryOptions, localStateRepository.Version, false);
-
-        await remoteRepository.UploadStateDatabaseAsync(localStateRepository, blob);
-
-
-        await Task.CompletedTask;
+        await remoteRepository.UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
     }
 }

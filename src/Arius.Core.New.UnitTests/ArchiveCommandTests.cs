@@ -33,11 +33,12 @@ public class ArchiveCommandTests : TestBase
 
         var c = new ArchiveCommand
         {
-            FastHash    = false,
-            RemoveLocal = false,
-            Tier        = StorageTier.Hot,
-            LocalRoot   = Fixture.TestRunSourceFolder,
-            VersionName = new RepositoryVersion { Name = "v1.0" }
+            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+            FastHash                = false,
+            RemoveLocal             = false,
+            Tier                    = StorageTier.Hot,
+            LocalRoot               = Fixture.TestRunSourceFolder,
+            VersionName             = new RepositoryVersion { Name = "v1.0" }
         };
 
         // Act

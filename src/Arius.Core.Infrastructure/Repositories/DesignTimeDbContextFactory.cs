@@ -3,13 +3,13 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
-internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteStateDbContext> // used only for EF Core tools (e.g. dotnet ef migrations add ...)
+internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteStateDatabaseContext> // used only for EF Core tools (e.g. dotnet ef migrations add ...)
 {
-    public SqliteStateDbContext CreateDbContext(string[] args)
+    public SqliteStateDatabaseContext CreateDbContext(string[] args)
     {
-        var builder = new DbContextOptionsBuilder<SqliteStateDbContext>();
+        var builder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         builder.UseSqlite();
 
-        return new SqliteStateDbContext(builder.Options, _ => { });
+        return new SqliteStateDatabaseContext(builder.Options, _ => { });
     }
 }

@@ -31,7 +31,7 @@ public class AzureBlobTests : TestBase
     {
         // Arrange
         var azureBlob = GetAzureBlob();
-        var metadata = AzureBlob.CreateMetadata(123);
+        var metadata = AzureBlob.CreateChunkMetadata(123);
 
         // Act
         var s = await azureBlob.OpenWriteAsync(contentType, metadata);

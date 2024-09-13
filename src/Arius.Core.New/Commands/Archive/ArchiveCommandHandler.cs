@@ -41,11 +41,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
-        this.mediator                 = mediator;
-        this.fileSystem               = fileSystem;
+        this.mediator              = mediator;
+        this.fileSystem            = fileSystem;
         this.remoteStateRepository = remoteStateRepository;
-        this.storageAccountFactory    = storageAccountFactory;
-        this.logger                   = logger;
+        this.storageAccountFactory = storageAccountFactory;
+        this.logger                = logger;
     }
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
@@ -265,7 +265,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (bp.StorageTier == effectiveTier)
                     return;
 
-                await remoteRepository.SetChunkStorageTierAsync(bp.Hash, effectiveTier, ct);
+                await remoteRepository.SetBinaryStorageTierAsync(bp.Hash, effectiveTier, ct);
                 stateDbRepository.UpdateBinaryStorageTier(bp.Hash, effectiveTier);
 
                 logger.LogInformation("Updated Chunk {chunk} of size {size} from {originalTier} to {newTier}", bp.Hash, bp.ArchivedLength, bp.StorageTier, effectiveTier);
