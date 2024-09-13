@@ -46,7 +46,7 @@ public abstract class TestBase
         foreach (var versionName in versionNames)
         {
             var version    = new RepositoryVersion { Name = versionName };
-            var sdbf = GetStateDatabaseFileForRepository(Fixture, version, false); //isTemp = false - we 'pretend' these are cached files
+            var sdbf = GetStateDatabaseFileForRepository(Fixture, version);
 
             CreateLocalDatabase(sdbf);
         }
@@ -219,24 +219,18 @@ public abstract class TestBase
             .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);
     }
 
-    protected void ThenLocalStateDbsShouldExist(string[]? tempVersions = null, string[]? cachedVersions = null, 
-        int? tempVersionCount = null, int? cachedVersionCount = null, int? distinctCount = null)
+    protected void ThenLocalStateDbsShouldExist(string[]? cachedVersions = null, 
+        int? cachedVersionCount = null, int? distinctCount = null)
     {
         var dbfs   = GetAllStateDatabaseFilesForRepository(Fixture).ToArray();
-        var temp   = dbfs.Where(dbf => dbf.IsTemp).ToArray();
-        var cached = dbfs.Where(dbf => !dbf.IsTemp).ToArray();
 
-        if (tempVersionCount is not null)
-            temp.Length.Should().Be(tempVersionCount);
         if (cachedVersionCount is not null)
-            cached.Length.Should().Be(cachedVersionCount);
+            dbfs.Length.Should().Be(cachedVersionCount);
         if (distinctCount is not null)
             dbfs.Select(dbf => dbf.Version.Name).Distinct().Count().Should().Be(distinctCount);
 
-        if (tempVersions is not null)
-            temp.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(tempVersions);
         if (cachedVersions is not null)
-            cached.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
+            dbfs.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
     }
 
     protected void ThenStateDbShouldBeEmpty(ILocalStateRepository localStateRepository)
@@ -266,9 +260,9 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
+    private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
     {
-        return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version, isTemp);
+        return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version);
     }
 
     public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
@@ -276,7 +270,7 @@ public abstract class TestBase
         var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
-                     .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension) || fi.Name.EndsWith(IStateDatabaseFile.TempExtension)))
+                     .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
         {
             yield return StateDatabaseFile.FromFullName(stateDbFolder, fi.FullName);
         }

@@ -36,7 +36,6 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         var cloudRepository = storageAccountFactory.GetRemoteRepository(remoteRepositoryOptions);
 
         var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(cloudRepository, remoteRepositoryOptions, version);
-        sdbf = sdbf.IsTemp ? sdbf : sdbf.GetTempCopy();
 
         return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
@@ -50,8 +49,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTime.UtcNow;
-                return (StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, effectiveVersion, true), effectiveVersion);
-                //return (StateDatabaseFile.FromRepositoryVersion(localStateDbFolder, effectiveVersion, true), effectiveVersion);
+                return (StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
             }
             return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
         }
@@ -71,7 +69,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
     private async Task<StateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion version)
     {
-        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, version, false);
+        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, version);
 
         if (sdbf.Exists)
         {

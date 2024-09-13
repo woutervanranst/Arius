@@ -51,7 +51,9 @@ public sealed class SqliteLocalStateRepositoryTests : TestBase
             repository.DeletePointerFileEntry(pfe);
         }
 
-        var dbFile = Fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions).GetFiles("*" + IStateDatabaseFile.TempExtension).Single();
+        var dbFile = Fixture.AriusConfiguration
+            .GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions)
+            .GetFiles("*" + IStateDatabaseFile.Extension).Single();
         dbFile.Refresh();
         var originalLength = dbFile.Length;
 

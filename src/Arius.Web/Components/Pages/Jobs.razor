@@ -92,7 +92,7 @@
 
     private void StartArchiveCommand()
     {
-        var r = new RepositoryOptions()
+        var r = new RemoteRepositoryOptions()
         {
             AccountName   = "ariusci",
             AccountKey    = "",
@@ -101,7 +101,7 @@
         };
         var c = new ArchiveCommand()
         {
-            Repository  = r,
+            RemoteRepositoryOptions  = r,
             FastHash    = false,
             LocalRoot   = new DirectoryInfo(@"C:\AriusTest\Source"),
             RemoveLocal = false,
