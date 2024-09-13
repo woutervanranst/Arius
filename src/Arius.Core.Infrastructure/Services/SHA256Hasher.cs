@@ -14,7 +14,7 @@ public class SHA256Hasher : IHashValueProvider, IDisposable
     private readonly ThreadLocal<SHA256> sha256      = new(SHA256.Create);
     private const    int                 BUFFER_SIZE = 81920; // 80 KB buffer
 
-    public SHA256Hasher(RepositoryOptions options) : this(options.Passphrase) { }
+    //public SHA256Hasher(RemoteRepositoryOptions options) : this(options.Passphrase) { }
     public SHA256Hasher(string salt) : this(Encoding.ASCII.GetBytes(salt)) { }
     public SHA256Hasher(byte[] salt) => saltBytes = salt;
     //public SHA256Hasher() // DO NOT IMPLEMENT THIS ONE -- POTENTIAL TO CREATE HASHES WITHOUT SALT UNINTENTIONALLY
