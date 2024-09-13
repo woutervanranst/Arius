@@ -27,13 +27,12 @@ public class ArchiveCommandTests : TestBase
         // Arrange
         var q = new RepositoryStatisticsQuery
         {
-            Repository = Fixture.RepositoryOptions
+            RemoteRepository = Fixture.RemoteRepositoryOptions
         };
         var s0 = await WhenMediatorRequest(q);
 
         var c = new ArchiveCommand
         {
-            Repository  = Fixture.RepositoryOptions,
             FastHash    = false,
             RemoveLocal = false,
             Tier        = StorageTier.Hot,
