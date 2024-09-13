@@ -2,6 +2,7 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +41,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
-    private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? requestedVersion)
+    private async Task<(IStateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? requestedVersion)
     {
         if (requestedVersion is null)
         {
@@ -67,7 +68,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
     }
 
-    private async Task<StateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion version)
+    private async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion version)
     {
         var sdbf = StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, version);
 

@@ -4,6 +4,6 @@ namespace Arius.Core.Domain.Services;
 
 public interface IHashValueProvider
 {
-    Task<Hash> GetHashAsync(BinaryFile bf);
+    Task<Hash> GetHashAsync(IBinaryFile bf);
     bool       IsValid(Hash h);
 }

@@ -1,4 +1,5 @@
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;

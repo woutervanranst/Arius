@@ -1,3 +1,4 @@
+using Arius.Core.Domain.Extensions;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.UnitTests.Fixtures;
@@ -54,7 +55,7 @@ public class LocalFileSystemTests_1 : TestBase
         Assert.Equal(5, files.Count); // Only five normal files should be returned, excluding hidden and excluded files
 
         var actualRelativePaths = files
-            .Select(f => f.GetRelativeNamePlatformNeutral(Fixture.TestRunSourceFolder));
+            .Select(f => Path.GetRelativePath(Fixture.TestRunSourceFolder.FullName, f.FullName).ToPlatformNeutralPath());
 
         actualRelativePaths.Should().BeEquivalentTo(expectedRelativePaths);
     }

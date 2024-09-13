@@ -25,7 +25,7 @@ public class AzureRepostoryTests : TestBase
         bfwh = fp.BinaryFile!; // BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
     }
 
-    private BinaryFileWithHash bfwh;
+    private IBinaryFileWithHash bfwh;
 
     [Fact]
     public async Task UploadAsync_HappyPath()

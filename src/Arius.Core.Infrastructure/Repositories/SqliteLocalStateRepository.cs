@@ -13,7 +13,7 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
     private readonly ILogger<SqliteLocalStateRepository>          logger;
 
-    public SqliteLocalStateRepository(StateDatabaseFile stateDatabaseFile, RepositoryVersion version, ILogger<SqliteLocalStateRepository> logger)
+    public SqliteLocalStateRepository(IStateDatabaseFile stateDatabaseFile, RepositoryVersion version, ILogger<SqliteLocalStateRepository> logger)
     {
         /*  Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'

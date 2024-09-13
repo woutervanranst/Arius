@@ -3,6 +3,7 @@ using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Repositories;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
@@ -118,8 +119,8 @@ public abstract class TestBase
 
     internal FilePairWithHash GivenSourceFolderHavingFilePair(string relativeName, FilePairType type, int sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
-        BinaryFileWithHash?  bfwh = null;
-        PointerFileWithHash? pfwh = null;
+        IBinaryFileWithHash?  bfwh = null;
+        IPointerFileWithHash? pfwh = null;
 
         switch (type)
         {
@@ -148,7 +149,7 @@ public abstract class TestBase
                 throw new InvalidOperationException($"Could not set attributes for {filePath}");
         }
 
-        BinaryFileWithHash GetBinaryFileWithHash()
+        IBinaryFileWithHash GetBinaryFileWithHash()
         {
             var bf = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, relativeName);
             FileUtils.CreateRandomFile(bf.FullName, sizeInBytes);
@@ -158,7 +159,7 @@ public abstract class TestBase
             return BinaryFileWithHash.FromBinaryFile(bf, h);
         }
 
-        PointerFileWithHash GetPointerFileWithHash()
+        IPointerFileWithHash GetPointerFileWithHash()
         {
             var randomBytes = new byte[32];
             Random.Shared.NextBytes(randomBytes);
@@ -260,12 +261,12 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
+    private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
     {
         return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version);
     }
 
-    public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
+    public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
     {
         var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
         foreach (var fi in stateDbFolder
@@ -276,7 +277,7 @@ public abstract class TestBase
         }
     }
 
-    private static void CreateLocalDatabase(StateDatabaseFile sdbf)
+    private static void CreateLocalDatabase(IStateDatabaseFile sdbf)
     {
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");

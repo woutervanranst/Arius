@@ -12,17 +12,17 @@ using Nito.AsyncEx;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
-using File = Arius.Core.Domain.Storage.FileSystem.File;
+using File = Arius.Core.Infrastructure.Storage.LocalFileSystem.File;
 
 namespace Arius.Core.New.Commands.Archive;
 
 public abstract record ArchiveCommandNotification(ArchiveCommand Command) : INotification;
-public record FilePairFoundNotification(ArchiveCommand Command, FilePair FilePair) : ArchiveCommandNotification(Command);
-public record FilePairHashingStartedNotification(ArchiveCommand Command, FilePair FilePair) : ArchiveCommandNotification(Command);
-public record FilePairHashingCompletedNotification(ArchiveCommand Command, FilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record FilePairFoundNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
+public record FilePairHashingStartedNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
+public record FilePairHashingCompletedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileStartedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, long OriginalLength, long ArchivedLength, double uploadSpeedMBps) : ArchiveCommandNotification(Command);
-public record CreatedPointerFileNotification(ArchiveCommand Command, IFileWithHash PointerFile) : ArchiveCommandNotification(Command);
+public record CreatedPointerFileNotification(ArchiveCommand Command, IPointerFileWithHash PointerFile) : ArchiveCommandNotification(Command);
 public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 
 
@@ -57,7 +57,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
         // 1. Index the request.LocalRoot
-        var filesToHash = GetBoundedChannel<FilePair>(request.FilesToHash_BufferSize, true);
+        var filesToHash = GetBoundedChannel<IFilePair>(request.FilesToHash_BufferSize, true);
         var indexTask = Task.Run(async () =>
         {
             foreach (var fp in fileSystem.EnumerateFilePairs(request.LocalRoot))
@@ -74,7 +74,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
         // 2. Hash the filepairs
-        var hashedFilePairs = GetBoundedChannel<FilePairWithHash>(request.BinariesToUpload_BufferSize, false);
+        var hashedFilePairs = GetBoundedChannel<IFilePairWithHash>(request.BinariesToUpload_BufferSize, false);
         var hvp              = new SHA256Hasher(request.RemoteRepositoryOptions.Passphrase);
         var hashTask = Parallel.ForEachAsync(
             filesToHash.Reader.ReadAllAsync(cancellationToken),
@@ -95,9 +95,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
         // 3. Decide whether binaries need uploading
-        var binariesToUpload           = GetBoundedChannel<BinaryFileWithHash>(request.BinariesToUpload_BufferSize, false);
-        var pointerFileEntriesToCreate = GetBoundedChannel<BinaryFileWithHash>(request.PointerFileEntriesToCreate_BufferSize, false);
-        var latentPointers             = new ConcurrentBag<PointerFileWithHash>();
+        var binariesToUpload           = GetBoundedChannel<IBinaryFileWithHash>(request.BinariesToUpload_BufferSize, false);
+        var pointerFileEntriesToCreate = GetBoundedChannel<IBinaryFileWithHash>(request.PointerFileEntriesToCreate_BufferSize, false);
+        var latentPointers             = new ConcurrentBag<IPointerFileWithHash>();
 
         var uploadingBinaries = new Dictionary<Hash, TaskCompletionSource>();
         var addUploadedBinariesToPointerFileQueueTasks = new ConcurrentBag<Task>();
@@ -205,7 +205,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
         // 6. Create PointerFileEntries and PointerFiles
-        var binaryFilesToDelete = GetBoundedChannel<BinaryFileWithHash>(request.BinariesToDelete_BufferSize, true);
+        var binaryFilesToDelete = GetBoundedChannel<IBinaryFileWithHash>(request.BinariesToDelete_BufferSize, true);
         var pointerFileCreationTask = Task.Run(async () =>
         {
             await foreach (var bfwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
@@ -356,7 +356,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     }
 
 
-    internal static async Task<FilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, FilePair pair)
+    internal static async Task<IFilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, IFilePair pair)
     {
         if (pair.IsBinaryFileWithPointerFile)
         {
@@ -370,7 +370,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     var pfwh0 = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile);
                     var bfwh0 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile, pfwh0.Hash);
 
-                    return new(pfwh0, bfwh0);
+                    return new FilePairWithHash(pfwh0, bfwh0);
                 }
             }
 
@@ -382,14 +382,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             if (pfwh1.Hash != bfwh1.Hash)
                 throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-            return new(pfwh1, bfwh1);
+            return new FilePairWithHash(pfwh1, bfwh1);
         }
         else if (pair.IsPointerFileOnly)
         {
             // A PointerFile without a BinaryFile
             var pfwh = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile!);
 
-            return new(pfwh, null);
+            return new FilePairWithHash(pfwh, null);
         }
         else if (pair.IsBinaryFileOnly)
         {
@@ -397,7 +397,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var h = await hvp.GetHashAsync(pair.BinaryFile!);
             var bfwh = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile!, h);
 
-            return new(null, bfwh);
+            return new FilePairWithHash(null, bfwh);
         }
         else
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");

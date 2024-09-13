@@ -37,7 +37,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var p2 = await ArchiveCommandHandler.HashFilesAsync(true, hvp, p1);
 
         // Assert
-        hvp.DidNotReceive().GetHashAsync(Arg.Any<BinaryFile>());
+        hvp.DidNotReceive().GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
@@ -53,13 +53,13 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         p1.PointerFile!.LastWriteTimeUtc = p1.BinaryFile!.LastWriteTimeUtc.Value.AddSeconds(-1);
 
         var hvp = Substitute.For<IHashValueProvider>();
-        hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(p1.BinaryFile.Hash);
+        hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(p1.BinaryFile.Hash);
 
         // Act
         var p2 = await ArchiveCommandHandler.HashFilesAsync(true, hvp, p1);
 
         // Assert
-        hvp.Received(1).GetHashAsync(Arg.Any<BinaryFile>());
+        hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
@@ -73,7 +73,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 
         var hvp      = Substitute.For<IHashValueProvider>();
         var someHash = new Hash("abc".StringToBytes());
-        hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(someHash);
+        hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(someHash);
 
         // Act
         Func<Task> act = async () => await ArchiveCommandHandler.HashFilesAsync(false, hvp, p1);
@@ -89,13 +89,13 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var p1 = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileWithPointerFile, 100);
 
         var hvp = Substitute.For<IHashValueProvider>();
-        hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(p1.BinaryFile.Hash);
+        hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(p1.BinaryFile.Hash);
 
         // Act
         var p2 = await ArchiveCommandHandler.HashFilesAsync(false, hvp, p1);
 
         // Assert
-        hvp.Received(1).GetHashAsync(Arg.Any<BinaryFile>());
+        hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
@@ -116,7 +116,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         p2.PointerFile.Should().NotBeNull();
         p2.PointerFile.Hash.Should().Be(p0.Hash);
         p2.BinaryFile.Should().BeNull();
-        hvp.DidNotReceive().GetHashAsync(Arg.Any<BinaryFile>());
+        hvp.DidNotReceive().GetHashAsync(Arg.Any<IBinaryFile>());
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var someHash = new Hash("abc".StringToBytes());
         var p0       = GivenSourceFolderHavingFilePair("file1.bin", FilePairType.BinaryFileOnly, 100);
         var hvp      = Substitute.For<IHashValueProvider>();
-        hvp.GetHashAsync(Arg.Any<BinaryFile>()).Returns(someHash);
+        hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(someHash);
 
         // Act
         var p2 = await ArchiveCommandHandler.HashFilesAsync(false, hvp, p0);
@@ -136,6 +136,6 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         p2.BinaryFile.Should().NotBeNull();
         p2.BinaryFile.Hash.Should().Be(someHash);
         p2.PointerFile.Should().BeNull();
-        hvp.Received(1).GetHashAsync(Arg.Any<BinaryFile>());
+        hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
     }
 }

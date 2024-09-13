@@ -64,14 +64,14 @@ public sealed class FileProcessingService
 {
     private readonly IHubContext<FileProcessingHub, IFileProcessingClient> hubContext;
 
-    private readonly ConcurrentDictionary<FilePair, string> files = new();
+    private readonly ConcurrentDictionary<IFilePair, string> files = new();
 
     public FileProcessingService(IHubContext<FileProcessingHub, IFileProcessingClient> hubContext)
     {
         this.hubContext = hubContext;
     }
 
-    public ConcurrentDictionary<FilePair, string> GetCurrentFiles()
+    public ConcurrentDictionary<IFilePair, string> GetCurrentFiles()
     {
         return files;
     }

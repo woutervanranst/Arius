@@ -17,26 +17,13 @@ public record ArchiveCommand : IRequest
 
     internal int Hash_Parallelism => Environment.ProcessorCount * 8; // A low count doesnt achieve a high throughput when there are a lot of small files
 
-
-
-
     internal int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
 
-    internal int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
-
-    internal int PointersToCreate_BufferSize => 1000;
-
-    internal int CreatePointerFileIfNotExistsBlock_Parallelism => 1;
+    internal int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 3;
 
     internal int PointerFileEntriesToCreate_BufferSize => 1000;
 
-    internal int CreatePointerFileEntryIfNotExistsBlock_Parallelism => 1;
-
     internal int BinariesToDelete_BufferSize => 1000;
-
-    internal int DeleteBinaryFilesBlock_Parallelism => 1;
-
-    internal int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
 
     internal int UpdateTierBlock_Parallelism => 10;
 

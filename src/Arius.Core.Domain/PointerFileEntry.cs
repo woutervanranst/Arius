@@ -5,7 +5,7 @@ namespace Arius.Core.Domain;
 
 public record PointerFileEntry
 {
-    public static PointerFileEntry FromBinaryFileWithHash(BinaryFileWithHash bfwh)
+    public static PointerFileEntry FromBinaryFileWithHash(IBinaryFileWithHash bfwh)
     {
         return new PointerFileEntry
         {

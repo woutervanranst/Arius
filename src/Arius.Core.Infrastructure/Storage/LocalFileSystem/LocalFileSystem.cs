@@ -1,13 +1,6 @@
 ﻿using Arius.Core.Domain.Storage.FileSystem;
-using File = Arius.Core.Domain.Storage.FileSystem.File;
 
 namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
-
-public interface IFileSystem
-{
-    public IEnumerable<File>     EnumerateFiles(DirectoryInfo directory);
-    public IEnumerable<FilePair> EnumerateFilePairs(DirectoryInfo directory);
-}
 
 public class LocalFileSystem : IFileSystem
 {
@@ -33,7 +26,7 @@ public class LocalFileSystem : IFileSystem
     /// applying the same logic, thus traversing the directory tree in a depth-first manner.
     /// This means it fully explores the contents of each subdirectory before moving on to the next sibling directory.
     /// </remarks>
-    public IEnumerable<File> EnumerateFiles(DirectoryInfo directory)
+    public IEnumerable<IFile> EnumerateFiles(DirectoryInfo directory)
     {
         if (ShouldSkipDirectory(directory))
         {
@@ -76,7 +69,7 @@ public class LocalFileSystem : IFileSystem
         }
     }
 
-    public IEnumerable<FilePair> EnumerateFilePairs(DirectoryInfo directory)
+    public IEnumerable<IFilePair> EnumerateFilePairs(DirectoryInfo directory)
     {
         foreach (var file in EnumerateFiles(directory))
         {
@@ -88,12 +81,12 @@ public class LocalFileSystem : IFileSystem
                 if (pf.GetBinaryFile(directory) is { Exists: true } bf)
                 {
                     // 1. BinaryFile exists too
-                    yield return new(pf, bf);
+                    yield return new FilePair(pf, bf);
                 }
                 else
                 {
                     // 2. BinaryFile does not exist
-                    yield return new(pf, null);
+                    yield return new FilePair(pf, null);
                 }
             }
             else
@@ -109,7 +102,7 @@ public class LocalFileSystem : IFileSystem
                 else
                 {
                     // 4. BinaryFile does not exist
-                    yield return new(null, bf);
+                    yield return new FilePair(null, bf);
                 }
             }
         }
