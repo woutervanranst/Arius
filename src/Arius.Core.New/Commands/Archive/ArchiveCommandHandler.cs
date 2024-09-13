@@ -30,20 +30,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly IMediator                      mediator;
     private readonly IFileSystem                    fileSystem;
-    private readonly IStateDbRepositoryFactory      stateDbRepositoryFactory;
+    private readonly IRemoteStateRepository        remoteStateRepository;
     private readonly IStorageAccountFactory         storageAccountFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
     public ArchiveCommandHandler(
         IMediator mediator,
         IFileSystem fileSystem,
-        IStateDbRepositoryFactory stateDbRepositoryFactory,
+        IRemoteStateRepository remoteStateRepository,
         IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.mediator                 = mediator;
         this.fileSystem               = fileSystem;
-        this.stateDbRepositoryFactory = stateDbRepositoryFactory;
+        this.remoteStateRepository = remoteStateRepository;
         this.storageAccountFactory    = storageAccountFactory;
         this.logger                   = logger;
     }
@@ -53,7 +53,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
         // Start download of the latest state database
-        var stateDbRepositoryTask = Task.Run(async () => await stateDbRepositoryFactory.CreateAsync(request.Repository), cancellationToken);
+        var stateDbRepositoryTask = Task.Run(async () => await remoteStateRepository.CreateAsync(request.RemoteRepositoryOptions), cancellationToken);
 
 
         // 1. Index the request.LocalRoot
@@ -75,7 +75,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         // 2. Hash the filepairs
         var hashedFilePairs = GetBoundedChannel<FilePairWithHash>(request.BinariesToUpload_BufferSize, false);
-        var hvp              = new SHA256Hasher(request.Repository.Passphrase);
+        var hvp              = new SHA256Hasher(request.RemoteRepositoryOptions.Passphrase);
         var hashTask = Parallel.ForEachAsync(
             filesToHash.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.Hash_Parallelism),
@@ -157,7 +157,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         
 
         // 4. Upload the binaries
-        var repository = storageAccountFactory.GetRepository(request.Repository);
+        var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepositoryOptions);
         var uploadBinariesTask = Parallel.ForEachAsync(
             binariesToUpload.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
@@ -166,7 +166,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 await mediator.Publish(new UploadBinaryFileStartedNotification(request), ct);
 
                 var stopwatch = Stopwatch.StartNew();
-                var bp = await repository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.StorageTiering, request.Tier, s), ct);
+                var bp = await remoteRepository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.StorageTiering, request.Tier, s), ct);
                 stopwatch.Stop();
                 
                 var elapsedTimeInSeconds = stopwatch.Elapsed.TotalSeconds;
@@ -265,7 +265,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (bp.StorageTier == effectiveTier)
                     return;
 
-                await repository.SetChunkStorageTierAsync(bp.Hash, effectiveTier, ct);
+                await remoteRepository.SetChunkStorageTierAsync(bp.Hash, effectiveTier, ct);
                 stateDbRepository.UpdateBinaryStorageTier(bp.Hash, effectiveTier);
 
                 logger.LogInformation("Updated Chunk {chunk} of size {size} from {originalTier} to {newTier}", bp.Hash, bp.ArchivedLength, bp.StorageTier, effectiveTier);
@@ -274,6 +274,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
         await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask);
+
+
+        await remoteStateRepository.SaveChangesAsync(stateDbRepository, remoteRepository);
 
         await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 
@@ -400,16 +403,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 
-    private static void RemoveDeletedPointerFileEntries(ArchiveCommand request, IStateDbRepository stateDbRepository)
+    private static void RemoveDeletedPointerFileEntries(ArchiveCommand request, ILocalStateRepository localStateRepository)
     {
-        foreach (var pfe in stateDbRepository.GetPointerFileEntries())
+        foreach (var pfe in localStateRepository.GetPointerFileEntries())
         {
             var f = File.FromRelativeName(request.LocalRoot, pfe.RelativeName);
 
             if (!f.Exists)
             {
                 // The PointerFile does not exist on disk
-                stateDbRepository.DeletePointerFileEntry(pfe);
+                localStateRepository.DeletePointerFileEntry(pfe);
             }
         }
     }
