@@ -8,8 +8,8 @@ public class HashTests
     [Fact]
     public void Equals_SameValue_ShouldBeEqual()
     {
-        var h1 = new Hash("ABCD".StringToBytes());
-        var h2 = new Hash("ABCD".StringToBytes());
+        var h1 = new Hash("ABCD");
+        var h2 = new Hash("ABCD");
 
         h1.Equals(h2).Should().BeTrue();
         h1.GetHashCode().Should().Be(h2.GetHashCode());

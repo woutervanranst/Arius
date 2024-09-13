@@ -49,7 +49,7 @@ public class IFileSystemTests
         System.IO.File.Delete(nonExistingPointerFileFullName);
         System.IO.File.Exists(nonExistingPointerFileFullName).Should().BeFalse();
 
-        hash = new Hash("abc".StringToBytes());
+        hash = new Hash("abc");
     }
 
     // ======== Tests for File ======== //

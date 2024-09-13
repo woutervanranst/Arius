@@ -7,6 +7,10 @@ public record Hash
         Value = value;
     }
 
+    public Hash( string hexString) : this(hexString.HexStringToBytes())
+    {
+    }
+
     public byte[] Value { get; }
 
 

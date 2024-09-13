@@ -27,9 +27,12 @@ internal record BinaryPropertiesDto
 
 internal class SqliteStateDbContext : DbContext
 {
-    public SqliteStateDbContext(DbContextOptions<SqliteStateDbContext> options)
+    private readonly Action<int> onChanges;
+
+    public SqliteStateDbContext(DbContextOptions<SqliteStateDbContext> options, Action<int> onChanges)
         : base(options)
     {
+        this.onChanges = onChanges;
     }
 
     public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
@@ -62,6 +65,20 @@ internal class SqliteStateDbContext : DbContext
         pfemb.HasOne(pfe => pfe.BinaryProperties)
             .WithMany(c => c.PointerFileEntries)
             .HasForeignKey(pfe => pfe.Hash);
+    }
+
+    public override int SaveChanges()
+    {
+        var numChanges = base.SaveChanges();
+        onChanges(numChanges);
+        return numChanges;
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+    {
+        var numChanges = await base.SaveChangesAsync(cancellationToken);
+        onChanges(numChanges);
+        return numChanges;
     }
 
     private class RemovePointerFileExtensionConverter : ValueConverter<string, string>

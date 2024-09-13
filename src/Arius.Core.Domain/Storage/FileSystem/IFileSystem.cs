@@ -316,7 +316,7 @@ public record PointerFileWithHash : PointerFile, IFileWithHash
         {
             var json = System.IO.File.ReadAllBytes(pf.FullName);
             var pfc  = JsonSerializer.Deserialize<PointerFileContents>(json);
-            var h    = new Hash(pfc.BinaryHash.HexStringToBytes());
+            var h    = new Hash(pfc.BinaryHash);
 
             return PointerFileWithHash.FromFullName(pf.Root, pf.FullName, h);
         }

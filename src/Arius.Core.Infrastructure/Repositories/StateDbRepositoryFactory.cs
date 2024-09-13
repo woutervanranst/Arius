@@ -5,7 +5,6 @@ using Arius.Core.Domain.Storage.FileSystem;
 using Azure;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Infrastructure.Repositories;
@@ -15,16 +14,19 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
     private readonly IStorageAccountFactory                  storageAccountFactory;
     private readonly AriusConfiguration                      config;
     private readonly ILogger<SqliteStateDbRepositoryFactory> logger;
+    private readonly ILoggerFactory                          loggerFactory;
 
     public SqliteStateDbRepositoryFactory(
         IStorageAccountFactory storageAccountFactory,
         IOptions<AriusConfiguration> config,
-        ILogger<SqliteStateDbRepositoryFactory> logger)
+        ILogger<SqliteStateDbRepositoryFactory> logger,
+        ILoggerFactory loggerFactory)
 
     {
         this.storageAccountFactory = storageAccountFactory;
         this.config                = config.Value;
         this.logger                = logger;
+        this.loggerFactory         = loggerFactory;
     }
 
     public async Task<IStateDbRepository> CreateAsync(RepositoryOptions repositoryOptions, RepositoryVersion? version = null)
@@ -42,9 +44,9 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
          * Set command timeout to 60s to avoid concurrency errors on 'table is locked' 
          */
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName};Cache=Shared", sqliteOptions => { sqliteOptions.CommandTimeout(60); });
+        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); });
 
-        return new StateDbRepository(optionsBuilder.Options, effectiveVersion);
+        return new StateDbRepository(optionsBuilder.Options, effectiveVersion, loggerFactory.CreateLogger<StateDbRepository>());
     }
 
     private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateDbFullNameAsync(IRepository repository, RepositoryOptions repositoryOptions, RepositoryVersion? requestedVersion)
@@ -101,15 +103,8 @@ public class SqliteStateDbRepositoryFactory : IStateDbRepositoryFactory
             throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
         }
     }
-}
 
-internal class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<SqliteStateDbContext> // used only for EF Core tools (e.g. dotnet ef migrations add ...)
-{
-    public SqliteStateDbContext CreateDbContext(string[] args)
     {
-        var builder = new DbContextOptionsBuilder<SqliteStateDbContext>();
-        builder.UseSqlite();
 
-        return new SqliteStateDbContext(builder.Options);
     }
 }

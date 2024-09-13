@@ -4,8 +4,9 @@ namespace Arius.Core.Domain.Repositories;
 
 public interface IStateDbRepository
 {
-    RepositoryVersion Version { get; }
-    Task              SaveChangesAsync();
+    RepositoryVersion Version    { get; }
+    bool              HasChanges { get; }
+    void              Vacuum();
 
 
     IEnumerable<BinaryProperties> GetBinaryProperties();

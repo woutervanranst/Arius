@@ -289,7 +289,7 @@ public abstract class TestBase
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDbContext>();
         optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
 
-        using var context = new SqliteStateDbContext(optionsBuilder.Options);
+        using var context = new SqliteStateDbContext(optionsBuilder.Options, _ => {});
         //context.Database.EnsureCreated();
         context.Database.Migrate();
     }
