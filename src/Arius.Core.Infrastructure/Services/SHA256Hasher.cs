@@ -19,7 +19,7 @@ public class SHA256Hasher : IHashValueProvider, IDisposable
     public SHA256Hasher(byte[] salt) => saltBytes = salt;
     //public SHA256Hasher() // DO NOT IMPLEMENT THIS ONE -- POTENTIAL TO CREATE HASHES WITHOUT SALT UNINTENTIONALLY
 
-    public async Task<Hash> GetHashAsync(BinaryFile bf)
+    public async Task<Hash> GetHashAsync(IBinaryFile bf)
     {
         var hashValue = await GetHashValueAsync(bf.FullName);
         return new Hash(hashValue);
