@@ -29,13 +29,13 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         this.loggerFactory         = loggerFactory;
     }
 
-    public async Task<ILocalStateRepository> CreateAsync(CloudRepositoryOptions cloudRepositoryOptions, RepositoryVersion? version = null)
+    public async Task<ILocalStateRepository> CreateAsync(RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? version = null)
     {
-        await new RepositoryOptionsValidator().ValidateAndThrowAsync(cloudRepositoryOptions);
+        await new RepositoryOptionsValidator().ValidateAndThrowAsync(remoteRepositoryOptions);
 
-        var cloudRepository = storageAccountFactory.GetCloudRepository(cloudRepositoryOptions);
+        var cloudRepository = storageAccountFactory.GetRemoteRepository(remoteRepositoryOptions);
 
-        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(cloudRepository, cloudRepositoryOptions, version);
+        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(cloudRepository, remoteRepositoryOptions, version);
         sdbf = sdbf.IsTemp ? sdbf : sdbf.GetTempCopy();
 
         /* Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
@@ -49,7 +49,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         return new LocalStateRepository(optionsBuilder.Options, effectiveVersion, loggerFactory.CreateLogger<LocalStateRepository>());
     }
 
-    private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(ICloudRepository cloudRepository, CloudRepositoryOptions cloudRepositoryOptions, RepositoryVersion? requestedVersion)
+    private async Task<(StateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? requestedVersion)
     {
         if (requestedVersion is null)
         {
@@ -58,28 +58,28 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTime.UtcNow;
-                return (StateDatabaseFile.FromRepositoryVersion(config, cloudRepositoryOptions, effectiveVersion, true), effectiveVersion);
+                return (StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, effectiveVersion, true), effectiveVersion);
                 //return (StateDatabaseFile.FromRepositoryVersion(localStateDbFolder, effectiveVersion, true), effectiveVersion);
             }
-            return (await GetLocallyCachedStateDatabaseFileAsync(cloudRepository, cloudRepositoryOptions, effectiveVersion), effectiveVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
         }
         else
         {
-            return (await GetLocallyCachedStateDatabaseFileAsync(cloudRepository, cloudRepositoryOptions, requestedVersion), requestedVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, requestedVersion), requestedVersion);
         }
 
         async Task<RepositoryVersion?> GetLatestRemoteVersionAsync()
         {
-            return await cloudRepository
+            return await remoteRepository
                 .GetStateDatabaseVersions()
                 .OrderBy(b => b.Name)
                 .LastOrDefaultAsync();
         }
     }
 
-    private async Task<StateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(ICloudRepository cloudRepository, CloudRepositoryOptions cloudRepositoryOptions, RepositoryVersion version)
+    private async Task<StateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion version)
     {
-        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, cloudRepositoryOptions, version, false);
+        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, version, false);
 
         if (sdbf.Exists)
         {
@@ -89,8 +89,8 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
         try
         {
-            var blob = cloudRepository.GetStateDatabaseBlobForVersion(version);
-            await cloudRepository.DownloadAsync(blob, sdbf);
+            var blob = remoteRepository.GetStateDatabaseBlobForVersion(version);
+            await remoteRepository.DownloadAsync(blob, sdbf);
             return sdbf;
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
@@ -103,7 +103,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
     }
 
-    public async Task SaveChangesAsync(ILocalStateRepository localStateRepository, ICloudRepository cloudRepository)
+    public async Task SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)
     {
         if (!localStateRepository.HasChanges)
         {
@@ -113,12 +113,12 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
         localStateRepository.Vacuum();
 
-        var blob            = cloudRepository.GetStateDatabaseBlobForVersion(localStateRepository.Version);
+        var blob            = remoteRepository.GetStateDatabaseBlobForVersion(localStateRepository.Version);
 
         var localStateDbFolder = config.GetLocalStateDatabaseFolderForRepositoryOptions(cloudRepositoryOptions);
         var sdbf = StateDatabaseFile.FromRepositoryVersion(config, cloudRepositoryOptions, localStateRepository.Version, false);
 
-        await cloudRepository.UploadStateDatabaseAsync(localStateRepository, blob);
+        await remoteRepository.UploadStateDatabaseAsync(localStateRepository, blob);
 
 
         await Task.CompletedTask;

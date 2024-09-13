@@ -9,11 +9,11 @@ using Azure.Storage.Blobs;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
-internal class AzureCloudRepository : ICloudRepository
+internal class AzureRemoteRepository : IRemoteRepository
 {
     private readonly string                   passphrase;
     private readonly ICryptoService           cryptoService;
-    private readonly ILogger<AzureCloudRepository> logger;
+    private readonly ILogger<AzureRemoteRepository> logger;
 
     internal AzureContainerFolder StateFolder            { get; }
     internal AzureContainerFolder ChunkListsFolder       { get; }
@@ -25,7 +25,7 @@ internal class AzureCloudRepository : ICloudRepository
     private const string CHUNKS_FOLDER_NAME            = "chunks";
     private const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
 
-    public AzureCloudRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureCloudRepository> logger)
+    public AzureRemoteRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRemoteRepository> logger)
     {
         this.passphrase          = passphrase;
         this.cryptoService       = cryptoService;
@@ -45,6 +45,11 @@ internal class AzureCloudRepository : ICloudRepository
     public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion repositoryVersion)
     {
         return StateFolder.GetBlob(repositoryVersion.Name);
+    }
+
+    public async Task UploadStateDatabaseAsync(ILocalStateRepository localStateRepository, IBlob blob)
+    {
+
     }
 
     public async Task<BinaryProperties> UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)

@@ -7,7 +7,7 @@ namespace Arius.Core.New.Queries.RepositoryStatistics;
 
 public record RepositoryStatisticsQuery : IRequest<RepositoryStatisticsQueryResponse>
 {
-    public required CloudRepositoryOptions  CloudRepository { get; init; }
+    public required RemoteRepositoryOptions  RemoteRepository { get; init; }
     public          RepositoryVersion? Version    { get; init; }
 }
 
@@ -15,7 +15,7 @@ internal class RepositoryStatisticsQueryValidator : AbstractValidator<Repository
 {
     public RepositoryStatisticsQueryValidator()
     {
-        RuleFor(command => command.CloudRepository).SetValidator(new RepositoryOptionsValidator());
+        RuleFor(command => command.RemoteRepository).SetValidator(new RepositoryOptionsValidator());
     }
 }
 
@@ -39,7 +39,7 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
     {
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        var stateDbRepository = await remoteStateRepository.CreateAsync(request.CloudRepository, request.Version);
+        var stateDbRepository = await remoteStateRepository.CreateAsync(request.RemoteRepository, request.Version);
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
         var archiveSize            = stateDbRepository.GetArchiveSize();

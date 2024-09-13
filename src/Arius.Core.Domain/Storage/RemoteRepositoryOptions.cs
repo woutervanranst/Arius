@@ -2,12 +2,12 @@
 
 namespace Arius.Core.Domain.Storage;
 
-public record CloudRepositoryOptions : ContainerOptions
+public record RemoteRepositoryOptions : ContainerOptions
 {
     public required string Passphrase { get; init; }
 }
 
-public class RepositoryOptionsValidator : AbstractValidator<CloudRepositoryOptions>
+public class RepositoryOptionsValidator : AbstractValidator<RemoteRepositoryOptions>
 {
     public RepositoryOptionsValidator()
     {

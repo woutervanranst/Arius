@@ -15,8 +15,8 @@ public sealed class AzureRepositoryFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal AzureCloudRepository Create(BlobContainerClient blobContainerClient, string passphrase)
+    internal AzureRemoteRepository Create(BlobContainerClient blobContainerClient, string passphrase)
     {
-        return new AzureCloudRepository(blobContainerClient, passphrase, cryptoService, loggerFactory.CreateLogger<AzureCloudRepository>());
+        return new AzureRemoteRepository(blobContainerClient, passphrase, cryptoService, loggerFactory.CreateLogger<AzureRemoteRepository>());
     }
 }

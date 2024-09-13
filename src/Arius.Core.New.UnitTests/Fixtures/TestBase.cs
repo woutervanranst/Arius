@@ -39,7 +39,7 @@ public abstract class TestBase
 
     protected void GivenLocalFilesystemWithVersions(string[] versionNames)
     {
-        var repository = Fixture.CloudRepository;
+        var repository = Fixture.RemoteRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -70,13 +70,13 @@ public abstract class TestBase
 
     protected void GivenAzureRepositoryWithNoVersions()
     {
-        var repository = Fixture.CloudRepository;
+        var repository = Fixture.RemoteRepository;
         repository.GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
     protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
-        var repository = Fixture.CloudRepository;
+        var repository = Fixture.RemoteRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -174,7 +174,7 @@ public abstract class TestBase
     protected async Task<ILocalStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
         var factory           = Fixture.RemoteStateRepository;
-        var repositoryOptions = Fixture.CloudRepositoryOptions;
+        var repositoryOptions = Fixture.RemoteRepositoryOptions;
         var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
     }
@@ -247,13 +247,13 @@ public abstract class TestBase
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
     {
-        var repository = Fixture.StorageAccountFactory.GetCloudRepository(Fixture.CloudRepositoryOptions);
+        var repository = Fixture.StorageAccountFactory.GetRemoteRepository(Fixture.RemoteRepositoryOptions);
         repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 
     protected void ThenDownloadShouldHaveBeenCalled()
     {
-        var repository = Fixture.CloudRepository;
+        var repository = Fixture.RemoteRepository;
         repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 
@@ -268,14 +268,14 @@ public abstract class TestBase
 
     private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.CloudRepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
         var x = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version, isTemp);
         return x;
     }
 
     public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.CloudRepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
                      .Where(fi => fi.Name.EndsWith(StateDatabaseFile.Extension) || fi.Name.EndsWith(StateDatabaseFile.TempExtension)))

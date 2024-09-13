@@ -20,7 +20,7 @@ public class AzureRepostoryTests : TestBase
     protected override void ConfigureOnceForFixture()
     {
         var fp  = GivenSourceFolderHavingFilePair("f", FilePairType.BinaryFileOnly, 100);
-        //var hvp = new SHA256Hasher(Fixture.CloudRepositoryOptions);
+        //var hvp = new SHA256Hasher(Fixture.RemoteRepositoryOptions);
         //var h   = hvp.GetHashAsync(fp.BinaryFile!).Result;
         bfwh = fp.BinaryFile!; // BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
     }
@@ -31,7 +31,7 @@ public class AzureRepostoryTests : TestBase
     public async Task UploadAsync_HappyPath()
     {
         // Arrange
-        var r = (AzureCloudRepository)Fixture.CloudRepository;
+        var r = (AzureRemoteRepository)Fixture.RemoteRepository;
 
         // Act
         var bp = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
@@ -60,7 +60,7 @@ public class AzureRepostoryTests : TestBase
     {
         // Arrange
             // Upload the file a first time
-        var r = (AzureCloudRepository)Fixture.CloudRepository;
+        var r = (AzureRemoteRepository)Fixture.RemoteRepository;
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker
@@ -84,7 +84,7 @@ public class AzureRepostoryTests : TestBase
     {
         // Arrange
             // Upload the file a first time
-        var r   = (AzureCloudRepository)Fixture.CloudRepository;
+        var r   = (AzureRemoteRepository)Fixture.RemoteRepository;
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker

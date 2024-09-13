@@ -53,7 +53,7 @@ public sealed class LocalStateRepositoryTests : TestBase
             repository.DeletePointerFileEntry(pfe);
         }
 
-        var dbFile = Fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.CloudRepositoryOptions).GetFiles("*" + StateDatabaseFile.TempExtension).Single();
+        var dbFile = Fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions).GetFiles("*" + StateDatabaseFile.TempExtension).Single();
         dbFile.Refresh();
         var originalLength = dbFile.Length;
 
