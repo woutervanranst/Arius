@@ -174,7 +174,7 @@ public abstract class TestBase
     protected async Task<IStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
         var factory           = Fixture.StateRepositoryFactory;
-        var repositoryOptions = Fixture.RepositoryOptions;
+        var repositoryOptions = Fixture.CloudRepositoryOptions;
         var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
     }
@@ -247,7 +247,7 @@ public abstract class TestBase
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
     {
-        var repository = Fixture.StorageAccountFactory.GetCloudRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.StorageAccountFactory.GetCloudRepository(Fixture.CloudRepositoryOptions);
         repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 
@@ -268,14 +268,14 @@ public abstract class TestBase
 
     private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.RepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.CloudRepositoryOptions);
         var x = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version, isTemp);
         return x;
     }
 
     public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.RepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.CloudRepositoryOptions);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
                      .Where(fi => fi.Name.EndsWith(StateDatabaseFile.Extension) || fi.Name.EndsWith(StateDatabaseFile.TempExtension)))

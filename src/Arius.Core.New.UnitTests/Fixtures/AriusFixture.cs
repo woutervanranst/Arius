@@ -21,7 +21,7 @@ public class FixtureBuilder
     private readonly DirectoryInfo      testRoot;
     private readonly DirectoryInfo      testRunRoot;
 
-    private          TestRepositoryOptions testRepositoryOptions;
+    private          TestCloudRepositoryOptions testCloudRepositoryOptions;
     private readonly IHashValueProvider    hashValueProvider;
 
     private DirectoryInfo         testRootSourceDirectory;
@@ -40,7 +40,7 @@ public class FixtureBuilder
 
         testRootSourceDirectory = testRoot.GetSubDirectory("Source").CreateIfNotExists();
 
-        testRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRepositoryOptions>()!;
+        testCloudRepositoryOptions = configuration.GetSection("CloudRepositoryOptions").Get<TestCloudRepositoryOptions>()!;
 
         hashValueProvider = new SHA256Hasher("unittest");
 
@@ -66,7 +66,7 @@ public class FixtureBuilder
     {
         var containerName = $"test-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
         
-        testRepositoryOptions = testRepositoryOptions with { ContainerName = containerName };
+        testCloudRepositoryOptions = testCloudRepositoryOptions with { ContainerName = containerName };
         return this;
     }
 
@@ -89,7 +89,7 @@ public class FixtureBuilder
         return new AriusFixture(
             serviceProvider,
             hashValueProvider,
-            testRepositoryOptions,
+            testCloudRepositoryOptions,
             testRootSourceDirectory,
             testRunRoot
         );
@@ -99,7 +99,7 @@ public class FixtureBuilder
 public class AriusFixture : IDisposable
 {
     public  IHashValueProvider    HashValueProvider     { get; }
-    private TestRepositoryOptions TestRepositoryOptions { get; }
+    private TestCloudRepositoryOptions TestCloudRepositoryOptions { get; }
     public  DirectoryInfo         TestRootSourceFolder          { get; }
     public  DirectoryInfo         TestRunRootFolder     { get; }
     public  DirectoryInfo         TestRunSourceFolder   { get; }
@@ -113,12 +113,12 @@ public class AriusFixture : IDisposable
     public AriusFixture(
         IServiceProvider serviceProvider,
         IHashValueProvider hashValueProvider,
-        TestRepositoryOptions testRepositoryOptions,
+        TestCloudRepositoryOptions testCloudRepositoryOptions,
         DirectoryInfo testRootSourceFolder,
         DirectoryInfo testRunRootFolder)
     {
         HashValueProvider     = hashValueProvider;
-        TestRepositoryOptions = testRepositoryOptions;
+        TestCloudRepositoryOptions = testCloudRepositoryOptions;
         TestRootSourceFolder  = testRootSourceFolder;
         TestRunRootFolder     = testRunRootFolder;
         TestRunSourceFolder   = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
@@ -128,7 +128,7 @@ public class AriusFixture : IDisposable
         Mediator                 = serviceProvider.GetRequiredService<IMediator>();
         AriusConfiguration       = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
 
-        CloudRepository = StorageAccountFactory.GetCloudRepository(RepositoryOptions);
+        CloudRepository = StorageAccountFactory.GetCloudRepository(CloudRepositoryOptions);
     }
 
 
@@ -136,17 +136,17 @@ public class AriusFixture : IDisposable
     public StorageAccountOptions StorageAccountOptions =>
         new()
         {
-            AccountName = TestRepositoryOptions.AccountName,
-            AccountKey  = TestRepositoryOptions.AccountKey
+            AccountName = TestCloudRepositoryOptions.AccountName,
+            AccountKey  = TestCloudRepositoryOptions.AccountKey
         };
 
-    public RepositoryOptions RepositoryOptions =>
+    public CloudRepositoryOptions CloudRepositoryOptions =>
         new()
         {
-            AccountName   = TestRepositoryOptions.AccountName,
-            AccountKey    = TestRepositoryOptions.AccountKey,
-            ContainerName = TestRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"),
-            Passphrase    = TestRepositoryOptions.Passphrase
+            AccountName   = TestCloudRepositoryOptions.AccountName,
+            AccountKey    = TestCloudRepositoryOptions.AccountKey,
+            ContainerName = TestCloudRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"),
+            Passphrase    = TestCloudRepositoryOptions.Passphrase
         };
 
     public void Dispose()

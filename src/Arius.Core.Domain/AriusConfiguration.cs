@@ -8,5 +8,5 @@ public record AriusConfiguration
 
 
     private DirectoryInfo StateDbRoot                                                             => LocalConfigRoot.CreateSubdirectory("StateDbs");
-    public  DirectoryInfo GetLocalStateDbFolderForRepository(RepositoryOptions repositoryOptions) => StateDbRoot.CreateSubdirectory(repositoryOptions.ContainerName);
+    public  DirectoryInfo GetLocalStateDbFolderForRepository(CloudRepositoryOptions cloudRepositoryOptions) => StateDbRoot.CreateSubdirectory(cloudRepositoryOptions.ContainerName);
 }

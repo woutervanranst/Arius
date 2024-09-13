@@ -5,7 +5,7 @@ namespace Arius.Core.New.Queries.GetStateDbVersions;
 
 public record GetRepositoryVersionsQuery : IStreamRequest<RepositoryVersion>
 {
-    public required RepositoryOptions Repository { get; init; }
+    public required CloudRepositoryOptions CloudRepository { get; init; }
 }
 
 internal class GetRepositoryVersionsQueryHandler : IStreamRequestHandler<GetRepositoryVersionsQuery, RepositoryVersion>
@@ -19,6 +19,6 @@ internal class GetRepositoryVersionsQueryHandler : IStreamRequestHandler<GetRepo
 
     public IAsyncEnumerable<RepositoryVersion> Handle(GetRepositoryVersionsQuery request, CancellationToken cancellationToken)
     {
-        return storageAccountFactory.GetCloudRepository(request.Repository).GetRepositoryVersions();
+        return storageAccountFactory.GetCloudRepository(request.CloudRepository).GetRepositoryVersions();
     }
 }

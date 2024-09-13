@@ -14,7 +14,7 @@ namespace Arius.Web.Application;
 //        this.mediator     = mediator;
 //    }
 
-//    public async Task AddRepositoryAsync(RepositoryOptions config)
+//    public async Task AddRepositoryAsync(CloudRepositoryOptions config)
 //    {
 //        //var q = new ContainerNamesQuery(config.AccountName, config.AccountKey);
 
@@ -81,7 +81,7 @@ public class RepositoryService
     }
 
 
-    // Repository Methods
+    // CloudRepository Methods
 
     public async Task<List<Repository>> GetRepositoriesAsync()
     {

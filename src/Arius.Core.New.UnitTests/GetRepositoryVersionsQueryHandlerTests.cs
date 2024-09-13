@@ -27,7 +27,7 @@ public class GetRepositoryVersionsQueryHandlerTests : TestBase
 
         var request = new GetRepositoryVersionsQuery
         {
-            Repository = Fixture.RepositoryOptions
+            CloudRepository = Fixture.CloudRepositoryOptions
         };
 
         // Act

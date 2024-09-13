@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
 
-public record TestRepositoryOptions
+public record TestCloudRepositoryOptions
 {
     public string AccountName   { get; init; }
     

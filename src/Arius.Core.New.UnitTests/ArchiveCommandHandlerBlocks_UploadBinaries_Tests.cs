@@ -23,7 +23,7 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
     {
         var c = new ArchiveCommand
         {
-            Repository  = Fixture.RepositoryOptions,
+            CloudRepository  = Fixture.CloudRepositoryOptions,
             FastHash    = false,
             RemoveLocal = false,
             Tier        = StorageTier.Hot,

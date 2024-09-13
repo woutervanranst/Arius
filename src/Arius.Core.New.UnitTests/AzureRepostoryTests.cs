@@ -20,7 +20,7 @@ public class AzureRepostoryTests : TestBase
     protected override void ConfigureOnceForFixture()
     {
         var fp  = GivenSourceFolderHavingFilePair("f", FilePairType.BinaryFileOnly, 100);
-        //var hvp = new SHA256Hasher(Fixture.RepositoryOptions);
+        //var hvp = new SHA256Hasher(Fixture.CloudRepositoryOptions);
         //var h   = hvp.GetHashAsync(fp.BinaryFile!).Result;
         bfwh = fp.BinaryFile!; // BinaryFileWithHash.FromBinaryFile(fp.BinaryFile!, new Hash("abc".StringToBytes()));
     }
