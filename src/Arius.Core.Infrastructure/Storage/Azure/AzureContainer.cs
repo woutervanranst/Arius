@@ -19,7 +19,7 @@ internal class AzureContainer : IContainer
     public IStorageAccount StorageAccount => storageAccount;
     public string          Name           => blobContainerClient.Name;
 
-    public ICloudRepository GetRepository(string passphrase)
+    public ICloudRepository GetCloudRepository(string passphrase)
     {
         return azureRepositoryFactory.Create(blobContainerClient, passphrase);
     }

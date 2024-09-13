@@ -173,7 +173,7 @@ public abstract class TestBase
 
     protected async Task<IStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
-        var factory           = Fixture.StateDbRepositoryFactory;
+        var factory           = Fixture.StateRepositoryFactory;
         var repositoryOptions = Fixture.RepositoryOptions;
         var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
         return await factory.CreateAsync(repositoryOptions, version);
@@ -247,7 +247,7 @@ public abstract class TestBase
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
     {
-        var repository = Fixture.StorageAccountFactory.GetRepository(Fixture.RepositoryOptions);
+        var repository = Fixture.StorageAccountFactory.GetCloudRepository(Fixture.RepositoryOptions);
         repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 

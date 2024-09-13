@@ -11,10 +11,10 @@ public interface IStorageAccountFactory
             .GetContainer(containerOptions.ContainerName);
     }
 
-    public ICloudRepository GetRepository(RepositoryOptions repositoryOptions)
+    public ICloudRepository GetCloudRepository(RepositoryOptions repositoryOptions)
     {
         return GetStorageAccount(repositoryOptions)
             .GetContainer(repositoryOptions.ContainerName)
-            .GetRepository(repositoryOptions.Passphrase);
+            .GetCloudRepository(repositoryOptions.Passphrase);
     }
 }

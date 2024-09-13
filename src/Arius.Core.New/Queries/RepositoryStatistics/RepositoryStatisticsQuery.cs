@@ -28,18 +28,18 @@ public record RepositoryStatisticsQueryResponse
 
 internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStatisticsQuery, RepositoryStatisticsQueryResponse>
 {
-    private readonly IStateDbRepositoryFactory stateDbRepositoryFactory;
+    private readonly IStateRepositoryFactory stateRepositoryFactory;
 
-    public RepositoryStatisticsQueryHandler(IStateDbRepositoryFactory stateDbRepositoryFactory)
+    public RepositoryStatisticsQueryHandler(IStateRepositoryFactory stateRepositoryFactory)
     {
-        this.stateDbRepositoryFactory = stateDbRepositoryFactory;
+        this.stateRepositoryFactory = stateRepositoryFactory;
     }
 
     public async Task<RepositoryStatisticsQueryResponse> Handle(RepositoryStatisticsQuery request, CancellationToken cancellationToken)
     {
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        var stateDbRepository = await stateDbRepositoryFactory.CreateAsync(request.Repository, request.Version);
+        var stateDbRepository = await stateRepositoryFactory.CreateAsync(request.Repository, request.Version);
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
         var archiveSize            = stateDbRepository.GetArchiveSize();

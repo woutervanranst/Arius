@@ -25,7 +25,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        backupConfiguration = await RepositoryService.GetRepositoryByIdAsync(Id);
+        backupConfiguration = await RepositoryService.GetCloudRepositoryByIdAsync(Id);
     }
 
     private async Task DeleteConfiguration()

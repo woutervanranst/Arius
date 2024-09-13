@@ -4,5 +4,5 @@ public interface IContainer
 {
     IStorageAccount StorageAccount { get; }
     string          Name           { get; }
-    ICloudRepository     GetRepository(string passphrase);
+    ICloudRepository     GetCloudRepository(string passphrase);
 }

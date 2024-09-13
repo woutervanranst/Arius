@@ -2,7 +2,7 @@
 
 namespace Arius.Core.Domain.Storage;
 
-public interface IRepository
+public interface ICloudRepository
 {
     IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions();
     IBlob                               GetRepositoryVersionBlob(RepositoryVersion repositoryVersion);
