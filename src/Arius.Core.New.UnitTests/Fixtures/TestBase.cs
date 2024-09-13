@@ -268,9 +268,7 @@ public abstract class TestBase
 
     private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
-        var x = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version, isTemp);
-        return x;
+        return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version, isTemp);
     }
 
     public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)

@@ -40,9 +40,9 @@ public class Cleanup : TestBase
     [Fact]
     public async void CleanupLocalAsync()
     {
-        //if (Directory.Exists(Fixture.TestRunRootFolder.FullName))
-        //{
-        //    Fixture.TestRunRootFolder.Delete(true); // Recursively delete the test run folder
-        //}
+        if (Directory.Exists(Fixture.TestRunRootFolder.FullName))
+        {
+            Fixture.TestRunRootFolder.Delete(true); // Recursively delete the test run folder
+        }
     }
 }

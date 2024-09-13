@@ -1,10 +1,8 @@
 using Arius.Core.Domain;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
-using Microsoft.VisualBasic.FileIO;
 
 namespace Arius.Core.New.UnitTests;
 
