@@ -41,7 +41,7 @@ public abstract class TestBase
     {
         var repository = Fixture.CloudRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
-        repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+        repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         foreach (var versionName in versionNames)
         {
@@ -71,17 +71,17 @@ public abstract class TestBase
     protected void GivenAzureRepositoryWithNoVersions()
     {
         var repository = Fixture.CloudRepository;
-        repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+        repository.GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
     protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
         var repository = Fixture.CloudRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
-        repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+        repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         // Set up the repository to throw an exception for versions not in the list
-        repository.GetRepositoryVersionBlob(Arg.Any<RepositoryVersion>())
+        repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())
             .Returns(info =>
             {
                 var requestedVersion = info.Arg<RepositoryVersion>();
@@ -268,14 +268,14 @@ public abstract class TestBase
 
     private StateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version, bool isTemp)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.CloudRepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.CloudRepositoryOptions);
         var x = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version, isTemp);
         return x;
     }
 
     public IEnumerable<StateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDbFolderForRepository(fixture.CloudRepositoryOptions);
+        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.CloudRepositoryOptions);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
                      .Where(fi => fi.Name.EndsWith(StateDatabaseFile.Extension) || fi.Name.EndsWith(StateDatabaseFile.TempExtension)))

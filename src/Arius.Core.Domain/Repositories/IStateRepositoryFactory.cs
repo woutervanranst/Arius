@@ -5,5 +5,5 @@ namespace Arius.Core.Domain.Repositories;
 public interface IStateRepositoryFactory
 {
     public Task<IStateRepository> CreateAsync(CloudRepositoryOptions cloudRepositoryOptions, RepositoryVersion? version = null);
-    Task                          SaveChangesAsync(IStateRepository repository);
+    Task                          SaveChangesAsync(CloudRepositoryOptions cloudRepositoryOptions, IStateRepository stateRepository);
 }

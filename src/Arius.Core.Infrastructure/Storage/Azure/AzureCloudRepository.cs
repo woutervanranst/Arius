@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
@@ -36,12 +37,12 @@ internal class AzureCloudRepository : ICloudRepository
         RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, REHYDRATED_CHUNKS_FOLDER_NAME);
     }
 
-    public IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions()
+    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions()
     {
         return StateFolder.GetBlobs().Select(blob => new RepositoryVersion { Name = blob.Name });
     }
 
-    public IBlob GetRepositoryVersionBlob(RepositoryVersion repositoryVersion)
+    public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion repositoryVersion)
     {
         return StateFolder.GetBlob(repositoryVersion.Name);
     }
