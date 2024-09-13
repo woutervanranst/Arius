@@ -11,7 +11,7 @@ public interface IStorageAccountFactory
             .GetContainer(containerOptions.ContainerName);
     }
 
-    public IRepository GetRepository(RepositoryOptions repositoryOptions)
+    public ICloudRepository GetRepository(RepositoryOptions repositoryOptions)
     {
         return GetStorageAccount(repositoryOptions)
             .GetContainer(repositoryOptions.ContainerName)

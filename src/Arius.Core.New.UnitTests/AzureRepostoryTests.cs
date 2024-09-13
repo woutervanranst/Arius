@@ -31,7 +31,7 @@ public class AzureRepostoryTests : TestBase
     public async Task UploadAsync_HappyPath()
     {
         // Arrange
-        var r = (AzureRepository)Fixture.Repository;
+        var r = (AzureCloudRepository)Fixture.CloudRepository;
 
         // Act
         var bp = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
@@ -60,7 +60,7 @@ public class AzureRepostoryTests : TestBase
     {
         // Arrange
             // Upload the file a first time
-        var r = (AzureRepository)Fixture.Repository;
+        var r = (AzureCloudRepository)Fixture.CloudRepository;
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker
@@ -84,7 +84,7 @@ public class AzureRepostoryTests : TestBase
     {
         // Arrange
             // Upload the file a first time
-        var r   = (AzureRepository)Fixture.Repository;
+        var r   = (AzureCloudRepository)Fixture.CloudRepository;
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker

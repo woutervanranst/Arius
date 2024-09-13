@@ -105,7 +105,7 @@ public class AriusFixture : IDisposable
     public  DirectoryInfo         TestRunSourceFolder   { get; }
 
     public IStorageAccountFactory    StorageAccountFactory    { get; }
-    public IRepository               Repository               { get; }
+    public ICloudRepository               CloudRepository               { get; }
     public IStateDbRepositoryFactory StateDbRepositoryFactory { get; }
     public IMediator                 Mediator                 { get; }
     public AriusConfiguration        AriusConfiguration       { get; }
@@ -128,7 +128,7 @@ public class AriusFixture : IDisposable
         Mediator                 = serviceProvider.GetRequiredService<IMediator>();
         AriusConfiguration       = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
 
-        Repository = StorageAccountFactory.GetRepository(RepositoryOptions);
+        CloudRepository = StorageAccountFactory.GetRepository(RepositoryOptions);
     }
 
 

@@ -20,7 +20,7 @@ public class AzureBlobTests : TestBase
 
     private AzureBlob GetAzureBlob()
     {
-        var r = (AzureRepository)Fixture.Repository;
+        var r = (AzureCloudRepository)Fixture.CloudRepository;
         return r.ChunksFolder.GetBlob(Guid.NewGuid().ToString());
     }
     

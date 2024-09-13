@@ -39,7 +39,7 @@ public abstract class TestBase
 
     protected void GivenLocalFilesystemWithVersions(string[] versionNames)
     {
-        var repository = Fixture.Repository;
+        var repository = Fixture.CloudRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -70,13 +70,13 @@ public abstract class TestBase
 
     protected void GivenAzureRepositoryWithNoVersions()
     {
-        var repository = Fixture.Repository;
+        var repository = Fixture.CloudRepository;
         repository.GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
     protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
-        var repository = Fixture.Repository;
+        var repository = Fixture.CloudRepository;
         var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
         repository.GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
@@ -171,7 +171,7 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<IStateDbRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
+    protected async Task<IStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
     {
         var factory           = Fixture.StateDbRepositoryFactory;
         var repositoryOptions = Fixture.RepositoryOptions;
@@ -207,7 +207,7 @@ public abstract class TestBase
 
     // --- THEN
 
-    protected void ThenStateDbVersionShouldBe(IStateDbRepository repository, string expectedVersion)
+    protected void ThenStateDbVersionShouldBe(IStateRepository repository, string expectedVersion)
     {
         repository.Version.Name.Should().Be(expectedVersion);
     }
@@ -239,10 +239,10 @@ public abstract class TestBase
             cached.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
     }
 
-    protected void ThenStateDbShouldBeEmpty(IStateDbRepository stateDbRepository)
+    protected void ThenStateDbShouldBeEmpty(IStateRepository stateRepository)
     {
-        stateDbRepository.CountPointerFileEntries().Should().Be(0);
-        stateDbRepository.CountBinaryProperties().Should().Be(0);
+        stateRepository.CountPointerFileEntries().Should().Be(0);
+        stateRepository.CountBinaryProperties().Should().Be(0);
     }
 
     protected void ThenDownloadShouldNotHaveBeenCalled()
@@ -253,7 +253,7 @@ public abstract class TestBase
 
     protected void ThenDownloadShouldHaveBeenCalled()
     {
-        var repository = Fixture.Repository;
+        var repository = Fixture.CloudRepository;
         repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
     }
 

@@ -7,12 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
-internal class StateDbRepository : IStateDbRepository
+internal class StateRepository : IStateRepository
 {
     private readonly DbContextOptions<SqliteStateDbContext> dbContextOptions;
-    private readonly ILogger<StateDbRepository>             logger;
+    private readonly ILogger<StateRepository>             logger;
 
-    public StateDbRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions, RepositoryVersion version, ILogger<StateDbRepository> logger)
+    public StateRepository(DbContextOptions<SqliteStateDbContext> dbContextOptions, RepositoryVersion version, ILogger<StateRepository> logger)
     {
         Version               = version;
         this.dbContextOptions = dbContextOptions;

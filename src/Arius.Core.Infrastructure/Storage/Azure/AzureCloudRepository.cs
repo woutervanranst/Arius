@@ -8,11 +8,11 @@ using Azure.Storage.Blobs;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
-internal class AzureRepository : IRepository
+internal class AzureCloudRepository : ICloudRepository
 {
     private readonly string                   passphrase;
     private readonly ICryptoService           cryptoService;
-    private readonly ILogger<AzureRepository> logger;
+    private readonly ILogger<AzureCloudRepository> logger;
 
     internal AzureContainerFolder StateFolder            { get; }
     internal AzureContainerFolder ChunkListsFolder       { get; }
@@ -24,7 +24,7 @@ internal class AzureRepository : IRepository
     private const string CHUNKS_FOLDER_NAME            = "chunks";
     private const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
 
-    public AzureRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRepository> logger)
+    public AzureCloudRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureCloudRepository> logger)
     {
         this.passphrase          = passphrase;
         this.cryptoService       = cryptoService;
