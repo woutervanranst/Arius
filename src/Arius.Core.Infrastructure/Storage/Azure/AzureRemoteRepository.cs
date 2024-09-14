@@ -19,10 +19,10 @@ internal class AzureRemoteRepository : IRemoteRepository
     internal AzureContainerFolder ChunksFolder           { get; }
     internal AzureContainerFolder RehydratedChunksFolder { get; }
 
-    private const string STATE_DBS_FOLDER_NAME         = "states";
-    //private const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
-    private const string CHUNKS_FOLDER_NAME            = "chunks";
-    private const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
+    internal const string STATE_DBS_FOLDER_NAME         = "states";
+    //internal const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
+    internal const string CHUNKS_FOLDER_NAME            = "chunks";
+    internal const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
 
     public AzureRemoteRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRemoteRepository> logger)
     {

@@ -33,9 +33,9 @@ public abstract class TestBase
 
     // --- GIVEN
 
-    protected void GivenLocalFilesystem()
+    protected IFileSystem GivenLocalFilesystem()
     {
-        // No need to initialize anything
+        return Fixture.LocalFileSystem;
     }
 
     protected void GivenLocalFilesystemWithVersions(string[] versionNames)
@@ -172,12 +172,9 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<ILocalStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null)
+    protected async Task<ILocalStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null) // TODO Rename Me
     {
-        var factory           = Fixture.RemoteStateRepository;
-        var repositoryOptions = Fixture.RemoteRepositoryOptions;
-        var version           = versionName != null ? new RepositoryVersion { Name = versionName } : null;
-        return await factory.CreateAsync(repositoryOptions, version);
+        return await GetLocalStateRepositoryAsync(versionName);
     }
 
     protected IAsyncEnumerable<string> WhenMediatorRequest(ContainerNamesQuery request)
@@ -261,6 +258,15 @@ public abstract class TestBase
 
     // --- HELPERS
 
+    protected async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(string? versionName = null)
+    {
+        var repository = Fixture.RemoteStateRepository;
+        var options    = Fixture.RemoteRepositoryOptions;
+        var version    = versionName != null ? new RepositoryVersion { Name = versionName } : null;
+        return await repository.CreateAsync(options, version);
+    }
+
+
     private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
     {
         return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version);
@@ -277,6 +283,7 @@ public abstract class TestBase
         }
     }
 
+    
     private static void CreateLocalDatabase(IStateDatabaseFile sdbf)
     {
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();

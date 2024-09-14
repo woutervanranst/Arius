@@ -2,6 +2,7 @@ using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
 using Arius.Core.New.UnitTests.Fakes;
 using MediatR;
@@ -42,7 +43,7 @@ public class FixtureBuilder
 
         testRemoteRepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>()!;
 
-        hashValueProvider = new SHA256Hasher("unittest");
+        hashValueProvider = new SHA256Hasher(testRemoteRepositoryOptions.Passphrase);
 
         services.AddArius(c => c.LocalConfigRoot = testRunRoot);
         services.AddLogging();
@@ -98,17 +99,18 @@ public class FixtureBuilder
 
 public class AriusFixture : IDisposable
 {
-    public  IHashValueProvider    HashValueProvider     { get; }
+    public  IHashValueProvider          HashValueProvider           { get; }
     private TestRemoteRepositoryOptions TestRemoteRepositoryOptions { get; }
-    public  DirectoryInfo         TestRootSourceFolder          { get; }
-    public  DirectoryInfo         TestRunRootFolder     { get; }
-    public  DirectoryInfo         TestRunSourceFolder   { get; }
+    public  DirectoryInfo               TestRootSourceFolder        { get; }
+    public  DirectoryInfo               TestRunRootFolder           { get; }
+    public  DirectoryInfo               TestRunSourceFolder         { get; }
 
-    public IStorageAccountFactory    StorageAccountFactory    { get; }
-    public IRemoteRepository               RemoteRepository               { get; }
+    public IStorageAccountFactory StorageAccountFactory { get; }
+    public IRemoteRepository      RemoteRepository      { get; }
     public IRemoteStateRepository RemoteStateRepository { get; }
-    public IMediator                 Mediator                 { get; }
-    public AriusConfiguration        AriusConfiguration       { get; }
+    public IMediator              Mediator              { get; }
+    public AriusConfiguration     AriusConfiguration    { get; }
+    public IFileSystem            LocalFileSystem       { get; }
 
     public AriusFixture(
         IServiceProvider serviceProvider,
@@ -117,16 +119,17 @@ public class AriusFixture : IDisposable
         DirectoryInfo testRootSourceFolder,
         DirectoryInfo testRunRootFolder)
     {
-        HashValueProvider     = hashValueProvider;
+        HashValueProvider           = hashValueProvider;
         TestRemoteRepositoryOptions = testRemoteRepositoryOptions;
-        TestRootSourceFolder  = testRootSourceFolder;
-        TestRunRootFolder     = testRunRootFolder;
-        TestRunSourceFolder   = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
+        TestRootSourceFolder        = testRootSourceFolder;
+        TestRunRootFolder           = testRunRootFolder;
+        TestRunSourceFolder         = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 
-        StorageAccountFactory    = serviceProvider.GetRequiredService<IStorageAccountFactory>();
+        StorageAccountFactory = serviceProvider.GetRequiredService<IStorageAccountFactory>();
         RemoteStateRepository = serviceProvider.GetRequiredService<IRemoteStateRepository>();
-        Mediator                 = serviceProvider.GetRequiredService<IMediator>();
-        AriusConfiguration       = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
+        Mediator              = serviceProvider.GetRequiredService<IMediator>();
+        AriusConfiguration    = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
+        LocalFileSystem       = serviceProvider.GetRequiredService<IFileSystem>();
 
         RemoteRepository = StorageAccountFactory.GetRemoteRepository(RemoteRepositoryOptions);
     }

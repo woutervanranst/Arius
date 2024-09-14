@@ -24,7 +24,7 @@ public record File : IFile // TODO make internal
 
     public string  FullName            => fullName;
     public string? Path                => System.IO.Path.GetDirectoryName(fullName);
-    public string? PathPlatformNeutral => Path?.ToPlatformNeutralPath();
+    //public string? PathPlatformNeutral => Path?.ToPlatformNeutralPath();
     public string  Name                => System.IO.Path.GetFileName(fullName);
 
     public bool Exists => System.IO.File.Exists(FullName);

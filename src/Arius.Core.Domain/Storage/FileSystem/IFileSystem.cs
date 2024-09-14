@@ -11,7 +11,7 @@ public interface IFile
     string  FullName                { get; }
     //string  FullNamePlatformNeutral { get; }
     string? Path                    { get; }
-    string? PathPlatformNeutral     { get; }
+    //string? PathPlatformNeutral     { get; }
     string  Name                    { get; }
     bool    Exists                  { get; }
 
