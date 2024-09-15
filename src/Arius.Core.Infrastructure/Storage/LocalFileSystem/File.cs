@@ -6,7 +6,7 @@ using System.Text.Json;
 
 namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
-public record File : IFile // TODO make internal
+public class File : IFile // TODO make internal
 {
     private readonly string fullName;
 
@@ -111,18 +111,18 @@ public record File : IFile // TODO make internal
 
     public void Delete() => System.IO.File.Delete(fullName);
 
-    public virtual bool Equals(IFile? other)
-    {
-        return other is not null &&
-               string.Equals(this.FullName, other.FullName, StringComparison.OrdinalIgnoreCase);
-    }
+    //public virtual bool Equals(IFile? other)
+    //{
+    //    return other is not null &&
+    //           string.Equals(this.FullName, other.FullName, StringComparison.OrdinalIgnoreCase);
+    //}
 
-    public override int GetHashCode() => FullName.GetHashCode();
+    //public override int GetHashCode() => FullName.GetHashCode();
 
     public override string ToString() => FullName;
 }
 
-public record StateDatabaseFile : File, IStateDatabaseFile
+public class StateDatabaseFile : File, IStateDatabaseFile
 {
     private StateDatabaseFile(string fullName, RepositoryVersion version) : base(fullName)
     {
@@ -166,7 +166,7 @@ public record StateDatabaseFile : File, IStateDatabaseFile
     }
 }
 
-public abstract record RelativeFile : File, IRelativeFile
+public abstract class RelativeFile : File, IRelativeFile
 {
     protected RelativeFile(DirectoryInfo root, string fullName) : base(fullName)
     {
@@ -181,23 +181,19 @@ public abstract record RelativeFile : File, IRelativeFile
     //public string GetRelativeName(DirectoryInfo relativeTo)                => GetRelativeName(relativeTo.FullName);
     //public string GetRelativeNamePlatformNeutral(DirectoryInfo relativeTo) => GetRelativeNamePlatformNeutral(relativeTo.FullName);
 
+    //public virtual bool Equals(RelativeFile? other)
+    //{
+    //    return other is not null
+    //           && base.Equals((File)other)
+    //           && string.Equals(this.Root?.FullName, other.Root?.FullName, StringComparison.OrdinalIgnoreCase);
+    //}
 
-
-
-
-    public virtual bool Equals(RelativeFile? other)
-    {
-        return other is not null
-               && base.Equals((File)other)
-               && string.Equals(this.Root?.FullName, other.Root?.FullName, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Root?.FullName);
+    //public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Root?.FullName);
 
     public override string ToString() => RelativeName;
 }
 
-public record PointerFile : RelativeFile, IPointerFile
+public class PointerFile : RelativeFile, IPointerFile
 {
     protected PointerFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
@@ -213,7 +209,7 @@ public record PointerFile : RelativeFile, IPointerFile
     public override string ToString() => RelativeName;
 }
 
-public record PointerFileWithHash : PointerFile, IPointerFileWithHash
+public class PointerFileWithHash : PointerFile, IPointerFileWithHash
 {
     protected PointerFileWithHash(DirectoryInfo root, string fullName, Hash hash) : base(root, fullName)
     {
@@ -274,7 +270,7 @@ public record PointerFileWithHash : PointerFile, IPointerFileWithHash
     public override string ToString() => RelativeName;
 }
 
-public record BinaryFile : RelativeFile, IBinaryFile
+public class BinaryFile : RelativeFile, IBinaryFile
 {
     protected BinaryFile(DirectoryInfo root, string fullName) : base(root, fullName)
     {
@@ -289,7 +285,7 @@ public record BinaryFile : RelativeFile, IBinaryFile
     public override string ToString() => RelativeName;
 }
 
-public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
+public class BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
 {
     protected BinaryFileWithHash(DirectoryInfo root, string fullName, Hash hash) : base(root, fullName)
     {
@@ -309,7 +305,7 @@ public record BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
     public override string ToString() => RelativeName;
 }
 
-public record FilePair : IFilePair
+public class FilePair : IFilePair
 {
     public FilePair(IPointerFile? pointerFile, IBinaryFile? binaryFile)
     {
@@ -365,7 +361,7 @@ public record FilePair : IFilePair
     }
 }
 
-public record FilePairWithHash : FilePair, IFilePairWithHash
+public class FilePairWithHash : FilePair, IFilePairWithHash
 {
     public FilePairWithHash(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
     {

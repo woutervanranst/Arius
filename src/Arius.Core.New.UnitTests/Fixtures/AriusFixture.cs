@@ -45,11 +45,12 @@ public class FixtureBuilder
 
         services.AddArius(c => c.LocalConfigRoot = testRunRoot);
         services.AddLogging();
+
+        services.AddSingleton<MediatorNotificationStore>();
     }
 
     public FixtureBuilder WithMediatrNotificationStore<T>() where T : INotification
     {
-        services.AddSingleton<MediatorNotificationStore>();
         services.AddSingleton<GenericMediatrNotificationHandler<T>>();
         return this;
     }
