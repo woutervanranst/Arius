@@ -13,6 +13,7 @@ using Azure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
+using System.Linq.Expressions;
 using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
@@ -214,7 +215,7 @@ public abstract class TestBase
     {
         DateTime.Parse(version.Name)
             .Should()
-            .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);
+            .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);  // TODO use Should().BeCloseTo
     }
 
     protected void ThenLocalStateDbsShouldExist(string[]? cachedVersions = null, 
@@ -253,6 +254,16 @@ public abstract class TestBase
     {
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage($"*{expectedMessagePart}*");
+    }
+
+    protected void ThenShouldContainMediatorNotification<TNotification>()
+    {
+        Fixture.MediatorNotifications.OfType<TNotification>().Should().NotBeEmpty();
+    }
+
+    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate)
+    {
+        Fixture.MediatorNotifications.OfType<TNotification>().Should().Contain(predicate);
     }
 
 

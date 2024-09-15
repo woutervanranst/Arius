@@ -20,8 +20,8 @@ public abstract record ArchiveCommandNotification(ArchiveCommand Command) : INot
 public record FilePairFoundNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingStartedNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingCompletedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
-public record UploadBinaryFileStartedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
-public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, long OriginalLength, long ArchivedLength, double uploadSpeedMBps) : ArchiveCommandNotification(Command);
+public record UploadBinaryFileStartedNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile) : ArchiveCommandNotification(Command);
+public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile, long OriginalLength, long ArchivedLength, double UploadSpeedMBps) : ArchiveCommandNotification(Command);
 public record CreatedPointerFileNotification(ArchiveCommand Command, IPointerFileWithHash PointerFile) : ArchiveCommandNotification(Command);
 public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 
@@ -163,7 +163,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
             async (bfwh, ct) =>
             {
-                await mediator.Publish(new UploadBinaryFileStartedNotification(request), ct);
+                await mediator.Publish(new UploadBinaryFileStartedNotification(request, bfwh), ct);
 
                 var stopwatch = Stopwatch.StartNew();
                 var bp = await remoteRepository.UploadBinaryFileAsync(bfwh, s => GetEffectiveStorageTier(request.StorageTiering, request.Tier, s), ct);
@@ -172,7 +172,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 var elapsedTimeInSeconds = stopwatch.Elapsed.TotalSeconds;
                 var uploadSpeedMbps = ByteSize.FromBytes(bp.ArchivedLength).Megabytes / elapsedTimeInSeconds;
 
-                await mediator.Publish(new UploadBinaryFileCompletedNotification(request, bp.OriginalLength, bp.ArchivedLength, uploadSpeedMbps), ct);
+                await mediator.Publish(new UploadBinaryFileCompletedNotification(request, bfwh, bp.OriginalLength, bp.ArchivedLength, uploadSpeedMbps), ct);
 
                 logger.LogInformation("Uploaded {hash} ({binaryFile}) in {elapsedTimeInSeconds} seconds @ {speed:F2} MBps", bfwh.Hash, bfwh.RelativeName, elapsedTimeInSeconds, uploadSpeedMbps);
 

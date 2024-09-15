@@ -9,10 +9,11 @@ namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
 public record File : IFile // TODO make internal
 {
     private readonly string fullName;
-    //protected readonly FileInfo fileInfo;
 
     protected File(string fullName)
     {
+        fullName = fullName.ToPlatformSpecificPath();
+
         if (!System.IO.Path.IsPathFullyQualified(fullName))
             throw new ArgumentException($"'{fullName}' is not a fully qualified path");
 
@@ -59,9 +60,6 @@ public record File : IFile // TODO make internal
     }
 
     public long Length => new FileInfo(FullName).Length;
-    //public bool IsIgnoreFile { get; }
-    //public IEnumerable<File> GetFiles();
-    //public IEnumerable<File> GetDirectories();
 
     public bool IsPointerFile => fullName.EndsWith(IPointerFile.Extension, StringComparison.OrdinalIgnoreCase);
     public bool IsBinaryFile  => !IsPointerFile;
@@ -113,7 +111,7 @@ public record File : IFile // TODO make internal
 
     public void Delete() => System.IO.File.Delete(fullName);
 
-    public virtual bool Equals(File? other)
+    public virtual bool Equals(IFile? other)
     {
         return other is not null &&
                string.Equals(this.FullName, other.FullName, StringComparison.OrdinalIgnoreCase);
@@ -208,8 +206,8 @@ public record PointerFile : RelativeFile, IPointerFile
     }
 
     //public static PointerFile FromFileInfo(DirectoryInfo root, FileInfo fi)             => new(root, fi);
-    public static IPointerFile FromFullName(DirectoryInfo root, string fullName)         => new PointerFile(root, fullName);
-    public static IPointerFile FromRelativeName(DirectoryInfo root, string relativeName) => new PointerFile(root, System.IO.Path.Combine(root.FullName, relativeName));
+    public static     IPointerFile FromFullName(DirectoryInfo root, string fullName)         => new PointerFile(root, fullName);
+    public new static IPointerFile FromRelativeName(DirectoryInfo root, string relativeName) => new PointerFile(root, System.IO.Path.Combine(root.FullName, relativeName));
 
 
     public override string ToString() => RelativeName;
@@ -284,8 +282,8 @@ public record BinaryFile : RelativeFile, IBinaryFile
             throw new ArgumentException($"'{fullName}' is a PointerFile not a BinaryFile");
     }
 
-    public static IBinaryFile FromFullName(DirectoryInfo root, string fullName)         => new BinaryFile(root, fullName);
-    public static IBinaryFile FromRelativeName(DirectoryInfo root, string relativeName) => new BinaryFile(root, System.IO.Path.Combine(root.FullName, relativeName));
+    public static     IBinaryFile FromFullName(DirectoryInfo root, string fullName)         => new BinaryFile(root, fullName);
+    public new static IBinaryFile FromRelativeName(DirectoryInfo root, string relativeName) => new BinaryFile(root, System.IO.Path.Combine(root.FullName, relativeName));
 
 
     public override string ToString() => RelativeName;

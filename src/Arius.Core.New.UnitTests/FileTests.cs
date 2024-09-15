@@ -13,6 +13,7 @@ public class FileTests
         var bf1 = (IBinaryFile)BinaryFile.FromFullName(null, @"C:\AriusTest\Source\Marketing Campaign - Technical Assessments.docx");
         var bf2 = (IBinaryFile)BinaryFile.FromFullName(null, @"C:\AriusTest\Source\Marketing Campaign - Technical Assessments.docx");
 
+        //(bf1 == bf2).Should().BeTrue(); // this is FALSE: see https://stackoverflow.com/questions/73962920/equality-of-interface-types-implemented-by-records
         bf1.Equals(bf2).Should().BeTrue();
         bf1.GetHashCode().Should().Be(bf2.GetHashCode());
     }

@@ -20,10 +20,10 @@ public sealed class ArchiveCommandNotificationHandler<T>
     {
         var result = notification switch
         {
-            FilePairFoundNotification found     => s.HandleFilePairFoundNotification(found, cancellationToken),
-            FilePairHashingCompletedNotification hashed   => s.HandleFilePairHashedNotification(hashed, cancellationToken),
-            ArchiveCommandDoneNotification done => s.HandleArchiveCommandDoneNotification(done, cancellationToken),
-            _                                   => throw new InvalidOperationException("No event handler found for notification type")
+            FilePairFoundNotification found             => s.HandleFilePairFoundNotification(found, cancellationToken),
+            FilePairHashingCompletedNotification hashed => s.HandleFilePairHashedNotification(hashed, cancellationToken),
+            ArchiveCommandDoneNotification done         => s.HandleArchiveCommandDoneNotification(done, cancellationToken),
+            _                                           => throw new InvalidOperationException("No event handler found for notification type")
         };
 
         await result;

@@ -13,8 +13,6 @@ using NSubstitute;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
 
-using System;
-
 public class FixtureBuilder
 {
     private readonly IServiceCollection services;
@@ -23,9 +21,9 @@ public class FixtureBuilder
     private readonly DirectoryInfo      testRunRoot;
 
     private          TestRemoteRepositoryOptions testRemoteRepositoryOptions;
-    private readonly IHashValueProvider    hashValueProvider;
+    private readonly IHashValueProvider          hashValueProvider;
 
-    private DirectoryInfo         testRootSourceDirectory;
+    private DirectoryInfo testRootSourceDirectory;
 
     private FixtureBuilder()
     {
@@ -47,6 +45,13 @@ public class FixtureBuilder
 
         services.AddArius(c => c.LocalConfigRoot = testRunRoot);
         services.AddLogging();
+    }
+
+    public FixtureBuilder WithMediatrNotificationStore<T>() where T : INotification
+    {
+        services.AddSingleton<MediatorNotificationStore>();
+        services.AddSingleton<GenericMediatrNotificationHandler<T>>();
+        return this;
     }
 
     public static FixtureBuilder Create() => new();
@@ -105,12 +110,14 @@ public class AriusFixture : IDisposable
     public  DirectoryInfo               TestRunRootFolder           { get; }
     public  DirectoryInfo               TestRunSourceFolder         { get; }
 
-    public IStorageAccountFactory StorageAccountFactory { get; }
-    public IRemoteRepository      RemoteRepository      { get; }
-    public IRemoteStateRepository RemoteStateRepository { get; }
-    public IMediator              Mediator              { get; }
-    public AriusConfiguration     AriusConfiguration    { get; }
-    public IFileSystem            LocalFileSystem       { get; }
+    public  IStorageAccountFactory   StorageAccountFactory { get; }
+    public  IRemoteRepository        RemoteRepository      { get; }
+    public  IRemoteStateRepository   RemoteStateRepository { get; }
+    public  IMediator                Mediator              { get; }
+    public  AriusConfiguration       AriusConfiguration    { get; }
+    public  IFileSystem              LocalFileSystem       { get; }
+    
+    private readonly MediatorNotificationStore mediatorNotifications;
 
     public AriusFixture(
         IServiceProvider serviceProvider,
@@ -132,10 +139,10 @@ public class AriusFixture : IDisposable
         LocalFileSystem       = serviceProvider.GetRequiredService<IFileSystem>();
 
         RemoteRepository = StorageAccountFactory.GetRemoteRepository(RemoteRepositoryOptions);
+
+        mediatorNotifications = serviceProvider.GetRequiredService<MediatorNotificationStore>();
     }
-
-
-
+    
     public StorageAccountOptions StorageAccountOptions =>
         new()
         {
@@ -151,6 +158,8 @@ public class AriusFixture : IDisposable
             ContainerName = TestRemoteRepositoryOptions.ContainerName ?? throw new InvalidOperationException("ContainerName not set"),
             Passphrase    = TestRemoteRepositoryOptions.Passphrase
         };
+
+    public IEnumerable<INotification> MediatorNotifications => mediatorNotifications.Notifications;
 
     public void Dispose()
     {

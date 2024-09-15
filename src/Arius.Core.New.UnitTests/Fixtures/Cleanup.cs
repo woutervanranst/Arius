@@ -16,7 +16,7 @@ public class Cleanup : TestBase
 
     
     [Fact]
-    public async void CleanupAzureAsync()
+    public async Task CleanupAzureAsync()
     {
         var storageOptions    = Fixture.StorageAccountOptions;
         var blobServiceClient = new BlobServiceClient($"DefaultEndpointsProtocol=https;AccountName={storageOptions.AccountName};AccountKey={storageOptions.AccountKey};EndpointSuffix=core.windows.net");
@@ -38,7 +38,7 @@ public class Cleanup : TestBase
     }
 
     [Fact]
-    public async void CleanupLocalAsync()
+    public async Task CleanupLocalAsync()
     {
         if (Directory.Exists(Fixture.TestRunRootFolder.FullName))
         {

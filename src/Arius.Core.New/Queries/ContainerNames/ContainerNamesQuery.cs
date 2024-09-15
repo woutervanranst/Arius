@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using System.Runtime.CompilerServices;
+using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
 
@@ -34,7 +35,7 @@ internal class ContainerNamesQueryHandler : IStreamRequestHandler<ContainerNames
         this.logger                = logger;
     }
 
-    public async IAsyncEnumerable<string> Handle(ContainerNamesQuery request, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> Handle(ContainerNamesQuery request, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await new ContainerNamesQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
