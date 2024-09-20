@@ -1,4 +1,4 @@
-namespace Starterkit.Data;
+namespace Arius.Blazor.Data;
 
 public class WeatherForecastService
 {

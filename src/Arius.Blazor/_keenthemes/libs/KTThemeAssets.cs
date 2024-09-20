@@ -1,4 +1,4 @@
-namespace Starterkit._keenthemes.libs;
+namespace Arius.Blazor._keenthemes.libs;
 
 class KTThemeAssets
 {

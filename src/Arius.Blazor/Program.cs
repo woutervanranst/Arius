@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Starterkit.Data;
-using Starterkit._keenthemes;
-using Starterkit._keenthemes.libs;
+using Arius.Blazor.Data;
+using Arius.Blazor._keenthemes;
+using Arius.Blazor._keenthemes.libs;
 
 var builder = WebApplication.CreateBuilder(args);
 

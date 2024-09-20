@@ -1,6 +1,6 @@
-using Starterkit._keenthemes.libs;
+using Arius.Blazor._keenthemes.libs;
 
-namespace Starterkit._keenthemes;
+namespace Arius.Blazor._keenthemes;
 
 public interface IBootstrapBase
 {
