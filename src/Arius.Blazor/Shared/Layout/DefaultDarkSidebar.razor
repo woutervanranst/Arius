@@ -1,0 +1,98 @@
+@inherits LayoutComponentBase
+@layout MasterInit
+@inject IJSRuntime JS
+@inject IHttpContextAccessor HttpContextAccessor
+
+@using Layout._Helpers
+@using Layout
+@using Layout.Partials.SidebarLayout
+@using Starterkit.Shared.Partials
+
+<!--begin::App-->
+<div class="d-flex flex-column flex-root app-root" id="kt_app_root">
+	<!--begin::Page-->
+	<div class="app-page flex-column flex-column-fluid" id="kt_app_page">
+		<_Header></_Header>
+		<!--begin::Wrapper-->
+		<div class="app-wrapper flex-column flex-row-fluid" id="kt_app_wrapper">
+			<_Sidebar></_Sidebar>
+			<!--begin::Main-->
+			<div class="app-main flex-column flex-row-fluid" id="kt_app_main">
+				<!--begin::Content wrapper-->
+				<div class="d-flex flex-column flex-column-fluid">
+					<_Toolbar></_Toolbar>
+					<!--begin::Content-->
+                    <div id="kt_app_content" class="app-content flex-column-fluid">
+                    	<!--begin::Content container-->
+                    	<div id="kt_app_content_container" class="app-container container-fluid">
+                    		@Body
+                    	</div>
+                    	<!--end::Content container-->
+                    </div>
+                    <!--end::Content-->
+				</div>
+				<!--end::Content wrapper-->
+				<_Footer></_Footer>
+			</div>
+			<!--end:::Main-->
+		</div>
+		<!--end::Wrapper-->
+	</div>
+	<!--end::Page-->
+</div>
+<!--end::App-->
+
+<_Drawers></_Drawers>
+<_ModalComponents></_ModalComponents>
+<_Scrolltop></_Scrolltop>
+
+@code {
+	private IKTThemeHelpers KTHelper = default!;
+	public bool SidebarMinimizeState;
+
+	protected override void OnInitialized()
+	{ 
+		KTHelper = new KTThemeHelpers(JS);
+		KTHelper.addBodyAttribute("data-kt-app-page-loading", "on");
+	}
+	
+	protected override void OnAfterRender(bool firstRender)
+	{
+	    var context = HttpContextAccessor.HttpContext;
+
+        if(firstRender){
+            if (context != null){
+               SidebarMinimizeState = String.Equals(context.Request.Cookies["sidebar_minimize_state"], "on");
+               if(SidebarMinimizeState){
+                KTHelper.addBodyAttribute("data-kt-app-sidebar-minimize", "on");
+               }
+            }
+
+            KTHelper.addBodyAttribute("data-kt-app-layout", "dark-sidebar");
+            KTHelper.addBodyAttribute("data-kt-app-header-fixed", "true");
+            KTHelper.addBodyAttribute("data-kt-app-sidebar-fixed", "true");
+            KTHelper.addBodyAttribute("data-kt-app-sidebar-hoverable", "true");
+            KTHelper.addBodyAttribute("data-kt-app-sidebar-push-header", "true");
+            KTHelper.addBodyAttribute("data-kt-app-sidebar-push-toolbar", "true");
+            KTHelper.addBodyAttribute("data-kt-app-sidebar-push-footer", "true");
+            KTHelper.addBodyAttribute("data-kt-app-toolbar-enabled", "true");
+
+            KTHelper.addBodyClass("app-default");
+
+            JS.InvokeVoidAsync("KTModalUpgradePlan.init");
+            JS.InvokeVoidAsync("KTCreateApp.init");
+            JS.InvokeVoidAsync("KTModalUserSearch.init");
+            JS.InvokeVoidAsync("KTModalNewTarget.init");
+            JS.InvokeVoidAsync("KTAppSidebar.init");
+        }
+
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+		if(firstRender){
+			await Task.Delay(300);
+			await JS.InvokeVoidAsync("document.body.removeAttribute", "data-kt-app-page-loading");
+		}
+    }
+}

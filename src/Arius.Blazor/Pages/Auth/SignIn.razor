@@ -1,0 +1,132 @@
+@using Starterkit.Shared.Partials.General;
+@inject IJSRuntime JS
+@page "/signin"
+
+<script suppress-error="BL9992" src='@KTTheme.GetAssetPath("js/custom/authentication/sign-in/general.js")'></script>
+
+<!--begin::Form-->
+<form class="form w-100" novalidate="novalidate" id="kt_sign_in_form" data-kt-redirect-url="/" action="#">
+    <!--begin::Heading-->
+    <div class="text-center mb-11">
+        <!--begin::Title-->
+        <h1 class="text-gray-900 mb-3">
+            Sign In to Good
+        </h1>
+        <!--end::Title-->
+
+        <!--begin::Link-->
+        <div class="text-gray-500 fw-semibold fs-4">
+            New Here?
+
+            <a href="/signup" class="link-primary fw-bold">
+                Create an Account
+            </a>
+        </div>
+        <!--end::Subtitle--->
+    </div>
+    <!--begin::Heading-->
+
+    <!--begin::Input group-->
+    <div class="fv-row mb-10">
+        <!--begin::Label-->
+        <label class="form-label fs-6 fw-bold text-gray-900">Email</label>
+        <!--end::Label-->
+
+        <!--begin::Input-->
+        <input class="form-control form-control-lg form-control-solid" type="text" name="email" autocomplete="off"/>
+        <!--end::Input-->
+    </div>
+    <!--end::Input group-->
+
+    <!--begin::Input group-->
+    <div class="fv-row mb-10">
+        <!--begin::Wrapper-->
+        <div class="d-flex flex-stack mb-2">
+            <!--begin::Label-->
+            <label class="form-label fw-bold text-gray-900 fs-6 mb-0">Password</label>
+            <!--end::Label-->
+
+            <!--begin::Link-->
+            <a href="/reset-password" class="link-primary fs-6 fw-bold">
+                Forgot Password ?
+            </a>
+            <!--end::Google link--->
+        </div>
+        <!--end::Col-->
+
+        <!--begin::Col-->
+        <div class="col-md-6">
+            <!--begin::Google link--->
+            <a href="#" class="btn btn-flex btn-outline btn-text-gray-700 btn-active-color-primary bg-state-light flex-center text-nowrap w-100">
+                <img alt="Logo" src='@KTTheme.GetAssetPath("media/svg/brand-logos/apple-black.svg")' class="theme-light-show h-15px me-3"/>
+                <img alt="Logo" src='@KTTheme.GetAssetPath("media/svg/brand-logos/apple-black-dark.svg")' class="theme-dark-show h-15px me-3"/>
+                Sign in with Apple
+            </a>
+            <!--end::Google link--->
+        </div>
+        <!--end::Col-->
+    </div>
+    <!--end::Login options-->
+
+    <!--begin::Separator-->
+    <div class="separator separator-content my-14">
+        <span class="w-125px text-gray-500 fw-semibold fs-7">Or with email</span>
+    </div>
+    <!--end::Separator-->
+
+    <!--begin::Input group--->
+    <div class="fv-row mb-8">
+        <!--begin::Email-->
+        <input type="text" placeholder="Email" name="email" autocomplete="off" class="form-control bg-transparent"/> 
+        <!--end::Email-->
+    </div>
+
+    <!--end::Input group--->
+    <div class="fv-row mb-3">    
+        <!--begin::Password-->
+        <input type="password" placeholder="Password" name="password" autocomplete="off" class="form-control bg-transparent"/>
+        <!--end::Password-->
+    </div>
+    <!--end::Input group--->
+
+    <!--begin::Wrapper-->
+    <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">
+        <div></div>
+
+        <!--begin::Link-->
+        <a href="/reset-password" class="link-primary">
+            Forgot Password ?
+        </a>
+        <!--end::Link-->
+    </div>
+    <!--end::Wrapper-->    
+
+    <!--begin::Submit button-->
+    <div class="d-grid mb-10">
+        <button type="submit" id="kt_sign_in_submit" class="btn btn-primary">
+            <_ButtonIndicator ButtonLabel="Sign In"></_ButtonIndicator>
+        </button>
+    </div>
+    <!--end::Submit button-->
+
+    <!--begin::Sign up-->
+    <div class="text-gray-500 text-center fw-semibold fs-6">
+        Not a Member yet?
+
+        <a href="/signup" class="link-primary">
+            Sign up
+        </a>
+    </div>
+    <!--end::Sign up-->
+</form>
+<!--end::Form--> 
+
+@code{
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+		if(firstRender){
+            await Task.Delay(1000);
+            await JS.InvokeVoidAsync("KTSigninGeneral.init");
+        }
+    }
+}

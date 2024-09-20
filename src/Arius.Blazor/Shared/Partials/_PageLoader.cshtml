@@ -1,0 +1,15 @@
+@using Starterkit._keenthemes.libs;
+
+@inject IKTTheme KTTheme;
+
+<!--begin::Page loader-->
+<div class="app-page-loader flex-column">
+	<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default.svg")' class="theme-light-show h-25px" />
+	<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default-dark.svg")' class="theme-dark-show h-25px" />
+
+	<div class="d-flex align-items-center mt-5">
+		<span class="spinner-border text-primary" role="status"></span>
+		<span class="text-muted fs-6 fw-semibold ms-5">Loading...</span>
+	</div>
+</div>
+<!--end::Page loader-->

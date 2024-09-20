@@ -1,0 +1,404 @@
+@using Starterkit.Shared.Partials.Menus
+
+<!--begin::Table Widget 3-->
+<div class="card card-flush h-xl-100">
+	<!--begin::Card header-->
+	<div class="card-header py-7">
+		<!--begin::Tabs-->
+		<div class="card-title pt-3 mb-0 gap-4 gap-lg-10 gap-xl-15 nav nav-tabs border-bottom-0" data-kt-table-widget-3="tabs_nav">
+			<!--begin::Tab item-->
+			<div class="fs-4 fw-bold pb-3 border-bottom border-3 border-primary cursor-pointer" data-kt-table-widget-3="tab" data-kt-table-widget-3-value="Show All">All Campaigns (47)</div>
+			<!--end::Tab item-->
+			<!--begin::Tab item-->
+			<div class="fs-4 fw-bold text-muted pb-3 cursor-pointer" data-kt-table-widget-3="tab" data-kt-table-widget-3-value="Pending">Pending (8)</div>
+			<!--end::Tab item-->
+			<!--begin::Tab item-->
+			<div class="fs-4 fw-bold text-muted pb-3 cursor-pointer" data-kt-table-widget-3="tab" data-kt-table-widget-3-value="Completed">Completed (39)</div>
+			<!--end::Tab item-->
+		</div>
+		<!--end::Tabs-->
+		<!--begin::Create campaign button-->
+		<div class="card-toolbar">
+			<a href="#" type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#kt_modal_create_campaign">Create Campaign</a>
+		</div>
+		<!--end::Create campaign button-->
+	</div>
+	<!--end::Card header-->
+	<!--begin::Card body-->
+	<div class="card-body pt-1">
+		<!--begin::Sort & Filter-->
+		<div class="d-flex flex-stack flex-wrap gap-4">
+			<!--begin::Sort-->
+			<div class="d-flex align-items-center flex-wrap gap-3 gap-xl-9">
+				<!--begin::Type-->
+				<div class="d-flex align-items-center fw-bold">
+					<!--begin::Label-->
+					<div class="text-muted fs-7">Type</div>
+					<!--end::Label-->
+					<!--begin::Select-->
+					<select class="form-select form-select-transparent text-gray-900 fs-7 lh-1 fw-bold py-0 ps-3 w-auto" data-hide-search="true" data-control="select2" data-dropdown-css-class="w-150px" data-placeholder="Select an option">
+						<option></option>
+						<option value="Show All" selected="selected">Show All</option>
+						<option value="Newest">Newest</option>
+						<option value="oldest">Oldest</option>
+					</select>
+					<!--end::Select-->
+				</div>
+				<!--end::Type-->
+				<!--begin::Status-->
+				<div class="d-flex align-items-center fw-bold">
+					<!--begin::Label-->
+					<div class="text-muted fs-7 me-2">Status</div>
+					<!--end::Label-->
+					<!--begin::Select-->
+					<select class="form-select form-select-transparent text-gray-900 fs-7 lh-1 fw-bold py-0 ps-3 w-auto" data-hide-search="true" data-control="select2" data-dropdown-css-class="w-150px" data-placeholder="Select an option" data-kt-table-widget-3="filter_status">
+						<option></option>
+						<option value="Show All" selected="selected">Show All</option>
+						<option value="Live Now">Live Now</option>
+						<option value="Reviewing">Reviewing</option>
+						<option value="Paused">Paused</option>
+					</select>
+					<!--end::Select-->
+				</div>
+				<!--begin::Status-->
+				<!--begin::Budget-->
+				<div class="d-flex align-items-center fw-bold">
+					<!--begin::Label-->
+					<div class="text-muted me-2">Budget</div>
+					<!--end::Label-->
+					<!--begin::Select-->
+					<select class="form-select form-select-transparent text-gray-900 fs-7 lh-1 fw-bold py-0 ps-3 w-auto" data-hide-search="true" data-dropdown-css-class="w-150px" data-control="select2" data-placeholder="Select an option" data-kt-table-widget-3="filter_status">
+						<option></option>
+						<option value="Show All" selected="selected">Show All</option>
+						<option value="&lt;5000">Less than $5,000</option>
+						<option value="5000-10000">$5,001 - $10,000</option>
+						<option value="&gt;10000">More than $10,001</option>
+					</select>
+					<!--end::Select-->
+				</div>
+				<!--begin::Budget-->
+			</div>
+			<!--end::Sort-->
+			<!--begin::Filter-->
+			<div class="d-flex align-items-center gap-4">
+				<!--begin::Filter button-->
+				<a href="#" class="text-hover-primary ps-4" data-kt-menu-trigger="click" data-kt-menu-placement="bottom-end">@((MarkupString)KTTheme.GetIcon("filter", "fs-2 text-gray-500"))</a>
+				<_Menu1></_Menu1>
+				<!--end::Filter button-->
+			</div>
+			<!--end::Filter-->
+		</div>
+		<!--end::Sort & Filter-->
+		<!--begin::Seprator-->
+		<div class="separator separator-dashed my-5"></div>
+		<!--end::Seprator-->
+		<!--begin::Table-->
+		<table id="kt_widget_table_3" class="table table-row-dashed align-middle fs-6 gy-4 my-0 pb-3" data-kt-table-widget-3="all">
+			<thead class="d-none">
+				<tr>
+					<th>Campaign</th>
+					<th>Platforms</th>
+					<th>Status</th>
+					<th>Team</th>
+					<th>Date</th>
+					<th>Progress</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td class="min-w-175px">
+						<div class="position-relative ps-6 pe-3 py-2">
+							<div class="position-absolute start-0 top-0 w-4px h-100 rounded-2 bg-info"></div>
+							<a href="#" class="mb-1 text-gray-900 text-hover-primary fw-bold">Happy Christmas</a>
+							<div class="fs-7 text-muted fw-bold">Created on 24 Dec 21</div>
+						</div>
+					</td>
+					<td>
+						<!--begin::Icons-->
+						<div class="d-flex gap-2 mb-2">
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/facebook-4.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/twitter-2.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/linkedin-2.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/youtube-3.svg")' class="w-20px" alt="" />
+							</a>
+						</div>
+						<!--end::Icons-->
+						<div class="fs-7 text-muted fw-bold">Labor 24 - 35 years</div>
+					</td>
+					<td>
+						<span class="badge badge-light-success">Live Now</span>
+					</td>
+					<td class="min-w-125px">
+						<!--begin::Team members-->
+						<div class="symbol-group symbol-hover mb-1">
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-6.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-5.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-25.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-9.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-danger">
+									<span class="fs-7 text-inverse-danger">E</span>
+								</div>
+							</div>
+							<!--end::Member-->
+							<!--begin::More members-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-dark">
+									<span class="fs-8 text-inverse-dark">+0</span>
+								</div>
+							</div>
+							<!--end::More members-->
+						</div>
+						<!--end::Team members-->
+						<div class="fs-7 fw-bold text-muted">Team Members</div>
+					</td>
+					<td class="min-w-150px">
+						<div class="mb-2 fw-bold">24 Dec 21 - 06 Jan 22</div>
+						<div class="fs-7 fw-bold text-muted">Date range</div>
+					</td>
+					<td class="d-none">Pending</td>
+					<td class="text-end">
+						<button type="button" class="btn btn-icon btn-sm btn-light btn-active-primary w-25px h-25px">@((MarkupString)KTTheme.GetIcon("black-right", "fs-2 text-muted"))</button>
+					</td>
+				</tr>
+				<tr>
+					<td class="min-w-175px">
+						<div class="position-relative ps-6 pe-3 py-2">
+							<div class="position-absolute start-0 top-0 w-4px h-100 rounded-2 bg-warning"></div>
+							<a href="#" class="mb-1 text-gray-900 text-hover-primary fw-bold">Halloween</a>
+							<div class="fs-7 text-muted fw-bold">Created on 24 Dec 21</div>
+						</div>
+					</td>
+					<td>
+						<!--begin::Icons-->
+						<div class="d-flex gap-2 mb-2">
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/twitter-2.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/instagram-2-1.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/youtube-3.svg")' class="w-20px" alt="" />
+							</a>
+						</div>
+						<!--end::Icons-->
+						<div class="fs-7 text-muted fw-bold">Labor 37 - 52 years</div>
+					</td>
+					<td>
+						<span class="badge badge-light-primary">Reviewing</span>
+					</td>
+					<td class="min-w-125px">
+						<!--begin::Team members-->
+						<div class="symbol-group symbol-hover mb-1">
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-1.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-25.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-6.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+						</div>
+						<!--end::Team members-->
+						<div class="fs-7 fw-bold text-muted">Team Members</div>
+					</td>
+					<td class="min-w-150px">
+						<div class="mb-2 fw-bold">03 Feb 22 - 14 Feb 22</div>
+						<div class="fs-7 fw-bold text-muted">Date range</div>
+					</td>
+					<td class="d-none">Completed</td>
+					<td class="text-end">
+						<button type="button" class="btn btn-icon btn-sm btn-light btn-active-primary w-25px h-25px">@((MarkupString)KTTheme.GetIcon("black-right", "fs-2 text-muted"))</button>
+					</td>
+				</tr>
+				<tr>
+					<td class="min-w-175px">
+						<div class="position-relative ps-6 pe-3 py-2">
+							<div class="position-absolute start-0 top-0 w-4px h-100 rounded-2 bg-success"></div>
+							<a href="#" class="mb-1 text-gray-900 text-hover-primary fw-bold">Cyber Monday</a>
+							<div class="fs-7 text-muted fw-bold">Created on 24 Dec 21</div>
+						</div>
+					</td>
+					<td>
+						<!--begin::Icons-->
+						<div class="d-flex gap-2 mb-2">
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/facebook-4.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/instagram-2-1.svg")' class="w-20px" alt="" />
+							</a>
+						</div>
+						<!--end::Icons-->
+						<div class="fs-7 text-muted fw-bold">Labor 24 - 38 years</div>
+					</td>
+					<td>
+						<span class="badge badge-light-success">Live Now</span>
+					</td>
+					<td class="min-w-125px">
+						<!--begin::Team members-->
+						<div class="symbol-group symbol-hover mb-1">
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-danger">
+									<span class="fs-7 text-inverse-danger">M</span>
+								</div>
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-6.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-primary">
+									<span class="fs-7 text-inverse-primary">N</span>
+								</div>
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-13.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+						</div>
+						<!--end::Team members-->
+						<div class="fs-7 fw-bold text-muted">Team Members</div>
+					</td>
+					<td class="min-w-150px">
+						<div class="mb-2 fw-bold">19 Mar 22 - 04 Apr 22</div>
+						<div class="fs-7 fw-bold text-muted">Date range</div>
+					</td>
+					<td class="d-none">Pending</td>
+					<td class="text-end">
+						<button type="button" class="btn btn-icon btn-sm btn-light btn-active-primary w-25px h-25px">@((MarkupString)KTTheme.GetIcon("black-right", "fs-2 text-muted"))</button>
+					</td>
+				</tr>
+				<tr>
+					<td class="min-w-175px">
+						<div class="position-relative ps-6 pe-3 py-2">
+							<div class="position-absolute start-0 top-0 w-4px h-100 rounded-2 bg-danger"></div>
+							<a href="#" class="mb-1 text-gray-900 text-hover-primary fw-bold">Thanksgiving</a>
+							<div class="fs-7 text-muted fw-bold">Created on 24 Dec 21</div>
+						</div>
+					</td>
+					<td>
+						<!--begin::Icons-->
+						<div class="d-flex gap-2 mb-2">
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/twitter-2.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/instagram-2-1.svg")' class="w-20px" alt="" />
+							</a>
+							<a href="#">
+								<img src='@KTTheme.GetAssetPath("media/svg/brand-logos/linkedin-2.svg")' class="w-20px" alt="" />
+							</a>
+						</div>
+						<!--end::Icons-->
+						<div class="fs-7 text-muted fw-bold">Labor 24 - 38 years</div>
+					</td>
+					<td>
+						<span class="badge badge-light-warning">Paused</span>
+					</td>
+					<td class="min-w-125px">
+						<!--begin::Team members-->
+						<div class="symbol-group symbol-hover mb-1">
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-6.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-25.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-1.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-primary">
+									<span class="fs-7 text-inverse-primary">N</span>
+								</div>
+							</div>
+							<!--end::Member-->
+							<!--begin::Member-->
+							<div class="symbol symbol-circle symbol-25px">
+								<img src='@KTTheme.GetAssetPath("media/avatars/300-5.jpg")' alt="" />
+							</div>
+							<!--end::Member-->
+							<!--begin::More members-->
+							<div class="symbol symbol-circle symbol-25px">
+								<div class="symbol-label bg-dark">
+									<span class="fs-8 text-inverse-dark">+0</span>
+								</div>
+							</div>
+							<!--end::More members-->
+						</div>
+						<!--end::Team members-->
+						<div class="fs-7 fw-bold text-muted">Team Members</div>
+					</td>
+					<td class="min-w-150px">
+						<div class="mb-2 fw-bold">20 Jun 22 - 30 Jun 22</div>
+						<div class="fs-7 fw-bold text-muted">Date range</div>
+					</td>
+					<td class="d-none">Pending</td>
+					<td class="text-end">
+						<button type="button" class="btn btn-icon btn-sm btn-light btn-active-primary w-25px h-25px">@((MarkupString)KTTheme.GetIcon("black-right", "fs-2 text-muted"))</button>
+					</td>
+				</tr>
+			</tbody>
+			<!--end::Table-->
+		</table>
+		<!--end::Table-->
+	</div>
+	<!--end::Card body-->
+</div>
+<!--end::Table Widget 3-->
+
+@code{
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+		if(firstRender){
+            await JS.InvokeVoidAsync("KTTablesWidget3.init");
+        }
+    }
+}

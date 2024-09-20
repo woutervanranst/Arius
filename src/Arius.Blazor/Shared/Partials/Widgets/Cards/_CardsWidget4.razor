@@ -1,0 +1,88 @@
+<!--begin::Card widget 4-->
+<div class="card card-flush h-xl-100">
+	<!--begin::Header-->
+	<div class="card-header pt-5">
+		<!--begin::Title-->
+		<div class="card-title d-flex flex-column">
+			<!--begin::Info-->
+			<div class="d-flex align-items-center">
+				<!--begin::Currency-->
+				<span class="fs-4 fw-semibold text-gray-500 me-1 align-self-start">$</span>
+				<!--end::Currency-->
+				<!--begin::Amount-->
+				<span class="fs-2hx fw-bold text-gray-900 me-2 lh-1 ls-n2">69,700</span>
+				<!--end::Amount-->
+				<!--begin::Badge-->
+				<span class="badge badge-light-success fs-base">@((MarkupString)KTTheme.GetIcon("arrow-up", "fs-5 text-success ms-n1")) 2.2%</span>
+				<!--end::Badge-->
+			</div>
+			<!--end::Info-->
+			<!--begin::Subtitle-->
+			<span class="text-gray-500 pt-1 fw-semibold fs-6">Expected Earnings</span>
+			<!--end::Subtitle-->
+		</div>
+		<!--end::Title-->
+	</div>
+	<!--end::Header-->
+	<!--begin::Card body-->
+	<div class="card-body pt-2 pb-4 d-flex align-items-center">
+		<!--begin::Chart-->
+		<div class="d-flex flex-center me-5 pt-2">
+			<div id="kt_card_widget_4_chart" style="min-width: 125px; min-height: 125px" data-kt-size="125" data-kt-line="18"></div>
+		</div>
+		<!--end::Chart-->
+		<!--begin::Labels-->
+		<div class="d-flex flex-column content-justify-center w-100">
+			<!--begin::Label-->
+			<div class="d-flex fs-6 fw-semibold align-items-center">
+				<!--begin::Bullet-->
+				<div class="bullet w-8px h-6px rounded-2 bg-danger me-3"></div>
+				<!--end::Bullet-->
+				<!--begin::Label-->
+				<div class="text-gray-500 flex-grow-1 me-4">Shoes</div>
+				<!--end::Label-->
+				<!--begin::Stats-->
+				<div class="fw-bolder text-gray-700 text-xxl-end">$7,660</div>
+				<!--end::Stats-->
+			</div>
+			<!--end::Label-->
+			<!--begin::Label-->
+			<div class="d-flex fs-6 fw-semibold align-items-center my-3">
+				<!--begin::Bullet-->
+				<div class="bullet w-8px h-6px rounded-2 bg-primary me-3"></div>
+				<!--end::Bullet-->
+				<!--begin::Label-->
+				<div class="text-gray-500 flex-grow-1 me-4">Gaming</div>
+				<!--end::Label-->
+				<!--begin::Stats-->
+				<div class="fw-bolder text-gray-700 text-xxl-end">$2,820</div>
+				<!--end::Stats-->
+			</div>
+			<!--end::Label-->
+			<!--begin::Label-->
+			<div class="d-flex fs-6 fw-semibold align-items-center">
+				<!--begin::Bullet-->
+				<div class="bullet w-8px h-6px rounded-2 me-3" style="background-color: #E4E6EF"></div>
+				<!--end::Bullet-->
+				<!--begin::Label-->
+				<div class="text-gray-500 flex-grow-1 me-4">Others</div>
+				<!--end::Label-->
+				<!--begin::Stats-->
+				<div class="fw-bolder text-gray-700 text-xxl-end">$45,257</div>
+				<!--end::Stats-->
+			</div>
+			<!--end::Label-->
+		</div>
+		<!--end::Labels-->
+	</div>
+	<!--end::Card body-->
+</div>
+<!--end::Card widget 4-->
+@code{
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+		if(firstRender){
+            await JS.InvokeVoidAsync("KTCardsWidget4.init");
+        }
+    }
+}

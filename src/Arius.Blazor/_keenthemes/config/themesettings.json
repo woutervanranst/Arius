@@ -1,0 +1,195 @@
+{
+    "Theme": {
+        "ThemeName": "Metronic/Demo1",
+        "Direction": "ltr",
+        "ModeSwitchEnabled": true,
+        "ModeDefault": "light",
+        "AssetsDir": "assets/",
+        "IconType": "solid",
+        "Assets": {
+            "Favicon": "media/logos/favicon.ico",
+            "Fonts": [
+                "https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700"
+            ],
+            "Css": [
+                "plugins/global/plugins.bundle.css",
+                "css/style.bundle.css"
+            ],
+            "Js": [
+                "plugins/global/plugins.bundle.js",
+                "js/scripts.bundle.js"
+            ]
+        },
+        "Vendors": {
+            "datatables": {
+                "Css": [
+                    "plugins/custom/datatables/datatables.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/datatables/datatables.bundle.js"
+                ]
+            },
+            "formrepeater": {
+                "Js": [
+                    "plugins/custom/formrepeater/formrepeater.bundle.js"
+                ]
+            },
+            "fullcalendar": {
+                "Css": [
+                    "plugins/custom/fullcalendar/fullcalendar.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/fullcalendar/fullcalendar.bundle.js"
+                ]
+            },
+            "flotcharts": {
+                "Js": [
+                    "plugins/custom/flotcharts/flotcharts.bundle.js"
+                ]
+            },
+            "google-jsapi": {
+                "Js": [
+                    "//www.google.com/jsapi"
+                ]
+            },
+            "tinymce": {
+                "Js": [
+                    "plugins/custom/tinymce/tinymce.bundle.js"
+                ]
+            },
+            "ckeditor-classic": {
+                "Js": [
+                    "plugins/custom/ckeditor/ckeditor-classic.bundle.js"
+                ]
+            },
+            "ckeditor-inline": {
+                "Js": [
+                    "plugins/custom/ckeditor/ckeditor-inline.bundle.js"
+                ]
+            },
+            "ckeditor-balloon": {
+                "Js": [
+                    "plugins/custom/ckeditor/ckeditor-balloon.bundle.js"
+                ]
+            },
+            "ckeditor-balloon-block": {
+                "Js": [
+                    "plugins/custom/ckeditor/ckeditor-balloon-block.bundle.js"
+                ]
+            },
+            "ckeditor-document": {
+                "Js": [
+                    "plugins/custom/ckeditor/ckeditor-document.bundle.js"
+                ]
+            },
+            "draggable": {
+                "Js": [
+                    "plugins/custom/draggable/draggable.bundle.js"
+                ]
+            },
+            "fslightbox": {
+                "Js": [
+                    "plugins/custom/fslightbox/fslightbox.bundle.js"
+                ]
+            },
+            "jkanban": {
+                "Css": [
+                    "plugins/custom/jkanban/jkanban.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/jkanban/jkanban.bundle.js"
+                ]
+            },
+            "typedjs": {
+                "Js": [
+                    "plugins/custom/typedjs/typedjs.bundle.js"
+                ]
+            },
+            "cookiealert": {
+                "Css": [
+                    "plugins/custom/cookiealert/cookiealert.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/cookiealert/cookiealert.bundle.js"
+                ]
+            },
+            "cropper": {
+                "Css": [
+                    "plugins/custom/cropper/cropper.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/cropper/cropper.bundle.js"
+                ]
+            },
+            "vis-timeline": {
+                "Css": [
+                    "plugins/custom/vis-timeline/vis-timeline.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/vis-timeline/vis-timeline.bundle.js"
+                ]
+            },
+            "jstree": {
+                "Css": [
+                    "plugins/custom/jstree/jstree.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/jstree/jstree.bundle.js"
+                ]
+            },
+            "prismjs": {
+                "Css": [
+                    "plugins/custom/prismjs/prismjs.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/prismjs/prismjs.bundle.js"
+                ]
+            },
+            "leaflet": {
+                "Css": [
+                    "plugins/custom/leaflet/leaflet.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/leaflet/leaflet.bundle.js"
+                ]
+            },
+            "amcharts": {
+                "Js": [
+                    "https://cdn.amcharts.com/lib/5/index.js",
+                    "https://cdn.amcharts.com/lib/5/xy.js",
+                    "https://cdn.amcharts.com/lib/5/percent.js",
+                    "https://cdn.amcharts.com/lib/5/radar.js",
+                    "https://cdn.amcharts.com/lib/5/themes/Animated.js"
+                ]
+            },
+            "amcharts-maps": {
+                "Js": [
+                    "https://cdn.amcharts.com/lib/5/index.js",
+                    "https://cdn.amcharts.com/lib/5/map.js",
+                    "https://cdn.amcharts.com/lib/5/geodata/worldLow.js",
+                    "https://cdn.amcharts.com/lib/5/geodata/continentsLow.js",
+                    "https://cdn.amcharts.com/lib/5/geodata/usaLow.js",
+                    "https://cdn.amcharts.com/lib/5/geodata/worldTimeZonesLow.js",
+                    "https://cdn.amcharts.com/lib/5/geodata/worldTimeZoneAreasLow.js",
+                    "https://cdn.amcharts.com/lib/5/themes/Animated.js"
+                ]
+            },
+            "amcharts-stock": {
+                "Js": [
+                    "https://cdn.amcharts.com/lib/5/index.js",
+                    "https://cdn.amcharts.com/lib/5/xy.js",
+                    "https://cdn.amcharts.com/lib/5/themes/Animated.js"
+                ]
+            },
+            "bootstrap-select": {
+                "Css": [
+                    "plugins/custom/bootstrap-select/bootstrap-select.bundle.css"
+                ],
+                "Js": [
+                    "plugins/custom/bootstrap-select/bootstrap-select.bundle.js"
+                ]
+            }
+        },
+        "Name": "Demo1"
+    }
+}

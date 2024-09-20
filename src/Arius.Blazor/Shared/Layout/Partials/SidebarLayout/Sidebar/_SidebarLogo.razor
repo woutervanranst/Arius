@@ -1,0 +1,55 @@
+@using Layout._Helpers
+@inject IJSRuntime JS
+
+<!--begin::Logo-->
+<div class="app-sidebar-logo px-6" id="kt_app_sidebar_logo">
+	<!--begin::Logo image-->
+	<a href="?page=index">
+		@if(sidebar=="dark-sidebar"){
+			<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default-dark.svg")' class="h-25px app-sidebar-logo-default" />
+		} else {
+			if(sidebar=="light-sidebar"){
+				<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default.svg")' class="theme-light-show h-25px app-sidebar-logo-default" />
+				<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default-dark.svg")' class="theme-dark-show h-25px app-sidebar-logo-default" />
+			}
+		}
+		<img alt="Logo" src='@KTTheme.GetAssetPath("media/logos/default-small.svg")' class="h-20px app-sidebar-logo-minimize" />
+	</a>
+	<!--end::Logo image-->
+	<!--begin::Sidebar toggle-->
+	<!--begin::Minimized sidebar setup:
+            if (isset($_COOKIE["sidebar_minimize_state"]) && $_COOKIE["sidebar_minimize_state"] === "on") {
+                1. "src/js/layout/sidebar.js" adds "sidebar_minimize_state" cookie value to save the sidebar minimize state.
+                2. Set data-kt-app-sidebar-minimize="on" attribute for body tag.
+                3. Set data-kt-toggle-state="active" attribute to the toggle element with "kt_app_sidebar_toggle" id.
+                4. Add "active" class to to sidebar toggle element with "kt_app_sidebar_toggle" id.
+            }
+        -->
+	<div id="kt_app_sidebar_toggle" @onclick="UpdateSidebarState" class="app-sidebar-toggle btn btn-icon btn-shadow btn-sm btn-color-muted btn-active-color-primary body-bg h-30px w-30px position-absolute top-50 start-100 translate-middle rotate @(SidebarMinimizeState=="on" ? "active" : "")" data-kt-toggle-state="@(SidebarMinimizeState=="on" ? "active" : "")" data-kt-toggle="true" data-kt-toggle-target="body" data-kt-toggle-name="app-sidebar-minimize">@((MarkupString)KTTheme.GetIcon("black-left-line", "fs-2 rotate-180"))</div>
+	<!--end::Sidebar toggle-->
+</div>
+<!--end::Logo-->
+
+@code {
+    public string SidebarMinimizeState = "off";
+
+	private string sidebar = "";
+
+	private void UpdateSidebarState()
+    {
+        if(SidebarMinimizeState == "on"){
+            SidebarMinimizeState = "off";
+        } else {
+            SidebarMinimizeState = "on";
+        }
+    }
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if(firstRender){
+			sidebar = await JS.InvokeAsync<string>("document.body.getAttribute", "data-kt-app-layout");
+			SidebarMinimizeState = await JS.InvokeAsync<string>("document.body.getAttribute", "data-kt-app-sidebar-minimize");
+			StateHasChanged();
+		}
+	}
+}

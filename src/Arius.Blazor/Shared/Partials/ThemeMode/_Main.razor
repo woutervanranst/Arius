@@ -1,0 +1,22 @@
+<!--begin::Menu toggle-->
+<a href="#" class="btn btn-custom btn-outline btn-icon btn-icon-gray-700 btn-active-icon-primary" data-kt-menu-trigger="{default:'click', lg: 'hover'}" data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
+    @((MarkupString)KTTheme.GetIcon("night-day", "theme-light-show fs-1"))
+    @((MarkupString)KTTheme.GetIcon("moon", "theme-dark-show fs-1"))
+</a>
+<!--begin::Menu toggle-->
+
+<__Menu></__Menu>
+
+@code {
+    [Parameter]
+    public string ToggleBtnClass { get; set; } = "";
+
+    [Parameter]
+    public string MenuPlacement { get; set; } = "bottom-end";
+
+    [Parameter]
+    public string ToggleBtnIconClass { get; set; } = "fs-1";
+
+    [Parameter]
+    public string Trigger { get; set; } = "{default:'click', lg: 'hover'}";
+}

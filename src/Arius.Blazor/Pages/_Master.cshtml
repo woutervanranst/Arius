@@ -1,0 +1,66 @@
+@using Microsoft.AspNetCore.Components.Web
+@using Starterkit._keenthemes;
+@using Starterkit._keenthemes.libs
+
+@namespace Starterkit.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+@inject IBootstrapBase BootstrapBase
+@inject IKTTheme KTTheme
+
+@{
+    BootstrapBase.Init(KTTheme);
+}
+
+<!DOCTYPE html>
+<html @Html.Raw(KTTheme.PrintHtmlAttributes("html"))>
+<!--begin::Head-->
+
+<head>
+    <base href="~/" />
+    <meta charset="utf-8"/>
+    <meta name="description" content=""/>
+    <meta name="keywords" content=""/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta property="og:locale" content="en_US"/>
+    <meta property="og:type" content="article"/>
+    <meta property="og:title" content=""/>
+
+    <link rel="shortcut icon" href="@KTTheme.GetFavicon()"/>
+
+    <!--begin::Fonts-->
+    @foreach (string font in KTTheme.GetFonts())
+    {
+        <link rel="stylesheet" href="@font"/>
+    }
+    <!--end::Fonts-->
+
+    <!--begin::Global Stylesheets(mandatory)-->
+    @foreach (string file in KTTheme.GetGlobalAssets("Css"))
+    {
+        <link rel="stylesheet" type="text/css" href="@file"/>
+    }
+    <!--end::Global Stylesheets-->
+</head>
+<!--end::Head-->
+
+<!--begin::Body-->
+<!body @Html.Raw(KTTheme.PrintHtmlAttributes("body")) class='@KTTheme.PrintHtmlClasses("body")'>
+    <partial name="~/Shared/Partials/ThemeMode/_Init.cshtml"></partial>
+
+    <!--begin::Global Javascript(mandatory)-->
+    @foreach (string file in KTTheme.GetGlobalAssets("Js"))
+    {
+        <script src="@file"></script>
+    }
+    <!--end::Global Javascript-->
+
+    <partial name="~/Shared/Partials/_PageLoader.cshtml"></partial>
+    
+    @RenderBody()
+
+    <script src="_framework/blazor.server.js"></script>
+</!body>
+<!--end::Body-->
+
+</html>
