@@ -205,6 +205,8 @@ public class PointerFile : RelativeFile, IPointerFile
     public static     IPointerFile FromFullName(DirectoryInfo root, string fullName)         => new PointerFile(root, fullName);
     public new static IPointerFile FromRelativeName(DirectoryInfo root, string relativeName) => new PointerFile(root, System.IO.Path.Combine(root.FullName, relativeName));
 
+    public string BinaryFileRelativeName                => RelativeName.RemoveSuffix(IPointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+    public string BinaryFileRelativeNamePlatformNeutral => BinaryFileRelativeName.ToPlatformNeutralPath();
 
     public override string ToString() => RelativeName;
 }
@@ -281,6 +283,8 @@ public class BinaryFile : RelativeFile, IBinaryFile
     public static     IBinaryFile FromFullName(DirectoryInfo root, string fullName)         => new BinaryFile(root, fullName);
     public new static IBinaryFile FromRelativeName(DirectoryInfo root, string relativeName) => new BinaryFile(root, System.IO.Path.Combine(root.FullName, relativeName));
 
+    public string PointerFileRelativeName                => RelativeName + IPointerFile.Extension;
+    public string PointerFileRelativeNamePlatformNeutral => PointerFileRelativeName.ToPlatformNeutralPath();
 
     public override string ToString() => RelativeName;
 }

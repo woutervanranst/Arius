@@ -62,10 +62,15 @@ public interface IRelativeFile
 public interface IPointerFile : IFile, IRelativeFile
 {
     public static readonly string Extension = ".pointer.arius";
+
+    public string BinaryFileRelativeName                { get; }
+    public string BinaryFileRelativeNamePlatformNeutral { get; }
 }
 
 public interface IBinaryFile : IFile, IRelativeFile
 {
+    public string PointerFileRelativeName                { get; }
+    public string PointerFileRelativeNamePlatformNeutral { get; }
 }
 
 public interface IWithHash
