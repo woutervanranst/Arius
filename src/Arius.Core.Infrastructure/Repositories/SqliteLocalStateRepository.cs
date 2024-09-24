@@ -91,10 +91,34 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
         return context.BinaryProperties.LongCount();
     }
 
+    /// <summary>
+    /// The sum of the compressed size of the net-new files (TODO SAME AS GetIncrementalSize ??)
+    /// </summary>
+    /// <returns></returns>
     public long GetArchiveSize()
     {
         using var context = GetContext();
         return context.BinaryProperties.Sum(bp => bp.ArchivedLength);
+    }
+
+    /// <summary>
+    /// The sum of the uncompressed size of the original files
+    /// </summary>
+    /// <returns></returns>
+    public long GetOriginalArchiveSize()
+    {
+        using var context = GetContext();
+        return context.BinaryProperties.Sum(bp => bp.OriginalLength);
+    }
+
+    /// <summary>
+    /// The sum of the compressed size of the net-new files (TODO SAME AS GetArchiveSize ??)
+    /// </summary>
+    /// <returns></returns>
+    public long GetIncrementalSize() 
+    {
+        using var context = GetContext();
+        return context.BinaryProperties.Sum(bp => bp.IncrementalLength);
     }
 
     //public IEnumerable<BinaryProperties> GetBinaryProperties()

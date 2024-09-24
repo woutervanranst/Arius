@@ -20,6 +20,10 @@ public abstract record ArchiveCommandNotification(ArchiveCommand Command) : INot
 public record FilePairFoundNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingStartedNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingCompletedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileToUpload(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileWaitingForOtherUpload(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileWaitingForOtherUploadDone(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileAlreadyUploaded(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileStartedNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile, long OriginalLength, long ArchivedLength, double UploadSpeedMBps) : ArchiveCommandNotification(Command);
 public record CreatedPointerFileNotification(ArchiveCommand Command, IPointerFileWithHash PointerFile) : ArchiveCommandNotification(Command);
@@ -122,6 +126,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.NotStarted:
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
                             logger.LogInformation("Binary for {relativeName} does not exist remotely. Starting upload.", pwh.RelativeName);
+                            await mediator.Publish(new BinaryFileToUpload(request, pwh), cancellationToken);
 
                             await binariesToUpload.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A32
 
@@ -130,10 +135,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.Uploading:
                             // 2.2 Does not yet exist remote but is already being uploaded
                             logger.LogInformation("Binary for {relativeName} does not exist remotely but is already being uploaded.", pwh.RelativeName);
+                            await mediator.Publish(new BinaryFileWaitingForOtherUpload(request, pwh), cancellationToken);
 
                             addUploadedBinariesToPointerFileQueueTasks.Add(uploadingBinaries[pwh.Hash].Task.ContinueWith(async _ =>
                             {
                                 logger.LogInformation("Binary for {relativeName} has been uploaded.", pwh.RelativeName);
+                                await mediator.Publish(new BinaryFileWaitingForOtherUploadDone(request, pwh), cancellationToken);
 
                                 await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A332
                             }, cancellationToken)); // A331
@@ -142,6 +149,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.Uploaded:
                             // 2.3 Is already uploaded
                             logger.LogInformation("Binary for {relativeName} already exists remotely.", pwh.RelativeName);
+                            await mediator.Publish(new BinaryFileAlreadyUploaded(request, pwh), cancellationToken);
 
                             await pointerFileEntriesToCreate.Writer.WriteAsync(pwh.BinaryFile!, cancellationToken); // A35
 

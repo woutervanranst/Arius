@@ -22,4 +22,6 @@ public interface ILocalStateRepository
     long                          CountPointerFileEntries();
     void                          AddPointerFileEntry(PointerFileEntry pfe);
     void                          DeletePointerFileEntry(PointerFileEntry pfe);
+    long                          GetOriginalArchiveSize();
+    long                          GetIncrementalSize();
 }

@@ -23,6 +23,8 @@ public record RepositoryStatisticsQueryResponse
 {
     public required long BinaryFilesCount       { get; init; }
     public required long ArchiveSize            { get; init; }
+    public required long OriginalArchiveSize    { get; init; }
+    public required long IncrementalSize        { get; init; }
     public required long PointerFilesEntryCount { get; init; }
 }
 
@@ -43,12 +45,16 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
         var archiveSize            = stateDbRepository.GetArchiveSize();
+        var originalArchiveSize    = stateDbRepository.GetOriginalArchiveSize();
+        var incrementalSize        = stateDbRepository.GetIncrementalSize();
         var pointerFilesEntryCount = stateDbRepository.CountPointerFileEntries();
 
         return new RepositoryStatisticsQueryResponse
         {
             BinaryFilesCount       = binaryFilesCount,
             ArchiveSize            = archiveSize,
+            OriginalArchiveSize    = originalArchiveSize,
+            IncrementalSize        = incrementalSize,
             PointerFilesEntryCount = pointerFilesEntryCount
         };
     }
