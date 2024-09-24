@@ -128,18 +128,19 @@ public abstract class TestBase
             case FilePairType.BinaryFileWithPointerFile:
                 bfwh = GetBinaryFileWithHash();
                 pfwh = PointerFileWithHash.Create(bfwh);
-                break;
+
+                return FilePairWithHash.FromFilePair(pfwh, bfwh);
             case FilePairType.PointerFileOnly:
                 pfwh = GetPointerFileWithHash();
-                break;
+
+                return FilePairWithHash.FromPointerFile(pfwh);
             case FilePairType.BinaryFileOnly:
                 bfwh = GetBinaryFileWithHash();
-                break;
+                
+                return FilePairWithHash.FromBinaryFile(bfwh);
             default:
                 throw new InvalidOperationException("Must have either a binary file or a pointer file");
         }
-
-        return FilePairWithHash.FromFiles(pfwh, bfwh);
 
         IBinaryFileWithHash GetBinaryFileWithHash()
         {
@@ -184,7 +185,7 @@ public abstract class TestBase
                 SetAttributes(bfi1.FullName, bfi0.Attributes);
 
                 var bf2 = BinaryFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, copyRelativeName, original.Hash);
-                return FilePairWithHash.FromFiles(null, bf2);
+                return FilePairWithHash.FromBinaryFile(bf2);
             default:
                 throw new InvalidOperationException("Must have either a binary file or a pointer file");
 

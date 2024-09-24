@@ -65,12 +65,18 @@ public interface IPointerFile : IFile, IRelativeFile
 
     public string BinaryFileRelativeName                { get; }
     public string BinaryFileRelativeNamePlatformNeutral { get; }
+
+    IPointerFile GetPointerFile();
+    IBinaryFile  GetBinaryFile();
 }
 
 public interface IBinaryFile : IFile, IRelativeFile
 {
     public string PointerFileRelativeName                { get; }
     public string PointerFileRelativeNamePlatformNeutral { get; }
+
+    IPointerFile GetPointerFile();
+    IBinaryFile  GetBinaryFile();
 }
 
 public interface IWithHash
@@ -80,10 +86,14 @@ public interface IWithHash
 
 public interface IBinaryFileWithHash : IBinaryFile, IWithHash
 {
+    IPointerFileWithHash GetPointerFileWithHash();
+    IBinaryFileWithHash  GetBinaryFileWithHash();
 }
 
 public interface IPointerFileWithHash : IPointerFile, IWithHash
 {
+    IPointerFileWithHash GetPointerFileWithHash();
+    IBinaryFileWithHash  GetBinaryFileWithHash();
 }
 
 public interface IFilePair : IRelativeFile
@@ -95,9 +105,6 @@ public interface IFilePair : IRelativeFile
     bool          IsBinaryFileWithPointerFile { get; }
     bool          IsPointerFileOnly           { get; }
     bool          IsBinaryFileOnly            { get; }
-    
-    bool          HasPointerFile              { get; }
-    bool          HasBinaryFile               { get; }
     
     bool          HasExistingPointerFile      { get; }
     bool          HasExistingBinaryFile       { get; }

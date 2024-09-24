@@ -70,25 +70,8 @@ public class File : IFile // TODO make internal
     public string PointerFileFullName => IsPointerFile ? FullName : FullName + IPointerFile.Extension;
     //public string PointerFileFullNamePlatformNeutral => PointerFileFullName.ToPlatformNeutralPath();
 
-    public IPointerFile GetPointerFile(DirectoryInfo root)
-    {
-        if (IsPointerFile)
-            // this File is a PointerFile, return it as is
-            return PointerFile.FromFullName(root, fullName);
-        else
-            // this File is a BinaryFile, return the equivalent PointerFile
-            return PointerFile.FromFullName(root, PointerFileFullName);
-    }
-
-    public IBinaryFile GetBinaryFile(DirectoryInfo root)
-    {
-        if (IsBinaryFile)
-            // this File is a BinaryFile, return as is
-            return BinaryFile.FromFullName(root, fullName);
-        else
-            // this File is a PointerFile, return the equivalent BinaryFile
-            return BinaryFile.FromFullName(root, BinaryFileFullName);
-    }
+    public IPointerFile GetPointerFile(DirectoryInfo root) => PointerFile.FromFullName(root, PointerFileFullName);
+    public IBinaryFile  GetBinaryFile(DirectoryInfo root)  => BinaryFile.FromFullName(root, BinaryFileFullName);
 
     public Stream OpenRead() => Length <= 1024 ?
         new FileStream(fullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 1024 /* benchmarked -- do not add extra options */) :
@@ -176,6 +159,9 @@ public abstract class RelativeFile : File, IRelativeFile
     public DirectoryInfo Root                        { get; }
     public string        RelativeName                => System.IO.Path.GetRelativePath(Root.FullName, FullName);
     public string        RelativeNamePlatformNeutral => RelativeName.ToPlatformNeutralPath();
+    
+    public IPointerFile  GetPointerFile()            => base.GetPointerFile(Root);
+    public IBinaryFile   GetBinaryFile()             => base.GetBinaryFile(Root);
 
     //public string GetRelativeNamePlatformNeutral(string relativeTo)        => GetRelativeName(relativeTo).ToPlatformNeutralPath();
     //public string GetRelativeName(DirectoryInfo relativeTo)                => GetRelativeName(relativeTo.FullName);
@@ -189,6 +175,8 @@ public abstract class RelativeFile : File, IRelativeFile
     //}
 
     //public override int GetHashCode() => HashCode.Combine(base.GetHashCode(), Root?.FullName);
+
+
 
     public override string ToString() => RelativeName;
 }
@@ -269,6 +257,9 @@ public class PointerFileWithHash : PointerFile, IPointerFileWithHash
 
     public Hash Hash { get; }
 
+    public new IPointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(Root, PointerFileFullName, Hash);
+    public new IBinaryFileWithHash  GetBinaryFileWithHash()  => BinaryFileWithHash.FromFullName(Root, BinaryFileFullName, Hash);
+
     public override string ToString() => RelativeName;
 }
 
@@ -305,62 +296,86 @@ public class BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
     //public PointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(root, FullName + PointerFile.Extension, Hash);
     public PointerFileEntry GetPointerFileEntry() => PointerFileEntry.FromBinaryFileWithHash(this);
 
+    public new IPointerFileWithHash GetPointerFileWithHash() => PointerFileWithHash.FromFullName(Root, PointerFileFullName, Hash);
+    public new IBinaryFileWithHash  GetBinaryFileWithHash()  => BinaryFileWithHash.FromFullName(Root, BinaryFileFullName, Hash);
 
     public override string ToString() => RelativeName;
 }
 
 public class FilePair : IFilePair
 {
-    protected FilePair(IPointerFile? pointerFile, IBinaryFile? binaryFile)
+    protected FilePair(IPointerFile pointerFile, IBinaryFile binaryFile)
     {
         PointerFile = pointerFile;
         BinaryFile  = binaryFile;
     }
 
-    public static FilePair FromFiles(IPointerFile? pointerFile, IBinaryFile? binaryFile) => new(pointerFile, binaryFile);
+    public static FilePair FromBinaryFile(IBinaryFile binaryFile)
+    {
+        ArgumentNullException.ThrowIfNull(binaryFile);
+        if (binaryFile.Exists is false)
+            throw new ArgumentException($"'{binaryFile.FullName}' does not exist");
 
+        var pointerFile = binaryFile.GetPointerFile();
+        return new FilePair(pointerFile, binaryFile);
+    }
 
-    public IPointerFile? PointerFile { get; }
-    public IBinaryFile? BinaryFile { get; }
+    public static FilePair FromPointerFile(IPointerFile pointerFile)
+    {
+        ArgumentNullException.ThrowIfNull(pointerFile);
+        if (pointerFile.Exists is false)
+            throw new ArgumentException($"'{pointerFile.FullName}' does not exist");
 
-    public DirectoryInfo Root                        => BinaryFile?.Root ?? PointerFile!.Root;
-    public string        RelativeName                => BinaryFile?.RelativeName ?? PointerFile!.RelativeName; // TODO dit verschilt afh of er een BF of een PF inzit?
-    public string        RelativeNamePlatformNeutral => BinaryFile?.RelativeNamePlatformNeutral ?? PointerFile!.RelativeNamePlatformNeutral; // TODO dit verschilt afh of er een BF of een PF inzit?
-     
+        var binaryFile = pointerFile.GetBinaryFile();
+        return new FilePair(pointerFile, binaryFile);
+    }
+
+    public static FilePair FromFilePair(IPointerFile pointerFile, IBinaryFile binaryFile)
+    {
+        ArgumentNullException.ThrowIfNull(pointerFile);
+        ArgumentNullException.ThrowIfNull(binaryFile);
+
+        return new FilePair(pointerFile, binaryFile);
+    }
+
+    public IPointerFile PointerFile { get; }
+    public IBinaryFile BinaryFile { get; }
+
+    public DirectoryInfo Root => BinaryFile?.Root ?? PointerFile!.Root;
+    public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName; // TODO dit verschilt afh of er een BF of een PF inzit?
+    public string RelativeNamePlatformNeutral => BinaryFile?.RelativeNamePlatformNeutral ?? PointerFile!.RelativeNamePlatformNeutral; // TODO dit verschilt afh of er een BF of een PF inzit?
+
     public FilePairType Type
     {
         get
         {
-            if (PointerFile is not null && BinaryFile is not null)
+            if (PointerFile.Exists && BinaryFile.Exists)
                 return FilePairType.BinaryFileWithPointerFile;
-            else if (PointerFile is not null && BinaryFile is null)
+            else if (PointerFile.Exists && !BinaryFile.Exists)
                 return FilePairType.PointerFileOnly;
-            else if (PointerFile is null && BinaryFile is not null)
+            else if (!PointerFile.Exists && BinaryFile.Exists)
                 return FilePairType.BinaryFileOnly;
-            else if (PointerFile is null && BinaryFile is null)
+            else if (!PointerFile.Exists && !BinaryFile.Exists)
                 return FilePairType.None;
 
             throw new InvalidOperationException();
         }
     }
 
-    public bool IsBinaryFileWithPointerFile => PointerFile is not null && BinaryFile is not null;
-    public bool IsPointerFileOnly           => PointerFile is not null && BinaryFile is null;
-    public bool IsBinaryFileOnly            => PointerFile is null && BinaryFile is not null;
+    public bool IsBinaryFileWithPointerFile => PointerFile.Exists && BinaryFile.Exists;
+    public bool IsPointerFileOnly => PointerFile.Exists && !BinaryFile.Exists;
+    public bool IsBinaryFileOnly => !PointerFile.Exists && BinaryFile.Exists;
 
-    public bool HasPointerFile => PointerFile is not null;
-    public bool HasBinaryFile  => BinaryFile is not null;
-
-    public bool HasExistingPointerFile => PointerFile is not null && PointerFile.Exists;
-    public bool HasExistingBinaryFile  => BinaryFile is not null && BinaryFile.Exists;
+    public bool HasExistingPointerFile => PointerFile.Exists;
+    public bool HasExistingBinaryFile => BinaryFile.Exists;
 
     public override string ToString()
     {
-        if (PointerFile is not null && BinaryFile is not null)
+        if (PointerFile.Exists && BinaryFile.Exists)
             return $"FilePair PF+BF '{RelativeName}'";
-        else if (PointerFile is null && BinaryFile is not null)
+        else if (!PointerFile.Exists && BinaryFile.Exists)
             return $"FilePair BF '{RelativeName}'";
-        else if (PointerFile is not null && BinaryFile is null)
+        else if (PointerFile.Exists && !BinaryFile.Exists)
             return $"FilePair PF '{RelativeName}'";
         else
             throw new InvalidOperationException("PointerFile and BinaryFile are both null");
@@ -369,26 +384,52 @@ public class FilePair : IFilePair
 
 public class FilePairWithHash : FilePair, IFilePairWithHash
 {
-    protected FilePairWithHash(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
+    protected FilePairWithHash(IPointerFileWithHash pointerFile, IBinaryFileWithHash binaryFile) : base(pointerFile, binaryFile)
     {
         this.PointerFile = pointerFile;
         this.BinaryFile  = binaryFile;
     }
 
-    public static FilePairWithHash FromFiles(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) => new(pointerFile, binaryFile);
+    public static FilePairWithHash FromBinaryFile(IBinaryFileWithHash binaryFile)
+    {
+        ArgumentNullException.ThrowIfNull(binaryFile);
+        if (binaryFile.Exists is false)
+            throw new ArgumentException($"'{binaryFile.FullName}' does not exist");
 
-    public new IPointerFileWithHash? PointerFile { get; }
-    public new IBinaryFileWithHash? BinaryFile { get; }
+        var pointerFile = binaryFile.GetPointerFileWithHash();
+        return new FilePairWithHash(pointerFile, binaryFile);
+    }
+
+    public static FilePairWithHash FromPointerFile(IPointerFileWithHash pointerFile)
+    {
+        ArgumentNullException.ThrowIfNull(pointerFile);
+        if (pointerFile.Exists is false)
+            throw new ArgumentException($"'{pointerFile.FullName}' does not exist");
+
+        var binaryFile = pointerFile.GetBinaryFileWithHash();
+        return new FilePairWithHash(pointerFile, binaryFile);
+    }
+
+    public static FilePairWithHash FromFilePair(IPointerFileWithHash pointerFile, IBinaryFileWithHash binaryFile)
+    {
+        ArgumentNullException.ThrowIfNull(pointerFile);
+        ArgumentNullException.ThrowIfNull(binaryFile);
+
+        return new FilePairWithHash(pointerFile, binaryFile);
+    }
+
+    public new IPointerFileWithHash PointerFile { get; }
+    public new IBinaryFileWithHash  BinaryFile  { get; }
 
     public Hash Hash => BinaryFile?.Hash ?? PointerFile!.Hash;
 
     public override string ToString()
     {
-        if (PointerFile is not null && BinaryFile is not null)
+        if (PointerFile.Exists && BinaryFile.Exists)
             return $"FilePairWithHash PF+BF '{RelativeName}' ({PointerFile.Hash.ToShortString()})";
-        else if (PointerFile is null && BinaryFile is not null)
+        else if (!PointerFile.Exists && BinaryFile.Exists)
             return $"FilePairWithHash BF '{RelativeName}' ({BinaryFile.Hash.ToShortString()})";
-        else if (PointerFile is not null && BinaryFile is null)
+        else if (PointerFile.Exists && !BinaryFile.Exists)
             return $"FilePairWithHash PF '{RelativeName}' ({PointerFile.Hash.ToShortString()})";
         else
             throw new InvalidOperationException("PointerFile and BinaryFile are both null");

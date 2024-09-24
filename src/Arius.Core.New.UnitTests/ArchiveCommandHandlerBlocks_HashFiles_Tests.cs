@@ -40,6 +40,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.DidNotReceive().GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
+        p2.Type.Should().Be(FilePairType.BinaryFileWithPointerFile);
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
     }
 
@@ -62,6 +63,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
+        p2.Type.Should().Be(FilePairType.BinaryFileWithPointerFile);
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
     }
 
@@ -98,6 +100,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
 
         p2.Should().NotBeNull();
+        p2.Type.Should().Be(FilePairType.BinaryFileWithPointerFile);
         p2.BinaryFile.Hash.Should().Be(p2.PointerFile.Hash);
     }
 
@@ -113,9 +116,10 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 
         // Assert
         p2.Should().NotBeNull();
+        p2.Type.Should().Be(FilePairType.PointerFileOnly);
         p2.PointerFile.Should().NotBeNull();
         p2.PointerFile.Hash.Should().Be(p0.Hash);
-        p2.BinaryFile.Should().BeNull();
+        p2.BinaryFile.Exists.Should().BeFalse();
         hvp.DidNotReceive().GetHashAsync(Arg.Any<IBinaryFile>());
     }
 
@@ -133,9 +137,10 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 
         // Assert
         p2.Should().NotBeNull();
+        p2.Type.Should().Be(FilePairType.BinaryFileOnly);
         p2.BinaryFile.Should().NotBeNull();
         p2.BinaryFile.Hash.Should().Be(someHash);
-        p2.PointerFile.Should().BeNull();
+        p2.PointerFile.Exists.Should().BeFalse();
         hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
     }
 }

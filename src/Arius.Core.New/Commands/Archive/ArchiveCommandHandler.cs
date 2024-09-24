@@ -119,7 +119,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             await foreach (var pwh in hashedFilePairs.Reader.ReadAllAsync(cancellationToken))
             {
-                if (pwh.HasBinaryFile)
+                if (pwh.HasExistingBinaryFile)
                 {
                     // The binary exists locally
                     var r = DetermineUploadStatus(pwh.Hash);
@@ -405,7 +405,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     var pfwh0 = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile);
                     var bfwh0 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile, pfwh0.Hash);
 
-                    return FilePairWithHash.FromFiles(pfwh0, bfwh0);
+                    return FilePairWithHash.FromFilePair(pfwh0, bfwh0);
                 }
             }
 
@@ -417,14 +417,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             if (pfwh1.Hash != bfwh1.Hash)
                 throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
-            return FilePairWithHash.FromFiles(pfwh1, bfwh1);
+            return FilePairWithHash.FromFilePair(pfwh1, bfwh1);
         }
         else if (pair.IsPointerFileOnly)
         {
             // A PointerFile without a BinaryFile
             var pfwh = PointerFileWithHash.FromExistingPointerFile(pair.PointerFile!);
 
-            return FilePairWithHash.FromFiles(pfwh, null);
+            return FilePairWithHash.FromPointerFile(pfwh);
         }
         else if (pair.IsBinaryFileOnly)
         {
@@ -432,7 +432,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var h = await hvp.GetHashAsync(pair.BinaryFile!);
             var bfwh = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile!, h);
 
-            return FilePairWithHash.FromFiles(null, bfwh);
+            return FilePairWithHash.FromBinaryFile(bfwh);
         }
         else
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");

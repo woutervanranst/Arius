@@ -44,7 +44,13 @@ public class LocalFileSystemTests_2 : TestBase
 
         // Assert
         var actualResults = indexedFiles
-            .Select(fp => (fp.PointerFile?.RelativeNamePlatformNeutral, fp.BinaryFile?.RelativeNamePlatformNeutral)).ToList();
+            .Select(fp => fp.Type switch
+            {
+                FilePairType.PointerFileOnly           => (fp.PointerFile?.RelativeNamePlatformNeutral, null),
+                FilePairType.BinaryFileOnly            => (null, fp.BinaryFile?.RelativeNamePlatformNeutral),
+                FilePairType.BinaryFileWithPointerFile => (fp.PointerFile?.RelativeNamePlatformNeutral, fp.BinaryFile?.RelativeNamePlatformNeutral),
+                _                                      => throw new ArgumentOutOfRangeException()
+            }).ToList();
 
         actualResults.Should().BeEquivalentTo(expectedResults);
     }

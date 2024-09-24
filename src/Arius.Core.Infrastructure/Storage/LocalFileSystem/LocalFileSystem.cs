@@ -81,12 +81,12 @@ public class LocalFileSystem : IFileSystem
                 if (pf.GetBinaryFile(directory) is { Exists: true } bf)
                 {
                     // 1. BinaryFile exists too
-                    yield return FilePair.FromFiles(pf, bf);
+                    yield return FilePair.FromFilePair(pf, bf);
                 }
                 else
                 {
                     // 2. BinaryFile does not exist
-                    yield return FilePair.FromFiles(pf, null);
+                    yield return FilePair.FromPointerFile(pf);
                 }
             }
             else
@@ -101,8 +101,8 @@ public class LocalFileSystem : IFileSystem
                 }
                 else
                 {
-                    // 4. BinaryFile does not exist
-                    yield return FilePair.FromFiles(null, bf);
+                    // 4. PointerFile does not exist
+                    yield return FilePair.FromBinaryFile(bf);
                 }
             }
         }
