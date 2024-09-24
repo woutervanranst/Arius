@@ -164,7 +164,8 @@ public class AriusFixture : IDisposable
             Passphrase    = TestRemoteRepositoryOptions.Passphrase
         };
 
-    public IEnumerable<INotification> MediatorNotifications => mediatorNotifications.Notifications;
+    public IEnumerable<INotification> MediatorNotifications      => mediatorNotifications.Notifications;
+    public void                       ClearMediatorNotifications() => mediatorNotifications.Clear();
 
     public void Dispose()
     {

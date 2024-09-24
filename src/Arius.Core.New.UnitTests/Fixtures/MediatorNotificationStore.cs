@@ -15,6 +15,7 @@ public class MediatorNotificationStore
     }
 
     public IEnumerable<INotification> Notifications => notifications.AsReadOnly();
+    public void                       Clear()       => notifications.Clear();
 }
 
 public class GenericMediatrNotificationHandler<T>

@@ -308,10 +308,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var changes = await remoteStateRepository.SaveChangesAsync(stateDbRepository, remoteRepository);
         if (changes)
             // NOTE: This is logged in the SaveChangesAsync method
-            await mediator.Publish(new NewStateVersionCreatedNotification(request, request.VersionName!));
+            await mediator.Publish(new NewStateVersionCreatedNotification(request, stateDbRepository.Version), cancellationToken);
         else
             // NOTE: This is logged in the SaveChangesAsync method
-            await mediator.Publish(new NoNewStateVersionCreatedNotification(request));
+            await mediator.Publish(new NoNewStateVersionCreatedNotification(request), cancellationToken);
 
         await mediator.Publish(new ArchiveCommandDoneNotification(request), cancellationToken);
 

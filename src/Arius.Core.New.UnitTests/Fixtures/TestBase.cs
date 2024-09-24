@@ -215,6 +215,20 @@ public abstract class TestBase
         await Fixture.Mediator.Send(request);
     }
 
+    protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier)
+    {
+        var c = new ArchiveCommand
+        {
+            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+            FastHash                = fastHash,
+            RemoveLocal             = removeLocal,
+            Tier                    = tier,
+            LocalRoot               = Fixture.TestRunSourceFolder,
+        };
+
+        await Fixture.Mediator.Send(c);
+    }
+
     protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier, string versionName)
     {
         var c = new ArchiveCommand
