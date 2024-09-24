@@ -307,20 +307,15 @@ public abstract class TestBase
             .WithMessage($"*{expectedMessagePart}*");
     }
 
-    protected void ThenShouldContainMediatorNotification<TNotification>()
-    {
-        Fixture.MediatorNotifications.OfType<TNotification>().Should().NotBeEmpty();
-    }
 
-    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate)
-    {
-        Fixture.MediatorNotifications.OfType<TNotification>().Should().Contain(predicate);
-    }
+    protected void ThenShouldContainMediatorNotification<TNotification>() 
+        => Fixture.MediatorNotifications.OfType<TNotification>().Should().NotBeEmpty();
 
-    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate, out TNotification notification)
-    {
-        notification = Fixture.MediatorNotifications.OfType<TNotification>().AsQueryable().Single(predicate);
-    }
+    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate) 
+        => Fixture.MediatorNotifications.OfType<TNotification>().Should().Contain(predicate);
+    
+    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate, out TNotification notification) 
+        => notification = Fixture.MediatorNotifications.OfType<TNotification>().AsQueryable().Single(predicate);
 
 
     // --- HELPERS

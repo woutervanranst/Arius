@@ -101,6 +101,22 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
+    public async Task Handle_NoVersionSpecified_ShouldUseUtcNow()
+    {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
+
+        // Act
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot);
+
+        // Assert
+        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => true, out var notification);
+        notification.Version.Should().BeOfType<DateTimeRepositoryVersion>();
+        (notification.Version as DateTimeRepositoryVersion)!.OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task Handle_DuplicateFile()
     {
         // Arrange
