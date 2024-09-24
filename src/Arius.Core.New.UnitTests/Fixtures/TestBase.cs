@@ -141,20 +141,11 @@ public abstract class TestBase
 
         return FilePairWithHash.FromFiles(pfwh, bfwh);
 
-        static void SetAttributes(FileAttributes attributes, string filePath)
-        {
-            File.SetAttributes(filePath, attributes);
-
-            var actualAtts = File.GetAttributes(filePath);
-            if (actualAtts != attributes)
-                throw new InvalidOperationException($"Could not set attributes for {filePath}");
-        }
-
         IBinaryFileWithHash GetBinaryFileWithHash()
         {
             var bf = BinaryFile.FromRelativeName(Fixture.TestRunSourceFolder, relativeName);
             FileUtils.CreateRandomFile(bf.FullName, sizeInBytes);
-            SetAttributes(attributes, bf.FullName);
+            SetAttributes(bf.FullName, attributes);
 
             var h = Fixture.HashValueProvider.GetHashAsync(bf).Result;
             return BinaryFileWithHash.FromBinaryFile(bf, h);
@@ -167,6 +158,36 @@ public abstract class TestBase
             var h = new Hash(randomBytes);
 
             return PointerFileWithHash.Create(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow);
+        }
+    }
+
+    private static void SetAttributes(string filePath, FileAttributes attributes)
+    {
+        File.SetAttributes(filePath, attributes);
+
+        var actualAtts = File.GetAttributes(filePath);
+        if (actualAtts != attributes)
+            throw new InvalidOperationException($"Could not set attributes for {filePath}");
+    }
+
+    internal FilePairWithHash GivenSourceFolderHavingCopyOfFilePair(FilePairWithHash original, string copyRelativeName)
+    {
+        switch (original.Type)
+        {
+            case FilePairType.BinaryFileWithPointerFile:
+                throw new NotImplementedException();
+            case FilePairType.PointerFileOnly:
+                throw new NotImplementedException();
+            case FilePairType.BinaryFileOnly:
+                var bfi0 = new FileInfo(original.BinaryFile.FullName);
+                var bfi1 = bfi0.CopyTo(Fixture.TestRunSourceFolder, copyRelativeName);
+                SetAttributes(bfi1.FullName, bfi0.Attributes);
+
+                var bf2 = BinaryFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, copyRelativeName, original.Hash);
+                return FilePairWithHash.FromFiles(null, bf2);
+            default:
+                throw new InvalidOperationException("Must have either a binary file or a pointer file");
+
         }
     }
 
@@ -188,9 +209,24 @@ public abstract class TestBase
         return Fixture.Mediator.CreateStream(request);
     }
 
-    protected async Task WhenMediatorRequest(ArchiveCommand request)
+    protected async Task WhenArchiveCommandAsync(ArchiveCommand request)
     {
         await Fixture.Mediator.Send(request);
+    }
+
+    protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier, string versionName)
+    {
+        var c = new ArchiveCommand
+        {
+            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+            FastHash                = fastHash,
+            RemoveLocal             = removeLocal,
+            Tier                    = tier,
+            LocalRoot               = Fixture.TestRunSourceFolder,
+            VersionName             = new RepositoryVersion { Name = versionName }
+        };
+
+        await Fixture.Mediator.Send(c);
     }
     
     protected async Task<RepositoryStatisticsQueryResponse> GetRepositoryStatistics()

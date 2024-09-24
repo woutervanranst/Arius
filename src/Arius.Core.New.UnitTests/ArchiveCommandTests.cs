@@ -64,18 +64,8 @@ public class ArchiveCommandTests : TestBase
         var lfs          = GivenLocalFilesystem();
         var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
-        var c = new ArchiveCommand
-        {
-            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
-            FastHash                = false,
-            RemoveLocal             = false,
-            Tier                    = StorageTier.Hot,
-            LocalRoot               = Fixture.TestRunSourceFolder,
-            VersionName             = new RepositoryVersion { Name = "v1.0" }
-        };
-
         // Act
-        await WhenMediatorRequest(c);
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
         
         // Assert
 
@@ -89,7 +79,7 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.BinaryFile.RelativeNamePlatformNeutral == relativeName && n.OriginalLength == 100);
         ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName);
-        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version == c.VersionName);
+        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.0");
         ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
 
         var stats                = await GetRepositoryStatistics();
@@ -124,29 +114,14 @@ public class ArchiveCommandTests : TestBase
         // Arrange
         var relativeName1 = "directory/File1.txt";
         var relativeName2 = "directory2/File2.txt";
-        var lfs           = GivenLocalFilesystem();
         var fpwh1         = GivenSourceFolderHavingFilePair(relativeName1, FilePairType.BinaryFileOnly, 100);
-
-        var x = new FileInfo(fpwh1.BinaryFile.FullName);
-        x.CopyTo(Fixture.TestRunSourceFolder, relativeName2);
-        var bf2   = BinaryFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, relativeName2, fpwh1.Hash);
-        var fpwh2 = FilePairWithHash.FromFiles(null, bf2);
-
-        var c = new ArchiveCommand
-        {
-            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
-            FastHash                = false,
-            RemoveLocal             = false,
-            Tier                    = StorageTier.Hot,
-            LocalRoot               = Fixture.TestRunSourceFolder,
-            VersionName             = new RepositoryVersion { Name = "v1.0" }
-        };
+        var fpwh2         = GivenSourceFolderHavingCopyOfFilePair(fpwh1, relativeName2);
+        var lfs           = GivenLocalFilesystem();
 
         // Act
-        await WhenMediatorRequest(c);
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
 
         // Assert
-
         var stats                = await GetRepositoryStatistics();
         var localStateRepository = await GetLocalStateRepositoryAsync();
 
@@ -172,6 +147,13 @@ public class ArchiveCommandTests : TestBase
 
         lfs.PointerFileExists(Fixture, relativeName1).Should().BeTrue();
         lfs.PointerFileExists(Fixture, relativeName2).Should().BeTrue();
+
+        fpwh1.PointerFile.Exists.Should().BeTrue();
+        fpwh2.PointerFile.Exists.Should().BeTrue();
+
+        // The BinaryFiles exist
+        fpwh1.BinaryFile.Exists.Should().BeTrue();
+        fpwh2.BinaryFile.Exists.Should().BeTrue();
 
         // Validate SizeMetrics
         stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
