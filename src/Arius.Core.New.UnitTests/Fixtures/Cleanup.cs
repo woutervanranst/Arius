@@ -1,3 +1,4 @@
+using System.Globalization;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
@@ -14,7 +15,7 @@ public class Cleanup : TestBase
     {
     }
 
-    
+
     [Fact]
     public async Task CleanupAzureAsync()
     {
@@ -40,9 +41,23 @@ public class Cleanup : TestBase
     [Fact]
     public async Task CleanupLocalAsync()
     {
-        if (Directory.Exists(Fixture.TestRunRootFolder.FullName))
+        if (!Fixture.TestRunRootFolder.Parent.Exists)
+            return;
+        
+        foreach (var subdirectory in Fixture.TestRunRootFolder.Parent.GetDirectories())
         {
-            Fixture.TestRunRootFolder.Delete(true); // Recursively delete the test run folder
+            var folderName   = subdirectory.Name;
+            var dateTimePart = folderName.Split('-')[0];
+
+            if (!DateTime.TryParseExact(dateTimePart, "yyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var folderDateTime)) 
+                continue;
+
+            var timeDifference = DateTime.UtcNow - folderDateTime;
+
+            if (timeDifference.TotalHours > 24)
+            {
+                subdirectory.Delete(true);
+            }
         }
     }
 }

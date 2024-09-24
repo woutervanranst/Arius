@@ -31,10 +31,9 @@ public sealed class SqliteLocalStateRepositoryTests : TestBase
             repository.AddBinary(new BinaryProperties()
             {
                 Hash = new Hash(i.ToString().StringToBytes()),
-                ArchivedLength= 100,
-                IncrementalLength = 120,
+                ArchivedSize= 100,
                 StorageTier = StorageTier.Hot,
-                OriginalLength = 200
+                OriginalSize = 200
 
             });
             repository.AddPointerFileEntry(new PointerFileEntry()

@@ -94,16 +94,17 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
     }
 
-    public async Task SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)
+    public async Task<bool> SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)
     {
         if (!localStateRepository.HasChanges)
         {
             logger.LogInformation("No changes made in this version, skipping upload.");
-            return;
+            return false;
         }
 
         localStateRepository.Vacuum();
 
         await remoteRepository.UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
+        return true;
     }
 }

@@ -2,9 +2,7 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
@@ -20,9 +18,8 @@ internal record PointerFileEntryDto
 internal record BinaryPropertiesDto
 {
     public         byte[]                           Hash               { get; init; }
-    public         long                             OriginalLength     { get; init; }
-    public         long                             ArchivedLength     { get; init; }
-    public         long                             IncrementalLength  { get; init; }
+    public         long                             OriginalSize       { get; init; }
+    public         long                             ArchivedSize       { get; init; }
     public         StorageTier                      StorageTier        { get; set; }
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }

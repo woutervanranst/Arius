@@ -311,11 +311,13 @@ public class BinaryFileWithHash : BinaryFile, IBinaryFileWithHash // to private
 
 public class FilePair : IFilePair
 {
-    public FilePair(IPointerFile? pointerFile, IBinaryFile? binaryFile)
+    protected FilePair(IPointerFile? pointerFile, IBinaryFile? binaryFile)
     {
         PointerFile = pointerFile;
         BinaryFile  = binaryFile;
     }
+
+    public static FilePair FromFiles(IPointerFile? pointerFile, IBinaryFile? binaryFile) => new(pointerFile, binaryFile);
 
 
     public IPointerFile? PointerFile { get; }
@@ -367,11 +369,13 @@ public class FilePair : IFilePair
 
 public class FilePairWithHash : FilePair, IFilePairWithHash
 {
-    public FilePairWithHash(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
+    protected FilePairWithHash(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) : base(pointerFile, binaryFile)
     {
         this.PointerFile = pointerFile;
         this.BinaryFile  = binaryFile;
     }
+
+    public static FilePairWithHash FromFiles(IPointerFileWithHash? pointerFile, IBinaryFileWithHash? binaryFile) => new(pointerFile, binaryFile);
 
     public new IPointerFileWithHash? PointerFile { get; }
     public new IBinaryFileWithHash? BinaryFile { get; }

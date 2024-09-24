@@ -74,14 +74,13 @@ internal class AzureRemoteRepository : IRemoteRepository
 
         var bp = new BinaryProperties
         {
-            Hash              = file.Hash,
-            OriginalLength    = r.originalLength,
-            ArchivedLength    = r.archivedLength,
-            IncrementalLength = r.archivedLength,
-            StorageTier       = t
+            Hash         = file.Hash,
+            OriginalSize = r.originalLength,
+            ArchivedSize = r.archivedLength,
+            StorageTier  = t
         };
 
-        logger.LogInformation("Uploading Binary {hash}... done", file.Hash);
+        logger.LogInformation("Uploading Binary {hash}... done", file.Hash.ToShortString());
 
         return bp;
     }

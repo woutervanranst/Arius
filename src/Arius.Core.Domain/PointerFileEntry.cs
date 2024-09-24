@@ -33,17 +33,12 @@ public record BinaryProperties
     /// <summary>
     /// The original/restored size of the binary
     /// </summary>
-    public required long OriginalLength { get; init; }
+    public required long OriginalSize { get; init; }
 
     /// <summary>
     /// The compressed size of the binary
     /// </summary>
-    public required long ArchivedLength { get; init; }
-
-    /// <summary>
-    /// The incremental backup size that was incurred by archiving this chunk.
-    /// </summary>
-    public required long IncrementalLength { get; init; }
+    public required long ArchivedSize { get; init; }
 
     /// <summary>
     /// The AccessTier of the Chunk.

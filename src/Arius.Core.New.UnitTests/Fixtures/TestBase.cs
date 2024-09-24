@@ -139,7 +139,7 @@ public abstract class TestBase
                 throw new InvalidOperationException("Must have either a binary file or a pointer file");
         }
 
-        return new(pfwh, bfwh);
+        return FilePairWithHash.FromFiles(pfwh, bfwh);
 
         static void SetAttributes(FileAttributes attributes, string filePath)
         {
@@ -192,10 +192,10 @@ public abstract class TestBase
     {
         await Fixture.Mediator.Send(request);
     }
-
-    protected async Task<RepositoryStatisticsQueryResponse> WhenMediatorRequest(RepositoryStatisticsQuery request)
+    
+    protected async Task<RepositoryStatisticsQueryResponse> GetRepositoryStatistics()
     {
-        return await Fixture.Mediator.Send(request);
+        return await Fixture.Mediator.Send(new RepositoryStatisticsQuery() { RemoteRepository = Fixture.RemoteRepositoryOptions });
     }
 
     //protected async Task<TResponse> WhenMediatorRequest<TResponse>(IRequest<TResponse> request)
@@ -264,6 +264,11 @@ public abstract class TestBase
     protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate)
     {
         Fixture.MediatorNotifications.OfType<TNotification>().Should().Contain(predicate);
+    }
+
+    protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate, out TNotification notification)
+    {
+        notification = Fixture.MediatorNotifications.OfType<TNotification>().AsQueryable().Single(predicate);
     }
 
 

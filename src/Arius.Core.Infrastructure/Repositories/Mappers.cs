@@ -33,9 +33,8 @@ internal static class Mappers
         return new BinaryPropertiesDto
         {
             Hash              = bp.Hash.Value,
-            OriginalLength    = bp.OriginalLength,
-            ArchivedLength    = bp.ArchivedLength,
-            IncrementalLength = bp.IncrementalLength,
+            OriginalSize    = bp.OriginalSize,
+            ArchivedSize    = bp.ArchivedSize,
             StorageTier       = bp.StorageTier,
             //PointerFileEntries = bp.PointerFileEntries.Select(pfe => pfe.ToDto()).ToList()
         };
@@ -45,9 +44,8 @@ internal static class Mappers
         return new BinaryProperties
         {
             Hash              = bp.Hash,
-            OriginalLength    = bp.OriginalLength,
-            ArchivedLength    = bp.ArchivedLength,
-            IncrementalLength = bp.IncrementalLength,
+            OriginalSize    = bp.OriginalSize,
+            ArchivedSize    = bp.ArchivedSize,
             StorageTier       = bp.StorageTier,
             //PointerFileEntries = bp.PointerFileEntries.Select(pfe => pfe.ToEntity()).ToList()
         };

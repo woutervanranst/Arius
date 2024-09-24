@@ -10,6 +10,8 @@ using Arius.Core.New.Queries.RepositoryStatistics;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure.Storage.Blobs;
 using FluentAssertions;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -40,14 +42,11 @@ internal static class BlobStorageHelper
 
 public class ArchiveCommandTests : TestBase
 {
-    private FilePairWithHash fpwh;
-    private IFileSystem      lfs;
-    private string           relativeName;
-
     protected override AriusFixture GetFixture()
     {
         return FixtureBuilder.Create()
             .WithUniqueContainerName()
+            .WithMediatrNotificationStore<ArchiveCommandNotification>()
             //.WithMockedStorageAccountFactory()
             //.WithFakeCryptoService()
             .Build();
@@ -55,17 +54,15 @@ public class ArchiveCommandTests : TestBase
 
     protected override void ConfigureOnceForFixture()
     {
-        relativeName = "directory/File1.txt";
-        lfs          = GivenLocalFilesystem();
-        fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
     }
 
     [Fact]
-    public async Task Handle()
+    public async Task Handle_OneNewFile()
     {
         // Arrange
-        var q  = new RepositoryStatisticsQuery { RemoteRepository = Fixture.RemoteRepositoryOptions };
-        var s0 = await WhenMediatorRequest(q);
+        var relativeName = "directory/File1.txt";
+        var lfs          = GivenLocalFilesystem();
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
         var c = new ArchiveCommand
         {
@@ -80,31 +77,122 @@ public class ArchiveCommandTests : TestBase
         // Act
         await WhenMediatorRequest(c);
         
-
         // Assert
-        var s1                   = await WhenMediatorRequest(q);
+
+        // Notifications
+        ThenShouldContainMediatorNotification<FilePairFoundNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<FilePairHashingStartedNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<FilePairHashingCompletedNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<BinaryFileToUpload>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<UploadBinaryFileStartedNotification>(n => n.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
+        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName) && n.OriginalLength == 100);
+        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.BinaryFile.RelativeNamePlatformNeutral == relativeName && n.OriginalLength == 100);
+        ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName);
+        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version == c.VersionName);
+        ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
+
+        var stats                = await GetRepositoryStatistics();
         var localStateRepository = await GetLocalStateRepositoryAsync();
 
-        // 1 additional Binary
+        // 1 Binary on the remote
         BlobStorageHelper.BinaryExists(Fixture.RemoteRepositoryOptions, fpwh.Hash).Should().BeTrue();
-        s1.BinaryFilesCount.Should().Be(1);
+        stats.BinaryFilesCount.Should().Be(1);
         localStateRepository.BinaryExists(fpwh.Hash).Should().BeTrue();
 
-        // 1 additional PointerFileEntry
-        s1.PointerFilesEntryCount.Should().Be(1);
+        // 1 PointerFileEntry
+        stats.PointerFilesEntryCount.Should().Be(1);
         localStateRepository.PointerFileEntryExists(fpwh).Should().BeTrue();
 
-        // 1 matching PointerFile
+        // 1 PointerFile was created
         lfs.PointerFileExists(Fixture, relativeName).Should().BeTrue();
-        
-        ;
-        
-        
 
-        // 1 additional Binary
+        // Validate SizeMetrics
+        stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
+        stats.Sizes.AllUniqueArchivedSize.Should().Be(144);
+        //stats.Sizes.AllOriginalSize.Should().Be(100);
+        //stats.Sizes.AllArchivedSize.Should().Be(144);
+        stats.Sizes.ExistingUniqueOriginalSize.Should().Be(100);
+        stats.Sizes.ExistingUniqueArchivedSize.Should().Be(144);
+        stats.Sizes.ExistingOriginalSize.Should().Be(100);
+        stats.Sizes.ExistingArchivedSize.Should().Be(144);
+    }
 
-        s1.ArchiveSize.Should().BeGreaterThan(0);
+    [Fact]
+    public async Task Handle_DuplicateFile()
+    {
+        // Arrange
+        var relativeName1 = "directory/File1.txt";
+        var relativeName2 = "directory2/File2.txt";
+        var lfs           = GivenLocalFilesystem();
+        var fpwh1         = GivenSourceFolderHavingFilePair(relativeName1, FilePairType.BinaryFileOnly, 100);
 
+        var x = new FileInfo(fpwh1.BinaryFile.FullName);
+        x.CopyTo(Fixture.TestRunSourceFolder, relativeName2);
+        var bf2   = BinaryFileWithHash.FromRelativeName(Fixture.TestRunSourceFolder, relativeName2, fpwh1.Hash);
+        var fpwh2 = FilePairWithHash.FromFiles(null, bf2);
+
+        var c = new ArchiveCommand
+        {
+            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+            FastHash                = false,
+            RemoveLocal             = false,
+            Tier                    = StorageTier.Hot,
+            LocalRoot               = Fixture.TestRunSourceFolder,
+            VersionName             = new RepositoryVersion { Name = "v1.0" }
+        };
+
+        // Act
+        await WhenMediatorRequest(c);
+
+        // Assert
+
+        var stats                = await GetRepositoryStatistics();
+        var localStateRepository = await GetLocalStateRepositoryAsync();
+
+        // Only 1 Binary on the remote
+        stats.BinaryFilesCount.Should().Be(1);
+
+        // We uploaded 1 binary and awaited another one
+        ThenShouldContainMediatorNotification<BinaryFileToUpload>(n => n.FilePairWithHash.Hash == fpwh1.Hash, out var binaryFileToUploadNotification);
+        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUpload>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
+        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUploadDone>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
+        
+        // 2 PointerFileEntries
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName1);
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName2);
+
+        stats.PointerFilesEntryCount.Should().Be(2);
+        localStateRepository.PointerFileEntryExists(fpwh1).Should().BeTrue();
+        localStateRepository.PointerFileEntryExists(fpwh2).Should().BeTrue();
+
+        // 2 PointerFiles are created
+        ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName1);
+        ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName2);
+
+        lfs.PointerFileExists(Fixture, relativeName1).Should().BeTrue();
+        lfs.PointerFileExists(Fixture, relativeName2).Should().BeTrue();
+
+        // Validate SizeMetrics
+        stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
+        stats.Sizes.AllUniqueArchivedSize.Should().Be(144);
+        //stats.Sizes.AllOriginalSize.Should().Be(100 * 2);
+        //stats.Sizes.AllArchivedSize.Should().Be(144 * 2);
+        stats.Sizes.ExistingUniqueOriginalSize.Should().Be(100);
+        stats.Sizes.ExistingUniqueArchivedSize.Should().Be(144);
+        stats.Sizes.ExistingOriginalSize.Should().Be(100 * 2);
+        stats.Sizes.ExistingArchivedSize.Should().Be(144 * 2);
+
+
+        //public record BinaryFileAlreadyUploaded(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+
+        //public record DeletedPointerFileEntryNotification(ArchiveCommand Command, string RelativeNamePlatformSpecific) : ArchiveCommandNotification(Command);
+        //public record DeletedBinaryFileNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile) : ArchiveCommandNotification(Command);
+        //public record UpdatedChunkTierNotification(ArchiveCommand Command, Hash Hash, long ArchivedSize, StorageTier OriginalTier, StorageTier NewTier) : ArchiveCommandNotification(Command);
+
+        //public record NoNewStateVersionCreatedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
+
+        // TODO test with VersionName = null
     }
 
     [Fact]

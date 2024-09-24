@@ -91,34 +91,47 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
         return context.BinaryProperties.LongCount();
     }
 
-    /// <summary>
-    /// The sum of the compressed size of the net-new files (TODO SAME AS GetIncrementalSize ??)
-    /// </summary>
-    /// <returns></returns>
-    public long GetArchiveSize()
-    {
-        using var context = GetContext();
-        return context.BinaryProperties.Sum(bp => bp.ArchivedLength);
-    }
 
     /// <summary>
-    /// The sum of the uncompressed size of the original files
+    /// Retrieves various size metrics for the archived files, categorized by whether they cover all entries or only existing ones,
+    /// whether they represent original or archived sizes, and whether they include only unique entries.
     /// </summary>
-    /// <returns></returns>
-    public long GetOriginalArchiveSize()
+    /// <returns>
+    /// A tuple containing the following size metrics:
+    /// 
+    /// | Size Name                   | Includes Deleted Entries | Unique | OriginalSize / ArchivedSize |
+    /// |-----------------------------|--------------------------|--------|-----------------------------|
+    /// | AllUniqueOriginalSize       | Yes                      | Yes    | OriginalSize                |
+    /// | AllUniqueArchivedSize       | Yes                      | Yes    | ArchivedSize                |
+    /// | AllOriginalSize             | Yes                      | No     | OriginalSize                |
+    /// | AllArchivedSize             | Yes                      | No     | ArchivedSize                |
+    /// | ExistingUniqueOriginalSize  | No                       | Yes    | OriginalSize                |
+    /// | ExistingUniqueArchivedSize  | No                       | Yes    | ArchivedSize                |
+    /// | ExistingOriginalSize        | No                       | No     | OriginalSize                |
+    /// | ExistingArchivedSize        | No                       | No     | ArchivedSize                |
+    /// 
+    /// </returns>
+    public SizeMetrics GetSizes()
     {
         using var context = GetContext();
-        return context.BinaryProperties.Sum(bp => bp.OriginalLength);
-    }
 
-    /// <summary>
-    /// The sum of the compressed size of the net-new files (TODO SAME AS GetArchiveSize ??)
-    /// </summary>
-    /// <returns></returns>
-    public long GetIncrementalSize() 
-    {
-        using var context = GetContext();
-        return context.BinaryProperties.Sum(bp => bp.IncrementalLength);
+        var allUniqueOriginalSize = context.BinaryProperties.Distinct().Sum(bp => bp.OriginalSize);
+        var allUniqueArchivedSize = context.BinaryProperties.Distinct().Sum(bp => bp.ArchivedSize);
+
+        //var allOriginalSize = context.BinaryProperties.Sum(bp => bp.OriginalSize);
+        var allOriginalSize = 0; // kunnen we niet weten
+        var allArchivedSize = 0; // kunnen we niet weten  context.BinaryProperties.Sum(bp => bp.ArchivedSize);
+
+        var existingUniqueOriginalSize = context.BinaryProperties.Where(bp => bp.PointerFileEntries.Any()).Distinct().Sum(bp => bp.OriginalSize);
+        var existingUniqueArchivedSize = context.BinaryProperties.Where(bp => bp.PointerFileEntries.Any()).Distinct().Sum(bp => bp.ArchivedSize);
+
+        //var existingOriginalSize = context.BinaryProperties.Where(bp => bp.PointerFileEntries.Any()).Sum(bp => bp.OriginalSize);
+        //var existingArchivedSize = context.BinaryProperties.Where(bp => bp.PointerFileEntries.Any()).Sum(bp => bp.ArchivedSize);
+
+        var existingOriginalSize = context.PointerFileEntries.Sum(pfe => pfe.BinaryProperties.OriginalSize);
+        var existingArchivedSize = context.PointerFileEntries.Sum(pfe => pfe.BinaryProperties.ArchivedSize);
+
+        return new(allUniqueOriginalSize, allUniqueArchivedSize, allOriginalSize, allArchivedSize, existingUniqueOriginalSize, existingUniqueArchivedSize, existingOriginalSize, existingArchivedSize);
     }
 
     //public IEnumerable<BinaryProperties> GetBinaryProperties()

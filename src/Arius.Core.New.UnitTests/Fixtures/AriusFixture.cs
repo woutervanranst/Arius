@@ -44,7 +44,11 @@ public class FixtureBuilder
         hashValueProvider = new SHA256Hasher(testRemoteRepositoryOptions.Passphrase);
 
         services.AddArius(c => c.LocalConfigRoot = testRunRoot);
-        services.AddLogging();
+        services.AddLogging(configure =>
+        {
+            configure.AddConsole(); // Add console logging
+            configure.AddDebug();   // Optionally add debug logging
+        });
 
         services.AddSingleton<MediatorNotificationStore>();
     }

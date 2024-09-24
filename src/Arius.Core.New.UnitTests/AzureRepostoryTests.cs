@@ -40,9 +40,8 @@ public class AzureRepostoryTests : TestBase
         bp.Should().NotBeNull();
 
         bp.Hash.Should().Be(bfwh.Hash);
-        bp.OriginalLength.Should().Be(100);
-        bp.ArchivedLength.Should().NotBe(0);
-        bp.IncrementalLength.Should().Be(bp.ArchivedLength);
+        bp.OriginalSize.Should().Be(100);
+        bp.ArchivedSize.Should().NotBe(0);
         bp.StorageTier.Should().Be(StorageTier.Hot);
 
         var b = r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());

@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Repositories;
+﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
@@ -21,11 +22,9 @@ internal class RepositoryStatisticsQueryValidator : AbstractValidator<Repository
 
 public record RepositoryStatisticsQueryResponse
 {
-    public required long BinaryFilesCount       { get; init; }
-    public required long ArchiveSize            { get; init; }
-    public required long OriginalArchiveSize    { get; init; }
-    public required long IncrementalSize        { get; init; }
-    public required long PointerFilesEntryCount { get; init; }
+    public required long        BinaryFilesCount       { get; init; }
+    public required long        PointerFilesEntryCount { get; init; }
+    public required SizeMetrics Sizes                  { get; init; }
 }
 
 internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStatisticsQuery, RepositoryStatisticsQueryResponse>
@@ -44,18 +43,14 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
         var stateDbRepository = await remoteStateRepository.CreateAsync(request.RemoteRepository, request.Version);
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
-        var archiveSize            = stateDbRepository.GetArchiveSize();
-        var originalArchiveSize    = stateDbRepository.GetOriginalArchiveSize();
-        var incrementalSize        = stateDbRepository.GetIncrementalSize();
         var pointerFilesEntryCount = stateDbRepository.CountPointerFileEntries();
+        var sizes                  = stateDbRepository.GetSizes();
 
         return new RepositoryStatisticsQueryResponse
         {
             BinaryFilesCount       = binaryFilesCount,
-            ArchiveSize            = archiveSize,
-            OriginalArchiveSize    = originalArchiveSize,
-            IncrementalSize        = incrementalSize,
-            PointerFilesEntryCount = pointerFilesEntryCount
+            PointerFilesEntryCount = pointerFilesEntryCount,
+            Sizes = sizes
         };
     }
 }
