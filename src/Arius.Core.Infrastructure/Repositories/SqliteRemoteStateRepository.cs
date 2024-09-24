@@ -49,7 +49,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             if (effectiveVersion is null)
             {
                 // No states yet remotely - this is a fresh archive
-                effectiveVersion = DateTime.UtcNow;
+                effectiveVersion = DateTimeRepositoryVersion.FromUtcNow();
                 return (StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
             }
             return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, effectiveVersion), effectiveVersion);

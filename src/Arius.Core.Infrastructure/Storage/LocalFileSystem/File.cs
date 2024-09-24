@@ -118,35 +118,17 @@ public class StateDatabaseFile : File, IStateDatabaseFile
     public static IStateDatabaseFile FromRepositoryVersion(AriusConfiguration config, RemoteRepositoryOptions options, RepositoryVersion version)
     {
         var stateDbFolder = config.GetLocalStateDatabaseFolderForRepositoryOptions(options);
-        return new StateDatabaseFile(System.IO.Path.Combine(stateDbFolder.FullName, GetFileSystemName(version)), version);
+        return new StateDatabaseFile(System.IO.Path.Combine(stateDbFolder.FullName, version.FileSystemNameWithExtension), version);
     }
 
     public static IStateDatabaseFile FromFullName(DirectoryInfo stateDbFolder, string fullName)
     {
-        var version = GetVersion(fullName);
+        var n       = System.IO.Path.GetFileName(fullName).RemoveSuffix(IStateDatabaseFile.Extension);
+        var version = RepositoryVersion.FromName(n);
         return new StateDatabaseFile(fullName, version);
     }
 
     public RepositoryVersion Version { get; }
-
-    private static string GetFileSystemName(RepositoryVersion version)
-    {
-        return $"{version.Name.Replace(":", "-")}{IStateDatabaseFile.Extension}";
-    }
-
-    private static RepositoryVersion GetVersion(string name)
-    {
-        var n = System.IO.Path.GetFileName(name).RemoveSuffix(IStateDatabaseFile.Extension);
-        if (DateTime.TryParseExact(n, "yyyy-MM-ddTHH-mm-ss", null, System.Globalization.DateTimeStyles.AssumeUniversal, out var parsedDateTime))
-        {
-            return parsedDateTime;
-        }
-        else
-        {
-            return new RepositoryVersion { Name = n };
-        }
-
-    }
 }
 
 public abstract class RelativeFile : File, IRelativeFile

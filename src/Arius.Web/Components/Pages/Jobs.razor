@@ -106,7 +106,7 @@
             LocalRoot   = new DirectoryInfo(@"C:\AriusTest\Source"),
             RemoveLocal = false,
             Tier        = StorageTier.Archive,
-            VersionName = new RepositoryVersion { Name = "Test" }
+            VersionName = RepositoryVersion.FromName("Test")
         };
 
         Mediator.Send(c);

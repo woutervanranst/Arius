@@ -42,13 +42,13 @@ public abstract class TestBase
     protected void GivenLocalFilesystemWithVersions(string[] versionNames)
     {
         var repository = Fixture.RemoteRepository;
-        var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
+        var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
         repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         foreach (var versionName in versionNames)
         {
-            var version    = new RepositoryVersion { Name = versionName };
-            var sdbf = GetStateDatabaseFileForRepository(Fixture, version);
+            var version = RepositoryVersion.FromName(versionName);
+            var sdbf    = GetStateDatabaseFileForRepository(Fixture, version);
 
             CreateLocalDatabase(sdbf);
         }
@@ -79,7 +79,7 @@ public abstract class TestBase
     protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
         var repository = Fixture.RemoteRepository;
-        var versions   = versionNames.Select(name => new RepositoryVersion { Name = name }).ToArray();
+        var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
         repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         // Set up the repository to throw an exception for versions not in the list
@@ -238,7 +238,7 @@ public abstract class TestBase
             RemoveLocal             = removeLocal,
             Tier                    = tier,
             LocalRoot               = Fixture.TestRunSourceFolder,
-            VersionName             = new RepositoryVersion { Name = versionName }
+            VersionName             = RepositoryVersion.FromName(versionName)
         };
 
         await Fixture.Mediator.Send(c);
@@ -329,7 +329,7 @@ public abstract class TestBase
     {
         var repository = Fixture.RemoteStateRepository;
         var options    = Fixture.RemoteRepositoryOptions;
-        var version    = versionName != null ? new RepositoryVersion { Name = versionName } : null;
+        var version    = versionName != null ? RepositoryVersion.FromName(versionName) : null;
         return await repository.CreateAsync(options, version);
     }
 

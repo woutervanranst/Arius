@@ -38,7 +38,7 @@ internal class AzureRemoteRepository : IRemoteRepository
 
     public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions()
     {
-        return StateDatabaseFolder.GetBlobs().Select(blob => new RepositoryVersion { Name = blob.Name });
+        return StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
     }
 
     public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
