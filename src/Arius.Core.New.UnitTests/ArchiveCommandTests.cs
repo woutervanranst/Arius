@@ -4,14 +4,10 @@ using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.Azure;
-using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Commands.Archive;
-using Arius.Core.New.Queries.RepositoryStatistics;
 using Arius.Core.New.UnitTests.Fixtures;
 using Azure.Storage.Blobs;
 using FluentAssertions;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -33,11 +29,8 @@ internal static class BlobStorageHelper
         return blobClient.Exists();
     }
 
-    public static bool PointerFileEntryExists(this ILocalStateRepository localStateRepository, IFilePairWithHash fpwh) 
+    public static bool PointerFileEntryExists(this ILocalStateRepository localStateRepository, IFilePairWithHash fpwh)
         => localStateRepository.GetPointerFileEntries().SingleOrDefault(pfe => pfe.Hash == fpwh.Hash && pfe.RelativeName.StartsWith(fpwh.RelativeName)) is not null;
-
-    public static bool PointerFileExists(this IFileSystem fileSystem, AriusFixture fixture, string relativeName)
-        => fileSystem.EnumerateFilePairs(fixture.TestRunSourceFolder).Any(fp => fp.RelativeNamePlatformNeutral == relativeName);
 }
 
 public class ArchiveCommandTests : TestBase
@@ -61,7 +54,6 @@ public class ArchiveCommandTests : TestBase
     {
         // Arrange
         var relativeName = "directory/File1.txt";
-        var lfs          = GivenLocalFilesystem();
         var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
         // Act
@@ -95,7 +87,7 @@ public class ArchiveCommandTests : TestBase
         localStateRepository.PointerFileEntryExists(fpwh).Should().BeTrue();
 
         // 1 PointerFile was created
-        lfs.PointerFileExists(Fixture, relativeName).Should().BeTrue();
+        fpwh.PointerFile.Exists.Should().BeTrue();
 
         // Validate SizeMetrics
         stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
@@ -116,7 +108,6 @@ public class ArchiveCommandTests : TestBase
         var relativeName2 = "directory2/File2.txt";
         var fpwh1         = GivenSourceFolderHavingFilePair(relativeName1, FilePairType.BinaryFileOnly, 100);
         var fpwh2         = GivenSourceFolderHavingCopyOfFilePair(fpwh1, relativeName2);
-        var lfs           = GivenLocalFilesystem();
 
         // Act
         await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
@@ -145,13 +136,10 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName1);
         ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName2);
 
-        lfs.PointerFileExists(Fixture, relativeName1).Should().BeTrue();
-        lfs.PointerFileExists(Fixture, relativeName2).Should().BeTrue();
-
         fpwh1.PointerFile.Exists.Should().BeTrue();
         fpwh2.PointerFile.Exists.Should().BeTrue();
 
-        // The BinaryFiles exist
+        // The BinaryFiles still exist
         fpwh1.BinaryFile.Exists.Should().BeTrue();
         fpwh2.BinaryFile.Exists.Should().BeTrue();
 
