@@ -12,11 +12,8 @@
   </ItemGroup>
 
 	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
-	<ItemGroup Condition="'$(Configuration)'=='Release'">
-		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
-	</ItemGroup>
-	<ItemGroup Condition="'$(Configuration)'=='Debug'">
-		<ProjectReference Include="..\..\..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
+	<ItemGroup>
+		<PackageReference Include="WouterVanRanst.Utils" Version="2.0.1" />
 	</ItemGroup>
 
 </Project>
