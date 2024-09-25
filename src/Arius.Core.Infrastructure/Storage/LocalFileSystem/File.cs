@@ -188,54 +188,9 @@ public class PointerFileWithHash : PointerFile, IPointerFileWithHash
         Hash = hash;
     }
 
-    public static IPointerFileWithHash FromFullName(DirectoryInfo root, string fullName, Hash h)         => new PointerFileWithHash(root, fullName,                                            h);
-    public static IPointerFileWithHash FromRelativeName(DirectoryInfo root, string relativeName, Hash h) => new PointerFileWithHash(root, System.IO.Path.Combine(root.FullName, relativeName), h);
-    public static IPointerFileWithHash FromBinaryFileWithHash(IBinaryFileWithHash bfwh)                  => new PointerFileWithHash(bfwh.Root, bfwh.FullName, bfwh.Hash);
-
-    /// <summary>
-    /// Get a PointerFile with Hash by reading the value in the PointerFile
-    /// </summary>
-    /// <returns></returns>
-    public static IPointerFileWithHash FromExistingPointerFile(IPointerFile pf)
-    {
-        if (!System.IO.File.Exists(pf.FullName))
-            throw new ArgumentException($"'{pf.FullName}' does not exist");
-
-        try
-        {
-            var json = System.IO.File.ReadAllBytes(pf.FullName);
-            var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
-            var h = new Hash(pfc.BinaryHash);
-
-            return PointerFileWithHash.FromFullName(pf.Root, pf.FullName, h);
-        }
-        catch (JsonException e)
-        {
-            throw new ArgumentException($"'{pf.FullName}' is not a valid PointerFile", e);
-        }
-    }
-    /// <summary>
-    /// Write the PointerFile to disk
-    /// </summary>
-    public static IPointerFileWithHash Create(IBinaryFileWithHash bfwh) => Create(bfwh.Root, bfwh.RelativeName + IPointerFile.Extension, bfwh.Hash, bfwh.CreationTimeUtc.Value, bfwh.LastWriteTimeUtc.Value);
-    public static IPointerFileWithHash Create(DirectoryInfo root, PointerFileEntry pfe) => Create(root, pfe.RelativeName + IPointerFile.Extension, pfe.Hash, pfe.CreationTimeUtc, pfe.LastWriteTimeUtc);
-    public static IPointerFileWithHash Create(DirectoryInfo root, string relativeName, Hash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
-    {
-        var pfwh = FromRelativeName(root, relativeName, hash);
-
-        Directory.CreateDirectory(pfwh.Path);
-
-        var pfc = new PointerFileContents(hash.Value.BytesToHexString());
-        var json = JsonSerializer.SerializeToUtf8Bytes(pfc); //ToUtf8 is faster https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-how-to?pivots=dotnet-6-0#serialize-to-utf-8
-        System.IO.File.WriteAllBytes(pfwh.FullName, json);
-
-        pfwh.CreationTimeUtc  = creationTimeUtc;
-        pfwh.LastWriteTimeUtc = lastWriteTimeUtc;
-
-        return pfwh;
-    }
-    private record PointerFileContents(string BinaryHash);
-
+    public static IPointerFileWithHash FromFullName(DirectoryInfo root, string fullName, Hash h)         => new PointerFileWithHash(root,      fullName,                                            h);
+    public static IPointerFileWithHash FromRelativeName(DirectoryInfo root, string relativeName, Hash h) => new PointerFileWithHash(root,      System.IO.Path.Combine(root.FullName, relativeName), h);
+    public static IPointerFileWithHash FromBinaryFileWithHash(IBinaryFileWithHash bfwh)                  => new PointerFileWithHash(bfwh.Root, bfwh.FullName,                                       bfwh.Hash);
 
     public Hash Hash { get; }
 
@@ -321,11 +276,11 @@ public class FilePair : IFilePair
     }
 
     public IPointerFile PointerFile { get; }
-    public IBinaryFile BinaryFile { get; }
+    public IBinaryFile  BinaryFile  { get; }
 
-    public DirectoryInfo Root => BinaryFile?.Root ?? PointerFile!.Root;
-    public string RelativeName => BinaryFile?.RelativeName ?? PointerFile!.RelativeName; // TODO dit verschilt afh of er een BF of een PF inzit?
     public string RelativeNamePlatformNeutral => BinaryFile?.RelativeNamePlatformNeutral ?? PointerFile!.RelativeNamePlatformNeutral; // TODO dit verschilt afh of er een BF of een PF inzit?
+    public DirectoryInfo Root                        => BinaryFile?.Root ?? PointerFile!.Root;
+    public string        RelativeName                => BinaryFile?.RelativeName ?? PointerFile!.RelativeName; // TODO dit verschilt afh of er een BF of een PF inzit?
 
     public FilePairType Type
     {
@@ -345,11 +300,11 @@ public class FilePair : IFilePair
     }
 
     public bool IsBinaryFileWithPointerFile => PointerFile.Exists && BinaryFile.Exists;
-    public bool IsPointerFileOnly => PointerFile.Exists && !BinaryFile.Exists;
-    public bool IsBinaryFileOnly => !PointerFile.Exists && BinaryFile.Exists;
+    public bool IsPointerFileOnly           => PointerFile.Exists && !BinaryFile.Exists;
+    public bool IsBinaryFileOnly            => !PointerFile.Exists && BinaryFile.Exists;
 
     public bool HasExistingPointerFile => PointerFile.Exists;
-    public bool HasExistingBinaryFile => BinaryFile.Exists;
+    public bool HasExistingBinaryFile  => BinaryFile.Exists;
 
     public override string ToString()
     {

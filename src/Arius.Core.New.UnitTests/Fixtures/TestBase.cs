@@ -127,7 +127,7 @@ public abstract class TestBase
         {
             case FilePairType.BinaryFileWithPointerFile:
                 bfwh = GetBinaryFileWithHash();
-                pfwh = PointerFileWithHash.Create(bfwh);
+                pfwh = PointerFileSerializer.Create(bfwh);
 
                 return FilePairWithHash.FromFilePair(pfwh, bfwh);
             case FilePairType.PointerFileOnly:
@@ -158,7 +158,7 @@ public abstract class TestBase
             Random.Shared.NextBytes(randomBytes);
             var h = new Hash(randomBytes);
 
-            return PointerFileWithHash.Create(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow);
+            return PointerFileSerializer.Create(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow);
         }
     }
 

@@ -66,11 +66,11 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<FilePairHashingStartedNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<FilePairHashingCompletedNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<BinaryFileToUpload>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
-        ThenShouldContainMediatorNotification<UploadBinaryFileStartedNotification>(n => n.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
-        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName) && n.OriginalLength == 100);
-        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.BinaryFile.RelativeNamePlatformNeutral == relativeName && n.OriginalLength == 100);
+        ThenShouldContainMediatorNotification<UploadBinaryFileStartedNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
+        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName) && n.OriginalLength == 100);
+        ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.FilePairWithHash.BinaryFile.RelativeNamePlatformNeutral == relativeName && n.OriginalLength == 100);
         ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName);
-        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName);
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.FilePairWithHash.BinaryFile.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.0");
         ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
 
@@ -141,8 +141,8 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUploadDone>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
         
         // 2 PointerFileEntries
-        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName1);
-        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.RelativeNamePlatformSpecific.ToPlatformNeutralPath() == relativeName2);
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName1);
+        ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName2);
 
         stats.PointerFilesEntryCount.Should().Be(2);
         localStateRepository.PointerFileEntryExists(fpwh1).Should().BeTrue();

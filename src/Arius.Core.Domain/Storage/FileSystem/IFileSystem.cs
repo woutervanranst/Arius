@@ -8,24 +8,22 @@ public interface IFileSystem
 
 public interface IFile
 {
-    string  FullName                { get; }
-    //string  FullNamePlatformNeutral { get; }
-    string? Path                    { get; }
-    //string? PathPlatformNeutral     { get; }
-    string  Name                    { get; }
-    bool    Exists                  { get; }
+    string  FullName { get; }
+    string? Path     { get; }
+    string  Name     { get; }
+    bool    Exists   { get; }
 
     DateTime? CreationTimeUtc { get; set; }
 
     DateTime? LastWriteTimeUtc { get; set; }
 
-    bool   IsPointerFile                      { get; }
-    bool   IsBinaryFile                       { get; }
-    string BinaryFileFullName                 { get; }
-    //string BinaryFileFullNamePlatformNeutral  { get; }
-    string PointerFileFullName                { get; }
-    //string PointerFileFullNamePlatformNeutral { get; }
-    long   Length                             { get; }
+    bool IsPointerFile { get; }
+    bool IsBinaryFile  { get; }
+
+    string BinaryFileFullName  { get; }
+    string PointerFileFullName { get; }
+
+    long Length { get; }
 
     //string       GetRelativeName(string relativeTo);
     //string       GetRelativeNamePlatformNeutral(string relativeTo);
@@ -41,13 +39,11 @@ public interface IFile
     void  Delete();
 }
 
-
 public interface IStateDatabaseFile : IFile
 {
-    public static readonly string Extension     = ".ariusdb";
+    public static readonly string Extension = ".ariusdb";
     RepositoryVersion             Version { get; }
 }
-
 
 public interface IRelativeFile
 {
@@ -98,22 +94,22 @@ public interface IPointerFileWithHash : IPointerFile, IWithHash
 
 public interface IFilePair : IRelativeFile
 {
-    IPointerFile? PointerFile                 { get; }
-    IBinaryFile?  BinaryFile                  { get; }
-    FilePairType  Type                        { get; }
-    
-    bool          IsBinaryFileWithPointerFile { get; }
-    bool          IsPointerFileOnly           { get; }
-    bool          IsBinaryFileOnly            { get; }
-    
-    bool          HasExistingPointerFile      { get; }
-    bool          HasExistingBinaryFile       { get; }
+    IPointerFile PointerFile { get; }
+    IBinaryFile  BinaryFile  { get; }
+    FilePairType Type        { get; }
+
+    bool IsBinaryFileWithPointerFile { get; }
+    bool IsPointerFileOnly           { get; }
+    bool IsBinaryFileOnly            { get; }
+
+    bool HasExistingPointerFile { get; }
+    bool HasExistingBinaryFile  { get; }
 }
 
 public interface IFilePairWithHash : IFilePair, IWithHash
 {
-    new IPointerFileWithHash? PointerFile { get; }
-    new IBinaryFileWithHash?  BinaryFile  { get; }
+    new IPointerFileWithHash PointerFile { get; }
+    new IBinaryFileWithHash  BinaryFile  { get; }
 }
 
 public enum FilePairType
