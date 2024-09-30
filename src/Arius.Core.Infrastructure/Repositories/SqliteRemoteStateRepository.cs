@@ -34,9 +34,9 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
     {
         await new RepositoryOptionsValidator().ValidateAndThrowAsync(remoteRepositoryOptions);
 
-        var cloudRepository = storageAccountFactory.GetRemoteRepository(remoteRepositoryOptions);
+        var remoteRepository = storageAccountFactory.GetRemoteRepository(remoteRepositoryOptions);
 
-        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(cloudRepository, remoteRepositoryOptions, version);
+        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(remoteRepository, remoteRepositoryOptions, version);
 
         return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
@@ -45,7 +45,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
     {
         if (requestedVersion is null)
         {
-            var effectiveVersion = await GetLatestRemoteVersionAsync();
+            var effectiveVersion = await remoteRepository.GetLatestStateDatabaseVersionAsync();
             if (effectiveVersion is null)
             {
                 // No states yet remotely - this is a fresh archive
@@ -57,14 +57,6 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         else
         {
             return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, requestedVersion), requestedVersion);
-        }
-
-        async Task<RepositoryVersion?> GetLatestRemoteVersionAsync()
-        {
-            return await remoteRepository
-                .GetStateDatabaseVersions()
-                .OrderBy(b => b.Name)
-                .LastOrDefaultAsync();
         }
     }
 
@@ -96,15 +88,17 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
     public async Task<bool> SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)
     {
-        if (!localStateRepository.HasChanges)
+        if (localStateRepository.HasChanges)
+        {
+            localStateRepository.Vacuum();
+
+            await remoteRepository.UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
+            return true;
+        }
+        else
         {
             logger.LogInformation("No changes made in this version, skipping upload.");
             return false;
         }
-
-        localStateRepository.Vacuum();
-
-        await remoteRepository.UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
-        return true;
     }
 }

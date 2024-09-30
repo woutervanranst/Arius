@@ -6,6 +6,7 @@ public interface IRemoteRepository
 {
     // State
     IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions();
+    Task<RepositoryVersion?>            GetLatestStateDatabaseVersionAsync();
     IBlob                               GetStateDatabaseBlobForVersion(RepositoryVersion version);
     Task                                UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default);
 
@@ -14,5 +15,5 @@ public interface IRemoteRepository
     Task                   SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default);
 
     // General
-    Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
+    Task                                           DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
 }

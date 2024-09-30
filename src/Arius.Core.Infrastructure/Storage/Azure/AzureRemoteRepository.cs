@@ -41,6 +41,11 @@ internal class AzureRemoteRepository : IRemoteRepository
         return StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
     }
 
+    public async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync()
+    {
+        return await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
+    }
+
     public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
     {
         return StateDatabaseFolder.GetBlob(version.Name);
