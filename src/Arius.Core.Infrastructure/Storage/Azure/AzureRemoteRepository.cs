@@ -10,31 +10,33 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureRemoteRepository : IRemoteRepository
 {
-    private readonly string                         passphrase;
+    private readonly RemoteRepositoryOptions        remoteRepositoryOptions;
     private readonly ICryptoService                 cryptoService;
     private readonly ILogger<AzureRemoteRepository> logger;
 
-    internal AzureContainerFolder StateDatabaseFolder    { get; }
-    //internal AzureContainerFolder ChunkListsFolder       { get; }
-    internal AzureContainerFolder ChunksFolder           { get; }
-    internal AzureContainerFolder RehydratedChunksFolder { get; }
-
     internal const string STATE_DBS_FOLDER_NAME         = "states";
-    //internal const string CHUNK_LISTS_FOLDER_NAME       = "chunklists";
     internal const string CHUNKS_FOLDER_NAME            = "chunks";
     internal const string REHYDRATED_CHUNKS_FOLDER_NAME = "chunks-rehydrated";
 
-    public AzureRemoteRepository(BlobContainerClient blobContainerClient, string passphrase, ICryptoService cryptoService, ILogger<AzureRemoteRepository> logger)
+    public AzureRemoteRepository(
+        BlobContainerClient blobContainerClient,
+        RemoteRepositoryOptions remoteRepositoryOptions,
+        ICryptoService cryptoService,
+        ILogger<AzureRemoteRepository> logger)
     {
-        this.passphrase    = passphrase;
-        this.cryptoService = cryptoService;
-        this.logger        = logger;
+        this.remoteRepositoryOptions = remoteRepositoryOptions;
+        this.cryptoService           = cryptoService;
+        this.logger                  = logger;
 
-        StateDatabaseFolder = new AzureContainerFolder(blobContainerClient, STATE_DBS_FOLDER_NAME);
-        //ChunkListsFolder       = new AzureContainerFolder(blobContainerClient, CHUNK_LISTS_FOLDER_NAME);
+        StateDatabaseFolder    = new AzureContainerFolder(blobContainerClient, STATE_DBS_FOLDER_NAME);
         ChunksFolder           = new AzureContainerFolder(blobContainerClient, CHUNKS_FOLDER_NAME);
         RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, REHYDRATED_CHUNKS_FOLDER_NAME);
     }
+
+    public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
+    internal AzureContainerFolder StateDatabaseFolder    { get; }
+    internal AzureContainerFolder ChunksFolder           { get; }
+    internal AzureContainerFolder RehydratedChunksFolder { get; }
 
     public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions() 
         => StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
@@ -97,7 +99,7 @@ internal class AzureRemoteRepository : IRemoteRepository
                 metadata: metadata,
                 throwOnExists: true,
                 cancellationToken: cancellationToken);
-            await cryptoService.CompressAndEncryptAsync(ss, ts, passphrase);
+            await cryptoService.CompressAndEncryptAsync(ss, ts, remoteRepositoryOptions.Passphrase);
 
             return (ss.Length, ts.Position); // ts.Length is not supported
         }
@@ -133,7 +135,7 @@ internal class AzureRemoteRepository : IRemoteRepository
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
         await using var ts = file.OpenWrite();
-        await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
+        await cryptoService.DecryptAndDecompressAsync(ss, ts, remoteRepositoryOptions.Passphrase);
 
         logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);
     }

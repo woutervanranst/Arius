@@ -20,8 +20,6 @@ internal class AzureContainer : IContainer
     public string          Name           => blobContainerClient.Name;
 
     public IRemoteRepository GetRemoteRepository(RemoteRepositoryOptions remoteRepositoryOptions) 
-        => azureRepositoryFactory.Create(blobContainerClient, remoteRepositoryOptions.Passphrase);
+        => azureRepositoryFactory.Create(blobContainerClient, remoteRepositoryOptions);
 
-    public IRemoteRepository GetRemoteRepository(string passphrase) 
-        => azureRepositoryFactory.Create(blobContainerClient, passphrase);
 }

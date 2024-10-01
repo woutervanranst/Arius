@@ -4,6 +4,5 @@ public interface IContainer
 {
     IStorageAccount  StorageAccount { get; }
     string           Name           { get; }
-    IRemoteRepository GetRemoteRepository(string passphrase);
     IRemoteRepository GetRemoteRepository(RemoteRepositoryOptions remoteRepositoryOptions);
 }

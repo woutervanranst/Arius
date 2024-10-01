@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Domain.Services;
+using Arius.Core.Domain.Storage;
 using Azure.Storage.Blobs;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
@@ -14,8 +15,8 @@ public sealed class AzureRepositoryFactory
         this.loggerFactory = loggerFactory;
     }
 
-    internal AzureRemoteRepository Create(BlobContainerClient blobContainerClient, string passphrase)
+    internal AzureRemoteRepository Create(BlobContainerClient blobContainerClient, RemoteRepositoryOptions remoteRepositoryOptions)
     {
-        return new AzureRemoteRepository(blobContainerClient, passphrase, cryptoService, loggerFactory.CreateLogger<AzureRemoteRepository>());
+        return new AzureRemoteRepository(blobContainerClient, remoteRepositoryOptions, cryptoService, loggerFactory.CreateLogger<AzureRemoteRepository>());
     }
 }

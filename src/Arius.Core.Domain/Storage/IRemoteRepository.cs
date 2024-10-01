@@ -15,5 +15,6 @@ public interface IRemoteRepository
     Task                   SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default);
 
     // General
-    Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
+    string ContainerName { get; }
+    Task   DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
 }
