@@ -4,27 +4,22 @@ using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Azure;
-using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
 public class SqliteRemoteStateRepository : IRemoteStateRepository
 {
-    private readonly IStorageAccountFactory                  storageAccountFactory;
-    private readonly AriusConfiguration                      config;
+    private readonly AriusConfiguration                   config;
     private readonly ILogger<SqliteRemoteStateRepository> logger;
-    private readonly ILoggerFactory                          loggerFactory;
+    private readonly ILoggerFactory                       loggerFactory;
 
     public SqliteRemoteStateRepository(
-        IStorageAccountFactory storageAccountFactory,
         IOptions<AriusConfiguration> config,
         ILogger<SqliteRemoteStateRepository> logger,
         ILoggerFactory loggerFactory)
 
     {
-        this.storageAccountFactory = storageAccountFactory;
         this.config                = config.Value;
         this.logger                = logger;
         this.loggerFactory         = loggerFactory;
@@ -50,19 +45,21 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTimeRepositoryVersion.FromUtcNow();
-                return (StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
+                return (GetStateDatabaseFile(remoteRepository, effectiveVersion), effectiveVersion);
             }
-            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, effectiveVersion), effectiveVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, effectiveVersion), effectiveVersion);
         }
         else
         {
-            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, remoteRepositoryOptions, requestedVersion), requestedVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, requestedVersion), requestedVersion);
         }
     }
 
-    private async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion version)
+    private async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(
+        IRemoteRepository remoteRepository, 
+        RepositoryVersion version)
     {
-        var sdbf = StateDatabaseFile.FromRepositoryVersion(config, remoteRepositoryOptions, version);
+        var sdbf = GetStateDatabaseFile(remoteRepository, version);
 
         if (sdbf.Exists)
         {
@@ -84,6 +81,12 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         {
             throw new ArgumentException("Could not load the state database. Probably a wrong passphrase was used.", e);
         }
+    }
+
+    private IStateDatabaseFile GetStateDatabaseFile(IRemoteRepository remoteRepository, RepositoryVersion version)
+    {
+        var stateDbFolder = config.GetLocalStateDatabaseFolderForContainerName(remoteRepository.ContainerName);
+        return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
     }
 
     public async Task<bool> SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)

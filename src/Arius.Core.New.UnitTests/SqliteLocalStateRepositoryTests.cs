@@ -51,7 +51,7 @@ public sealed class SqliteLocalStateRepositoryTests : TestBase
         }
 
         var dbFile = Fixture.AriusConfiguration
-            .GetLocalStateDatabaseFolderForRepositoryOptions(Fixture.RemoteRepositoryOptions)
+            .GetLocalStateDatabaseFolderForContainerName(Fixture.RemoteRepositoryOptions.ContainerName)
             .GetFiles("*" + IStateDatabaseFile.Extension).Single();
         dbFile.Refresh();
         var originalLength = dbFile.Length;

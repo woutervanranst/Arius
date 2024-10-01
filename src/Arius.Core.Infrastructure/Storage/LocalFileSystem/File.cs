@@ -115,17 +115,9 @@ public class StateDatabaseFile : File, IStateDatabaseFile
         this.Version = version;
     }
 
-    public static IStateDatabaseFile FromRepositoryVersion(AriusConfiguration config, RemoteRepositoryOptions options, RepositoryVersion version)
+    public static IStateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
-        var stateDbFolder = config.GetLocalStateDatabaseFolderForRepositoryOptions(options);
-        return new StateDatabaseFile(System.IO.Path.Combine(stateDbFolder.FullName, version.FileSystemNameWithExtension), version);
-    }
-
-    public static IStateDatabaseFile FromFullName(DirectoryInfo stateDbFolder, string fullName)
-    {
-        var n       = System.IO.Path.GetFileName(fullName).RemoveSuffix(IStateDatabaseFile.Extension);
-        var version = RepositoryVersion.FromName(n);
-        return new StateDatabaseFile(fullName, version);
+        return new StateDatabaseFile(stateDbFolder.FullName, version);
     }
 
     public RepositoryVersion Version { get; }

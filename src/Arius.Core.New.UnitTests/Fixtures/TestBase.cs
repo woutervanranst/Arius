@@ -331,18 +331,26 @@ public abstract class TestBase
 
     private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
     {
-        return StateDatabaseFile.FromRepositoryVersion(fixture.AriusConfiguration, fixture.RemoteRepositoryOptions, version);
+        return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
     }
 
     public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
     {
-        var stateDbFolder = fixture.AriusConfiguration.GetLocalStateDatabaseFolderForRepositoryOptions(fixture.RemoteRepositoryOptions);
+        var stateDbFolder = GetLocalStateDatabaseFolder(fixture);
         foreach (var fi in stateDbFolder
                      .GetFiles("*.*", SearchOption.AllDirectories)
                      .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
         {
-            yield return StateDatabaseFile.FromFullName(stateDbFolder, fi.FullName);
+            var n       = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
+            var version = RepositoryVersion.FromName(n);
+            yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
         }
+    }
+
+    private DirectoryInfo GetLocalStateDatabaseFolder(AriusFixture fixture)
+    {
+        return fixture.AriusConfiguration
+            .GetLocalStateDatabaseFolderForContainerName(fixture.RemoteRepositoryOptions.ContainerName);
     }
 
     
