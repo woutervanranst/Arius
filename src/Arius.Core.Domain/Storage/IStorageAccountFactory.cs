@@ -1,20 +1,30 @@
-﻿namespace Arius.Core.Domain.Storage;
+﻿using FluentValidation;
+
+namespace Arius.Core.Domain.Storage;
 
 public interface IStorageAccountFactory
 {
     IStorageAccount GetStorageAccount(StorageAccountOptions storageAccountOptions);
     IStorageAccount GetStorageAccount(StorageAccountOptions storageAccountOptions, int maxRetries, TimeSpan timeout);
 
-    public IContainer GetContainer(ContainerOptions containerOptions)
+    public sealed IContainer GetContainer(ContainerOptions containerOptions)
     {
-        return GetStorageAccount(containerOptions)
-            .GetContainer(containerOptions.ContainerName);
-    }
+        new ContainerOptionsValidator().ValidateAndThrow(containerOptions);
 
-    public IRemoteRepository GetRemoteRepository(RemoteRepositoryOptions remoteRepositoryOptions)
+        return GetStorageAccount(containerOptions)
+            .GetContainer(containerOptions);
+    }
+}
+
+public static class IStorageAccountFactoryExtensions
+{
+    public static IRemoteRepository GetRemoteRepository(this IStorageAccountFactory storageAccountFactory, RemoteRepositoryOptions remoteRepositoryOptions)
     {
-        return GetStorageAccount(remoteRepositoryOptions)
-            .GetContainer(remoteRepositoryOptions.ContainerName)
-            .GetRemoteRepository(remoteRepositoryOptions.Passphrase);
+        new RepositoryOptionsValidator().ValidateAndThrow(remoteRepositoryOptions);
+
+        return storageAccountFactory
+            .GetStorageAccount(remoteRepositoryOptions)
+            .GetContainer(remoteRepositoryOptions)
+            .GetRemoteRepository(remoteRepositoryOptions);
     }
 }

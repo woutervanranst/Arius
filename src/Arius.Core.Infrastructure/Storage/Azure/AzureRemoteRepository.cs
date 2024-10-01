@@ -36,20 +36,15 @@ internal class AzureRemoteRepository : IRemoteRepository
         RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, REHYDRATED_CHUNKS_FOLDER_NAME);
     }
 
-    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions()
-    {
-        return StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
-    }
+    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions() 
+        => StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
 
-    public async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync()
-    {
-        return await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
-    }
+    public async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync() 
+        => await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
 
-    public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
-    {
-        return StateDatabaseFolder.GetBlob(version.Name);
-    }
+    public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version) 
+        => StateDatabaseFolder.GetBlob(version.Name);
+
 
     public async Task UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default)
     {
@@ -134,13 +129,6 @@ internal class AzureRemoteRepository : IRemoteRepository
             throw new NotSupportedException($"'{blob.GetType()}' is not supported");
     }
 
-    public async Task SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default)
-    {
-        var b = ChunksFolder.GetBlob(hash.Value.BytesToHexString());
-
-        await b.SetStorageTierAsync(effectiveTier);
-    }
-
     private async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
@@ -148,5 +136,13 @@ internal class AzureRemoteRepository : IRemoteRepository
         await cryptoService.DecryptAndDecompressAsync(ss, ts, passphrase);
 
         logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);
+    }
+
+
+    public async Task SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default)
+    {
+        var b = ChunksFolder.GetBlob(hash.Value.BytesToHexString());
+
+        await b.SetStorageTierAsync(effectiveTier);
     }
 }

@@ -1,7 +1,6 @@
 ﻿using Arius.Core.Domain.Storage;
 using Azure.Storage;
 using Azure.Storage.Blobs;
-using System.Runtime.CompilerServices;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
@@ -25,15 +24,14 @@ internal class AzureStorageAccount : IStorageAccount
     }
 
 
-    public IContainer GetContainer(string containerName)
-    {
-        return containerFactory.Create(this, blobServiceClient, containerName);
-    }
+    public IContainer GetContainer(string containerName) 
+        => containerFactory.Create(this, blobServiceClient, containerName);
 
-    public IAsyncEnumerable<IContainer> GetContainers([EnumeratorCancellation] CancellationToken cancellationToken = default)
-    {
-        return blobServiceClient
+    public IContainer GetContainer(ContainerOptions containerOptions) 
+        => containerFactory.Create(this, blobServiceClient, containerOptions.ContainerName);
+
+    public IAsyncEnumerable<IContainer> GetContainers(CancellationToken cancellationToken = default) 
+        => blobServiceClient
             .GetBlobContainersAsync(cancellationToken: cancellationToken)
             .Select(containerItem => GetContainer(containerItem.Name));
-    }
 }

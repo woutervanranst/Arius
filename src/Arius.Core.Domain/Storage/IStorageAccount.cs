@@ -4,6 +4,7 @@ public interface IStorageAccount
 {
     //string AccountName { get; }
     //string AccountKey  { get; }
-    IContainer GetContainer(string containerName);
+    IContainer                   GetContainer(string containerName);
+    IContainer                   GetContainer(ContainerOptions containerOptions);
     IAsyncEnumerable<IContainer> GetContainers(CancellationToken cancellationToken = default);
 }
