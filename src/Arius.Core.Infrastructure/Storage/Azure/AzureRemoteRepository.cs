@@ -1,10 +1,11 @@
 ﻿using Arius.Core.Domain;
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using Azure;
+using Arius.Core.Infrastructure.Repositories;
 using Azure.Storage.Blobs;
-using System.Net;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
@@ -12,6 +13,8 @@ internal class AzureRemoteRepository : IRemoteRepository
 {
     private readonly RemoteRepositoryOptions        remoteRepositoryOptions;
     private readonly ICryptoService                 cryptoService;
+    private readonly ILoggerFactory                 loggerFactory;
+    private readonly AriusConfiguration             config;
     private readonly ILogger<AzureRemoteRepository> logger;
 
     internal const string STATE_DBS_FOLDER_NAME         = "states";
@@ -22,45 +25,37 @@ internal class AzureRemoteRepository : IRemoteRepository
         BlobContainerClient blobContainerClient,
         RemoteRepositoryOptions remoteRepositoryOptions,
         ICryptoService cryptoService,
+        IOptions<AriusConfiguration> config,
+        ILoggerFactory loggerFactory,
         ILogger<AzureRemoteRepository> logger)
     {
         this.remoteRepositoryOptions = remoteRepositoryOptions;
         this.cryptoService           = cryptoService;
+        this.loggerFactory           = loggerFactory;
+        this.config                  = config.Value;
         this.logger                  = logger;
 
-        StateDatabaseFolder    = new AzureContainerFolder(blobContainerClient, STATE_DBS_FOLDER_NAME);
-        ChunksFolder           = new AzureContainerFolder(blobContainerClient, CHUNKS_FOLDER_NAME);
-        RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, REHYDRATED_CHUNKS_FOLDER_NAME);
+        StateDatabaseFolder    = new AzureContainerFolder(blobContainerClient, remoteRepositoryOptions, STATE_DBS_FOLDER_NAME,         cryptoService, loggerFactory.CreateLogger("AzureStateDbContainerFolder"));
+        ChunksFolder           = new AzureContainerFolder(blobContainerClient, remoteRepositoryOptions, CHUNKS_FOLDER_NAME,            cryptoService, loggerFactory.CreateLogger("AzureChunksContainerFolder"));
+        RehydratedChunksFolder = new AzureContainerFolder(blobContainerClient, remoteRepositoryOptions, REHYDRATED_CHUNKS_FOLDER_NAME, cryptoService, loggerFactory.CreateLogger("AzureRehydratedChunksContainerFolder"));
     }
 
-    public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
+    public IRemoteStateRepository GetRemoteStateRepository()
+    {
+        return new SqliteRemoteStateRepository(StateDatabaseFolder, remoteRepositoryOptions, config, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
+    }
+
+    
+
+    //public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
     internal AzureContainerFolder StateDatabaseFolder    { get; }
     internal AzureContainerFolder ChunksFolder           { get; }
     internal AzureContainerFolder RehydratedChunksFolder { get; }
 
-    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions() 
-        => StateDatabaseFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
-
-    public async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync() 
-        => await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
-
-    public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version) 
-        => StateDatabaseFolder.GetBlob(version.Name);
+    
 
 
-    public async Task UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Uploading State Database {version}...", version.Name);
-
-        var blob     = StateDatabaseFolder.GetBlob(version.Name);
-        var metadata = AzureBlob.CreateStateDatabaseMetadata();
-
-        await UploadAsync(file, blob, metadata, cancellationToken);
-
-        await blob.SetStorageTierAsync(StorageTier.Cold);
-
-        logger.LogInformation("Uploading State Database {version}... done", version.Name);
-    }
+    
 
     public async Task<BinaryProperties> UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default)
     {
@@ -69,7 +64,7 @@ internal class AzureRemoteRepository : IRemoteRepository
         var blob        = ChunksFolder.GetBlob(file.Hash.Value.BytesToHexString());
         var metadata = AzureBlob.CreateChunkMetadata(file.Length);
 
-        var r = await UploadAsync(file, blob, metadata, cancellationToken);
+        var r = await ChunksFolder.UploadAsync(file, blob, metadata, cancellationToken);
         
         var t = effectiveTier(r.archivedLength);
         await blob.SetStorageTierAsync(t);
@@ -87,58 +82,6 @@ internal class AzureRemoteRepository : IRemoteRepository
         return bp;
     }
 
-    private async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
-    {
-        RestartUpload:
-
-        try
-        {
-            await using var ss       = source.OpenRead();
-            await using var ts = await target.OpenWriteAsync(
-                contentType: ICryptoService.ContentType,
-                metadata: metadata,
-                throwOnExists: true,
-                cancellationToken: cancellationToken);
-            await cryptoService.CompressAndEncryptAsync(ss, ts, remoteRepositoryOptions.Passphrase);
-
-            return (ss.Length, ts.Position); // ts.Length is not supported
-        }
-        catch (RequestFailedException rfe) when (rfe.Status == (int)HttpStatusCode.Conflict)
-        {
-            // The blob already exists
-            if (await target.GetContentTypeAsync() != ICryptoService.ContentType || await target.GetContentLengthAsync() == 0)
-            {
-                logger.LogWarning($"Corrupt Binary {target.FullName}. Deleting and uploading again");
-                await target.DeleteAsync();
-
-                goto RestartUpload;
-            }
-            else
-            {
-                // graceful handling if the chunk is already uploaded but it does not yet exist in the database
-                logger.LogWarning($"A valid Binary '{target.FullName}' already existed, perhaps from a previous/crashed run?");
-
-                return (await target.GetOriginalContentLengthAsync() ?? 0, await target.GetContentLengthAsync());
-            }
-        }
-    }
-
-    public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
-    {
-        if (blob is AzureBlob azureBlob)
-            await DownloadAsync(azureBlob, file, cancellationToken);
-        else
-            throw new NotSupportedException($"'{blob.GetType()}' is not supported");
-    }
-
-    private async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
-    {
-        await using var ss = await blob.OpenReadAsync(cancellationToken);
-        await using var ts = file.OpenWrite();
-        await cryptoService.DecryptAndDecompressAsync(ss, ts, remoteRepositoryOptions.Passphrase);
-
-        logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);
-    }
 
 
     public async Task SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default)

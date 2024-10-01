@@ -4,11 +4,8 @@ namespace Arius.Core.Domain.Storage;
 
 public interface IRemoteRepository
 {
-    // State
-    IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions();
-    Task<RepositoryVersion?>            GetLatestStateDatabaseVersionAsync();
-    IBlob                               GetStateDatabaseBlobForVersion(RepositoryVersion version);
-    Task                                UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default);
+    public IRemoteStateRepository GetRemoteStateRepository();
+
 
     // Binary
     Task<BinaryProperties> UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default);

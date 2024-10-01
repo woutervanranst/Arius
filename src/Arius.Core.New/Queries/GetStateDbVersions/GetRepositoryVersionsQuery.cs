@@ -19,6 +19,9 @@ internal class GetRepositoryVersionsQueryHandler : IStreamRequestHandler<GetRepo
 
     public IAsyncEnumerable<RepositoryVersion> Handle(GetRepositoryVersionsQuery request, CancellationToken cancellationToken)
     {
-        return storageAccountFactory.GetRemoteRepository(request.RemoteRepository).GetStateDatabaseVersions();
+        return storageAccountFactory
+            .GetRemoteRepository(request.RemoteRepository)
+            .GetRemoteStateRepository()
+            .GetStateDatabaseVersions();
     }
 }

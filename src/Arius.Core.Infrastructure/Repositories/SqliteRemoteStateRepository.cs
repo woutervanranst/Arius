@@ -2,64 +2,83 @@
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Azure;
-using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
 public class SqliteRemoteStateRepository : IRemoteStateRepository
 {
+    private readonly AzureContainerFolder stateDbContainerFolder;
+    private readonly RemoteRepositoryOptions              remoteRepositoryOptions;
     private readonly AriusConfiguration                   config;
     private readonly ILogger<SqliteRemoteStateRepository> logger;
     private readonly ILoggerFactory                       loggerFactory;
 
-    public SqliteRemoteStateRepository(
-        IOptions<AriusConfiguration> config,
-        ILogger<SqliteRemoteStateRepository> logger,
-        ILoggerFactory loggerFactory)
-
+    internal SqliteRemoteStateRepository(
+        AzureContainerFolder stateDbContainerFolder,
+        RemoteRepositoryOptions remoteRepositoryOptions,
+        AriusConfiguration config,
+        ILoggerFactory loggerFactory,
+        ILogger<SqliteRemoteStateRepository> logger)
     {
-        this.config                = config.Value;
-        this.logger                = logger;
-        this.loggerFactory         = loggerFactory;
+        this.stateDbContainerFolder  = stateDbContainerFolder;
+        this.remoteRepositoryOptions = remoteRepositoryOptions;
+        this.config                  = config;
+        this.logger                  = logger;
+        this.loggerFactory           = loggerFactory;
     }
 
-    public async Task<ILocalStateRepository> CreateAsync(RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? version = null)
+    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions()
+        => stateDbContainerFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
+
+    public async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync()
+        => await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
+
+    public IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
+        => stateDbContainerFolder.GetBlob(version.Name);
+
+
+    public async Task<ILocalStateRepository> GetStateRepositoryAsync(IRemoteRepository remoteRepository, RepositoryVersion? version = null)
     {
-        await new RepositoryOptionsValidator().ValidateAndThrowAsync(remoteRepositoryOptions);
-
-        var remoteRepository = storageAccountFactory.GetRemoteRepository(remoteRepositoryOptions);
-
-        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(remoteRepository, remoteRepositoryOptions, version);
+        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(version);
 
         return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
-    private async Task<(IStateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(IRemoteRepository remoteRepository, RemoteRepositoryOptions remoteRepositoryOptions, RepositoryVersion? requestedVersion)
+    public Task<ILocalStateRepository> CreateNewStateRepositoryAsync(
+        IRemoteRepository remoteRepository, 
+        RepositoryVersion version, 
+        RepositoryVersion? basedOn = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    private async Task<(IStateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(
+        RepositoryVersion? requestedVersion)
     {
         if (requestedVersion is null)
         {
-            var effectiveVersion = await remoteRepository.GetLatestStateDatabaseVersionAsync();
+            var effectiveVersion = await GetLatestStateDatabaseVersionAsync();
             if (effectiveVersion is null)
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTimeRepositoryVersion.FromUtcNow();
-                return (GetStateDatabaseFile(remoteRepository, effectiveVersion), effectiveVersion);
+                return (GetStateDatabaseFile(effectiveVersion), effectiveVersion);
             }
-            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, effectiveVersion), effectiveVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(effectiveVersion), effectiveVersion);
         }
         else
         {
-            return (await GetLocallyCachedStateDatabaseFileAsync(remoteRepository, requestedVersion), requestedVersion);
+            return (await GetLocallyCachedStateDatabaseFileAsync(requestedVersion), requestedVersion);
         }
     }
 
     private async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(
-        IRemoteRepository remoteRepository, 
         RepositoryVersion version)
     {
-        var sdbf = GetStateDatabaseFile(remoteRepository, version);
+        var sdbf = GetStateDatabaseFile(version);
 
         if (sdbf.Exists)
         {
@@ -69,8 +88,8 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
         try
         {
-            var blob = remoteRepository.GetStateDatabaseBlobForVersion(version);
-            await remoteRepository.DownloadAsync(blob, sdbf);
+            var blob = GetStateDatabaseBlobForVersion(version);
+            await stateDbContainerFolder.DownloadAsync(blob, sdbf);
             return sdbf;
         }
         catch (RequestFailedException e) when (e.ErrorCode == "BlobNotFound")
@@ -83,11 +102,13 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
     }
 
-    private IStateDatabaseFile GetStateDatabaseFile(IRemoteRepository remoteRepository, RepositoryVersion version)
+    private IStateDatabaseFile GetStateDatabaseFile(RepositoryVersion version)
     {
-        var stateDbFolder = config.GetLocalStateDatabaseFolderForContainerName(remoteRepository.ContainerName);
+        var stateDbFolder = config.GetLocalStateDatabaseFolderForContainerName(remoteRepositoryOptions.ContainerName);
         return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
     }
+
+
 
     public async Task<bool> SaveChangesAsync(ILocalStateRepository localStateRepository, IRemoteRepository remoteRepository)
     {
@@ -95,7 +116,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         {
             localStateRepository.Vacuum();
 
-            await remoteRepository.UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
+            await UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
             return true;
         }
         else
@@ -103,5 +124,19 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             logger.LogInformation("No changes made in this version, skipping upload.");
             return false;
         }
+    }
+
+    private async Task UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Uploading State Database {version}...", version.Name);
+
+        var blob     = stateDbContainerFolder.GetBlob(version.Name);
+        var metadata = AzureBlob.CreateStateDatabaseMetadata();
+
+        await stateDbContainerFolder.UploadAsync(file, blob, metadata, cancellationToken);
+
+        await blob.SetStorageTierAsync(StorageTier.Cold);
+
+        logger.LogInformation("Uploading State Database {version}... done", version.Name);
     }
 }
