@@ -42,12 +42,12 @@ internal class AzureRemoteRepository : IRemoteRepository
 
     public IRemoteStateRepository GetRemoteStateRepository()
     {
-        return new SqliteRemoteStateRepository(StateDatabaseFolder, remoteRepositoryOptions, config, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
+        return new SqliteRemoteStateRepository(this, StateDatabaseFolder, config, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
     }
 
     
 
-    //public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
+    public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
     internal AzureContainerFolder StateDatabaseFolder    { get; }
     internal AzureContainerFolder ChunksFolder           { get; }
     internal AzureContainerFolder RehydratedChunksFolder { get; }

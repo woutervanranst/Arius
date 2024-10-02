@@ -44,6 +44,8 @@ internal class AzureContainerFolder
 
     public async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
     {
+        ValidateBlobBelongsToFolder(target);
+
         RestartUpload:
 
         try
@@ -80,6 +82,8 @@ internal class AzureContainerFolder
 
     public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
+        ValidateBlobBelongsToFolder(blob);
+
         if (blob is AzureBlob azureBlob)
             await DownloadAsync(azureBlob, file, cancellationToken);
         else
@@ -93,5 +97,11 @@ internal class AzureContainerFolder
         await cryptoService.DecryptAndDecompressAsync(ss, ts, remoteRepositoryOptions.Passphrase);
 
         logger.LogInformation("Successfully downloaded latest state '{blob}' to '{file}'", blob.Name, file);
+    }
+
+    private void ValidateBlobBelongsToFolder(IBlob blob)
+    {
+        if (!blob.FullName.StartsWith(folderName))
+            throw new ArgumentException("TODO DOES NOT CONTAIN THIS FILE");
     }
 }

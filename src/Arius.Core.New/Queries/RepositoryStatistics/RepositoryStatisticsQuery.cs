@@ -40,7 +40,7 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
     {
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        var stateDbRepository = await remoteStateRepository.CreateAsync(request.RemoteRepository, request.Version);
+        var stateDbRepository = await remoteStateRepository.GetStateRepositoryAsync(request.Version);
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
         var pointerFilesEntryCount = stateDbRepository.CountPointerFileEntries();

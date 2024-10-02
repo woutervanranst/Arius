@@ -41,7 +41,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly IMediator                      mediator;
     private readonly IFileSystem                    fileSystem;
-    private readonly IRemoteStateRepository        remoteStateRepository;
+    private readonly IRemoteStateRepository         remoteStateRepository;
     private readonly IStorageAccountFactory         storageAccountFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
@@ -64,7 +64,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
         // Start download of the latest state database
-        var stateDbRepositoryTask = Task.Run(async () => await remoteStateRepository.CreateAsync(request.RemoteRepositoryOptions), cancellationToken);
+        var getLocalStateDbRepositoryTask = Task.Run(async () => await remoteStateRepository.CreateNewStateRepositoryAsync(request.VersionName, basedOn: null), cancellationToken);
 
 
         // 1. Index the request.LocalRoot
@@ -104,7 +104,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         hashTask.ContinueWith(_ => hashedFilePairs.Writer.Complete(), cancellationToken); // C20
 
-        var stateDbRepository = await stateDbRepositoryTask;
+        var localStateDbRepository = await getLocalStateDbRepositoryTask;
 
 
         // 3. Decide whether binaries need uploading
@@ -217,7 +217,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             foreach (var pf in latentPointers)
             {
-                if (!stateDbRepository.BinaryExists(pf.Hash))
+                if (!localStateDbRepository.BinaryExists(pf.Hash))
                     throw new InvalidOperationException($"PointerFile {pf.RelativeName} exists on disk but no corresponding binary exists either locally or remotely.");
             }
         }, cancellationToken);
@@ -239,7 +239,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                 // 2. Create the PointerFileEntry
                 var pfe = PointerFileEntry.FromBinaryFileWithHash(fpwh.BinaryFile);
-                stateDbRepository.AddPointerFileEntry(pfe);
+                localStateDbRepository.AddPointerFileEntry(pfe);
 
                 logger.LogInformation("Creating PointerFileEntry for PointerFile for {binaryFile}", fpwh.RelativeName);
                 await mediator.Publish(new CreatedPointerFileEntryNotification(request, fpwh), cancellationToken);
@@ -257,7 +257,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             await pointerFileCreationTask; // C51
 
-            await RemoveDeletedPointerFileEntriesAsync(request, stateDbRepository, logger, mediator);
+            await RemoveDeletedPointerFileEntriesAsync(request, localStateDbRepository, logger, mediator);
         }, cancellationToken);
 
 
@@ -283,7 +283,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             //await Parallel.ForEachAsync(repository.GetChunks(), GetParallelOptions(request.UpdateTierBlock_Parallelism), async (b, ct) => {});
 
-            var chunksToUpdate = stateDbRepository.GetBinaryProperties().Where(bp => bp.StorageTier != request.Tier);
+            var chunksToUpdate = localStateDbRepository.GetBinaryProperties().Where(bp => bp.StorageTier != request.Tier);
 
             await Parallel.ForEachAsync(chunksToUpdate, GetParallelOptions(request.UpdateTierBlock_Parallelism), async (bp, ct) =>
             {
@@ -296,7 +296,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     return;
 
                 await remoteRepository.SetBinaryStorageTierAsync(bp.Hash, effectiveTier, ct);
-                stateDbRepository.UpdateBinaryStorageTier(bp.Hash, effectiveTier);
+                localStateDbRepository.UpdateBinaryStorageTier(bp.Hash, effectiveTier);
 
                 logger.LogInformation("Updated Chunk {chunk} of size {size} from {originalTier} to {newTier}", bp.Hash, bp.ArchivedSize, bp.StorageTier, effectiveTier);
                 await mediator.Publish(new UpdatedChunkTierNotification(request, bp.Hash, bp.ArchivedSize, bp.StorageTier, effectiveTier), ct);
@@ -307,10 +307,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask);
 
 
-        var changes = await remoteStateRepository.SaveChangesAsync(stateDbRepository, remoteRepository);
+        var changes = await remoteStateRepository.SaveChangesAsync(localStateDbRepository);
         if (changes)
             // NOTE: This is logged in the SaveChangesAsync method
-            await mediator.Publish(new NewStateVersionCreatedNotification(request, stateDbRepository.Version), cancellationToken);
+            await mediator.Publish(new NewStateVersionCreatedNotification(request, localStateDbRepository.Version), cancellationToken);
         else
             // NOTE: This is logged in the SaveChangesAsync method
             await mediator.Publish(new NoNewStateVersionCreatedNotification(request), cancellationToken);
@@ -342,7 +342,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             lock (uploadingBinaries)
             {
-                if (stateDbRepository.BinaryExists(h))
+                if (localStateDbRepository.BinaryExists(h))
                     // Binary exists remotely
                     return UploadStatus.Uploaded;
                 else
@@ -362,7 +362,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             lock (uploadingBinaries)
             {
-                stateDbRepository.AddBinary(bp);
+                localStateDbRepository.AddBinary(bp);
                 uploadingBinaries[bp.Hash].SetResult();
                 var r = uploadingBinaries.Remove(bp.Hash, out var value);
 

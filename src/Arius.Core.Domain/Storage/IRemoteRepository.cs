@@ -1,4 +1,5 @@
-﻿using Arius.Core.Domain.Storage.FileSystem;
+﻿using Arius.Core.Domain.Repositories;
+using Arius.Core.Domain.Storage.FileSystem;
 
 namespace Arius.Core.Domain.Storage;
 
@@ -13,5 +14,4 @@ public interface IRemoteRepository
 
     // General
     string ContainerName { get; }
-    Task   DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default);
 }

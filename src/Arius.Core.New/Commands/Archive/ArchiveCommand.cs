@@ -11,7 +11,11 @@ public record ArchiveCommand : IRequest
     public required bool                    RemoveLocal             { get; init; }
     public required StorageTier             Tier                    { get; init; }
     public required DirectoryInfo           LocalRoot               { get; init; }
-    public          RepositoryVersion?      VersionName             { get; init; }
+    
+    /// <summary>
+    /// The name of the NEW version, if there are changes
+    /// </summary>
+    public required RepositoryVersion      VersionName             { get; init; }
 
     internal int FilesToHash_BufferSize => 1000;
 
