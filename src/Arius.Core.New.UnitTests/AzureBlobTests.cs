@@ -18,7 +18,7 @@ public class AzureBlobTests : TestBase
     {
     }
 
-    private AzureBlob GetAzureBlob()
+    private IAzureBlob GetAzureBlob()
     {
         var r = (AzureRemoteRepository)Fixture.RemoteRepository;
         return r.ChunksFolder.GetBlob(Guid.NewGuid().ToString());
@@ -37,7 +37,7 @@ public class AzureBlobTests : TestBase
         var s = await azureBlob.OpenWriteAsync(contentType, metadata);
 
         // Assert
-        var retrievedMetadata = await azureBlob.GetMetadataAsync();
+        var retrievedMetadata = await ((AzureBlob)azureBlob).GetMetadataAsync();
         Assert.Equal("123", retrievedMetadata[AzureBlob.ORIGINAL_CONTENT_LENGTH_METADATA_KEY]);
         (await azureBlob.GetOriginalContentLengthAsync()).Should().Be(123);
     }
@@ -57,7 +57,7 @@ public class AzureBlobTests : TestBase
         }
 
         // Assert
-        var retrievedMetadata = await azureBlob.GetMetadataAsync();
+        var retrievedMetadata = await ((AzureBlob)azureBlob).GetMetadataAsync();
         Assert.Empty(retrievedMetadata);
     }
 

@@ -8,7 +8,32 @@ using Nito.AsyncEx;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
-internal class AzureBlob : IBlob
+internal interface IAzureBlob : IBlob
+{
+    /// <summary>
+    /// Refreshes the state of the object (the metadata)
+    /// </summary>
+    void Refresh();
+
+    string            FullName { get; }
+    string            Name     { get; }
+    Task<long>        GetContentLengthAsync();
+    Task<StorageTier> GetStorageTierAsync();
+    Task              SetStorageTierAsync(StorageTier value);
+    Task<string?>     GetContentTypeAsync();
+    Task<bool>        ExistsAsync();
+    Task              DeleteAsync();
+    Task<long?>       GetOriginalContentLengthAsync();
+    Task<Stream>      OpenReadAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Open the blob for writing.
+    /// </summary>
+    /// <param name="throwOnExists">If specified, and the blob already exists, a RequestFailedException with Status HttpStatusCode.Conflict is thrown</param>
+    Task<Stream> OpenWriteAsync(string contentType = ICryptoService.ContentType, IDictionary<string, string>? metadata = default, bool throwOnExists = true, CancellationToken cancellationToken = default);
+}
+
+internal class AzureBlob : IAzureBlob
 {
     private readonly BlobItem?                       blobItem;
     private readonly BlockBlobClient                 blockBlobClient;

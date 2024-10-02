@@ -92,6 +92,11 @@ public class File : IFile // TODO make internal
         return FromFullName(newFullName);
     }
 
+    public IFile CopyTo(IFile destination)
+    {
+        return CopyTo(destination.FullName);
+    }
+
     public void Delete() => System.IO.File.Delete(fullName);
 
     //public virtual bool Equals(IFile? other)
@@ -117,7 +122,7 @@ public class StateDatabaseFile : File, IStateDatabaseFile
 
     public static IStateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version)
     {
-        return new StateDatabaseFile(stateDbFolder.FullName, version);
+        return new StateDatabaseFile(System.IO.Path.Combine(stateDbFolder.FullName, version.FileSystemNameWithExtension), version);
     }
 
     public RepositoryVersion Version { get; }

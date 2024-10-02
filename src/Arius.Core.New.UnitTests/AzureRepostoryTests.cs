@@ -63,7 +63,7 @@ public class AzureRepostoryTests : TestBase
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker
-        var b = r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());
+        var b = (AzureBlob)r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());
         await b.UpsertMetadata("Test", "Test");
 
         // Act
@@ -87,7 +87,7 @@ public class AzureRepostoryTests : TestBase
         var bp1 = await r.UploadBinaryFileAsync(bfwh, _ => StorageTier.Hot);
 
             // Add a marker
-        var b = r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());
+        var b = (AzureBlob)r.ChunksFolder.GetBlob(bfwh.Hash.Value.BytesToHexString());
         await b.UpsertMetadata("Test", "Test");
 
             // 'Corrupt' the file

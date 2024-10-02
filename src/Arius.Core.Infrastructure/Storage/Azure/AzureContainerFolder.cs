@@ -8,7 +8,15 @@ using System.Net;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
-internal class AzureContainerFolder
+internal interface IAzureContainerFolder
+{
+    IAsyncEnumerable<IAzureBlob>                     GetBlobs();
+    IAzureBlob                                       GetBlob(string name);
+    Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, IAzureBlob target, IDictionary<string, string> metadata, CancellationToken cancellationToken = default);
+    Task                                             DownloadAsync(IAzureBlob blob, IFile file, CancellationToken cancellationToken = default);
+}
+
+internal class AzureContainerFolder : IAzureContainerFolder
 {
     private readonly BlobContainerClient          blobContainerClient;
     private readonly RemoteRepositoryOptions      remoteRepositoryOptions;
@@ -30,22 +38,22 @@ internal class AzureContainerFolder
         this.logger                  = logger;
     }
 
-    public IAsyncEnumerable<AzureBlob> GetBlobs()
+    public IAsyncEnumerable<IAzureBlob> GetBlobs()
     {
         return blobContainerClient
             .GetBlobsAsync(prefix: $"{folderName}/")
             .Select(bi => new AzureBlob(bi, blobContainerClient));
     }
 
-    public AzureBlob GetBlob(string name)
+    public IAzureBlob GetBlob(string name)
     {
         return new AzureBlob(blobContainerClient.GetBlockBlobClient($"{folderName}/{name}"));
     }
 
-    public async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, AzureBlob target, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
+    public async Task<(long originalLength, long archivedLength)> UploadAsync(IFile source, IAzureBlob target, IDictionary<string, string> metadata, CancellationToken cancellationToken = default)
     {
         ValidateBlobBelongsToFolder(target);
-
+        
         RestartUpload:
 
         try
@@ -80,18 +88,11 @@ internal class AzureContainerFolder
         }
     }
 
-    public async Task DownloadAsync(IBlob blob, IFile file, CancellationToken cancellationToken = default)
+
+    public async Task DownloadAsync(IAzureBlob blob, IFile file, CancellationToken cancellationToken = default)
     {
         ValidateBlobBelongsToFolder(blob);
 
-        if (blob is AzureBlob azureBlob)
-            await DownloadAsync(azureBlob, file, cancellationToken);
-        else
-            throw new NotSupportedException($"'{blob.GetType()}' is not supported");
-    }
-
-    private async Task DownloadAsync(AzureBlob blob, IFile file, CancellationToken cancellationToken = default)
-    {
         await using var ss = await blob.OpenReadAsync(cancellationToken);
         await using var ts = file.OpenWrite();
         await cryptoService.DecryptAndDecompressAsync(ss, ts, remoteRepositoryOptions.Passphrase);

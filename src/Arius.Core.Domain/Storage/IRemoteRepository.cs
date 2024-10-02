@@ -11,7 +11,4 @@ public interface IRemoteRepository
     // Binary
     Task<BinaryProperties> UploadBinaryFileAsync(IBinaryFileWithHash file, Func<long, StorageTier> effectiveTier, CancellationToken cancellationToken = default);
     Task                   SetBinaryStorageTierAsync(Hash hash, StorageTier effectiveTier, CancellationToken cancellationToken = default);
-
-    // General
-    string ContainerName { get; }
 }

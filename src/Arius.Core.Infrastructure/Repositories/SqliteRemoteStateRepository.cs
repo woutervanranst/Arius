@@ -1,22 +1,20 @@
-﻿using Arius.Core.Domain;
-using Arius.Core.Domain.Repositories;
+﻿using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Azure;
-using System;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
 public class SqliteRemoteStateRepository : IRemoteStateRepository
 {
-    private readonly AzureContainerFolder                 stateDbContainerFolder;
+    private readonly IAzureContainerFolder                stateDbContainerFolder;
     private readonly ILogger<SqliteRemoteStateRepository> logger;
     private readonly ILoggerFactory                       loggerFactory;
 
     internal SqliteRemoteStateRepository(
-        AzureContainerFolder stateDbContainerFolder,
+        IAzureContainerFolder stateDbContainerFolder,
         ILoggerFactory loggerFactory,
         ILogger<SqliteRemoteStateRepository> logger)
     {
@@ -31,7 +29,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
     private async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync()
         => await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
 
-    private IBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
+    private IAzureBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
         => stateDbContainerFolder.GetBlob(version.Name);
 
 
@@ -39,12 +37,12 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         DirectoryInfo localStateDatabaseCacheDirectory, 
         RepositoryVersion? version = null)
     {
-        var (sdbf, effectiveVersion) = await GetLocalStateRepositoryFileFullNameAsync(localStateDatabaseCacheDirectory, version);
+        var stateDatabaseFile = await GetLocalStateRepositoryFileFullNameAsync(localStateDatabaseCacheDirectory, version);
 
-        return new SqliteLocalStateRepository(sdbf, effectiveVersion, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
+        return new SqliteLocalStateRepository(stateDatabaseFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
-    public Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(
+    public async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(
         DirectoryInfo localStateDatabaseCacheDirectory,
         RepositoryVersion version, 
         RepositoryVersion? basedOn = null)
@@ -52,7 +50,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         throw new NotImplementedException();
     }
 
-    private async Task<(IStateDatabaseFile dbFile, RepositoryVersion effectiveVersion)> GetLocalStateRepositoryFileFullNameAsync(
+    private async Task<IStateDatabaseFile> GetLocalStateRepositoryFileFullNameAsync(
         DirectoryInfo localStateDatabaseCacheDirectory,
         RepositoryVersion? requestedVersion)
     {
@@ -63,13 +61,13 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
             {
                 // No states yet remotely - this is a fresh archive
                 effectiveVersion = DateTimeRepositoryVersion.FromUtcNow();
-                return (StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, effectiveVersion), effectiveVersion);
+                return StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, effectiveVersion);
             }
-            return (await GetLocallyCachedStateDatabaseFileAsync(localStateDatabaseCacheDirectory, effectiveVersion), effectiveVersion);
+            return await GetLocallyCachedStateDatabaseFileAsync(localStateDatabaseCacheDirectory, effectiveVersion);
         }
         else
         {
-            return (await GetLocallyCachedStateDatabaseFileAsync(localStateDatabaseCacheDirectory, requestedVersion), requestedVersion);
+            return await GetLocallyCachedStateDatabaseFileAsync(localStateDatabaseCacheDirectory, requestedVersion);
         }
     }
 

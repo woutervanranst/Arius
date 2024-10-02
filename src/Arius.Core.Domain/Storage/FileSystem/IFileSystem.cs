@@ -36,6 +36,7 @@ public interface IFile
     Stream OpenWrite();
 
     IFile CopyTo(string destinationName);
+    IFile CopyTo(IFile destination);
     void  Delete();
 }
 
