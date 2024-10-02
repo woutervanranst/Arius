@@ -40,6 +40,7 @@ public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCo
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly IMediator                      mediator;
+    private readonly AriusConfiguration             config;
     private readonly IFileSystem                    fileSystem;
     private readonly IRemoteStateRepository         remoteStateRepository;
     private readonly IStorageAccountFactory         storageAccountFactory;
@@ -47,12 +48,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public ArchiveCommandHandler(
         IMediator mediator,
+        AriusConfiguration config,
         IFileSystem fileSystem,
         IRemoteStateRepository remoteStateRepository,
         IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.mediator              = mediator;
+        this.config                = config;
         this.fileSystem            = fileSystem;
         this.remoteStateRepository = remoteStateRepository;
         this.storageAccountFactory = storageAccountFactory;
@@ -64,7 +67,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
         // Start download of the latest state database
-        var getLocalStateDbRepositoryTask = Task.Run(async () => await remoteStateRepository.CreateNewStateRepositoryAsync(request.VersionName, basedOn: null), cancellationToken);
+        var getLocalStateDbRepositoryTask = Task.Run(async () =>
+        {
+            var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepositoryOptions.ContainerName);
+            return await remoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.VersionName, basedOn: null);
+        }, cancellationToken);
 
 
         // 1. Index the request.LocalRoot

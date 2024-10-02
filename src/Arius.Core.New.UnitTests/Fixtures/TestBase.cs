@@ -43,7 +43,7 @@ public abstract class TestBase
     {
         var repository = Fixture.RemoteRepository;
         var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-        repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         foreach (var versionName in versionNames)
         {
@@ -73,14 +73,14 @@ public abstract class TestBase
     protected void GivenAzureRepositoryWithNoVersions()
     {
         var repository = Fixture.RemoteRepository;
-        repository.GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     }
 
     protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     {
         var repository = Fixture.RemoteRepository;
         var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-        repository.GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
         // Set up the repository to throw an exception for versions not in the list
         repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())

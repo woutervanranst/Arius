@@ -138,12 +138,12 @@ public class AriusFixture : IDisposable
         TestRunSourceFolder         = testRunRootFolder.GetSubDirectory("Source").CreateIfNotExists();
 
         StorageAccountFactory = serviceProvider.GetRequiredService<IStorageAccountFactory>();
-        RemoteStateRepository = serviceProvider.GetRequiredService<IRemoteStateRepository>();
         Mediator              = serviceProvider.GetRequiredService<IMediator>();
         AriusConfiguration    = serviceProvider.GetRequiredService<IOptions<AriusConfiguration>>().Value;
         LocalFileSystem       = serviceProvider.GetRequiredService<IFileSystem>();
 
-        RemoteRepository = StorageAccountFactory.GetRemoteRepository(RemoteRepositoryOptions);
+        RemoteRepository      = StorageAccountFactory.GetRemoteRepository(RemoteRepositoryOptions);
+        RemoteStateRepository = RemoteRepository.GetRemoteStateRepository();
 
         mediatorNotifications = serviceProvider.GetRequiredService<MediatorNotificationStore>();
     }

@@ -7,13 +7,13 @@ namespace Arius.Core.Infrastructure.Storage.Azure;
 
 public sealed class AzureContainerFactory
 {
-    private readonly AzureRepositoryFactory         azureRepositoryFactory;
+    private readonly AzureRemoteRepositoryFactory   azureRemoteRepositoryFactory;
     private readonly ILogger<AzureContainerFactory> logger;
 
-    public AzureContainerFactory(AzureRepositoryFactory azureRepositoryFactory, ILogger<AzureContainerFactory> logger)
+    public AzureContainerFactory(AzureRemoteRepositoryFactory azureRemoteRepositoryFactory, ILogger<AzureContainerFactory> logger)
     {
-        this.azureRepositoryFactory = azureRepositoryFactory;
-        this.logger                 = logger;
+        this.azureRemoteRepositoryFactory = azureRemoteRepositoryFactory;
+        this.logger                       = logger;
     }
 
     internal IContainer Create(AzureStorageAccount storageAccount, BlobServiceClient blobServiceClient, string containerName)
@@ -24,6 +24,6 @@ public sealed class AzureContainerFactory
         if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
             logger.LogInformation("Container '{containerName}' created.", containerName);
 
-        return new AzureContainer(storageAccount, bcc, azureRepositoryFactory);
+        return new AzureContainer(storageAccount, bcc, azureRemoteRepositoryFactory);
     }
 }

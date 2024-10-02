@@ -2,7 +2,7 @@
 
 public interface IContainer
 {
-    IStorageAccount  StorageAccount { get; }
-    string           Name           { get; }
+    IStorageAccount   StorageAccount { get; }
+    string            Name           { get; }
     IRemoteRepository GetRemoteRepository(RemoteRepositoryOptions remoteRepositoryOptions);
 }

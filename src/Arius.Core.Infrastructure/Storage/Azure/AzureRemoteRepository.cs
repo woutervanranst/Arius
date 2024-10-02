@@ -5,16 +5,12 @@ using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Repositories;
 using Azure.Storage.Blobs;
-using Microsoft.Extensions.Options;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
 internal class AzureRemoteRepository : IRemoteRepository
 {
-    private readonly RemoteRepositoryOptions        remoteRepositoryOptions;
-    private readonly ICryptoService                 cryptoService;
     private readonly ILoggerFactory                 loggerFactory;
-    private readonly AriusConfiguration             config;
     private readonly ILogger<AzureRemoteRepository> logger;
 
     internal const string STATE_DBS_FOLDER_NAME         = "states";
@@ -25,14 +21,10 @@ internal class AzureRemoteRepository : IRemoteRepository
         BlobContainerClient blobContainerClient,
         RemoteRepositoryOptions remoteRepositoryOptions,
         ICryptoService cryptoService,
-        IOptions<AriusConfiguration> config,
         ILoggerFactory loggerFactory,
         ILogger<AzureRemoteRepository> logger)
     {
-        this.remoteRepositoryOptions = remoteRepositoryOptions;
-        this.cryptoService           = cryptoService;
         this.loggerFactory           = loggerFactory;
-        this.config                  = config.Value;
         this.logger                  = logger;
 
         StateDatabaseFolder    = new AzureContainerFolder(blobContainerClient, remoteRepositoryOptions, STATE_DBS_FOLDER_NAME,         cryptoService, loggerFactory.CreateLogger("AzureStateDbContainerFolder"));
@@ -42,12 +34,10 @@ internal class AzureRemoteRepository : IRemoteRepository
 
     public IRemoteStateRepository GetRemoteStateRepository()
     {
-        return new SqliteRemoteStateRepository(this, StateDatabaseFolder, config, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
+        return new SqliteRemoteStateRepository(StateDatabaseFolder, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
     }
 
     
-
-    public   string               ContainerName          => remoteRepositoryOptions.ContainerName;
     internal AzureContainerFolder StateDatabaseFolder    { get; }
     internal AzureContainerFolder ChunksFolder           { get; }
     internal AzureContainerFolder RehydratedChunksFolder { get; }

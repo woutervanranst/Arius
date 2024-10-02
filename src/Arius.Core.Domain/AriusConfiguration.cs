@@ -7,6 +7,6 @@ public record AriusConfiguration
     private DirectoryInfo StateDbRoot
         => LocalConfigRoot.CreateSubdirectory("StateDbs");
 
-    public DirectoryInfo GetLocalStateDatabaseFolderForContainerName(string containerName)
+    public DirectoryInfo GetLocalStateDatabaseCacheDirectoryForContainerName(string containerName)
         => StateDbRoot.CreateSubdirectory(containerName);
 }

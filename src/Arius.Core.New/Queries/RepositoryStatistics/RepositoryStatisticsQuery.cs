@@ -8,8 +8,8 @@ namespace Arius.Core.New.Queries.RepositoryStatistics;
 
 public record RepositoryStatisticsQuery : IRequest<RepositoryStatisticsQueryResponse>
 {
-    public required RemoteRepositoryOptions  RemoteRepository { get; init; }
-    public          RepositoryVersion? Version    { get; init; }
+    public required RemoteRepositoryOptions RemoteRepository { get; init; }
+    public          RepositoryVersion?      Version          { get; init; }
 }
 
 internal class RepositoryStatisticsQueryValidator : AbstractValidator<RepositoryStatisticsQuery>
@@ -29,10 +29,14 @@ public record RepositoryStatisticsQueryResponse
 
 internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStatisticsQuery, RepositoryStatisticsQueryResponse>
 {
+    private readonly AriusConfiguration     config;
     private readonly IRemoteStateRepository remoteStateRepository;
 
-    public RepositoryStatisticsQueryHandler(IRemoteStateRepository remoteStateRepository)
+    public RepositoryStatisticsQueryHandler(
+        AriusConfiguration config,
+        IRemoteStateRepository remoteStateRepository)
     {
+        this.config                = config;
         this.remoteStateRepository = remoteStateRepository;
     }
 
@@ -40,7 +44,8 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
     {
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        var stateDbRepository = await remoteStateRepository.GetStateRepositoryAsync(request.Version);
+        var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepository.ContainerName);
+        var stateDbRepository = await remoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version);
 
         var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
         var pointerFilesEntryCount = stateDbRepository.CountPointerFileEntries();
@@ -50,7 +55,7 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
         {
             BinaryFilesCount       = binaryFilesCount,
             PointerFilesEntryCount = pointerFilesEntryCount,
-            Sizes = sizes
+            Sizes                  = sizes
         };
     }
 }

@@ -1,10 +1,10 @@
-﻿using System.Net;
-using Arius.Core.Domain.Services;
+﻿using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Specialized;
+using System.Net;
 
 namespace Arius.Core.Infrastructure.Storage.Azure;
 
