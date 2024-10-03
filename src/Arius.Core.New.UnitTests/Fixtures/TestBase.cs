@@ -9,8 +9,8 @@ using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
 using Arius.Core.New.Queries.RepositoryStatistics;
 using Arius.Core.New.UnitTests.Extensions;
-using Azure;
 using FluentAssertions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using System.Linq.Expressions;
@@ -34,84 +34,86 @@ public abstract class TestBase
 
     // --- GIVEN
 
-    protected IFileSystem GivenLocalFilesystem()
-    {
-        return Fixture.LocalFileSystem;
-    }
+    //protected IFileSystem GivenLocalFilesystem()
+    //{
+    //    return Fixture.LocalFileSystem;
+    //}
 
-    protected void GivenLocalFilesystemWithVersions(string[] versionNames)
-    {
-        var repository = Fixture.RemoteRepository;
-        var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+    //protected void GivenLocalFilesystemWithVersions(string[] versionNames)
+    //{
+    //    var repository = Fixture.RemoteRepository;
+    //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
+    //    repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
-        foreach (var versionName in versionNames)
-        {
-            var version = RepositoryVersion.FromName(versionName);
-            var sdbf    = GetStateDatabaseFileForRepository(Fixture, version);
+    //    foreach (var versionName in versionNames)
+    //    {
+    //        var version = RepositoryVersion.FromName(versionName);
+    //        var sdbf    = GetStateDatabaseFileForRepository(Fixture, version);
 
-            CreateLocalDatabase(sdbf);
-        }
-    }
+    //        CreateLocalDatabase(sdbf);
+    //    }
+    //}
 
     protected void GivenAzureStorageAccountWithContainers(params string[] containerNames)
     {
         var storageAccount = Substitute.For<IStorageAccount>();
         Fixture.StorageAccountFactory.GetStorageAccount(Arg.Any<StorageAccountOptions>()).Returns(storageAccount);
 
-        var containers = containerNames.Select(n =>
-        {
-            var c = Substitute.For<IContainer>();
-            c.Name.Returns(n);
-
-            return c;
-        });
+        var containers = containerNames.Select(n => Substitute.For<IContainer>().With(c => c.Name.Returns(n)));
         storageAccount.GetContainers(Arg.Any<CancellationToken>())
             .Returns(containers.ToAsyncEnumerable());
     }
 
-    protected void GivenAzureRepositoryWithNoVersions()
-    {
-        var repository = Fixture.RemoteRepository;
-        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
-    }
+    //protected void GivenAzureRepositoryWithNoVersions()
+    //{
+    //    var repository = Fixture.RemoteRepository;
 
-    protected void GivenAzureRepositoryWithVersions(string[] versionNames)
-    {
-        var repository = Fixture.RemoteRepository;
-        var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+    //    if (repository.IsSubstitute())
+    //    {
+    //        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+    //    }
+    //    else
+    //    {
+    //        // Nothing
+    //    }
+    //}
 
-        // Set up the repository to throw an exception for versions not in the list
-        repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())
-            .Returns(info =>
-            {
-                var requestedVersion = info.Arg<RepositoryVersion>();
-                if (!versionNames.Contains(requestedVersion.Name))
-                {
-                    throw new RequestFailedException(404, "Blob not found", "BlobNotFound", null);
-                }
+    //protected void GivenAzureRepositoryWithVersions(string[] versionNames)
+    //{
+    //    var repository = Fixture.RemoteRepository;
+    //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
+    //    repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
-                return Substitute.For<IBlob>();
-            });
+    //    // Set up the repository to throw an exception for versions not in the list
+    //    //repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())
+    //    //    .Returns(info =>
+    //    //    {
+    //    //        var requestedVersion = info.Arg<RepositoryVersion>();
+    //    //        if (!versionNames.Contains(requestedVersion.Name))
+    //    //        {
+    //    //            throw new RequestFailedException(404, "Blob not found", "BlobNotFound", null);
+    //    //        }
 
-        repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
-            .Returns(info =>
-            {
-                var blob = info.Arg<IBlob>();
-                if (blob == null)
-                {
-                    return Task.FromException(new RequestFailedException(404, "Blob not found", "BlobNotFound", null));
-                }
-                else
-                {
-                    var sdbf = info.Arg<IFile>() as StateDatabaseFile;
-                    CreateLocalDatabase(sdbf);
-                }
+    //    //        return Substitute.For<IBlob>();
+    //    //    });
 
-                return Task.CompletedTask;
-            });
-    }
+    //    //repository.DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
+    //    //    .Returns(info =>
+    //    //    {
+    //    //        var blob = info.Arg<IBlob>();
+    //    //        if (blob == null)
+    //    //        {
+    //    //            return Task.FromException(new RequestFailedException(404, "Blob not found", "BlobNotFound", null));
+    //    //        }
+    //    //        else
+    //    //        {
+    //    //            var sdbf = info.Arg<IFile>() as StateDatabaseFile;
+    //    //            CreateLocalDatabase(sdbf);
+    //    //        }
+
+    //    //        return Task.CompletedTask;
+    //    //    });
+    //}
 
     public void GivenPopulatedSourceFolder()
     {
@@ -195,10 +197,10 @@ public abstract class TestBase
 
     // --- WHEN
 
-    protected async Task<ILocalStateRepository> WhenStateDbRepositoryFactoryCreateAsync(string? versionName = null) // TODO Rename Me
-    {
-        return await GetLocalStateRepositoryAsync(versionName);
-    }
+    //protected async Task<ILocalStateRepository> WhenGetLocalStateRepositoryAsync(string? versionName = null)
+    //{
+    //    return await GetLocalStateRepositoryAsync(versionName);
+    //}
 
     protected IAsyncEnumerable<string> WhenMediatorRequest(ContainerNamesQuery request)
     {
@@ -210,24 +212,24 @@ public abstract class TestBase
         return Fixture.Mediator.CreateStream(request);
     }
 
-    protected async Task WhenArchiveCommandAsync(ArchiveCommand request)
-    {
-        await Fixture.Mediator.Send(request);
-    }
+    //protected async Task WhenArchiveCommandAsync(ArchiveCommand request)
+    //{
+    //    await Fixture.Mediator.Send(request);
+    //}
 
-    protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier)
-    {
-        var c = new ArchiveCommand
-        {
-            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
-            FastHash                = fastHash,
-            RemoveLocal             = removeLocal,
-            Tier                    = tier,
-            LocalRoot               = Fixture.TestRunSourceFolder,
-        };
+    //protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier)
+    //{
+    //    var c = new ArchiveCommand
+    //    {
+    //        RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+    //        FastHash                = fastHash,
+    //        RemoveLocal             = removeLocal,
+    //        Tier                    = tier,
+    //        LocalRoot               = Fixture.TestRunSourceFolder,
+    //    };
 
-        await Fixture.Mediator.Send(c);
-    }
+    //    await Fixture.Mediator.Send(c);
+    //}
 
     protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier, string versionName)
     {
@@ -257,55 +259,61 @@ public abstract class TestBase
 
     // --- THEN
 
-    protected void ThenStateDbVersionShouldBe(ILocalStateRepository repository, string expectedVersion)
-    {
-        repository.Version.Name.Should().Be(expectedVersion);
-    }
+    //protected void ThenStateDbVersionShouldBe(ILocalStateRepository repository, string expectedVersion)
+    //{
+    //    repository.Version.Name.Should().Be(expectedVersion);
+    //}
 
-    protected void ThenStateDbVersionShouldBeBetween(RepositoryVersion version, DateTime startTime, DateTime endTime)
-    {
-        DateTime.Parse(version.Name)
-            .Should()
-            .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);  // TODO use Should().BeCloseTo
-    }
+    //protected void ThenStateDbVersionShouldBeBetween(RepositoryVersion version, DateTime startTime, DateTime endTime)
+    //{
+    //    DateTime.Parse(version.Name)
+    //        .Should()
+    //        .BeOnOrAfter(startTime).And.BeOnOrBefore(endTime);  // TODO use Should().BeCloseTo
+    //}
 
-    protected void ThenLocalStateDbsShouldExist(string[]? cachedVersions = null, 
-        int? cachedVersionCount = null, int? distinctCount = null)
-    {
-        var dbfs   = GetAllStateDatabaseFilesForRepository(Fixture).ToArray();
+    //protected void ThenLocalStateDbsShouldExist(
+    //    string[]? cachedVersions = null,
+    //    int? cachedVersionCount = null, 
+    //    int? distinctCount = null)
+    //{
+    //    var dbfs = GetAllStateDatabaseFilesForRepository(Fixture).ToArray();
 
-        if (cachedVersionCount is not null)
-            dbfs.Length.Should().Be(cachedVersionCount);
-        if (distinctCount is not null)
-            dbfs.Select(dbf => dbf.Version.Name).Distinct().Count().Should().Be(distinctCount);
+    //    if (cachedVersionCount is not null)
+    //        dbfs.Length.Should().Be(cachedVersionCount);
+    //    if (distinctCount is not null)
+    //        dbfs.Select(dbf => dbf.Version.Name).Distinct().Count().Should().Be(distinctCount);
 
-        if (cachedVersions is not null)
-            dbfs.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
-    }
+    //    if (cachedVersions is not null)
+    //        dbfs.Select(dbf => dbf.Version.Name).Should().BeEquivalentTo(cachedVersions);
+    //}
 
-    protected void ThenStateDbShouldBeEmpty(ILocalStateRepository localStateRepository)
-    {
-        localStateRepository.CountPointerFileEntries().Should().Be(0);
-        localStateRepository.CountBinaryProperties().Should().Be(0);
-    }
+    //protected void ThenStateDbShouldBeEmpty(ILocalStateRepository localStateRepository)
+    //{
+    //    localStateRepository.CountPointerFileEntries().Should().Be(0);
+    //    localStateRepository.CountBinaryProperties().Should().Be(0);
+    //}
 
-    protected void ThenDownloadShouldNotHaveBeenCalled()
-    {
-        var repository = Fixture.StorageAccountFactory.GetRemoteRepository(Fixture.RemoteRepositoryOptions);
-        repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
-    }
+    //protected void ThenDownloadShouldNotHaveBeenCalled()
+    //{
+    //    throw new NotImplementedException();
 
-    protected void ThenDownloadShouldHaveBeenCalled()
-    {
-        var repository = Fixture.RemoteRepository;
-        repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
-    }
+    //    var repository = Fixture.StorageAccountFactory.GetRemoteRepository(Fixture.RemoteRepositoryOptions);
+    //    //repository.DidNotReceive().DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
+    //}
 
-    protected async Task ThenArgumentExceptionShouldBeThrownAsync(Func<Task> act, string expectedMessagePart)
-    {
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage($"*{expectedMessagePart}*");
-    }
+    //protected void ThenDownloadShouldHaveBeenCalled()
+    //{
+    //    throw new NotImplementedException();
+
+    //    var repository = Fixture.RemoteRepository;
+    //    //repository.Received(1).DownloadAsync(Arg.Any<IBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>());
+    //}
+
+    //protected async Task ThenArgumentExceptionShouldBeThrownAsync(Func<Task> act, string expectedMessagePart)
+    //{
+    //    await act.Should().ThrowAsync<ArgumentException>()
+    //        .WithMessage($"*{expectedMessagePart}*");
+    //}
 
 
     protected void ThenShouldContainMediatorNotification<TNotification>() 
@@ -322,45 +330,66 @@ public abstract class TestBase
 
     protected async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(string? versionName = null)
     {
-        var repository = Fixture.RemoteStateRepository;
-        var options    = Fixture.RemoteRepositoryOptions;
-        var version    = versionName != null ? RepositoryVersion.FromName(versionName) : null;
-        return await repository.CreateAsync(options, version);
+        var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
+        var version                          = versionName != null ? RepositoryVersion.FromName(versionName) : null;
+        
+        return await Fixture.RemoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version);
     }
 
 
-    private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
-    {
-        return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
-    }
+    //private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
+    //{
+    //    return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
+    //}
 
-    public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
-    {
-        var stateDbFolder = GetLocalStateDatabaseFolder(fixture);
-        foreach (var fi in stateDbFolder
-                     .GetFiles("*.*", SearchOption.AllDirectories)
-                     .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
-        {
-            var n       = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
-            var version = RepositoryVersion.FromName(n);
-            yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
-        }
-    }
+    //public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
+    //{
+    //    var stateDbFolder = GetLocalStateDatabaseFolder(fixture);
+    //    foreach (var fi in stateDbFolder
+    //                 .GetFiles("*.*", SearchOption.AllDirectories)
+    //                 .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
+    //    {
+    //        var n       = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
+    //        var version = RepositoryVersion.FromName(n);
+    //        yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
+    //    }
+    //}
 
-    private DirectoryInfo GetLocalStateDatabaseFolder(AriusFixture fixture)
-    {
-        return fixture.AriusConfiguration
-            .GetLocalStateDatabaseFolderForContainerName(fixture.RemoteRepositoryOptions.ContainerName);
-    }
+    //private DirectoryInfo GetLocalStateDatabaseFolder(AriusFixture fixture)
+    //{
+    //    return fixture.AriusConfiguration
+    //        .GetLocalStateDatabaseCacheDirectoryForContainerName(fixture.RemoteRepositoryOptions.ContainerName);
+    //}
 
     
-    private static void CreateLocalDatabase(IStateDatabaseFile sdbf)
+    protected static void CreateLocalDatabase(IStateDatabaseFile sdbf)
     {
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
 
         using var context = new SqliteStateDatabaseContext(optionsBuilder.Options, _ => {});
-        //context.Database.EnsureCreated();
         context.Database.Migrate();
+    }
+
+    protected static void CreateLocalDatabaseWithEntry(IStateDatabaseFile sdbf,
+        IEnumerable<string> binaryPropertiesHashes)
+    {
+        var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
+        optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
+
+        using var context = new SqliteStateDatabaseContext(optionsBuilder.Options, _ => { });
+        context.Database.Migrate();
+
+        foreach (var hash in binaryPropertiesHashes)
+            context.BinaryProperties.Add(new BinaryPropertiesDto { Hash = hash.StringToBytes() }); // add a marker
+
+        context.SaveChanges();
+
+        SqliteConnection.ClearAllPools();
+    }
+
+    protected static void LocalDatabaseHasEntry(ILocalStateRepository localStateRepository, string binaryPropertiesHash)
+    {
+        localStateRepository.GetBinaryProperties().Should().Contain(z => z.Hash == binaryPropertiesHash.StringToBytes());
     }
 }

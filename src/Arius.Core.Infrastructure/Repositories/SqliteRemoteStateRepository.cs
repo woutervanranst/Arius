@@ -47,7 +47,15 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         RepositoryVersion version, 
         RepositoryVersion? basedOn = null)
     {
-        throw new NotImplementedException();
+        var basedOnFile = await GetLocalStateRepositoryFileFullNameAsync(localStateDatabaseCacheDirectory, basedOn);
+        if (!basedOnFile.Exists)
+            throw new InvalidOperationException($"The requested version {basedOn} does not exist.");
+
+        var newVersionFile = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, version);
+
+        basedOnFile.CopyTo(newVersionFile);
+
+        return new SqliteLocalStateRepository(newVersionFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
     private async Task<IStateDatabaseFile> GetLocalStateRepositoryFileFullNameAsync(

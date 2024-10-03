@@ -1,6 +1,8 @@
+using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.GetStateDbVersions;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
+using NSubstitute;
 
 namespace Arius.Core.New.UnitTests;
 
@@ -23,12 +25,12 @@ public class GetRepositoryVersionsQueryHandlerTests : TestBase
     public async Task Handle_ShouldReturnRepositoryVersions()
     {
         // Arrange
-        GivenAzureRepositoryWithVersions(["v1.0", "v2.0"]);
+        string[] versionNames = ["v1.0", "v2.0"];
+        var      versions     = versionNames.Select(RepositoryVersion.FromName).ToArray();
+        var      repository   = Fixture.RemoteRepository;
+        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
 
-        var request = new GetRepositoryVersionsQuery
-        {
-            RemoteRepository = Fixture.RemoteRepositoryOptions
-        };
+        var request = new GetRepositoryVersionsQuery { RemoteRepository = Fixture.RemoteRepositoryOptions };
 
         // Act
         var result = await WhenMediatorRequest(request).ToListAsync();

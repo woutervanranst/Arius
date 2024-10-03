@@ -1,9 +1,18 @@
-using Arius.Core.New.UnitTests.Extensions;
+using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Repositories;
+using Arius.Core.Infrastructure.Storage.Azure;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.UnitTests.Fixtures;
+using Azure;
+using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
+using NSubstitute.ClearExtensions;
 
 namespace Arius.Core.New.UnitTests;
 
-public sealed class StateDbRepositoryFactoryTests : TestBase
+public class SqliteRemoteStateRepositoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
@@ -18,115 +27,223 @@ public sealed class StateDbRepositoryFactoryTests : TestBase
     {
     }
 
-    [Fact]
-    public async Task CreateAsync_WhenNewRepository_NewLocalDatabaseInitializedNotDownloaded()
+    private readonly IAzureContainerFolder       containerFolder;
+    private readonly SqliteRemoteStateRepository repository;
+    private readonly DirectoryInfo               localStateDatabaseCacheDirectory;
+
+    public SqliteRemoteStateRepositoryTests()
+    {
+        localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
+
+        var loggerFactory = NullLoggerFactory.Instance;
+        var logger        = NullLogger<SqliteRemoteStateRepository>.Instance;
+
+        containerFolder = Substitute.For<IAzureContainerFolder>();
+        repository      = new SqliteRemoteStateRepository(containerFolder, loggerFactory, logger);
+
+        // it returns an IAzureBlob with the requested name
+        containerFolder.GetBlob(Arg.Any<string>())
+            .Returns(i => Substitute.For<IAzureBlob>()
+                .With(b => b.Name.Returns(i.Arg<string>())));
+    }
+
+    //    /// <summary>
+    //    /// Get an existing repository version. 
+    //    /// If `version` is null, it will get the latest version. If there is no version, it will return a new, empty, repository.
+    //    /// If `version` is specified but does not exist, it will throw an exception.
+    //    /// </summary>
+    //    //public Task<ILocalStateRepository> GetLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion? version = null);
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetLocalStateRepositoryAsync_WhenVersionIsNullAndExists_ShouldReturnLatestVersion(bool isLocallyCached)
     {
         // Arrange
-        GivenLocalFilesystem();
-        GivenAzureRepositoryWithNoVersions();
+        var latestVersion = RepositoryVersion.FromName("v2.0");
+        containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
+        containerFolder.DownloadAsync(Arg.Any<IAzureBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 
-        var startTime = DateTime.UtcNow.TruncateToSeconds();
+        if (isLocallyCached)
+        {
+            var sdbf = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, latestVersion);
+            CreateLocalDatabase(sdbf);
+        }
 
         // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync();
+        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory);
 
         // Assert
-        var endTime = DateTime.UtcNow.TruncateToSeconds();
-
-        ThenStateDbVersionShouldBeBetween(repository.Version, startTime, endTime);
-        ThenLocalStateDbsShouldExist(cachedVersionCount: 1, distinctCount: 1);
-        ThenStateDbShouldBeEmpty(repository);
-        ThenDownloadShouldNotHaveBeenCalled();
+        if (isLocallyCached)
+            containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        else
+            containerFolder.Received(1).DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>());
+        
+        localStateRepository.Should().NotBeNull();
+        localStateRepository.Version.Should().Be(latestVersion);
+        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
     }
 
     [Fact]
-    public async Task CreateAsync_WhenNoVersionSpecifiedAndLatestVersionNotCached_ShouldDownloadLatestVersion()
+    public async Task GetLocalStateRepositoryAsync_WhenNoVersionsExist_ShouldReturnNewRepository()
     {
         // Arrange
-        GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions(["v1.0", "v1.1", "v2.0"]);
+        containerFolder.GetBlobs().Returns(x => AsyncEnumerable.Empty<IAzureBlob>());
 
         // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync();
+        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory);
 
         // Assert
-        ThenStateDbVersionShouldBe(repository, "v2.0");
-        ThenLocalStateDbsShouldExist(cachedVersions: ["v2.0"], distinctCount: 1);
-        ThenDownloadShouldHaveBeenCalled();
+        containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        
+        localStateRepository.Should().NotBeNull();
+        (localStateRepository.Version as DateTimeRepositoryVersion).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
+        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+
+        localStateRepository.CountPointerFileEntries().Should().Be(0);
+        localStateRepository.CountBinaryProperties().Should().Be(0);
     }
 
     [Fact]
-    public async Task CreateAsync_WhenLatestVersionCached_ShouldNotDownloadLatestVersion()
+    public async Task GetLocalStateRepositoryAsync_WhenSpecifiedVersionDoesNotExist_ShouldThrowException()
     {
         // Arrange
-        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
+        var requestedVersion = RepositoryVersion.FromName("non-existent");
+
+        containerFolder.ClearSubstitute();
+        containerFolder.GetBlob(requestedVersion.Name)
+            .Returns(_ => throw new RequestFailedException(0, "", "BlobNotFound", null));
 
         // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync();
+        Func<Task> act = async () => await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, requestedVersion);
 
         // Assert
-        ThenStateDbVersionShouldBe(repository, "v2.0");
-        ThenLocalStateDbsShouldExist(["v1.0", "v1.1", "v2.0"], cachedVersionCount: 3, distinctCount: 3);
-        ThenDownloadShouldNotHaveBeenCalled();
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("The requested version was not found*");
+    }
+
+    private static IAsyncEnumerable<IAzureBlob> GetMockBlobs(string[] versionNames)
+    {
+        return versionNames
+            .Select(v => Substitute.For<IAzureBlob>()
+                .With(b => b.Name.Returns(v)))
+            .ToAsyncEnumerable();
+    }
+
+    ///// <summary>
+    ///// Create a new repository version based on an existing one.
+    ///// If `basedOn` is null, it will be based on the latest version.
+    ///// If `basedOn` is specified, but does not exist, it will throw an exception.
+    ///// </summary>
+    ////public Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion version, RepositoryVersion? basedOn = null);
+
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateNewLocalStateRepositoryAsync_WhenBasedOnIsNull_BasedOnLatestVersion(bool isLocallyCached)
+    {
+        // Arrange
+        var latestVersion = RepositoryVersion.FromName("v2.0");
+
+        if (isLocallyCached)
+        {
+            CreateLocallyCachedDatabase();
+        }
+
+        containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
+        containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                CreateLocallyCachedDatabase();
+                return Task.CompletedTask;
+            });
+
+        var newVersion = RepositoryVersion.FromName("NewVersion");
+
+        // Act
+        var localStateRepository = await repository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, newVersion, basedOn: null);
+
+        // Assert
+        if (isLocallyCached)
+            containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        else
+            containerFolder.Received(1).DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>());
+
+        localStateRepository.Version.Should().Be(newVersion);
+        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+        LocalDatabaseHasEntry(localStateRepository, "test");
+
+        void CreateLocallyCachedDatabase()
+        {
+            var sdbf          = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, latestVersion);
+            CreateLocalDatabaseWithEntry(sdbf, ["test"]);
+        }
     }
 
     [Fact]
-    public async Task CreateAsync_WhenSpecificVersionExistsLocally_ShouldNotDownloadSpecificVersion()
+    public async Task CreateNewLocalStateRepositoryAsync_WhenBasedOnIsNullButNoVersionsExist_NewLocalDatabaseInitializedNotDownloaded()
+    {
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateNewLocalStateRepositoryAsync_WhenBasedOnIsNotNullAndExists_BasedOnThatVersion(bool isLocallyCached)
     {
         // Arrange
-        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
+        var basedOnVersion = RepositoryVersion.FromName("v1.1");
+
+        if (isLocallyCached)
+        {
+            CreateLocallyCachedDatabase();
+        }
+
+        containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
+        containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name.StartsWith("v1.1")), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
+            .Returns(i =>
+            {
+                CreateLocallyCachedDatabase();
+                return Task.CompletedTask;
+            });
+
+        var newVersion = RepositoryVersion.FromName("NewVersion");
 
         // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
+        var localStateRepository = await repository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, newVersion, basedOn: basedOnVersion);
 
         // Assert
-        ThenStateDbVersionShouldBe(repository, "v1.1");
-        ThenLocalStateDbsShouldExist(["v1.0", "v1.1", "v2.0"], cachedVersionCount: 3, distinctCount: 3);
-        ThenDownloadShouldNotHaveBeenCalled();
+        if (isLocallyCached)
+            containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        else
+            containerFolder.Received(1).DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == basedOnVersion.Name), Arg.Any<IFile>());
+
+        localStateRepository.Version.Should().Be(newVersion);
+        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+        LocalDatabaseHasEntry(localStateRepository, "test");
+
+        void CreateLocallyCachedDatabase()
+        {
+            var sdbf          = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, basedOnVersion);
+            CreateLocalDatabaseWithEntry(sdbf, ["test"]);
+        }
     }
 
     [Fact]
-    public async Task CreateAsync_WhenVersionSpecifiedButNotCached_ShouldDownloadSpecificVersion()
+    public async Task CreateNewLocalStateRepositoryAsync_WhenBasedOnIsNotNullAndDoesNotExist_ShouldThrowException()
     {
         // Arrange
-        GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions(["v1.0", "v1.1", "v2.0"]);
+        var requestedVersion = RepositoryVersion.FromName("non-existent");
+
+        containerFolder.ClearSubstitute();
+        containerFolder.GetBlob(requestedVersion.Name)
+            .Returns(_ => throw new RequestFailedException(0, "", "BlobNotFound", null));
 
         // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
+        Func<Task> act = async () => await repository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, RepositoryVersion.FromName("NewVersion"), basedOn: requestedVersion);
 
         // Assert
-        ThenStateDbVersionShouldBe(repository, "v1.1");
-        ThenLocalStateDbsShouldExist(["v1.1"], cachedVersionCount: 1, distinctCount: 1);
-        ThenDownloadShouldHaveBeenCalled();
-    }
-
-    [Fact]
-    public async Task CreateAsync_WhenVersionSpecifiedButCached_ShouldNotDownloadSpecificVersion()
-    {
-        // Arrange
-        GivenLocalFilesystemWithVersions(["v1.0", "v1.1", "v2.0"]);
-
-        // Act
-        var repository = await WhenStateDbRepositoryFactoryCreateAsync("v1.1");
-
-        // Assert
-        ThenStateDbVersionShouldBe(repository, "v1.1");
-        ThenLocalStateDbsShouldExist(["v1.0", "v1.1", "v2.0"], cachedVersionCount: 3, distinctCount: 3);
-        ThenDownloadShouldNotHaveBeenCalled();
-    }
-
-    [Fact]
-    public async Task CreateAsync_WhenSpecificVersionDoesNotExist_ShouldThrowArgumentException()
-    {
-        // Arrange
-        GivenLocalFilesystem();
-        GivenAzureRepositoryWithVersions(["v1.0", "v2.0"]);
-
-        // Act
-        Func<Task> act = async () => await WhenStateDbRepositoryFactoryCreateAsync("v3.0");
-
-        // Assert
-        await ThenArgumentExceptionShouldBeThrownAsync(act, "The requested version was not found*");
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("The requested version was not found*");
     }
 }

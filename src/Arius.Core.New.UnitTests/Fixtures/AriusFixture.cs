@@ -63,12 +63,16 @@ public class FixtureBuilder
 
     public FixtureBuilder WithMockedStorageAccountFactory()
     {
+        storageAccountFactoryIsConfigured = true;
+
         services.AddSingleton<IStorageAccountFactory>(Substitute.For<IStorageAccountFactory>());
         return this;
     }
 
     public FixtureBuilder WithRealStorageAccountFactory()
     {
+        storageAccountFactoryIsConfigured = true;
+
         // Assuming the real implementation is registered by default in AddArius
         return this;
     }
@@ -93,8 +97,13 @@ public class FixtureBuilder
         return this;
     }
 
+    private bool storageAccountFactoryIsConfigured = false;
+
     public AriusFixture Build()
     {
+        if (!storageAccountFactoryIsConfigured)
+            throw new InvalidOperationException($"StorageAccountFactory not set. Call {nameof(WithMockedStorageAccountFactory)} or {nameof(WithRealStorageAccountFactory)}.");
+
         var serviceProvider = services.BuildServiceProvider();
 
         return new AriusFixture(
