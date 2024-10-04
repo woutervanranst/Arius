@@ -49,12 +49,12 @@ public class SqliteRemoteStateRepositoryTests : TestBase
                 .With(b => b.Name.Returns(i.Arg<string>())));
     }
 
-    //    /// <summary>
-    //    /// Get an existing repository version. 
-    //    /// If `version` is null, it will get the latest version. If there is no version, it will return a new, empty, repository.
-    //    /// If `version` is specified but does not exist, it will throw an exception.
-    //    /// </summary>
-    //    //public Task<ILocalStateRepository> GetLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion? version = null);
+    ///// <summary>
+    ///// Get an existing repository version. 
+    ///// If `version` is null, it will get the latest version. If there is no version, it will return null.
+    ///// If `version` is specified but does not exist, it will throw an exception.
+    ///// </summary>
+    //public Task<ILocalStateRepository?> GetLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion? version = null);
 
     [Theory]
     [InlineData(true)]
@@ -64,7 +64,12 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         // Arrange
         var latestVersion = RepositoryVersion.FromName("v2.0");
         containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
-        containerFolder.DownloadAsync(Arg.Any<IAzureBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        containerFolder.DownloadAsync(Arg.Any<IAzureBlob>(), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
+            .Returns(_ =>
+            {
+                CreateLocalDatabaseWithEntry(localStateDatabaseCacheDirectory, latestVersion, ["test"]);
+                return Task.CompletedTask;
+            });
 
         if (isLocallyCached)
         {
@@ -73,7 +78,7 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         }
 
         // Act
-        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory);
+        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version: null);
 
         // Assert
         if (isLocallyCached)
@@ -87,16 +92,19 @@ public class SqliteRemoteStateRepositoryTests : TestBase
     }
 
     [Fact]
-    public async Task GetLocalStateRepositoryAsync_WhenNoVersionsExist_ShouldReturnNewRepository()
+    public async Task GetLocalStateRepositoryAsync_WhenVersionIsNullAndNoVersionsExist_ShouldReturnNull()
     {
         // Arrange
         containerFolder.GetBlobs().Returns(x => AsyncEnumerable.Empty<IAzureBlob>());
 
         // Act
-        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory);
+        var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version: null);
 
         // Assert
         containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        localStateRepository.Should().BeNull();
+    }
+
         
         localStateRepository.Should().NotBeNull();
         ((DateTimeRepositoryVersion)localStateRepository.Version).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
@@ -141,14 +149,14 @@ public class SqliteRemoteStateRepositoryTests : TestBase
 
         if (isLocallyCached)
         {
-            CreateLocallyCachedDatabase(["test"]);
+            CreateLocalDatabaseWithEntry(localStateDatabaseCacheDirectory, latestVersion,["test"]);
         }
 
         containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
         containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
-                CreateLocallyCachedDatabase(["test"]);
+                CreateLocalDatabaseWithEntry(localStateDatabaseCacheDirectory, latestVersion, ["test"]);
                 return Task.CompletedTask;
             });
 
@@ -166,12 +174,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.Version.Should().Be(newVersion);
         localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalDatabaseHasEntry(localStateRepository, "test");
-
-        void CreateLocallyCachedDatabase(IEnumerable<string> binaryPropertiesHashes)
-        {
-            var sdbf          = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, latestVersion);
-            CreateLocalDatabaseWithEntry(sdbf, binaryPropertiesHashes);
-        }
     }
 
     [Fact]
@@ -179,7 +181,7 @@ public class SqliteRemoteStateRepositoryTests : TestBase
     {
         // Arrange
         var newVersion = RepositoryVersion.FromName("NewVersion");
-        containerFolder.GetBlobs().Returns(x => AsyncEnumerable.Empty<IAzureBlob>());
+        containerFolder.GetBlobs().Returns(_ => AsyncEnumerable.Empty<IAzureBlob>());
 
         // Act
         var localStateRepository = await repository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, newVersion, basedOn: null);
@@ -200,17 +202,20 @@ public class SqliteRemoteStateRepositoryTests : TestBase
 
         if (isLocallyCached)
         {
-            CreateLocallyCachedDatabase();
+            CreateLocalDatabaseWithEntry(localStateDatabaseCacheDirectory, basedOnVersion, ["test"]);
+        }
+        else
+        {
+            containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name.StartsWith("v1.1")), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
+                .Returns(i =>
+                {
+                    CreateLocalDatabaseWithEntry(localStateDatabaseCacheDirectory, basedOnVersion, ["test"]);
+                    return Task.CompletedTask;
+                });
         }
 
         containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
-        containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name.StartsWith("v1.1")), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
-            .Returns(i =>
-            {
-                CreateLocallyCachedDatabase();
-                return Task.CompletedTask;
-            });
-
+        
         var newVersion = RepositoryVersion.FromName("NewVersion");
 
         // Act
@@ -225,12 +230,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.Version.Should().Be(newVersion);
         localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalDatabaseHasEntry(localStateRepository, "test");
-
-        void CreateLocallyCachedDatabase()
-        {
-            var sdbf          = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, basedOnVersion);
-            CreateLocalDatabaseWithEntry(sdbf, ["test"]);
-        }
     }
 
     [Fact]

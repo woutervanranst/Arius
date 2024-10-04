@@ -33,11 +33,14 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         => stateDbContainerFolder.GetBlob(version.Name);
 
 
-    public async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(
+    public async Task<ILocalStateRepository?> GetLocalStateRepositoryAsync(
         DirectoryInfo localStateDatabaseCacheDirectory, 
         RepositoryVersion? version = null)
     {
         var stateDatabaseFile = await GetLocalStateRepositoryFileFullNameAsync(localStateDatabaseCacheDirectory, version);
+
+        if (!stateDatabaseFile.Exists)
+            return null;
 
         return new SqliteLocalStateRepository(stateDatabaseFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }

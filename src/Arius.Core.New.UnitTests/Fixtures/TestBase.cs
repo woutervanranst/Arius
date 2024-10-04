@@ -371,9 +371,13 @@ public abstract class TestBase
         context.Database.Migrate();
     }
 
-    protected static void CreateLocalDatabaseWithEntry(IStateDatabaseFile sdbf,
+    protected static void CreateLocalDatabaseWithEntry(
+        DirectoryInfo stateDbFolder, 
+        RepositoryVersion version,
         IEnumerable<string> binaryPropertiesHashes)
     {
+        var sdbf = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
+
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         optionsBuilder.UseSqlite($"Data Source={sdbf.FullName}");
 
