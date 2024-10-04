@@ -15,7 +15,7 @@ public interface IRemoteStateRepository
 
     /// <summary>
     /// Create a new repository version based on an existing one.
-    /// If `basedOn` is null, it will be based on the latest version.
+    /// If `basedOn` is null, it will be based on the latest version. If there is no version, it will return a new, empty, repository.
     /// If `basedOn` is specified, but does not exist, it will throw an exception.
     /// </summary>
     public Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion version, RepositoryVersion? basedOn = null);

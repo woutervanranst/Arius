@@ -15,8 +15,6 @@ internal interface IAzureBlob : IBlob
     /// </summary>
     void Refresh();
 
-    string            FullName { get; }
-    string            Name     { get; }
     Task<long>        GetContentLengthAsync();
     Task<StorageTier> GetStorageTierAsync();
     Task              SetStorageTierAsync(StorageTier value);

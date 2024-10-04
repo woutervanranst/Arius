@@ -5,6 +5,7 @@ using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
 using NSubstitute;
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 namespace Arius.Core.New.UnitTests;
 

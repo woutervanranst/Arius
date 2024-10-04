@@ -1,3 +1,4 @@
+using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Repositories;
@@ -9,6 +10,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using NSubstitute.ClearExtensions;
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
 namespace Arius.Core.New.UnitTests;
 
@@ -27,9 +29,9 @@ public class SqliteRemoteStateRepositoryTests : TestBase
     {
     }
 
-    private readonly IAzureContainerFolder       containerFolder;
-    private readonly SqliteRemoteStateRepository repository;
-    private readonly DirectoryInfo               localStateDatabaseCacheDirectory;
+    private readonly IAzureContainerFolder  containerFolder;
+    private readonly IRemoteStateRepository repository;
+    private readonly DirectoryInfo          localStateDatabaseCacheDirectory;
 
     public SqliteRemoteStateRepositoryTests()
     {
@@ -97,11 +99,10 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
         
         localStateRepository.Should().NotBeNull();
-        (localStateRepository.Version as DateTimeRepositoryVersion).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
+        ((DateTimeRepositoryVersion)localStateRepository.Version).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
         localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
 
-        localStateRepository.CountPointerFileEntries().Should().Be(0);
-        localStateRepository.CountBinaryProperties().Should().Be(0);
+        LocalStateRepositoryShouldBeEmpty(localStateRepository);
     }
 
     [Fact]
@@ -122,13 +123,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
             .WithMessage("The requested version was not found*");
     }
 
-    private static IAsyncEnumerable<IAzureBlob> GetMockBlobs(string[] versionNames)
-    {
-        return versionNames
-            .Select(v => Substitute.For<IAzureBlob>()
-                .With(b => b.Name.Returns(v)))
-            .ToAsyncEnumerable();
-    }
 
     ///// <summary>
     ///// Create a new repository version based on an existing one.
@@ -136,7 +130,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
     ///// If `basedOn` is specified, but does not exist, it will throw an exception.
     ///// </summary>
     ////public Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, RepositoryVersion version, RepositoryVersion? basedOn = null);
-
 
     [Theory]
     [InlineData(true)]
@@ -148,14 +141,14 @@ public class SqliteRemoteStateRepositoryTests : TestBase
 
         if (isLocallyCached)
         {
-            CreateLocallyCachedDatabase();
+            CreateLocallyCachedDatabase(["test"]);
         }
 
         containerFolder.GetBlobs().Returns(x => GetMockBlobs(["v1.0", "v1.1", "v2.0"]));
         containerFolder.DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>(), Arg.Any<CancellationToken>())
             .Returns(_ =>
             {
-                CreateLocallyCachedDatabase();
+                CreateLocallyCachedDatabase(["test"]);
                 return Task.CompletedTask;
             });
 
@@ -174,16 +167,27 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalDatabaseHasEntry(localStateRepository, "test");
 
-        void CreateLocallyCachedDatabase()
+        void CreateLocallyCachedDatabase(IEnumerable<string> binaryPropertiesHashes)
         {
             var sdbf          = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, latestVersion);
-            CreateLocalDatabaseWithEntry(sdbf, ["test"]);
+            CreateLocalDatabaseWithEntry(sdbf, binaryPropertiesHashes);
         }
     }
 
     [Fact]
     public async Task CreateNewLocalStateRepositoryAsync_WhenBasedOnIsNullButNoVersionsExist_NewLocalDatabaseInitializedNotDownloaded()
     {
+        // Arrange
+        var newVersion = RepositoryVersion.FromName("NewVersion");
+        containerFolder.GetBlobs().Returns(x => AsyncEnumerable.Empty<IAzureBlob>());
+
+        // Act
+        var localStateRepository = await repository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, newVersion, basedOn: null);
+
+        // Assert
+        localStateRepository.Version.Should().Be(newVersion);
+        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+        LocalStateRepositoryShouldBeEmpty(localStateRepository);
     }
 
     [Theory]
@@ -245,5 +249,20 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         // Assert
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("The requested version was not found*");
+    }
+
+
+    private static IAsyncEnumerable<IAzureBlob> GetMockBlobs(string[] versionNames)
+    {
+        return versionNames
+            .Select(v => Substitute.For<IAzureBlob>()
+                .With(b => b.Name.Returns(v)))
+            .ToAsyncEnumerable();
+    }
+
+    private static void LocalStateRepositoryShouldBeEmpty(ILocalStateRepository localStateRepository)
+    {
+        localStateRepository.CountPointerFileEntries().Should().Be(0);
+        localStateRepository.CountBinaryProperties().Should().Be(0);
     }
 }
