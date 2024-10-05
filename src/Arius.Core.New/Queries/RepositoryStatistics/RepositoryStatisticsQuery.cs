@@ -3,13 +3,14 @@ using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using FluentValidation;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace Arius.Core.New.Queries.RepositoryStatistics;
 
 public record RepositoryStatisticsQuery : IRequest<RepositoryStatisticsQueryResponse>
 {
     public required RemoteRepositoryOptions RemoteRepository { get; init; }
-    public          StateVersion?      Version          { get; init; }
+    public          StateVersion?           Version          { get; init; }
 }
 
 internal class RepositoryStatisticsQueryValidator : AbstractValidator<RepositoryStatisticsQuery>
@@ -29,27 +30,31 @@ public record RepositoryStatisticsQueryResponse
 
 internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStatisticsQuery, RepositoryStatisticsQueryResponse>
 {
+    private readonly IStorageAccountFactory storageAccountFactory;
     private readonly AriusConfiguration     config;
-    private readonly IRemoteStateRepository remoteStateRepository;
 
     public RepositoryStatisticsQueryHandler(
-        AriusConfiguration config,
-        IRemoteStateRepository remoteStateRepository)
+        IOptions<AriusConfiguration> config,
+        IStorageAccountFactory storageAccountFactory)
     {
-        this.config                = config;
-        this.remoteStateRepository = remoteStateRepository;
+        this.storageAccountFactory = storageAccountFactory;
+        this.config                = config.Value;
     }
 
     public async Task<RepositoryStatisticsQueryResponse> Handle(RepositoryStatisticsQuery request, CancellationToken cancellationToken)
     {
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
-        var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepository.ContainerName);
-        var stateDbRepository = await remoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version);
 
-        var binaryFilesCount       = stateDbRepository.CountBinaryProperties();
-        var pointerFilesEntryCount = stateDbRepository.CountPointerFileEntries();
-        var sizes                  = stateDbRepository.GetSizes();
+        var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepository);
+        var remoteStateRepository = remoteRepository.GetRemoteStateRepository();
+
+        var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepository.ContainerName);
+        var localStateRepository = await remoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version);
+
+        var binaryFilesCount       = localStateRepository.CountBinaryProperties();
+        var pointerFilesEntryCount = localStateRepository.CountPointerFileEntries();
+        var sizes                  = localStateRepository.GetSizes();
 
         return new RepositoryStatisticsQueryResponse
         {

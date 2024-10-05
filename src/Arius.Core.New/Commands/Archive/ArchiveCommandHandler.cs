@@ -64,6 +64,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
+
         var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepositoryOptions);
         var remoteStateRepository = remoteRepository.GetRemoteStateRepository();
 

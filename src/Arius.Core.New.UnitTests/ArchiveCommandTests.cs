@@ -60,7 +60,7 @@ public class ArchiveCommandTests : TestBase
         
         // Assert
 
-        // Notifications
+            // Notifications
         ThenShouldContainMediatorNotification<FilePairFoundNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<FilePairHashingStartedNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<FilePairHashingCompletedNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
@@ -74,21 +74,21 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
 
         var stats                = await GetRepositoryStatistics();
-        var localStateRepository = await CreateNewLocalStateRepositoryAsync();
+        var localStateRepository = await GetLocalStateRepositoryAsync();
 
-        // 1 Binary on the remote
+            // 1 Binary on the remote
         BlobStorageHelper.BinaryExists(Fixture.RemoteRepositoryOptions, fpwh.Hash).Should().BeTrue();
         stats.BinaryFilesCount.Should().Be(1);
         localStateRepository.BinaryExists(fpwh.Hash).Should().BeTrue();
 
-        // 1 PointerFileEntry
+            // 1 PointerFileEntry
         stats.PointerFilesEntryCount.Should().Be(1);
         localStateRepository.PointerFileEntryExists(fpwh).Should().BeTrue();
 
-        // 1 PointerFile was created
+            // 1 PointerFile was created
         fpwh.PointerFile.Exists.Should().BeTrue();
 
-        // Validate SizeMetrics
+            // Validate SizeMetrics
         stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
         stats.Sizes.AllUniqueArchivedSize.Should().Be(144);
         //stats.Sizes.AllOriginalSize.Should().Be(100);
@@ -129,7 +129,7 @@ public class ArchiveCommandTests : TestBase
 
         // Assert
         var stats                = await GetRepositoryStatistics();
-        var localStateRepository = await CreateNewLocalStateRepositoryAsync();
+        var localStateRepository = await GetLocalStateRepositoryAsync();
 
         // Only 1 Binary on the remote
         stats.BinaryFilesCount.Should().Be(1);

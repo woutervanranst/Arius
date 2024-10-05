@@ -328,12 +328,20 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string? versionName = null)
+    protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string versionName)
     {
         var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
-        var version = StateVersion.FromName(versionName ?? "v1.0");
-        
-        return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version) 
+        var version                          = StateVersion.FromName(versionName);
+
+        return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version);
+    }
+
+    protected async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(string? versionName = null)
+    {
+        var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
+        var version                          = versionName != null ? StateVersion.FromName(versionName) : null;
+
+        return await Fixture.RemoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version)
                ?? throw new InvalidOperationException();
     }
 
@@ -362,7 +370,7 @@ public abstract class TestBase
     //        .GetLocalStateDatabaseCacheDirectoryForContainerName(fixture.RemoteRepositoryOptions.ContainerName);
     //}
 
-    
+
     protected static void CreateLocalDatabase(IStateDatabaseFile sdbf)
     {
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
