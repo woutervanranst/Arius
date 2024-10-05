@@ -34,7 +34,7 @@ internal class AzureRemoteRepository : IRemoteRepository
 
     public IRemoteStateRepository GetRemoteStateRepository()
     {
-        return new SqliteRemoteStateRepository(StateDatabaseFolder, loggerFactory, loggerFactory.CreateLogger<SqliteRemoteStateRepository>());
+        return new RemoteStateRepository(StateDatabaseFolder, loggerFactory, loggerFactory.CreateLogger<RemoteStateRepository>());
     }
 
     

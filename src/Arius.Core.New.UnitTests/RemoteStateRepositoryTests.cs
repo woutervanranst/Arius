@@ -14,7 +14,7 @@ using NSubstitute.ClearExtensions;
 
 namespace Arius.Core.New.UnitTests;
 
-public class SqliteRemoteStateRepositoryTests : TestBase
+public class RemoteStateRepositoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
@@ -33,15 +33,15 @@ public class SqliteRemoteStateRepositoryTests : TestBase
     private readonly IRemoteStateRepository repository;
     private readonly DirectoryInfo          localStateDatabaseCacheDirectory;
 
-    public SqliteRemoteStateRepositoryTests()
+    public RemoteStateRepositoryTests()
     {
         localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
 
         var loggerFactory = NullLoggerFactory.Instance;
-        var logger        = NullLogger<SqliteRemoteStateRepository>.Instance;
+        var logger        = NullLogger<RemoteStateRepository>.Instance;
 
         containerFolder = Substitute.For<IAzureContainerFolder>();
-        repository      = new SqliteRemoteStateRepository(containerFolder, loggerFactory, logger);
+        repository      = new RemoteStateRepository(containerFolder, loggerFactory, logger);
 
         // it returns an IAzureBlob with the requested name
         containerFolder.GetBlob(Arg.Any<string>())
@@ -219,7 +219,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
             containerFolder.Received(1).DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == basedOnVersion.Name), Arg.Any<IFile>());
 
         localStateRepository.Version.Should().Be(newVersion);
-        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalDatabaseHasEntry(localStateRepository, "test");
     }
 

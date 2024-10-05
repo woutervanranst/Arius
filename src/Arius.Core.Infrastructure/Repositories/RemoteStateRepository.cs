@@ -7,16 +7,16 @@ using Azure;
 
 namespace Arius.Core.Infrastructure.Repositories;
 
-public class SqliteRemoteStateRepository : IRemoteStateRepository
+public class RemoteStateRepository : IRemoteStateRepository
 {
     private readonly IAzureContainerFolder                stateDbContainerFolder;
-    private readonly ILogger<SqliteRemoteStateRepository> logger;
+    private readonly ILogger<RemoteStateRepository> logger;
     private readonly ILoggerFactory                       loggerFactory;
 
-    internal SqliteRemoteStateRepository(
+    internal RemoteStateRepository(
         IAzureContainerFolder stateDbContainerFolder,
         ILoggerFactory loggerFactory,
-        ILogger<SqliteRemoteStateRepository> logger)
+        ILogger<RemoteStateRepository> logger)
     {
         this.stateDbContainerFolder = stateDbContainerFolder;
         this.logger                 = logger;
