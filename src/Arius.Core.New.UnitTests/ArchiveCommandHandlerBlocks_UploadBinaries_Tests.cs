@@ -36,5 +36,4 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
         ArchiveCommandHandler.GetEffectiveStorageTier(st, StorageTier.Archive, 1).Should().Be(StorageTier.Cold);
         ArchiveCommandHandler.GetEffectiveStorageTier(st, StorageTier.Archive, 1024 * 1024 + 1).Should().Be(StorageTier.Archive);
     }
-
 }

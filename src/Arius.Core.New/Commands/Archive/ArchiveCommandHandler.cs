@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
 using Humanizer;
+using Microsoft.Extensions.Options;
 using File = Arius.Core.Infrastructure.Storage.LocalFileSystem.File;
 
 namespace Arius.Core.New.Commands.Archive;
@@ -42,22 +43,19 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     private readonly IMediator                      mediator;
     private readonly AriusConfiguration             config;
     private readonly IFileSystem                    fileSystem;
-    private readonly IRemoteStateRepository         remoteStateRepository;
     private readonly IStorageAccountFactory         storageAccountFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
     public ArchiveCommandHandler(
         IMediator mediator,
-        AriusConfiguration config,
+        IOptions<AriusConfiguration> config,
         IFileSystem fileSystem,
-        IRemoteStateRepository remoteStateRepository,
         IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.mediator              = mediator;
-        this.config                = config;
+        this.config                = config.Value;
         this.fileSystem            = fileSystem;
-        this.remoteStateRepository = remoteStateRepository;
         this.storageAccountFactory = storageAccountFactory;
         this.logger                = logger;
     }
@@ -65,6 +63,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
+
+        var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepositoryOptions);
+        var remoteStateRepository = remoteRepository.GetRemoteStateRepository();
 
         // Start download of the latest state database
         var getLocalStateDbRepositoryTask = Task.Run(async () =>
@@ -183,7 +184,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         
 
         // 4. Upload the binaries
-        var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepositoryOptions);
         var uploadBinariesTask = Parallel.ForEachAsync(
             binariesToUpload.Reader.ReadAllAsync(cancellationToken),
             GetParallelOptions(request.UploadBinaryFileBlock_BinaryFileParallelism),
