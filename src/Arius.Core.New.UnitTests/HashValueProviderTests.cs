@@ -1,4 +1,3 @@
-using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.UnitTests.Extensions;
 using Arius.Core.New.UnitTests.Fixtures;
@@ -10,7 +9,8 @@ public class HashValueProviderTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             .WithUniqueContainerName()
             .Build();
     }

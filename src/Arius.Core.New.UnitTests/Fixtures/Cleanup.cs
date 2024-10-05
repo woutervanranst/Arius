@@ -8,7 +8,10 @@ public class Cleanup : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create().WithUniqueContainerName().Build();
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
+            .WithUniqueContainerName()
+            .Build();
     }
 
     protected override void ConfigureOnceForFixture()

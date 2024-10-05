@@ -1,5 +1,4 @@
 using Arius.Core.Domain;
-using Arius.Core.Domain.Extensions;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
@@ -37,10 +36,8 @@ public class ArchiveCommandTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
             .WithUniqueContainerName()
             .WithMediatrNotificationStore<ArchiveCommandNotification>()
-            //.WithMockedStorageAccountFactory()
             //.WithFakeCryptoService()
             .Build();
     }

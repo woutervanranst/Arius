@@ -10,8 +10,8 @@ public class GetRepositoryVersionsQueryHandlerTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
-            .WithMockedStorageAccountFactory()
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             .WithFakeCryptoService()
             .WithUniqueContainerName()
             .Build();

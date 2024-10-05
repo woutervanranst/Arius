@@ -8,7 +8,7 @@ public class ContainerNamesQueryHandlerTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
+        return new FixtureBuilder()
             .WithMockedStorageAccountFactory()
             .WithFakeCryptoService()
             .WithUniqueContainerName()

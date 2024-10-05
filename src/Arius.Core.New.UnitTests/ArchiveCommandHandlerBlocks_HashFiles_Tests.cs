@@ -13,7 +13,10 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create().WithUniqueContainerName().Build();
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
+            .WithUniqueContainerName()
+            .Build();
     }
 
     protected override void ConfigureOnceForFixture()

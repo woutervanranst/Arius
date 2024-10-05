@@ -10,8 +10,8 @@ public sealed class SqliteLocalStateRepositoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
-            //.WithMockedStorageAccountFactory()
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             //.WithFakeCryptoService()
             .WithUniqueContainerName()
             .Build();

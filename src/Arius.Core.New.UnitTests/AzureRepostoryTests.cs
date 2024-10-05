@@ -1,4 +1,3 @@
-using Arius.Core.Domain;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
@@ -12,7 +11,8 @@ public class AzureRepostoryTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             .WithUniqueContainerName()
             .Build();
     }

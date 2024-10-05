@@ -9,7 +9,8 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
-        return FixtureBuilder.Create()
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             .WithUniqueContainerName()
             .Build();
     }

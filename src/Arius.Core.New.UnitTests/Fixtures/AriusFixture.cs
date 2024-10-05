@@ -23,9 +23,9 @@ public class FixtureBuilder
     private          TestRemoteRepositoryOptions testRemoteRepositoryOptions;
     private readonly IHashValueProvider          hashValueProvider;
 
-    private DirectoryInfo testRootSourceDirectory;
+    private readonly DirectoryInfo testRootSourceDirectory;
 
-    private FixtureBuilder()
+    public FixtureBuilder()
     {
         services = new ServiceCollection();
         configuration = new ConfigurationBuilder()
@@ -46,12 +46,15 @@ public class FixtureBuilder
         services.AddArius(c => c.LocalConfigRoot = testRunRoot);
         services.AddLogging(configure =>
         {
-            configure.AddConsole(); // Add console logging
-            configure.AddDebug();   // Optionally add debug logging
+            configure.AddConsole();
+            configure.AddDebug();
         });
 
         services.AddSingleton<MediatorNotificationStore>();
     }
+
+
+    // -- MEDIATR NOTIFICATIONS
 
     public FixtureBuilder WithMediatrNotificationStore<T>() where T : INotification
     {
@@ -59,7 +62,7 @@ public class FixtureBuilder
         return this;
     }
 
-    public static FixtureBuilder Create() => new();
+    // -- STORAGE ACCOUNT
 
     public FixtureBuilder WithMockedStorageAccountFactory()
     {
@@ -77,6 +80,11 @@ public class FixtureBuilder
         return this;
     }
 
+    private bool storageAccountFactoryIsConfigured = false;
+
+
+    // -- CONTAINER NAME
+
     public FixtureBuilder WithUniqueContainerName()
     {
         var containerName = $"test-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}";
@@ -84,6 +92,9 @@ public class FixtureBuilder
         testRemoteRepositoryOptions = testRemoteRepositoryOptions with { ContainerName = containerName };
         return this;
     }
+
+
+    // == CRYPTO SERVICE
 
     public FixtureBuilder WithFakeCryptoService()
     {
@@ -97,7 +108,8 @@ public class FixtureBuilder
         return this;
     }
 
-    private bool storageAccountFactoryIsConfigured = false;
+    
+    // -- BUILD
 
     public AriusFixture Build()
     {
