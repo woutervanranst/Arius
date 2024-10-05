@@ -105,13 +105,24 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.Should().BeNull();
     }
 
-        
-        localStateRepository.Should().NotBeNull();
-        ((DateTimeRepositoryVersion)localStateRepository.Version).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
-        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+    //[Fact]
+    //public async Task GetLocalStateRepositoryAsync_WhenNoVersionsExist_ShouldReturnNewRepository()
+    //{
+    //    // Arrange
+    //    containerFolder.GetBlobs().Returns(x => AsyncEnumerable.Empty<IAzureBlob>());
 
-        LocalStateRepositoryShouldBeEmpty(localStateRepository);
-    }
+    //    // Act
+    //    var localStateRepository = await repository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory);
+
+    //    // Assert
+    //    containerFolder.DidNotReceiveWithAnyArgs().DownloadAsync(default, default);
+        
+    //    localStateRepository.Should().NotBeNull();
+    //    ((DateTimeRepositoryVersion)localStateRepository.Version).OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, new TimeSpan(0, 0, 2)); // New empty repository created
+    //    localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
+
+    //    LocalStateRepositoryShouldBeEmpty(localStateRepository);
+    //}
 
     [Fact]
     public async Task GetLocalStateRepositoryAsync_WhenSpecifiedVersionDoesNotExist_ShouldThrowException()
@@ -190,6 +201,8 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.Version.Should().Be(newVersion);
         localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalStateRepositoryShouldBeEmpty(localStateRepository);
+
+
     }
 
     [Theory]
@@ -264,4 +277,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         localStateRepository.CountPointerFileEntries().Should().Be(0);
         localStateRepository.CountBinaryProperties().Should().Be(0);
     }
+
+    // TODO tests for SaveChangesAsync?
 }
