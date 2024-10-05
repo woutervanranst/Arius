@@ -199,7 +199,7 @@ public abstract class TestBase
 
     //protected async Task<ILocalStateRepository> WhenGetLocalStateRepositoryAsync(string? versionName = null)
     //{
-    //    return await GetLocalStateRepositoryAsync(versionName);
+    //    return await CreateNewLocalStateRepositoryAsync(versionName);
     //}
 
     protected IAsyncEnumerable<string> WhenMediatorRequest(ContainerNamesQuery request)
@@ -328,12 +328,12 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    protected async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(string? versionName = null)
+    protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string? versionName = null)
     {
         var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
-        var version                          = versionName != null ? RepositoryVersion.FromName(versionName) : null;
+        var version = RepositoryVersion.FromName(versionName ?? "v1.0");
         
-        return await Fixture.RemoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version) 
+        return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version) 
                ?? throw new InvalidOperationException();
     }
 

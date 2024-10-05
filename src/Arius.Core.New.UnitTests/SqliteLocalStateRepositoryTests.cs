@@ -24,7 +24,7 @@ public sealed class SqliteLocalStateRepositoryTests : TestBase
     [Fact] public async Task Vacuum_WhenDeletedRecords_SizeSmaller()
     {
         // Arrange
-        var repository = await GetLocalStateRepositoryAsync();
+        var repository = await CreateNewLocalStateRepositoryAsync();
 
         for (int i = 0; i < 100; i++)
         {
