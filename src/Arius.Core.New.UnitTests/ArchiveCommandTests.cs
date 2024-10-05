@@ -36,6 +36,8 @@ public class ArchiveCommandTests : TestBase
 {
     protected override AriusFixture GetFixture()
     {
+        return new FixtureBuilder()
+            .WithRealStorageAccountFactory()
             .WithUniqueContainerName()
             .WithMediatrNotificationStore<ArchiveCommandNotification>()
             //.WithFakeCryptoService()

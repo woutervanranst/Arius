@@ -4,7 +4,7 @@ namespace Arius.Core.Domain.Repositories;
 
 public interface IRemoteStateRepository
 {
-    IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions();
+    IAsyncEnumerable<RepositoryVersion> GetRepositoryVersions();
 
     /// <summary>
     /// Get an existing repository version. 

@@ -28,7 +28,7 @@ public class GetRepositoryVersionsQueryHandlerTests : TestBase
         string[] versionNames = ["v1.0", "v2.0"];
         var      versions     = versionNames.Select(RepositoryVersion.FromName).ToArray();
         var      repository   = Fixture.RemoteRepository;
-        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+        repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
         var request = new GetRepositoryVersionsQuery { RemoteRepository = Fixture.RemoteRepositoryOptions };
 

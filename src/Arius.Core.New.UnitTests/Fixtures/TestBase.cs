@@ -43,7 +43,7 @@ public abstract class TestBase
     //{
     //    var repository = Fixture.RemoteRepository;
     //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-    //    repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+    //    repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
     //    foreach (var versionName in versionNames)
     //    {
@@ -70,7 +70,7 @@ public abstract class TestBase
 
     //    if (repository.IsSubstitute())
     //    {
-    //        repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+    //        repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
     //    }
     //    else
     //    {
@@ -82,7 +82,7 @@ public abstract class TestBase
     //{
     //    var repository = Fixture.RemoteRepository;
     //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-    //    repository.GetRemoteStateRepository().GetStateDatabaseVersions().Returns(versions.ToAsyncEnumerable());
+    //    repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
 
     //    // Set up the repository to throw an exception for versions not in the list
     //    //repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())
@@ -333,7 +333,8 @@ public abstract class TestBase
         var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
         var version                          = versionName != null ? RepositoryVersion.FromName(versionName) : null;
         
-        return await Fixture.RemoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version);
+        return await Fixture.RemoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version) 
+               ?? throw new InvalidOperationException();
     }
 
 

@@ -22,6 +22,6 @@ internal class GetRepositoryVersionsQueryHandler : IStreamRequestHandler<GetRepo
         return storageAccountFactory
             .GetRemoteRepository(request.RemoteRepository)
             .GetRemoteStateRepository()
-            .GetStateDatabaseVersions();
+            .GetRepositoryVersions();
     }
 }
