@@ -43,7 +43,7 @@ public interface IFile
 public interface IStateDatabaseFile : IFile
 {
     public static readonly string Extension = ".ariusdb";
-    RepositoryVersion             Version { get; }
+    StateVersion             Version { get; }
 }
 
 public interface IRelativeFile

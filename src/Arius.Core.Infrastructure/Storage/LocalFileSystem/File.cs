@@ -112,7 +112,7 @@ public class File : IFile // TODO make internal
 
 public class StateDatabaseFile : File, IStateDatabaseFile
 {
-    private StateDatabaseFile(string fullName, RepositoryVersion version) : base(fullName)
+    private StateDatabaseFile(string fullName, StateVersion version) : base(fullName)
     {
         if (!fullName.EndsWith(IStateDatabaseFile.Extension, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException($"'{fullName}' is not a valid StateDatabaseFile");
@@ -120,12 +120,12 @@ public class StateDatabaseFile : File, IStateDatabaseFile
         this.Version = version;
     }
 
-    public static IStateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, RepositoryVersion version)
+    public static IStateDatabaseFile FromRepositoryVersion(DirectoryInfo stateDbFolder, StateVersion version)
     {
         return new StateDatabaseFile(System.IO.Path.Combine(stateDbFolder.FullName, version.FileSystemNameWithExtension), version);
     }
 
-    public RepositoryVersion Version { get; }
+    public StateVersion Version { get; }
 }
 
 public abstract class RelativeFile : File, IRelativeFile

@@ -33,7 +33,7 @@ public record DeletedPointerFileEntryNotification(ArchiveCommand Command, string
 public record CreatedPointerFileEntryNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record DeletedBinaryFileNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UpdatedChunkTierNotification(ArchiveCommand Command, Hash Hash, long ArchivedLength, StorageTier OriginalTier, StorageTier NewTier) : ArchiveCommandNotification(Command);
-public record NewStateVersionCreatedNotification(ArchiveCommand Command, RepositoryVersion Version) : ArchiveCommandNotification(Command);
+public record NewStateVersionCreatedNotification(ArchiveCommand Command, StateVersion Version) : ArchiveCommandNotification(Command);
 public record NoNewStateVersionCreatedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 public record ArchiveCommandDoneNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 

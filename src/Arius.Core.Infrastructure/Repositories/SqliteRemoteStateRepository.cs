@@ -23,19 +23,19 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         this.loggerFactory          = loggerFactory;
     }
 
-    public IAsyncEnumerable<RepositoryVersion> GetStateDatabaseVersions()
-        => stateDbContainerFolder.GetBlobs().Select(blob => RepositoryVersion.FromName(blob.Name));
+    public IAsyncEnumerable<StateVersion> GetStateVersions()
+        => stateDbContainerFolder.GetBlobs().Select(blob => StateVersion.FromName(blob.Name));
 
-    private async Task<RepositoryVersion?> GetLatestStateDatabaseVersionAsync()
-        => await GetStateDatabaseVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
+    private async Task<StateVersion?> GetLatestStateVersionAsync()
+        => await GetStateVersions().OrderBy(b => b.Name).LastOrDefaultAsync();
 
-    private IAzureBlob GetStateDatabaseBlobForVersion(RepositoryVersion version)
+    private IAzureBlob GetStateDatabaseBlobForVersion(StateVersion version)
         => stateDbContainerFolder.GetBlob(version.Name);
 
 
     public async Task<ILocalStateRepository?> GetLocalStateRepositoryAsync(
         DirectoryInfo localStateDatabaseCacheDirectory, 
-        RepositoryVersion? version = null)
+        StateVersion? version = null)
     {
         var stateDatabaseFile = await GetStateDatabaseFileForVersionAsync(localStateDatabaseCacheDirectory, version);
 
@@ -47,8 +47,8 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
 
     public async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(
         DirectoryInfo localStateDatabaseCacheDirectory,
-        RepositoryVersion version, 
-        RepositoryVersion? basedOn = null)
+        StateVersion version, 
+        StateVersion? basedOn = null)
     {
         var basedOnFile = await GetStateDatabaseFileForVersionAsync(localStateDatabaseCacheDirectory, basedOn);
         var newVersionFile = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, version);
@@ -66,7 +66,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
     /// </summary>
     private async Task<IStateDatabaseFile?> GetStateDatabaseFileForVersionAsync(
         DirectoryInfo localStateDatabaseCacheDirectory,
-        RepositoryVersion? requestedVersion)
+        StateVersion? requestedVersion)
     {
         var effectiveVersion = await GetEffectiveVersionAsync();
 
@@ -75,15 +75,15 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         else
             return await GetLocallyCachedStateDatabaseFileAsync(effectiveVersion);
 
-        async Task<RepositoryVersion?> GetEffectiveVersionAsync()
+        async Task<StateVersion?> GetEffectiveVersionAsync()
         {
             if (requestedVersion is null)
-                return await GetLatestStateDatabaseVersionAsync();
+                return await GetLatestStateVersionAsync();
             else
                 return requestedVersion;
         }
 
-        async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(RepositoryVersion version)
+        async Task<IStateDatabaseFile> GetLocallyCachedStateDatabaseFileAsync(StateVersion version)
         {
             var sdbf = StateDatabaseFile.FromRepositoryVersion(localStateDatabaseCacheDirectory, version);
 
@@ -121,12 +121,14 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
         else
         {
+            // TODO delete the file
+
             logger.LogInformation("No changes made in this version, skipping upload.");
             return false;
         }
 
 
-        async Task UploadStateDatabaseAsync(IStateDatabaseFile file, RepositoryVersion version, CancellationToken cancellationToken = default)
+        async Task UploadStateDatabaseAsync(IStateDatabaseFile file, StateVersion version, CancellationToken cancellationToken = default)
         {
             logger.LogInformation("Uploading State Database {version}...", version.Name);
 

@@ -42,12 +42,12 @@ public abstract class TestBase
     //protected void GivenLocalFilesystemWithVersions(string[] versionNames)
     //{
     //    var repository = Fixture.RemoteRepository;
-    //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-    //    repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+    //    var versions   = versionNames.Select(StateVersion.FromName).ToArray();
+    //    repository.GetRemoteStateRepository().GetStateVersions().Returns(versions.ToAsyncEnumerable());
 
     //    foreach (var versionName in versionNames)
     //    {
-    //        var version = RepositoryVersion.FromName(versionName);
+    //        var version = StateVersion.FromName(versionName);
     //        var sdbf    = GetStateDatabaseFileForRepository(Fixture, version);
 
     //        CreateLocalDatabase(sdbf);
@@ -70,7 +70,7 @@ public abstract class TestBase
 
     //    if (repository.IsSubstitute())
     //    {
-    //        repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(AsyncEnumerable.Empty<RepositoryVersion>());
+    //        repository.GetRemoteStateRepository().GetStateVersions().Returns(AsyncEnumerable.Empty<StateVersion>());
     //    }
     //    else
     //    {
@@ -81,14 +81,14 @@ public abstract class TestBase
     //protected void GivenAzureRepositoryWithVersions(string[] versionNames)
     //{
     //    var repository = Fixture.RemoteRepository;
-    //    var versions   = versionNames.Select(RepositoryVersion.FromName).ToArray();
-    //    repository.GetRemoteStateRepository().GetRepositoryVersions().Returns(versions.ToAsyncEnumerable());
+    //    var versions   = versionNames.Select(StateVersion.FromName).ToArray();
+    //    repository.GetRemoteStateRepository().GetStateVersions().Returns(versions.ToAsyncEnumerable());
 
     //    // Set up the repository to throw an exception for versions not in the list
-    //    //repository.GetStateDatabaseBlobForVersion(Arg.Any<RepositoryVersion>())
+    //    //repository.GetStateDatabaseBlobForVersion(Arg.Any<StateVersion>())
     //    //    .Returns(info =>
     //    //    {
-    //    //        var requestedVersion = info.Arg<RepositoryVersion>();
+    //    //        var requestedVersion = info.Arg<StateVersion>();
     //    //        if (!versionNames.Contains(requestedVersion.Name))
     //    //        {
     //    //            throw new RequestFailedException(404, "Blob not found", "BlobNotFound", null);
@@ -207,7 +207,7 @@ public abstract class TestBase
         return Fixture.Mediator.CreateStream(request);
     }
 
-    protected IAsyncEnumerable<RepositoryVersion> WhenMediatorRequest(GetRepositoryVersionsQuery request)
+    protected IAsyncEnumerable<StateVersion> WhenMediatorRequest(GetRepositoryVersionsQuery request)
     {
         return Fixture.Mediator.CreateStream(request);
     }
@@ -240,7 +240,7 @@ public abstract class TestBase
             RemoveLocal             = removeLocal,
             Tier                    = tier,
             LocalRoot               = Fixture.TestRunSourceFolder,
-            VersionName             = RepositoryVersion.FromName(versionName)
+            VersionName             = StateVersion.FromName(versionName)
         };
 
         await Fixture.Mediator.Send(c);
@@ -264,7 +264,7 @@ public abstract class TestBase
     //    repository.Version.Name.Should().Be(expectedVersion);
     //}
 
-    //protected void ThenStateDbVersionShouldBeBetween(RepositoryVersion version, DateTime startTime, DateTime endTime)
+    //protected void ThenStateDbVersionShouldBeBetween(StateVersion version, DateTime startTime, DateTime endTime)
     //{
     //    DateTime.Parse(version.Name)
     //        .Should()
@@ -331,14 +331,14 @@ public abstract class TestBase
     protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string? versionName = null)
     {
         var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
-        var version = RepositoryVersion.FromName(versionName ?? "v1.0");
+        var version = StateVersion.FromName(versionName ?? "v1.0");
         
         return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version) 
                ?? throw new InvalidOperationException();
     }
 
 
-    //private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, RepositoryVersion version)
+    //private IStateDatabaseFile GetStateDatabaseFileForRepository(AriusFixture fixture, StateVersion version)
     //{
     //    return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
     //}
@@ -351,7 +351,7 @@ public abstract class TestBase
     //                 .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
     //    {
     //        var n       = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
-    //        var version = RepositoryVersion.FromName(n);
+    //        var version = StateVersion.FromName(n);
     //        yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
     //    }
     //}
@@ -374,7 +374,7 @@ public abstract class TestBase
 
     protected static void CreateLocalDatabaseWithEntry(
         DirectoryInfo stateDbFolder, 
-        RepositoryVersion version,
+        StateVersion version,
         IEnumerable<string> binaryPropertiesHashes)
     {
         var sdbf = StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);

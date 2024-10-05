@@ -9,7 +9,7 @@ namespace Arius.Core.New.Queries.RepositoryStatistics;
 public record RepositoryStatisticsQuery : IRequest<RepositoryStatisticsQueryResponse>
 {
     public required RemoteRepositoryOptions RemoteRepository { get; init; }
-    public          RepositoryVersion?      Version          { get; init; }
+    public          StateVersion?      Version          { get; init; }
 }
 
 internal class RepositoryStatisticsQueryValidator : AbstractValidator<RepositoryStatisticsQuery>

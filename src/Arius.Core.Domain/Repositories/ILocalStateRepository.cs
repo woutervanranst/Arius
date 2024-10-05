@@ -6,7 +6,7 @@ namespace Arius.Core.Domain.Repositories;
 public interface ILocalStateRepository
 {
     IStateDatabaseFile StateDatabaseFile { get; }
-    RepositoryVersion  Version           { get; }
+    StateVersion  Version           { get; }
     bool               HasChanges        { get; }
     void               Vacuum();
 

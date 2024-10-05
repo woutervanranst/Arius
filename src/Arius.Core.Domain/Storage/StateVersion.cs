@@ -2,9 +2,9 @@
 
 namespace Arius.Core.Domain.Storage;
 
-public record RepositoryVersion
+public record StateVersion
 {
-    public RepositoryVersion(string name)
+    public StateVersion(string name)
     {
         Name = name;
     }
@@ -13,32 +13,32 @@ public record RepositoryVersion
     public string FileSystemName => $"{Name.Replace(":", "-")}";
     public string FileSystemNameWithExtension => $"{Name.Replace(":", "-")}{IStateDatabaseFile.Extension}";
 
-    public static RepositoryVersion FromName(string name)
+    public static StateVersion FromName(string name)
     {
         if (DateTime.TryParseExact(name, "yyyy-MM-ddTHH-mm-ss", null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var parsedDateTime))
         {
-            var v = new DateTimeRepositoryVersion(parsedDateTime);
+            var v = new DateTimeStateVersion(parsedDateTime);
             if (v.FileSystemName != name)
-                throw new ArgumentException("DateTimeRepositoryVersion.Name != name");
+                throw new ArgumentException("DateTimeStateVersion.Name != name");
 
             return v;
         }
         else
         {
-            return new RepositoryVersion(name);
+            return new StateVersion(name);
         }
     }
 }
 
-public record DateTimeRepositoryVersion : RepositoryVersion
+public record DateTimeStateVersion : StateVersion
 {
-    public DateTimeRepositoryVersion(DateTime name) : base($"{name:s}")
+    public DateTimeStateVersion(DateTime name) : base($"{name:s}")
     {
         OriginalDateTime = name;
     }
 
-    public static DateTimeRepositoryVersion FromDateTime(DateTime name) => new(name.ToUniversalTime());
-    public static DateTimeRepositoryVersion FromUtcNow() => new(DateTime.UtcNow);
+    public static DateTimeStateVersion FromDateTime(DateTime name) => new(name.ToUniversalTime());
+    public static DateTimeStateVersion FromUtcNow() => new(DateTime.UtcNow);
 
     public DateTime OriginalDateTime { get; }
 }

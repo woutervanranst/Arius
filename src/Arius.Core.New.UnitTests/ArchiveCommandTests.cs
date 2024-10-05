@@ -74,7 +74,7 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
 
         var stats                = await GetRepositoryStatistics();
-        var localStateRepository = await GetLocalStateRepositoryAsync();
+        var localStateRepository = await CreateNewLocalStateRepositoryAsync();
 
         // 1 Binary on the remote
         BlobStorageHelper.BinaryExists(Fixture.RemoteRepositoryOptions, fpwh.Hash).Should().BeTrue();
@@ -129,7 +129,7 @@ public class ArchiveCommandTests : TestBase
 
         // Assert
         var stats                = await GetRepositoryStatistics();
-        var localStateRepository = await GetLocalStateRepositoryAsync();
+        var localStateRepository = await CreateNewLocalStateRepositoryAsync();
 
         // Only 1 Binary on the remote
         stats.BinaryFilesCount.Should().Be(1);
