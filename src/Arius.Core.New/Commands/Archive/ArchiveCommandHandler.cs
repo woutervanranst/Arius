@@ -315,7 +315,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask);
 
 
-        var changes = await remoteStateRepository.SaveChangesAsync(localStateDbRepository);
+        var changes = await localStateDbRepository.UploadAsync();
         if (changes)
             // NOTE: This is logged in the SaveChangesAsync method
             await mediator.Publish(new NewStateVersionCreatedNotification(request, localStateDbRepository.Version), cancellationToken);

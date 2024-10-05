@@ -42,7 +42,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         if (stateDatabaseFile is null)
             return null;
         
-        return new SqliteLocalStateRepository(stateDatabaseFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
+        return new SqliteLocalStateRepository(this, stateDatabaseFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
     public async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(
@@ -56,7 +56,7 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         // if there is an existing basedOnFile, use that as the baseline for the new version
         basedOnFile?.CopyTo(newVersionFile);
 
-        return new SqliteLocalStateRepository(newVersionFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
+        return new SqliteLocalStateRepository(this, newVersionFile, loggerFactory.CreateLogger<SqliteLocalStateRepository>());
     }
 
     /// <summary>
@@ -110,36 +110,17 @@ public class SqliteRemoteStateRepository : IRemoteStateRepository
         }
     }
 
-    public async Task<bool> SaveChangesAsync(ILocalStateRepository localStateRepository)
+    public async Task UploadStateDatabaseAsync(IStateDatabaseFile file, StateVersion version, CancellationToken cancellationToken = default)
     {
-        if (localStateRepository.HasChanges)
-        {
-            localStateRepository.Vacuum();
+        logger.LogInformation("Uploading State Database {version}...", version.Name);
 
-            await UploadStateDatabaseAsync(localStateRepository.StateDatabaseFile, localStateRepository.Version);
-            return true;
-        }
-        else
-        {
-            // TODO delete the file
+        var blob     = stateDbContainerFolder.GetBlob(version.Name);
+        var metadata = AzureBlob.CreateStateDatabaseMetadata();
 
-            logger.LogInformation("No changes made in this version, skipping upload.");
-            return false;
-        }
+        await stateDbContainerFolder.UploadAsync(file, blob, metadata, cancellationToken);
 
+        await blob.SetStorageTierAsync(StorageTier.Cold);
 
-        async Task UploadStateDatabaseAsync(IStateDatabaseFile file, StateVersion version, CancellationToken cancellationToken = default)
-        {
-            logger.LogInformation("Uploading State Database {version}...", version.Name);
-
-            var blob     = stateDbContainerFolder.GetBlob(version.Name);
-            var metadata = AzureBlob.CreateStateDatabaseMetadata();
-
-            await stateDbContainerFolder.UploadAsync(file, blob, metadata, cancellationToken);
-
-            await blob.SetStorageTierAsync(StorageTier.Cold);
-
-            logger.LogInformation("Uploading State Database {version}... done", version.Name);
-        }
+        logger.LogInformation("Uploading State Database {version}... done", version.Name);
     }
 }

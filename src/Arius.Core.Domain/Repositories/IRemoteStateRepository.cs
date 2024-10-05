@@ -1,4 +1,5 @@
 ﻿using Arius.Core.Domain.Storage;
+using Arius.Core.Domain.Storage.FileSystem;
 
 namespace Arius.Core.Domain.Repositories;
 
@@ -20,5 +21,5 @@ public interface IRemoteStateRepository
     /// </summary>
     public Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(DirectoryInfo localStateDatabaseCacheDirectory, StateVersion version, StateVersion? basedOn = null);
     
-    Task<bool>                         SaveChangesAsync(ILocalStateRepository localStateRepository);
+    Task UploadStateDatabaseAsync(IStateDatabaseFile file, StateVersion version, CancellationToken cancellationToken = default);
 }

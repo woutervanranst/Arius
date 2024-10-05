@@ -88,7 +88,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
         
         localStateRepository.Should().NotBeNull();
         localStateRepository.Version.Should().Be(latestVersion);
-        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
     }
 
     [Fact]
@@ -164,7 +163,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
             containerFolder.Received(1).DownloadAsync(Arg.Is<IAzureBlob>(b => b.Name == latestVersion.Name), Arg.Any<IFile>());
 
         localStateRepository.Version.Should().Be(newVersion);
-        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalDatabaseHasEntry(localStateRepository, "test");
     }
 
@@ -180,7 +178,6 @@ public class SqliteRemoteStateRepositoryTests : TestBase
 
         // Assert
         localStateRepository.Version.Should().Be(newVersion);
-        localStateRepository.StateDatabaseFile.Exists.Should().BeTrue();
         LocalStateRepositoryShouldBeEmpty(localStateRepository);
 
 

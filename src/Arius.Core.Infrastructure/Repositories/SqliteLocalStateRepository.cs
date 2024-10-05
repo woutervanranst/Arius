@@ -11,10 +11,19 @@ namespace Arius.Core.Infrastructure.Repositories;
 internal class SqliteLocalStateRepository : ILocalStateRepository
 {
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
+    private readonly IRemoteStateRepository                       remoteStateRepository;
+    private readonly IStateDatabaseFile                           stateDatabaseFile;
     private readonly ILogger<SqliteLocalStateRepository>          logger;
 
-    public SqliteLocalStateRepository(IStateDatabaseFile stateDatabaseFile, ILogger<SqliteLocalStateRepository> logger)
+    public SqliteLocalStateRepository(
+        IRemoteStateRepository remoteStateRepository,
+        IStateDatabaseFile stateDatabaseFile, 
+        ILogger<SqliteLocalStateRepository> logger)
     {
+        this.remoteStateRepository = remoteStateRepository;
+        this.stateDatabaseFile     = stateDatabaseFile;
+        this.logger                = logger;
+
         /*  Database is locked -> Cache = shared as per https://docs.microsoft.com/en-us/dotnet/standard/data/sqlite/database-errors
          *  NOTE if it still fails, try 'pragma temp_store=memory'
          *  Set command timeout to 60s to avoid concurrency errors on 'table is locked' */
@@ -23,45 +32,65 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
             .UseSqlite($"Data Source={stateDatabaseFile.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
             .Options;
 
-        StateDatabaseFile = stateDatabaseFile;
-        this.logger       = logger;
-
         using var context = GetContext();
         context.Database.Migrate();
     }
 
     private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
 
-    private void OnChanges(int changes) => HasChanges = HasChanges || changes > 0;
+    private void OnChanges(int changes) => hasChanges = hasChanges || changes > 0;
+    private bool hasChanges;
 
-    public IStateDatabaseFile StateDatabaseFile { get; }
-    public RepositoryVersion  Version           { get; }
-    public bool               HasChanges        { get; private set; }
 
-    public void Vacuum()
+    public StateVersion Version => stateDatabaseFile.Version;
+
+
+    public async Task<bool> UploadAsync()
     {
-        // Flush all connections before vacuuming, ensuring correct database file size
-        SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
-        var originalLength = StateDatabaseFile.Length;
-
-        using (var context = GetContext())
+        if (hasChanges)
         {
-            var sql = "VACUUM;";
-            context.Database.ExecuteSqlRaw(sql);
+            Vacuum();
 
-            if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
-                throw new InvalidOperationException("Checkpoint failed due to active readers");
+            await remoteStateRepository.UploadStateDatabaseAsync(stateDatabaseFile, Version);
+            return true;
+        }
+        else
+        {
+            // TODO delete the file
+
+            logger.LogInformation("No changes made in this version, skipping upload.");
+            return false;
         }
 
-        // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
-        SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
-        var vacuumedLength = StateDatabaseFile.Length;
+        void Vacuum()
+        {
+            // Flush all connections before vacuuming, ensuring correct database file size
+            SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+            var originalLength = stateDatabaseFile.Length;
 
-        if (originalLength != vacuumedLength)
-            logger.LogInformation($"Vacuumed database from {originalLength.Bytes().Humanize()} to {vacuumedLength.Bytes().Humanize()}, saved {(originalLength - vacuumedLength).Bytes().Humanize()}");
-        else
-            logger.LogInformation($"Vacuumed database but no change in size");
+            using (var context = GetContext())
+            {
+                var sql = "VACUUM;";
+                context.Database.ExecuteSqlRaw(sql);
+
+                if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
+                    throw new InvalidOperationException("Checkpoint failed due to active readers");
+            }
+
+            // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
+            SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+            var vacuumedLength = stateDatabaseFile.Length;
+
+            if (originalLength != vacuumedLength)
+                logger.LogInformation($"Vacuumed database from {originalLength.Bytes().Humanize()} to {vacuumedLength.Bytes().Humanize()}, saved {(originalLength - vacuumedLength).Bytes().Humanize()}");
+            else
+                logger.LogInformation($"Vacuumed database but no change in size");
+        }
     }
+
+    
+
+    
 
 
     public long CountPointerFileEntries()
