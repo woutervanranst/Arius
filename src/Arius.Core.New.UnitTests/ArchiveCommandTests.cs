@@ -73,7 +73,7 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.0");
         ThenShouldContainMediatorNotification<ArchiveCommandDoneNotification>();
 
-        var stats                = await GetRepositoryStatistics();
+        var stats                = await GetRepositoryStatisticsAsync();
         var localStateRepository = await GetLocalStateRepositoryAsync();
 
             // 1 Binary on the remote
@@ -104,15 +104,16 @@ public class ArchiveCommandTests : TestBase
     {
         // Arrange
         var relativeName = "directory/File1.txt";
-        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
+        var fpwh = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
         // Act
-        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot);
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, version: StateVersion.FromUtcNow());
 
         // Assert
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => true, out var notification);
-        notification.Version.Should().BeOfType<DateTimeRepositoryVersion>();
-        (notification.Version as DateTimeRepositoryVersion)!.OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+        notification.Version.Should().BeOfType<DateTimeStateVersion>();
+        (notification.Version as DateTimeStateVersion)!.OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+    }
     }
 
     [Fact]

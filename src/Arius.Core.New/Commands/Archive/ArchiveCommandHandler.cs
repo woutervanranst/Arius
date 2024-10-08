@@ -72,7 +72,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var getLocalStateDbRepositoryTask = Task.Run(async () =>
         {
             var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepositoryOptions.ContainerName);
-            return await remoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.VersionName, basedOn: null);
+            return await remoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version, basedOn: null);
         }, cancellationToken);
 
 

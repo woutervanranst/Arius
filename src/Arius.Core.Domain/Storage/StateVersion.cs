@@ -6,6 +6,8 @@ public record StateVersion
 {
     public StateVersion(string name)
     {
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(name);
+
         Name = name;
     }
     public string   Name             { get; }
@@ -15,6 +17,8 @@ public record StateVersion
 
     public static StateVersion FromName(string name)
     {
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(name);
+
         if (DateTime.TryParseExact(name, "yyyy-MM-ddTHH-mm-ss", null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var parsedDateTime))
         {
             var v = new DateTimeStateVersion(parsedDateTime);
@@ -27,6 +31,11 @@ public record StateVersion
         {
             return new StateVersion(name);
         }
+    }
+
+    public static StateVersion FromUtcNow()
+    {
+        return new DateTimeStateVersion(DateTime.UtcNow);
     }
 }
 

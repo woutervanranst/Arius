@@ -24,12 +24,12 @@ public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
     {
         var c = new ArchiveCommand
         {
-            RemoteRepositoryOptions  = Fixture.RemoteRepositoryOptions,
-            FastHash    = false,
-            RemoveLocal = false,
-            Tier        = StorageTier.Hot,
-            LocalRoot   = Fixture.TestRootSourceFolder,
-            VersionName = StateVersion.FromName("v1.0")
+            RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
+            FastHash                = false,
+            RemoveLocal             = false,
+            Tier                    = StorageTier.Hot,
+            LocalRoot               = Fixture.TestRootSourceFolder,
+            Version                 = StateVersion.FromName("v1.0")
         };
         var st = c.StorageTiering;
 

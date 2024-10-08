@@ -15,7 +15,7 @@ public record ArchiveCommand : IRequest
     /// <summary>
     /// The name of the NEW version, if there are changes
     /// </summary>
-    public required StateVersion      VersionName             { get; init; }
+    public required StateVersion      Version             { get; init; }
 
     internal int FilesToHash_BufferSize => 1000;
 

@@ -233,6 +233,15 @@ public abstract class TestBase
 
     protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier, string versionName)
     {
+        ArgumentNullException.ThrowIfNullOrWhiteSpace(versionName);
+
+        var version = StateVersion.FromName(versionName);
+
+        await WhenArchiveCommandAsync(fastHash, removeLocal, tier, version);
+    }
+
+    protected async Task WhenArchiveCommandAsync(bool fastHash, bool removeLocal, StorageTier tier, StateVersion version)
+    {
         var c = new ArchiveCommand
         {
             RemoteRepositoryOptions = Fixture.RemoteRepositoryOptions,
@@ -240,15 +249,15 @@ public abstract class TestBase
             RemoveLocal             = removeLocal,
             Tier                    = tier,
             LocalRoot               = Fixture.TestRunSourceFolder,
-            VersionName             = StateVersion.FromName(versionName)
+            Version                 = version
         };
 
         await Fixture.Mediator.Send(c);
     }
-    
-    protected async Task<RepositoryStatisticsQueryResponse> GetRepositoryStatistics()
+
+    protected async Task<RepositoryStatisticsQueryResponse> GetRepositoryStatisticsAsync()
     {
-        return await Fixture.Mediator.Send(new RepositoryStatisticsQuery() { RemoteRepository = Fixture.RemoteRepositoryOptions });
+        return await Fixture.Mediator.Send(new RepositoryStatisticsQuery { RemoteRepository = Fixture.RemoteRepositoryOptions });
     }
 
     //protected async Task<TResponse> WhenMediatorRequest<TResponse>(IRequest<TResponse> request)
@@ -328,13 +337,13 @@ public abstract class TestBase
 
     // --- HELPERS
 
-    protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string versionName)
-    {
-        var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
-        var version                          = StateVersion.FromName(versionName);
+    //protected async Task<ILocalStateRepository> CreateNewLocalStateRepositoryAsync(string versionName)
+    //{
+    //    var localStateDatabaseCacheDirectory = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
+    //    var version                          = StateVersion.FromName(versionName);
 
-        return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version);
-    }
+    //    return await Fixture.RemoteStateRepository.CreateNewLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, version);
+    //}
 
     protected async Task<ILocalStateRepository> GetLocalStateRepositoryAsync(string? versionName = null)
     {
@@ -403,6 +412,6 @@ public abstract class TestBase
 
     protected static void LocalDatabaseHasEntry(ILocalStateRepository localStateRepository, string binaryPropertiesHash)
     {
-        localStateRepository.GetBinaryProperties().Should().Contain(z => z.Hash == binaryPropertiesHash.StringToBytes());
+        localStateRepository.GetBinaryProperties().Should().Contain(bp => bp.Hash == binaryPropertiesHash.StringToBytes());
     }
 }
