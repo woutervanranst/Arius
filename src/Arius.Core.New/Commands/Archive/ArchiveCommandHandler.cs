@@ -15,6 +15,7 @@ using System.Threading.Channels;
 using Humanizer;
 using Microsoft.Extensions.Options;
 using File = Arius.Core.Infrastructure.Storage.LocalFileSystem.File;
+using TaskExtensions = WouterVanRanst.Utils.Extensions.TaskExtensions;
 
 namespace Arius.Core.New.Commands.Archive;
 
@@ -64,7 +65,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         await new ArchiveCommandValidator().ValidateAndThrowAsync(request, cancellationToken);
 
+        // Create a linked token source to cancel all tasks when the main token is cancelled
+        using var cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken = cancellationTokenSource.Token;
 
+        // Get the Repositories
         var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepositoryOptions);
         var remoteStateRepository = remoteRepository.GetRemoteStateRepository();
 
@@ -212,7 +217,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         Task.WhenAll(uploadBinariesTask, uploadRouterTask)
             .ContinueWith(async _ =>
             {
-                //await uploadRouterTask;
                 await addUploadedBinariesToPointerFileQueueTasks.WhenAll();
                 pointerFileEntriesToCreate.Writer.Complete();
             }, cancellationToken); // C40
@@ -311,9 +315,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             });
         }, cancellationToken);
 
-
-        await Task.WhenAll(indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask);
-
+        await TaskExtensions.WhenAllWithCancellationAsync([indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask], cancellationTokenSource);
 
         var changes = await localStateDbRepository.UploadAsync();
         if (changes)
