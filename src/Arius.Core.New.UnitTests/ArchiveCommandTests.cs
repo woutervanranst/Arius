@@ -116,14 +116,14 @@ public class ArchiveCommandTests : TestBase
     //}
 
     [Fact]
-    public async Task Handle_NoVersionSpecified_ShouldUseUtcNow()
+    public async Task Handle_ArchiveTwice_NoChange()
     {
         // Arrange
         var relativeName = "directory/File1.txt";
-        var fpwh = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
         // Act
-        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, version: StateVersion.FromUtcNow());
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
 
         // Assert
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => true, out var notification);

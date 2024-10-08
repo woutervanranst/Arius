@@ -10,8 +10,8 @@ internal record PointerFileEntryDto
 {
     public         byte[]              Hash             { get; init; }
     public         string              RelativeName     { get; init; }
-    public         DateTime?           CreationTimeUtc  { get; init; }
-    public         DateTime?           LastWriteTimeUtc { get; init; }
+    public         DateTime?           CreationTimeUtc  { get; set; }
+    public         DateTime?           LastWriteTimeUtc { get; set; }
     public virtual BinaryPropertiesDto BinaryProperties { get; init; }
 }
 

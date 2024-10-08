@@ -88,23 +88,8 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
         }
     }
 
-    
 
-    
-
-
-    public long CountPointerFileEntries()
-    {
-        using var context = GetContext();
-        return context.PointerFileEntries.LongCount();
-    }
-
-    public IEnumerable<PointerFileEntry> GetPointerFileEntries()
-    {
-        using var context = GetContext();
-        foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
-            yield return pfe;
-    }
+    // --- BINARYPROPERTIES
 
     public IEnumerable<BinaryProperties> GetBinaryProperties()
     {
@@ -193,11 +178,48 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
         context.SaveChanges();
     }
 
-    public void AddPointerFileEntry(PointerFileEntry pfe)
+    // -- POINTERFILEENTRIES
+
+    public IEnumerable<PointerFileEntry> GetPointerFileEntries()
     {
         using var context = GetContext();
-        context.PointerFileEntries.Add(pfe.ToDto());
-        context.SaveChanges();
+        foreach (var pfe in context.PointerFileEntries.Select(dto => dto.ToEntity()))
+            yield return pfe;
+    }
+
+    public long CountPointerFileEntries()
+    {
+        using var context = GetContext();
+        return context.PointerFileEntries.LongCount();
+    }
+
+    public UpsertResult UpsertPointerFileEntry(PointerFileEntry pfe)
+    {
+        using var context = GetContext();
+
+        var existingPfe = context.PointerFileEntries.Find(pfe.Hash.Value, pfe.RelativeName);
+        var pfeDto      = pfe.ToDto();
+
+        if (existingPfe == null)
+        {
+            context.PointerFileEntries.Add(pfeDto);
+            context.SaveChanges();
+            return UpsertResult.Added;
+        }
+        else
+        {
+            existingPfe.CreationTimeUtc  = pfeDto.CreationTimeUtc;
+            existingPfe.LastWriteTimeUtc = pfeDto.LastWriteTimeUtc;
+
+#if DEBUG
+            var unmappedProperties = pfeDto.GetType().GetProperties().Select(p => p.Name)
+                .Except([nameof(pfeDto.Hash), nameof(pfeDto.RelativeName), nameof(pfeDto.CreationTimeUtc), nameof(pfeDto.LastWriteTimeUtc), nameof(pfeDto.BinaryProperties)]);
+            if (unmappedProperties.Any())
+                throw new NotImplementedException("Not all properties are updated");
+#endif
+        }
+
+        return context.SaveChanges() > 0 ? UpsertResult.Updated : UpsertResult.Unchanged;
     }
 
     public void DeletePointerFileEntry(PointerFileEntry pfe)

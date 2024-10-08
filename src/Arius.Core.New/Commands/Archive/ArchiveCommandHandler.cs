@@ -242,7 +242,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             await foreach (var fpwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
             {
                 // 1. Create the PointerFile
-                //var pfwh = PointerFileWithHash.Create(fpwh);
                 var pfwh = PointerFileSerializer.Create(fpwh.BinaryFile);
 
                 logger.LogInformation("Created PointerFile {pointerFile}", pfwh.RelativeName);
@@ -251,7 +250,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                 // 2. Create the PointerFileEntry
                 var pfe = PointerFileEntry.FromBinaryFileWithHash(fpwh.BinaryFile);
-                localStateDbRepository.AddPointerFileEntry(pfe);
+                localStateDbRepository.UpsertPointerFileEntry(pfe);
 
                 logger.LogInformation("Creating PointerFileEntry for PointerFile for {binaryFile}", fpwh.RelativeName);
                 await mediator.Publish(new CreatedPointerFileEntryNotification(request, fpwh), cancellationToken);
