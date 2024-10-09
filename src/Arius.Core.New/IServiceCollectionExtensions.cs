@@ -38,6 +38,7 @@ public static class IServiceCollectionExtensions
 
         services.AddSingleton<ICryptoService, CryptoService>();
         services.AddSingleton<IFileSystem, LocalFileSystem>();
+        services.AddSingleton<PointerFileSerializer>();
 
         return services;
     }

@@ -6,14 +6,14 @@ using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using FluentValidation;
+using Humanizer;
 using Humanizer.Bytes;
 using MediatR;
+using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading.Channels;
-using Humanizer;
-using Microsoft.Extensions.Options;
 using File = Arius.Core.Infrastructure.Storage.LocalFileSystem.File;
 using TaskExtensions = WouterVanRanst.Utils.Extensions.TaskExtensions;
 
@@ -23,15 +23,17 @@ public abstract record ArchiveCommandNotification(ArchiveCommand Command) : INot
 public record FilePairFoundNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingStartedNotification(ArchiveCommand Command, IFilePair FilePair) : ArchiveCommandNotification(Command);
 public record FilePairHashingCompletedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
-public record BinaryFileToUpload(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
-public record BinaryFileWaitingForOtherUpload(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
-public record BinaryFileWaitingForOtherUploadDone(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
-public record BinaryFileAlreadyUploaded(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileToUploadNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileWaitingForOtherUploadNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileWaitingForOtherUploadDoneNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record BinaryFileAlreadyUploadedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileStartedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UploadBinaryFileCompletedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash, long OriginalLength, long ArchivedLength, double UploadSpeedMBps) : ArchiveCommandNotification(Command);
 public record CreatedPointerFileNotification(ArchiveCommand Command, IPointerFileWithHash PointerFile) : ArchiveCommandNotification(Command);
+public record UpdatedPointerFileNotification(ArchiveCommand Command, IPointerFileWithHash PointerFile) : ArchiveCommandNotification(Command);
 public record DeletedPointerFileEntryNotification(ArchiveCommand Command, string RelativeName) : ArchiveCommandNotification(Command);
 public record CreatedPointerFileEntryNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+public record UpdatedPointerFileEntryNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record DeletedBinaryFileNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
 public record UpdatedChunkTierNotification(ArchiveCommand Command, Hash Hash, long ArchivedLength, StorageTier OriginalTier, StorageTier NewTier) : ArchiveCommandNotification(Command);
 public record NewStateVersionCreatedNotification(ArchiveCommand Command, StateVersion Version) : ArchiveCommandNotification(Command);
@@ -44,6 +46,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     private readonly IMediator                      mediator;
     private readonly AriusConfiguration             config;
     private readonly IFileSystem                    fileSystem;
+    private readonly PointerFileSerializer          pointerFileSerializer;
     private readonly IStorageAccountFactory         storageAccountFactory;
     private readonly ILogger<ArchiveCommandHandler> logger;
 
@@ -51,12 +54,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         IMediator mediator,
         IOptions<AriusConfiguration> config,
         IFileSystem fileSystem,
+        PointerFileSerializer pointerFileSerializer,
         IStorageAccountFactory storageAccountFactory,
         ILogger<ArchiveCommandHandler> logger)
     {
         this.mediator              = mediator;
         this.config                = config.Value;
         this.fileSystem            = fileSystem;
+        this.pointerFileSerializer = pointerFileSerializer;
         this.storageAccountFactory = storageAccountFactory;
         this.logger                = logger;
     }
@@ -108,7 +113,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 logger.LogInformation("Started hashing {fp}...", fp);
                 await mediator.Publish(new FilePairHashingStartedNotification(request, fp), ct);
 
-                var filePairWithHash = await HashFilesAsync(request.FastHash, hvp, fp);
+                var filePairWithHash = await HashFilesAsync(request.FastHash, pointerFileSerializer, hvp, fp);
 
                 logger.LogInformation("Started hashing {fp}... done", fp);
                 await mediator.Publish(new FilePairHashingCompletedNotification(request, filePairWithHash), ct);
@@ -151,7 +156,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.NotStarted:
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
                             logger.LogInformation("Binary for {relativeName} does not exist remotely. Starting upload.", pwh.RelativeName);
-                            await mediator.Publish(new BinaryFileToUpload(request, pwh), cancellationToken);
 
                             await binariesToUpload.Writer.WriteAsync(pwh, cancellationToken); // A32
 
@@ -160,12 +164,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.Uploading:
                             // 2.2 Does not yet exist remote but is already being uploaded
                             logger.LogInformation("Binary for {relativeName} does not exist remotely but is already being uploaded.", pwh.RelativeName);
-                            await mediator.Publish(new BinaryFileWaitingForOtherUpload(request, pwh), cancellationToken);
+                            await mediator.Publish(new BinaryFileWaitingForOtherUploadNotification(request, pwh), cancellationToken);
 
                             addUploadedBinariesToPointerFileQueueTasks.Add(uploadingBinaries[pwh.Hash].Task.ContinueWith(async _ =>
                             {
                                 logger.LogInformation("Binary for {relativeName} has been uploaded.", pwh.RelativeName);
-                                await mediator.Publish(new BinaryFileWaitingForOtherUploadDone(request, pwh), cancellationToken);
+                                await mediator.Publish(new BinaryFileWaitingForOtherUploadDoneNotification(request, pwh), cancellationToken);
 
                                 await pointerFileEntriesToCreate.Writer.WriteAsync(pwh, cancellationToken); // A332
                             }, cancellationToken)); // A331
@@ -174,7 +178,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.Uploaded:
                             // 2.3 Is already uploaded
                             logger.LogInformation("Binary for {relativeName} already exists remotely.", pwh.RelativeName);
-                            await mediator.Publish(new BinaryFileAlreadyUploaded(request, pwh), cancellationToken);
+                            await mediator.Publish(new BinaryFileAlreadyUploadedNotification(request, pwh), cancellationToken);
 
                             await pointerFileEntriesToCreate.Writer.WriteAsync(pwh, cancellationToken); // A35
 
@@ -242,18 +246,46 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             await foreach (var fpwh in pointerFileEntriesToCreate.Reader.ReadAllAsync(cancellationToken))
             {
                 // 1. Create the PointerFile
-                var pfwh = PointerFileSerializer.Create(fpwh.BinaryFile);
+                var (creationResult, pfwh) = pointerFileSerializer.CreateIfNotExists(fpwh.BinaryFile);
 
-                logger.LogInformation("Created PointerFile {pointerFile}", pfwh.RelativeName);
-                await mediator.Publish(new CreatedPointerFileNotification(request, pfwh), cancellationToken);
-
+                switch (creationResult)
+                {
+                    case PointerFileSerializer.CreationResult.Created:
+                        logger.LogInformation("Created PointerFile {pointerFile}", pfwh.RelativeName);
+                        await mediator.Publish(new CreatedPointerFileNotification(request, pfwh), cancellationToken);
+                        break;
+                    case PointerFileSerializer.CreationResult.Overwritten:
+                        logger.LogInformation("Updated PointerFile {pointerFile}", pfwh.RelativeName);
+                        await mediator.Publish(new UpdatedPointerFileNotification(request, pfwh), cancellationToken);
+                        break;
+                    case PointerFileSerializer.CreationResult.Existed:
+                        logger.LogDebug("Unchanged PointerFile {pointerFile}", pfwh.RelativeName);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
 
                 // 2. Create the PointerFileEntry
                 var pfe = PointerFileEntry.FromBinaryFileWithHash(fpwh.BinaryFile);
-                localStateDbRepository.UpsertPointerFileEntry(pfe);
+                var upsertResult = localStateDbRepository.UpsertPointerFileEntry(pfe);
 
-                logger.LogInformation("Creating PointerFileEntry for PointerFile for {binaryFile}", fpwh.RelativeName);
-                await mediator.Publish(new CreatedPointerFileEntryNotification(request, fpwh), cancellationToken);
+                switch (upsertResult)
+                {
+                    case UpsertResult.Added:
+                        logger.LogInformation("Added PointerFileEntry for {binaryFile}", fpwh.RelativeName);
+                        await mediator.Publish(new CreatedPointerFileEntryNotification(request, fpwh), cancellationToken);
+                        break;
+                    case UpsertResult.Updated:
+                        logger.LogInformation("Updated PointerFileEntry for {binaryFile}", fpwh.RelativeName);
+                        await mediator.Publish(new UpdatedPointerFileEntryNotification(request, fpwh), cancellationToken);
+                        break;
+                    case UpsertResult.Unchanged:
+                        logger.LogDebug("Unchanged PointerFileEntry for {binaryFile}", fpwh.RelativeName);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
                 //stats.AddLocalStateRepositoryStatistic(deltaPointerFilesEntry: 1);
 
                 await binaryFilesToDelete.Writer.WriteAsync(fpwh, cancellationToken);
@@ -402,7 +434,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     }
 
 
-    internal static async Task<IFilePairWithHash> HashFilesAsync(bool fastHash, IHashValueProvider hvp, IFilePair pair)
+    internal static async Task<IFilePairWithHash> HashFilesAsync(bool fastHash, PointerFileSerializer pointerFileSerializer, IHashValueProvider hvp, IFilePair pair)
     {
         if (pair.IsBinaryFileWithPointerFile)
         {
@@ -413,7 +445,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if (pair.PointerFile!.LastWriteTimeUtc == pair.BinaryFile!.LastWriteTimeUtc)
                 {
                     // The file has not been modified
-                    var pfwh0 = PointerFileSerializer.FromExistingPointerFile(pair.PointerFile);
+                    var pfwh0 = pointerFileSerializer.FromExistingPointerFile(pair.PointerFile);
                     var bfwh0 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile, pfwh0.Hash);
 
                     return FilePairWithHash.FromFilePair(pfwh0, bfwh0);
@@ -424,7 +456,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var h1    = await hvp.GetHashAsync(pair.BinaryFile!);
             var bfwh1 = BinaryFileWithHash.FromBinaryFile(pair.BinaryFile!, h1);
 
-            var pfwh1 = PointerFileSerializer.FromExistingPointerFile(pair.PointerFile!);
+            var pfwh1 = pointerFileSerializer.FromExistingPointerFile(pair.PointerFile!);
             if (pfwh1.Hash != bfwh1.Hash)
                 throw new InvalidOperationException($"The PointerFile {pfwh1} is not valid for the BinaryFile '{bfwh1.FullName}' (BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
 
@@ -433,7 +465,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         else if (pair.IsPointerFileOnly)
         {
             // A PointerFile without a BinaryFile
-            var pfwh = PointerFileSerializer.FromExistingPointerFile(pair.PointerFile!);
+            var pfwh = pointerFileSerializer.FromExistingPointerFile(pair.PointerFile!);
 
             return FilePairWithHash.FromPointerFile(pfwh);
         }

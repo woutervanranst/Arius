@@ -1,9 +1,11 @@
 using Arius.Core.Domain;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage.FileSystem;
+using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.UnitTests.Fixtures;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
@@ -11,6 +13,8 @@ namespace Arius.Core.New.UnitTests;
 
 public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 {
+    private readonly PointerFileSerializer pointerFileSerializer = new(NullLogger<PointerFileSerializer>.Instance);
+
     protected override AriusFixture GetFixture()
     {
         return new FixtureBuilder()
@@ -38,7 +42,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var hvp = Substitute.For<IHashValueProvider>();
         
         // Act
-        var p2 = await ArchiveCommandHandler.HashFilesAsync(true, hvp, p1);
+        var p2 = await ArchiveCommandHandler.HashFilesAsync(true, pointerFileSerializer, hvp, p1);
 
         // Assert
         hvp.DidNotReceive().GetHashAsync(Arg.Any<IBinaryFile>());
@@ -61,7 +65,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(p1.BinaryFile.Hash);
 
         // Act
-        var p2 = await ArchiveCommandHandler.HashFilesAsync(true, hvp, p1);
+        var p2 = await ArchiveCommandHandler.HashFilesAsync(true, pointerFileSerializer, hvp, p1);
 
         // Assert
         hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
@@ -82,7 +86,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(someHash);
 
         // Act
-        Func<Task> act = async () => await ArchiveCommandHandler.HashFilesAsync(false, hvp, p1);
+        Func<Task> act = async () => await ArchiveCommandHandler.HashFilesAsync(false, pointerFileSerializer, hvp, p1);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -98,7 +102,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(p1.BinaryFile.Hash);
 
         // Act
-        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, hvp, p1);
+        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, pointerFileSerializer, hvp, p1);
 
         // Assert
         hvp.Received(1).GetHashAsync(Arg.Any<IBinaryFile>());
@@ -116,7 +120,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         var hvp      = Substitute.For<IHashValueProvider>();
 
         // Act
-        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, hvp, p0);
+        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, pointerFileSerializer, hvp, p0);
 
         // Assert
         p2.Should().NotBeNull();
@@ -137,7 +141,7 @@ public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
         hvp.GetHashAsync(Arg.Any<IBinaryFile>()).Returns(someHash);
 
         // Act
-        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, hvp, p0);
+        var p2 = await ArchiveCommandHandler.HashFilesAsync(false, pointerFileSerializer, hvp, p0);
 
         // Assert
         p2.Should().NotBeNull();

@@ -4,16 +4,49 @@ using Arius.Core.Domain.Storage.FileSystem;
 
 namespace Arius.Core.Infrastructure.Storage.LocalFileSystem;
 
-public static class PointerFileSerializer
+public class PointerFileSerializer
 {
+    private readonly ILogger<PointerFileSerializer> logger;
+
+    public PointerFileSerializer(ILogger<PointerFileSerializer> logger)
+    {
+        this.logger = logger;
+    }
+
+    public enum CreationResult
+    {
+        Created,
+        Overwritten,
+        Existed
+    }
+
     /// <summary>
     /// Write the PointerFile to disk
     /// </summary>
-    public static IPointerFileWithHash Create(IBinaryFileWithHash bfwh) => Create(bfwh.Root, bfwh.RelativeName + IPointerFile.Extension, bfwh.Hash, bfwh.CreationTimeUtc.Value, bfwh.LastWriteTimeUtc.Value);
-    public static IPointerFileWithHash Create(DirectoryInfo root, PointerFileEntry pfe) => Create(root, pfe.RelativeName + IPointerFile.Extension, pfe.Hash, pfe.CreationTimeUtc, pfe.LastWriteTimeUtc);
-    public static IPointerFileWithHash Create(DirectoryInfo root, string relativeName, Hash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
+    public (CreationResult Created, IPointerFileWithHash PointerFileWithHash) CreateIfNotExists(IBinaryFileWithHash bfwh) => CreateIfNotExists(bfwh.Root, bfwh.RelativeName + IPointerFile.Extension, bfwh.Hash, bfwh.CreationTimeUtc.Value, bfwh.LastWriteTimeUtc.Value);
+    public (CreationResult Created, IPointerFileWithHash PointerFileWithHash) CreateIfNotExists(DirectoryInfo root, PointerFileEntry pfe) => CreateIfNotExists(root, pfe.RelativeName + IPointerFile.Extension, pfe.Hash, pfe.CreationTimeUtc, pfe.LastWriteTimeUtc);
+    public (CreationResult Created, IPointerFileWithHash PointerFileWithHash) CreateIfNotExists(DirectoryInfo root, string relativeName, Hash hash, DateTime creationTimeUtc, DateTime lastWriteTimeUtc)
     {
-        var pfwh = PointerFileWithHash.FromRelativeName(root, relativeName, hash);
+        var  pfwh    = PointerFileWithHash.FromRelativeName(root, relativeName, hash);
+        var existed = false;
+
+        if (pfwh.Exists)
+        {
+            existed = true;
+            try
+            {
+                var existing = FromExistingPointerFile(pfwh);
+
+                if (existing.Hash == hash &&
+                    existing.CreationTimeUtc == creationTimeUtc &&
+                    existing.LastWriteTimeUtc == lastWriteTimeUtc)
+                    return (CreationResult.Existed, pfwh);
+            }
+            catch (InvalidDataException)
+            {
+                logger.LogWarning("The existing PointerFile {pointerFile} was broken. Overwriting...", pfwh);
+            }
+        }
 
         Directory.CreateDirectory(pfwh.Path);
 
@@ -24,18 +57,21 @@ public static class PointerFileSerializer
         pfwh.CreationTimeUtc  = creationTimeUtc;
         pfwh.LastWriteTimeUtc = lastWriteTimeUtc;
 
-        return pfwh;
+        return (existed ? CreationResult.Overwritten : CreationResult.Created, pfwh);
     }
 
 
     /// <summary>
-    /// Get a PointerFile with Hash by reading the value in the PointerFile
+    /// Retrieves a <see cref="IPointerFileWithHash"/> by reading and deserializing the contents of the specified <see cref="IPointerFile"/>.
     /// </summary>
-    /// <returns></returns>
-    public static IPointerFileWithHash FromExistingPointerFile(IPointerFile pf)
+    /// <param name="pf">The pointer file to be read and processed.</param>
+    /// <returns>An instance of <see cref="IPointerFileWithHash"/> containing the pointer file data and its associated hash.</returns>
+    /// <exception cref="FileNotFoundException">Thrown if the specified file does not exist at <paramref name="pf"/>.</exception>
+    /// <exception cref="InvalidDataException">Thrown if the file contains invalid data or is not a valid pointer file.</exception>
+    public IPointerFileWithHash FromExistingPointerFile(IPointerFile pf)
     {
         if (!System.IO.File.Exists(pf.FullName))
-            throw new ArgumentException($"'{pf.FullName}' does not exist");
+            throw new FileNotFoundException($"'{pf.FullName}' does not exist");
 
         try
         {
@@ -47,7 +83,7 @@ public static class PointerFileSerializer
         }
         catch (JsonException e)
         {
-            throw new ArgumentException($"'{pf.FullName}' is not a valid PointerFile", e);
+            throw new InvalidDataException($"'{pf.FullName}' is not a valid PointerFile", e);
         }
     }
 

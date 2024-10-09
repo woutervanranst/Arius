@@ -64,7 +64,7 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<FilePairFoundNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<FilePairHashingStartedNotification>(n => n.FilePair.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<FilePairHashingCompletedNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
-        ThenShouldContainMediatorNotification<BinaryFileToUpload>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
+        ThenShouldContainMediatorNotification<BinaryFileToUploadNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName);
         ThenShouldContainMediatorNotification<UploadBinaryFileStartedNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
         ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName) && n.OriginalLength == 100);
         ThenShouldContainMediatorNotification<UploadBinaryFileCompletedNotification>(n => n.FilePairWithHash.BinaryFile.RelativeNamePlatformNeutral == relativeName && n.OriginalLength == 100);
@@ -99,22 +99,6 @@ public class ArchiveCommandTests : TestBase
         stats.Sizes.ExistingArchivedSize.Should().Be(144);
     }
 
-    //[Fact]
-    //public async Task Handle_NoVersionSpecified_ShouldUseUtcNow()
-    //{
-    //    // Arrange
-    //    var relativeName = "directory/File1.txt";
-    //    var fpwh = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
-
-    //    // Act
-    //    await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, version: StateVersion.FromUtcNow());
-
-    //    // Assert
-    //    ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => true, out var notification);
-    //    notification.Version.Should().BeOfType<DateTimeStateVersion>();
-    //    (notification.Version as DateTimeStateVersion)!.OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
-    //}
-
     [Fact]
     public async Task Handle_ArchiveTwice_NoChange()
     {
@@ -122,13 +106,54 @@ public class ArchiveCommandTests : TestBase
         var relativeName = "directory/File1.txt";
         var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
 
-        // Act
         await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
+        Fixture.ClearMediatorNotifications();
+
+        // Act
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
 
         // Assert
-        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => true, out var notification);
-        notification.Version.Should().BeOfType<DateTimeStateVersion>();
-        (notification.Version as DateTimeStateVersion)!.OriginalDateTime.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(10));
+        ThenShouldContainMediatorNotification<FilePairFoundNotification>();
+        ThenShouldContainMediatorNotification<FilePairHashingStartedNotification>();
+        ThenShouldContainMediatorNotification<FilePairHashingCompletedNotification>();
+        ThenShouldNotContainMediatorNotification<BinaryFileToUploadNotification>();
+        ThenShouldNotContainMediatorNotification<BinaryFileWaitingForOtherUploadNotification>();
+        ThenShouldNotContainMediatorNotification<BinaryFileWaitingForOtherUploadDoneNotification>();
+        ThenShouldContainMediatorNotification<BinaryFileAlreadyUploadedNotification>();
+        ThenShouldNotContainMediatorNotification<UploadBinaryFileStartedNotification>();
+        ThenShouldNotContainMediatorNotification<UploadBinaryFileCompletedNotification>();
+        ThenShouldNotContainMediatorNotification<CreatedPointerFileNotification>();
+        ThenShouldNotContainMediatorNotification<UpdatedPointerFileNotification>();
+        ThenShouldNotContainMediatorNotification<DeletedPointerFileEntryNotification>();
+        ThenShouldNotContainMediatorNotification<CreatedPointerFileEntryNotification>();
+        ThenShouldNotContainMediatorNotification<UpdatedPointerFileEntryNotification>();
+        ThenShouldNotContainMediatorNotification<DeletedBinaryFileNotification>();
+        ThenShouldNotContainMediatorNotification<UpdatedChunkTierNotification>();
+        ThenShouldNotContainMediatorNotification<NewStateVersionCreatedNotification>();
+        ThenShouldContainMediatorNotification<NoNewStateVersionCreatedNotification>();
+
+        // NO FILE
+
+    }
+
+    [Fact]
+    public async Task Handle_ArchiveTwice_WithChange()
+    {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
+
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
+        Fixture.ClearMediatorNotifications();
+
+        // Act
+        fpwh.BinaryFile.CreationTimeUtc = DateTime.Now.AddDays(-1);
+
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
+
+        // Assert
+        ThenShouldContainMediatorNotification<UpdatedPointerFileEntryNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
+        ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.1");
     }
     }
 

@@ -14,6 +14,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
 using System.Linq.Expressions;
+using Microsoft.Extensions.Logging.Abstractions;
 using File = System.IO.File;
 
 namespace Arius.Core.New.UnitTests.Fixtures;
@@ -122,14 +123,16 @@ public abstract class TestBase
 
     internal FilePairWithHash GivenSourceFolderHavingFilePair(string relativeName, FilePairType type, int sizeInBytes, FileAttributes attributes = FileAttributes.Normal)
     {
+        var pfs = new PointerFileSerializer(NullLogger<PointerFileSerializer>.Instance);
+
         IBinaryFileWithHash?  bfwh = null;
         IPointerFileWithHash? pfwh = null;
 
         switch (type)
         {
             case FilePairType.BinaryFileWithPointerFile:
-                bfwh = GetBinaryFileWithHash();
-                pfwh = PointerFileSerializer.Create(bfwh);
+                bfwh      = GetBinaryFileWithHash();
+                (_, pfwh) = pfs.CreateIfNotExists(bfwh);
 
                 return FilePairWithHash.FromFilePair(pfwh, bfwh);
             case FilePairType.PointerFileOnly:
@@ -160,7 +163,9 @@ public abstract class TestBase
             Random.Shared.NextBytes(randomBytes);
             var h = new Hash(randomBytes);
 
-            return PointerFileSerializer.Create(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow);
+            return pfs
+                .CreateIfNotExists(Fixture.TestRunSourceFolder, relativeName, h, DateTime.UtcNow, DateTime.UtcNow)
+                .PointerFileWithHash;
         }
     }
 
@@ -168,8 +173,8 @@ public abstract class TestBase
     {
         File.SetAttributes(filePath, attributes);
 
-        var actualAtts = File.GetAttributes(filePath);
-        if (actualAtts != attributes)
+        var actualAttrs = File.GetAttributes(filePath);
+        if (actualAttrs != attributes)
             throw new InvalidOperationException($"Could not set attributes for {filePath}");
     }
 
@@ -327,6 +332,9 @@ public abstract class TestBase
 
     protected void ThenShouldContainMediatorNotification<TNotification>() 
         => Fixture.MediatorNotifications.OfType<TNotification>().Should().NotBeEmpty();
+
+    protected void ThenShouldNotContainMediatorNotification<TNotification>()
+        => Fixture.MediatorNotifications.OfType<TNotification>().Should().BeEmpty();
 
     protected void ThenShouldContainMediatorNotification<TNotification>(Expression<Func<TNotification, bool>> predicate) 
         => Fixture.MediatorNotifications.OfType<TNotification>().Should().Contain(predicate);

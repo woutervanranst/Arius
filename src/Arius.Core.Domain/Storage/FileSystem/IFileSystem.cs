@@ -13,8 +13,14 @@ public interface IFile
     string  Name     { get; }
     bool    Exists   { get; }
 
+    /// <summary>
+    /// Get the CreationTime of the file in UTC. Null if the file does not exist
+    /// </summary>
     DateTime? CreationTimeUtc { get; set; }
 
+    /// <summary>
+    /// Get the LastWriteTime of the file in UTC. Null if the file does not exist
+    /// </summary>
     DateTime? LastWriteTimeUtc { get; set; }
 
     bool IsPointerFile { get; }
