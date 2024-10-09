@@ -101,12 +101,12 @@
         };
         var c = new ArchiveCommand()
         {
-            RemoteRepositoryOptions  = r,
-            FastHash    = false,
-            LocalRoot   = new DirectoryInfo(@"C:\AriusTest\Source"),
-            RemoveLocal = false,
-            Tier        = StorageTier.Archive,
-            VersionName = StateVersion.FromName("Test")
+            RemoteRepositoryOptions = r,
+            FastHash                = false,
+            LocalRoot               = new DirectoryInfo(@"C:\AriusTest\Source"),
+            RemoveLocal             = false,
+            Tier                    = StorageTier.Archive,
+            Version                 = StateVersion.FromName("Test")
         };
 
         Mediator.Send(c);

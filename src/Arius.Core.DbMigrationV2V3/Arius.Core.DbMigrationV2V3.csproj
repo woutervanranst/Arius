@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+    <ProjectReference Include="..\Arius.Core.Old\Arius.Core.Old.csproj" />
   </ItemGroup>
 
 </Project>
