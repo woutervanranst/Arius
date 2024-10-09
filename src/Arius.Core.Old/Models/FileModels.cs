@@ -1,4 +1,7 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Threading.Tasks;
+using PostSharp.Patterns.Contracts;
 
 namespace Arius.Core.Models;
 
@@ -6,7 +9,7 @@ internal abstract record FileBase
 {
     private readonly FileInfoBase fib;
 
-    protected FileBase(DirectoryInfo root, FileInfoBase fib, BinaryHash hash)
+    protected FileBase([Required] DirectoryInfo root, [Required] FileInfoBase fib, [Required] BinaryHash hash)
     {
         this.fib     = fib;
 
@@ -86,7 +89,7 @@ internal record BinaryFile : FileBase, IChunk
     /// <summary>
     /// Length (in bytes) of the File
     /// </summary>
-    public long Length => new FileInfo(FullName).Length;
+    public long Length => FullName.Length();
 
     public Task<Stream> OpenReadAsync() => Task.FromResult((Stream)new FileStream(FullName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true)); // TODO read the comments on useAsync and benchmark whether this is actually faster
 }

@@ -19,7 +19,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     public ProvisionPointerFilesBlock(ILoggerFactory loggerFactory,
        Func<DirectoryInfo> sourceFunc,
        int maxDegreeOfParallelism,
-       RestoreCommand options,
+       RestoreCommandOptions options,
        Repository repo,
        FileSystemService fileSystemService,
        FileService fileService,
@@ -36,7 +36,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     }
 
     private readonly int                     maxDegreeOfParallelism;
-    private readonly RestoreCommand   options;
+    private readonly RestoreCommandOptions   options;
     private readonly Repository              repo;
     private readonly FileSystemService       fileSystemService;
     private readonly FileService             fileService;
@@ -50,9 +50,9 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         {
             switch (options)
             {
-                case RestorePointerFileEntriesCommand: // put the more specific type first
+                case RestorePointerFileEntriesCommandOptions: // put the more specific type first
                     throw new NotSupportedException("We cannot synchronize PointerFiles when we are only restoring a select number of relativeNames.");
-                case RestoreCommand o:
+                case RestoreCommandOptions o:
                     pointerFiles = SynchronizePointerFilesAsync(o);
                     break;
                 default:
@@ -63,10 +63,10 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         {
             switch (options)
             {
-                case RestorePointerFileEntriesCommand o:
+                case RestorePointerFileEntriesCommandOptions o:
                     pointerFiles = CreatePointerFilesAsync(o);
                     break;
-                case RestoreCommand o:
+                case RestoreCommandOptions o:
                     pointerFiles = GetExistingPointerFiles(o);
                     break;
                 default:
@@ -82,7 +82,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     /// Create the PointerFiles (if they do not exist) for the given root
     /// Delete the PointerFiles that should not exist
     /// </summary>
-    private async IAsyncEnumerable<PointerFile> SynchronizePointerFilesAsync(RestoreCommand options)
+    private async IAsyncEnumerable<PointerFile> SynchronizePointerFilesAsync(RestoreCommandOptions options)
     {
         var existingPointerFileEntries = new HashSet<string>();
         
@@ -113,7 +113,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
     /// <summary>
     /// Create the PointerFiles (if they do not exist) for the given relativeNames
     /// </summary>
-    private async IAsyncEnumerable<PointerFile> CreatePointerFilesAsync(RestorePointerFileEntriesCommand options)
+    private async IAsyncEnumerable<PointerFile> CreatePointerFilesAsync(RestorePointerFileEntriesCommandOptions options)
     {
         foreach (var relativeName in options.RelativeNames)
         {
@@ -129,7 +129,7 @@ internal class ProvisionPointerFilesBlock : TaskBlockBase<DirectoryInfo>
         }
     }
 
-    private async IAsyncEnumerable<PointerFile> GetExistingPointerFiles(RestoreCommand options)
+    private async IAsyncEnumerable<PointerFile> GetExistingPointerFiles(RestoreCommandOptions options)
     {
         foreach (var pfi in fileSystemService.GetPointerFileInfos(options.Path))
         {
@@ -145,7 +145,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
         Func<ChannelReader<PointerFile>> sourceFunc,
         FileService fileService,
         Repository repo,
-        RestoreCommand options,
+        RestoreCommandOptions options,
         Action chunkRehydrating,
         Action onCompleted,
         int maxDegreeOfParallelism)
@@ -159,7 +159,7 @@ internal class DownloadBinaryBlock : ChannelTaskBlockBase<PointerFile>
 
     private readonly FileService           fileService;
     private readonly Repository            repo;
-    private readonly RestoreCommand options;
+    private readonly RestoreCommandOptions options;
     private readonly Action                chunkRehydrating;
 
     private readonly ConcurrentDictionary<BinaryHash, TaskCompletionSource<BinaryFile>> restoredBinaries = new();

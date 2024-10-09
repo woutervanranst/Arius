@@ -19,7 +19,7 @@ public enum CommandResultStatus
     //Cancelled = -2
 }
 
-internal abstract class AsyncCommand<TOptions> where TOptions : CommandOptions  // TODO deprecate me
+internal abstract class AsyncCommand<TOptions> where TOptions : CommandOptions 
 {
     /// <summary>
     /// Execute the Command

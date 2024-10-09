@@ -1,10 +1,14 @@
-﻿using Arius.Core.Repositories.BlobRepository;
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using Arius.Core.Repositories.BlobRepository;
 using Arius.Core.Repositories.StateDb;
 using Arius.Core.Services;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System.IO;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Repositories;
 
@@ -61,7 +65,7 @@ internal partial class RepositoryBuilder
             {
                 // Create new DB
                 await using var db = new StateDbContext(localDbPath);
-                new DirectoryInfo(localDbPath).Create();
+                localDbPath.CreateDirectoryIfNotExists();
                 await db.Database.EnsureCreatedAsync();
 
                 logger.LogInformation($"Created new state database to '{localDbPath}'");

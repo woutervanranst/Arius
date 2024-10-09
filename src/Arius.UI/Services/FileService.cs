@@ -1,5 +1,5 @@
 ﻿using System.IO;
-using Arius.Core.Queries.PointerFilesEntries;
+using Arius.Core.Queries;
 using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.UI.Services;

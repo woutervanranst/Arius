@@ -1,23 +1,49 @@
-﻿using Arius.Core.Facade;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Arius.Core.Facade;
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
 using Nito.AsyncEx;
-using System.Collections.Generic;
 
-namespace Arius.Core.Queries.PointerFilesEntries;
+namespace Arius.Core.Queries;
 
-internal class PointerFileEntriesQueryHandler : Query<PointerFileEntriesQuery, IAsyncEnumerable<IPointerFileEntryQueryResult>>
+internal record PointerFileEntriesQueryOptions : QueryOptions
+{
+    public string? RelativeDirectory { get; init; } = null; 
+
+    public override void Validate()
+    {
+        // Always succeeds
+    }
+}
+
+
+public interface IEntryQueryResult // also implemented by Arius.UI.FileService
+{
+    public string RelativeName { get; }
+}
+public interface IPointerFileEntryQueryResult : IEntryQueryResult // properties specific to PointerFileEntry. Public interface is required for type matching
+{
+    public long OriginalLength { get; }
+    public HydrationState HydrationState { get; }
+}
+
+
+internal class PointerFileEntriesQuery : Query<PointerFileEntriesQueryOptions, IAsyncEnumerable<IPointerFileEntryQueryResult>>
 {
     private readonly ILoggerFactory loggerFactory;
-    private readonly Repository     repository;
+    private readonly Repository repository;
 
     private static AsyncLazy<Dictionary<ChunkHash, bool>>? rehydratingChunks;
 
-    public PointerFileEntriesQueryHandler(ILoggerFactory loggerFactory, Repository repository)
+    public PointerFileEntriesQuery(ILoggerFactory loggerFactory, Repository repository)
     {
         this.loggerFactory = loggerFactory;
-        this.repository    = repository;
+        this.repository = repository;
 
         // Lazy load the rehydrating chunks
         rehydratingChunks ??= new AsyncLazy<Dictionary<ChunkHash, bool>>(async () =>
@@ -27,12 +53,12 @@ internal class PointerFileEntriesQueryHandler : Query<PointerFileEntriesQuery, I
         });
     }
 
-    protected override (QueryResultStatus Status, IAsyncEnumerable<IPointerFileEntryQueryResult>? Result) ExecuteImpl(PointerFileEntriesQuery options)
+    protected override (QueryResultStatus Status, IAsyncEnumerable<IPointerFileEntryQueryResult>? Result) ExecuteImpl(PointerFileEntriesQueryOptions options)
     {
         return (QueryResultStatus.Success, GetPointerFilesEntriesAsync(repository, options));
 
 
-        static async IAsyncEnumerable<IPointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQuery options)
+        static async IAsyncEnumerable<IPointerFileEntryQueryResult> GetPointerFilesEntriesAsync(Repository repository, PointerFileEntriesQueryOptions options)
         {
             //await foreach (var pfe in repository.Kak(options.RelativeNameStartsWith.ToPlatformNeutralPath()))
             await foreach (var pfe in repository.GetPointerFileEntriesAsync(
@@ -75,8 +101,8 @@ internal class PointerFileEntriesQueryHandler : Query<PointerFileEntriesQuery, I
 
     private record PointerFileEntryQueryResult : IPointerFileEntryQueryResult
     {
-        public string         RelativeName   { get; init; }
-        public long           OriginalLength { get; init; }
-        public HydrationState HydrationState { get; init; }
+        public string         RelativeName       { get; init; }
+        public long           OriginalLength     { get; init; }
+        public HydrationState HydrationState     { get; init; }
     }
 }

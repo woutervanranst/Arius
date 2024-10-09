@@ -1,112 +1,186 @@
 ﻿using System;
-using System.IO;
-using Arius.Core.Facade;
-using Azure.Storage.Blobs.Models;
-using MediatR;
+using System.Linq;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Repositories;
+using Arius.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Archive;
 
-internal record ArchiveCommand : RepositoryOptions //, IRequest<CommandResultStatus>
+internal partial class ArchiveCommand : AsyncCommand<ArchiveCommandOptions>
 {
-    public ArchiveCommand(RepositoryOptions options, DirectoryInfo root, bool fastHash, bool removeLocal, string tier, bool dedup, DateTime versionUtc) : base(options)
+    public ArchiveCommand(ILoggerFactory loggerFactory, Repository repo, ArchiveCommandStatistics statisticsProvider)
     {
-        this.FastHash    = fastHash;
-        this.RemoveLocal = removeLocal;
-        this.Tier        = tier;
-        this.Dedup       = dedup;
-        this.Path        = root; // TODO rename to Root
-        this.VersionUtc  = versionUtc;
-    }
-    public ArchiveCommand(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash, bool removeLocal, string tier, bool dedup, DateTime versionUtc) : base(accountName, accountKey, containerName, passphrase)
-    {
-        this.FastHash    = fastHash;
-        this.RemoveLocal = removeLocal;
-        this.Tier        = tier;
-        this.Dedup       = dedup;
-        this.Path        = root;
-        this.VersionUtc  = versionUtc;
+        this.loggerFactory = loggerFactory;
+        this.repo          = repo;
+        this.logger        = loggerFactory.CreateLogger<ArchiveCommand>();
+        this.stats         = statisticsProvider;
+
+        this.fileSystemService = new FileSystemService(loggerFactory.CreateLogger<FileSystemService>());
     }
 
-    public bool          FastHash    { get; }
-    public bool          RemoveLocal { get; }
-    public AccessTier    Tier        { get; }
-    public bool          Dedup       { get; }
-    public DirectoryInfo Path        { get; }
-    public DateTime      VersionUtc  { get; }
+    private readonly ILoggerFactory           loggerFactory;
+    private readonly Repository               repo;
+    private readonly ILogger<ArchiveCommand>  logger;
+    private readonly ArchiveCommandStatistics stats;
+    private readonly FileSystemService        fileSystemService;
 
-
-    public int IndexBlock_Parallelism => Environment.ProcessorCount * 8; //index AND hash options. A low count doesnt achieve a high throughput when there are a lot of small files
-
-    public int BinariesToUpload_BufferSize => 100; //apply backpressure if we cannot upload fast enough
-
-    public int UploadBinaryFileBlock_BinaryFileParallelism => Environment.ProcessorCount * 2;
-    public int TransferChunked_ChunkBufferSize             => 1024; //put lower on systems with low memory -- if unconstrained, it will load all the BinaryFiles in memory
-    public int TransferChunked_ParallelChunkTransfers      => 128; // 128 * 2; -- NOTE sep22 this was working before but now getting ResourceUnavailable errors --> throttling?
-
-    public int PointersToCreate_BufferSize => 1000;
-
-    public int CreatePointerFileIfNotExistsBlock_Parallelism => 1;
-
-    public int PointerFileEntriesToCreate_BufferSize => 1000;
-
-    public int CreatePointerFileEntryIfNotExistsBlock_Parallelism => 1;
-
-    public int BinariesToDelete_BufferSize => 1000;
-
-    public int DeleteBinaryFilesBlock_Parallelism => 1;
-
-    public int CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism => 1;
-
-    public int UpdateTierBlock_Parallelism => 10;
-
-    public override void Validate()
+    protected override async Task<CommandResultStatus> ExecuteImplAsync(ArchiveCommandOptions options)
     {
-        base.Validate();
+        var hashValueProvider = new SHA256Hasher(options);
+        var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
 
-        if (Path is null)
-            throw new ArgumentException("Path is not specified", nameof(Path));
-        if (Path is not DirectoryInfo)
-            throw new ArgumentException("Path must be a directory", nameof(Path));
-        if (!Path.Exists)
-            throw new ArgumentException($"Directory {Path} does not exist.", nameof(Path));
+        var binariesToUpload           = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToUpload_BufferSize) { FullMode            = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var pointerFileEntriesToCreate = Channel.CreateBounded<PointerFile>(new BoundedChannelOptions(options.PointerFileEntriesToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binariesToDelete           = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.BinariesToDelete_BufferSize) { FullMode            = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var binaryFileUploadCompleted  = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        if (Tier != AccessTier.Hot && 
-            Tier != AccessTier.Cold && 
-            Tier != AccessTier.Cool && 
-            Tier != AccessTier.Archive)
-            throw new ArgumentException($"Tier {Tier} is not supported", nameof(Tier));
 
-        //#pragma warning disable CS0108 // Member hides inherited member; missing new keyword -- not required
-        //    internal class Validator : AbstractValidator<IArchiveCommandOptions>
-        //#pragma warning restore CS0108
-        //    {
-        //        public Validator()
-        //        {
-        //            // validate the IRepositoryOptions (AccountName, AccountKey, Container, Passphrase)
-        //            RuleFor(o => (IRepositoryOptions)o)
-        //                .SetInheritanceValidator(v => 
-        //                    v.Add<IRepositoryOptions>(new IRepositoryOptions.Validator()));
+        // Get statistics of before the run
+        var startStats = await repo.GetStatisticsAsync();
+        stats.AddRemoteRepositoryStatistic(
+            beforeBinaries: startStats.BinaryCount,
+            beforeSize: startStats.ChunkSize,
+            beforePointerFileEntries: startStats.CurrentPointerFileEntryCount);
 
-        //            // Validate Path
-        //            RuleFor(o => o.Path)
-        //                .Custom((path, context) =>
-        //                {
-        //                    if (path is null)
-        //                        context.AddFailure("Path is not specified");
-        //                    else if (path is not DirectoryInfo)
-        //                        context.AddFailure("Path must be a directory");
-        //                    else if (!path.Exists)
-        //                        context.AddFailure($"Directory {path} does not exist.");
-        //                });
 
-        //            // Validate Tier
-        //            RuleFor(o => o.Tier)
-        //                .Must(tier =>
-        //                    tier == AccessTier.Hot ||
-        //                    tier == AccessTier.Cool ||
-        //                    tier == AccessTier.Cold ||
-        //                    tier == AccessTier.Archive);
-        //        }
-        //    }
+        var indexBlock = new IndexBlock(this,
+            sourceFunc: () => options.Path,
+            onCompleted: () => { },
+            maxDegreeOfParallelism: options.IndexBlock_Parallelism,
+            options: options,
+            fileService: fileService,
+            onIndexedPointerFile: async pf =>
+            {
+                await pointerFileEntriesToCreate.Writer.WriteAsync(pf); //B301
+            },
+            onIndexedBinaryFile: async arg =>
+            {
+                var (bf, alreadyBackedUp) = arg;
+                if (alreadyBackedUp)
+                {
+                    if (options.RemoveLocal)
+                        await binariesToDelete.Writer.WriteAsync(bf); //B401 //NOTE B1202 deletes NEWLY archived binaries, this one deletes EXISTING binaries //TODO test the flow
+                    //else - discard //B304
+                }
+                else
+                    await binariesToUpload.Writer.WriteAsync(bf); //B302
+            },
+            onBinaryFileIndexCompleted: () =>
+            {
+                binariesToUpload.Writer.Complete(); //B310
+            },
+            binaryFileUploadCompletedTaskCompletionSource: binaryFileUploadCompleted);
+        var indexTask = indexBlock.GetTask;
+
+
+        var pointersToCreate = Channel.CreateBounded<BinaryFile>(new BoundedChannelOptions(options.PointersToCreate_BufferSize) { FullMode = BoundedChannelFullMode.Wait, AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = false });
+        var uploadBinaryFileBlock = new UploadBinaryFileBlock(this,
+            sourceFunc: () => binariesToUpload,
+            maxDegreeOfParallelism: options.UploadBinaryFileBlock_BinaryFileParallelism,
+            onCompleted: () =>
+            {
+                pointersToCreate.Writer.Complete(); //B410
+                binaryFileUploadCompleted.SetResult(); //B411
+            }, 
+            options: options, 
+            hashValueProvider: hashValueProvider,
+            onBinaryExists: async bf =>
+            {
+                await pointersToCreate.Writer.WriteAsync(bf); //B403
+            });
+        var uploadBinaryFileTask = uploadBinaryFileBlock.GetTask;
+
+
+        var createPointerFileIfNotExistsBlock = new CreatePointerFileIfNotExistsBlock(this,
+            sourceFunc: () => pointersToCreate, //B1201
+            onCompleted: () => binariesToDelete.Writer.Complete(),
+            maxDegreeOfParallelism: options.CreatePointerFileIfNotExistsBlock_Parallelism,
+            fileService: fileService,
+            
+            onSuccesfullyBackedUp: async bf =>
+            {
+                if (options.RemoveLocal)
+                    await binariesToDelete.Writer.WriteAsync(bf); //B1202
+            }, 
+            onPointerFileCreated: async pf => await pointerFileEntriesToCreate.Writer.WriteAsync(pf) /* B1310 */);
+        var createPointerFileIfNotExistsTask = createPointerFileIfNotExistsBlock.GetTask;
+
+
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+        // can be ignored since we'll be awaiting the pointersToCreate
+        Task.WhenAll(indexTask, createPointerFileIfNotExistsTask)
+            .ContinueWith(_ => pointerFileEntriesToCreate.Writer.Complete()); //B1210 - these are the two only blocks that write to this blockingcollection. If these are both done, adding is completed.
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
+
+        
+        var createPointerFileEntryIfNotExistsBlock = new CreatePointerFileEntryIfNotExistsBlock(this,
+            sourceFunc: () => pointerFileEntriesToCreate,
+            onCompleted: () => { }, 
+            maxDegreeOfParallelism: options.CreatePointerFileEntryIfNotExistsBlock_Parallelism, 
+            options: options);
+        var createPointerFileEntryIfNotExistsTask = createPointerFileEntryIfNotExistsBlock.GetTask;
+
+
+        var deleteBinaryFilesBlock = new DeleteBinaryFilesBlock(this,
+            sourceFunc: () => binariesToDelete,
+            onCompleted: () => { }, 
+            maxDegreeOfParallelism: options.DeleteBinaryFilesBlock_Parallelism);
+        var deleteBinaryFilesTask = deleteBinaryFilesBlock.GetTask;
+
+
+        var createDeletedPointerFileEntryForDeletedPointerFilesBlock = new CreateDeletedPointerFileEntryForDeletedPointerFilesBlock(this,
+            sourceFunc: async () =>
+            {
+                var pointerFileEntriesToCheckForDeletedPointers = Channel.CreateUnbounded<PointerFileEntry>(new UnboundedChannelOptions { AllowSynchronousContinuations = false, SingleWriter = true, SingleReader = false });
+                var pfes = repo.GetCurrentPointerFileEntriesAsync(includeDeleted: false)
+                    .Where(pfe => pfe.VersionUtc < options.VersionUtc) // that were not created in the current run (those are assumed to be up to date)
+                    .ToEnumerable(); 
+                await pointerFileEntriesToCheckForDeletedPointers.Writer.AddFromEnumerable(pfes, completeAddingWhenDone: true); //B1401
+                return pointerFileEntriesToCheckForDeletedPointers;
+            },
+            maxDegreeOfParallelism: options.CreateDeletedPointerFileEntryForDeletedPointerFilesBlock_Parallelism,
+            onCompleted: () => { },
+            options: options,
+            fileService: fileService);
+        var createDeletedPointerFileEntryForDeletedPointerFilesTask = createDeletedPointerFileEntryForDeletedPointerFilesBlock.GetTask;
+
+
+        var updateTierBlock = new UpdateTierBlock(this,
+            sourceFunc: () => repo,
+            onCompleted: () => { }, maxDegreeOfParallelism: options.UpdateTierBlock_Parallelism, options: options);
+        var updateTierTask = updateTierBlock.GetTask;
+
+
+        // Await the current stage of the pipeline
+        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
+
+
+        // Get statistics after the run
+        var endStats = await repo.GetStatisticsAsync();
+        stats.AddRemoteRepositoryStatistic(
+            afterBinaries: endStats.BinaryCount,
+            afterSize: endStats.ChunkSize,
+            afterPointerFileEntries: endStats.CurrentPointerFileEntryCount);
+        var vs = await repo.GetVersionsAsync().ToArrayAsync();
+        stats.versionCount = vs.Length;
+        stats.lastVersion = vs.Last();
+
+        // save the state in any case even in case of errors otherwise the info on BinaryProperties is lost
+        await repo.SaveStateToRepositoryAsync(options.VersionUtc);
+
+        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts && ts.Any())
+        {
+            var exceptions = ts.Select(t => t.Exception);
+            foreach (var e in exceptions)
+                logger.LogError(e);
+
+            throw new AggregateException(exceptions);
+        }
+
+        return CommandResultStatus.Success;
     }
 }

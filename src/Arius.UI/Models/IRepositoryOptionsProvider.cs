@@ -6,8 +6,8 @@ internal interface IRepositoryOptionsProvider
 {
     DirectoryInfo LocalDirectory { get; }
 
-    string AccountName   { get; }
-    string AccountKey    { get; }
+    string AccountName { get; }
+    string AccountKey { get; }
     string ContainerName { get; }
-    string Passphrase    { get; }
+    string Passphrase { get; }
 }

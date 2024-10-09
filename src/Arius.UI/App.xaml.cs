@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 using Arius.Core.Facade;
-using Arius.Core.New;
 using Arius.UI.Messages;
 using Arius.UI.Services;
 using Arius.UI.Utils;
@@ -50,7 +49,6 @@ public partial class App
 
     private void ConfigureServices(IServiceCollection services)
     {
-        services.AddArius();
         services.AddSingleton<Facade>(new Facade(NullLoggerFactory.Instance));
         services.AddSingleton<ApplicationSettings>(new ApplicationSettings(Path.Combine(ApplicationDataPath, "arius.explorer.settings.sqlite")));
 

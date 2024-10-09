@@ -38,7 +38,7 @@
 
 	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
 	<ItemGroup Condition="'$(Configuration)'=='Debug'">
-		<ProjectReference Include="..\Arius.Core\Arius.Core.csproj" />
+		<ProjectReference Include="..\Arius.Core.Old\Arius.Core.Old.csproj" />
 	</ItemGroup>
 	<ItemGroup Condition="'$(Configuration)'=='Release'">
 		<PackageReference Include="WouterVanRanst.Arius.Core" Version="*" />

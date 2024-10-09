@@ -1,24 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
-		<PackageReference Include="Azure.Storage.Blobs" Version="12.22.0" />
+		<PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
 		<PackageReference Include="ConcurrentHashSet" Version="1.3.0" />
-		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.10.0" />
-		<PackageReference Include="MediatR" Version="12.4.1" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.17" />
 		<PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
 		<PackageReference Include="Nito.AsyncEx.Tasks" Version="5.1.2" />
 		<PackageReference Include="ParallelExtensionsExtras.NetFxStandard" Version="2.1.0" />
+		<PackageReference Include="PostSharp" Version="2024.0.7" />
+		<PackageReference Include="PostSharp.Patterns.Common" Version="2024.0.7" />
+		<PackageReference Include="PostSharp.Patterns.Model" Version="2024.0.7" />
+		<PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
-		<PackageReference Include="WouterVanRanst.Utils" Version="1.0.8" />
+		<PackageReference Include="WouterVanRanst.Utils" Version="1.0.7" />
 	</ItemGroup>
 
 	<!-- Reference the core library project directly in Debug configuration OR the NuGet package in Release -->
 	<ItemGroup Condition="'$(Configuration)'=='Release'">
 		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
-	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\..\..\WouterVanRanst.Utils\src\WouterVanRanst.Utils\WouterVanRanst.Utils.csproj" />
 	</ItemGroup>
 
 	<PropertyGroup>

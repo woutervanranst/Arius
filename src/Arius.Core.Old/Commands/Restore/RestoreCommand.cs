@@ -1,74 +1,99 @@
 ﻿using System;
-using System.IO;
-using Arius.Core.Facade;
+using System.Linq;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+using Arius.Core.Extensions;
+using Arius.Core.Models;
+using Arius.Core.Repositories;
+using Arius.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Arius.Core.Commands.Restore;
 
-internal record RestoreCommand : RepositoryOptions
+internal class RestoreCommand : AsyncCommand<RestoreCommandOptions>
 {
-    public RestoreCommand(RepositoryOptions options, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(options)
+    public RestoreCommand(ILoggerFactory loggerFactory, Repository repo)
     {
-        this.Synchronize    = synchronize;
-        this.Download       = download;
-        this.KeepPointers   = keepPointers;
-        this.PointInTimeUtc = pointInTimeUtc ?? DateTime.UtcNow;
-        this.Path           = root;
-    }
-    public RestoreCommand(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool synchronize, bool download, bool keepPointers, DateTime? pointInTimeUtc) : base(accountName, accountKey, containerName, passphrase)
-    {
-        this.Synchronize    = synchronize;
-        this.Download       = download;
-        this.KeepPointers   = keepPointers;
-        this.PointInTimeUtc = pointInTimeUtc ?? DateTime.UtcNow;
-        this.Path           = root;
+        this.loggerFactory = loggerFactory;
+        this.repo          = repo;
+        this.logger        = loggerFactory.CreateLogger<RestoreCommand>();
     }
 
-    public bool          Synchronize    { get; }
-    public bool          Download       { get; }
-    public bool          KeepPointers   { get; }
-    public DateTime      PointInTimeUtc { get; }
-    public DirectoryInfo Path           { get; }
+    private readonly ILoggerFactory          loggerFactory;
+    private readonly Repository              repo;
+    private readonly ILogger<RestoreCommand> logger;
 
-
-    public int IndexBlock_Parallelism          => 16 * 2;
-    public int DownloadBinaryBlock_Parallelism => 16 * 2;
-
-    public override void Validate()
+    protected override async Task<CommandResultStatus> ExecuteImplAsync(RestoreCommandOptions options)
     {
-        base.Validate();
+        var hashValueProvider = new SHA256Hasher(options);
+        var fileService       = new FileService(loggerFactory.CreateLogger<FileService>(), hashValueProvider);
+        var fileSystemService = new FileSystemService(loggerFactory.CreateLogger<FileSystemService>());
 
-        if (Path is null || !Path.Exists)
-            throw new ArgumentException("The specified path does not exist", nameof(Path));
 
-        //if (!Synchronize && !Download)
-        //    throw new ArgumentException("Either specify --synchronize or --download"); //this is just silly to call
+        var binariesToDownload = Channel.CreateUnbounded<PointerFile>();
 
-        //// validate the IRepositoryOptions (AccountName, AccountKey, Container, Passphrase)
-        //RuleFor(o => (IRepositoryOptions)o)
-        //    .SetInheritanceValidator(v =>
-        //        v.Add<IRepositoryOptions>(new IRepositoryOptions.Validator()));
+        var provisionPointerFilesBlock = new ProvisionPointerFilesBlock(
+            loggerFactory: loggerFactory,
+            sourceFunc: () => options.Path, //S10
+            maxDegreeOfParallelism: options.IndexBlock_Parallelism,
+            options: options,
+            repo: repo,
+            fileSystemService: fileSystemService,
+            fileService: fileService,
+            onIndexedPointerFile: async arg =>
+            {
+                if (!options.Download)
+                    return; //no need to download
 
-        //// Validate valid combination of Synchronize/Path/Download
-        //RuleFor(o => o)
-        //    .Custom((o, context) =>
-        //    {
-        //        if (o.Path is null || !o.Path.Exists)
-        //            context.AddFailure("The specified path does not exist");
+                await binariesToDownload.Writer.WriteAsync(arg);
+            },
+            onCompleted: () =>
+            {
+                binariesToDownload.Writer.Complete(); //S13
+            });
+        var indexTask = provisionPointerFilesBlock.GetTask;
 
-        //        //if (!o.Synchronize && !o.Download)
-        //        //    context.AddFailure("Either specify --synchronize or --download"); //this is just silly to call
-        //    });
+
+        var chunkRehydrating = false;
+
+        var downloadBinaryBlock = new DownloadBinaryBlock(
+            loggerFactory: loggerFactory,
+            sourceFunc: () => binariesToDownload,
+            maxDegreeOfParallelism: options.DownloadBinaryBlock_Parallelism,
+            fileService: fileService,
+            options: options,
+            repo: repo,
+            chunkRehydrating: () =>
+            {
+                chunkRehydrating = true;
+            },
+            onCompleted: () =>
+            {
+            });
+        var downloadBinaryTask = downloadBinaryBlock.GetTask;
+
+
+        await Task.WhenAny(Task.WhenAll(BlockBase.AllTasks), BlockBase.CancellationTask);
+
+        if (!chunkRehydrating)
+        {
+            logger.LogInformation("All binaries restored, deleting temporary hydration folder, if applicable");
+            await repo.DeleteHydratedChunksFolderAsync();
+        }
+        else
+        {
+            logger.LogWarning("WARNING: Not all files are restored as chunks are still being hydrated. Please run the restore operation again in 12-24 hours.");
+        }
+
+        if (BlockBase.AllTasks.Where(t => t.Status == TaskStatus.Faulted) is var ts && ts.Any())
+        {
+            var exceptions = ts.Select(t => t.Exception);
+            foreach (var e in exceptions)
+                logger.LogError(e);
+
+            throw new AggregateException(exceptions);
+        }
+
+        return CommandResultStatus.Success;
     }
-}
-
-
-internal record RestorePointerFileEntriesCommand : RestoreCommand
-{
-    public RestorePointerFileEntriesCommand(RepositoryOptions options, DirectoryInfo root, bool download, bool keepPointers, DateTime pointInTimeUtc, params string[] relativeNames)
-        : base(options: options, root: root, synchronize: false, download: download, keepPointers: keepPointers, pointInTimeUtc: pointInTimeUtc)
-    {
-        // NOTE: synchronize is always false here
-        RelativeNames = relativeNames;
-    }
-    public string[] RelativeNames { get; }
 }

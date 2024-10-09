@@ -1,28 +1,27 @@
-﻿using Arius.Core.Domain.Storage;
+﻿using System.Collections.ObjectModel;
+using System.IO;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+using Arius.Core.Facade;
 using Arius.UI.Messages;
 using Arius.UI.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using MediatR;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Windows;
-using System.Windows.Input;
-using System.Windows.Threading;
-using Arius.Core.New.Queries.ContainerNames;
-using Application = System.Windows.Application;
 using MessageBox = System.Windows.MessageBox;
+using Application = System.Windows.Application;
 
 namespace Arius.UI.ViewModels;
 
 internal partial class ChooseRepositoryViewModel : ObservableRecipient, IRepositoryOptionsProvider
 {
-    private readonly IMediator mediator;
+    private readonly Facade                 facade;
 
-    public ChooseRepositoryViewModel(IMediator mediator)
+    public ChooseRepositoryViewModel(Facade facade)
     {
-        this.mediator               = mediator;
+        this.facade = facade;
+
         SelectLocalDirectoryCommand = new RelayCommand(SelectLocalDirectory);
         OpenRepositoryCommand       = new AsyncRelayCommand(OpenRepositoryAsync);
     }
@@ -95,16 +94,8 @@ internal partial class ChooseRepositoryViewModel : ObservableRecipient, IReposit
         {
             IsLoading = true;
 
-            var q = new ContainerNamesQuery
-            {
-                StorageAccount = new StorageAccountOptions
-                {
-                    AccountName = AccountName,
-                    AccountKey  = AccountKey
-                }
-            };
-            var r = await mediator.CreateStream(q).ToListAsync();
-            ContainerNames = new ObservableCollection<string>(r);
+            var storageAccountFacade = facade.ForStorageAccount(AccountName, AccountKey);
+            ContainerNames = new ObservableCollection<string>(await storageAccountFacade.GetContainerNamesAsync(0).ToListAsync());
 
             if (ContainerName is null && ContainerNames.Count > 0)
                 ContainerName = ContainerNames[0];

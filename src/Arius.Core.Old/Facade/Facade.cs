@@ -1,16 +1,20 @@
-﻿using Arius.Core.Commands;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Arius.Core.Commands;
 using Arius.Core.Commands.Archive;
 using Arius.Core.Commands.Rehydrate;
 using Arius.Core.Commands.Restore;
 using Arius.Core.Extensions;
-using Arius.Core.Queries.PointerFileEntriesSubdirectories;
-using Arius.Core.Queries.PointerFilesEntries;
-using Arius.Core.Queries.RepositoryStatistics;
+using Arius.Core.Queries;
 using Arius.Core.Repositories;
 using Azure.Storage.Blobs.Models;
-using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
+using PostSharp.Constraints;
+using PostSharp.Patterns.Contracts;
 
 /*
  * This is required for the Arius.Cli.Tests module
@@ -24,7 +28,6 @@ using System.Runtime.CompilerServices;
  * This is required to test the internals of the Arius.Core assembly
  */
 [assembly: InternalsVisibleTo("Arius.Core.Tests.Old")]
-[assembly: InternalsVisibleTo("Arius.Core.New.UnitTests")]
 [assembly: InternalsVisibleTo("Arius.Benchmarks")]
 [assembly: InternalsVisibleTo("Arius.Core.BehaviorTests")]
 [assembly: InternalsVisibleTo("Arius.ArchUnit")]
@@ -37,7 +40,8 @@ public class Facade
 {
     private readonly ILoggerFactory    loggerFactory;
 
-    internal Facade() // added only for Moq
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal Facade()
     {
     }
     public Facade(ILoggerFactory loggerFactory)
@@ -52,7 +56,7 @@ public class Facade
     }
 
 
-    public   virtual StorageAccountFacade ForStorageAccount(string accountName, string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
+    public   virtual StorageAccountFacade ForStorageAccount([Required] string accountName, [Required] string accountKey) => ForStorageAccount(new StorageAccountOptions(accountName, accountKey));
     internal virtual StorageAccountFacade ForStorageAccount(StorageAccountOptions storageAccountOptions)                => new(loggerFactory, storageAccountOptions);
 }
 
@@ -61,14 +65,24 @@ public class StorageAccountFacade
 {
     private readonly ILoggerFactory        loggerFactory;
     private readonly StorageAccountOptions storageAccountOptions;
-    
-    internal StorageAccountFacade() // added only for Moq
+
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal StorageAccountFacade()
     {
     }
     internal StorageAccountFacade(ILoggerFactory loggerFactory, StorageAccountOptions options)
     {
         this.loggerFactory         = loggerFactory;
         this.storageAccountOptions = options;
+    }
+
+    public IAsyncEnumerable<string> GetContainerNamesAsync(int maxRetries)
+    {
+        var o   = new QueryContainerNamesOptions { MaxRetries = maxRetries };
+        var q = new ContainerNamesQuery(loggerFactory.CreateLogger<ContainerNamesQuery>(), storageAccountOptions);
+
+
+        return q.Execute(o).Result;
     }
 
     /// <summary>
@@ -79,7 +93,7 @@ public class StorageAccountFacade
     /// <param name="containerName"></param>
     /// <param name="passphrase"></param>
     /// <returns></returns>
-    public   virtual async Task<RepositoryFacade> ForRepositoryAsync(string containerName, string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
+    public   virtual async Task<RepositoryFacade> ForRepositoryAsync([Required] string containerName, [Required] string passphrase) => await ForRepositoryAsync(new RepositoryOptions(storageAccountOptions, containerName, passphrase));
     internal virtual async Task<RepositoryFacade> ForRepositoryAsync(RepositoryOptions repositoryOptions)    => await RepositoryFacade.CreateAsync(loggerFactory, repositoryOptions);
 
     ///// <summary>
@@ -98,7 +112,8 @@ public class RepositoryFacade : IDisposable
 {
     private readonly ILoggerFactory loggerFactory;
 
-    internal RepositoryFacade() // added only for Moq
+    [ComponentInternal("Arius.Cli.Tests")] // added only for Moq
+    internal RepositoryFacade()
     {
     }
     private RepositoryFacade(ILoggerFactory loggerFactory, Repository repo)
@@ -107,7 +122,8 @@ public class RepositoryFacade : IDisposable
         this.loggerFactory = loggerFactory;
     }
 
-    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options) // [ComponentInternal(typeof(StorageAccountFacade))]
+    [ComponentInternal(typeof(StorageAccountFacade))]
+    internal static async Task<RepositoryFacade> CreateAsync(ILoggerFactory loggerFactory, RepositoryOptions options)
     {
         var repo = await new RepositoryBuilder(loggerFactory.CreateLogger<Repository>())
             .WithOptions(options)
@@ -139,7 +155,7 @@ public class RepositoryFacade : IDisposable
     /// <exception cref="ArgumentException">Throws an ArgumentException in case of an invalid option</exception>
     public static void ValidateArchiveCommandOptions(string accountName, string accountKey, string containerName, string passphrase, DirectoryInfo root, bool fastHash = false, bool removeLocal = false, string tier = default, bool dedup = false, DateTime versionUtc = default)
     {
-        var o = new ArchiveCommand(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var o = new ArchiveCommandOptions(accountName, accountKey, containerName, passphrase, root, fastHash, removeLocal, tier, dedup, versionUtc);
         o.Validate();
     }
 
@@ -154,11 +170,11 @@ public class RepositoryFacade : IDisposable
         if (versionUtc == default)
             versionUtc = DateTime.UtcNow;
 
-        var aco = new ArchiveCommand(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
+        var aco = new ArchiveCommandOptions(Repository.Options, root, fastHash, removeLocal, tier, dedup, versionUtc);
 
         var sp = new ArchiveCommandStatistics();
 
-        var cmd = new ArchiveCommandHandler(loggerFactory, Repository, sp);
+        var cmd = new ArchiveCommand(loggerFactory, Repository, sp);
 
         var r = await cmd.ExecuteAsync(aco);
 
@@ -176,7 +192,7 @@ public class RepositoryFacade : IDisposable
     {
         // TODO align handling of versionUtc == default and DateTime? pointInTime
 
-        var o = new RestoreCommand(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var o = new RestoreCommandOptions(accountName, accountKey, containerName, passphrase, root, synchronize, download, keepPointers, pointInTimeUtc);
         o.Validate();
     }
 
@@ -188,9 +204,9 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestoreCommand(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
+        var rco = new RestoreCommandOptions(Repository.Options, root, synchronize, download, keepPointers, pointInTimeUtc);
 
-        var cmd = new RestoreCommandHandler(loggerFactory, Repository);
+        var cmd = new RestoreCommand(loggerFactory, Repository);
 
         return await cmd.ExecuteAsync(rco);
     }
@@ -203,9 +219,9 @@ public class RepositoryFacade : IDisposable
         if (pointInTimeUtc == default)
             pointInTimeUtc = DateTime.UtcNow;
 
-        var rco = new RestorePointerFileEntriesCommand(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
+        var rco = new RestorePointerFileEntriesCommandOptions(Repository.Options, root, download, keepPointers, pointInTimeUtc, relativeNames);
 
-        var cmd = new RestoreCommandHandler(loggerFactory, Repository);
+        var cmd = new RestoreCommand(loggerFactory, Repository);
 
         return await cmd.ExecuteAsync(rco);
     }
@@ -216,9 +232,9 @@ public class RepositoryFacade : IDisposable
     {
         throw new NotImplementedException();
 
-        var rco = new RehydrateCommand(Repository);
+        var rco = new RehydrateCommandOptions(Repository);
 
-        var cmd = new RehydrateCommandHandler(loggerFactory.CreateLogger<RehydrateCommandHandler>());
+        var cmd = new RehydrateCommand(loggerFactory.CreateLogger<RehydrateCommand>());
 
         return await cmd.ExecuteAsync(rco);
     }
@@ -234,8 +250,8 @@ public class RepositoryFacade : IDisposable
 
     public IAsyncEnumerable<IPointerFileEntryQueryResult> QueryPointerFileEntries(string? relativeDirectory = null)
     {
-        var o = new PointerFileEntriesQuery { RelativeDirectory = relativeDirectory };
-        var q = new PointerFileEntriesQueryHandler(loggerFactory, Repository);
+        var o = new PointerFileEntriesQueryOptions { RelativeDirectory = relativeDirectory };
+        var q = new PointerFileEntriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
         return r.Result;
@@ -253,8 +269,8 @@ public class RepositoryFacade : IDisposable
     public IAsyncEnumerable<string> QueryPointerFileEntriesSubdirectories(string prefix, int depth, DateTime? versionUtc = default)
     {
         prefix = prefix.ToPlatformNeutralPath();
-        var o = new PointerFileEntriesSubdirectoriesQuery { Prefix = prefix, Depth = depth, VersionUtc = versionUtc ?? DateTime.UtcNow };
-        var q = new PointerFileEntriesSubdirectoriesQueryHandler(loggerFactory, Repository);
+        var o = new PointerFileEntriesSubdirectoriesQueryOptions { Prefix = prefix, Depth = depth, VersionUtc = versionUtc ?? DateTime.UtcNow };
+        var q = new PointerFileEntriesSubdirectoriesQuery(loggerFactory, Repository);
         var r = q.Execute(o);
 
         return r.Result.Select(r => r.ToPlatformSpecificPath());
@@ -262,8 +278,8 @@ public class RepositoryFacade : IDisposable
 
     public async Task<IQueryRepositoryStatisticsResult> QueryRepositoryStatisticsAsync()
     {
-        var o = new RepositoryStatisticsQuery();
-        var q = new RepositoryStatisticsQueryHandler(loggerFactory, Repository);
+        var o = new RepositoryStatisticsQueryOptions();
+        var q = new RepositoryStatisticsQuery(loggerFactory, Repository);
         var r = await q.ExecuteAsync(o);
 
         return r.Result;
@@ -283,7 +299,8 @@ public class RepositoryFacade : IDisposable
         Dispose(false);
     }
 
-    internal virtual void Dispose(bool disposing) // [ComponentInternal("Arius.Cli.Tests")] // should be protected
+    [ComponentInternal("Arius.Cli.Tests")] // should be protected
+    internal virtual void Dispose(bool disposing)
     {
         if (disposing)
             Repository.Dispose();
