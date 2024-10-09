@@ -147,8 +147,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     {
                         // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
                         latentPointers.Add(pwh.PointerFile!); // A31
-                        // TODO LOG
-                        // TODO MEDIATR
                     }
 
                     switch (r)
@@ -156,6 +154,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         case UploadStatus.NotStarted:
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
                             logger.LogInformation("Binary for {relativeName} does not exist remotely. Starting upload.", pwh.RelativeName);
+                            await mediator.Publish(new BinaryFileToUploadNotification(request, pwh), cancellationToken);
 
                             await binariesToUpload.Writer.WriteAsync(pwh, cancellationToken); // A32
 

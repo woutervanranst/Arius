@@ -45,7 +45,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Web.Domain", "Arius.W
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.ArchUnit", "Arius.ArchUnit\Arius.ArchUnit.csproj", "{326398FC-D58E-4217-A12E-2E4DD3EB365D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.New", "Arius.Core.New\Arius.Core.New.csproj", "{5021E374-72AC-41B3-BE7E-102EC52E5478}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core", "Arius.Core\Arius.Core.csproj", "{5021E374-72AC-41B3-BE7E-102EC52E5478}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests", "Arius.Core.Tests\Arius.Core.Tests.csproj", "{66A0ABA5-47A5-48D0-A193-60FC58726E39}"
 EndProject

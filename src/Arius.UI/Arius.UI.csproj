@@ -44,8 +44,5 @@
 		<PackageReference Include="WouterVanRanst.Arius.Core" Version="*" />
 		<PackageReference Include="WouterVanRanst.Utils" Version="*" />
 	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\Arius.Core.New\Arius.Core.New.csproj" />
-	</ItemGroup>
 
 </Project>
