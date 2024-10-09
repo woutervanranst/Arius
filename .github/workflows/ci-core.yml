@@ -29,10 +29,10 @@ jobs:
         dotnet-version: 8.x
 
     - name: Build Solution
-      run: dotnet build Arius.Core/Arius.Core.csproj --configuration Release
+      run: dotnet build Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release
 
     - name: Run Unit Tests
-      run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal # --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
+      run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
 
     - name: Test Report
       uses: dorny/test-reporter@v1
