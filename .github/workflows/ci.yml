@@ -1,0 +1,53 @@
+name: CI Build and Test
+
+on:
+  push:
+    branches:
+      - '**' # Run on every branch
+
+permissions: # Required for dorny/test-reporter@v1
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  ci:
+    name: CI Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: src
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.x
+
+    - name: Restore NuGet Packages
+      run: dotnet restore
+
+    - name: Build Solution
+      run: dotnet build --configuration Release
+
+    - name: Run Unit Tests
+      run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
+
+    - name: Test Report
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Test Report
+        path: "**/test-results.xml"
+        reporter: java-junit
+
+    - name: Upload Coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        files: "**/coverage.cobertura.xml"
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
