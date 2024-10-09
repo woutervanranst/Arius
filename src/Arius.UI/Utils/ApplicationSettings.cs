@@ -1,10 +1,9 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using Arius.UI.Extensions;
+﻿using Arius.UI.Extensions;
 using Arius.UI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using WouterVanRanst.Utils.Extensions;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
 
 namespace Arius.UI.Utils;
 
@@ -17,7 +16,7 @@ internal class ApplicationSettings
         this.dbPath = dbPath;
 
         using var db = GetContext();
-        dbPath.CreateDirectoryIfNotExists();
+        Directory.CreateDirectory(dbPath);
         db.Database.EnsureCreated();
     }
 
