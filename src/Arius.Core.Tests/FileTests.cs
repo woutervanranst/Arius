@@ -1,8 +1,4 @@
-using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.Infrastructure.Storage.LocalFileSystem;
-using FluentAssertions;
-
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class FileTests
 {

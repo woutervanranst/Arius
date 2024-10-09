@@ -2,10 +2,10 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.Azure;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class AzureRepostoryTests : TestBase
 {

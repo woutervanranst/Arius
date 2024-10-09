@@ -1,6 +1,6 @@
 using NSubstitute.Core;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 internal static class NSubstituteExtensions
 {

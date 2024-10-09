@@ -1,9 +1,9 @@
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
-using Arius.Core.New.UnitTests.Extensions;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Extensions;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class HashValueProviderTests : TestBase
 {

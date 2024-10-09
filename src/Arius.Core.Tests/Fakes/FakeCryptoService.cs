@@ -1,6 +1,6 @@
 using Arius.Core.Domain.Services;
 
-namespace Arius.Core.New.UnitTests.Fakes;
+namespace Arius.Core.Tests.Fakes;
 
 internal class FakeCryptoService : ICryptoService
 {

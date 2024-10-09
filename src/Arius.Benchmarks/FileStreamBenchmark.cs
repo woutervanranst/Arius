@@ -1,4 +1,4 @@
-﻿using Arius.Core.New.UnitTests.Extensions;
+﻿using Arius.Core.Tests.Extensions;
 using BenchmarkDotNet.Attributes;
 using File = System.IO.File;
 

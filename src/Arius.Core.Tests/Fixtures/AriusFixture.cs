@@ -4,14 +4,15 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Services;
-using Arius.Core.New.UnitTests.Fakes;
+using Arius.Core.New;
+using Arius.Core.Tests.Fakes;
 using MediatR;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-namespace Arius.Core.New.UnitTests.Fixtures;
+namespace Arius.Core.Tests.Fixtures;
 
 public class FixtureBuilder
 {

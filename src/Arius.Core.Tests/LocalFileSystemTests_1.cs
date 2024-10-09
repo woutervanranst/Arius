@@ -1,11 +1,11 @@
 using Arius.Core.Domain.Extensions;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class LocalFileSystemTests_1 : TestBase
 {

@@ -2,7 +2,7 @@ using System.Globalization;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 
-namespace Arius.Core.New.UnitTests.Fixtures;
+namespace Arius.Core.Tests.Fixtures;
 
 public class Cleanup : TestBase
 {

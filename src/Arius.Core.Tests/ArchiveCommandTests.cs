@@ -4,11 +4,11 @@ using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.New.Commands.Archive;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using Azure.Storage.Blobs;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 internal static class BlobStorageHelper
 {
@@ -132,7 +132,8 @@ public class ArchiveCommandTests : TestBase
         ThenShouldNotContainMediatorNotification<NewStateVersionCreatedNotification>();
         ThenShouldContainMediatorNotification<NoNewStateVersionCreatedNotification>();
 
-        // NO FILE
+        throw new NotImplementedException();
+        // NO  FILE
 
     }
 
@@ -155,6 +156,16 @@ public class ArchiveCommandTests : TestBase
         ThenShouldContainMediatorNotification<UpdatedPointerFileEntryNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.1");
     }
+
+    [Fact]
+    public async Task Handle_PointerBinaryMismatch()
+    {
+    }
+
+    [Fact]
+    public async Task Handle_AnExceptionHappens()
+    {
+
     }
 
     [Fact]
@@ -170,16 +181,16 @@ public class ArchiveCommandTests : TestBase
         await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
 
         // Assert
-        var stats                = await GetRepositoryStatistics();
+        var stats                = await GetRepositoryStatisticsAsync();
         var localStateRepository = await GetLocalStateRepositoryAsync();
 
         // Only 1 Binary on the remote
         stats.BinaryFilesCount.Should().Be(1);
 
         // We uploaded 1 binary and awaited another one
-        ThenShouldContainMediatorNotification<BinaryFileToUpload>(n => n.FilePairWithHash.Hash == fpwh1.Hash, out var binaryFileToUploadNotification);
-        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUpload>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
-        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUploadDone>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
+        ThenShouldContainMediatorNotification<BinaryFileToUploadNotification>(n => n.FilePairWithHash.Hash == fpwh1.Hash, out var binaryFileToUploadNotification);
+        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUploadNotification>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
+        ThenShouldContainMediatorNotification<BinaryFileWaitingForOtherUploadDoneNotification>(n => n.FilePairWithHash.Hash == binaryFileToUploadNotification.FilePairWithHash.Hash);
         
         // 2 PointerFileEntries
         ThenShouldContainMediatorNotification<CreatedPointerFileEntryNotification>(n => n.FilePairWithHash.RelativeNamePlatformNeutral == relativeName1);
@@ -209,17 +220,94 @@ public class ArchiveCommandTests : TestBase
         stats.Sizes.ExistingUniqueArchivedSize.Should().Be(144);
         stats.Sizes.ExistingOriginalSize.Should().Be(100 * 2);
         stats.Sizes.ExistingArchivedSize.Should().Be(144 * 2);
+    }
+
+    [Fact]
+    public async Task Handle_DeletedUniqueFile()
+    {
+        // Arrange
+        var relativeName        = "directory/File1.txt";
+        var deletedRelativeName = "directory2/File2.txt";
+        var fpwh1               = GivenSourceFolderHavingFilePair(relativeName,        FilePairType.BinaryFileOnly, 100);
+        var deletedFpwh               = GivenSourceFolderHavingFilePair(deletedRelativeName, FilePairType.BinaryFileOnly, 100);
+
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
+
+        deletedFpwh.BinaryFile.Delete();
+        deletedFpwh.PointerFile.Delete();
+
+        deletedFpwh.BinaryFile.Exists.Should().BeFalse();
+        deletedFpwh.PointerFile.Exists.Should().BeFalse();
+
+        Fixture.ClearMediatorNotifications();
+        
+        // Act
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
 
 
-        //public record BinaryFileAlreadyUploaded(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+        // Assert
+        var stats = await GetRepositoryStatisticsAsync();
+        var localStateRepository = await GetLocalStateRepositoryAsync();
 
-        //public record DeletedPointerFileEntryNotification(ArchiveCommand Command, string RelativeNamePlatformSpecific) : ArchiveCommandNotification(Command);
+        // Only 2 Binary on the remote
+        stats.BinaryFilesCount.Should().Be(2);
+
+        // We uploaded 1 binary and awaited another one
+        ThenShouldContainMediatorNotification<DeletedPointerFileEntryNotification>(n => n.RelativeName == deletedFpwh.RelativeNamePlatformNeutral, out var binaryFileToUploadNotification);
+
+        // 2 PointerFileEntries
+        stats.PointerFilesEntryCount.Should().Be(1);
+        localStateRepository.PointerFileEntryExists(fpwh1).Should().BeTrue();
+        localStateRepository.PointerFileEntryExists(deletedFpwh).Should().BeFalse();
+
+        //// 2 PointerFiles are created
+        //ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName1);
+        //ThenShouldContainMediatorNotification<CreatedPointerFileNotification>(n => n.PointerFile.BinaryFileRelativeNamePlatformNeutral == relativeName2);
+
+        //fpwh1.PointerFile.Exists.Should().BeTrue();
+        //fpwh2.PointerFile.Exists.Should().BeTrue();
+
+        //// The BinaryFiles still exist
+        //fpwh1.BinaryFile.Exists.Should().BeTrue();
+        //fpwh2.BinaryFile.Exists.Should().BeTrue();
+
+        //// Validate SizeMetrics
+        //stats.Sizes.AllUniqueOriginalSize.Should().Be(100);
+        //stats.Sizes.AllUniqueArchivedSize.Should().Be(144);
+        ////stats.Sizes.AllOriginalSize.Should().Be(100 * 2);
+        ////stats.Sizes.AllArchivedSize.Should().Be(144 * 2);
+        //stats.Sizes.ExistingUniqueOriginalSize.Should().Be(100);
+        //stats.Sizes.ExistingUniqueArchivedSize.Should().Be(144);
+        //stats.Sizes.ExistingOriginalSize.Should().Be(100 * 2);
+        //stats.Sizes.ExistingArchivedSize.Should().Be(144 * 2);
+
+
+
+
+
+
+        //public record BinaryFileAlreadyUploadedNotification(ArchiveCommand Command, IFilePairWithHash FilePairWithHash) : ArchiveCommandNotification(Command);
+
         //public record DeletedBinaryFileNotification(ArchiveCommand Command, IBinaryFileWithHash BinaryFile) : ArchiveCommandNotification(Command);
         //public record UpdatedChunkTierNotification(ArchiveCommand Command, Hash Hash, long ArchivedSize, StorageTier OriginalTier, StorageTier NewTier) : ArchiveCommandNotification(Command);
 
         //public record NoNewStateVersionCreatedNotification(ArchiveCommand Command) : ArchiveCommandNotification(Command);
 
-        // TODO test with VersionName = null
+        // TODO test with Version = null
+    }
+
+    [Fact]
+    public async Task Handle_DeletedDuplicateFile()
+    {
+        // Arrange
+        var relativeName        = "directory/File1.txt";
+        var deletedRelativeName = "directory2/File2.txt";
+        var fpwh1               = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileOnly, 100);
+        var fpwh2               = GivenSourceFolderHavingCopyOfFilePair(fpwh1, deletedRelativeName);
+
+        await WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.0");
+
+
     }
 
     [Fact]

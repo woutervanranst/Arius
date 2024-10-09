@@ -3,13 +3,14 @@ using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage.FileSystem;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Commands.Archive;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class ArchiveCommandHandlerBlocks_HashFiles_Tests : TestBase
 {

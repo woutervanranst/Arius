@@ -1,9 +1,9 @@
 using Arius.Core.Infrastructure.Storage.Azure;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using Azure;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class AzureBlobTests : TestBase
 {

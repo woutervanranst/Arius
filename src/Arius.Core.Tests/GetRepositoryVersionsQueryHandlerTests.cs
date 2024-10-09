@@ -1,10 +1,10 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Queries.GetStateDbVersions;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 using NSubstitute;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class GetRepositoryVersionsQueryHandlerTests : TestBase
 {

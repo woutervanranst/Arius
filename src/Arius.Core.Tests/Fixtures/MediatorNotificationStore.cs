@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace Arius.Core.New.UnitTests.Fixtures;
+namespace Arius.Core.Tests.Fixtures;
 
 public class MediatorNotificationStore
 {

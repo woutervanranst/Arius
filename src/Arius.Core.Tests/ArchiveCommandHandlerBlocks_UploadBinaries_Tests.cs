@@ -1,9 +1,9 @@
 using Arius.Core.Domain.Storage;
 using Arius.Core.New.Commands.Archive;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class ArchiveCommandHandlerBlocks_UploadBinaries_Tests : TestBase
 {

@@ -1,8 +1,8 @@
 using Arius.Core.New.Queries.ContainerNames;
-using Arius.Core.New.UnitTests.Fixtures;
+using Arius.Core.Tests.Fixtures;
 using FluentAssertions;
 
-namespace Arius.Core.New.UnitTests;
+namespace Arius.Core.Tests;
 
 public class ContainerNamesQueryHandlerTests : TestBase
 {

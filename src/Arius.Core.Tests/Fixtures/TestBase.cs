@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
@@ -8,16 +9,15 @@ using Arius.Core.New.Commands.Archive;
 using Arius.Core.New.Queries.ContainerNames;
 using Arius.Core.New.Queries.GetStateDbVersions;
 using Arius.Core.New.Queries.RepositoryStatistics;
-using Arius.Core.New.UnitTests.Extensions;
+using Arius.Core.Tests.Extensions;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using NSubstitute;
-using System.Linq.Expressions;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using File = System.IO.File;
 
-namespace Arius.Core.New.UnitTests.Fixtures;
+namespace Arius.Core.Tests.Fixtures;
 
 public abstract class TestBase
 {

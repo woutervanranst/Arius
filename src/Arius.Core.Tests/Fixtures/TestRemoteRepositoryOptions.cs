@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Arius.Core.New.UnitTests.Fixtures;
+namespace Arius.Core.Tests.Fixtures;
 
 public record TestRemoteRepositoryOptions
 {
