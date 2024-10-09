@@ -1,9 +1,7 @@
 ﻿using Arius.Core.Domain;
-using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Services;
 using Arius.Core.Domain.Storage;
 using Arius.Core.Domain.Storage.FileSystem;
-using Arius.Core.Infrastructure.Repositories;
 using Arius.Core.Infrastructure.Storage.Azure;
 using Arius.Core.Infrastructure.Storage.LocalFileSystem;
 using Arius.Core.New.Services;
