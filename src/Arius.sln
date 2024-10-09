@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31423.177
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests", "Arius.Core.Tests\Arius.Core.Tests.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Core.Tests.Old", "Arius.Core.Tests.Old\Arius.Core.Tests.Old.csproj", "{9E7B808A-155C-4474-B658-F814A24592F1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Arius.Cli.Tests", "Arius.Cli.Tests\Arius.Cli.Tests.csproj", "{156346A7-B035-40C2-84AB-9BEAB6D6301C}"
 EndProject
