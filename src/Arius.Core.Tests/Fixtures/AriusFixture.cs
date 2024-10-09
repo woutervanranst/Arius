@@ -33,6 +33,7 @@ public class FixtureBuilder
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .AddUserSecrets<FixtureBuilder>(optional: true)
+            .AddEnvironmentVariables()
             .Build();
 
         testRoot = new DirectoryInfo(@"C:\AriusTest");

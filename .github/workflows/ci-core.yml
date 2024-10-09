@@ -32,6 +32,9 @@ jobs:
       run: dotnet build Arius.Core.Tests/Arius.Core.Tests.csproj --configuration Release
 
     - name: Run Unit Tests
+      env:
+        RepositoryOptions__AccountKey: ${{ secrets.REPOSITORY_OPTIONS_ACCOUNT_KEY }}
+        RepositoryOptions__Passphrase: ${{ secrets.REPOSITORY_OPTIONS_PASSPHRASE }}
       run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
 
     - name: Test Report
