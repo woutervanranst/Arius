@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Arius.Core.Infrastructure\Arius.Core.Infrastructure.csproj" />
-    <ProjectReference Include="..\Arius.Core.New.UnitTests\Arius.Core.New.UnitTests.csproj" />
     <ProjectReference Include="..\Arius.Core.Tests\Arius.Core.Tests.csproj" />
   </ItemGroup>
 
