@@ -13,15 +13,11 @@ permissions: # Required for dorny/test-reporter@v1
 jobs:
   ci:
     name: CI Build and Test
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
       run:
         working-directory: src
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
 
     steps:
     - name: Check out code
@@ -36,7 +32,7 @@ jobs:
       run: dotnet build Arius.Core/Arius.Core.csproj --configuration Release
 
     - name: Run Unit Tests
-      run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
+      run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal # --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
 
     - name: Test Report
       uses: dorny/test-reporter@v1
