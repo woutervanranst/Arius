@@ -32,11 +32,8 @@ jobs:
       with:
         dotnet-version: 8.x
 
-    - name: Restore NuGet Packages
-      run: dotnet restore
-
     - name: Build Solution
-      run: dotnet build Arius.Core/Arius.Core.csproj --configuration Release --no-restore
+      run: dotnet build Arius.Core/Arius.Core.csproj --configuration Release
 
     - name: Run Unit Tests
       run: dotnet test Arius.Core.Tests --configuration Release --no-build --verbosity normal --logger "junit;LogFilePath=../results/test-results.xml" --collect:"XPlat Code Coverage"
