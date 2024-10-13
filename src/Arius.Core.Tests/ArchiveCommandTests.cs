@@ -166,8 +166,25 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
-    public async Task Handle_PointerBinaryMismatch()
+    public async Task Handle_PointerCorrupt_InvalidDataExceptionOperationStopped()
     {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileWithPointerFile, 100);
+
+        File.WriteAllText(fpwh.PointerFile.FullName, "wrong");
+
+        // Act
+        var act = () => WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidDataException>().WithMessage("*is not a valid PointerFile");
+
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().NotContain("v1.1");
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().NotContain("v1.1");
     }
 
     [Fact]

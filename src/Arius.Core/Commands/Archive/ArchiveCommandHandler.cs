@@ -345,9 +345,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             });
         }, cancellationToken);
 
-        await TaskExtensions.WhenAllWithCancellationAsync([indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask], cancellationTokenSource);
+        try
+        {
+            await TaskExtensions.WhenAllWithCancellationAsync([indexTask, hashTask, uploadRouterTask, uploadBinariesTask, latentPointerTask, pointerFileCreationTask, removeDeletedPointerFileEntriesTask, deleteBinaryFilesTask, updateTierTask], cancellationTokenSource);
+        }
+        catch (Exception e)
+        {
+            localStateDbRepository.Discard();
+            throw;
+        }
 
-        var changes = await localStateDbRepository.UploadAsync();
+        var changes = await localStateDbRepository.UploadAsync(cancellationToken);
         if (changes)
             // NOTE: This is logged in the SaveChangesAsync method
             await mediator.Publish(new NewStateVersionCreatedNotification(request, localStateDbRepository.Version), cancellationToken);

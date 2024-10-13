@@ -26,5 +26,6 @@ public interface ILocalStateRepository
     void                          DeletePointerFileEntry(PointerFileEntry pfe);
 
 
-    Task<bool> UploadAsync();
+    Task<bool> UploadAsync(CancellationToken cancellationToken = default);
+    void       Discard();
 }

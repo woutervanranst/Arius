@@ -83,7 +83,7 @@ public class PointerFileSerializer
         }
         catch (JsonException e)
         {
-            throw new InvalidDataException($"'{pf.FullName}' is not a valid PointerFile", e);
+            throw new InvalidDataException($"'{pf.FullName}' is not a valid PointerFile");
         }
     }
 

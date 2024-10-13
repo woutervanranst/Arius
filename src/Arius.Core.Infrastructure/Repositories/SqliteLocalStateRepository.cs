@@ -45,21 +45,20 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
     public StateVersion Version => stateDatabaseFile.Version;
 
 
-    public async Task<bool> UploadAsync()
+    public async Task<bool> UploadAsync(CancellationToken cancellationToken = default)
     {
-        // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
-        SqliteConnection.ClearAllPools();
+        // TODO UNIT TEST
 
         if (hasChanges)
         {
+            logger.LogInformation("Changes in version {version}, uploading...", Version.Name);
             Vacuum();
-
-            await remoteStateRepository.UploadStateDatabaseAsync(stateDatabaseFile, Version);
+            await remoteStateRepository.UploadStateDatabaseAsync(stateDatabaseFile, Version, cancellationToken);
         }
         else
         {
-            stateDatabaseFile.Delete();
-            logger.LogInformation("No changes made in this version, skipping upload and deleted temporary version without actual changes.");
+            logger.LogInformation("No changes in version {version}, discarding...", Version.Name);
+            Discard();
         }
 
         return hasChanges;
@@ -67,12 +66,15 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
 
         void Vacuum()
         {
+            // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+            SqliteConnection.ClearAllPools();
             var originalLength = stateDatabaseFile.Length;
 
             using (var context = GetContext())
             {
-                var sql = "VACUUM;";
-                context.Database.ExecuteSqlRaw(sql);
+                const string sql = "VACUUM;";
+                if (context.Database.ExecuteSqlRaw(sql) == 1)
+                    throw new InvalidOperationException("Vacuum failed");
 
                 if (context.Database.ExecuteSqlRaw("PRAGMA wal_checkpoint(TRUNCATE);") == 1)
                     throw new InvalidOperationException("Checkpoint failed due to active readers");
@@ -83,10 +85,17 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
             var vacuumedLength = stateDatabaseFile.Length;
 
             if (originalLength != vacuumedLength)
-                logger.LogInformation($"Vacuumed database from {originalLength.Bytes().Humanize()} to {vacuumedLength.Bytes().Humanize()}, saved {(originalLength - vacuumedLength).Bytes().Humanize()}");
+                logger.LogInformation("Vacuumed database from {originalLength} to {vacuumedLength}, saved {savedBytes}", originalLength.Bytes().Humanize(), vacuumedLength.Bytes().Humanize(), (originalLength - vacuumedLength).Bytes().Humanize());
             else
-                logger.LogInformation($"Vacuumed database but no change in size");
+                logger.LogInformation("Vacuumed database but no change in size");
         }
+    }
+
+    public void Discard()
+    {
+        SqliteConnection.ClearAllPools();
+        stateDatabaseFile.Delete();
+        logger.LogInformation("Discarded version {version}", Version.Name);
     }
 
 
