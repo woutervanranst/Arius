@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Arius.Core.Domain;
 using Arius.Core.Domain.Repositories;
 using Arius.Core.Domain.Storage;
@@ -15,6 +14,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using System.Linq.Expressions;
 using File = System.IO.File;
 
 namespace Arius.Core.Tests.Fixtures;
@@ -368,18 +368,18 @@ public abstract class TestBase
     //    return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
     //}
 
-    //public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository(AriusFixture fixture)
-    //{
-    //    var stateDbFolder = GetLocalStateDatabaseFolder(fixture);
-    //    foreach (var fi in stateDbFolder
-    //                 .GetFiles("*.*", SearchOption.AllDirectories)
-    //                 .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
-    //    {
-    //        var n       = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
-    //        var version = StateVersion.FromName(n);
-    //        yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
-    //    }
-    //}
+    public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository()
+    {
+        var stateDbFolder = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
+        foreach (var fi in stateDbFolder
+                     .GetFiles("*.*", SearchOption.AllDirectories)
+                     .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
+        {
+            var n = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
+            var version = StateVersion.FromName(n);
+            yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
+        }
+    }
 
     //private DirectoryInfo GetLocalStateDatabaseFolder(AriusFixture fixture)
     //{

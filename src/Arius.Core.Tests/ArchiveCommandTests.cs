@@ -49,7 +49,7 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
-    public async Task Handle_OneNewFile()
+    public async Task Handle_OneNewFile_Success()
     {
         // Arrange
         var relativeName = "directory/File1.txt";
@@ -100,7 +100,7 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
-    public async Task Handle_ArchiveTwice_NoChange()
+    public async Task Handle_ArchiveNoChanges()
     {
         // Arrange
         var relativeName = "directory/File1.txt";
@@ -132,9 +132,8 @@ public class ArchiveCommandTests : TestBase
         ThenShouldNotContainMediatorNotification<NewStateVersionCreatedNotification>();
         ThenShouldContainMediatorNotification<NoNewStateVersionCreatedNotification>();
 
-        throw new NotImplementedException();
-        // NO  FILE
-
+        var versionNames = GetAllStateDatabaseFilesForRepository().Select(x => x.Version.Name).ToArray();
+        versionNames.Should().NotContain("v1.1"); // for v1.1 because it does not contain any changes, there should not be a version
     }
 
     [Fact]

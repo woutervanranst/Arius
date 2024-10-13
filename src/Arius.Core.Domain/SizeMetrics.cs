@@ -2,12 +2,12 @@
 
 public record SizeMetrics
 {
-    public SizeMetrics(long AllUniqueOriginalSize, long AllUniqueArchivedSize, long AllOriginalSize, long AllArchivedSize, long ExistingUniqueOriginalSize, long ExistingUniqueArchivedSize, long ExistingOriginalSize, long ExistingArchivedSize)
+    public SizeMetrics(long AllUniqueOriginalSize, long AllUniqueArchivedSize/*, long AllOriginalSize, long AllArchivedSize*/, long ExistingUniqueOriginalSize, long ExistingUniqueArchivedSize, long ExistingOriginalSize, long ExistingArchivedSize)
     {
         this.AllUniqueOriginalSize      = AllUniqueOriginalSize;
         this.AllUniqueArchivedSize      = AllUniqueArchivedSize;
-        this.AllOriginalSize            = AllOriginalSize;
-        this.AllArchivedSize            = AllArchivedSize;
+        //this.AllOriginalSize            = AllOriginalSize;
+        //this.AllArchivedSize            = AllArchivedSize;
         this.ExistingUniqueOriginalSize = ExistingUniqueOriginalSize;
         this.ExistingUniqueArchivedSize = ExistingUniqueArchivedSize;
         this.ExistingOriginalSize       = ExistingOriginalSize;
@@ -16,8 +16,8 @@ public record SizeMetrics
 
     public long AllUniqueOriginalSize      { get; }
     public long AllUniqueArchivedSize      { get; }
-    public long AllOriginalSize            { get; }
-    public long AllArchivedSize            { get; }
+    //public long AllOriginalSize            { get; }
+    //public long AllArchivedSize            { get; }
     public long ExistingUniqueOriginalSize { get; }
     public long ExistingUniqueArchivedSize { get; }
     public long ExistingOriginalSize       { get; }
@@ -36,8 +36,8 @@ public record SizeMetrics
         {
             (true, true, SizeType.Original)   => AllUniqueOriginalSize,
             (true, true, SizeType.Archived)   => AllUniqueArchivedSize,
-            (true, false, SizeType.Original)  => AllOriginalSize,
-            (true, false, SizeType.Archived)  => AllArchivedSize,
+            //(true, false, SizeType.Original)  => AllOriginalSize,
+            //(true, false, SizeType.Archived)  => AllArchivedSize,
             (false, true, SizeType.Original)  => ExistingUniqueOriginalSize,
             (false, true, SizeType.Archived)  => ExistingUniqueArchivedSize,
             (false, false, SizeType.Original) => ExistingOriginalSize,
@@ -46,12 +46,12 @@ public record SizeMetrics
         };
     }
 
-    public void Deconstruct(out long AllUniqueOriginalSize, out long AllUniqueArchivedSize, out long AllOriginalSize, out long AllArchivedSize, out long ExistingUniqueOriginalSize, out long ExistingUniqueArchivedSize, out long ExistingOriginalSize, out long ExistingArchivedSize)
+    public void Deconstruct(out long AllUniqueOriginalSize, out long AllUniqueArchivedSize/*, out long AllOriginalSize, out long AllArchivedSize*/, out long ExistingUniqueOriginalSize, out long ExistingUniqueArchivedSize, out long ExistingOriginalSize, out long ExistingArchivedSize)
     {
         AllUniqueOriginalSize      = this.AllUniqueOriginalSize;
         AllUniqueArchivedSize      = this.AllUniqueArchivedSize;
-        AllOriginalSize            = this.AllOriginalSize;
-        AllArchivedSize            = this.AllArchivedSize;
+        //AllOriginalSize            = this.AllOriginalSize;
+        //AllArchivedSize            = this.AllArchivedSize;
         ExistingUniqueOriginalSize = this.ExistingUniqueOriginalSize;
         ExistingUniqueArchivedSize = this.ExistingUniqueArchivedSize;
         ExistingOriginalSize       = this.ExistingOriginalSize;
@@ -64,5 +64,3 @@ public enum SizeType
     Original,
     Archived
 }
-
-

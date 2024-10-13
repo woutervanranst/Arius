@@ -33,10 +33,7 @@ public record StateVersion
         }
     }
 
-    public static StateVersion FromUtcNow()
-    {
-        return new DateTimeStateVersion(DateTime.UtcNow);
-    }
+    public static StateVersion FromUtcNow() => DateTimeStateVersion.FromUtcNow();
 }
 
 public record DateTimeStateVersion : StateVersion

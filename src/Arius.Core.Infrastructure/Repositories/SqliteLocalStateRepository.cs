@@ -47,25 +47,26 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
 
     public async Task<bool> UploadAsync()
     {
+        // Flush all connections before vacuuming, releasing all connections - see https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+        SqliteConnection.ClearAllPools();
+
         if (hasChanges)
         {
             Vacuum();
 
             await remoteStateRepository.UploadStateDatabaseAsync(stateDatabaseFile, Version);
-            return true;
         }
         else
         {
-            // TODO delete the file
-
-            logger.LogInformation("No changes made in this version, skipping upload.");
-            return false;
+            stateDatabaseFile.Delete();
+            logger.LogInformation("No changes made in this version, skipping upload and deleted temporary version without actual changes.");
         }
+
+        return hasChanges;
+
 
         void Vacuum()
         {
-            // Flush all connections before vacuuming, ensuring correct database file size
-            SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
             var originalLength = stateDatabaseFile.Length;
 
             using (var context = GetContext())
@@ -78,7 +79,7 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
             }
 
             // Flush them again after vacuum, ensuring correct database file size - or the file will be Write-locked due to connection pools
-            SqliteConnection.ClearAllPools(); // https://github.com/dotnet/efcore/issues/27139#issuecomment-1007588298
+            SqliteConnection.ClearAllPools();
             var vacuumedLength = stateDatabaseFile.Length;
 
             if (originalLength != vacuumedLength)
@@ -144,7 +145,7 @@ internal class SqliteLocalStateRepository : ILocalStateRepository
         var existingOriginalSize = context.PointerFileEntries.Sum(pfe => pfe.BinaryProperties.OriginalSize);
         var existingArchivedSize = context.PointerFileEntries.Sum(pfe => pfe.BinaryProperties.ArchivedSize);
 
-        return new(allUniqueOriginalSize, allUniqueArchivedSize, allOriginalSize, allArchivedSize, existingUniqueOriginalSize, existingUniqueArchivedSize, existingOriginalSize, existingArchivedSize);
+        return new(allUniqueOriginalSize, allUniqueArchivedSize/*, allOriginalSize, allArchivedSize*/, existingUniqueOriginalSize, existingUniqueArchivedSize, existingOriginalSize, existingArchivedSize);
     }
 
     //public IEnumerable<BinaryProperties> GetBinaryProperties()

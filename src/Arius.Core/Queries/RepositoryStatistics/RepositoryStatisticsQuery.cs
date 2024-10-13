@@ -46,11 +46,11 @@ internal class RepositoryStatisticsQueryHandler : IRequestHandler<RepositoryStat
         await new RepositoryStatisticsQueryValidator().ValidateAndThrowAsync(request, cancellationToken);
 
 
-        var remoteRepository = storageAccountFactory.GetRemoteRepository(request.RemoteRepository);
+        var remoteRepository      = storageAccountFactory.GetRemoteRepository(request.RemoteRepository);
         var remoteStateRepository = remoteRepository.GetRemoteStateRepository();
 
         var localStateDatabaseCacheDirectory = config.GetLocalStateDatabaseCacheDirectoryForContainerName(request.RemoteRepository.ContainerName);
-        var localStateRepository = await remoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version);
+        var localStateRepository             = await remoteStateRepository.GetLocalStateRepositoryAsync(localStateDatabaseCacheDirectory, request.Version);
 
         var binaryFilesCount       = localStateRepository.CountBinaryProperties();
         var pointerFilesEntryCount = localStateRepository.CountPointerFileEntries();
