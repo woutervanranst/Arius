@@ -195,7 +195,6 @@ public abstract class TestBase
                 return FilePairWithHash.FromBinaryFile(bf2);
             default:
                 throw new InvalidOperationException("Must have either a binary file or a pointer file");
-
         }
     }
 
@@ -290,7 +289,7 @@ public abstract class TestBase
     //    int? cachedVersionCount = null, 
     //    int? distinctCount = null)
     //{
-    //    var dbfs = GetAllStateDatabaseFilesForRepository(Fixture).ToArray();
+    //    var dbfs = GetAllLocalStateVersions(Fixture).ToArray();
 
     //    if (cachedVersionCount is not null)
     //        dbfs.Length.Should().Be(cachedVersionCount);
@@ -368,7 +367,7 @@ public abstract class TestBase
     //    return StateDatabaseFile.FromRepositoryVersion(GetLocalStateDatabaseFolder(fixture), version);
     //}
 
-    public IEnumerable<IStateDatabaseFile> GetAllStateDatabaseFilesForRepository()
+    public IEnumerable<StateVersion> GetAllLocalStateVersions()
     {
         var stateDbFolder = Fixture.AriusConfiguration.GetLocalStateDatabaseCacheDirectoryForContainerName(Fixture.RemoteRepositoryOptions.ContainerName);
         foreach (var fi in stateDbFolder
@@ -376,9 +375,15 @@ public abstract class TestBase
                      .Where(fi => fi.Name.EndsWith(IStateDatabaseFile.Extension)))
         {
             var n = System.IO.Path.GetFileName(fi.FullName).RemoveSuffix(IStateDatabaseFile.Extension);
-            var version = StateVersion.FromName(n);
-            yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
+            yield return StateVersion.FromName(n);
+            //var version = StateVersion.FromName(n);
+            //yield return StateDatabaseFile.FromRepositoryVersion(stateDbFolder, version);
         }
+    }
+
+    public IAsyncEnumerable<StateVersion> GetAllRemoteStateVersions()
+    {
+        return Fixture.RemoteStateRepository.GetStateVersions();
     }
 
     //private DirectoryInfo GetLocalStateDatabaseFolder(AriusFixture fixture)

@@ -100,7 +100,7 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
-    public async Task Handle_ArchiveNoChanges()
+    public async Task Handle_ArchiveAgainWithNoChanges_NoNewVersion()
     {
         // Arrange
         var relativeName = "directory/File1.txt";
@@ -132,12 +132,15 @@ public class ArchiveCommandTests : TestBase
         ThenShouldNotContainMediatorNotification<NewStateVersionCreatedNotification>();
         ThenShouldContainMediatorNotification<NoNewStateVersionCreatedNotification>();
 
-        var versionNames = GetAllStateDatabaseFilesForRepository().Select(x => x.Version.Name).ToArray();
-        versionNames.Should().NotContain("v1.1"); // for v1.1 because it does not contain any changes, there should not be a version
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().NotContain("v1.1"); // for v1.1 because it does not contain any changes, there should not be a version
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().NotContain("v1.1");
     }
 
     [Fact]
-    public async Task Handle_ArchiveTwice_WithChange()
+    public async Task Handle_ArchiveAgainWithChange_NewVersion()
     {
         // Arrange
         var relativeName = "directory/File1.txt";
@@ -154,6 +157,12 @@ public class ArchiveCommandTests : TestBase
         // Assert
         ThenShouldContainMediatorNotification<UpdatedPointerFileEntryNotification>(n => n.FilePairWithHash.BinaryFile.FullName.Equals(fpwh.BinaryFile.FullName));
         ThenShouldContainMediatorNotification<NewStateVersionCreatedNotification>(n => n.Version.Name == "v1.1");
+
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().Contain("v1.1");
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().Contain("v1.1");
     }
 
     [Fact]
