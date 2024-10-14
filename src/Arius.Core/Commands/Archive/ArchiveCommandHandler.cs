@@ -131,27 +131,34 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var pointerFileEntriesToCreate = GetBoundedChannel<IFilePairWithHash>(request.PointerFileEntriesToCreate_BufferSize, false);
         var latentPointers             = new ConcurrentBag<IPointerFileWithHash>();
 
-        var uploadingBinaries = new Dictionary<Hash, TaskCompletionSource>();
+        var uploadMutexCoordinator                     = new UploadMutexCoordinator(localStateDbRepository);
         var addUploadedBinariesToPointerFileQueueTasks = new ConcurrentBag<Task>();
 
         var uploadRouterTask = Task.Run(async () =>
         {
             await foreach (var pwh in hashedFilePairs.Reader.ReadAllAsync(cancellationToken))
             {
+                //await Kak(request, pwh, 
+                //    binariesToUpload, pointerFileEntriesToCreate, 
+                //    addUploadedBinariesToPointerFileQueueTasks, uploadCoordinator, latentPointers, 
+                //    mediator, logger, cancellationToken);
+
                 if (pwh.HasExistingBinaryFile)
                 {
                     // The binary exists locally
-                    var r = DetermineUploadStatus(pwh.Hash);
+                    var r = uploadMutexCoordinator.DetermineUploadStatus(pwh.Hash);
 
-                    if (pwh.HasExistingPointerFile && r is not UploadStatus.Uploaded)
+                    if (pwh.HasExistingPointerFile && r is not UploadMutexCoordinator.UploadStatus.Uploaded)
                     {
                         // edge case: the PointerFile already exists but the binary is not uploaded (yet) -- eg when re-uploading an entire archive -> check them later
                         latentPointers.Add(pwh.PointerFile!); // A31
+                      // TODO LOG
+                      // TODO MEDIATR
                     }
 
                     switch (r)
                     {
-                        case UploadStatus.NotStarted:
+                        case UploadMutexCoordinator.UploadStatus.NotStarted:
                             // 2.1 Does not yet exist remote and not yet being uploaded --> upload
                             logger.LogInformation("Binary for {relativeName} does not exist remotely. Starting upload.", pwh.RelativeName);
                             await mediator.Publish(new BinaryFileToUploadNotification(request, pwh), cancellationToken);
@@ -160,12 +167,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                             //stats.AddRemoteRepositoryStatistic(deltaBinaries: 1, deltaSize: ce.IncrementalLength);
                             break;
-                        case UploadStatus.Uploading:
+                        case UploadMutexCoordinator.UploadStatus.Uploading:
                             // 2.2 Does not yet exist remote but is already being uploaded
                             logger.LogInformation("Binary for {relativeName} does not exist remotely but is already being uploaded.", pwh.RelativeName);
                             await mediator.Publish(new BinaryFileWaitingForOtherUploadNotification(request, pwh), cancellationToken);
 
-                            addUploadedBinariesToPointerFileQueueTasks.Add(uploadingBinaries[pwh.Hash].Task.ContinueWith(async _ =>
+                            addUploadedBinariesToPointerFileQueueTasks.Add(uploadMutexCoordinator.GetUploadingBinaryTask(pwh.Hash).ContinueWith(async _ =>
                             {
                                 logger.LogInformation("Binary for {relativeName} has been uploaded.", pwh.RelativeName);
                                 await mediator.Publish(new BinaryFileWaitingForOtherUploadDoneNotification(request, pwh), cancellationToken);
@@ -174,7 +181,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             }, cancellationToken)); // A331
 
                             break;
-                        case UploadStatus.Uploaded:
+                        case UploadMutexCoordinator.UploadStatus.Uploaded:
                             // 2.3 Is already uploaded
                             logger.LogInformation("Binary for {relativeName} already exists remotely.", pwh.RelativeName);
                             await mediator.Publish(new BinaryFileAlreadyUploadedNotification(request, pwh), cancellationToken);
@@ -211,7 +218,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 logger.LogInformation("Uploading '{hash}' ({binaryFile}) ({size})... done in {elapsedTimeInSeconds} @ {speed:F2} MBps", fpwh.Hash.ToShortString(), fpwh.RelativeName, ByteSize.FromBytes(fpwh.BinaryFile.Length).Humanize(), stopwatch.Elapsed.Humanize(precision: 2), uploadSpeedMbps);
                 await mediator.Publish(new UploadBinaryFileCompletedNotification(request, fpwh, bp.OriginalSize, bp.ArchivedSize, uploadSpeedMbps), ct);
 
-                HasBeenUploaded(bp); // A41
+                uploadMutexCoordinator.MarkAsUploaded(bp); // A41
 
                 await pointerFileEntriesToCreate.Writer.WriteAsync(fpwh, ct); // A40
             }
@@ -379,47 +386,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         ParallelOptions GetParallelOptions(int maxDegreeOfParallelism) 
             => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
-
-
-        UploadStatus DetermineUploadStatus(Hash h)
-        {
-            lock (uploadingBinaries)
-            {
-                if (localStateDbRepository.BinaryExists(h))
-                    // Binary exists remotely
-                    return UploadStatus.Uploaded;
-                else
-                {
-                    var notUploading = uploadingBinaries.TryAdd(h, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); // ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
-                    if (notUploading)
-                        // Binary does not exist remotely and is not being uploaded
-                        return UploadStatus.NotStarted;
-                    else
-                    // Binary does not exist remotely but is already being uploaded
-                        return UploadStatus.Uploading;
-                }
-            }
-        }
-
-        void HasBeenUploaded(BinaryProperties bp)
-        {
-            lock (uploadingBinaries)
-            {
-                localStateDbRepository.AddBinary(bp);
-                uploadingBinaries[bp.Hash].SetResult();
-                var r = uploadingBinaries.Remove(bp.Hash, out var value);
-
-                if (!r)
-                    throw new InvalidOperationException($"Tried to remove {bp.Hash} but it was not present");
-            }
-        }
-    }
-
-    private enum UploadStatus
-    {
-        NotStarted,
-        Uploading,
-        Uploaded
     }
 
 
@@ -498,4 +464,77 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
         }
     }
+
+
+    internal class UploadMutexCoordinator
+    {
+        private readonly ILocalStateRepository localStateDbRepository;
+        private readonly Dictionary<Hash, TaskCompletionSource> uploadingBinaries = new();
+
+        public UploadMutexCoordinator(ILocalStateRepository localStateDbRepository)
+        {
+            this.localStateDbRepository = localStateDbRepository;
+        }
+
+        internal enum UploadStatus
+        {
+            NotStarted,
+            Uploading,
+            Uploaded
+        }
+
+        public UploadStatus DetermineUploadStatus(Hash h)
+        {
+            lock (uploadingBinaries)
+            {
+                if (localStateDbRepository.BinaryExists(h))
+                    // Binary exists remotely
+                    return UploadStatus.Uploaded;
+                else
+                {
+                    var notUploading = uploadingBinaries.TryAdd(h, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)); // ALWAYS create a new TaskCompletionSource with the RunContinuationsAsynchronously option, otherwise the continuations will run on THIS thread -- https://github.com/davidfowl/AspNetCoreDiagnosticScenarios/blob/master/AsyncGuidance.md#always-create-taskcompletionsourcet-with-taskcreationoptionsruncontinuationsasynchronously
+                    if (notUploading)
+                        // Binary does not exist remotely and is not being uploaded
+                        return UploadStatus.NotStarted;
+                    else
+                        // Binary does not exist remotely but is already being uploaded
+                        return UploadStatus.Uploading;
+                }
+            }
+        }
+
+        public Task GetUploadingBinaryTask(Hash h)
+        {
+            // ReSharper disable once InconsistentlySynchronizedField
+            return uploadingBinaries[h].Task;
+        }
+
+        public void MarkAsUploaded(BinaryProperties bp)
+        {
+            lock (uploadingBinaries)
+            {
+                localStateDbRepository.AddBinary(bp);
+                uploadingBinaries[bp.Hash].SetResult();
+                var r = uploadingBinaries.Remove(bp.Hash);
+
+                if (!r)
+                    throw new InvalidOperationException($"Tried to remove {bp.Hash} but it was not present");
+            }
+        }
+    }
+
+    //internal static async Task Kak(ArchiveCommand request,
+    //    IFilePairWithHash pwh,
+    //    Channel<IFilePairWithHash> binariesToUpload,
+    //    Channel<IFilePairWithHash> pointerFileEntriesToCreate,
+    //    ConcurrentBag<Task> addUploadedBinariesToPointerFileQueueTasks,
+    //    UploadMutexCoordinator uploadMutexCoordinator,
+    //    ConcurrentBag<IPointerFileWithHash> latentPointers,
+    //    IMediator mediator,
+    //    ILogger logger,
+    //    CancellationToken cancellationToken)
+    //{
+        
+    //}
+
 }
