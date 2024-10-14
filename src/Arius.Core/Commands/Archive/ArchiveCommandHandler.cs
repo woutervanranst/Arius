@@ -368,23 +368,18 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         return;
 
 
-        static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
-        {
-            return Channel.CreateBounded<T>(GetBoundedChannelOptions(capacity, singleWriter));
-        }
-
-        static BoundedChannelOptions GetBoundedChannelOptions(int capacity, bool singleWriter)
-        {
-            return new BoundedChannelOptions(capacity)
+        static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter) 
+            => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
             {
                 FullMode                      = BoundedChannelFullMode.Wait,
                 AllowSynchronousContinuations = false,
                 SingleWriter                  = singleWriter,
                 SingleReader                  = false
-            };
-        }
+            });
 
-        ParallelOptions GetParallelOptions(int maxDegreeOfParallelism) => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
+        ParallelOptions GetParallelOptions(int maxDegreeOfParallelism) 
+            => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
+
 
         UploadStatus DetermineUploadStatus(Hash h)
         {
@@ -420,10 +415,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
+    private enum UploadStatus
+    {
+        NotStarted,
+        Uploading,
+        Uploaded
+    }
 
 
-
-    public static StorageTier GetEffectiveStorageTier(Dictionary<long, StorageTier> tiering, StorageTier preferredTier, long size)
+    internal static StorageTier GetEffectiveStorageTier(Dictionary<long, StorageTier> tiering, StorageTier preferredTier, long size)
     {
         // Use the dictionary to determine if the size falls under a defined tier
         foreach (var entry in tiering)
@@ -431,13 +431,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 return entry.Value;
 
         return preferredTier;
-    }
-
-    private enum UploadStatus
-    {
-        NotStarted,
-        Uploading,
-        Uploaded
     }
 
 
@@ -488,7 +481,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             throw new InvalidOperationException("Both PointerFile and BinaryFile are null");
     }
 
-    private static async Task RemoveDeletedPointerFileEntriesAsync(ArchiveCommand request, ILocalStateRepository localStateRepository, ILogger logger, IMediator mediator)
+
+    internal static async Task RemoveDeletedPointerFileEntriesAsync(ArchiveCommand request, ILocalStateRepository localStateRepository, ILogger logger, IMediator mediator)
     {
         foreach (var pfe in localStateRepository.GetPointerFileEntries())
         {

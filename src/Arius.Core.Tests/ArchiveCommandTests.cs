@@ -172,7 +172,7 @@ public class ArchiveCommandTests : TestBase
         var relativeName = "directory/File1.txt";
         var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileWithPointerFile, 100);
 
-        File.WriteAllText(fpwh.PointerFile.FullName, "wrong");
+        File.WriteAllText(fpwh.PointerFile.FullName, "corrupt pointer");
 
         // Act
         var act = () => WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
@@ -188,9 +188,90 @@ public class ArchiveCommandTests : TestBase
     }
 
     [Fact]
+    public async Task Handle_PointerBinaryMismatch_InvalidOperationExceptionOperationStopped()
+    {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileWithPointerFile, 100);
+
+        File.WriteAllText(fpwh.PointerFile.FullName, "{\"BinaryHash\":\"f4da0ff2275147896d44885d045177eae0a875d913a07ec4c69679b845d49cfb\"}");
+
+        // Act
+        var act = () => WhenArchiveCommandAsync(fastHash: false, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*(BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+        
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().NotContain("v1.1");
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().NotContain("v1.1");
+    }
+
+    [Fact]
+    public async Task Handle_PointerBinaryMismatchWithFastHashDatesDontMatch_InvalidOperationExceptionOperationStopped()
+    {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileWithPointerFile, 100);
+
+        File.WriteAllText(fpwh.PointerFile.FullName, "{\"BinaryHash\":\"f4da0ff2275147896d44885d045177eae0a875d913a07ec4c69679b845d49cfb\"}");
+
+        // Act // set fastHash to true
+        var act = () => WhenArchiveCommandAsync(fastHash: true, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*(BinaryHash does not match). Has the BinaryFile been updated? Delete the PointerFile and try again.");
+
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().NotContain("v1.1");
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().NotContain("v1.1");
+    }
+
+    [Fact]
+    public async Task Handle_PointerBinaryMismatchWithFastHashDatesMatch_Success()
+    {
+        // Arrange
+        var relativeName = "directory/File1.txt";
+        var fpwh         = GivenSourceFolderHavingFilePair(relativeName, FilePairType.BinaryFileWithPointerFile, 100);
+
+        File.WriteAllText(fpwh.PointerFile.FullName, "{\"BinaryHash\":\"f4da0ff2275147896d44885d045177eae0a875d913a07ec4c69679b845d49cfb\"}");
+        // Update the LastWriteTime
+        File.SetLastWriteTimeUtc(fpwh.PointerFile.FullName, File.GetLastWriteTimeUtc(fpwh.BinaryFile.FullName));
+
+        // Act // set fastHash to true
+        var act = () => WhenArchiveCommandAsync(fastHash: true, removeLocal: false, tier: StorageTier.Hot, versionName: "v1.1");
+
+        // Assert // unfortunately this is not detected
+        await act.Should().NotThrowAsync<InvalidOperationException>();
+
+        var localVersionNames = GetAllLocalStateVersions().Select(v => v.Name).ToArray();
+        localVersionNames.Should().Contain("v1.1");
+
+        var removeVersionNames = await GetAllRemoteStateVersions().Select(v => v.Name).ToArrayAsync();
+        removeVersionNames.Should().Contain("v1.1");
+    }
+
+
+    
+
+
+
+    [Fact]
+    public async Task Handle_OnlyWhenAllIsUpLoadedAreLocalFilesDeleted()
+    {
+        throw new NotImplementedException();
+
+        // mss door te asserten dat de buinary nog bestaat bij wanneer er een exception gegooid wordt?
+    }
+
+    [Fact]
     public async Task Handle_AnExceptionHappens()
     {
-
+        throw new NotImplementedException();
     }
 
     [Fact]
