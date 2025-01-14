@@ -2,141 +2,124 @@
 
 namespace FileSystem.Local;
 
-public abstract record PathSegment
+public record PathSegment
 {
-    internal readonly string _value;
+    private readonly string _platformNeutralValue;
 
-    protected PathSegment(string value)
+    private PathSegment(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("Path segment cannot be null or empty.", nameof(value));
 
-        _value = value;
+        _platformNeutralValue = value.ToPlatformNeutralPath();
     }
 
-    public abstract PathSegment ToPlatformNeutral();
+    public static implicit operator PathSegment(string path) => new(path);
 
-    public abstract PathSegment ToPlatformSpecific();
-
-    public override string ToString() => _value;
-}
-
-public record PlatformNeutralPathSegment : PathSegment
-{
-    public PlatformNeutralPathSegment(string value) : base(value.ToPlatformNeutralPath())
-    {
-    }
-
-    public static implicit operator PlatformNeutralPathSegment(string path) => new(path);
-    public static implicit operator string(PlatformNeutralPathSegment segment) => segment._value;
-
-    public static PlatformNeutralPathSegment operator +(PlatformNeutralPathSegment left, PlatformNeutralPathSegment right)
+    public static PathSegment operator +(PathSegment left, PathSegment right)
     {
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
-        return new PlatformNeutralPathSegment(SIO.Path.Combine(left._value, right._value));
+        return new PathSegment($"{left._platformNeutralValue}/{right._platformNeutralValue}");
     }
 
-    public override PlatformNeutralPathSegment ToPlatformNeutral() => this;
-    public override PlatformSpecificPathSegment ToPlatformSpecific() => _value;
-    
-    public override string ToString() => _value;
+    public virtual PathSegment ToPlatformNeutral() => _platformNeutralValue;
+    public virtual PathSegment ToPlatformSpecific() => _platformNeutralValue.ToPlatformSpecificPath();
+
+    public override string ToString() => _platformNeutralValue;
 }
 
-public record PlatformSpecificPathSegment : PathSegment
+public record RootedPathSegment : PathSegment
 {
-    public PlatformSpecificPathSegment(string value) : base(value.ToPlatformSpecificPath())
-    {
-    }
-
-    public static implicit operator PlatformSpecificPathSegment(string path) => new(path);
-    public static implicit operator string(PlatformSpecificPathSegment segment) => segment._value;
-
-    public static PlatformSpecificPathSegment operator +(PlatformSpecificPathSegment left, PlatformSpecificPathSegment right)
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-
-        return new PlatformSpecificPathSegment(SIO.Path.Combine(left._value, right._value));
-    }
-
-    public override PlatformNeutralPathSegment ToPlatformNeutral() => _value;
-    public override PlatformSpecificPathSegment ToPlatformSpecific() => this;
-
-    public override string ToString() => _value;
-}
-
-public record DirectoryPathSegment : PlatformNeutralPathSegment
-{
-    public DirectoryPathSegment(string value) : base(value)
-    {
-        if (!SIO.Path.HasExtension(value))
-            throw new ArgumentException("Directory name cannot have an extension.", nameof(value));
-    }
-
-    public static implicit operator DirectoryPathSegment(string path) => new(path);
-    public static implicit operator string(DirectoryPathSegment segment) => segment._value;
-
-    public static FullNamePathSegment operator +(DirectoryPathSegment left, NamePathSegment right)
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-
-        return new FullNamePathSegment(SIO.Path.Combine(left._value, right._value));
-    }
-
-    public static FullNamePathSegment operator +(DirectoryPathSegment left, RelativePathSegment right)
-    {
-        ArgumentNullException.ThrowIfNull(left);
-        ArgumentNullException.ThrowIfNull(right);
-
-        return new FullNamePathSegment(SIO.Path.Combine(left._value, right._value));
-    }
-}
-
-public record RootPathSegment : DirectoryPathSegment
-{
-    public RootPathSegment(string value) : base(value)
+    private RootedPathSegment(string value) : base(value)
     {
         if (!SIO.Path.IsPathRooted(value))
             throw new ArgumentException("Root must be a rooted path.", nameof(value));
     }
 
-    public static implicit operator RootPathSegment(string path) => new(path);
-    public static implicit operator string(RootPathSegment segment) => segment._value;
+    public static FullNamePathSegment operator +(RootedPathSegment left, NamePathSegment right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return new FullNamePathSegment($"{left.ToPlatformNeutral()}/{right.ToPlatformNeutral()}");
+    }
+
+    public static implicit operator RootedPathSegment(string path) => new(path);
 }
 
 
-
-public record RelativePathSegment : PlatformNeutralPathSegment
+public record RootPathSegment : RootedPathSegment
 {
-    public RelativePathSegment(string value) : base(value)
+    private RootPathSegment(string value) : base(value)
+    {
+        if (!SIO.Path.IsPathRooted(value))
+            throw new ArgumentException("Root must be a rooted path.", nameof(value));
+    }
+
+    public static FullNamePathSegment operator +(RootPathSegment left, RelativeNamePathSegment right)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return new FullNamePathSegment($"{left.ToPlatformNeutral()}/{right.ToPlatformNeutral()}");
+    }
+
+    public static implicit operator RootPathSegment(string path) => new(path);
+}
+
+public record RelativeNamePathSegment : PathSegment
+{
+    private RelativeNamePathSegment(string value) : base(value)
     {
         if (SIO.Path.IsPathRooted(value))
             throw new ArgumentException("Relative name cannot be a rooted value.", nameof(value));
     }
+
+    public static implicit operator RelativeNamePathSegment(string path) => new(path);
 }
 
-public record FullNamePathSegment : PlatformNeutralPathSegment
+
+public record RelativePathSegment : PathSegment
 {
-    public FullNamePathSegment(string fullName) : base(fullName)
+    private RelativePathSegment(string value) : base(value)
     {
+        if (SIO.Path.IsPathRooted(value))
+            throw new ArgumentException("Relative name cannot be a rooted value.", nameof(value));
     }
 
-    public FullNamePathSegment(RootPathSegment root, RelativePathSegment relativeName) : this((string)(root + relativeName))
+    public static RelativeNamePathSegment operator +(RelativePathSegment left, NamePathSegment right)
     {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+
+        return $"{left.ToPlatformNeutral()}/{right.ToPlatformNeutral()}";
     }
 
-    public static implicit operator FullNamePathSegment(string path) => new(path);
-    public static implicit operator string(FullNamePathSegment segment) => segment._value;
+    public static implicit operator RelativePathSegment(string path) => new(path);
 }
 
-public record NamePathSegment : PlatformNeutralPathSegment
+public record NamePathSegment : PathSegment
 {
-    public NamePathSegment(string name) : base(name)
+    private NamePathSegment(string name) : base(name)
     {
         if (name.Contains(SIO.Path.PathSeparator))
             throw new ArgumentException("Name cannot contain path separators.", nameof(name));
     }
 }
+
+public record FullNamePathSegment : PathSegment
+{
+    public FullNamePathSegment(string fullName) : base(fullName)
+    {
+    }
+
+    //public FullNamePathSegment(RootPathSegment rooted, RelativePathSegment relativeName) : this((string)(rooted + relativeName))
+    //{
+    //}
+
+    public static implicit operator FullNamePathSegment(string path) => new(path);
+    //public static implicit operator string(FullNamePathSegment segment) => segment._value;
+}
+
