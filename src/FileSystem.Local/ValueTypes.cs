@@ -29,7 +29,7 @@ public record PathSegment
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
-        return new PathSegment(SIO.Path.Combine(left.Value, right.Value));
+        return new PathSegment(SIO.Path.Combine(left, right));
     }
 
     public override string ToString()
@@ -61,7 +61,7 @@ public record RootPathSegment : PathSegment
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
-        return new FullNamePathSegment(left, right);
+        return new FullNamePathSegment(SIO.Path.Combine(left, right));
     }
 }
 
@@ -80,7 +80,7 @@ public record FullNamePathSegment : PathSegment
     {
     }
 
-    public FullNamePathSegment(RootPathSegment root, RelativePathSegment relativeName) : base((string)(root + relativeName))
+    public FullNamePathSegment(RootPathSegment root, RelativePathSegment relativeName) : this((string)(root + relativeName))
     {
     }
 
