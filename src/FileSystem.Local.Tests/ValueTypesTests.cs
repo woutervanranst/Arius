@@ -9,6 +9,7 @@ public class PlatformNeutralPathSegmentTests
     [InlineData("some\\path\\", "some/path/", "some\\path\\")]
     [InlineData("C:\\some\\path\\", "C:/some/path/", "C:\\some\\path\\")]
     [InlineData("C:\\some\\path", "C:/some/path", "C:\\some\\path")]
+    [InlineData("C:\\some\\path\\file.txt", "C:/some/path/file.txt", "C:\\some\\path\\file.txt")]
     public void PlatformNeutralPathSegment_ValidInput_CreatesInstance(string validValue, string plaformNeutralExpectedValue, string platformSpecificExpectedValue)
     {
         var segment = (PlatformNeutralPathSegment)validValue;
@@ -36,7 +37,8 @@ public class PlatformNeutralPathSegmentTests
 
         var combined = segment1 + segment2;
 
-        Assert.Equal(Path.Combine("folder", "file.txt"), combined);
+        Assert.Equal("folder/file.txt", combined.ToPlatformNeutral());
+        Assert.Equal("folder\\file.txt", combined.ToPlatformSpecific());
     }
 
     [Fact]
