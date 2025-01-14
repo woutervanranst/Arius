@@ -39,7 +39,7 @@ public class File : IFile
     }
 
     public FullNamePathSegment FullNamePath => _fullNamePath;
-    public string? Path => _fileSystem.Path.GetDirectoryName(FullNamePath);
+    public DirectoryPathSegment? Path => _fileSystem.Path.GetDirectoryName(FullNamePath);
     public string Name => _fileSystem.Path.GetFileName(FullNamePath);
     public bool Exists => _fileSystem.File.Exists(FullNamePath);
     public DateTime? CreationTimeUtc { get; set; }
@@ -57,7 +57,7 @@ public class File : IFile
 
     public IFile CopyTo(NamePathSegment destinationName)
     {
-        var newFullName = _fileSystem.Path.Combine(Path!, destinationName);
+        var newFullName = Path! + destinationName;
         _fileSystem.File.Copy(FullNamePath, newFullName);
         return new File(_fileSystem, newFullName);
     }

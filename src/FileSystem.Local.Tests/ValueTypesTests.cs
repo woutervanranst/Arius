@@ -3,13 +3,18 @@ namespace FileSystem.Local.Tests;
 public class PlatformNeutralPathSegmentTests
 {
     [Theory]
-    [InlineData("validPath", "validPath")]
-    [InlineData("some\\path", "some/path")]
-    public void PlatformNeutralPathSegment_ValidInput_CreatesInstance(string validValue, string expectedValue)
+    [InlineData("validPath", "validPath", "validPath")]
+    [InlineData("validPath\\", "validPath/", "validPath\\")]
+    [InlineData("some\\path", "some/path", "some\\path")]
+    [InlineData("some\\path\\", "some/path/", "some\\path\\")]
+    [InlineData("C:\\some\\path\\", "C:/some/path/", "C:\\some\\path\\")]
+    [InlineData("C:\\some\\path", "C:/some/path", "C:\\some\\path")]
+    public void PlatformNeutralPathSegment_ValidInput_CreatesInstance(string validValue, string plaformNeutralExpectedValue, string platformSpecificExpectedValue)
     {
         var segment = (PlatformNeutralPathSegment)validValue;
 
-        Assert.Equal(expectedValue, segment);
+        Assert.Equal(plaformNeutralExpectedValue, segment.ToPlatformNeutral());
+        Assert.Equal(platformSpecificExpectedValue, segment.ToPlatformSpecific());
     }
 
     [Theory]
