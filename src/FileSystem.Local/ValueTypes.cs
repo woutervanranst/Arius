@@ -2,43 +2,32 @@
 
 namespace FileSystem.Local;
 
-public record PathSegment
+public record PlatformNeutralPathSegment
 {
-    public PathSegment(string value)
+    protected readonly string _value;
+
+    public PlatformNeutralPathSegment(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("Path segment cannot be null or empty.", nameof(value));
-
-        Value = value;
+        _value = value.ToPlatformNeutralPath();
     }
 
-    public string Value { get; }
+    public static implicit operator PlatformNeutralPathSegment(string path) => new(path);
+    public static implicit operator string(PlatformNeutralPathSegment segment) => segment._value;
 
-    public static implicit operator PathSegment(string path)
-    {
-        return new PathSegment(path);
-    }
-
-    public static implicit operator string(PathSegment segment)
-    {
-        return segment.Value;
-    }
-
-    public static PathSegment operator +(PathSegment left, PathSegment right)
+    public static PlatformNeutralPathSegment operator +(PlatformNeutralPathSegment left, PlatformNeutralPathSegment right)
     {
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
-        return new PathSegment(SIO.Path.Combine(left, right));
+        return new PlatformNeutralPathSegment(SIO.Path.Combine(left, right));
     }
 
-    public override string ToString()
-    {
-        return Value;
-    }
+    public override string ToString() => _value;
 }
 
-public record RootPathSegment : PathSegment
+public record RootPathSegment : PlatformNeutralPathSegment
 {
     public RootPathSegment(string value) : base(value)
     {
@@ -46,15 +35,8 @@ public record RootPathSegment : PathSegment
             throw new ArgumentException("Root must be a rooted path.", nameof(value));
     }
 
-    public static implicit operator RootPathSegment(string path)
-    {
-        return new RootPathSegment(path);
-    }
-
-    public static implicit operator string(RootPathSegment segment)
-    {
-        return segment.Value;
-    }
+    public static implicit operator RootPathSegment(string path) => new(path);
+    public static implicit operator string(RootPathSegment segment) => segment._value;
 
     public static FullNamePathSegment operator +(RootPathSegment left, RelativePathSegment right)
     {
@@ -65,7 +47,7 @@ public record RootPathSegment : PathSegment
     }
 }
 
-public record RelativePathSegment : PathSegment
+public record RelativePathSegment : PlatformNeutralPathSegment
 {
     public RelativePathSegment(string value) : base(value)
     {
@@ -74,7 +56,7 @@ public record RelativePathSegment : PathSegment
     }
 }
 
-public record FullNamePathSegment : PathSegment
+public record FullNamePathSegment : PlatformNeutralPathSegment
 {
     public FullNamePathSegment(string fullName) : base(fullName)
     {
@@ -84,18 +66,11 @@ public record FullNamePathSegment : PathSegment
     {
     }
 
-    public static implicit operator FullNamePathSegment(string path)
-    {
-        return new FullNamePathSegment(path);
-    }
-
-    public static implicit operator string(FullNamePathSegment segment)
-    {
-        return segment.Value;
-    }
+    public static implicit operator FullNamePathSegment(string path) => new(path);
+    public static implicit operator string(FullNamePathSegment segment) => segment._value;
 }
 
-public record NamePathSegment : PathSegment
+public record NamePathSegment : PlatformNeutralPathSegment
 {
     public NamePathSegment(string name) : base(name)
     {

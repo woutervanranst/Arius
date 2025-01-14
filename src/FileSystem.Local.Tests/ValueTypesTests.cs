@@ -1,66 +1,44 @@
 namespace FileSystem.Local.Tests;
 
-public class ValueTypesTests
-{
-    [Fact]
-    public void Test1()
-    {
-
-    }
-}
-
-
-public class PathTests
-{
-    [Fact]
-    public void Root_ValidPath_ShouldCreateRoot()
-    {
-        var root = (RootPathSegment)"C:\\Users\\Test";
-        Assert.Equal("C:\\Users\\Test", root);
-    }
-
-}
-
-
-public class PathSegmentTests
+public class PlatformNeutralPathSegmentTests
 {
     [Theory]
-    [InlineData("validPath")]
-    [InlineData("anotherPath")]
-    public void PathSegment_ValidInput_CreatesInstance(string validValue)
+    [InlineData("validPath", "validPath")]
+    [InlineData("some\\path", "some/path")]
+    public void PlatformNeutralPathSegment_ValidInput_CreatesInstance(string validValue, string expectedValue)
     {
-        var segment = new PathSegment(validValue);
+        var segment = (PlatformNeutralPathSegment)validValue;
 
-        Assert.Equal(validValue, segment.Value);
+        Assert.Equal(expectedValue, segment);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void PathSegment_InvalidInput_ThrowsException(string invalidValue)
+    public void PlatformNeutralPathSegment_InvalidInput_ThrowsException(string invalidValue)
     {
-        var exception = Assert.Throws<ArgumentException>(() => new PathSegment(invalidValue));
+        var exception = Assert.Throws<ArgumentException>(() => new PlatformNeutralPathSegment(invalidValue));
 
         Assert.Equal("Path segment cannot be null or empty. (Parameter 'value')", exception.Message);
     }
 
     [Fact]
-    public void PathSegment_OperatorPlus_CombinesSegments()
+    public void PlatformNeutralPathSegment_OperatorPlus_CombinesSegments()
     {
-        var segment1 = new PathSegment("folder");
-        var segment2 = new PathSegment("file.txt");
+        var segment1 = new PlatformNeutralPathSegment("folder");
+        var segment2 = new PlatformNeutralPathSegment("file.txt");
 
         var combined = segment1 + segment2;
 
-        Assert.Equal(Path.Combine("folder", "file.txt"), combined.Value);
+        Assert.Equal(Path.Combine("folder", "file.txt"), combined);
     }
 
     [Fact]
-    public void PathSegment_OperatorPlus_ThrowsOnNullSegments()
+    public void PlatformNeutralPathSegment_OperatorPlus_ThrowsOnNullSegments()
     {
-        PathSegment? segment1 = null;
-        var segment2 = new PathSegment("file.txt");
+        PlatformNeutralPathSegment? segment1 = null;
+        var segment2 = new PlatformNeutralPathSegment("file.txt");
 
         Assert.Throws<ArgumentNullException>(() => segment1 + segment2);
         Assert.Throws<ArgumentNullException>(() => segment2 + segment1);
@@ -76,7 +54,7 @@ public class RootPathSegmentTests
     {
         var segment = new RootPathSegment(root);
 
-        Assert.Equal(root, segment.Value);
+        Assert.Equal(root, segment);
     }
 
     [Theory]
@@ -97,7 +75,7 @@ public class RootPathSegmentTests
 
         var fullName = root + relative;
 
-        Assert.Equal(@"C:\root\subfolder", fullName.Value);
+        Assert.Equal(@"C:\root\subfolder", fullName);
     }
 }
 
@@ -110,7 +88,7 @@ public class RelativePathSegmentTests
     {
         var segment = new RelativePathSegment(relativePath);
 
-        Assert.Equal(relativePath, segment.Value);
+        Assert.Equal(relativePath, segment);
     }
 
     [Theory]
@@ -133,7 +111,7 @@ public class NamePathSegmentTests
     {
         var segment = new NamePathSegment(name);
 
-        Assert.Equal(name, segment.Value);
+        Assert.Equal(name, segment);
     }
 
     [Theory]
@@ -155,7 +133,7 @@ public class FullNamePathSegmentTests
     {
         var segment = (FullNamePathSegment)fullName;
 
-        Assert.Equal(fullName, segment.Value);
+        Assert.Equal(fullName, segment);
     }
 
     [Fact]
@@ -166,6 +144,6 @@ public class FullNamePathSegmentTests
 
         var fullName = new FullNamePathSegment(root, relative);
 
-        Assert.Equal(@"C:\root\subfolder\file.txt", fullName.Value);
+        Assert.Equal(@"C:\root\subfolder\file.txt", fullName);
     }
 }
