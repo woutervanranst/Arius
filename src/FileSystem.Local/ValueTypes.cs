@@ -107,6 +107,8 @@ public record NamePathSegment : PathSegment
         if (name.Contains(SIO.Path.PathSeparator))
             throw new ArgumentException("Name cannot contain path separators.", nameof(name));
     }
+
+    public static implicit operator NamePathSegment(string path) => new(path);
 }
 
 public record FullNamePathSegment : PathSegment

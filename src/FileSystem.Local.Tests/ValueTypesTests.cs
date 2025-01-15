@@ -60,6 +60,8 @@ public class PathSegmentTests
     {
         var combined = segment1 + segment2;
 
+        Assert.IsType<PathSegment>(combined);
+
         Assert.Equal(expected, combined.ToPlatformNeutral());
     }
 
@@ -121,16 +123,16 @@ public class RootedPathSegmentTests
         Assert.Equal(expectedSpecific, segment.ToPlatformSpecific());
     }
 
-    [Fact]
-    public void RootedPathSegment_OperatorPlus_CombinesWithRelativeSegment()
+    [Theory]
+    [InlineData("C:\\root", "file.txt", "C:/root/file.txt", "C:\\root\\file.txt")]
+    public void RootedPathSegment_OperatorPlus_CombinesWithNamePathSegment(RootedPathSegment rootSegment, NamePathSegment relativeSegment, string expectedNeutral, string expectedSpecific)
     {
-        var rootSegment = (RootedPathSegment)"C:/root";
-        var relativeSegment = (RelativePathSegment)"subfolder";
-
         var combined = rootSegment + relativeSegment;
 
-        Assert.Equal("C:/root/subfolder", combined.ToPlatformNeutral());
-        Assert.Equal("C:\\root\\subfolder", combined.ToPlatformSpecific());
+        Assert.IsType<FullNamePathSegment>(combined);
+
+        Assert.Equal(expectedNeutral, combined.ToPlatformNeutral());
+        Assert.Equal(expectedSpecific, combined.ToPlatformSpecific());
     }
 
     [Fact]
