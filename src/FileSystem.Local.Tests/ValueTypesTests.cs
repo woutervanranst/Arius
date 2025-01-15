@@ -10,17 +10,15 @@ public class PathSegmentTests
     [InlineData("C:\\some\\path\\", "C:/some/path/", "C:\\some\\path\\")]
     [InlineData("C:\\some\\path", "C:/some/path", "C:\\some\\path")]
     [InlineData("C:\\some\\path\\file.txt", "C:/some/path/file.txt", "C:\\some\\path\\file.txt")]
-    [InlineData("/", "/", "/")]
+    [InlineData("/", "/", "\\")]
     [InlineData("\\", "/", "\\")]
-    [InlineData("//", "/", "/")]
+    [InlineData("//", "/", "\\")]
     [InlineData("\\\\", "/", "\\")]
     [InlineData("folder/\\subfolder", "folder/subfolder", "folder\\subfolder")]
     [InlineData("folder\\sub", "folder/sub", "folder\\sub")]
     [InlineData("folder\\sub\\", "folder/sub/", "folder\\sub\\")]
     [InlineData("folder\\subfolder", "folder/subfolder", "folder\\subfolder")]
     [InlineData("folder/subfolder\\file.txt", "folder/subfolder/file.txt", "folder\\subfolder\\file.txt")]
-    [InlineData("/", "/", "/")]
-    [InlineData("\\", "/", "\\")]
     [InlineData("C:\\", "C:/", "C:\\")]
     public void PathSegment_ValidInput_CreatesInstance(string validValue, string plaformNeutralExpectedValue, string platformSpecificExpectedValue)
     {
@@ -47,8 +45,23 @@ public class PathSegmentTests
         var segment1 = (PathSegment)"some/path";
         var segment2 = (PathSegment)"some\\path";
 
-        Assert.Equal(segment1, segment2);
-        Assert.Equal(segment1.GetHashCode(), segment2.GetHashCode());
+        Assert.NotEqual(segment1, segment2);
+        Assert.False(segment1.Equals(segment2));
+        Assert.NotEqual(segment1.GetHashCode(), segment2.GetHashCode());
+        
+        Assert.False(segment1.Equals(segment2, PathSegmentComparison.LiteralValue));
+        Assert.True(segment1.Equals(segment2, PathSegmentComparison.PlatformInvariant));
+
+        var segment3 = (PathSegment)"some/path";
+
+        Assert.Equal(segment1, segment3);
+        Assert.True(segment1.Equals(segment3));
+        Assert.Equal(segment1.GetHashCode(), segment3.GetHashCode());
+
+        Assert.True(segment1.Equals(segment3, PathSegmentComparison.LiteralValue));
+        Assert.True(segment1.Equals(segment3, PathSegmentComparison.PlatformInvariant));
+
+        //Assert.Equal(segment1.GetHashCode(), segment2.GetHashCode());
     }
 
     [Theory]
@@ -82,17 +95,18 @@ public class PathSegmentTests
     {
         var segment = (PathSegment)input;
 
-        Assert.Equal(input.ToPlatformNeutralPath(), segment.ToString());
+        Assert.Equal(input, segment.ToString());
     }
 }
 
 public class RootedPathSegmentTests
 {
     [Theory]
-    [InlineData("/root", "/root", "/root")]
+    [InlineData("/root", "/root", "\\root")]
     [InlineData("/root/", "/root/", "\\root\\")]
     [InlineData("C:\\root", "C:/root", "C:\\root")]
-    [InlineData("D:/root", "D:/root", "D:/root")]
+    [InlineData("D:/root", "D:/root", "D:\\root")]
+    [InlineData("C:root/x", "C:root/x", "C:root\\x")]
     public void RootedPathSegment_ValidRoot_CreatesInstance(string validValue, string platformNeutralExpectedValue, string platformSpecificExpectedValue)
     {
         var segment = (RootedPathSegment)validValue;
@@ -106,14 +120,14 @@ public class RootedPathSegmentTests
     [InlineData("")]
     [InlineData("some/path")]
     [InlineData("some\\path")]
-    [InlineData("C:root")]
+    
     public void RootedPathSegment_InvalidRoot_ThrowsException(string invalidValue)
     {
         Assert.Throws<ArgumentException>(() => (RootedPathSegment)invalidValue);
     }
 
     [Theory]
-    [InlineData("/root", "/root", "/root")]
+    [InlineData("/root", "/root", "\\root")]
     [InlineData("C:\\root", "C:/root", "C:\\root")]
     public void RootedPathSegment_ToPlatformNeutralAndSpecific_CorrectConversion(string input, string expectedNeutral, string expectedSpecific)
     {
@@ -146,17 +160,94 @@ public class RootedPathSegmentTests
     }
 
     [Theory]
-    [InlineData("/root", "/root", "/root")]
-    [InlineData("C:\\root", "C:/root", "C:\\root")]
-    public void RootedPathSegment_OperatorPlus_HandlesMixedSeparators(string rootPath, string expectedNeutral, string expectedSpecific)
+    [InlineData("/root", "subfolder", "/root/subfolder", "\\root\\subfolder")]
+    [InlineData("C:\\root", "subfolder", "C:/root/subfolder", "C:\\root\\subfolder")]
+    public void RootedPathSegment_OperatorPlus_HandlesMixedSeparators(RootedPathSegment rootSegment, RelativePathSegment relativeSegment, string expectedNeutral, string expectedSpecific)
     {
-        var rootSegment = (RootedPathSegment)rootPath;
-        var relativeSegment = (RelativePathSegment)"subfolder";
-
         var combined = rootSegment + relativeSegment;
 
-        Assert.Equal(expectedNeutral + "/subfolder", combined.ToPlatformNeutral());
-        Assert.Equal(expectedSpecific + "\\subfolder", combined.ToPlatformSpecific());
+        Assert.Equal(expectedNeutral, combined.ToPlatformNeutral());
+        Assert.Equal(expectedSpecific, combined.ToPlatformSpecific());
+    }
+}
+
+public class RelativeNamePathSegmentTests
+{
+    [Theory]
+    [InlineData("relativePath", "relativePath", "relativePath")]
+    [InlineData("folder\\subfolder", "folder/subfolder", "folder\\subfolder")]
+    [InlineData("folder/subfolder", "folder/subfolder", "folder\\subfolder")]
+    [InlineData("folder\\subfolder\\file.txt", "folder/subfolder/file.txt", "folder\\subfolder\\file.txt")]
+    public void RelativeNamePathSegment_ValidInput_CreatesInstance(RelativeNamePathSegment segment, string platformNeutralExpectedValue, string platformSpecificExpectedValue)
+    {
+        Assert.Equal(platformNeutralExpectedValue, segment.ToPlatformNeutral());
+        Assert.Equal(platformSpecificExpectedValue, segment.ToPlatformSpecific());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("C:\\root")]
+    [InlineData("/root")]
+    public void RelativeNamePathSegment_InvalidInput_ThrowsException(string invalidValue)
+    {
+        Assert.Throws<ArgumentException>(() => (RelativeNamePathSegment)invalidValue);
+    }
+
+    [Theory]
+    [InlineData("folder/subfolder", "folder/subfolder")]
+    [InlineData("folder\\subfolder", "folder\\subfolder")]
+    public void RelativeNamePathSegment_Equality_Tests(RelativeNamePathSegment segment1, RelativeNamePathSegment segment2)
+    {
+        Assert.Equal(segment1, segment2);
+        Assert.Equal(segment1.GetHashCode(), segment2.GetHashCode());
+
+    }
+
+
+
+    [Theory]
+    [InlineData(null, "file.txt")]
+    [InlineData("folder", null)]
+    public void RelativeNamePathSegment_OperatorPlus_ThrowsOnNullSegments(string value1, string value2)
+    {
+        RelativeNamePathSegment? segment1 = value1 != null ? (RelativeNamePathSegment)value1 : null;
+        NamePathSegment? segment2 = value2 != null ? (NamePathSegment)value2 : null;
+
+        if (segment1 == null)
+        {
+            Assert.Throws<ArgumentNullException>(() => segment1 + segment2);
+        }
+        if (segment2 == null)
+        {
+            Assert.Throws<ArgumentNullException>(() => segment1 + segment2);
+        }
+    }
+
+    [Theory]
+    [InlineData("folder/subfolder")]
+    [InlineData("folder\\subfolder")]
+    public void RelativeNamePathSegment_ToString_ReturnsExpectedValue(string input)
+    {
+        var segment = (RelativeNamePathSegment)input;
+
+        Assert.Equal(input, segment.ToString());
+    }
+}
+
+public class RelativePathSegmentTest
+{
+    [Theory]
+    [InlineData("folder", "filewithoutextension", "folder/filewithoutextension")]
+    [InlineData("folder\\sub", "file.txt", "folder/sub/file.txt")]
+    public void RelativeNamePathSegment_OperatorPlus_CombinesSegments(RelativePathSegment segment1, NamePathSegment segment2, RelativeNamePathSegment expected)
+    {
+        var combined = segment1 + segment2;
+
+        Assert.IsType<RelativeNamePathSegment>(combined);
+
+        Assert.Equal(expected, combined.ToPlatformNeutral());
     }
 }
 
