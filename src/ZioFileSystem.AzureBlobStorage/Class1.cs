@@ -44,7 +44,7 @@ public class ArchiveCommandHandler
     private readonly string _passphrase;
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
     private readonly SHA256Hasher hasher;
-    private readonly ConcurrentDictionary<Hash, bool> uploadingHashes = new();
+    private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
     public ArchiveCommandHandler(BlobContainerClient containerClient, string passphrase)
     {
@@ -85,7 +85,35 @@ public class ArchiveCommandHandler
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
         var bp = c.BinaryProperties.Find(h.Value);
-        bool needsToBeUploaded = bp is null && uploadingHashes.TryAdd(h, true);
+
+        bool needsToBeUploaded = false;
+        Task t = null;
+        lock (uploadingHashes)
+        {
+            if (bp is null)
+            {
+                if (uploadingHashes.ContainsKey(h))
+                {
+                    // Already uploading
+                    t = uploadingHashes[h].Task;
+                    needsToBeUploaded = false;
+                }
+                else
+                {
+                    // To be uploaded
+                    var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    t = tcs.Task;
+                    uploadingHashes.Add(h, tcs);
+                    needsToBeUploaded = true;
+                }
+            }
+            else
+            {
+                // Already uploaded
+                t = Task.CompletedTask;
+                needsToBeUploaded = false;
+            }
+        }
         
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
@@ -104,7 +132,15 @@ public class ArchiveCommandHandler
             c.SaveChanges();
 
             // remove from temp
-            uploadingHashes.Remove(h, out var _);
+            lock (uploadingHashes)
+            {
+                uploadingHashes.Remove(h, out var tcs);
+                tcs.SetResult();
+            }
+        }
+        else
+        {
+            await t;
         }
 
         // Write the PointerFileEntry
