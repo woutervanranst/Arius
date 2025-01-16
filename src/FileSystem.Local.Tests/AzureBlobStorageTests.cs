@@ -66,6 +66,9 @@ public class AzureBlobStorageTests
 
         foreach (var f in lfs.EnumerateFiles(UPath.Root, "*", SearchOption.AllDirectories))
         {
+            if (f.IsPointerFile())
+                continue;
+
             var bf = new BinaryFile(lfs, f);
             var pf = (PointerFile)null;
             var fp = new FilePair(bf, pf);

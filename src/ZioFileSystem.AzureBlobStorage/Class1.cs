@@ -33,27 +33,22 @@ public class BinaryFile : FileEntry
 
 public class PointerFile : FileEntry
 {
+    public static readonly string PointerFileExtension = ".pointer.arius";
+
     public PointerFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
     {
     }
 }
 
-public class ArchiveCommandHandler
+public class StateRepository
 {
-    private readonly BlobContainerClient containerClient;
-    private readonly string _passphrase;
     private readonly DbContextOptions<SqliteStateDatabaseContext> dbContextOptions;
-    private readonly SHA256Hasher hasher;
-    private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
-    public ArchiveCommandHandler(BlobContainerClient containerClient, string passphrase)
+    public StateRepository()
     {
-        this.containerClient = containerClient;
-        _passphrase = passphrase;
-
         var stateDatabaseFile = new SIO.FileInfo("state.db");
         //stateDatabaseFile.Delete();
-        
+
         var optionsBuilder = new DbContextOptionsBuilder<SqliteStateDatabaseContext>();
         dbContextOptions = optionsBuilder
             .UseSqlite($"Data Source={stateDatabaseFile.FullName}" /*+ ";Cache=Shared"*/, sqliteOptions => { sqliteOptions.CommandTimeout(60); })
@@ -62,14 +57,67 @@ public class ArchiveCommandHandler
         using var context = GetContext();
         //context.Database.Migrate();
         context.Database.EnsureCreated();
-
-        hasher = new SHA256Hasher("wouter");
     }
 
     private SqliteStateDatabaseContext GetContext() => new(dbContextOptions, OnChanges);
 
     private void OnChanges(int changes) => hasChanges = hasChanges || changes > 0;
     private bool hasChanges;
+
+    internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
+    {
+        using var db = GetContext();
+
+        return db.BinaryProperties.Find(h.Value);
+    }
+
+    internal void AddBinaryProperty(BinaryPropertiesDto bp)
+    {
+        using var db = GetContext();
+
+        db.BinaryProperties.Add(bp);
+        db.SaveChanges();
+    }
+
+    internal void UpsertPointerFileEntry(PointerFileEntryDto pfe)
+    {
+        using var db = GetContext();
+
+        var existingPfe = db.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+
+        if (existingPfe is null)
+        {
+            db.PointerFileEntries.Add(pfe);
+        }
+        else
+        {
+            existingPfe.CreationTimeUtc = pfe.CreationTimeUtc;
+            existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
+        }
+
+        db.SaveChanges();
+    }
+}
+
+public class ArchiveCommandHandler
+{
+    private readonly BlobContainerClient containerClient;
+    private readonly string _passphrase;
+    private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
+    private readonly StateRepository stateRepo;
+    private readonly SHA256Hasher hasher;
+
+    public ArchiveCommandHandler(BlobContainerClient containerClient, string passphrase)
+    {
+        this.containerClient = containerClient;
+        _passphrase = passphrase;
+
+        stateRepo = new StateRepository();
+
+        hasher = new SHA256Hasher("wouter");
+    }
+
+    
 
     public async Task UploadFileAsync(FilePair filePair)
     {
@@ -78,13 +126,11 @@ public class ArchiveCommandHandler
         //if (filePair.PointerFile is not null && filePair.PointerFile.FileSystem is not PhysicalFileSystem)
         //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
 
-        await using var db = GetContext();
-
         // 1. Hash the file
         var h = await hasher.GetHashAsync(filePair);
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-        var (needsToBeUploaded, uploadTask) = GetUploadStatus(db, h);
+        var (needsToBeUploaded, uploadTask) = GetUploadStatus(h);
         
         
         // 3. Upload the Binary, if needed
@@ -100,8 +146,7 @@ public class ArchiveCommandHandler
             await bbc.SetAccessTierAsync(AccessTier.Cool);
 
             // Add to db
-            db.BinaryProperties.Add(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
-            db.SaveChanges();
+            stateRepo.AddBinaryProperty(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
 
             // remove from temp
             MarkAsUploaded(h);
@@ -112,16 +157,15 @@ public class ArchiveCommandHandler
         }
 
         // Write the PointerFileEntry
-        db.PointerFileEntries.Add(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
-        db.SaveChanges();
+        stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
 
         // Write the Pointer
         CreatePointerFileIfNotExists(filePair.BinaryFile, h);
     }
 
-    private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(SqliteStateDatabaseContext db, Hash h)
+    private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(Hash h)
     {
-        var bp = db.BinaryProperties.Find(h.Value);
+        var bp = stateRepo.GetBinaryProperty(h);
 
         lock (uploadingHashes)
         {
@@ -174,25 +218,22 @@ public class ArchiveCommandHandler
 
     private void CreatePointerFileIfNotExists(BinaryFile bf, Hash h)
     {
-        var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}.pointer.arius");
+        var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}{PointerFile.PointerFileExtension}");
+        //var xx = ReadPointerFile(bf.FileSystem, pfPath);
+        //if (bf.FileSystem.FileExists(pfPath))
+        //{
+        //}
+        //else
+        //{
+        //}
 
-        var xx = ReadPointerFile(bf.FileSystem, pfPath);
+        var pfc = new PointerFileContents(h.ToLongString());
 
+        var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
+        bf.FileSystem.WriteAllBytes(pfPath, json);
 
-        if (bf.FileSystem.FileExists(pfPath))
-        {
-
-        }
-        else
-        {
-            var pfc = new PointerFileContents(h.ToLongString());
-
-            var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
-            bf.FileSystem.WriteAllBytes(pfPath, json);
-
-            bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
-            bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
-        }
+        bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
+        bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
     }
 
     private (PointerFile pf, Hash h) ReadPointerFile(IFileSystem fs, UPath pfPath)
