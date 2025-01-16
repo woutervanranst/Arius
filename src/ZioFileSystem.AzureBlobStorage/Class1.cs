@@ -85,8 +85,8 @@ public class ArchiveCommandHandler
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
         var bp = c.BinaryProperties.Find(h.Value);
-        var needsToBeUploaded = bp is null && uploadingHashes.GetOrAdd(h, true);
-
+        bool needsToBeUploaded = bp is null && uploadingHashes.TryAdd(h, true);
+        
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
         {
