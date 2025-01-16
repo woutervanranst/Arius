@@ -9,9 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileSystem.Local", "..\File
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FileSystem.Local.Tests", "..\FileSystem.Local.Tests\FileSystem.Local.Tests.csproj", "{17C5984B-D64C-49A2-8D4C-70ED338FC730}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZioFileSystem", "..\ZioFileSystem\ZioFileSystem.csproj", "{963B0132-5D9D-4B68-8174-F1DF2C6493B8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZioFileSystem.AzureBlobStorage", "..\ZioFileSystem.AzureBlobStorage\ZioFileSystem.AzureBlobStorage.csproj", "{58471B5A-C421-44A3-877A-BA79F6B4B3EB}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ZioFileSystem.AzureBlobStorage", "..\ZioFileSystem.AzureBlobStorage\ZioFileSystem.AzureBlobStorage.csproj", "{58471B5A-C421-44A3-877A-BA79F6B4B3EB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,10 +29,6 @@ Global
 		{17C5984B-D64C-49A2-8D4C-70ED338FC730}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{17C5984B-D64C-49A2-8D4C-70ED338FC730}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{17C5984B-D64C-49A2-8D4C-70ED338FC730}.Release|Any CPU.Build.0 = Release|Any CPU
-		{963B0132-5D9D-4B68-8174-F1DF2C6493B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{963B0132-5D9D-4B68-8174-F1DF2C6493B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{963B0132-5D9D-4B68-8174-F1DF2C6493B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{963B0132-5D9D-4B68-8174-F1DF2C6493B8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{58471B5A-C421-44A3-877A-BA79F6B4B3EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{58471B5A-C421-44A3-877A-BA79F6B4B3EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{58471B5A-C421-44A3-877A-BA79F6B4B3EB}.Release|Any CPU.ActiveCfg = Release|Any CPU

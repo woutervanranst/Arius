@@ -26,7 +26,6 @@
   <ItemGroup>
     <ProjectReference Include="..\FileSystem.Local\FileSystem.Local.csproj" />
     <ProjectReference Include="..\ZioFileSystem.AzureBlobStorage\ZioFileSystem.AzureBlobStorage.csproj" />
-    <ProjectReference Include="..\ZioFileSystem\ZioFileSystem.csproj" />
   </ItemGroup>
 
   <ItemGroup>
