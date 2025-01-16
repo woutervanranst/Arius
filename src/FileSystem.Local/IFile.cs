@@ -6,7 +6,7 @@ namespace FileSystem.Local;
 public interface IFile
 {
     FullNamePathSegment FullNamePath { get; }
-    DirectoryPathSegment? Path { get; }
+    PathSegment? Path { get; }
     string Name { get; }
     bool Exists { get; }
 
