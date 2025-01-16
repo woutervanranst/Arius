@@ -4,9 +4,9 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Zio;
@@ -116,7 +116,7 @@ public class ArchiveCommandHandler
         db.SaveChanges();
 
         // Write the Pointer
-
+        CreatePointerFileIfNotExists(filePair.BinaryFile, h);
     }
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(SqliteStateDatabaseContext db, Hash h)
@@ -171,6 +171,41 @@ public class ArchiveCommandHandler
 
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
+
+    private void CreatePointerFileIfNotExists(BinaryFile bf, Hash h)
+    {
+        var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}.pointer.arius");
+
+        var xx = ReadPointerFile(bf.FileSystem, pfPath);
+
+
+        if (bf.FileSystem.FileExists(pfPath))
+        {
+
+        }
+        else
+        {
+            var pfc = new PointerFileContents(h.ToLongString());
+
+            var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
+            bf.FileSystem.WriteAllBytes(pfPath, json);
+
+            bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
+            bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
+        }
+    }
+
+    private (PointerFile pf, Hash h) ReadPointerFile(IFileSystem fs, UPath pfPath)
+    {
+        var pf = new PointerFile(fs, pfPath);
+        var json = pf.ReadAllBytes(); // throws a FileNotFoundException if not exists
+        var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
+        var h = new Hash(pfc.BinaryHash);
+
+        return (pf, h);
+    }
+
+    private record PointerFileContents(string BinaryHash);
 }
 
 
