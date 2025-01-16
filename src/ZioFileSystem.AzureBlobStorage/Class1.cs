@@ -14,12 +14,16 @@ using SIO = System.IO;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
-public record FilePair(BinaryFile? BinaryFile, PointerFile? PointerFile);
+public record FilePair(PointerFile? PointerFile, BinaryFile? BinaryFile);
 
 public class BinaryFile : FileEntry
 {
-    public BinaryFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
+    public static BinaryFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+
+    private BinaryFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
     {
+        if (path.FullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Path cannot end with PointerFile.Extension", nameof(path));
     }
 
     private static readonly SIO.FileStreamOptions smallFileStreamReadOptions = new() { Mode = SIO.FileMode.Open, Access = SIO.FileAccess.Read, Share = SIO.FileShare.Read, BufferSize = 1024 };
@@ -29,14 +33,31 @@ public class BinaryFile : FileEntry
     //    private static readonly SIO.FileStreamOptions smallFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 1024 };
     //    private static readonly SIO.FileStreamOptions largeFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
     //    public SIO.Stream OpenWrite() => _fileSystem.File.Open(_fullNamePath, Length <= 1024 ? smallFileStreamWriteOptions : largeFileStreamWriteOptions);
+
+    public PointerFile GetPointerFile()
+    {
+        var pfPath = Path.ChangeExtension($"{ExtensionWithDot}{PointerFile.Extension}");
+        var fe = new FileEntry(this.FileSystem, pfPath);
+        return PointerFile.FromFileEntry(fe);
+    }
 }
 
 public class PointerFile : FileEntry
 {
-    public static readonly string PointerFileExtension = ".pointer.arius";
+    public static readonly string Extension = ".pointer.arius";
 
-    public PointerFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
+    public static PointerFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+
+    private PointerFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
     {
+    }
+
+    public BinaryFile GetBinaryFile()
+    {
+        var bfPath = Path.RemoveSuffix(PointerFile.Extension);
+        var fe = new FileEntry(this.FileSystem, bfPath);
+
+        return BinaryFile.FromFileEntry(fe);
     }
 }
 
@@ -160,7 +181,7 @@ public class ArchiveCommandHandler
         stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
 
         // Write the Pointer
-        CreatePointerFileIfNotExists(filePair.BinaryFile, h);
+        CreatePointerFile(filePair.BinaryFile, h);
     }
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(Hash h)
@@ -216,9 +237,18 @@ public class ArchiveCommandHandler
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
-    private void CreatePointerFileIfNotExists(BinaryFile bf, Hash h)
+    private void CreatePointerFile(BinaryFile bf, Hash h)
     {
-        var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}{PointerFile.PointerFileExtension}");
+        var pf = bf.GetPointerFile();
+
+        var pfc = new PointerFileContents(h.ToLongString());
+
+        var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
+        pf.WriteAllBytes(json);
+
+        pf.CreationTime = bf.CreationTime;
+        pf.LastWriteTime = bf.LastWriteTime;
+
         //var xx = ReadPointerFile(bf.FileSystem, pfPath);
         //if (bf.FileSystem.FileExists(pfPath))
         //{
@@ -227,24 +257,25 @@ public class ArchiveCommandHandler
         //{
         //}
 
-        var pfc = new PointerFileContents(h.ToLongString());
+        //var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}{PointerFile.Extension}");
+        //var pfc = new PointerFileContents(h.ToLongString());
 
-        var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
-        bf.FileSystem.WriteAllBytes(pfPath, json);
+        //var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
+        //bf.FileSystem.WriteAllBytes(pfPath, json);
 
-        bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
-        bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
+        //bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
+        //bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
     }
 
-    private (PointerFile pf, Hash h) ReadPointerFile(IFileSystem fs, UPath pfPath)
-    {
-        var pf = new PointerFile(fs, pfPath);
-        var json = pf.ReadAllBytes(); // throws a FileNotFoundException if not exists
-        var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
-        var h = new Hash(pfc.BinaryHash);
+    //private (PointerFile pf, Hash h) ReadPointerFile(IFileSystem fs, UPath pfPath)
+    //{
+    //    var pf = new PointerFile(fs, pfPath);
+    //    var json = pf.ReadAllBytes(); // throws a FileNotFoundException if not exists
+    //    var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
+    //    var h = new Hash(pfc.BinaryHash);
 
-        return (pf, h);
-    }
+    //    return (pf, h);
+    //}
 
     private record PointerFileContents(string BinaryHash);
 }

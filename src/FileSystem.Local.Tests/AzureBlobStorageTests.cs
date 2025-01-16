@@ -64,17 +64,23 @@ public class AzureBlobStorageTests
                 Interlocked.Decrement(ref parallelism);
             });
 
-        foreach (var f in lfs.EnumerateFiles(UPath.Root, "*", SearchOption.AllDirectories))
+        var rootDir = new DirectoryEntry(lfs, UPath.Root);
+        foreach (var fp in lfs.EnumerateFilePairs(rootDir))
         {
-            if (f.IsPointerFile())
-                continue;
-
-            var bf = new BinaryFile(lfs, f);
-            var pf = (PointerFile)null;
-            var fp = new FilePair(bf, pf);
-
             await c.Writer.WriteAsync(fp);
         }
+
+        //foreach (var f in lfs.EnumerateFiles(UPath.Root, "*", SearchOption.AllDirectories))
+        //{
+        //    if (f.IsPointerFile())
+        //        continue;
+
+        //    var bf = new BinaryFile(lfs, f);
+        //    var pf = (PointerFile)null;
+        //    var fp = new FilePair(bf, pf);
+
+        //    await c.Writer.WriteAsync(fp);
+        //}
 
         c.Writer.Complete();
 
