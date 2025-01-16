@@ -14,14 +14,16 @@ public class ArchiveCommandHandler
 {
     private readonly BlobContainerClient containerClient;
     private readonly string _passphrase;
+    private readonly AccessTier _targetAccessTier;
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
     private readonly StateRepository stateRepo;
     private readonly SHA256Hasher hasher;
 
-    public ArchiveCommandHandler(BlobContainerClient containerClient, string passphrase)
+    public ArchiveCommandHandler(BlobContainerClient containerClient, string passphrase, AccessTier targetAccessTier)
     {
         this.containerClient = containerClient;
         _passphrase = passphrase;
+        _targetAccessTier = targetAccessTier;
 
         stateRepo = new StateRepository();
 
@@ -54,10 +56,16 @@ public class ArchiveCommandHandler
 
             await ss.CopyToCompressedEncryptedAsync(ts, _passphrase);
 
-            await bbc.SetAccessTierAsync(AccessTier.Cool);
+            var actualTier = await SetAccessTier(bbc, ts.Position);
 
             // Add to db
-            stateRepo.AddBinaryProperty(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
+            stateRepo.AddBinaryProperty(new BinaryPropertiesDto
+            {
+                Hash = h.Value,
+                OriginalSize = ss.Length,
+                ArchivedSize = ts.Position,
+                StorageTier = actualTier.ToStorageTier()
+            });
 
             // remove from temp
             MarkAsUploaded(h);
@@ -73,6 +81,25 @@ public class ArchiveCommandHandler
         // Write the Pointer
         CreatePointerFile(filePair.BinaryFile, h);
     }
+
+    private async Task<AccessTier> SetAccessTier(BlockBlobClient bbc, long length)
+    {
+        var actualTier = GetPolicyAccessTier(length);
+        await bbc.SetAccessTierAsync(actualTier);
+        return actualTier;
+
+        AccessTier GetPolicyAccessTier(long length)
+        {
+            const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
+
+            if (_targetAccessTier == AccessTier.Archive && length <= oneMegaByte)
+                return AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
+
+            return _targetAccessTier;
+        }
+    }
+
+    
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(Hash h)
     {

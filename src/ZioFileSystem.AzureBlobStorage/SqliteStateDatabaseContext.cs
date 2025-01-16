@@ -123,11 +123,3 @@ internal record BinaryPropertiesDto
     public StorageTier StorageTier { get; set; }
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }
-
-public enum StorageTier
-{
-    Hot,
-    Cool,
-    Cold,
-    Archive
-}
