@@ -1,17 +1,16 @@
-﻿using Azure.Storage.Blobs;
+﻿using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using SIO = System.IO;
-using System.Threading.Tasks;
-using Zio;
-using Zio.FileSystems;
-using Azure.Storage.Blobs.Models;
-using Azure;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using Zio;
+using SIO = System.IO;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
@@ -97,6 +96,8 @@ public class ArchiveCommandHandler
             var ts = await OpenWriteAsync(bbc, throwOnExists: false);
 
             await ss.CopyToCompressedEncryptedAsync(ts, _passphrase);
+
+            await bbc.SetAccessTierAsync(AccessTier.Cool);
 
             // Add to db
             c.BinaryProperties.Add(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
