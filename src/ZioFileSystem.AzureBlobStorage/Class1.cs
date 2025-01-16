@@ -74,10 +74,10 @@ public class ArchiveCommandHandler
 
     public async Task UploadFileAsync(FilePair filePair)
     {
-        if (filePair.BinaryFile?.FileSystem is not PhysicalFileSystem)
-            throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
-        if (filePair.PointerFile is not null && filePair.PointerFile.FileSystem is not PhysicalFileSystem)
-            throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
+        //if (filePair.BinaryFile?.FileSystem is not PhysicalFileSystem)
+        //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
+        //if (filePair.PointerFile is not null && filePair.PointerFile.FileSystem is not PhysicalFileSystem)
+        //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
 
         await using var c = GetContext();
 

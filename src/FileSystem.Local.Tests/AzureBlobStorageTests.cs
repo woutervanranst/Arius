@@ -26,7 +26,7 @@ public class AzureBlobStorageTests
         lfs = new SubFileSystem(lfs, root, true);
 
 
-        foreach (var f in lfs.EnumerateFiles(root))
+        foreach (var f in lfs.EnumerateFiles(UPath.Root))
         {
             var bf = new BinaryFile(lfs, f);
             var pf = (PointerFile)null;
