@@ -78,42 +78,14 @@ public class ArchiveCommandHandler
         //if (filePair.PointerFile is not null && filePair.PointerFile.FileSystem is not PhysicalFileSystem)
         //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
 
-        await using var c = GetContext();
+        await using var db = GetContext();
 
         // 1. Hash the file
         var h = await hasher.GetHashAsync(filePair);
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-        var bp = c.BinaryProperties.Find(h.Value);
-
-        bool needsToBeUploaded = false;
-        Task t = null;
-        lock (uploadingHashes)
-        {
-            if (bp is null)
-            {
-                if (uploadingHashes.TryGetValue(h, out var tcs))
-                {
-                    // Already uploading
-                    t = tcs.Task;
-                    needsToBeUploaded = false;
-                }
-                else
-                {
-                    // To be uploaded
-                    tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                    t = tcs.Task;
-                    uploadingHashes.Add(h, tcs);
-                    needsToBeUploaded = true;
-                }
-            }
-            else
-            {
-                // Already uploaded
-                t = Task.CompletedTask;
-                needsToBeUploaded = false;
-            }
-        }
+        var (needsToBeUploaded, uploadTask) = GetUploadStatus(db, h);
+        
         
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
@@ -128,27 +100,62 @@ public class ArchiveCommandHandler
             await bbc.SetAccessTierAsync(AccessTier.Cool);
 
             // Add to db
-            c.BinaryProperties.Add(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
-            c.SaveChanges();
+            db.BinaryProperties.Add(new BinaryPropertiesDto { Hash = h.Value, StorageTier = StorageTier.Cool });
+            db.SaveChanges();
 
             // remove from temp
-            lock (uploadingHashes)
-            {
-                uploadingHashes.Remove(h, out var tcs);
-                tcs.SetResult();
-            }
+            MarkAsUploaded(h);
         }
         else
         {
-            await t;
+            await uploadTask;
         }
 
         // Write the PointerFileEntry
-        c.PointerFileEntries.Add(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
-        c.SaveChanges();
+        db.PointerFileEntries.Add(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
+        db.SaveChanges();
 
         // Write the Pointer
 
+    }
+
+    private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(SqliteStateDatabaseContext db, Hash h)
+    {
+        var bp = db.BinaryProperties.Find(h.Value);
+
+        lock (uploadingHashes)
+        {
+            if (bp is null)
+            {
+                if (uploadingHashes.TryGetValue(h, out var tcs))
+                {
+                    // Already uploading
+                    return (false, tcs.Task);
+                }
+                else
+                {
+                    // To be uploaded
+                    tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    uploadingHashes.Add(h, tcs);
+
+                    return (true, tcs.Task);
+                }
+            }
+            else
+            {
+                // Already uploaded
+                return (false, Task.CompletedTask);
+            }
+        }
+    }
+
+    private void MarkAsUploaded(Hash h)
+    {
+        lock (uploadingHashes)
+        {
+            uploadingHashes.Remove(h, out var tcs);
+            tcs.SetResult();
+        }
     }
 
     private static async Task<Stream> OpenWriteAsync(BlockBlobClient bbc, /*string contentType = ICryptoService.ContentType, */IDictionary<string, string>? metadata = default, bool throwOnExists = true, CancellationToken cancellationToken = default)
