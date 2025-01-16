@@ -75,11 +75,19 @@ public class ArchiveCommandHandler
             await uploadTask;
         }
 
-        // Write the PointerFileEntry
-        stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto { Hash = h.Value, RelativeName = filePair.BinaryFile.FullName });
-
         // Write the Pointer
-        CreatePointerFile(filePair.BinaryFile, h);
+        var pf = CreatePointerFile(filePair.BinaryFile, h);
+
+        // Write the PointerFileEntry
+        stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
+        {
+            Hash = h.Value,
+            RelativeName = pf.Path.FullName,
+            CreationTimeUtc = pf.CreationTime,
+            LastWriteTimeUtc = pf.LastWriteTime
+        });
+
+        
     }
 
     private async Task<AccessTier> SetAccessTier(BlockBlobClient bbc, long length)
@@ -154,7 +162,7 @@ public class ArchiveCommandHandler
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
-    private void CreatePointerFile(BinaryFile bf, Hash h)
+    private PointerFile CreatePointerFile(BinaryFile bf, Hash h)
     {
         var pf = bf.GetPointerFile();
 
@@ -165,6 +173,8 @@ public class ArchiveCommandHandler
 
         pf.CreationTime = bf.CreationTime;
         pf.LastWriteTime = bf.LastWriteTime;
+
+        return pf;
 
         //var xx = ReadPointerFile(bf.FileSystem, pfPath);
         //if (bf.FileSystem.FileExists(pfPath))

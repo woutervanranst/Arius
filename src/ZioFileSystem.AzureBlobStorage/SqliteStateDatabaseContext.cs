@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using WouterVanRanst.Utils.Extensions;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
@@ -40,8 +41,8 @@ internal class SqliteStateDatabaseContext : DbContext
         pfemb.HasIndex(pfe => pfe.Hash);     // NOT unique
         pfemb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        //pfemb.Property(pfe => pfe.RelativeName)
-        //    .HasConversion(new RemovePointerFileExtensionConverter());
+        pfemb.Property(pfe => pfe.RelativeName)
+            .HasConversion(new RemovePointerFileExtensionConverter());
 
         // PointerFileEntries * -- 1 Chunk
         pfemb.HasOne(pfe => pfe.BinaryProperties)
@@ -63,15 +64,15 @@ internal class SqliteStateDatabaseContext : DbContext
         return numChanges;
     }
 
-    //private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
-    //{
-    //    public RemovePointerFileExtensionConverter()
-    //        : base(
-    //            v => v.RemoveSuffix(IPointerFile.Extension, StringComparison.InvariantCultureIgnoreCase).ToPlatformNeutralPath(), // Convert from Model to Provider (code to db)
-    //            v => $"{v}{IPointerFile.Extension}".ToPlatformSpecificPath()) // Convert from Provider to Model (db to code)
-    //    {
-    //    }
-    //}
+    private class RemovePointerFileExtensionConverter : ValueConverter<string, string>
+    {
+        public RemovePointerFileExtensionConverter()
+            : base(
+                v => v.RemovePrefix("/").RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
+                v => $"/{v}{PointerFile.Extension}") // Convert from Provider to Model (db to code)
+        {
+        }
+    }
 
     private class AccessTierConverter : ValueConverter<StorageTier, int>
     {
