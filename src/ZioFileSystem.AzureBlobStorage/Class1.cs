@@ -92,16 +92,16 @@ public class ArchiveCommandHandler
         {
             if (bp is null)
             {
-                if (uploadingHashes.ContainsKey(h))
+                if (uploadingHashes.TryGetValue(h, out var tcs))
                 {
                     // Already uploading
-                    t = uploadingHashes[h].Task;
+                    t = tcs.Task;
                     needsToBeUploaded = false;
                 }
                 else
                 {
                     // To be uploaded
-                    var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     t = tcs.Task;
                     uploadingHashes.Add(h, tcs);
                     needsToBeUploaded = true;
