@@ -49,9 +49,11 @@ public class AzureBlobStorageTests
         IFileSystem pfs = new PhysicalFileSystem();
         //var root = lfs.ConvertPathFromInternal(@"C:\Repos\Arius\LINQPad");
         var root = pfs.ConvertPathFromInternal(@"C:\Users\RFC430\Downloads\New folder");
-        var lfs = new FilePairSubFileSystem(pfs, root, true);
+        var sfs = new SubFileSystem(pfs, root, true);
+        var lfs = new FilePairFileSystem(sfs, true);
+        //var lfs = FilePairFileSystem.From(pfs, root, true);
 
-        var x = lfs.EnumerateFileEntries(UPath.Root).ToList();
+        var x = lfs.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories).ToList();
 
         var c = GetBoundedChannel<FilePair>(100, true);
 

@@ -57,9 +57,21 @@ public class FilePair : FileEntry
     }
 }
 
-public class FilePairSubFileSystem : SubFileSystem
+public class FilePairFileSystem : ComposeFileSystem
 {
-    public FilePairSubFileSystem(IFileSystem fileSystem, UPath subPath, bool owned = true) : base(fileSystem, subPath, owned)
+    //public static FilePairFileSystem From(IFileSystem fileSystem, UPath root, bool owned = true)
+    //{
+    //    var sfs = new SubFileSystem(fileSystem, root, owned);
+    //    return new FilePairFileSystem(sfs);
+    //}
+    //private FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, UPath.Root, owned)
+    //{
+    //}
+    //public FilePairFileSystem(IFileSystem fileSystem, UPath root, bool owned = true) : base(fileSystem, root, owned)
+    //{
+    //}
+
+    public FilePairFileSystem(IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
     {
     }
 
@@ -68,23 +80,40 @@ public class FilePairSubFileSystem : SubFileSystem
         throw new NotImplementedException();
     }
 
+    
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
     private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
 
+    protected override UPath ConvertPathToDelegate(UPath path) => path;
+    protected override UPath ConvertPathFromDelegate(UPath path) => path;
 
     protected override IEnumerable<UPath> EnumeratePathsImpl(UPath path, string searchPattern, SearchOption searchOption, SearchTarget searchTarget)
     {
         // Iterate over all the files in the filesystem, and yield only the binaryfiles or binaryfile-equivalents
-        foreach (var p in base.EnumeratePathsImpl(path, searchPattern, searchOption, searchTarget))
-        {
-            //if (ShouldSkipDirectory(p) || ShouldSkipFile(p))
-            //    continue;
 
+        if (searchPattern != "*")
+            throw new NotSupportedException();
+        if (searchOption != SearchOption.AllDirectories)
+            throw new NotSupportedException();
+        if (searchTarget != SearchTarget.File)
+            throw new NotSupportedException();
+
+        //var xxx = (this as SubFileSystem).GetFileSystemEntry(path);
+
+        var fsi = FallbackSafe.GetFileSystemEntry(path); //base Fallback!.GetFileSystemEntry(path);
+        if (fsi is not DirectoryEntry d)
+            throw new NotSupportedException();
+
+        //var x = d.EnumerateFiles().ToArray();
+
+        foreach (var fe in EnumerateFiles(d))
+        {
+            var p = fe.Path;
             if (p.IsPointerFilePath())
             {
                 // this is a PointerFile
                 var bfp = p.GetBinaryFilePath();
-                if (FileExists(bfp))
+                if (FallbackSafe.FileExists(bfp))
                 {
                     // 1. BinaryFile exists too - yield nothing here, the BinaryFile will be yielded
                     continue;
@@ -101,14 +130,45 @@ public class FilePairSubFileSystem : SubFileSystem
                 yield return p;
             }
         }
+    }
 
-        //bool ShouldSkipDirectory(UPath p) =>
-        //    (GetAttributes(p) & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
-        //    ExcludedDirectories.Contains(dir.Name);
+    public static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory)
+    {
+        if (ShouldSkipDirectory(directory))
+        {
+            //logger.LogWarning("Skipping directory {directory} as it is hidden, system, or excluded", directory.FullName);
+            yield break;
+        }
 
-        //bool ShouldSkipFile(UPath p) =>
-        //    (GetAttributes(p) & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
-        //    ExcludedFiles.Contains(Path.GetFileName(file.FullName));
+        foreach (var fe in directory.EnumerateFiles())
+        {
+            if (ShouldSkipFile(fe))
+            {
+                //logger.LogWarning("Skipping file {file} as it is hidden, system, or excluded", fi.FullName);
+                continue;
+            }
+
+            yield return fe;
+        }
+
+        foreach (var subDir in directory.EnumerateDirectories())
+        {
+            foreach (var file in EnumerateFiles(subDir))
+            {
+                yield return file;
+            }
+        }
+
+        yield break;
+
+
+        static bool ShouldSkipDirectory(DirectoryEntry dir) =>
+            (dir.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+            ExcludedDirectories.Contains(dir.Name);
+
+        static bool ShouldSkipFile(FileEntry file) =>
+            (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+            ExcludedFiles.Contains(Path.GetFileName(file.FullName));
     }
 }
 
