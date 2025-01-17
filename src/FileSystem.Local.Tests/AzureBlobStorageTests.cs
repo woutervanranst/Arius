@@ -1,4 +1,5 @@
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using System.Threading.Channels;
 using Xunit.Abstractions;
 using Zio;
@@ -23,25 +24,42 @@ public class AzureBlobStorageTests
         stateDatabaseFile.Delete();
     }
 
+    //[Fact]
+    //public async Task Hah()
+    //{
+    //    var afs = new AggregateFileSystem();
+
+    //    var pfs = new PhysicalFileSystem();
+    //    var sfs1 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\Downloads\\New folder"));
+    //    var sfs2 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\OneDrive - Fluvius cvba\\Pictures\\Screenshots"));
+
+    //    afs.AddFileSystem(sfs1);
+    //    afs.AddFileSystem(sfs2);
+
+    //    var x = afs.EnumerateFileEntries(UPath.Root).ToList();
+    //}
+
     [Fact]
     public async Task Kak()
     {
         var cs = "DefaultEndpointsProtocol=https;AccountName=ariusci;AccountKey=;EndpointSuffix=core.windows.net";
         var bcc = new BlobContainerClient(cs, "atest", new BlobClientOptions());
-        var handler = new ArchiveCommandHandler(bcc, "woutervr");
+        var handler = new ArchiveCommandHandler(bcc, "woutervr", AccessTier.Archive);
 
-        IFileSystem lfs = new PhysicalFileSystem();
+        IFileSystem pfs = new PhysicalFileSystem();
         //var root = lfs.ConvertPathFromInternal(@"C:\Repos\Arius\LINQPad");
-        var root = lfs.ConvertPathFromInternal(@"C:\Users\RFC430\Downloads\");
-        lfs = new SubFileSystem(lfs, root, true);
+        var root = pfs.ConvertPathFromInternal(@"C:\Users\RFC430\Downloads\New folder");
+        var lfs = new FilePairSubFileSystem(pfs, root, true);
+
+        var x = lfs.EnumerateFileEntries(UPath.Root).ToList();
 
         var c = GetBoundedChannel<FilePair>(100, true);
 
         var parallelism = 0;
 
         var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(),
-            new ParallelOptions(),
-            //GetParallelOptions(10),
+            //new ParallelOptions(),
+            GetParallelOptions(1),
             async (fp, ct) =>
             {
                 Interlocked.Increment(ref parallelism);
@@ -50,7 +68,7 @@ public class AzureBlobStorageTests
 
                 try
                 {
-                    if (fp.BinaryFile.Length > 1024 * 1024 * 10)
+                    if (fp.BinaryFile.Exists && fp.BinaryFile.Length > 1024 * 1024 * 10)
                         return;
 
                     _output.WriteLine($"Started {fp.BinaryFile.FullName}");
@@ -64,23 +82,10 @@ public class AzureBlobStorageTests
                 Interlocked.Decrement(ref parallelism);
             });
 
-        var rootDir = new DirectoryEntry(lfs, UPath.Root);
-        foreach (var fp in lfs.EnumerateFilePairs(rootDir))
+        foreach (var fp in lfs.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
         {
-            await c.Writer.WriteAsync(fp);
+            await c.Writer.WriteAsync(FilePair.FromFileEntry(fp));
         }
-
-        //foreach (var f in lfs.EnumerateFiles(UPath.Root, "*", SearchOption.AllDirectories))
-        //{
-        //    if (f.IsPointerFile())
-        //        continue;
-
-        //    var bf = new BinaryFile(lfs, f);
-        //    var pf = (PointerFile)null;
-        //    var fp = new FilePair(bf, pf);
-
-        //    await c.Writer.WriteAsync(fp);
-        //}
 
         c.Writer.Complete();
 

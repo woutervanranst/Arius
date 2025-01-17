@@ -4,7 +4,6 @@ using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,11 +33,6 @@ public class ArchiveCommandHandler
 
     public async Task UploadFileAsync(FilePair filePair)
     {
-        //if (filePair.BinaryFile?.FileSystem is not PhysicalFileSystem)
-        //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
-        //if (filePair.PointerFile is not null && filePair.PointerFile.FileSystem is not PhysicalFileSystem)
-        //    throw new ArgumentException("Source file must be in a PhysicalFileSystem", nameof(filePair));
-
         // 1. Hash the file
         var h = await hasher.GetHashAsync(filePair);
 
@@ -76,7 +70,7 @@ public class ArchiveCommandHandler
         }
 
         // Write the Pointer
-        var pf = CreatePointerFile(filePair.BinaryFile, h);
+        var pf = filePair.GetOrCreatePointerFile(h);
 
         // Write the PointerFileEntry
         stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
@@ -162,47 +156,12 @@ public class ArchiveCommandHandler
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
-    private PointerFile CreatePointerFile(BinaryFile bf, Hash h)
-    {
-        var pf = bf.GetPointerFile();
-
-        var pfc = new PointerFileContents(h.ToLongString());
-
-        var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
-        pf.WriteAllBytes(json);
-
-        pf.CreationTime = bf.CreationTime;
-        pf.LastWriteTime = bf.LastWriteTime;
-
-        return pf;
-
-        //var xx = ReadPointerFile(bf.FileSystem, pfPath);
-        //if (bf.FileSystem.FileExists(pfPath))
-        //{
-        //}
-        //else
-        //{
-        //}
-
-        //var pfPath = bf.Path.ChangeExtension($"{bf.ExtensionWithDot}{PointerFile.Extension}");
-        //var pfc = new PointerFileContents(h.ToLongString());
-
-        //var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
-        //bf.FileSystem.WriteAllBytes(pfPath, json);
-
-        //bf.FileSystem.SetCreationTime(pfPath, bf.CreationTime);
-        //bf.FileSystem.SetLastWriteTime(pfPath, bf.LastWriteTime);
-    }
-
-    //private (PointerFile pf, Hash h) ReadPointerFile(IFileSystem fs, UPath pfPath)
+    //private PointerFile CreatePointerFile(BinaryFile bf, Hash h)
     //{
-    //    var pf = new PointerFile(fs, pfPath);
-    //    var json = pf.ReadAllBytes(); // throws a FileNotFoundException if not exists
-    //    var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
-    //    var h = new Hash(pfc.BinaryHash);
+    //    var pf = bf.GetPointerFile();
 
-    //    return (pf, h);
+    //    pf.Write(h, bf.CreationTime, bf.LastWriteTime);
+
+    //    return pf;
     //}
-
-    private record PointerFileContents(string BinaryHash);
 }

@@ -1,10 +1,116 @@
-﻿using SIO = System.IO;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using Zio;
+using Zio.FileSystems;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
-public record FilePair(PointerFile? PointerFile, BinaryFile? BinaryFile);
+public enum FilePairType
+{
+    PointerFileOnly,
+    BinaryFileOnly,
+    BinaryFileWithPointerFile,
+    None
+}
+
+public class FilePair : FileEntry
+{
+    public static FilePair FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+    private FilePair(IFileSystem fileSystem, UPath binaryFilePath) : base(fileSystem, binaryFilePath)
+    {
+        BinaryFile = BinaryFile.FromFileEntry(this);
+        PointerFile = PointerFile.FromPath(fileSystem, binaryFilePath.GetPointerFilePath());
+    }
+
+    public BinaryFile BinaryFile { get; }
+    public PointerFile PointerFile { get; }
+
+    public FilePairType Type
+    {
+        get
+        {
+            if (PointerFile.Exists && BinaryFile.Exists)
+                return FilePairType.BinaryFileWithPointerFile;
+            else if (PointerFile.Exists && !BinaryFile.Exists)
+                return FilePairType.PointerFileOnly;
+            else if (!PointerFile.Exists && BinaryFile.Exists)
+                return FilePairType.BinaryFileOnly;
+            else if (!PointerFile.Exists && !BinaryFile.Exists)
+                return FilePairType.None;
+
+            throw new InvalidOperationException();
+        }
+    }
+
+    public PointerFile GetOrCreatePointerFile(Hash h)
+    {
+        if (Type == FilePairType.PointerFileOnly)
+            return PointerFile;
+
+        var pf = BinaryFile.GetPointerFile();
+
+        pf.Write(h, BinaryFile.CreationTime, BinaryFile.LastWriteTime);
+
+        return pf;
+    }
+}
+
+public class FilePairSubFileSystem : SubFileSystem
+{
+    public FilePairSubFileSystem(IFileSystem fileSystem, UPath subPath, bool owned = true) : base(fileSystem, subPath, owned)
+    {
+    }
+
+    protected override IEnumerable<FileSystemItem> EnumerateItemsImpl(UPath path, SearchOption searchOption, SearchPredicate? searchPredicate)
+    {
+        throw new NotImplementedException();
+    }
+
+    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
+    private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
+
+
+    protected override IEnumerable<UPath> EnumeratePathsImpl(UPath path, string searchPattern, SearchOption searchOption, SearchTarget searchTarget)
+    {
+        // Iterate over all the files in the filesystem, and yield only the binaryfiles or binaryfile-equivalents
+        foreach (var p in base.EnumeratePathsImpl(path, searchPattern, searchOption, searchTarget))
+        {
+            //if (ShouldSkipDirectory(p) || ShouldSkipFile(p))
+            //    continue;
+
+            if (p.IsPointerFilePath())
+            {
+                // this is a PointerFile
+                var bfp = p.GetBinaryFilePath();
+                if (FileExists(bfp))
+                {
+                    // 1. BinaryFile exists too - yield nothing here, the BinaryFile will be yielded
+                    continue;
+                }
+                else
+                {
+                    // 2. BinaryFile does not exist
+                    yield return bfp; // yield the path of the (nonexisting) binaryfile
+                }
+            }
+            else
+            {
+                // this is a BinaryFile
+                yield return p;
+            }
+        }
+
+        //bool ShouldSkipDirectory(UPath p) =>
+        //    (GetAttributes(p) & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        //    ExcludedDirectories.Contains(dir.Name);
+
+        //bool ShouldSkipFile(UPath p) =>
+        //    (GetAttributes(p) & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
+        //    ExcludedFiles.Contains(Path.GetFileName(file.FullName));
+    }
+}
 
 public class BinaryFile : FileEntry
 {
@@ -12,13 +118,13 @@ public class BinaryFile : FileEntry
 
     private BinaryFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
     {
-        if (path.FullName.EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Path cannot end with PointerFile.Extension", nameof(path));
+        if (path.IsPointerFilePath())
+            throw new ArgumentException("This is a PointerFile path", nameof(path));
     }
 
-    private static readonly SIO.FileStreamOptions smallFileStreamReadOptions = new() { Mode = SIO.FileMode.Open, Access = SIO.FileAccess.Read, Share = SIO.FileShare.Read, BufferSize = 1024 };
-    private static readonly SIO.FileStreamOptions largeFileStreamReadOptions = new() { Mode = SIO.FileMode.Open, Access = SIO.FileAccess.Read, Share = SIO.FileShare.Read, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
-    public SIO.Stream OpenRead() => SIO.File.Open(this.ConvertPathToInternal(), Length <= 1024 ? smallFileStreamReadOptions : largeFileStreamReadOptions);
+    private static readonly FileStreamOptions smallFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 1024 };
+    private static readonly FileStreamOptions largeFileStreamReadOptions = new() { Mode = FileMode.Open, Access = FileAccess.Read, Share = FileShare.Read, BufferSize = 32768, Options = FileOptions.Asynchronous };
+    public Stream OpenRead() => File.Open(this.ConvertPathToInternal(), Length <= 1024 ? smallFileStreamReadOptions : largeFileStreamReadOptions);
 
     //    private static readonly SIO.FileStreamOptions smallFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 1024 };
     //    private static readonly SIO.FileStreamOptions largeFileStreamWriteOptions = new() { Mode = SIO.FileMode.OpenOrCreate, Access = SIO.FileAccess.Write, Share = SIO.FileShare.None, BufferSize = 32768, Options = SIO.FileOptions.Asynchronous };
@@ -26,8 +132,7 @@ public class BinaryFile : FileEntry
 
     public PointerFile GetPointerFile()
     {
-        var pfPath = Path.ChangeExtension($"{ExtensionWithDot}{PointerFile.Extension}");
-        var fe = new FileEntry(this.FileSystem, pfPath);
+        var fe = new FileEntry(this.FileSystem, this.Path.GetPointerFilePath());
         return PointerFile.FromFileEntry(fe);
     }
 }
@@ -37,16 +142,39 @@ public class PointerFile : FileEntry
     public static readonly string Extension = ".pointer.arius";
 
     public static PointerFile FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+    public static PointerFile FromPath(IFileSystem fileSystem, UPath pointerFilePath) => new(fileSystem, pointerFilePath);
 
     private PointerFile(IFileSystem fileSystem, UPath path) : base(fileSystem, path)
     {
+        if (!path.IsPointerFilePath())
+            throw new ArgumentException("This is not a PointerFile path", nameof(path));
     }
 
     public BinaryFile GetBinaryFile()
     {
-        var bfPath = Path.RemoveSuffix(PointerFile.Extension);
-        var fe = new FileEntry(this.FileSystem, bfPath);
+        var fe = new FileEntry(this.FileSystem, Path.GetBinaryFilePath());
 
         return BinaryFile.FromFileEntry(fe);
     }
+
+    public Hash ReadHash()
+    {
+        var json = ReadAllBytes(); // throws a FileNotFoundException if not exists
+        var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
+        var h = new Hash(pfc!.BinaryHash);
+
+        return h;
+    }
+
+    public void Write(Hash h, DateTime creationTime, DateTime lastWriteTime)
+    {
+        var pfc = new PointerFileContents(h.ToLongString());
+
+        var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
+        WriteAllBytes(json);
+
+        CreationTime = creationTime;
+        LastWriteTime = lastWriteTime;
+    }
+    private record PointerFileContents(string BinaryHash);
 }

@@ -12,13 +12,29 @@ public static class FileEntryExtensions
         => fe.FileSystem.ConvertPathToInternal(fe.Path);
 
     public static bool IsPointerFile(this FileEntry fe) 
-        => fe.Path.IsPointerFile();
+        => fe.Path.IsPointerFilePath();
 }
 
 public static class UPathExtensions
 {
-    public static bool IsPointerFile(this UPath p) 
+    public static bool IsPointerFilePath(this UPath p) 
         => p.GetName().EndsWith(PointerFile.Extension, StringComparison.OrdinalIgnoreCase);
+
+    public static UPath GetPointerFilePath(this UPath binaryFilePath)
+    {
+        if (binaryFilePath.IsPointerFilePath())
+            throw new ArgumentException("Path is not a PointerFile path", nameof(binaryFilePath));
+
+        return binaryFilePath.ChangeExtension($"{binaryFilePath.GetExtensionWithDot()}{PointerFile.Extension}");
+    }
+
+    public static UPath GetBinaryFilePath(this UPath pointerFilePath)
+    {
+        if (!pointerFilePath.IsPointerFilePath())
+            throw new ArgumentException("Path is not a BinaryFile path", nameof(pointerFilePath));
+        
+        return pointerFilePath.RemoveSuffix(PointerFile.Extension);
+    }
 
     public static UPath RemoveSuffix(this UPath p, string value) 
         => new(p.FullName.RemoveSuffix(value, StringComparison.OrdinalIgnoreCase));

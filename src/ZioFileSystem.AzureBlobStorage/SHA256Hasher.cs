@@ -23,6 +23,9 @@ public class SHA256Hasher :  IDisposable
 
     public async Task<Hash> GetHashAsync(FilePair fp)
     {
+        if (fp.Type == FilePairType.PointerFileOnly)
+            return fp.PointerFile.ReadHash();
+
         var hashValue = await GetHashValueAsync(fp.BinaryFile);
         return new Hash(hashValue);
     }
