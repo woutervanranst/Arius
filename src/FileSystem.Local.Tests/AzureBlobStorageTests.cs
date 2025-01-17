@@ -51,7 +51,6 @@ public class AzureBlobStorageTests
         var root = pfs.ConvertPathFromInternal(@"C:\Users\RFC430\Downloads\New folder");
         var sfs = new SubFileSystem(pfs, root, true);
         var lfs = new FilePairFileSystem(sfs, true);
-        //var lfs = FilePairFileSystem.From(pfs, root, true);
 
         var x = lfs.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories).ToList();
 

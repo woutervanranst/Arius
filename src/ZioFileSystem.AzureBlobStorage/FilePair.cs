@@ -59,18 +59,6 @@ public class FilePair : FileEntry
 
 public class FilePairFileSystem : ComposeFileSystem
 {
-    //public static FilePairFileSystem From(IFileSystem fileSystem, UPath root, bool owned = true)
-    //{
-    //    var sfs = new SubFileSystem(fileSystem, root, owned);
-    //    return new FilePairFileSystem(sfs);
-    //}
-    //private FilePairFileSystem(IFileSystem fileSystem, bool owned = true) : base(fileSystem, UPath.Root, owned)
-    //{
-    //}
-    //public FilePairFileSystem(IFileSystem fileSystem, UPath root, bool owned = true) : base(fileSystem, root, owned)
-    //{
-    //}
-
     public FilePairFileSystem(IFileSystem? fileSystem, bool owned = true) : base(fileSystem, owned)
     {
     }
@@ -79,11 +67,7 @@ public class FilePairFileSystem : ComposeFileSystem
     {
         throw new NotImplementedException();
     }
-
     
-    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
-    private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
-
     protected override UPath ConvertPathToDelegate(UPath path) => path;
     protected override UPath ConvertPathFromDelegate(UPath path) => path;
 
@@ -98,13 +82,9 @@ public class FilePairFileSystem : ComposeFileSystem
         if (searchTarget != SearchTarget.File)
             throw new NotSupportedException();
 
-        //var xxx = (this as SubFileSystem).GetFileSystemEntry(path);
-
-        var fsi = FallbackSafe.GetFileSystemEntry(path); //base Fallback!.GetFileSystemEntry(path);
+        var fsi = FallbackSafe.GetFileSystemEntry(path);
         if (fsi is not DirectoryEntry d)
             throw new NotSupportedException();
-
-        //var x = d.EnumerateFiles().ToArray();
 
         foreach (var fe in EnumerateFiles(d))
         {
@@ -132,7 +112,7 @@ public class FilePairFileSystem : ComposeFileSystem
         }
     }
 
-    public static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory)
+    private static IEnumerable<FileEntry> EnumerateFiles(DirectoryEntry directory)
     {
         if (ShouldSkipDirectory(directory))
         {
@@ -170,6 +150,9 @@ public class FilePairFileSystem : ComposeFileSystem
             (file.Attributes & (FileAttributes.Hidden | FileAttributes.System)) != 0 ||
             ExcludedFiles.Contains(Path.GetFileName(file.FullName));
     }
+
+    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
+    private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
 }
 
 public class BinaryFile : FileEntry
