@@ -52,8 +52,6 @@ public class AzureBlobStorageTests
         var sfs = new SubFileSystem(pfs, root, true);
         var lfs = new FilePairFileSystem(sfs, true);
 
-        var x = lfs.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories).ToList();
-
         var c = GetBoundedChannel<FilePair>(100, true);
 
         var parallelism = 0;
@@ -92,7 +90,8 @@ public class AzureBlobStorageTests
 
         await pt;
 
-
+        // 6. Remove PointerFileEntries that do not exist on disk
+        handler.RemoveDeletedPointerFileEntries(sfs);
     }
 
     static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)

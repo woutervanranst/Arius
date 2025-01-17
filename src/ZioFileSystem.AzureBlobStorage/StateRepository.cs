@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
@@ -26,30 +28,34 @@ public class StateRepository
     private void OnChanges(int changes) => hasChanges = hasChanges || changes > 0;
     private bool hasChanges;
 
+    // --- BINARYPROPERTIES
+
     internal BinaryPropertiesDto? GetBinaryProperty(Hash h)
     {
-        using var db = GetContext();
+        using var context = GetContext();
 
-        return db.BinaryProperties.Find(h.Value);
+        return context.BinaryProperties.Find(h.Value);
     }
 
     internal void AddBinaryProperty(BinaryPropertiesDto bp)
     {
-        using var db = GetContext();
+        using var context = GetContext();
 
-        db.BinaryProperties.Add(bp);
-        db.SaveChanges();
+        context.BinaryProperties.Add(bp);
+        context.SaveChanges();
     }
+
+    // --- POINTERFILEENTRIES
 
     internal void UpsertPointerFileEntry(PointerFileEntryDto pfe)
     {
-        using var db = GetContext();
+        using var context = GetContext();
 
-        var existingPfe = db.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+        var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
 
         if (existingPfe is null)
         {
-            db.PointerFileEntries.Add(pfe);
+            context.PointerFileEntries.Add(pfe);
         }
         else
         {
@@ -57,6 +63,23 @@ public class StateRepository
             existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
         }
 
-        db.SaveChanges();
+        context.SaveChanges();
+    }
+
+    //internal IEnumerable<PointerFileEntryDto> GetPointerFileEntries()
+    //{
+    //    using var context = GetContext();
+    //    foreach (var pfe in context.PointerFileEntries)
+    //        yield return pfe;
+    //}
+
+    internal void DeletePointerFileEntries(Func<PointerFileEntryDto, bool> shouldBeDeleted)
+    {
+        using var context = GetContext();
+
+        foreach (var pfe in context.PointerFileEntries.Where(shouldBeDeleted))
+            context.PointerFileEntries.Remove(pfe);
+
+        context.SaveChanges();
     }
 }

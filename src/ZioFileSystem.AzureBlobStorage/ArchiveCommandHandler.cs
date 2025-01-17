@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Zio;
 
 namespace ZioFileSystem.AzureBlobStorage;
 
@@ -28,8 +29,6 @@ public class ArchiveCommandHandler
 
         hasher = new SHA256Hasher("wouter");
     }
-
-    
 
     public async Task UploadFileAsync(FilePair filePair)
     {
@@ -69,10 +68,10 @@ public class ArchiveCommandHandler
             await uploadTask;
         }
 
-        // Write the Pointer
+        // 4. Write the Pointer
         var pf = filePair.GetOrCreatePointerFile(h);
 
-        // Write the PointerFileEntry
+        // 5. Write the PointerFileEntry
         stateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
         {
             Hash = h.Value,
@@ -80,8 +79,11 @@ public class ArchiveCommandHandler
             CreationTimeUtc = pf.CreationTime,
             LastWriteTimeUtc = pf.LastWriteTime
         });
+    }
 
-        
+    public void RemoveDeletedPointerFileEntries(IFileSystem fs)
+    {
+        stateRepo.DeletePointerFileEntries(pfe => !fs.FileExists(pfe.RelativeName));
     }
 
     private async Task<AccessTier> SetAccessTier(BlockBlobClient bbc, long length)
