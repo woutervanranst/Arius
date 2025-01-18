@@ -24,8 +24,14 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public IProgress<string>? ProgressReporter { get; init; }
+    public IProgress<FileProgressUpdate>? ProgressReporter { get; init; }
 }
+
+public record FileProgressUpdate(
+    string FileName,
+    double Percentage,
+    string? StatusMessage = null
+);
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
@@ -47,7 +53,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
             //new ParallelOptions(),
-            GetParallelOptions(1),
+            GetParallelOptions(2),
             async (fp, ct) =>
             {
                 Interlocked.Increment(ref parallelism);
@@ -57,14 +63,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     //if (fp.BinaryFile.Exists && fp.BinaryFile.Length > 1024 * 1024 * 10)
                     //    return;
 
-                    request.ProgressReporter?.Report($"Starting {fp.FullName}");
+                    request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 0, "Starting"));
 
 
                     await UploadFileAsync(handlerContext, fp, cancellationToken: ct);
 
                     await Task.Delay(2000);
 
-                    request.ProgressReporter?.Report($"Finished {fp.FullName}");
+                    request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 100, "Completed"));
 
 
                 }
