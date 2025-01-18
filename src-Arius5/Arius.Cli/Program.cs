@@ -18,21 +18,21 @@ internal class Program
 
         var mediator = services.GetRequiredService<IMediator>();
 
-        await AnsiConsole.Progress()
-            .StartAsync(async ctx =>
+        await AnsiConsole.Status()
+            .StartAsync("Initializing...", async ctx =>
             {
-                // Create a single task (or multiple tasks if needed)
-                var task = ctx.AddTask("[green]Executing work...[/]", autoStart: false);
-
-                // We'll report increments to this IProgress<double>
-                var progressReporter = new Progress<double>(value =>
+                // Create a progress reporter for the files being processed
+                var progressReporter = new Progress<string>(message =>
                 {
-                    // Increment the Spectre.Console task by the reported value
-                    task.Increment(value);
-                });
+                    // Update the overall status text
+                    ctx.Status($"[cyan]{message}[/]");
 
-                // Start the progress task
-                task.StartTask();
+                    // Also write a line to the console
+                    AnsiConsole.MarkupLine(message);
+
+                    // If you want the spinner/status to update immediately
+                    ctx.Refresh();
+                });
 
                 // Execute the MediatR command and pass in our progress reporter
                 var c = new ArchiveCommand
@@ -52,8 +52,6 @@ internal class Program
                 };
 
                 await mediator.Send(c);
-
-                task.StopTask();
             });
     }
 }

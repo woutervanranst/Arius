@@ -24,7 +24,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public IProgress<double>? ProgressReporter { get; init; }
+    public IProgress<string>? ProgressReporter { get; init; }
 }
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
@@ -57,11 +57,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     //if (fp.BinaryFile.Exists && fp.BinaryFile.Length > 1024 * 1024 * 10)
                     //    return;
 
+                    request.ProgressReporter?.Report($"Starting {fp.FullName}");
+
+
                     await UploadFileAsync(handlerContext, fp, cancellationToken: ct);
 
                     await Task.Delay(2000);
 
-                    request.ProgressReporter?.Report(1);
+                    request.ProgressReporter?.Report($"Finished {fp.FullName}");
+
+
                 }
                 catch (Exception e)
                 {
