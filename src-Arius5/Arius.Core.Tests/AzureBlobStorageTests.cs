@@ -1,5 +1,9 @@
+using System.Text.Json.Serialization;
+using Arius.Core.Commands;
+using Arius.Core.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
 namespace FileSystem.Local.Tests;
@@ -46,8 +50,35 @@ public class AzureBlobStorageTests
             .AddEnvironmentVariables()
             .Build();
 
+        var config = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+
+        var c = new ArchiveCommand()
+        {
+            AccountName   = config.AccountName,
+            AccountKey    = config.AccountKey,
+            ContainerName = config.ContainerName ?? "atest",
+            Passphrase    = config.Passphrase,
+            RemoveLocal   = false,
+            Tier          = StorageTier.Cool,
+            LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder")
+        };
+
+        var ch = new ArchiveCommandHandler(NullLogger<ArchiveCommandHandler>.Instance);
+        await ch.Handle(c, CancellationToken.None);
+
     }
 
+    public record TestRemoteRepositoryOptions
+    {
+        public string AccountName { get; init; }
+
+        public string AccountKey { get; init; }
+
+        //[JsonIgnore]
+        public string ContainerName { get; set; }
+
+        public string Passphrase { get; init; }
+    }
 
 }
 
