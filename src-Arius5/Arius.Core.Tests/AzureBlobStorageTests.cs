@@ -52,7 +52,7 @@ public class AzureBlobStorageTests
 
         var config = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
 
-        var c = new ArchiveCommand()
+        var c = new ArchiveCommand
         {
             AccountName   = config.AccountName,
             AccountKey    = config.AccountKey,

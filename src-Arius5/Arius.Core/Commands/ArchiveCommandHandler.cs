@@ -23,6 +23,8 @@ public record ArchiveCommand : IRequest
     public required bool          RemoveLocal   { get; init; }
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
+
+    public IProgress<double>? ProgressReporter { get; init; }
 }
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
@@ -43,7 +45,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var parallelism = 0;
 
-        var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(),
+        var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
             //new ParallelOptions(),
             GetParallelOptions(1),
             async (fp, ct) =>
@@ -56,6 +58,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     //    return;
 
                     await UploadFileAsync(handlerContext, fp, cancellationToken: ct);
+
+                    await Task.Delay(2000);
+
+                    request.ProgressReporter?.Report(1);
                 }
                 catch (Exception e)
                 {
@@ -74,7 +80,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await pt;
 
         // 6. Remove PointerFileEntries that do not exist on disk
-        handlerContext.StateRepo.DeletePointerFileEntries(pfe => /* note this was sfs first */ !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+        handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
     private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
