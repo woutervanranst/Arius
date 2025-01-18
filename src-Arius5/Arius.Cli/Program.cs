@@ -4,6 +4,7 @@ using Arius.Core.Models;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
+using Spectre.Console.Rendering;
 using System.Collections.Concurrent;
 
 namespace Arius.Cli;
@@ -19,48 +20,33 @@ internal class Program
 
         var mediator = services.GetRequiredService<IMediator>();
 
+        AnsiConsole.Write(
+            new FigletText("Arius")
+                .LeftJustified()
+                .Color(Color.Red));
+
         await AnsiConsole.Progress()
             .AutoRefresh(true)
             .AutoClear(false)
             .HideCompleted(false)
-            .Columns(new ProgressColumn[]
-            {
+            .Columns(
                 new ElapsedTimeColumn(),
+                new SpinnerColumn(Spinner.Known.Star),
 
-                new TaskDescriptionColumn(),
-                new SpinnerColumn(Spinner.Known.Dots),
-
-
-
-                //new SpinnerColumn(Spinner.Known.Star),
-                //new TaskDescriptionColumn(),
-                //new ProgressBarColumn(),
-                ////new PercentageColumn(),
-                ////new RemainingTimeColumn(),
-                ////new SpinnerColumn()
-            })
+                new TaskDescriptionColumn() { Alignment = Justify.Left }
+                //new PaddedTaskDescriptionColumn(50),
+                //new TextPathColumn(),
+            )
             .StartAsync(async ctx =>
             {
-                // We keep track of tasks by file name
                 var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                // 2. Create an IProgress<FileProgressUpdate> that the handler will call
                 var progressUpdates = new Progress<FileProgressUpdate>(update =>
                 {
-                    // If this file is new, create a new task
                     var task = taskDictionary.GetOrAdd(update.FileName, fileName =>
                     {
-                        // Create a Spectre Console progress task for this file
-                        var t = ctx.AddTask($"[blue]{fileName}[/]", autoStart: true).IsIndeterminate(); //, autoStart: true).IsIndeterminate(); //, maxValue: 100, autoStart:true );
-                        //t.IsIndeterminate = true;
-                        //t.StartTask();
-                        //t.IsIndeterminate = true;
-                        //t.StartTask();
-                        return t;
+                        return ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate();
                     });
-
-                    // Update the current progress percentage for this file
-                    //task.Value = update.Percentage;
 
                     // Optionally display some extra status text in the description
                     if (!string.IsNullOrWhiteSpace(update.StatusMessage))
@@ -71,9 +57,7 @@ internal class Program
 
                     // If the file is complete, we can stop the task
                     if (update.Percentage >= 100)
-                    {
                         task.StopTask();
-                    }
                 });
 
                 // 3. Send the MediatR command and wait for completion
@@ -99,5 +83,71 @@ internal class Program
                 // Once the handler completes, all updates should have been reported
                 AnsiConsole.MarkupLine("[green]All files processed![/]");
             });
+    }
+}
+
+internal sealed class PaddedTaskDescriptionColumn : ProgressColumn
+{
+    private readonly int _width;
+
+    public PaddedTaskDescriptionColumn(int width)
+    {
+        _width = width;
+    }
+
+    // Disable wrapping so we can manually handle it (pad or truncate).
+    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+    {
+        var description = task.Description ?? string.Empty;
+
+        // Truncate if too long
+        if (description.Length > _width)
+        {
+            description = description.Substring(0, _width - 1) + "…";
+        }
+
+        // Pad right if too short
+        if (description.Length < _width)
+        {
+            description = description.PadRight(_width);
+        }
+
+        return new Markup(description.EscapeMarkup());
+    }
+
+    protected override bool NoWrap => true;
+}
+
+internal sealed class TextPathColumn : ProgressColumn
+{
+    // Optional: let you set a custom style or justification, etc.
+    public Style?   RootStyle      { get; init; }
+    public Style?   SeparatorStyle { get; init; }
+    public Style?   StemStyle      { get; init; }
+    public Style?   LeafStyle      { get; init; }
+    public Justify? Justification  { get; init; }
+
+    // Disable wrapping so Spectre.Console will rely on your `TextPath` for measuring.
+    protected override bool NoWrap => true;
+
+    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+    {
+        // If there's no description, just return a blank text
+        if (string.IsNullOrWhiteSpace(task.Description))
+        {
+            return new Markup("[grey]No path[/]");
+        }
+
+        // Create a new TextPath from the task description
+        var path = new TextPath(task.Description)
+        {
+            RootStyle      = RootStyle ?? Style.Plain,
+            SeparatorStyle = SeparatorStyle ?? Style.Plain,
+            StemStyle      = StemStyle ?? Style.Plain,
+            LeafStyle      = LeafStyle ?? Style.Plain,
+            Justification  = Justification
+        };
+
+        return path;
     }
 }

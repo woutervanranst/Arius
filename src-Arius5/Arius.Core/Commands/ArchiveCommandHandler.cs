@@ -53,7 +53,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
             //new ParallelOptions(),
-            GetParallelOptions(2),
+            GetParallelOptions(1),
             async (fp, ct) =>
             {
                 Interlocked.Increment(ref parallelism);
