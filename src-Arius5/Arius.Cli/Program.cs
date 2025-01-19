@@ -40,45 +40,8 @@ internal class Program
             )
             .StartAsync(async ctx =>
             {
-                var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
-
-                var progressUpdates = new Progress<ProgressUpdate>(u =>
-                {
-                    if (u is TaskProgressUpdate tpu)
-                    {
-                        var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
-
-                        // Optionally display some extra status text in the description
-                        if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
-                        {
-                            // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                            task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
-                        }
-
-                        // If the file is complete, we can stop the task
-                        if (tpu.Percentage >= 100)
-                            task.StopTask();
-                    }
-                    else if (u is FileProgressUpdate fpu)
-                    {
-                        var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
-
-                        // Optionally display some extra status text in the description
-                        if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
-                        {
-                            // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                            task.Description = $"[blue]{fpu.FileName}[/] ({fpu.StatusMessage})";
-                        }
-
-                        task.Value = fpu.Percentage;
-
-                        // If the file is complete, we can stop the task
-                        if (fpu.Percentage >= 100)
-                            task.StopTask();
-                    }
-                    else
-                        throw new ArgumentException();
-                });
+                var queue = new ConcurrentQueue<ProgressUpdate>();
+                var pu          = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
 
                 // 3. Send the MediatR command and wait for completion
                 // The handler will report progress via 'progressUpdates'
@@ -88,17 +51,63 @@ internal class Program
                     //AccountKey    = config.AccountKey,
                     //ContainerName = config.ContainerName ?? "atest",
                     //Passphrase    = config.Passphrase,
-                    AccountName = "ariusci",
+                    AccountName   = "ariusci",
                     ContainerName = "atest",
-                    Passphrase = "woutervr",
-                    RemoveLocal = false,
-                    Tier = StorageTier.Cool,
-                    LocalRoot = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder"),
+                    Passphrase    = "woutervr",
+                    RemoveLocal   = false,
+                    Tier          = StorageTier.Cool,
+                    LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\"),
 
-                    ProgressReporter = progressUpdates
+                    ProgressReporter = pu
                 };
 
-                await mediator.Send(c);
+                var t = mediator.Send(c);
+
+                
+                var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
+
+                while (!t.IsCompleted)
+                {
+                    while (queue.TryDequeue(out var u))
+                    {
+                        if (u is TaskProgressUpdate tpu)
+                        {
+                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
+
+                            // Optionally display some extra status text in the description
+                            if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                            {
+                                // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                                task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                            }
+
+                            // If the file is complete, we can stop the task
+                            if (tpu.Percentage >= 100)
+                                task.StopTask();
+                        }
+                        else if (u is FileProgressUpdate fpu)
+                        {
+                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
+
+                            // Optionally display some extra status text in the description
+                            if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
+                            {
+                                // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                                task.Description = $"[blue]{fpu.FileName}[/] ({fpu.StatusMessage})";
+                            }
+
+                            task.Value = fpu.Percentage;
+
+                            // If the file is complete, we can stop the task
+                            if (fpu.Percentage >= 100)
+                                task.StopTask();
+                        }
+                        else
+                            throw new ArgumentException();
+                    }
+                }
+
+                
 
                 // Once the handler completes, all updates should have been reported
                 AnsiConsole.MarkupLine("[green]All files processed![/]");

@@ -45,7 +45,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var handlerContext = await HandlerContext.CreateAsync(request);
 
         var indexedFilesChannel = GetBoundedChannel<FilePair>(100, true);
-        var hashedFilesChannel  = GetBoundedChannel<FilePairWithHash>(100, true);
+        var hashedFilesChannel  = GetBoundedChannel<FilePairWithHash>(20, true);
 
         var indexTask   = CreateIndexTask(handlerContext, indexedFilesChannel, cancellationToken);
         var hashTask    = CreateHashTask(handlerContext, indexedFilesChannel, hashedFilesChannel, cancellationToken);
@@ -89,6 +89,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     var h = await handlerContext.Hasher.GetHashAsync(filePair);
 
                     await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, $"Hashing done, waiting in upload queue..."));
                 }
                 catch (Exception e)
                 {
@@ -125,7 +127,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
         {
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, "Uploading..."));
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Uploading..."));
 
             var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
 
