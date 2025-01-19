@@ -3,6 +3,7 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
@@ -23,6 +24,8 @@ public record ArchiveCommand : IRequest
     public required bool          RemoveLocal   { get; init; }
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
+
+    public int Parallelism { get; init; } = -1;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -55,31 +58,30 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         return Task.Run(async () =>
         {
+            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
+
+            int fileCount = 0;
             foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
             {
+                Interlocked.Increment(ref fileCount);
                 await c.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
             }
 
             c.Writer.Complete();
+
+            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files" ));
         }, cancellationToken);
     }
 
     private Task ProcessTask(HandlerContext handlerContext, Channel<FilePair> c, CancellationToken cancellationToken)
     {
         return Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
-            //new ParallelOptions() { CancellationToken = cancellationToken },
-            GetParallelOptions(1, cancellationToken),
-            async (fp, innerCancellationToken) =>
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
+            async (filePair, innerCancellationToken) =>
             {
                 try
                 {
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 0, "Starting"));
-
-                    await UploadFileAsync(handlerContext, fp, cancellationToken: innerCancellationToken);
-
-                    await Task.Delay(2000);
-
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 100, "Completed"));
+                    await UploadFileAsync(handlerContext, filePair, cancellationToken: innerCancellationToken);
                 }
                 catch (Exception e)
                 {
@@ -87,22 +89,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             });
     }
 
-
-
-    private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
-        => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
-        {
-            FullMode = BoundedChannelFullMode.Wait,
-            AllowSynchronousContinuations = false,
-            SingleWriter = singleWriter,
-            SingleReader = false
-        });
-
-    private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
-        => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
-
     private async Task UploadFileAsync(HandlerContext handlerContext, FilePair filePair, CancellationToken cancellationToken = default)
     {
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 0, "Hashing..."));
+
         // 1. Hash the file
         var h = await handlerContext.Hasher.GetHashAsync(filePair);
 
@@ -112,6 +102,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
         {
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, "Uploading..."));
+
             var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
 
             var ss = filePair.BinaryFile.OpenRead();
@@ -142,16 +134,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
 
         // 4. Write the Pointer
-        var pf = filePair.GetOrCreatePointerFile(h);
+        //var pf = filePair.GetOrCreatePointerFile(h);
 
-        // 5. Write the PointerFileEntry
-        handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
-        {
-            Hash = h.Value,
-            RelativeName = pf.Path.FullName,
-            CreationTimeUtc = pf.CreationTime,
-            LastWriteTimeUtc = pf.LastWriteTime
-        });
+        //// 5. Write the PointerFileEntry
+        //handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
+        //{
+        //    Hash = h.Value,
+        //    RelativeName = pf.Path.FullName,
+        //    CreationTimeUtc = pf.CreationTime,
+        //    LastWriteTimeUtc = pf.LastWriteTime
+        //});
+        
+        //await Task.Delay(2000);
+
+
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+
     }
 
     private static AccessTier GetPolicyAccessTier(HandlerContext handlerContext, long length)
@@ -217,6 +215,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
+
+
+
+    private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
+        => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            AllowSynchronousContinuations = false,
+            SingleWriter = singleWriter,
+            SingleReader = false
+        });
+
+    //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
+    //    => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
+
+    
 
     //private PointerFile CreatePointerFile(BinaryFile bf, Hash h)
     //{
