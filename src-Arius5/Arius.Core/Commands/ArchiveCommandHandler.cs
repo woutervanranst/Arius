@@ -38,14 +38,18 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
+    private record FilePairWithHash(FilePair FilePair, Hash Hash);
+
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request);
 
-        var c = GetBoundedChannel<FilePair>(100, true);
+        var indexedFilesChannel = GetBoundedChannel<FilePair>(100, true);
+        var hashedFilesChannel  = GetBoundedChannel<FilePairWithHash>(100, true);
 
-        var indexTask = CreateIndexTask(handlerContext, c, cancellationToken);
-        var processTask = ProcessTask(handlerContext, c, cancellationToken);
+        var indexTask   = CreateIndexTask(handlerContext, indexedFilesChannel, cancellationToken);
+        var hashTask    = CreateHashTask(handlerContext, indexedFilesChannel, hashedFilesChannel, cancellationToken);
+        var processTask = ProcessTask(handlerContext, hashedFilesChannel, cancellationToken);
 
         await processTask;
         //await indexTask;
@@ -54,9 +58,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
-    private Task CreateIndexTask(HandlerContext handlerContext, Channel<FilePair> c, CancellationToken cancellationToken)
-    {
-        return Task.Run(async () =>
+    private Task CreateIndexTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, CancellationToken cancellationToken) =>
+        Task.Run(async () =>
         {
             handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
 
@@ -64,37 +67,57 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
             {
                 Interlocked.Increment(ref fileCount);
-                await c.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
+                await indexedFilesChannel.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
             }
 
-            c.Writer.Complete();
+            indexedFilesChannel.Writer.Complete();
 
-            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files" ));
+            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
         }, cancellationToken);
-    }
 
-    private Task ProcessTask(HandlerContext handlerContext, Channel<FilePair> c, CancellationToken cancellationToken)
+    private Task CreateHashTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken)
     {
-        return Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
+        var t = Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
             async (filePair, innerCancellationToken) =>
             {
                 try
                 {
-                    await UploadFileAsync(handlerContext, filePair, cancellationToken: innerCancellationToken);
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 0, "Hashing..."));
+
+                    // 1. Hash the file
+                    var h = await handlerContext.Hasher.GetHashAsync(filePair);
+
+                    await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                }
+                catch (Exception e)
+                {
+                }
+
+            });
+
+        t.ContinueWith(_ => hashedFilesChannel.Writer.Complete());
+
+        return t;
+    }
+
+    private Task ProcessTask(HandlerContext handlerContext, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken) =>
+        Parallel.ForEachAsync(hashedFilesChannel.Reader.ReadAllAsync(cancellationToken),
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
+            async (filePairWithHash, innerCancellationToken) =>
+            {
+                try
+                {
+                    await UploadFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
                 catch (Exception e)
                 {
                 }
             });
-    }
 
-    private async Task UploadFileAsync(HandlerContext handlerContext, FilePair filePair, CancellationToken cancellationToken = default)
+    private async Task UploadFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
-        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 0, "Hashing..."));
-
-        // 1. Hash the file
-        var h = await handlerContext.Hasher.GetHashAsync(filePair);
+        var (filePair, h) = filePairWithHash;
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
         var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
