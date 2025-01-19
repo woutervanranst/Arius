@@ -3,10 +3,10 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using Humanizer;
 using MediatR;
 using System.Net;
 using System.Threading.Channels;
@@ -25,7 +25,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = -1;
+    public int Parallelism { get; init; } = 5;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -83,7 +83,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 try
                 {
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 0, "Hashing..."));
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 10, $"Hashing {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()} ..."));
 
                     // 1. Hash the file
                     var h = await handlerContext.Hasher.GetHashAsync(filePair);

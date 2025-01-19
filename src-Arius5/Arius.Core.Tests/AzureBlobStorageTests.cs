@@ -22,6 +22,8 @@ public class AzureBlobStorageTests
     {
         var stateDatabaseFile = new FileInfo("state.db");
         stateDatabaseFile.Delete();
+
+        File.Delete(@"C:\Repos\Arius\src-Arius5\Arius.Cli\bin\Debug\net8.0\state.db");
     }
 
     //[Fact]

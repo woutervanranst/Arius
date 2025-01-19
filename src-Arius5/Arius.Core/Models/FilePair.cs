@@ -28,6 +28,9 @@ public class FilePair : FileEntry
     public BinaryFile BinaryFile { get; }
     public PointerFile PointerFile { get; }
 
+    public BinaryFile? ExistingBinaryFile => BinaryFile.Exists ? BinaryFile : null;
+    public PointerFile? ExistingPointerFile => PointerFile.Exists ? PointerFile : null;
+
     public FilePairType Type
     {
         get
@@ -44,6 +47,8 @@ public class FilePair : FileEntry
             throw new InvalidOperationException();
         }
     }
+
+    public long? Length => ExistingBinaryFile?.Length;
 
     public PointerFile GetOrCreatePointerFile(Hash h)
     {

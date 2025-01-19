@@ -31,7 +31,8 @@ internal class Program
             .HideCompleted(false)
             .Columns(
                 new ElapsedTimeColumn(),
-                new SpinnerColumn(Spinner.Known.Star),
+                //new SpinnerColumn(Spinner.Known.Star),
+                new ProgressBarColumn(),
 
                 new TaskDescriptionColumn() { Alignment = Justify.Right }
                 //new PaddedTaskDescriptionColumn(50),
@@ -45,7 +46,7 @@ internal class Program
                 {
                     if (u is TaskProgressUpdate tpu)
                     {
-                        var task = taskDictionary.GetOrAdd(tpu.TaskName, fileName => ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate());
+                        var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
 
                         // Optionally display some extra status text in the description
                         if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
@@ -60,7 +61,7 @@ internal class Program
                     }
                     else if (u is FileProgressUpdate fpu)
                     {
-                        var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate());
+                        var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
 
                         // Optionally display some extra status text in the description
                         if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
@@ -68,6 +69,8 @@ internal class Program
                             // E.g. "[blue]file.txt[/] (Reading... 50%)"
                             task.Description = $"[blue]{fpu.FileName}[/] ({fpu.StatusMessage})";
                         }
+
+                        task.Value = fpu.Percentage;
 
                         // If the file is complete, we can stop the task
                         if (fpu.Percentage >= 100)
