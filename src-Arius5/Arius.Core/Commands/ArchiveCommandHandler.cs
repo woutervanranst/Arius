@@ -3,11 +3,14 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure;
+using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
+using System.Net;
 using System.Threading.Channels;
 using Zio;
 using Zio.FileSystems;
@@ -24,14 +27,12 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public IProgress<FileProgressUpdate>? ProgressReporter { get; init; }
+    public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
 
-public record FileProgressUpdate(
-    string FileName,
-    double Percentage,
-    string? StatusMessage = null
-);
+public record ProgressUpdate;
+public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
+public record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
@@ -49,36 +50,24 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var c = GetBoundedChannel<FilePair>(100, true);
 
-        var parallelism = 0;
-
         var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
             //new ParallelOptions(),
             GetParallelOptions(1),
             async (fp, ct) =>
             {
-                Interlocked.Increment(ref parallelism);
-
                 try
                 {
-                    //if (fp.BinaryFile.Exists && fp.BinaryFile.Length > 1024 * 1024 * 10)
-                    //    return;
-
                     request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 0, "Starting"));
-
 
                     await UploadFileAsync(handlerContext, fp, cancellationToken: ct);
 
                     await Task.Delay(2000);
 
                     request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 100, "Completed"));
-
-
                 }
                 catch (Exception e)
                 {
                 }
-
-                Interlocked.Decrement(ref parallelism);
             });
 
         foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
@@ -238,12 +227,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     { 
         public HandlerContext(ArchiveCommand request)
         {
-            Request = request;
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={request.AccountName};AccountKey={request.AccountKey};EndpointSuffix=core.windows.net";
-            ContainerClient  = new BlobContainerClient(connectionString, request.ContainerName, new BlobClientOptions());
-
-            StateRepo = new StateRepository();
-            Hasher    = new SHA256Hasher(request.Passphrase);
+            Request         = request;
+            ContainerClient = InitializeContainerClient();
+            StateRepo       = InitializeStateRepository();
+            Hasher          = new SHA256Hasher(request.Passphrase);
 
             var pfs  = new PhysicalFileSystem();
             var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
@@ -256,5 +243,32 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         public StateRepository     StateRepo       { get; }
         public SHA256Hasher        Hasher          { get; }
         public FilePairFileSystem  FileSystem      { get; }
+
+        private BlobContainerClient InitializeContainerClient()
+        {
+            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 0));
+
+            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={Request.AccountName};AccountKey={Request.AccountKey};EndpointSuffix=core.windows.net";
+            var bbc = new BlobContainerClient(connectionString, Request.ContainerName, new BlobClientOptions());
+            var r = bbc.CreateIfNotExists(PublicAccessType.None);
+
+            if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+                Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 100, "Created"));
+            else
+                Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 100, "Already existed"));
+
+            return bbc;
+        }
+
+        private StateRepository InitializeStateRepository()
+        {
+            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
+
+            var r = new StateRepository();
+
+            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
+
+            return r;
+        }
     }
 }

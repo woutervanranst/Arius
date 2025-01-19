@@ -33,7 +33,7 @@ internal class Program
                 new ElapsedTimeColumn(),
                 new SpinnerColumn(Spinner.Known.Star),
 
-                new TaskDescriptionColumn() { Alignment = Justify.Left }
+                new TaskDescriptionColumn() { Alignment = Justify.Right }
                 //new PaddedTaskDescriptionColumn(50),
                 //new TextPathColumn(),
             )
@@ -41,23 +41,40 @@ internal class Program
             {
                 var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
-                var progressUpdates = new Progress<FileProgressUpdate>(update =>
+                var progressUpdates = new Progress<ProgressUpdate>(u =>
                 {
-                    var task = taskDictionary.GetOrAdd(update.FileName, fileName =>
+                    if (u is TaskProgressUpdate tpu)
                     {
-                        return ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate();
-                    });
+                        var task = taskDictionary.GetOrAdd(tpu.TaskName, fileName => ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate());
 
-                    // Optionally display some extra status text in the description
-                    if (!string.IsNullOrWhiteSpace(update.StatusMessage))
-                    {
-                        // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                        task.Description = $"[blue]{update.FileName}[/] ({update.StatusMessage})";
+                        // Optionally display some extra status text in the description
+                        if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                        {
+                            // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                            task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                        }
+
+                        // If the file is complete, we can stop the task
+                        if (tpu.Percentage >= 100)
+                            task.StopTask();
                     }
+                    else if (u is FileProgressUpdate fpu)
+                    {
+                        var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]").IsIndeterminate());
 
-                    // If the file is complete, we can stop the task
-                    if (update.Percentage >= 100)
-                        task.StopTask();
+                        // Optionally display some extra status text in the description
+                        if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
+                        {
+                            // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                            task.Description = $"[blue]{fpu.FileName}[/] ({fpu.StatusMessage})";
+                        }
+
+                        // If the file is complete, we can stop the task
+                        if (fpu.Percentage >= 100)
+                            task.StopTask();
+                    }
+                    else
+                        throw new ArgumentException();
                 });
 
                 // 3. Send the MediatR command and wait for completion
