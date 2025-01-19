@@ -93,7 +93,7 @@ internal class Program
                             if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
                             {
                                 // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                                task.Description = $"[blue]{fpu.FileName}[/] ({fpu.StatusMessage})";
+                                task.Description = $"[blue]{TruncateAndRightJustify(fpu.FileName,  50)}[/] ({TruncateAndLeftJustify(fpu.StatusMessage, 20)})";
                             }
 
                             task.Value = fpu.Percentage;
@@ -115,68 +115,108 @@ internal class Program
     }
 }
 
-internal sealed class PaddedTaskDescriptionColumn : ProgressColumn
-{
-    private readonly int _width;
-
-    public PaddedTaskDescriptionColumn(int width)
+    static string TruncateAndRightJustify(string input, int width)
     {
-        _width = width;
+        //if (width <= 0) 
+        //    return string.Empty;
+
+        //string truncated = input.Length > width ? input[^width..] : input;
+
+        //return truncated.PadLeft(width);
+
+        if (width <= 0) return string.Empty;
+
+        const string ellipsis     = "...";
+        int          contentWidth = width - ellipsis.Length;
+
+        // Ensure there's enough space for the ellipsis
+        if (contentWidth <= 0)
+        {
+            return ellipsis[..width];
+        }
+
+        // Truncate from the left and prepend with ellipsis
+        string truncated = input.Length > contentWidth
+            ? ellipsis + input[^contentWidth..]
+            : input;
+
+        // Right justify the resulting string by padding it on the left
+        return truncated.PadLeft(width);
     }
 
-    // Disable wrapping so we can manually handle it (pad or truncate).
-    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+    static string TruncateAndLeftJustify(string input, int width)
     {
-        var description = task.Description ?? string.Empty;
+        if (width <= 0) 
+            return string.Empty;
 
-        // Truncate if too long
-        if (description.Length > _width)
-        {
-            description = description.Substring(0, _width - 1) + "…";
-        }
+        string truncated = input.Length > width ? input[..width] : input;
 
-        // Pad right if too short
-        if (description.Length < _width)
-        {
-            description = description.PadRight(_width);
-        }
-
-        return new Markup(description.EscapeMarkup());
-    }
-
-    protected override bool NoWrap => true;
-}
-
-internal sealed class TextPathColumn : ProgressColumn
-{
-    // Optional: let you set a custom style or justification, etc.
-    public Style?   RootStyle      { get; init; }
-    public Style?   SeparatorStyle { get; init; }
-    public Style?   StemStyle      { get; init; }
-    public Style?   LeafStyle      { get; init; }
-    public Justify? Justification  { get; init; }
-
-    // Disable wrapping so Spectre.Console will rely on your `TextPath` for measuring.
-    protected override bool NoWrap => true;
-
-    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
-    {
-        // If there's no description, just return a blank text
-        if (string.IsNullOrWhiteSpace(task.Description))
-        {
-            return new Markup("[grey]No path[/]");
-        }
-
-        // Create a new TextPath from the task description
-        var path = new TextPath(task.Description)
-        {
-            RootStyle      = RootStyle ?? Style.Plain,
-            SeparatorStyle = SeparatorStyle ?? Style.Plain,
-            StemStyle      = StemStyle ?? Style.Plain,
-            LeafStyle      = LeafStyle ?? Style.Plain,
-            Justification  = Justification
-        };
-
-        return path;
+        return truncated.PadRight(width);
     }
 }
+
+//internal sealed class PaddedTaskDescriptionColumn : ProgressColumn
+//{
+//    private readonly int _width;
+
+//    public PaddedTaskDescriptionColumn(int width)
+//    {
+//        _width = width;
+//    }
+
+//    // Disable wrapping so we can manually handle it (pad or truncate).
+//    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+//    {
+//        var description = task.Description ?? string.Empty;
+
+//        // Truncate if too long
+//        if (description.Length > _width)
+//        {
+//            description = description.Substring(0, _width - 1) + "…";
+//        }
+
+//        // Pad right if too short
+//        if (description.Length < _width)
+//        {
+//            description = description.PadRight(_width);
+//        }
+
+//        return new Markup(description.EscapeMarkup());
+//    }
+
+//    protected override bool NoWrap => true;
+//}
+
+//internal sealed class TextPathColumn : ProgressColumn
+//{
+//    // Optional: let you set a custom style or justification, etc.
+//    public Style?   RootStyle      { get; init; }
+//    public Style?   SeparatorStyle { get; init; }
+//    public Style?   StemStyle      { get; init; }
+//    public Style?   LeafStyle      { get; init; }
+//    public Justify? Justification  { get; init; }
+
+//    // Disable wrapping so Spectre.Console will rely on your `TextPath` for measuring.
+//    protected override bool NoWrap => true;
+
+//    public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+//    {
+//        // If there's no description, just return a blank text
+//        if (string.IsNullOrWhiteSpace(task.Description))
+//        {
+//            return new Markup("[grey]No path[/]");
+//        }
+
+//        // Create a new TextPath from the task description
+//        var path = new TextPath(task.Description)
+//        {
+//            RootStyle      = RootStyle ?? Style.Plain,
+//            SeparatorStyle = SeparatorStyle ?? Style.Plain,
+//            StemStyle      = StemStyle ?? Style.Plain,
+//            LeafStyle      = LeafStyle ?? Style.Plain,
+//            Justification  = Justification
+//        };
+
+//        return path;
+//    }
+//}

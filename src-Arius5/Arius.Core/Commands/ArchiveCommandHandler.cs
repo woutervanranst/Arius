@@ -25,7 +25,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = 5;
+    public int Parallelism { get; init; } = 3;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -88,9 +88,13 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     // 1. Hash the file
                     var h = await handlerContext.Hasher.GetHashAsync(filePair);
 
-                    await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, $"Waiting for upload..."));
 
-                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, $"Hashing done, waiting in upload queue..."));
+                    await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                }
+                catch (IOException e)
+                {
+                    // TODO when the file cannot be accessed
                 }
                 catch (Exception e)
                 {
@@ -127,7 +131,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
         {
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, "Uploading..."));
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
 
