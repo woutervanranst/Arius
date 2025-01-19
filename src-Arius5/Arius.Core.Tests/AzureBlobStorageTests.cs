@@ -63,7 +63,7 @@ public class AzureBlobStorageTests
             LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder")
         };
 
-        var ch = new ArchiveCommandHandler(NullLogger<ArchiveCommandHandler>.Instance);
+        var ch = new ArchiveCommandHandler();
         await ch.Handle(c, CancellationToken.None);
 
     }

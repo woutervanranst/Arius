@@ -3,13 +3,10 @@ using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Azure;
-using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using MediatR;
-using Microsoft.Extensions.Logging;
-using System.ComponentModel;
 using System.Net;
 using System.Threading.Channels;
 using Zio;
@@ -36,13 +33,7 @@ public record FileProgressUpdate(string FileName, double Percentage, string? Sta
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
-    private readonly ILogger<ArchiveCommandHandler>         logger;
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
-
-    public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger)
-    {
-        this.logger = logger;
-    }
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
@@ -50,38 +41,53 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var c = GetBoundedChannel<FilePair>(100, true);
 
-        var pt = Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
-            //new ParallelOptions(),
-            GetParallelOptions(1),
-            async (fp, ct) =>
+        var indexTask = CreateIndexTask(handlerContext, c, cancellationToken);
+        var processTask = ProcessTask(handlerContext, c, cancellationToken);
+
+        await processTask;
+        //await indexTask;
+
+        // 6. Remove PointerFileEntries that do not exist on disk
+        handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
+    }
+
+    private Task CreateIndexTask(HandlerContext handlerContext, Channel<FilePair> c, CancellationToken cancellationToken)
+    {
+        return Task.Run(async () =>
+        {
+            foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
+            {
+                await c.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
+            }
+
+            c.Writer.Complete();
+        }, cancellationToken);
+    }
+
+    private Task ProcessTask(HandlerContext handlerContext, Channel<FilePair> c, CancellationToken cancellationToken)
+    {
+        return Parallel.ForEachAsync(c.Reader.ReadAllAsync(cancellationToken),
+            //new ParallelOptions() { CancellationToken = cancellationToken },
+            GetParallelOptions(1, cancellationToken),
+            async (fp, innerCancellationToken) =>
             {
                 try
                 {
-                    request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 0, "Starting"));
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 0, "Starting"));
 
-                    await UploadFileAsync(handlerContext, fp, cancellationToken: ct);
+                    await UploadFileAsync(handlerContext, fp, cancellationToken: innerCancellationToken);
 
                     await Task.Delay(2000);
 
-                    request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 100, "Completed"));
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(fp.FullName, 100, "Completed"));
                 }
                 catch (Exception e)
                 {
                 }
             });
-
-        foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
-        {
-            await c.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
-        }
-
-        c.Writer.Complete();
-
-        await pt;
-
-        // 6. Remove PointerFileEntries that do not exist on disk
-        handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
+
+
 
     private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
         => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
