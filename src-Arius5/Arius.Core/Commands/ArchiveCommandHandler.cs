@@ -46,7 +46,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
-        var handlerContext = new HandlerContext(request);
+        var handlerContext = await HandlerContext.CreateAsync(request);
 
         var c = GetBoundedChannel<FilePair>(100, true);
 
@@ -224,51 +224,60 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
 
     private class HandlerContext
-    { 
-        public HandlerContext(ArchiveCommand request)
+    {
+        public static async Task<HandlerContext> CreateAsync(ArchiveCommand request)
         {
-            Request         = request;
-            ContainerClient = InitializeContainerClient();
-            StateRepo       = InitializeStateRepository();
-            Hasher          = new SHA256Hasher(request.Passphrase);
+            return new HandlerContext
+            {
+                Request = request,
+                ContainerClient = await GetContainerClientAsync(),
+                StateRepo = await GetStateRepositoryAsync(),
+                Hasher = new SHA256Hasher(request.Passphrase),
+                FileSystem = GetFileSystem()
+            };
 
-            var pfs  = new PhysicalFileSystem();
-            var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-            var sfs  = new SubFileSystem(pfs, root, true);
-            FileSystem = new FilePairFileSystem(sfs, true);
+
+            async Task<BlobContainerClient> GetContainerClientAsync()
+            {
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
+
+                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={request.AccountName};AccountKey={request.AccountKey};EndpointSuffix=core.windows.net";
+                var bbc              = new BlobContainerClient(connectionString, request.ContainerName, new BlobClientOptions());
+
+                var r = await bbc.CreateIfNotExistsAsync(PublicAccessType.None);
+
+                if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, "Created"));
+                else
+                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, "Already existed"));
+
+                return bbc;
+            }
+
+            async Task<StateRepository> GetStateRepositoryAsync()
+            {
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
+
+                var r = new StateRepository();
+
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
+
+                return r;
+            }
+
+            FilePairFileSystem GetFileSystem()
+            {
+                var pfs = new PhysicalFileSystem();
+                var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
+                var sfs = new SubFileSystem(pfs, root, true);
+                return new FilePairFileSystem(sfs, true);
+            }
         }
 
-        public ArchiveCommand      Request         { get; }
-        public BlobContainerClient ContainerClient { get; }
-        public StateRepository     StateRepo       { get; }
-        public SHA256Hasher        Hasher          { get; }
-        public FilePairFileSystem  FileSystem      { get; }
-
-        private BlobContainerClient InitializeContainerClient()
-        {
-            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 0));
-
-            var connectionString = $"DefaultEndpointsProtocol=https;AccountName={Request.AccountName};AccountKey={Request.AccountKey};EndpointSuffix=core.windows.net";
-            var bbc = new BlobContainerClient(connectionString, Request.ContainerName, new BlobClientOptions());
-            var r = bbc.CreateIfNotExists(PublicAccessType.None);
-
-            if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
-                Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 100, "Created"));
-            else
-                Request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{Request.ContainerName}'...", 100, "Already existed"));
-
-            return bbc;
-        }
-
-        private StateRepository InitializeStateRepository()
-        {
-            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
-
-            var r = new StateRepository();
-
-            Request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
-
-            return r;
-        }
+        public required ArchiveCommand      Request         { get; init; }
+        public required BlobContainerClient ContainerClient { get; init; }
+        public required StateRepository     StateRepo       { get; init; }
+        public required SHA256Hasher        Hasher          { get; init; }
+        public required FilePairFileSystem  FileSystem      { get; init; }
     }
 }
