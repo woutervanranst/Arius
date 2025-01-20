@@ -207,14 +207,13 @@ public class PointerFile : FileEntry
     {
         var json = ReadAllBytes(); // throws a FileNotFoundException if not exists
         var pfc = JsonSerializer.Deserialize<PointerFileContents>(json);
-        var h = new Hash(pfc!.BinaryHash);
 
-        return h;
+        return pfc!.BinaryHash;
     }
 
     public void Write(Hash h, DateTime creationTime, DateTime lastWriteTime)
     {
-        var pfc = new PointerFileContents(h.ToLongString());
+        var pfc = new PointerFileContents(h.ToString());
 
         var json = JsonSerializer.SerializeToUtf8Bytes(pfc);
         WriteAllBytes(json);

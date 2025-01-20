@@ -33,7 +33,7 @@ public class StateRepository
     {
         using var context = GetContext();
 
-        return context.BinaryProperties.Find(h.Value);
+        return context.BinaryProperties.Find(h);
     }
 
     internal void AddBinaryProperty(BinaryPropertiesDto bp)

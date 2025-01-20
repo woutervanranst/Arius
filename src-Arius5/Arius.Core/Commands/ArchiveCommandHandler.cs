@@ -133,7 +133,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
-            var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
+            var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h}");
 
             var ss = filePair.BinaryFile.OpenRead();
             var ts = await OpenWriteAsync(bbc, throwOnExists: false, cancellationToken: cancellationToken);
@@ -148,7 +148,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             // Add to db
             handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
             {
-                Hash = h.Value,
+                Hash = h,
                 OriginalSize = ss.Length,
                 ArchivedSize = ts.Position,
                 StorageTier = actualTier.ToStorageTier()
@@ -168,7 +168,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // 5. Write the PointerFileEntry
         handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
         {
-            Hash = h.Value,
+            Hash = h,
             RelativeName = pf.Path.FullName,
             CreationTimeUtc = pf.CreationTime,
             LastWriteTimeUtc = pf.LastWriteTime
