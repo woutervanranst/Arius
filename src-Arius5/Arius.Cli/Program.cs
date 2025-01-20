@@ -63,6 +63,7 @@ internal class Program
 
                 var t = mediator.Send(c);
 
+                
                 var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
                 while (!t.IsCompleted)
@@ -112,6 +113,7 @@ internal class Program
                 AnsiConsole.MarkupLine("[green]All files processed![/]");
             });
     }
+}
 
     static string TruncateAndRightJustify(string input, int width)
     {

@@ -25,7 +25,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = -1;
+    public int Parallelism { get; init; } = 3;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -45,9 +45,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var handlerContext = await HandlerContext.CreateAsync(request);
 
         var indexedFilesChannel = GetBoundedChannel<FilePair>(100, true);
+        var hashedFilesChannel  = GetBoundedChannel<FilePairWithHash>(20, true);
 
         var indexTask   = CreateIndexTask(handlerContext, indexedFilesChannel, cancellationToken);
-        var processTask = CreateProcessFilesTask(handlerContext, indexedFilesChannel, cancellationToken);
+        var hashTask    = CreateHashTask(handlerContext, indexedFilesChannel, hashedFilesChannel, cancellationToken);
+        var processTask = ProcessTask(handlerContext, hashedFilesChannel, cancellationToken);
 
         await processTask;
         //await indexTask;
@@ -73,90 +75,110 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
         }, cancellationToken);
 
-    private Task CreateProcessFilesTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, CancellationToken cancellationToken) =>
-        Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
+    private Task CreateHashTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken)
+    {
+        var t = Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
             async (filePair, innerCancellationToken) =>
             {
-                    await ProcessFileAsync(handlerContext, filePair, cancellationToken: innerCancellationToken);
+                try
+                {
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 10, $"Hashing {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()} ..."));
+
+                    // 1. Hash the file
+                    var h = await handlerContext.Hasher.GetHashAsync(filePair);
+
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, $"Waiting for upload..."));
+
+                    await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                }
+                catch (IOException e)
+                {
+                    // TODO when the file cannot be accessed
+                }
+                catch (Exception e)
+                {
+                }
+
             });
 
-    private async Task ProcessFileAsync(HandlerContext handlerContext, FilePair filePair, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 10, $"Hashing {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()} ..."));
+        t.ContinueWith(_ => hashedFilesChannel.Writer.Complete());
 
-            Hash h;
-            try
+        return t;
+    }
+
+    private Task ProcessTask(HandlerContext handlerContext, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken) =>
+        Parallel.ForEachAsync(hashedFilesChannel.Reader.ReadAllAsync(cancellationToken),
+            new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
+            async (filePairWithHash, innerCancellationToken) =>
             {
-                // 1. Hash the file
-                h = await handlerContext.Hasher.GetHashAsync(filePair);
-            }
-            catch (IOException e)
-            {
-                // TODO when the file cannot be accessed
-                return;
-            }
-
-            // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-            var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
-
-            // 3. Upload the Binary, if needed
-            if (needsToBeUploaded)
-            {
-                handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
-
-                var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
-
-                var ss = filePair.BinaryFile.OpenRead();
-                var ts = await OpenWriteAsync(bbc, throwOnExists: false, cancellationToken: cancellationToken);
-
-                // Upload
-                await ss.CopyToCompressedEncryptedAsync(ts, handlerContext.Request.Passphrase);
-
-                // Set access tier
-                var actualTier = GetPolicyAccessTier(handlerContext, ts.Position);
-                await bbc.SetAccessTierAsync(actualTier, cancellationToken: cancellationToken);
-
-                // Add to db
-                handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
+                try
                 {
-                    Hash         = h.Value,
-                    OriginalSize = ss.Length,
-                    ArchivedSize = ts.Position,
-                    StorageTier  = actualTier.ToStorageTier()
-                });
+                    await UploadFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
+                }
+                catch (Exception e)
+                {
+                }
+            });
 
-                // remove from temp
-                MarkAsUploaded(h);
-            }
-            else
-            {
-                await uploadTask;
-            }
+    private async Task UploadFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
+    {
+        var (filePair, h) = filePairWithHash;
 
-            // 4. Write the Pointer
-            //var pf = filePair.GetOrCreatePointerFile(h);
+        // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
+        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
 
-            //// 5. Write the PointerFileEntry
-            //handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
-            //{
-            //    Hash = h.Value,
-            //    RelativeName = pf.Path.FullName,
-            //    CreationTimeUtc = pf.CreationTime,
-            //    LastWriteTimeUtc = pf.LastWriteTime
-            //});
-
-            //await Task.Delay(2000);
-
-
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
-        }
-        catch (Exception e)
+        // 3. Upload the Binary, if needed
+        if (needsToBeUploaded)
         {
-            //handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, e.Message));
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
+
+            var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h.ToLongString()}");
+
+            var ss = filePair.BinaryFile.OpenRead();
+            var ts = await OpenWriteAsync(bbc, throwOnExists: false, cancellationToken: cancellationToken);
+
+            // Upload
+            await ss.CopyToCompressedEncryptedAsync(ts, handlerContext.Request.Passphrase);
+
+            // Set access tier
+            var actualTier = GetPolicyAccessTier(handlerContext, ts.Position);
+            await bbc.SetAccessTierAsync(actualTier, cancellationToken: cancellationToken);
+
+            // Add to db
+            handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
+            {
+                Hash = h.Value,
+                OriginalSize = ss.Length,
+                ArchivedSize = ts.Position,
+                StorageTier = actualTier.ToStorageTier()
+            });
+
+            // remove from temp
+            MarkAsUploaded(h);
         }
+        else
+        {
+            await uploadTask;
+        }
+
+        // 4. Write the Pointer
+        //var pf = filePair.GetOrCreatePointerFile(h);
+
+        //// 5. Write the PointerFileEntry
+        //handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
+        //{
+        //    Hash = h.Value,
+        //    RelativeName = pf.Path.FullName,
+        //    CreationTimeUtc = pf.CreationTime,
+        //    LastWriteTimeUtc = pf.LastWriteTime
+        //});
+        
+        //await Task.Delay(2000);
+
+
+        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+
     }
 
     private static AccessTier GetPolicyAccessTier(HandlerContext handlerContext, long length)
