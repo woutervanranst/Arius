@@ -1,7 +1,7 @@
-using System.Text;
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
+using System.Text;
 using Zio;
 using Zio.FileSystems;
 
@@ -23,7 +23,7 @@ public class Fixture : IDisposable
 
         var pfs = new PhysicalFileSystem();
         var sfs = new SubFileSystem(pfs, pfs.ConvertPathFromInternal(testRunSourceFolder.FullName));
-        FileSystem = new Core.Models.FilePairFileSystem(sfs);
+        FileSystem = new FilePairFileSystem(sfs);
     }
 
     public FilePairWithHash GivenSourceFolderHavingFilePair(UPath binaryFileRelativeName, FilePairType type, int sizeInBytes, int? seed = default, FileAttributes attributes = FileAttributes.Normal)

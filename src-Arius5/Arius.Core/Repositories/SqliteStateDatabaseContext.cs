@@ -27,8 +27,8 @@ internal class SqliteStateDatabaseContext : DbContext
         bpb.HasKey(bp => bp.Hash);
         bpb.HasIndex(bp => bp.Hash).IsUnique();
 
-        bpb.Property(bp => bp.Hash)
-            .HasConversion(new HashToByteConverter());
+        //bpb.Property(bp => bp.Hash)
+        //    .HasConversion(new HashToByteConverter());
         bpb.Property(bp => bp.StorageTier)
             .HasConversion(new AccessTierConverter());
 
@@ -40,8 +40,8 @@ internal class SqliteStateDatabaseContext : DbContext
         pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
         pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        pfeb.Property(pfe => pfe.Hash)
-            .HasConversion(new HashToByteConverter());
+        //pfeb.Property(pfe => pfe.Hash)
+        //    .HasConversion(new HashToByteConverter());
         pfeb.Property(pfe => pfe.RelativeName)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
@@ -70,20 +70,17 @@ internal class SqliteStateDatabaseContext : DbContext
         public RemovePointerFileExtensionConverter()
             : base(
                 v => v.RemovePrefix("/").RemoveSuffix(PointerFile.Extension, StringComparison.InvariantCultureIgnoreCase), // Convert from Model to Provider (code to db)
-                v => $"/{v}{PointerFile.Extension}") // Convert from Provider to Model (db to code)
-        {
-        }
+                v => $"/{v}{PointerFile.Extension}" // Convert from Provider to Model (db to code)
+            ) { }
     }
 
     private class HashToByteConverter : ValueConverter<Hash, byte[]>
     {
         public HashToByteConverter()
             : base(
-                v => v, // Convert from Model to Provider (code to db)
-                v => v // Convert from Provider to Model (db to code)
-            )
-        {
-        }
+                v => (byte[])v, // Convert from Model to Provider (code to db)
+                v => (Hash)v // Convert from Provider to Model (db to code)
+            ) { }
     }
 
     private class AccessTierConverter : ValueConverter<StorageTier, int>
@@ -121,7 +118,7 @@ internal class SqliteStateDatabaseContext : DbContext
 
 internal record PointerFileEntryDto
 {
-    public Hash Hash { get; init; }
+    public byte[] Hash { get; init; }
     public string RelativeName { get; init; }
     public DateTime? CreationTimeUtc { get; set; }
     public DateTime? LastWriteTimeUtc { get; set; }
@@ -130,7 +127,7 @@ internal record PointerFileEntryDto
 
 internal record BinaryPropertiesDto
 {
-    public Hash Hash { get; init; }
+    public byte[] Hash { get; init; }
     public long OriginalSize { get; init; }
     public long ArchivedSize { get; init; }
     public StorageTier StorageTier { get; set; }

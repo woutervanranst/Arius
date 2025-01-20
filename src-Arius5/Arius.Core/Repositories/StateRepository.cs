@@ -33,7 +33,7 @@ public class StateRepository
     {
         using var context = GetContext();
 
-        return context.BinaryProperties.Find(h);
+        return context.BinaryProperties.Find((byte[])h);
     }
 
     internal void AddBinaryProperty(BinaryPropertiesDto bp)
@@ -50,7 +50,7 @@ public class StateRepository
     {
         using var context = GetContext();
 
-        var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+        var existingPfe = context.PointerFileEntries.Find((byte[])pfe.Hash, pfe.RelativeName);
 
         if (existingPfe is null)
         {

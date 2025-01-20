@@ -2,13 +2,8 @@
 using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
-using Azure;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Blobs.Specialized;
 using Humanizer;
 using MediatR;
-using System.Net;
 using System.Threading.Channels;
 using Zio;
 using Zio.FileSystems;
@@ -25,7 +20,7 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = 3;
+    public int Parallelism { get; init; } = 2;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -133,25 +128,22 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
-            var bbc = handlerContext.ContainerClient.GetBlockBlobClient($"chunks/{h}");
-
-            var ss = filePair.BinaryFile.OpenRead();
-            var ts = await OpenWriteAsync(bbc, throwOnExists: false, cancellationToken: cancellationToken);
+            await using var ss = filePair.BinaryFile.OpenRead();
+            await using var ts = await handlerContext.BlobStorage.OpenChunkWriteAsync(handlerContext.Request.ContainerName, h, null);
 
             // Upload
             await ss.CopyToCompressedEncryptedAsync(ts, handlerContext.Request.Passphrase);
 
             // Set access tier
-            var actualTier = GetPolicyAccessTier(handlerContext, ts.Position);
-            await bbc.SetAccessTierAsync(actualTier, cancellationToken: cancellationToken);
+            var actualTier = await handlerContext.BlobStorage.SetStorageTierAsync(handlerContext.Request.ContainerName, h, handlerContext.Request.Tier, ts.Position);
 
             // Add to db
             handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
             {
-                Hash = h,
+                Hash         = h,
                 OriginalSize = ss.Length,
                 ArchivedSize = ts.Position,
-                StorageTier = actualTier.ToStorageTier()
+                StorageTier  = actualTier
             });
 
             // remove from temp
@@ -179,17 +171,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
 
     }
-
-    private static AccessTier GetPolicyAccessTier(HandlerContext handlerContext, long length)
-    {
-        const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
-
-        if (handlerContext.Request.Tier == StorageTier.Archive && length <= oneMegaByte)
-            return AccessTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
-
-        return handlerContext.Request.Tier.ToAccessTier();
-    }
-
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(HandlerContext handlerContext, Hash h)
     {
@@ -230,22 +211,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    private static async Task<Stream> OpenWriteAsync(BlockBlobClient bbc, /*string contentType = ICryptoService.ContentType, */IDictionary<string, string>? metadata = default, bool throwOnExists = true, CancellationToken cancellationToken = default)
-    {
-        var bbowo = new BlockBlobOpenWriteOptions();
-
-        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
-        if (throwOnExists)
-            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-        if (metadata is not null)
-            bbowo.Metadata = metadata;
-        //bbowo.HttpHeaders = new BlobHttpHeaders { ContentType = contentType };
-
-        return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
-    }
-
-
-
     private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
         => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
         {
@@ -260,14 +225,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     
 
-    //private PointerFile CreatePointerFile(BinaryFile bf, Hash h)
-    //{
-    //    var pf = bf.GetPointerFile();
-
-    //    pf.Write(h, bf.CreationTime, bf.LastWriteTime);
-
-    //    return pf;
-    //}
 
 
 
@@ -277,29 +234,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             return new HandlerContext
             {
-                Request = request,
-                ContainerClient = await GetContainerClientAsync(),
-                StateRepo = await GetStateRepositoryAsync(),
-                Hasher = new Sha256Hasher(request.Passphrase),
-                FileSystem = GetFileSystem()
+                Request     = request,
+                BlobStorage = await GetBlobStorageAsync(),
+                StateRepo   = await GetStateRepositoryAsync(),
+                Hasher      = new Sha256Hasher(request.Passphrase),
+                FileSystem  = GetFileSystem()
             };
 
-
-            async Task<BlobContainerClient> GetContainerClientAsync()
+            async Task<BlobStorage> GetBlobStorageAsync()
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
 
-                var connectionString = $"DefaultEndpointsProtocol=https;AccountName={request.AccountName};AccountKey={request.AccountKey};EndpointSuffix=core.windows.net";
-                var bbc              = new BlobContainerClient(connectionString, request.ContainerName, new BlobClientOptions());
+                var bs = new BlobStorage(request.AccountName, request.AccountKey);
+                var created = await bs.CreateContainerIfNotExistsAsync(request.ContainerName);
 
-                var r = await bbc.CreateIfNotExistsAsync(PublicAccessType.None);
+                request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
 
-                if (r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created)
-                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, "Created"));
-                else
-                    request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, "Already existed"));
-
-                return bbc;
+                return bs;
             }
 
             async Task<StateRepository> GetStateRepositoryAsync()
@@ -322,10 +273,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
         }
 
-        public required ArchiveCommand      Request         { get; init; }
-        public required BlobContainerClient ContainerClient { get; init; }
-        public required StateRepository     StateRepo       { get; init; }
-        public required Sha256Hasher        Hasher          { get; init; }
-        public required FilePairFileSystem  FileSystem      { get; init; }
+        public required ArchiveCommand     Request     { get; init; }
+        public required BlobStorage        BlobStorage { get; init; }
+        public required StateRepository    StateRepo   { get; init; }
+        public required Sha256Hasher       Hasher      { get; init; }
+        public required FilePairFileSystem FileSystem  { get; init; }
     }
 }
