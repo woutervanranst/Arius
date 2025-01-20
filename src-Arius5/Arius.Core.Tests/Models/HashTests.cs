@@ -1,7 +1,7 @@
 using Arius.Core.Models;
 using FluentAssertions;
 
-namespace Arius.Core.Tests;
+namespace Arius.Core.Tests.Models;
 
 public class HashTests
 {

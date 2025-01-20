@@ -11,7 +11,7 @@ public static class Bootstrapper
         services.Configure(configureOptions); // TODO add validation
 
         // Add FluentValidation validators
-        //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+        //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly()); // zie https://www.milanjovanovic.tech/blog/cqrs-validation-with-mediatr-pipeline-and-fluentvalidation#running-validation-from-the-use-case
 
         // Add MediatR
         services.AddMediatR(config =>

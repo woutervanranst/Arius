@@ -1,5 +1,4 @@
 ﻿using System.Collections.Immutable;
-using WouterVanRanst.Utils.Extensions;
 
 namespace Arius.Core.Models;
 
@@ -9,10 +8,10 @@ public record Hash
 
     private Hash(ImmutableArray<byte> bytes)
     {
-        const int ExpectedByteLength = 32; // SHA256 produces 32-byte hashes
+        const int expectedByteLength = 32; // SHA256 produces 32-byte hashes
 
-        if (bytes.Length != ExpectedByteLength)
-            throw new ArgumentException($"Hash must be exactly {ExpectedByteLength} bytes long.", nameof(bytes));
+        if (bytes.Length != expectedByteLength)
+            throw new ArgumentException($"Hash must be exactly {expectedByteLength} bytes long.", nameof(bytes));
 
         this.bytes = bytes;
     }
@@ -70,6 +69,9 @@ public record Hash
     /// </summary>
     public static implicit operator byte[](Hash hash) => hash.bytes.ToArray();
 
+    /// <summary>
+    /// Gets the span representation of the hash.
+    /// </summary>
     public static implicit operator ReadOnlySpan<byte>(Hash hash) => hash.bytes.AsSpan();
 
 
@@ -83,7 +85,7 @@ public record Hash
     public virtual bool Equals(Hash? other)
     {
         if (other is null)
-            return false;
+            throw new ArgumentNullException("other value is null. Perhaps you need to cast to Hash first");
 
         return bytes.SequenceEqual(other.bytes);
     }

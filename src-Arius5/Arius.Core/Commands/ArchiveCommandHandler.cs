@@ -280,7 +280,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 Request = request,
                 ContainerClient = await GetContainerClientAsync(),
                 StateRepo = await GetStateRepositoryAsync(),
-                Hasher = new SHA256Hasher(request.Passphrase),
+                Hasher = new Sha256Hasher(request.Passphrase),
                 FileSystem = GetFileSystem()
             };
 
@@ -325,7 +325,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         public required ArchiveCommand      Request         { get; init; }
         public required BlobContainerClient ContainerClient { get; init; }
         public required StateRepository     StateRepo       { get; init; }
-        public required SHA256Hasher        Hasher          { get; init; }
+        public required Sha256Hasher        Hasher          { get; init; }
         public required FilePairFileSystem  FileSystem      { get; init; }
     }
 }
