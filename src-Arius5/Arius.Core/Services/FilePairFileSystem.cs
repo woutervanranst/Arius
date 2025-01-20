@@ -2,7 +2,7 @@
 using Zio;
 using Zio.FileSystems;
 
-namespace Arius.Core.Models;
+namespace Arius.Core.Services;
 
 public class FilePairFileSystem : ComposeFileSystem
 {
@@ -15,7 +15,7 @@ public class FilePairFileSystem : ComposeFileSystem
         throw new NotImplementedException();
     }
 
-    protected override UPath ConvertPathToDelegate(UPath path)   => path;
+    protected override UPath ConvertPathToDelegate(UPath path) => path;
     protected override UPath ConvertPathFromDelegate(UPath path) => path;
 
     protected override IEnumerable<UPath> EnumeratePathsImpl(UPath path, string searchPattern, SearchOption searchOption, SearchTarget searchTarget)
@@ -99,5 +99,5 @@ public class FilePairFileSystem : ComposeFileSystem
     }
 
     private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.OrdinalIgnoreCase) { "@eaDir", "eaDir", "SynoResource" };
-    private static readonly HashSet<string> ExcludedFiles       = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
+    private static readonly HashSet<string> ExcludedFiles = new(StringComparer.OrdinalIgnoreCase) { "autorun.ini", "thumbs.db", ".ds_store" };
 }
