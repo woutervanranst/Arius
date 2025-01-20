@@ -28,6 +28,9 @@ public class FilePair : FileEntry
     public BinaryFile? ExistingBinaryFile => BinaryFile.Exists ? BinaryFile : null;
     public PointerFile? ExistingPointerFile => PointerFile.Exists ? PointerFile : null;
 
+    /// <summary>
+    /// Get the FilePair Type, considering the EXISTING files
+    /// </summary>
     public FilePairType Type
     {
         get
@@ -40,8 +43,8 @@ public class FilePair : FileEntry
                 return FilePairType.BinaryFileOnly;
             else if (!PointerFile.Exists && !BinaryFile.Exists)
                 return FilePairType.None;
-
-            throw new InvalidOperationException();
+            else
+                throw new InvalidOperationException();
         }
     }
 
@@ -59,17 +62,14 @@ public class FilePair : FileEntry
         return pf;
     }
 
-    public override string ToString()
-    {
-        if (PointerFile.Exists && BinaryFile.Exists)
-            return $"FilePair PF+BF '{FullName}'";
-        else if (!PointerFile.Exists && BinaryFile.Exists)
-            return $"FilePair BF '{FullName}'";
-        else if (PointerFile.Exists && !BinaryFile.Exists)
-            return $"FilePair PF '{FullName}'";
-        else
-            throw new InvalidOperationException("PointerFile and BinaryFile are both null");
-    }
+    public override string ToString() =>
+        Type switch
+        {
+            FilePairType.PointerFileOnly           => $"FilePair PF '{FullName}'",
+            FilePairType.BinaryFileOnly            => $"FilePair BF '{FullName}'",
+            FilePairType.BinaryFileWithPointerFile => $"FilePair PF+BF '{FullName}'",
+            _                                      => throw new InvalidOperationException("PointerFile and BinaryFile are both null")
+        };
 }
 
 public class FilePairFileSystem : ComposeFileSystem
