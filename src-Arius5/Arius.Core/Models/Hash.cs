@@ -1,7 +1,9 @@
 ﻿using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace Arius.Core.Models;
 
+[DebuggerDisplay("Hash {ToString()}")]
 public record Hash
 {
     private readonly ImmutableArray<byte> bytes;

@@ -58,6 +58,18 @@ public class FilePair : FileEntry
 
         return pf;
     }
+
+    public override string ToString()
+    {
+        if (PointerFile.Exists && BinaryFile.Exists)
+            return $"FilePair PF+BF '{FullName}'";
+        else if (!PointerFile.Exists && BinaryFile.Exists)
+            return $"FilePair BF '{FullName}'";
+        else if (PointerFile.Exists && !BinaryFile.Exists)
+            return $"FilePair PF '{FullName}'";
+        else
+            throw new InvalidOperationException("PointerFile and BinaryFile are both null");
+    }
 }
 
 public class FilePairFileSystem : ComposeFileSystem
