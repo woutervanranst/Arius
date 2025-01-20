@@ -107,13 +107,10 @@ internal class Program
                     }
                 }
 
-                
-
                 // Once the handler completes, all updates should have been reported
                 AnsiConsole.MarkupLine("[green]All files processed![/]");
             });
     }
-}
 
     static string TruncateAndRightJustify(string input, int width)
     {

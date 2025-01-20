@@ -22,27 +22,27 @@ internal class SqliteStateDatabaseContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        var cemb = modelBuilder.Entity<BinaryPropertiesDto>();
-        cemb.ToTable("BinaryProperties");
-        cemb.HasKey(c => c.Hash);
-        cemb.HasIndex(c => c.Hash).IsUnique();
+        var bpb = modelBuilder.Entity<BinaryPropertiesDto>();
+        bpb.ToTable("BinaryProperties");
+        bpb.HasKey(c => c.Hash);
+        bpb.HasIndex(c => c.Hash).IsUnique();
 
-        cemb.Property(c => c.StorageTier)
+        bpb.Property(c => c.StorageTier)
             .HasConversion(new AccessTierConverter());
 
 
-        var pfemb = modelBuilder.Entity<PointerFileEntryDto>();
-        pfemb.ToTable("PointerFileEntries");
-        pfemb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
+        var pfeb = modelBuilder.Entity<PointerFileEntryDto>();
+        pfeb.ToTable("PointerFileEntries");
+        pfeb.HasKey(pfe => new { pfe.Hash, pfe.RelativeName });
 
-        pfemb.HasIndex(pfe => pfe.Hash);     // NOT unique
-        pfemb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
+        pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
+        pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        pfemb.Property(pfe => pfe.RelativeName)
+        pfeb.Property(pfe => pfe.RelativeName)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
         // PointerFileEntries * -- 1 Chunk
-        pfemb.HasOne(pfe => pfe.BinaryProperties)
+        pfeb.HasOne(pfe => pfe.BinaryProperties)
             .WithMany(c => c.PointerFileEntries)
             .HasForeignKey(pfe => pfe.Hash);
     }

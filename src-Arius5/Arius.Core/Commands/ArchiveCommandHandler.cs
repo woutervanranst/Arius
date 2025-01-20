@@ -67,7 +67,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
             {
                 Interlocked.Increment(ref fileCount);
-                await indexedFilesChannel.Writer.WriteAsync(FilePair.FromFileEntry(fp), cancellationToken);
+                await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
             }
 
             indexedFilesChannel.Writer.Complete();
@@ -162,20 +162,19 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             await uploadTask;
         }
 
-        // 4. Write the Pointer
-        //var pf = filePair.GetOrCreatePointerFile(h);
+        // 4.Write the Pointer
+        var pf = filePair.GetOrCreatePointerFile(h);
 
-        //// 5. Write the PointerFileEntry
-        //handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
-        //{
-        //    Hash = h.Value,
-        //    RelativeName = pf.Path.FullName,
-        //    CreationTimeUtc = pf.CreationTime,
-        //    LastWriteTimeUtc = pf.LastWriteTime
-        //});
-        
+        // 5. Write the PointerFileEntry
+        handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
+        {
+            Hash = h.Value,
+            RelativeName = pf.Path.FullName,
+            CreationTimeUtc = pf.CreationTime,
+            LastWriteTimeUtc = pf.LastWriteTime
+        });
+
         //await Task.Delay(2000);
-
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
 

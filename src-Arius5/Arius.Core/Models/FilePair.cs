@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using Arius.Core.Extensions;
 using System.Text.Json;
-using Arius.Core.Extensions;
 using Zio;
 using Zio.FileSystems;
 
@@ -18,7 +15,7 @@ public enum FilePairType
 
 public class FilePair : FileEntry
 {
-    public static FilePair FromFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
+    public static FilePair FromBinaryFileFileEntry(FileEntry fe) => new(fe.FileSystem, fe.Path);
     private FilePair(IFileSystem fileSystem, UPath binaryFilePath) : base(fileSystem, binaryFilePath)
     {
         BinaryFile = BinaryFile.FromFileEntry(this);
