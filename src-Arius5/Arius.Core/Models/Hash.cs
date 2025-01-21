@@ -87,7 +87,8 @@ public record Hash
     public virtual bool Equals(Hash? other)
     {
         if (other is null)
-            throw new ArgumentNullException("other value is null. Perhaps you need to cast to Hash first");
+            //throw new ArgumentNullException("other value is null. Perhaps you need to cast to Hash first");
+            return false;
 
         return bytes.SequenceEqual(other.bytes);
     }

@@ -160,9 +160,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // 5. Write the PointerFileEntry
         handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
         {
-            Hash = h,
-            RelativeName = pf.Path.FullName,
-            CreationTimeUtc = pf.CreationTime,
+            Hash             = h,
+            RelativeName     = pf.Path.FullName,
+            CreationTimeUtc  = pf.CreationTime,
             LastWriteTimeUtc = pf.LastWriteTime
         });
 
@@ -257,11 +257,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 0));
 
-                var r = new StateRepository();
-
+                try
+                {
+                    return new StateRepository();
+                }
+                catch (Exception e)
+                {
+                    throw;
+                }
+                
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
-
-                return r;
             }
 
             FilePairFileSystem GetFileSystem()

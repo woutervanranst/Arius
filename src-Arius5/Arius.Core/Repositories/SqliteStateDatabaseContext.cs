@@ -18,6 +18,16 @@ internal class SqliteStateDatabaseContext : DbContext
     public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
     public virtual DbSet<BinaryPropertiesDto> BinaryProperties { get; set; }
 
+    //protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    //{
+    //    base.ConfigureConventions(configurationBuilder);
+
+    //    configurationBuilder.Properties<Hash>()
+    //        .HaveConversion<HashToByteConverter>();
+    //    configurationBuilder.Properties<StorageTier>()
+    //        .HaveConversion<StorageTierConverter>();
+    //}
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -27,10 +37,10 @@ internal class SqliteStateDatabaseContext : DbContext
         bpb.HasKey(bp => bp.Hash);
         bpb.HasIndex(bp => bp.Hash).IsUnique();
 
-        //bpb.Property(bp => bp.Hash)
-        //    .HasConversion(new HashToByteConverter());
+        bpb.Property(bp => bp.Hash)
+            .HasConversion(new HashToByteConverter());
         bpb.Property(bp => bp.StorageTier)
-            .HasConversion(new AccessTierConverter());
+            .HasConversion(new StorageTierConverter());
 
 
         var pfeb = modelBuilder.Entity<PointerFileEntryDto>();
@@ -40,8 +50,8 @@ internal class SqliteStateDatabaseContext : DbContext
         pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
         pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        //pfeb.Property(pfe => pfe.Hash)
-        //    .HasConversion(new HashToByteConverter());
+        pfeb.Property(pfe => pfe.Hash)
+            .HasConversion(new HashToByteConverter());
         pfeb.Property(pfe => pfe.RelativeName)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
@@ -49,6 +59,13 @@ internal class SqliteStateDatabaseContext : DbContext
         pfeb.HasOne(pfe => pfe.BinaryProperties)
             .WithMany(c => c.PointerFileEntries)
             .HasForeignKey(pfe => pfe.Hash);
+
+        //builder.Property(e => e.Hash)
+        //    .Metadata
+        //    .SetValueComparer(new ValueComparer<byte[]>(
+        //        (obj, otherObj) => ReferenceEquals(obj, otherObj),
+        //        obj => obj.GetHashCode(),
+        //        obj => obj));
     }
 
     public override int SaveChanges()
@@ -58,7 +75,7 @@ internal class SqliteStateDatabaseContext : DbContext
         return numChanges;
     }
 
-    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var numChanges = await base.SaveChangesAsync(cancellationToken);
         onChanges(numChanges);
@@ -83,9 +100,9 @@ internal class SqliteStateDatabaseContext : DbContext
             ) { }
     }
 
-    private class AccessTierConverter : ValueConverter<StorageTier, int>
+    private class StorageTierConverter : ValueConverter<StorageTier, int>
     {
-        public AccessTierConverter() : base(
+        public StorageTierConverter() : base(
             tier => ConvertTierToNumber(tier),
             number => ConvertNumberToTier(number))
         { }
@@ -118,7 +135,7 @@ internal class SqliteStateDatabaseContext : DbContext
 
 internal record PointerFileEntryDto
 {
-    public byte[] Hash { get; init; }
+    public Hash Hash { get; init; }
     public string RelativeName { get; init; }
     public DateTime? CreationTimeUtc { get; set; }
     public DateTime? LastWriteTimeUtc { get; set; }
@@ -127,7 +144,7 @@ internal record PointerFileEntryDto
 
 internal record BinaryPropertiesDto
 {
-    public byte[] Hash { get; init; }
+    public Hash Hash { get; init; }
     public long OriginalSize { get; init; }
     public long ArchivedSize { get; init; }
     public StorageTier StorageTier { get; set; }

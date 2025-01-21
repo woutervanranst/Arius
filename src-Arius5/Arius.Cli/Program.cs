@@ -28,12 +28,11 @@ internal class Program
         await AnsiConsole.Progress()
             .AutoRefresh(true)
             .AutoClear(false)
-            .HideCompleted(false)
+            .HideCompleted(true)
             .Columns(
                 new ElapsedTimeColumn(),
                 //new SpinnerColumn(Spinner.Known.Star),
                 new ProgressBarColumn(),
-
                 new TaskDescriptionColumn() { Alignment = Justify.Right }
                 //new PaddedTaskDescriptionColumn(50),
                 //new TextPathColumn(),
