@@ -1,11 +1,11 @@
-﻿using System.Collections.Concurrent;
-using System.Net;
-using System.Threading;
+﻿using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Azure;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
+using System.Collections.Concurrent;
+using System.Net;
 
 namespace Arius.Core.Services;
 
@@ -42,7 +42,25 @@ internal class BlobStorage
         return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
     }
 
-    public async Task<Stream> OpenChunkWriteAsync(string containerName, Hash h, IDictionary<string, string>? metadata = default, IProgress<long> progress = default)
+    //public async Task<Stream> OpenChunkWriteAsync(string containerName, Hash h, IDictionary<string, string>? metadata = default, IProgress<long> progress = default)
+    //{
+    //    var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
+
+    //    var bbowo = new BlockBlobOpenWriteOptions();
+
+    //    //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+    //    var throwOnExists = false;
+    //    if (throwOnExists)
+    //        bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+    //    if (metadata is not null)
+    //        bbowo.Metadata = metadata;
+    //    bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
+    //    bbowo.ProgressHandler = progress;
+
+    //    return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
+    //}
+
+    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, IDictionary<string, string> metadata = default, IProgress<long> progress = default)
     {
         var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
@@ -57,22 +75,24 @@ internal class BlobStorage
         bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
         bbowo.ProgressHandler = progress;
 
-        return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
+        await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
+
+        await source.CopyToCompressedEncryptedAsync(ts, passphrase);
+
+        var actualTier = GetActualStorageTier(targetTier, ts.Position);
+
+        var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
+
+        return (actualTier, ts.Position);
     }
 
-    public async Task<StorageTier> SetStorageTierAsync(string containerName, Hash h, StorageTier targetTier, long length)
+    private static StorageTier GetActualStorageTier( StorageTier targetTier, long length)
     {
         const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
 
         if (targetTier == StorageTier.Archive && length <= oneMegaByte)
                 targetTier = StorageTier.Cold; //Bringing back small files from archive storage is REALLY expensive. Only after 5.5 years, it is cheaper to store 1M in Archive
 
-        var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
-
-        var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
-
         return targetTier;
     }
-
-
 }

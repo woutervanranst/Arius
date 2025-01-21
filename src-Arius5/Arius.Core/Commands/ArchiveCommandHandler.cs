@@ -129,20 +129,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             await using var ss = filePair.BinaryFile.OpenRead();
-            await using var ts = await handlerContext.BlobStorage.OpenChunkWriteAsync(handlerContext.Request.ContainerName, h, null);
-
+            
             // Upload
-            await ss.CopyToCompressedEncryptedAsync(ts, handlerContext.Request.Passphrase);
-
-            // Set access tier
-            var actualTier = await handlerContext.BlobStorage.SetStorageTierAsync(handlerContext.Request.ContainerName, h, handlerContext.Request.Tier, ts.Position);
-
+            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
+                source: ss, 
+                containerName: handlerContext.Request.ContainerName, 
+                h: h, 
+                passphrase: handlerContext.Request.Passphrase, 
+                targetTier: handlerContext.Request.Tier, 
+                metadata: null, 
+                progress: null);
+            
             // Add to db
             handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
             {
                 Hash         = h,
                 OriginalSize = ss.Length,
-                ArchivedSize = ts.Position,
+                ArchivedSize = archivedSize,
                 StorageTier  = actualTier
             });
 
