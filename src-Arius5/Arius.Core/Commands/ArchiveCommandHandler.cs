@@ -223,11 +223,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     //    => new() { MaxDegreeOfParallelism = maxDegreeOfParallelism, CancellationToken = cancellationToken };
 
-    
-
-
-
-
     private class HandlerContext
     {
         public static async Task<HandlerContext> CreateAsync(ArchiveCommand request)

@@ -42,7 +42,7 @@ internal class BlobStorage
         return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
     }
 
-    public async Task<Stream> OpenChunkWriteAsync(string containerName, Hash h, IDictionary<string, string>? metadata = default)
+    public async Task<Stream> OpenChunkWriteAsync(string containerName, Hash h, IDictionary<string, string>? metadata = default, IProgress<long> progress = default)
     {
         var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
@@ -54,7 +54,8 @@ internal class BlobStorage
             bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
         if (metadata is not null)
             bbowo.Metadata = metadata;
-        bbowo.HttpHeaders = new BlobHttpHeaders { ContentType = ChunkContentType };
+        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
+        bbowo.ProgressHandler = progress;
 
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
     }
