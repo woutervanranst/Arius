@@ -15,7 +15,7 @@ internal static class CryptoExtensions
     private const int blockSize = 128;
     private const int saltSize = 8;
 
-    public static async Task CopyToCompressedEncryptedAsync(this Stream source, Stream target, string passphrase)
+    public static async Task CopyToCompressedEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
     {
         DeriveBytes(passphrase, out var salt, out var key, out var iv);
         using var aes = CreateAes(key, iv);
@@ -26,10 +26,10 @@ internal static class CryptoExtensions
         await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
         await target.WriteAsync(salt, 0, salt.Length);
 
-        await source.CopyToAsync(gzs);
+        await source.CopyToAsync(gzs, cancellationToken);
     }
 
-    public static async Task CopyToDecryptedDecompressedAsync(this Stream source, Stream target, string passphrase)
+    public static async Task CopyToDecryptedDecompressedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
     {
         var salt = new byte[saltSize];
         source.Seek(OPENSSL_SALT_PREFIX_BYTES.Length, SeekOrigin.Begin);
@@ -43,7 +43,7 @@ internal static class CryptoExtensions
 
         await using var gzs = new GZipStream(cs, CompressionMode.Decompress);
 
-        await gzs.CopyToAsync(target);
+        await gzs.CopyToAsync(target, cancellationToken);
     }
 
     private static Aes CreateAes(byte[] key, byte[] iv)

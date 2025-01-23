@@ -60,7 +60,7 @@ internal class BlobStorage
     //    return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
     //}
 
-    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, IDictionary<string, string> metadata = default, IProgress<long> progress = default)
+    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
         var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
@@ -75,9 +75,9 @@ internal class BlobStorage
         bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
         bbowo.ProgressHandler = progress;
 
-        await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
+        await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
 
-        await source.CopyToCompressedEncryptedAsync(ts, passphrase);
+        await source.CopyToCompressedEncryptedAsync(ts, passphrase, cancellationToken: cancellationToken);
 
         var actualTier = GetActualStorageTier(targetTier, ts.Position);
 

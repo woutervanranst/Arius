@@ -128,10 +128,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 }
             });
 
-    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default)
-    {
-
-    }
+    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default) =>
+        Task.Run(async () =>
+        {
+            await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
+            {
+                try
+                {
+                    await UploadSmallFileAsync(handlerContext, filePairWithHash, cancellationToken);
+                }
+                catch (Exception e)
+                {
+                }
+            }
+        }, cancellationToken);
 
     private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
@@ -155,7 +165,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 passphrase: handlerContext.Request.Passphrase, 
                 targetTier: handlerContext.Request.Tier, 
                 metadata: null, 
-                progress: null);
+                progress: null, 
+                cancellationToken: cancellationToken);
             
             // Add to db
             handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
