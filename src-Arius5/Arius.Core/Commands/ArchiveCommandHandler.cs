@@ -164,19 +164,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                             tarredFilePairs.Add(filePairWithHash);
                         }
-                        else
-                        {
-                            await uploadTask;
-                        }
+                        // the else {} branch is not necessary here since we are sure that the file will be uploaded in this run
+                        //else { await uploadTask; }
 
                         if ((ms.Position > 500 * 1024 || 
                             (ms.Position <= 500 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any()) 
                         {
-                            File.WriteAllBytes(@"C:\Users\RFC430\Downloads\New folder\test.tar", ms.ToArray());
-
                             ms.Seek(0, SeekOrigin.Begin);
 
                             var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
+
+                            File.WriteAllBytes($@"C:\Users\RFC430\Downloads\New folder\{tarHash}.tar", ms.ToArray());
 
                             ms.Seek(0, SeekOrigin.Begin);
 
