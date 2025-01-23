@@ -1,9 +1,10 @@
-﻿using Arius.Core.Extensions;
-using Arius.Core.Models;
+﻿using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
 using MediatR;
+using SharpCompress.Common;
+using SharpCompress.Writers;
 using System.Threading.Channels;
 using Zio;
 using Zio.FileSystems;
@@ -114,34 +115,128 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         return t;
     }
 
-    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken) =>
-        Parallel.ForEachAsync(hashedFilesChannel.Reader.ReadAllAsync(cancellationToken),
+    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
+        Parallel.ForEachAsync(hashedLargeFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
             async (filePairWithHash, innerCancellationToken) =>
             {
                 try
                 {
-                    await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
+                    //await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
                 catch (Exception e)
                 {
                 }
             });
 
-    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default) =>
-        Task.Run(async () =>
+    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default)
+    {
+        return Task.Run(async () =>
         {
-            await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
+            try
             {
-                try
+                MemoryStream ms        = null;
+                IWriter      tarWriter = null;
+
+                await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
                 {
-                    await UploadSmallFileAsync(handlerContext, filePairWithHash, cancellationToken);
+                    try
+                    {
+                        if (tarWriter is null)
+                        {
+                            ms        = new MemoryStream();
+                            tarWriter = WriterFactory.Open(ms, ArchiveType.Tar, new WriterOptions(CompressionType.None)); // TODO quid usings?
+                        }
+
+                        var (filePair, h) = filePairWithHash;
+
+                        // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
+                        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
+
+                        // 3. Upload the Binary, if needed
+                        if (needsToBeUploaded)
+                        {
+                            await using var ss = filePair.BinaryFile.OpenRead();
+                            tarWriter.Write(h.ToString(), ss);
+                        }
+                        else
+                        {
+                            await uploadTask;
+                        }
+                        
+                        if (ms.Position > 4000)
+                        {
+                            File.WriteAllBytes(@"C:\Users\RFC430\Downloads\New folder\test.tar", ms.ToArray());
+
+                            ms.Seek(0, SeekOrigin.Begin);
+
+                            var hh = await handlerContext.Hasher.GetHashAsync(ms);
+
+                            ms.Seek(0, SeekOrigin.Begin);
+
+                            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
+                                source: ms,
+                                containerName: handlerContext.Request.ContainerName,
+                                h: hh,
+                                passphrase: handlerContext.Request.Passphrase,
+                                targetTier: handlerContext.Request.Tier,
+                                metadata: null,
+                                progress: null,
+                                cancellationToken: cancellationToken);
+
+                            tarWriter.Dispose();
+                            ms.Dispose();
+                            tarWriter = null;
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                    }
                 }
-                catch (Exception e)
-                {
-                }
+
+                /*
+                //var ms = new MemoryStream();
+                //var archive = new ZipArchive(ms, ZipArchiveMode.Create); // TODO quid usings?
+
+                //await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
+                //{
+                //    try
+                //    {
+                //        var (filePair, h) = filePairWithHash;
+
+                //        // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
+                //        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
+
+                //        // 3. Upload the Binary, if needed
+                //        if (needsToBeUploaded)
+                //        {
+                //            var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
+                //            var entry = archive.CreateEntryFromFile(fn, h.ToString(), CompressionLevel.Optimal);
+                //        }
+                //        else
+                //        {
+                //            await uploadTask;
+                //        }
+
+                //        if (ms.Position > 1024)
+                //        {
+
+                //        }
+                //    }
+                //    catch (Exception e)
+                //    {
+                //    }
+                //}
+                */
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+            
         }, cancellationToken);
+    }
 
     private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
@@ -199,6 +294,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
     }
+
+    //private async Task UploadSmallFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
+    //{
+
+    //}
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(HandlerContext handlerContext, Hash h)
     {

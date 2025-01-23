@@ -36,6 +36,11 @@ public sealed class Sha256Hasher : IDisposable
         return Task.FromResult(hashValue);
     }
 
+    public async Task<Hash> GetHashAsync(Stream s)
+    {
+        return await ComputeSaltedHashAsync(s).ConfigureAwait(false);
+    }
+
     /// <summary>
     /// Gets the salted hash of a FilePair. If it is PointerFileOnly, we simply
     /// return the hash stored in the pointer file. Otherwise, we hash the BinaryFile.
@@ -58,8 +63,7 @@ public sealed class Sha256Hasher : IDisposable
 
         await using var fs = new FileStream(bf.ConvertPathToInternal(), FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-        var hashValue = await ComputeSaltedHashAsync(fs).ConfigureAwait(false);
-        return hashValue;
+        return await ComputeSaltedHashAsync(fs).ConfigureAwait(false);
     }
 
     /// <summary>
