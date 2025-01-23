@@ -20,7 +20,9 @@ public record ArchiveCommand : IRequest
     public required StorageTier   Tier          { get; init; }
     public required DirectoryInfo LocalRoot     { get; init; }
 
-    public int Parallelism { get; init; } = 2;
+    public int Parallelism { get; init; } = 1;
+
+    public int SmallFileBoundary { get; init; } = (int)1.5 * 1024 * 1024; // 1.5 MB
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -33,27 +35,30 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
+    private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 100,        singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: false);
+    private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: true);
+
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request);
 
-        var indexedFilesChannel = GetBoundedChannel<FilePair>(100, true);
-        var hashedFilesChannel  = GetBoundedChannel<FilePairWithHash>(20, true);
+        
+        var indexTask   = CreateIndexTask(handlerContext, cancellationToken);
+        var hashTask    = CreateHashTask(handlerContext, cancellationToken);
+        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, cancellationToken);
+        var uploadSmallFilesTask = CreateUploadSmallFilesTask(handlerContext, cancellationToken);
 
-        var indexTask   = CreateIndexTask(handlerContext, indexedFilesChannel, cancellationToken);
-        var hashTask    = CreateHashTask(handlerContext, indexedFilesChannel, hashedFilesChannel, cancellationToken);
-        var processTask = ProcessTask(handlerContext, hashedFilesChannel, cancellationToken);
-
-        await processTask;
+        await Task.WhenAll(uploadLargeFilesTask, uploadSmallFilesTask);
         //await indexTask;
 
         // 6. Remove PointerFileEntries that do not exist on disk
         handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
-    private Task CreateIndexTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, CancellationToken cancellationToken) =>
+    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
             handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
@@ -70,7 +75,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
         }, cancellationToken);
 
-    private Task CreateHashTask(HandlerContext handlerContext, Channel<FilePair> indexedFilesChannel, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken)
+    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken)
     {
         var t = Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
@@ -85,7 +90,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 50, $"Waiting for upload..."));
 
-                    await hashedFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                    if (filePair.BinaryFile.Length <= handlerContext.Request.SmallFileBoundary)
+                        await hashedSmallFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
+                    else
+                        await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
                 }
                 catch (IOException e)
                 {
@@ -97,26 +105,35 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
             });
 
-        t.ContinueWith(_ => hashedFilesChannel.Writer.Complete());
+        t.ContinueWith(_ =>
+        {
+            hashedSmallFilesChannel.Writer.Complete();
+            hashedLargeFilesChannel.Writer.Complete();
+        });
 
         return t;
     }
 
-    private Task ProcessTask(HandlerContext handlerContext, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken) =>
+    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, Channel<FilePairWithHash> hashedFilesChannel, CancellationToken cancellationToken) =>
         Parallel.ForEachAsync(hashedFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
             async (filePairWithHash, innerCancellationToken) =>
             {
                 try
                 {
-                    await UploadFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
+                    await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
                 catch (Exception e)
                 {
                 }
             });
 
-    private async Task UploadFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
+    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default)
+    {
+
+    }
+
+    private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
         var (filePair, h) = filePairWithHash;
 
@@ -169,10 +186,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             LastWriteTimeUtc = pf.LastWriteTime
         });
 
-        //await Task.Delay(2000);
-
         handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
-
     }
 
     private (bool needsToBeUploaded, Task uploadTask) GetUploadStatus(HandlerContext handlerContext, Hash h)
@@ -214,13 +228,13 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter)
+    private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter, bool singleReader)
         => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             AllowSynchronousContinuations = false,
             SingleWriter = singleWriter,
-            SingleReader = false
+            SingleReader = singleReader
         });
 
     //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
