@@ -6,6 +6,7 @@ using MediatR;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using System.Threading.Channels;
+using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
 
@@ -38,6 +39,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 100,        singleWriter: true, singleReader: false);
     private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: false);
+    // private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = Channel.CreateUnbounded<FilePairWithHash>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = true }); // unbounded since there can be a deadlock 
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: true);
 
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
@@ -135,8 +137,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             try
             {
-                MemoryStream ms        = null;
-                IWriter      tarWriter = null;
+                MemoryStream              ms               = null;
+                IWriter                   tarWriter        = null;
+                //List<BinaryPropertiesDto> binaryProperties = new();
+                List<FilePairWithHash>    tarredFilePairs  = new();
 
                 await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
                 {
@@ -148,45 +152,92 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             tarWriter = WriterFactory.Open(ms, ArchiveType.Tar, new WriterOptions(CompressionType.None)); // TODO quid usings?
                         }
 
-                        var (filePair, h) = filePairWithHash;
+                        var (filePair, binaryHash) = filePairWithHash;
 
                         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-                        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
+                        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, binaryHash);
 
                         // 3. Upload the Binary, if needed
                         if (needsToBeUploaded)
                         {
                             await using var ss = filePair.BinaryFile.OpenRead();
-                            tarWriter.Write(h.ToString(), ss);
+                            tarWriter.Write(binaryHash.ToString(), ss);
+
+                            tarredFilePairs.Add(filePairWithHash);
                         }
                         else
                         {
                             await uploadTask;
                         }
-                        
-                        if (ms.Position > 4000)
+
+                        if (ms.Position > 500 * 1024)
                         {
                             File.WriteAllBytes(@"C:\Users\RFC430\Downloads\New folder\test.tar", ms.ToArray());
 
                             ms.Seek(0, SeekOrigin.Begin);
 
-                            var hh = await handlerContext.Hasher.GetHashAsync(ms);
+                            var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
 
                             ms.Seek(0, SeekOrigin.Begin);
 
                             var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
                                 source: ms,
                                 containerName: handlerContext.Request.ContainerName,
-                                h: hh,
+                                h: tarHash,
                                 passphrase: handlerContext.Request.Passphrase,
                                 targetTier: handlerContext.Request.Tier,
+                                contentType: TarChunkContentType,
                                 metadata: null,
                                 progress: null,
                                 cancellationToken: cancellationToken);
 
+                            // Add BinaryProperties
+                            var bps = tarredFilePairs.Select(fpwh => new BinaryPropertiesDto
+                            {
+                                Hash         = fpwh.Hash,
+                                ParentHash   = tarHash,
+                                OriginalSize = fpwh.FilePair.BinaryFile.Length,
+                                ArchivedSize = null,
+                                StorageTier  = actualTier
+                            }).ToArray();
+                            handlerContext.StateRepo.AddBinaryProperties(bps);
+
+                            handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
+                            {
+                                Hash         = tarHash,
+                                OriginalSize = ms.Position,
+                                ArchivedSize = archivedSize,
+                                StorageTier  = actualTier
+                            });
+
+                            // Mark as upladed
+                            foreach (var (_, binaryHash2) in tarredFilePairs)
+                                MarkAsUploaded(binaryHash2);
+                            
+                            // 4.Write the Pointers
+                            var pfes = new List<PointerFileEntryDto>();
+                            foreach (var (filePair22, binaryHash22) in tarredFilePairs)
+                            {
+                                var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
+                                pfes.Add(new PointerFileEntryDto
+                                {
+                                    Hash             = binaryHash22,
+                                    RelativeName     = pf.Path.FullName,
+                                    CreationTimeUtc  = pf.CreationTime,
+                                    LastWriteTimeUtc = pf.LastWriteTime
+                                });
+                            }
+
+                            // 5. Write the PointerFileEntry
+                            handlerContext.StateRepo.UpsertPointerFileEntries(pfes.ToArray());
+
+                            //handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+
+
                             tarWriter.Dispose();
                             ms.Dispose();
                             tarWriter = null;
+                            tarredFilePairs.Clear();
                         }
                     }
                     catch (Exception e)
@@ -238,6 +289,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }, cancellationToken);
     }
 
+    private const string ChunkContentType = "application/aes256cbc+gzip";
+    private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
+
+
     private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
         var (filePair, h) = filePairWithHash;
@@ -256,15 +311,16 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
                 source: ss, 
                 containerName: handlerContext.Request.ContainerName, 
-                h: h, 
+                h: h,
                 passphrase: handlerContext.Request.Passphrase, 
-                targetTier: handlerContext.Request.Tier, 
+                targetTier: handlerContext.Request.Tier,
+                contentType: ChunkContentType,
                 metadata: null, 
                 progress: null, 
                 cancellationToken: cancellationToken);
             
             // Add to db
-            handlerContext.StateRepo.AddBinaryProperty(new BinaryPropertiesDto
+            handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
             {
                 Hash         = h,
                 OriginalSize = ss.Length,
@@ -284,7 +340,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var pf = filePair.GetOrCreatePointerFile(h);
 
         // 5. Write the PointerFileEntry
-        handlerContext.StateRepo.UpsertPointerFileEntry(new PointerFileEntryDto
+        handlerContext.StateRepo.UpsertPointerFileEntries(new PointerFileEntryDto
         {
             Hash             = h,
             RelativeName     = pf.Path.FullName,

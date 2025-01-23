@@ -18,15 +18,15 @@ internal class SqliteStateDatabaseContext : DbContext
     public virtual DbSet<PointerFileEntryDto> PointerFileEntries { get; set; }
     public virtual DbSet<BinaryPropertiesDto> BinaryProperties { get; set; }
 
-    //protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-    //{
-    //    base.ConfigureConventions(configurationBuilder);
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
 
-    //    configurationBuilder.Properties<Hash>()
-    //        .HaveConversion<HashToByteConverter>();
-    //    configurationBuilder.Properties<StorageTier>()
-    //        .HaveConversion<StorageTierConverter>();
-    //}
+        configurationBuilder.Properties<Hash>()
+            .HaveConversion<HashToByteConverter>();
+        configurationBuilder.Properties<StorageTier>()
+            .HaveConversion<StorageTierConverter>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,10 +37,12 @@ internal class SqliteStateDatabaseContext : DbContext
         bpb.HasKey(bp => bp.Hash);
         bpb.HasIndex(bp => bp.Hash).IsUnique();
 
-        bpb.Property(bp => bp.Hash)
-            .HasConversion(new HashToByteConverter());
-        bpb.Property(bp => bp.StorageTier)
-            .HasConversion(new StorageTierConverter());
+        //bpb.Property(bp => bp.Hash)
+        //    .HasConversion(new HashToByteConverter());
+        //bpb.Property(bp => bp.ParentHash)
+        //    .HasConversion(new HashToByteConverter());
+        //bpb.Property(bp => bp.StorageTier)
+        //    .HasConversion(new StorageTierConverter());
 
 
         var pfeb = modelBuilder.Entity<PointerFileEntryDto>();
@@ -50,8 +52,8 @@ internal class SqliteStateDatabaseContext : DbContext
         pfeb.HasIndex(pfe => pfe.Hash);     // NOT unique
         pfeb.HasIndex(pfe => pfe.RelativeName);  // to facilitate GetPointerFileEntriesAtVersionAsync
 
-        pfeb.Property(pfe => pfe.Hash)
-            .HasConversion(new HashToByteConverter());
+        //pfeb.Property(pfe => pfe.Hash)
+        //    .HasConversion(new HashToByteConverter());
         pfeb.Property(pfe => pfe.RelativeName)
             .HasConversion(new RemovePointerFileExtensionConverter());
 
@@ -144,9 +146,10 @@ internal record PointerFileEntryDto
 
 internal record BinaryPropertiesDto
 {
-    public Hash Hash { get; init; }
-    public long OriginalSize { get; init; }
-    public long ArchivedSize { get; init; }
-    public StorageTier StorageTier { get; set; }
+    public         Hash                             Hash               { get; init; }
+    public         Hash?                            ParentHash         { get; init; }
+    public         long                             OriginalSize       { get; init; }
+    public         long?                            ArchivedSize       { get; init; } // null in case of tarred archives
+    public         StorageTier?                     StorageTier        { get; set; } // settable in case of tarred archives
     public virtual ICollection<PointerFileEntryDto> PointerFileEntries { get; set; }
 }

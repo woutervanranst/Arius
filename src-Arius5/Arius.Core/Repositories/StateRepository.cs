@@ -36,30 +36,33 @@ public class StateRepository
         return context.BinaryProperties.Find(h);
     }
 
-    internal void AddBinaryProperty(BinaryPropertiesDto bp)
+    internal void AddBinaryProperties(params BinaryPropertiesDto[] bps)
     {
         using var context = GetContext();
 
-        context.BinaryProperties.Add(bp);
+        context.BinaryProperties.AddRange(bps);
         context.SaveChanges();
     }
 
     // --- POINTERFILEENTRIES
 
-    internal void UpsertPointerFileEntry(PointerFileEntryDto pfe)
+    internal void UpsertPointerFileEntries(params PointerFileEntryDto[] pfes)
     {
         using var context = GetContext();
 
-        var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
+        foreach (var pfe in pfes)
+        {
+            var existingPfe = context.PointerFileEntries.Find(pfe.Hash, pfe.RelativeName);
 
-        if (existingPfe is null)
-        {
-            context.PointerFileEntries.Add(pfe);
-        }
-        else
-        {
-            existingPfe.CreationTimeUtc = pfe.CreationTimeUtc;
-            existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
+            if (existingPfe is null)
+            {
+                context.PointerFileEntries.Add(pfe);
+            }
+            else
+            {
+                existingPfe.CreationTimeUtc  = pfe.CreationTimeUtc;
+                existingPfe.LastWriteTimeUtc = pfe.LastWriteTimeUtc;
+            }
         }
 
         context.SaveChanges();

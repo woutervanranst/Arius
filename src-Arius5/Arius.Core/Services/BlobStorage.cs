@@ -14,8 +14,6 @@ internal class BlobStorage
     private readonly string            connectionString;
     private readonly BlobServiceClient blobServiceClient;
 
-    private const string ChunkContentType = "application/aes256cbc+gzip";
-
     public BlobStorage(string accountName, string accountKey)
     {
         connectionString = $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={accountKey};EndpointSuffix=core.windows.net";
@@ -60,7 +58,7 @@ internal class BlobStorage
     //    return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
     //}
 
-    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
         var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
@@ -72,7 +70,7 @@ internal class BlobStorage
             bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
         if (metadata is not null)
             bbowo.Metadata = metadata;
-        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
+        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
         bbowo.ProgressHandler = progress;
 
         await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
