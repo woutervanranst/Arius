@@ -24,7 +24,7 @@ public record ArchiveCommand : IRequest
 
     public int Parallelism { get; init; } = 1;
 
-    public int SmallFileBoundary { get; init; } = (int)1.5 * 1024 * 1024; // 1.5 MB
+    public int SmallFileBoundary { get; init; } = (int)2 * 1024 * 1024; // 1.5 MB
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -139,7 +139,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 MemoryStream              ms               = null;
                 IWriter                   tarWriter        = null;
-                //List<BinaryPropertiesDto> binaryProperties = new();
                 List<FilePairWithHash>    tarredFilePairs  = new();
 
                 await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
@@ -170,7 +169,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             await uploadTask;
                         }
 
-                        if (ms.Position > 500 * 1024)
+                        if ((ms.Position > 500 * 1024 || 
+                            (ms.Position <= 500 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any()) 
                         {
                             File.WriteAllBytes(@"C:\Users\RFC430\Downloads\New folder\test.tar", ms.ToArray());
 
