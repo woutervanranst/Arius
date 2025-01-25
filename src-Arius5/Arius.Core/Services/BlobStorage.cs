@@ -84,46 +84,41 @@ internal class BlobStorage
         return (actualTier, ts.Position);
     }
 
-    public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadEncryptedAsync(
-        Stream source,
-        string containerName,
-        Hash h,
-        string passphrase,
-        StorageTier targetTier,
-        string contentType,
-        IDictionary<string, string> metadata = default,
-        IProgress<long> progress = default,
-        CancellationToken cancellationToken = default)
-    {
-        var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
+    //public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadEncryptedAsync(
+    //    Stream source,
+    //    string containerName,
+    //    Hash h,
+    //    string passphrase,
+    //    StorageTier targetTier,
+    //    string contentType,
+    //    IDictionary<string, string> metadata = default,
+    //    IProgress<long> progress = default,
+    //    CancellationToken cancellationToken = default)
+    //{
+    //    var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
-        var bbowo = new BlockBlobOpenWriteOptions();
+    //    var bbowo = new BlockBlobOpenWriteOptions();
 
-        // NOTE: The SDK only supports OpenWriteAsync with overwrite: true, 
-        // therefore the ThrowOnExistOptions workaround
-        var throwOnExists = false;
-        if (throwOnExists)
-        {
-            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") };
-            // Reference: https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-        }
+    //    // NOTE: The SDK only supports OpenWriteAsync with overwrite: true, 
+    //    // therefore the ThrowOnExistOptions workaround
+    //    var throwOnExists = false;
+    //    if (throwOnExists)
+    //        bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // Reference: https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+    //    if (metadata is not null)
+    //        bbowo.Metadata = metadata;
+    //    bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
+    //    bbowo.ProgressHandler = progress;
 
-        if (metadata is not null)
-            bbowo.Metadata = metadata;
+    //    await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
 
-        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
-        bbowo.ProgressHandler = progress;
+    //    await source.CopyToEncryptedAsync(ts, passphrase, cancellationToken: cancellationToken);
 
-        await using var ts = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+    //    var actualTier = GetActualStorageTier(targetTier, ts.Position);
 
-        await source.CopyToEncryptedAsync(ts, passphrase, cancellationToken: cancellationToken);
+    //    var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
 
-        var actualTier = GetActualStorageTier(targetTier, ts.Position);
-
-        var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
-
-        return (actualTier, ts.Position);
-    }
+    //    return (actualTier, ts.Position);
+    //}
 
     private static StorageTier GetActualStorageTier( StorageTier targetTier, long length)
     {
