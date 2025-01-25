@@ -1,8 +1,38 @@
-﻿using System.IO.Compression;
+﻿using SharpCompress.Common;
+using SharpCompress.Writers;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Arius.Core.Extensions;
+
+internal static class StreamExtensions
+{
+    /// <summary>
+    /// Compresses the input stream using GZip via SharpCompress.
+    /// </summary>
+    /// <param name="source">The source stream to compress.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A compressed MemoryStream.</returns>
+    public static async Task<MemoryStream> CompressWithGZipAsync(this Stream source, CancellationToken cancellationToken = default)
+    {
+        var compressedStream = new MemoryStream();
+
+        // Initialize the GZip writer
+        using (var writer = WriterFactory.Open(compressedStream, ArchiveType.GZip, CompressionType.Deflate))
+        {
+            // Create a dummy entry name since GZip is not an archive format with multiple entries
+            var entryName = "data";
+
+            // Add an entry with the source stream
+            writer.Write(entryName, source);
+        }
+
+        // Reset the position of the compressed stream to the beginning
+        compressedStream.Seek(0, SeekOrigin.Begin);
+        return compressedStream;
+    }
+}
 
 internal static class CryptoExtensions
 {
@@ -27,6 +57,24 @@ internal static class CryptoExtensions
         await target.WriteAsync(salt, 0, salt.Length);
 
         await source.CopyToAsync(gzs, cancellationToken);
+    }
+
+    public static async Task CopyToEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
+    {
+        DeriveBytes(passphrase, out var salt, out var key, out var iv);
+        using var       aes       = CreateAes(key, iv);
+        using var       encryptor = aes.CreateEncryptor();
+        await using var cs        = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+
+        // Write OpenSSL-compatible salt prefix and salt
+        await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length, cancellationToken);
+        await target.WriteAsync(salt,                      0, salt.Length,                      cancellationToken);
+
+        // Copy the source stream directly into the CryptoStream (no compression)
+        await source.CopyToAsync(cs, bufferSize: 81920, cancellationToken);
+
+        // Ensure all data is flushed and encryption is finalized
+        await cs.FlushAsync(cancellationToken);
     }
 
     public static async Task CopyToDecryptedDecompressedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)

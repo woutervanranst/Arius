@@ -37,10 +37,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
-    private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 100,        singleWriter: true, singleReader: false);
-    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: false);
+    private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 20,        singleWriter: true, singleReader: false);
+    private readonly Channel<FilePairWithHash> hashedLargeFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: false);
     // private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = Channel.CreateUnbounded<FilePairWithHash>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = true }); // unbounded since there can be a deadlock 
-    private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 20, singleWriter: false, singleReader: true);
+    private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
@@ -124,7 +124,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 try
                 {
-                    //await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
+                    await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
                 catch (Exception e)
                 {
@@ -156,6 +156,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
                         var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, binaryHash);
 
+                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
+
                         // 3. Upload the Binary, if needed
                         if (needsToBeUploaded)
                         {
@@ -178,7 +180,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
                             ms.Seek(0, SeekOrigin.Begin);
 
-                            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
+                            foreach (var (tarredFilePair, _) in tarredFilePairs)
+                                handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
+
+                            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
                                 source: ms,
                                 containerName: handlerContext.Request.ContainerName,
                                 h: tarHash,
@@ -230,6 +235,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                             handlerContext.StateRepo.UpsertPointerFileEntries(pfes.ToArray());
 
                             //handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+
+                            foreach (var (tarredFilePair, _) in tarredFilePairs)
+                                handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 100, $"TAR DOne"));
 
 
                             tarWriter.Dispose();
@@ -303,20 +311,40 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
+            //await using var ss = filePair.BinaryFile.OpenRead();
+
+            //// Upload
+            //var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
+            //    source: ss, 
+            //    containerName: handlerContext.Request.ContainerName, 
+            //    h: h,
+            //    passphrase: handlerContext.Request.Passphrase, 
+            //    targetTier: handlerContext.Request.Tier,
+            //    contentType: ChunkContentType,
+            //    metadata: null, 
+            //    progress: null, 
+            //    cancellationToken: cancellationToken);
+
             await using var ss = filePair.BinaryFile.OpenRead();
-            
-            // Upload
-            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadAsync(
-                source: ss, 
-                containerName: handlerContext.Request.ContainerName, 
+
+            // Compress the source stream using SharpCompress with GZip
+            MemoryStream compressedStream = await ss.CompressWithGZipAsync(cancellationToken);
+
+            // Optionally, dispose the sourceStream if not using 'await using'
+
+            // Upload the compressed and encrypted stream
+            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadEncryptedAsync(
+                source: compressedStream,
+                containerName: handlerContext.Request.ContainerName,
                 h: h,
-                passphrase: handlerContext.Request.Passphrase, 
+                passphrase: handlerContext.Request.Passphrase,
                 targetTier: handlerContext.Request.Tier,
                 contentType: ChunkContentType,
-                metadata: null, 
-                progress: null, 
-                cancellationToken: cancellationToken);
-            
+                metadata: null, // Add metadata if needed
+                progress: null, // Add progress reporting if needed
+                cancellationToken: cancellationToken
+            );
+
             // Add to db
             handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
             {
