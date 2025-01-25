@@ -131,15 +131,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 }
             });
 
-    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default)
-    {
-        return Task.Run(async () =>
+    private Task CreateUploadSmallFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken = default) =>
+        Task.Run(async () =>
         {
             try
             {
-                MemoryStream              ms               = null;
-                IWriter                   tarWriter        = null;
-                List<FilePairWithHash>    tarredFilePairs  = new();
+                MemoryStream           ms              = null;
+                IWriter                tarWriter       = null;
+                List<FilePairWithHash> tarredFilePairs = new();
 
                 await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
                 {
@@ -170,7 +169,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         //else { await uploadTask; }
 
                         if ((ms.Position > 500 * 1024 || 
-                            (ms.Position <= 500 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any()) 
+                             (ms.Position <= 500 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any()) 
                         {
                             ms.Seek(0, SeekOrigin.Begin);
 
@@ -293,7 +292,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
             
         }, cancellationToken);
-    }
 
     private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
@@ -311,39 +309,19 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
-            //await using var ss = filePair.BinaryFile.OpenRead();
-
-            //// Upload
-            //var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
-            //    source: ss, 
-            //    containerName: handlerContext.Request.ContainerName, 
-            //    h: h,
-            //    passphrase: handlerContext.Request.Passphrase, 
-            //    targetTier: handlerContext.Request.Tier,
-            //    contentType: ChunkContentType,
-            //    metadata: null, 
-            //    progress: null, 
-            //    cancellationToken: cancellationToken);
-
             await using var ss = filePair.BinaryFile.OpenRead();
 
-            // Compress the source stream using SharpCompress with GZip
-            MemoryStream compressedStream = await ss.CompressWithGZipAsync(cancellationToken);
-
-            // Optionally, dispose the sourceStream if not using 'await using'
-
-            // Upload the compressed and encrypted stream
-            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadEncryptedAsync(
-                source: compressedStream,
+            // Upload
+            var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
+                source: ss,
                 containerName: handlerContext.Request.ContainerName,
                 h: h,
                 passphrase: handlerContext.Request.Passphrase,
                 targetTier: handlerContext.Request.Tier,
                 contentType: ChunkContentType,
-                metadata: null, // Add metadata if needed
-                progress: null, // Add progress reporting if needed
-                cancellationToken: cancellationToken
-            );
+                metadata: null,
+                progress: null,
+                cancellationToken: cancellationToken);
 
             // Add to db
             handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto

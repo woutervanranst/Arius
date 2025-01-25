@@ -1,38 +1,8 @@
-﻿using SharpCompress.Common;
-using SharpCompress.Writers;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Arius.Core.Extensions;
-
-internal static class StreamExtensions
-{
-    /// <summary>
-    /// Compresses the input stream using GZip via SharpCompress.
-    /// </summary>
-    /// <param name="source">The source stream to compress.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A compressed MemoryStream.</returns>
-    public static async Task<MemoryStream> CompressWithGZipAsync(this Stream source, CancellationToken cancellationToken = default)
-    {
-        var compressedStream = new MemoryStream();
-
-        // Initialize the GZip writer
-        using (var writer = WriterFactory.Open(compressedStream, ArchiveType.GZip, CompressionType.Deflate))
-        {
-            // Create a dummy entry name since GZip is not an archive format with multiple entries
-            var entryName = "data";
-
-            // Add an entry with the source stream
-            writer.Write(entryName, source);
-        }
-
-        // Reset the position of the compressed stream to the beginning
-        compressedStream.Seek(0, SeekOrigin.Begin);
-        return compressedStream;
-    }
-}
 
 internal static class CryptoExtensions
 {
