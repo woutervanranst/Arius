@@ -15,37 +15,20 @@ internal static class CryptoExtensions
     private const int blockSize = 128;
     private const int saltSize = 8;
 
-    public static async Task CopyToCompressedEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
-    {
-        DeriveBytes(passphrase, out var salt, out var key, out var iv);
-        using var aes = CreateAes(key, iv);
-        using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
-        await using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
-        await using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
+    //public static async Task CopyToCompressedEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
+    //{
+    //    DeriveBytes(passphrase, out var salt, out var key, out var iv);
+    //    using var aes = CreateAes(key, iv);
+    //    using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
+    //    await using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+    //    await using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
 
-        await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
-        await target.WriteAsync(salt, 0, salt.Length);
+    //    await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
+    //    await target.WriteAsync(salt, 0, salt.Length);
 
-        await source.CopyToAsync(gzs, cancellationToken);
-    }
+    //    await source.CopyToAsync(gzs, cancellationToken);
+    //}
 
-    public static async Task CopyToEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
-    {
-        DeriveBytes(passphrase, out var salt, out var key, out var iv);
-        using var       aes       = CreateAes(key, iv);
-        using var       encryptor = aes.CreateEncryptor();
-        await using var cs        = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
-
-        // Write OpenSSL-compatible salt prefix and salt
-        await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length, cancellationToken);
-        await target.WriteAsync(salt,                      0, salt.Length,                      cancellationToken);
-
-        // Copy the source stream directly into the CryptoStream (no compression)
-        await source.CopyToAsync(cs, bufferSize: 81920, cancellationToken);
-
-        // Ensure all data is flushed and encryption is finalized
-        await cs.FlushAsync(cancellationToken);
-    }
 
     public static async Task CopyToDecryptedDecompressedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
     {
