@@ -474,42 +474,38 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             // Upload
-            await using var blobStream   = await handlerContext.BlobStorage.OpenWriteAsync(handlerContext.Request.ContainerName, hash, ChunkContentType, null, null, cancellationToken: cancellationToken);
-            await using var cryptoStream = await blobStream.GetCryptoStreamAsync2(handlerContext.Request.Passphrase, cancellationToken);
+            await using var blobStream = await handlerContext.BlobStorage.OpenWriteAsync(
+                containerName: handlerContext.Request.ContainerName,
+                h: hash,
+                contentType: ChunkContentType,
+                metadata: null,
+                progress: null,
+                cancellationToken: cancellationToken);
+            await using var cryptoStream = await blobStream.GetCryptoStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
             await using var gzs          = new GZipStream(cryptoStream, CompressionLevel.Optimal);
 
             await using var ss = filePair.BinaryFile.OpenRead();
-            await ss.CopyToAsync(gzs, cancellationToken);
+            await ss.CopyToAsync(gzs, bufferSize: 81920, cancellationToken);
 
             // Flush all buffers
             await gzs.FlushAsync(cancellationToken);
             await cryptoStream.FlushAsync(cancellationToken);
             await blobStream.FlushAsync(cancellationToken);
 
+            // Update tier
             var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
 
-            //var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
-                //    source: ss,
-                //    containerName: handlerContext.Request.ContainerName,
-                //    h: h,
-                //    passphrase: handlerContext.Request.Passphrase,
-                //    targetTier: handlerContext.Request.Tier,
-                //    contentType: ChunkContentType,
-                //    metadata: null,
-                //    progress: null,
-                //    cancellationToken: cancellationToken);
+            // Add to db
+            handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
+            {
+                Hash         = hash,
+                OriginalSize = ss.Position,
+                ArchivedSize = blobStream.Position,
+                StorageTier  = actualTier
+            });
 
-                // Add to db
-                handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
-                {
-                    Hash         = hash,
-                    OriginalSize = ss.Position,
-                    ArchivedSize = blobStream.Position,
-                    StorageTier  = actualTier
-                });
-
-                // remove from temp
-                MarkAsUploaded(hash);
+            // remove from temp
+            MarkAsUploaded(hash);
         }
         else
         {
