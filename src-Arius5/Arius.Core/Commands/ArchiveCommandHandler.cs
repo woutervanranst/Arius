@@ -6,6 +6,7 @@ using Humanizer;
 using MediatR;
 using System.Formats.Tar;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
@@ -151,219 +152,275 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
 
-    private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
+    private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken)
     {
         var (filePair, hash) = filePairWithHash;
 
-        // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, hash);
-
-        // 3. Upload the Binary, if needed
-        if (needsToBeUploaded)
+        try
         {
-            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
-
-            // Upload
-            await using var blobStream = await handlerContext.BlobStorage.OpenWriteAsync(
-                containerName: handlerContext.Request.ContainerName,
-                h: hash,
-                contentType: ChunkContentType,
-                metadata: null,
-                progress: null,
-                cancellationToken: cancellationToken);
-            await using var cryptoStream = await blobStream.GetCryptoStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-            await using var gzs          = new GZipStream(cryptoStream, CompressionLevel.Optimal);
-
-            await using var ss = filePair.BinaryFile.OpenRead();
-            await ss.CopyToAsync(gzs, bufferSize: 81920, cancellationToken);
-
-            // Flush all buffers
-            await gzs.FlushAsync(cancellationToken);
-            await cryptoStream.FlushAsync(cancellationToken);
-            await blobStream.FlushAsync(cancellationToken);
-
-            // Update tier
-            var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
-
-            // Add to db
-            handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
+            var (needsUpload, uploadTask) = GetUploadStatus(handlerContext, hash);
+            if (!needsUpload)
             {
-                Hash         = hash,
-                OriginalSize = ss.Position,
-                ArchivedSize = blobStream.Position,
-                StorageTier  = actualTier
-            });
+                await uploadTask;
+                return;
+            }
 
-            // remove from temp
-            MarkAsUploaded(hash);
+            handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(
+                filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
+
+            // Upload logic
+            await using var fileStream = filePair.BinaryFile.OpenRead();
+            var result = await UploadBlobAsync(
+                handlerContext,
+                hash,
+                fileStream,
+                ChunkContentType,
+                filePair.BinaryFile.Length,
+                cancellationToken);
+
+            // Create pointer file
+            CreatePointerFileEntry(handlerContext, filePair, hash);
+
+            handlerContext.Request.ProgressReporter?.Report(
+                new FileProgressUpdate(filePair.FullName, 100, "Completed"));
         }
-        else
+        catch (Exception ex)
         {
-            await uploadTask;
+            handlerContext.Request.ProgressReporter?.Report(
+                new FileProgressUpdate(filePair.FullName, -1, $"Error: {ex.Message}"));
+            MarkAsUploaded(hash, ex);
+            throw;
+        }
+    }
+
+    private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await foreach (var batch in GetSmallFileBatches(handlerContext, cancellationToken))
+            {
+                var (tarHash, originalSize, fileEntries) = await ProcessSmallFileBatch(handlerContext, batch, cancellationToken);
+
+                // Upload the tar
+                await using var memStream = batch.TarStream;
+                memStream.Position = 0; // Reset for reading
+
+                var result = await UploadBlobAsync(
+                    handlerContext,
+                    tarHash,
+                    memStream,
+                    TarChunkContentType,
+                    originalSize,
+                    cancellationToken);
+
+                // Update database entries
+                UpdateDatabaseForSmallFiles(handlerContext, tarHash, result, fileEntries);
+            }
+        }
+        catch (Exception ex)
+        {
+            handlerContext.Request.ProgressReporter?.Report(
+                new TaskProgressUpdate("Small file processing", -1, $"Error: {ex.Message}"));
+            throw;
+        }
+    }
+
+    // Common helper methods
+    private async Task<BlobUploadResult> UploadBlobAsync(
+        HandlerContext context,
+        Hash hash,
+        Stream contentStream,
+        string contentType,
+        long originalSize,
+        CancellationToken cancellationToken)
+    {
+        await using var blobStream = await context.BlobStorage.OpenWriteAsync(
+            context.Request.ContainerName,
+            hash,
+            contentType,
+            metadata: null,
+            progress: null,
+            cancellationToken);
+
+        await using var cryptoStream = await blobStream.GetCryptoStreamAsync(context.Request.Passphrase, cancellationToken);
+
+        await contentStream.CopyToAsync(cryptoStream, bufferSize: 81920, cancellationToken);
+        await cryptoStream.FlushAsync(cancellationToken);
+
+        var actualTier = await context.BlobStorage.SetStorageTierPerPolicy(
+            context.Request.ContainerName,
+            hash,
+            blobStream.Position,
+            context.Request.Tier);
+
+        return new BlobUploadResult(
+            Hash: hash,
+            OriginalSize: originalSize,
+            ArchivedSize: blobStream.Position,
+            StorageTier: actualTier);
+    }
+
+    private record BlobUploadResult(Hash Hash, long OriginalSize, long ArchivedSize, StorageTier StorageTier);
+
+    private async IAsyncEnumerable<SmallFileBatch> GetSmallFileBatches(
+        HandlerContext context,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var batch = new SmallFileBatch();
+
+        await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
+        {
+            var (filePair, hash) = filePairWithHash;
+            var (needsUpload, _) = GetUploadStatus(context, hash);
+
+            if (!needsUpload)
+                continue;
+
+            batch.AddFile(filePair, hash);
+            context.Request.ProgressReporter?.Report(new FileProgressUpdate(
+                filePair.FullName, 70, $"Added to TAR batch ({batch.CurrentSizeBytes.Bytes().Humanize()})"));
+
+            if (batch.CurrentSizeBytes >= 1 * 1024 * 1024)
+            {
+                yield return await batch.Seal();
+                batch = new SmallFileBatch();
+            }
         }
 
-        // 4.Write the Pointer
+        if (batch.Any())
+        {
+            yield return await batch.Seal();
+        }
+    }
+
+    private async Task<(Hash TarHash, long OriginalSize, List<FileEntry> FileEntries)> ProcessSmallFileBatch(
+        HandlerContext context,
+        SmallFileBatch batch,
+        CancellationToken cancellationToken)
+    {
+        await using var tarStream = new MemoryStream();
+        await using var gzip = new GZipStream(tarStream, CompressionLevel.Optimal, leaveOpen: true);
+        await using var tarWriter = new TarWriter(gzip);
+
+        long originalSize = 0;
+        var fileEntries = new List<FileEntry>();
+
+        foreach (var (filePair, hash) in batch.Files)
+        {
+            var entryName = context.FileSystem.ConvertPathToInternal(filePair.Path);
+            await tarWriter.WriteEntryAsync(entryName, hash.ToString(), cancellationToken);
+            originalSize += filePair.BinaryFile.Length;
+            fileEntries.Add(new FileEntry(filePair, hash));
+        }
+
+        await gzip.FlushAsync();
+        tarStream.Position = 0;
+
+        return (await context.Hasher.GetHashAsync(tarStream), originalSize, fileEntries);
+    }
+
+    private void UpdateDatabaseForSmallFiles(
+        HandlerContext context,
+        Hash tarHash,
+        BlobUploadResult result,
+        List<FileEntry> fileEntries)
+    {
+        // Update parent entry
+        context.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
+        {
+            Hash = tarHash,
+            OriginalSize = result.OriginalSize,
+            ArchivedSize = result.ArchivedSize,
+            StorageTier = result.StorageTier
+        });
+
+        // Update child entries
+        var childEntries = fileEntries.Select(x => new BinaryPropertiesDto
+        {
+            Hash = x.Hash,
+            ParentHash = tarHash,
+            OriginalSize = x.FilePair.BinaryFile.Length,
+            ArchivedSize = -1, // Not tracked for individual files in tar
+            StorageTier = result.StorageTier
+        });
+
+        context.StateRepo.AddBinaryProperties(childEntries.ToArray());
+
+        // Create pointer files
+        var pointerEntries = fileEntries.Select(x => CreatePointerFileEntry(context, x.FilePair, x.Hash));
+        context.StateRepo.UpsertPointerFileEntries(pointerEntries.ToArray());
+    }
+
+    // Helper records
+    private record FileEntry(FilePair FilePair, Hash Hash);
+    private sealed record SmallFileBatch
+    {
+        private readonly List<(FilePair FilePair, Hash Hash)>          _files;
+        public           IReadOnlyList<(FilePair FilePair, Hash Hash)> Files            { get; }
+        public           long                                          CurrentSizeBytes { get; }
+        public           MemoryStream                                  TarStream        { get; }
+
+        public SmallFileBatch()
+        {
+            _files           = new List<(FilePair, Hash)>();
+            Files            = _files.AsReadOnly();
+            CurrentSizeBytes = 0;
+            TarStream        = new MemoryStream();
+        }
+
+        private SmallFileBatch(List<(FilePair FilePair, Hash Hash)> files, long currentSizeBytes, MemoryStream tarStream)
+        {
+            _files           = files;
+            Files            = _files.AsReadOnly();
+            CurrentSizeBytes = currentSizeBytes;
+            TarStream        = tarStream;
+        }
+
+        public void AddFile(FilePair filePair, Hash hash)
+        {
+            _files.Add((filePair, hash));
+
+
+            var newFiles = new List<(FilePair, Hash)>(_files) { (filePair, hash) 
+            };
+            return new SmallFileBatch(newFiles, CurrentSizeBytes + filePair.BinaryFile.Length, TarStream);
+        }
+
+        public async Task<SmallFileBatch> Seal()
+        {
+            var sealedStream = new MemoryStream();
+            await using (var gzip = new GZipStream(sealedStream, CompressionLevel.Optimal, leaveOpen: true))
+            await using (var tarWriter = new TarWriter(gzip))
+            {
+                foreach (var (filePair, hash) in _files)
+                {
+                    var             fn         = filePair.FileSystem.ConvertPathToInternal(filePair.Path);
+                    await tarWriter.WriteEntryAsync(fn, hash.ToString());
+                }
+            }
+
+            return new SmallFileBatch(
+                new List<(FilePair, Hash)>(_files),
+                CurrentSizeBytes,
+                sealedStream);
+        }
+
+        public bool Any() => _files.Count > 0;
+    }
+
+    private PointerFileEntryDto CreatePointerFileEntry(HandlerContext context, FilePair filePair, Hash hash)
+    {
         var pf = filePair.GetOrCreatePointerFile(hash);
 
-        // 5. Write the PointerFileEntry
-        handlerContext.StateRepo.UpsertPointerFileEntries(new PointerFileEntryDto
+        return new PointerFileEntryDto
         {
             Hash             = hash,
             RelativeName     = pf.Path.FullName,
             CreationTimeUtc  = pf.CreationTime,
             LastWriteTimeUtc = pf.LastWriteTime
-        });
-
-        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
+        };
     }
 
-    private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
-    {
-        MemoryStream ms = null;
-        TarWriter tarWriter = null;
-        GZipStream gzip = null;
-        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs = new();
-        long originalSize = 0;
-        long previousPosition = 0;
-
-        await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
-        {
-            try
-            {
-                if (tarWriter is null)
-                {
-                    ms = new MemoryStream();
-                    gzip = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true); // Set leaveOpen: true to prevent disposing the MemoryStream when GZipStream is disposed
-                    tarWriter = new TarWriter(gzip); // TODO quid usings?
-                    originalSize = 0;
-
-                    await gzip.FlushAsync();
-                    previousPosition = ms.Position;
-                }
-
-                var (filePair, binaryHash) = filePairWithHash;
-
-                // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-                var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, binaryHash);
-
-                handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
-
-                // 3. Upload the Binary, if needed
-                if (needsToBeUploaded)
-                {
-
-                    //await using var ss = filePair.BinaryFile.OpenRead();
-                    var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
-                    await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
-
-                    await gzip.FlushAsync(); // flush gzip so we get an accurate position in the memorystream
-                    await ms.FlushAsync();
-
-                    originalSize += filePair.BinaryFile.Length;
-                    var archivedSize = ms.Position - previousPosition;
-
-
-
-                    tarredFilePairs.Add((filePair, binaryHash, archivedSize));
-
-                    previousPosition = ms.Position;
-
-                }
-                // the else {} branch is not necessary here since we are sure that the file will be uploaded in this run
-                //else { await uploadTask; }
-
-
-
-                if ((ms.Position > 1024 * 1024 ||
-                     (ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any())
-                {
-                    tarWriter.Dispose();
-                    gzip.Dispose(); // dispose the gzipstream so it writes the gzip closing block to the memorystream
-
-                    ms.Seek(0, SeekOrigin.Begin);
-
-                    var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
-
-                    File.WriteAllBytes($@"C:\Users\RFC430\Downloads\New folder\{tarHash}.tar.gzip", ms.ToArray());
-
-                    ms.Seek(0, SeekOrigin.Begin);
-
-                    foreach (var (tarredFilePair, _, _) in tarredFilePairs)
-                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
-
-                    await using var blobStream = await handlerContext.BlobStorage.OpenWriteAsync(
-                        containerName: handlerContext.Request.ContainerName,
-                        h: tarHash,
-                        contentType: TarChunkContentType,
-                        metadata: null,
-                        progress: null,
-                        cancellationToken: cancellationToken);
-                    await using var cryptoStream = await blobStream.GetCryptoStreamAsync(handlerContext.Request.Passphrase, cancellationToken);
-                    await ms.CopyToAsync(cryptoStream, bufferSize: 1024 * 1024 * 2, cancellationToken);
-
-                    // Flush all buffers
-                    await cryptoStream.FlushAsync(cancellationToken);
-                    await blobStream.FlushAsync(cancellationToken);
-
-                    // Update tier
-                    var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, tarHash, blobStream.Position, handlerContext.Request.Tier);
-
-                    // Add BinaryProperties
-                    var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
-                    {
-                        Hash = x.Hash,
-                        ParentHash = tarHash,
-                        OriginalSize = x.FilePair.BinaryFile.Length,
-                        ArchivedSize = x.ArchivedSize,
-                        StorageTier = actualTier
-                    }).ToArray();
-                    handlerContext.StateRepo.AddBinaryProperties(bps);
-
-                    handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
-                    {
-                        Hash = tarHash,
-                        OriginalSize = originalSize,
-                        ArchivedSize = blobStream.Position,
-                        StorageTier = actualTier
-                    });
-
-                    // Mark as upladed
-                    foreach (var (_, binaryHash2, _) in tarredFilePairs)
-                        MarkAsUploaded(binaryHash2);
-
-                    // 4.Write the Pointers
-                    var pfes = new List<PointerFileEntryDto>();
-                    foreach (var (filePair22, binaryHash22, _) in tarredFilePairs)
-                    {
-                        var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
-                        pfes.Add(new PointerFileEntryDto
-                        {
-                            Hash = binaryHash22,
-                            RelativeName = pf.Path.FullName,
-                            CreationTimeUtc = pf.CreationTime,
-                            LastWriteTimeUtc = pf.LastWriteTime
-                        });
-                    }
-
-                    // 5. Write the PointerFileEntry
-                    handlerContext.StateRepo.UpsertPointerFileEntries(pfes.ToArray());
-
-                    //handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, "Completed"));
-
-                    foreach (var (tarredFilePair, _, _) in tarredFilePairs)
-                        handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 100, $"TAR DOne"));
-
-
-                    ms.Dispose();
-                    tarWriter = null;
-                    tarredFilePairs.Clear();
-                }
-            }
-            catch (Exception e)
-            {
-            }
-        }
-    }
 
     // -- UPLOAD STATUS HELPERS
 
@@ -397,12 +454,17 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    private void MarkAsUploaded(Hash h)
+    private void MarkAsUploaded(Hash h, Exception exception = null)
     {
         lock (uploadingHashes)
         {
-            uploadingHashes.Remove(h, out var tcs);
-            tcs.SetResult();
+            if (uploadingHashes.Remove(h, out var tcs))
+            {
+                if (exception != null)
+                    tcs.TrySetException(exception);
+                else
+                    tcs.TrySetResult();
+            }
         }
     }
 
