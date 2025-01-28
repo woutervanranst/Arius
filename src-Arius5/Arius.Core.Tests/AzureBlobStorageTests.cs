@@ -1,9 +1,8 @@
-using System.Text.Json.Serialization;
 using Arius.Core.Commands;
 using Arius.Core.Models;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit.Abstractions;
 
 namespace FileSystem.Local.Tests;
@@ -18,7 +17,7 @@ public class AzureBlobStorageTests
     }
 
     [Fact]
-    public void Delete()
+    public void DeleteLocalDb()
     {
         var stateDatabaseFile = new FileInfo("state.db");
         stateDatabaseFile.Delete();
@@ -41,10 +40,8 @@ public class AzureBlobStorageTests
     //    var x = afs.EnumerateFileEntries(UPath.Root).ToList();
     //}
 
-    [Fact]
-    public async Task Kak()
+    private TestRemoteRepositoryOptions GetTestRemoteRepositoryOptions()
     {
-        var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -52,7 +49,36 @@ public class AzureBlobStorageTests
             .AddEnvironmentVariables()
             .Build();
 
-        var config = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+        return configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+    }
+
+    [Fact]
+    public async Task CleanupAzure()
+    {
+        var config = GetTestRemoteRepositoryOptions();
+
+        var blobServiceClient = new BlobServiceClient($"DefaultEndpointsProtocol=https;AccountName={config.AccountName};AccountKey={config.AccountKey};EndpointSuffix=core.windows.net");
+
+        // List all containers
+        await foreach (var container in blobServiceClient.GetBlobContainersAsync())
+        {
+            // Get container properties to check LastModified date
+            var containerClient = blobServiceClient.GetBlobContainerClient(container.Name);
+            var properties      = (BlobContainerProperties)await containerClient.GetPropertiesAsync();
+
+            // Check if the container was last modified more than 24 hours ago
+            if (properties.LastModified < DateTimeOffset.UtcNow.AddHours(-24))
+            {
+                // Delete container
+                await containerClient.DeleteAsync();
+            }
+        }
+    }
+
+    [Fact]
+    public async Task RunArchiveCommand()
+    {
+        var config = GetTestRemoteRepositoryOptions();
 
         var c = new ArchiveCommand
         {
