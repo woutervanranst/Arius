@@ -323,7 +323,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     {
                         Hash = tarHash,
                         OriginalSize = originalSize,
-                        ArchivedSize = ms.Position,
+                        ArchivedSize = blobStream.Position,
                         StorageTier = actualTier
                     });
 
