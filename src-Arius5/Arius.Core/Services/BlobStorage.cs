@@ -5,7 +5,9 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using System.Collections.Concurrent;
+using System.IO.Compression;
 using System.Net;
+using System.Security.Cryptography;
 
 namespace Arius.Core.Services;
 
@@ -82,6 +84,61 @@ internal class BlobStorage
         var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
 
         return (actualTier, ts.Position);
+    }
+
+    public async Task<Stream> OpenWriteEncryptedAsync(
+        Hash h,
+        string passphrase,
+        string containerName,
+        string contentType,
+        IDictionary<string, string> metadata = null,
+        IProgress<long> progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        // Initialize the BlockBlobClient
+        var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
+
+        // Configure blob write options
+        var bbowo = new BlockBlobOpenWriteOptions
+        {
+            HttpHeaders     = new BlobHttpHeaders { ContentType = contentType },
+            ProgressHandler = progress,
+            Metadata        = metadata
+        };
+
+        // Handle overwrite condition if necessary
+        bool throwOnExists = false;
+        if (throwOnExists)
+        {
+            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") };
+        }
+
+        // Open the base stream from Azure Blob storage
+        var baseStream = await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
+
+        var cryptoStream = await baseStream.GetCryptoStreamAsync2(passphrase, cancellationToken: cancellationToken);
+
+        //// Derive encryption parameters
+        //DeriveBytes(passphrase, out var salt, out var key, out var iv);
+
+        //// Write salt information to the base stream
+        //await baseStream.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length, cancellationToken);
+        //await baseStream.WriteAsync(salt,                      0, salt.Length,                      cancellationToken);
+
+        //// Set up AES encryption
+        //var aes       = CreateAes(key, iv);
+        //var encryptor = aes.CreateEncryptor();
+
+        //// Create the CryptoStream for encryption
+        //var cryptoStream = new CryptoStream(baseStream, encryptor, CryptoStreamMode.Write, leaveOpen: true);
+
+        //// Create the GZipStream for compression
+        //var gzipStream = new GZipStream(cryptoStream, CompressionLevel.Optimal, leaveOpen: true);
+
+        // Optionally, track the number of bytes written
+        //var trackingStream = new ProgressStream(gzipStream, progress);
+
+        return cryptoStream;
     }
 
     //public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadEncryptedAsync(
