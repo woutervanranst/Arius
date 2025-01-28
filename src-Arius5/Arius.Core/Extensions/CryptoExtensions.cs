@@ -64,17 +64,17 @@ internal static class CryptoExtensions
         await gzs.CopyToAsync(target, cancellationToken);
     }
 
-    public static async Task<CryptoStream> GetCryptoStreamAsync(this Stream target, string passphrase)
-    {
-        DeriveBytes(passphrase, out var salt, out var key, out var iv);
-        using var aes       = CreateAes(key, iv);
-        using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
+    //public static async Task<CryptoStream> GetCryptoStreamAsync(this Stream target, string passphrase)
+    //{
+    //    DeriveBytes(passphrase, out var salt, out var key, out var iv);
+    //    using var aes       = CreateAes(key, iv);
+    //    using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
 
-        await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
-        await target.WriteAsync(salt,                      0, salt.Length);
+    //    await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
+    //    await target.WriteAsync(salt,                      0, salt.Length);
 
-        return new CryptoStream(target, encryptor, CryptoStreamMode.Write);
-    }
+    //    return new CryptoStream(target, encryptor, CryptoStreamMode.Write);
+    //}
 
     public static async Task<Stream> GetCryptoStreamAsync2(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
     {
@@ -91,106 +91,61 @@ internal static class CryptoExtensions
         var cryptoStream = new CryptoStream(baseStream, encryptor, CryptoStreamMode.Write, leaveOpen: true);
 
         // Return a stream wrapper that disposes both the crypto stream and AES instance
-        return new DisposableCryptoStream(cryptoStream, aes, baseStream);
-    }
-
-    private sealed class DisposableCryptoStream : Stream
-    {
-        private readonly CryptoStream _cryptoStream;
-        private readonly Aes _aes;
-        private readonly Stream _baseStream;
-        private long _virtualPosition;
-
-        public DisposableCryptoStream(CryptoStream cryptoStream, Aes aes, Stream baseStream)
-        {
-            _cryptoStream = cryptoStream;
-            _aes = aes;
-            _baseStream = baseStream;
-
-            // Initialize position with salt header bytes already written
-            _virtualPosition = OPENSSL_SALT_PREFIX_BYTES.Length + saltSize;
-        }
-
-        public override bool CanRead => false;
-        public override bool CanSeek => false;
-        public override bool CanWrite => true;
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => _baseStream.Position;
-            set => throw new NotSupportedException();
-        }
-
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            _cryptoStream.Write(buffer, offset, count);
-            _virtualPosition += count;
-        }
-
-        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            await _cryptoStream.WriteAsync(buffer, offset, count, cancellationToken);
-            _virtualPosition += count;
-        }
-
-        public override void Flush() => _cryptoStream.Flush();
-
-        public override async Task FlushAsync(CancellationToken cancellationToken) =>
-            await _cryptoStream.FlushAsync(cancellationToken);
-
-        // These operations are not supported for write-only streams
-        public override int Read(byte[] buffer, int offset, int count) =>
-            throw new NotSupportedException();
-        public override long Seek(long offset, SeekOrigin origin) =>
-            throw new NotSupportedException();
-        public override void SetLength(long value) =>
-            throw new NotSupportedException();
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _cryptoStream.Dispose();
-                _aes.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
-        // Add finalization logic if needed
+        return new DisposableCryptoStream(cryptoStream, aes);
     }
 
     //private sealed class DisposableCryptoStream : Stream
     //{
     //    private readonly CryptoStream _cryptoStream;
-    //    private readonly Aes          _aes;
-    //    private readonly Stream       baseStream;
+    //    private readonly Aes _aes;
+    //    private readonly Stream _baseStream;
+    //    private long _virtualPosition;
 
     //    public DisposableCryptoStream(CryptoStream cryptoStream, Aes aes, Stream baseStream)
     //    {
-    //        _cryptoStream   = cryptoStream;
-    //        _aes            = aes;
-    //        this.baseStream = baseStream;
+    //        _cryptoStream = cryptoStream;
+    //        _aes = aes;
+    //        _baseStream = baseStream;
+
+    //        // Initialize position with salt header bytes already written
+    //        _virtualPosition = OPENSSL_SALT_PREFIX_BYTES.Length + saltSize;
     //    }
 
-    //    public override bool CanRead  => _cryptoStream.CanRead;
-    //    public override bool CanSeek  => _cryptoStream.CanSeek;
-    //    public override bool CanWrite => _cryptoStream.CanWrite;
-    //    public override long Length   => _cryptoStream.Length;
+    //    public override bool CanRead => false;
+    //    public override bool CanSeek => false;
+    //    public override bool CanWrite => true;
+    //    public override long Length => throw new NotSupportedException();
+
     //    public override long Position
     //    {
-    //        get => _cryptoStream.Position;
-    //        set => _cryptoStream.Position = value;
+    //        get => _baseStream.Position;
+    //        set => throw new NotSupportedException();
     //    }
 
-    //    public override void Flush()                                         => _cryptoStream.Flush();
-    //    public override Task FlushAsync(CancellationToken cancellationToken) => _cryptoStream.FlushAsync(cancellationToken);
-    //    public override int  Read(byte[] buffer, int offset, int count)      => _cryptoStream.Read(buffer, offset, count);
-    //    public override long Seek(long offset, SeekOrigin origin)            => _cryptoStream.Seek(offset, origin);
-    //    public override void SetLength(long value)                           => _cryptoStream.SetLength(value);
-    //    public override void Write(byte[] buffer, int offset, int count)     => _cryptoStream.Write(buffer, offset, count);
-    //    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-    //        _cryptoStream.WriteAsync(buffer, offset, count, cancellationToken);
+    //    public override void Write(byte[] buffer, int offset, int count)
+    //    {
+    //        _cryptoStream.Write(buffer, offset, count);
+    //        _virtualPosition += count;
+    //    }
+
+    //    public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    //    {
+    //        await _cryptoStream.WriteAsync(buffer, offset, count, cancellationToken);
+    //        _virtualPosition += count;
+    //    }
+
+    //    public override void Flush() => _cryptoStream.Flush();
+
+    //    public override async Task FlushAsync(CancellationToken cancellationToken) =>
+    //        await _cryptoStream.FlushAsync(cancellationToken);
+
+    //    // These operations are not supported for write-only streams
+    //    public override int Read(byte[] buffer, int offset, int count) =>
+    //        throw new NotSupportedException();
+    //    public override long Seek(long offset, SeekOrigin origin) =>
+    //        throw new NotSupportedException();
+    //    public override void SetLength(long value) =>
+    //        throw new NotSupportedException();
 
     //    protected override void Dispose(bool disposing)
     //    {
@@ -201,17 +156,60 @@ internal static class CryptoExtensions
     //        }
     //        base.Dispose(disposing);
     //    }
+
+    //    // Add finalization logic if needed
     //}
+
+    private sealed class DisposableCryptoStream : Stream
+    {
+        private readonly CryptoStream _cryptoStream;
+        private readonly Aes _aes;
+
+        public DisposableCryptoStream(CryptoStream cryptoStream, Aes aes)
+        {
+            _cryptoStream = cryptoStream;
+            _aes = aes;
+        }
+
+        public override bool CanRead => _cryptoStream.CanRead;
+        public override bool CanSeek => _cryptoStream.CanSeek;
+        public override bool CanWrite => _cryptoStream.CanWrite;
+        public override long Length => _cryptoStream.Length;
+        public override long Position
+        {
+            get => _cryptoStream.Position;
+            set => _cryptoStream.Position = value;
+        }
+
+        public override void Flush() => _cryptoStream.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => _cryptoStream.FlushAsync(cancellationToken);
+        public override int Read(byte[] buffer, int offset, int count) => _cryptoStream.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => _cryptoStream.Seek(offset, origin);
+        public override void SetLength(long value) => _cryptoStream.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count) => _cryptoStream.Write(buffer, offset, count);
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _cryptoStream.WriteAsync(buffer, offset, count, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _cryptoStream.Dispose();
+                _aes.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
 
     private static Aes CreateAes(byte[] key, byte[] iv)
     {
         var aes = Aes.Create();
-        aes.Mode = mode;
-        aes.Padding = padding;
-        aes.KeySize = keySize;
+        aes.Mode      = mode;
+        aes.Padding   = padding;
+        aes.KeySize   = keySize;
         aes.BlockSize = blockSize;
-        aes.Key = key;
-        aes.IV = iv;
+        aes.Key       = key;
+        aes.IV        = iv;
         return aes;
     }
 

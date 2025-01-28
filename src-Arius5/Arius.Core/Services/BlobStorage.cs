@@ -5,9 +5,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using System.Collections.Concurrent;
-using System.IO.Compression;
 using System.Net;
-using System.Security.Cryptography;
 
 namespace Arius.Core.Services;
 
@@ -42,23 +40,6 @@ internal class BlobStorage
         return r is not null && r.GetRawResponse().Status == (int)HttpStatusCode.Created;
     }
 
-    //public async Task<Stream> OpenChunkWriteAsync(string containerName, Hash h, IDictionary<string, string>? metadata = default, IProgress<long> progress = default)
-    //{
-    //    var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
-
-    //    var bbowo = new BlockBlobOpenWriteOptions();
-
-    //    //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
-    //    var throwOnExists = false;
-    //    if (throwOnExists)
-    //        bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
-    //    if (metadata is not null)
-    //        bbowo.Metadata = metadata;
-    //    bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = ChunkContentType };
-    //    bbowo.ProgressHandler = progress;
-
-    //    return await bbc.OpenWriteAsync(overwrite: true, options: bbowo);
-    //}
 
     public async Task<(StorageTier ActualTier, long ArchivedSize)> UploadCompressedEncryptedAsync(Stream source, string containerName, Hash h, string passphrase, StorageTier targetTier, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
@@ -84,6 +65,34 @@ internal class BlobStorage
         var r = await bbc.SetAccessTierAsync(targetTier.ToAccessTier());
 
         return (actualTier, ts.Position);
+    }
+
+    public async Task<StorageTier> SetStorageTierPerPolicy(string containerName, Hash h, long length, StorageTier targetTier)
+    {
+        var actualTier = GetActualStorageTier(targetTier, length);
+        var bbc        = new BlobClient(connectionString, containerName, $"chunks/{h}");
+
+        await bbc.SetAccessTierAsync(actualTier.ToAccessTier());
+
+        return actualTier;
+    }
+
+    public async Task<Stream> OpenWriteAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    {
+        var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
+
+        var bbowo = new BlockBlobOpenWriteOptions();
+
+        //NOTE the SDK only supports OpenWriteAsync with overwrite: true, therefore the ThrowOnExistOptions workaround
+        var throwOnExists = false;
+        if (throwOnExists)
+            bbowo.OpenConditions = new BlobRequestConditions { IfNoneMatch = new ETag("*") }; // as per https://github.com/Azure/azure-sdk-for-net/issues/24831#issue-1031369473
+        if (metadata is not null)
+            bbowo.Metadata = metadata;
+        bbowo.HttpHeaders     = new BlobHttpHeaders { ContentType = contentType };
+        bbowo.ProgressHandler = progress;
+
+        return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
     public async Task<Stream> OpenWriteEncryptedAsync(

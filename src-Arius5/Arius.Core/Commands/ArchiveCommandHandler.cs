@@ -1,4 +1,5 @@
-﻿using Arius.Core.Models;
+﻿using Arius.Core.Extensions;
+using Arius.Core.Models;
 using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
@@ -462,46 +463,53 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     private async Task UploadLargeFileAsync(HandlerContext handlerContext, FilePairWithHash filePairWithHash, CancellationToken cancellationToken = default)
     {
-        var (filePair, h) = filePairWithHash;
+        var (filePair, hash) = filePairWithHash;
 
         // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
-        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, h);
+        var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, hash);
 
         // 3. Upload the Binary, if needed
         if (needsToBeUploaded)
         {
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
-            await using var ss = filePair.BinaryFile.OpenRead();
-
             // Upload
-            await using var cryptoStream = await handlerContext.BlobStorage.OpenWriteEncryptedAsync(h, handlerContext.Request.Passphrase, handlerContext.Request.ContainerName, ChunkContentType, cancellationToken: cancellationToken);
-            await using var gzs = new GZipStream(cryptoStream, CompressionLevel.Optimal);
+            await using var blobStream   = await handlerContext.BlobStorage.OpenWriteAsync(handlerContext.Request.ContainerName, hash, ChunkContentType, null, null, cancellationToken: cancellationToken);
+            await using var cryptoStream = await blobStream.GetCryptoStreamAsync2(handlerContext.Request.Passphrase, cancellationToken);
+            await using var gzs          = new GZipStream(cryptoStream, CompressionLevel.Optimal);
 
+            await using var ss = filePair.BinaryFile.OpenRead();
             await ss.CopyToAsync(gzs, cancellationToken);
 
+            // Flush all buffers
+            await gzs.FlushAsync(cancellationToken);
+            await cryptoStream.FlushAsync(cancellationToken);
+            await blobStream.FlushAsync(cancellationToken);
+
+            var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
+
             //var (actualTier, archivedSize) = await handlerContext.BlobStorage.UploadCompressedEncryptedAsync(
-            //    source: ss,
-            //    containerName: handlerContext.Request.ContainerName,
-            //    h: h,
-            //    passphrase: handlerContext.Request.Passphrase,
-            //    targetTier: handlerContext.Request.Tier,
-            //    contentType: ChunkContentType,
-            //    metadata: null,
-            //    progress: null,
-            //    cancellationToken: cancellationToken);
+                //    source: ss,
+                //    containerName: handlerContext.Request.ContainerName,
+                //    h: h,
+                //    passphrase: handlerContext.Request.Passphrase,
+                //    targetTier: handlerContext.Request.Tier,
+                //    contentType: ChunkContentType,
+                //    metadata: null,
+                //    progress: null,
+                //    cancellationToken: cancellationToken);
 
-            // Add to db
-            handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
-            {
-                Hash = h,
-                OriginalSize = ss.Length,
-                ArchivedSize = cryptoStream.Position,
-                StorageTier = StorageTier.Cold // TODO
-            });
+                // Add to db
+                handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
+                {
+                    Hash         = hash,
+                    OriginalSize = ss.Position,
+                    ArchivedSize = blobStream.Position,
+                    StorageTier  = actualTier
+                });
 
-            // remove from temp
-            MarkAsUploaded(h);
+                // remove from temp
+                MarkAsUploaded(hash);
         }
         else
         {
@@ -509,12 +517,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
 
         // 4.Write the Pointer
-        var pf = filePair.GetOrCreatePointerFile(h);
+        var pf = filePair.GetOrCreatePointerFile(hash);
 
         // 5. Write the PointerFileEntry
         handlerContext.StateRepo.UpsertPointerFileEntries(new PointerFileEntryDto
         {
-            Hash             = h,
+            Hash             = hash,
             RelativeName     = pf.Path.FullName,
             CreationTimeUtc  = pf.CreationTime,
             LastWriteTimeUtc = pf.LastWriteTime

@@ -4,7 +4,6 @@ using Arius.Core.Models;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
-using Spectre.Console.Rendering;
 using System.Collections.Concurrent;
 
 namespace Arius.Cli;
@@ -13,9 +12,44 @@ internal class Program
 {
     static async Task Main(string[] args)
     {
+        //var       builder = Host.CreateApplicationBuilder(args);
+
+        ////builder.Logging.ClearProviders();
+        ////builder.Logging.AddConsole();
+        ////builder.Logging.AddApplicationInsights();
+        ////builder.Logging.AddFilter(x => x == LogLevel.Trace);
+
+        //builder.Services.AddArius(c => { });
+
+        //var host = builder.Build();
+
+        //var xx = host.Services.GetRequiredService<IConfiguration>().GetSection("ApplicationInsights");
+
+        //var logger = host.Services.GetRequiredService<ILogger<Program>>();
+        //logger.LogInformation("ha");
+
+        //var mediator = host.Services.GetRequiredService<IMediator>();
+
+        //using var channel = new InMemoryChannel();
+
         var services = new ServiceCollection()
             .AddArius(c => { })
-            .AddLogging()
+            //.AddLogging()
+            //    //.Configure<TelemetryConfiguration>(config => config.TelemetryChannel = channel)
+            //    //.AddLogging(builder =>
+            //    //{
+            //    //    // Only Application Insights is registered as a logger provider
+            //    //    builder.AddApplicationInsights(
+            //    //        configureTelemetryConfiguration: (config) => config.ConnectionString = "InstrumentationKey=47dd1294-ae4d-429d-8259-014332664214;IngestionEndpoint=https://swedencentral-0.in.applicationinsights.azure.com/;ApplicationId=8ca03ea8-1f37-45ce-b8b4-e125e7bf0cee",
+            //    //        configureApplicationInsightsLoggerOptions: (options) => { }
+            //    //    );
+            //    //})
+            //    //.AddLogging(builder =>
+            //    //{
+            //    //    builder.AddApplicationInsights();
+            //    //})
+            //    //.AddApplicationInsightsTelemetryWorkerService()
+            //    //.AddHttpClient()
             .BuildServiceProvider();
 
         var mediator = services.GetRequiredService<IMediator>();
@@ -39,75 +73,88 @@ internal class Program
             )
             .StartAsync(async ctx =>
             {
-                var queue = new ConcurrentQueue<ProgressUpdate>();
-                var pu          = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
-
-                // 3. Send the MediatR command and wait for completion
-                // The handler will report progress via 'progressUpdates'
-                var c = new ArchiveCommand
+                try
                 {
-                    //AccountName   = config.AccountName,
-                    //AccountKey    = config.AccountKey,
-                    //ContainerName = config.ContainerName ?? "atest",
-                    //Passphrase    = config.Passphrase,
-                    AccountName   = "ariusci",
-                    ContainerName = "atest",
-                    Passphrase    = "woutervr",
-                    RemoveLocal   = false,
-                    Tier          = StorageTier.Cool,
-                    LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\"),
+                    var queue = new ConcurrentQueue<ProgressUpdate>();
+                    var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
 
-                    ProgressReporter = pu
-                };
-
-                var t = mediator.Send(c);
-
-                
-                var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
-
-                while (!t.IsCompleted)
-                {
-                    while (queue.TryDequeue(out var u))
+                    // 3. Send the MediatR command and wait for completion
+                    // The handler will report progress via 'progressUpdates'
+                    var c = new ArchiveCommand
                     {
-                        if (u is TaskProgressUpdate tpu)
+                        //AccountName   = config.AccountName,
+                        //AccountKey    = config.AccountKey,
+                        //ContainerName = config.ContainerName ?? "atest",
+                        //Passphrase    = config.Passphrase,
+                        AccountName = "ariusci",
+                        ContainerName = "atest",
+                        Passphrase = "woutervr",
+                        RemoveLocal = false,
+                        Tier = StorageTier.Cool,
+                        //LocalRoot = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\"),
+                        LocalRoot = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\metronic_blazor_v8.2.7"),
+                        //LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder"),
+
+                        ProgressReporter = pu
+                    };
+
+                    var t = mediator.Send(c);
+
+
+                    var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
+
+                    while (!t.IsCompleted)
+                    {
+                        while (queue.TryDequeue(out var u))
                         {
-                            var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
-
-                            // Optionally display some extra status text in the description
-                            if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                            if (u is TaskProgressUpdate tpu)
                             {
-                                // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                                task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                                var task = taskDictionary.GetOrAdd(tpu.TaskName, taskName => ctx.AddTask($"[blue]{taskName}[/]").IsIndeterminate());
+
+                                // Optionally display some extra status text in the description
+                                if (!string.IsNullOrWhiteSpace(tpu.StatusMessage))
+                                {
+                                    // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                                    task.Description = $"[blue]{tpu.TaskName}[/] ({tpu.StatusMessage})";
+                                }
+
+                                // If the file is complete, we can stop the task
+                                if (tpu.Percentage >= 100)
+                                    task.StopTask();
                             }
-
-                            // If the file is complete, we can stop the task
-                            if (tpu.Percentage >= 100)
-                                task.StopTask();
-                        }
-                        else if (u is FileProgressUpdate fpu)
-                        {
-                            var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
-
-                            // Optionally display some extra status text in the description
-                            if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
+                            else if (u is FileProgressUpdate fpu)
                             {
-                                // E.g. "[blue]file.txt[/] (Reading... 50%)"
-                                task.Description = $"[blue]{TruncateAndRightJustify(fpu.FileName,  50)}[/] ({TruncateAndLeftJustify(fpu.StatusMessage, 20)})";
+                                var task = taskDictionary.GetOrAdd(fpu.FileName, fileName => ctx.AddTask($"[blue]{fileName}[/]"));
+
+                                // Optionally display some extra status text in the description
+                                if (!string.IsNullOrWhiteSpace(fpu.StatusMessage))
+                                {
+                                    // E.g. "[blue]file.txt[/] (Reading... 50%)"
+                                    task.Description = $"[blue]{TruncateAndRightJustify(fpu.FileName, 50)}[/] ({TruncateAndLeftJustify(fpu.StatusMessage, 20)})";
+                                }
+
+                                task.Value = fpu.Percentage;
+
+                                // If the file is complete, we can stop the task
+                                if (fpu.Percentage >= 100)
+                                    task.StopTask();
                             }
-
-                            task.Value = fpu.Percentage;
-
-                            // If the file is complete, we can stop the task
-                            if (fpu.Percentage >= 100)
-                                task.StopTask();
+                            else
+                                throw new ArgumentException();
                         }
-                        else
-                            throw new ArgumentException();
                     }
-                }
 
-                // Once the handler completes, all updates should have been reported
-                AnsiConsole.MarkupLine("[green]All files processed![/]");
+                    await t; // to ensure error propagation
+
+                    // Once the handler completes, all updates should have been reported
+                    AnsiConsole.MarkupLine("[green]All files processed![/]");
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    throw;
+                }
+                
             });
     }
 

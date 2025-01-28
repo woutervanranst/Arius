@@ -10,6 +10,11 @@ public static class Bootstrapper
     {
         services.Configure(configureOptions); // TODO add validation
 
+        //services.AddAzureClients(builder => // add Extensions.Azure
+        //{
+        //    builder.AddBlobServiceClient()
+        //});
+
         // Add FluentValidation validators
         //services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly()); // zie https://www.milanjovanovic.tech/blog/cqrs-validation-with-mediatr-pipeline-and-fluentvalidation#running-validation-from-the-use-case
 
