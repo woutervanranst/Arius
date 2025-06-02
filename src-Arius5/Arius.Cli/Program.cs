@@ -11,53 +11,17 @@ using System.Collections.Concurrent;
 namespace Arius.Cli;
 
 internal class Program
-{    static async Task Main(string[] args)
-    {
-        var builder = Host.CreateApplicationBuilder(args);
+{    static async Task Main(string[] args)    {        var builder = Host.CreateApplicationBuilder(args);
         builder.Configuration.AddUserSecrets<Program>();
         builder.Services.AddArius(c => { });
+        
+        // Application Insights automatically picks up connection string from appsettings
+        builder.Services.AddApplicationInsightsTelemetryWorkerService();
+        
         var host = builder.Build();
 
-        ////builder.Logging.ClearProviders();
-        ////builder.Logging.AddConsole();
-        ////builder.Logging.AddApplicationInsights();
-        ////builder.Logging.AddFilter(x => x == LogLevel.Trace);
-
-        //builder.Services.AddArius(c => { });
-
-        //var host = builder.Build();
-
-        //var xx = host.Services.GetRequiredService<IConfiguration>().GetSection("ApplicationInsights");
-
-        //var logger = host.Services.GetRequiredService<ILogger<Program>>();
-        //logger.LogInformation("ha");
-
-        //var mediator = host.Services.GetRequiredService<IMediator>();
-
-        //using var channel = new InMemoryChannel();
-
-        var services = new ServiceCollection()
-            .AddArius(c => { })
-            //.AddLogging()
-            //    //.Configure<TelemetryConfiguration>(config => config.TelemetryChannel = channel)
-            //    //.AddLogging(builder =>
-            //    //{
-            //    //    // Only Application Insights is registered as a logger provider
-            //    //    builder.AddApplicationInsights(
-            //    //        configureTelemetryConfiguration: (config) => config.ConnectionString = "InstrumentationKey=47dd1294-ae4d-429d-8259-014332664214;IngestionEndpoint=https://swedencentral-0.in.applicationinsights.azure.com/;ApplicationId=8ca03ea8-1f37-45ce-b8b4-e125e7bf0cee",
-            //    //        configureApplicationInsightsLoggerOptions: (options) => { }
-            //    //    );
-            //    //})
-            //    //.AddLogging(builder =>
-            //    //{
-            //    //    builder.AddApplicationInsights();
-            //    //})
-            //    //.AddApplicationInsightsTelemetryWorkerService()
-            //    //.AddHttpClient()
-            .BuildServiceProvider();
-
-        var mediator = services.GetRequiredService<IMediator>();
         var mediator = host.Services.GetRequiredService<IMediator>();
+        var config = host.Services.GetRequiredService<IConfiguration>();
 
         AnsiConsole.Write(
             new FigletText("Arius")
