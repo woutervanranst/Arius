@@ -30,11 +30,9 @@ public record ArchiveCommand : IRequest
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
 
-
 public record ProgressUpdate;
 public record TaskProgressUpdate(string TaskName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
 public record FileProgressUpdate(string FileName, double Percentage, string? StatusMessage = null) : ProgressUpdate;
-
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
@@ -45,66 +43,40 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     // private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = Channel.CreateUnbounded<FilePairWithHash>(new UnboundedChannelOptions() { AllowSynchronousContinuations = false, SingleWriter = false, SingleReader = true }); // unbounded since there can be a deadlock 
     private readonly Channel<FilePairWithHash> hashedSmallFilesChannel = GetBoundedChannel<FilePairWithHash>(capacity: 10, singleWriter: false, singleReader: true);
 
-    private CancellationTokenSource? errorCancellationTokenSource;
-
     private record FilePairWithHash(FilePair FilePair, Hash Hash);
 
     public async Task Handle(ArchiveCommand request, CancellationToken cancellationToken)
     {
         var handlerContext = await HandlerContext.CreateAsync(request);
 
-        errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var combinedToken = errorCancellationTokenSource.Token;
+        
+        var indexTask   = CreateIndexTask(handlerContext, cancellationToken);
+        var hashTask    = CreateHashTask(handlerContext, cancellationToken);
+        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, cancellationToken);
+        var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, cancellationToken);
 
-        try
-        {
-            var indexTask            = CreateIndexTask(handlerContext, combinedToken);
-            var hashTask             = CreateHashTask(handlerContext, combinedToken);
-            var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, combinedToken);
-            var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, combinedToken);
+        await Task.WhenAll(uploadLargeFilesTask, uploadSmallFilesTask);
+        //await indexTask;
 
-            await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
-
-            // 6. Remove PointerFileEntries that do not exist on disk
-            handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
-        }
-        catch (Exception)
-        {
-            // Cancel all other operations when one fails
-            errorCancellationTokenSource?.Cancel();
-            throw;
-        }
-        finally
-        {
-            errorCancellationTokenSource?.Dispose();
-        }
+        // 6. Remove PointerFileEntries that do not exist on disk
+        handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
         Task.Run(async () =>
         {
-            try
+            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
+
+            int fileCount = 0;
+            foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
             {
-                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
-
-                int fileCount = 0;
-                foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
-                {
-                    Interlocked.Increment(ref fileCount);
-                    await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
-                }
-
-                indexedFilesChannel.Writer.Complete();
-
-                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
+                Interlocked.Increment(ref fileCount);
+                await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
             }
-            catch (Exception ex)
-            {
-                // Signal error and cancel all operations
-                errorCancellationTokenSource?.Cancel();
-                indexedFilesChannel.Writer.Complete();
-                throw new InvalidOperationException($"Failed to index files in '{handlerContext.Request.LocalRoot}': {ex.Message}", ex);
-            }
+
+            indexedFilesChannel.Writer.Complete();
+
+            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
         }, cancellationToken);
 
     private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken)
@@ -127,18 +99,14 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     else
                         await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
                 }
-                catch (IOException ex)
+                catch (IOException e)
                 {
-                    // Signal error and cancel all operations
-                    errorCancellationTokenSource?.Cancel();
-                    throw new InvalidOperationException($"Failed to access file '{filePair.FullName}': {ex.Message}", ex);
+                    // TODO when the file cannot be accessed
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    // Signal error and cancel all operations
-                    errorCancellationTokenSource?.Cancel();
-                    throw new InvalidOperationException($"Failed to hash file '{filePair.FullName}': {ex.Message}", ex);
                 }
+
             });
 
         t.ContinueWith(_ =>
@@ -159,11 +127,8 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 {
                     await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    // Signal error and cancel all operations
-                    errorCancellationTokenSource?.Cancel();
-                    throw new InvalidOperationException($"Failed to upload large file '{filePairWithHash.FilePair.FullName}': {ex.Message}", ex);
                 }
             });
 
@@ -174,15 +139,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 await UploadSmallFileAsync(handlerContext, cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                // Signal error and cancel all operations
-                errorCancellationTokenSource?.Cancel();
-                throw new InvalidOperationException($"Failed to upload small files TAR archive: {ex.Message}", ex);
+                Console.WriteLine(e);
+                throw;
             }
+            
         }, cancellationToken);
 
-    private const string ChunkContentType    = "application/aes256cbc+gzip";
+    private const string ChunkContentType = "application/aes256cbc+gzip";
     private const string TarChunkContentType = "application/aes256cbc+tar+gzip";
 
 
@@ -254,12 +219,12 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
     private async Task UploadSmallFileAsync(HandlerContext handlerContext, CancellationToken cancellationToken = default)
     {
-        MemoryStream                                            ms               = null;
-        TarWriter                                               tarWriter        = null;
-        GZipStream                                              gzip             = null;
-        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs  = new();
-        long                                                    originalSize     = 0;
-        long                                                    previousPosition = 0;
+        MemoryStream ms = null;
+        TarWriter tarWriter = null;
+        GZipStream gzip = null;
+        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs = new();
+        long originalSize = 0;
+        long previousPosition = 0;
 
         await foreach (var filePairWithHash in hashedSmallFilesChannel.Reader.ReadAllAsync(cancellationToken))
         {
@@ -267,9 +232,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 if (tarWriter is null)
                 {
-                    ms           = new MemoryStream();
-                    gzip         = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true); // Set leaveOpen: true to prevent disposing the MemoryStream when GZipStream is disposed
-                    tarWriter    = new TarWriter(gzip); // TODO quid usings?
+                    ms = new MemoryStream();
+                    gzip = new GZipStream(ms, CompressionLevel.Optimal, leaveOpen: true); // Set leaveOpen: true to prevent disposing the MemoryStream when GZipStream is disposed
+                    tarWriter = new TarWriter(gzip); // TODO quid usings?
                     originalSize = 0;
 
                     await gzip.FlushAsync();
@@ -286,6 +251,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
+
                     //await using var ss = filePair.BinaryFile.OpenRead();
                     var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
                     await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
@@ -297,12 +263,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     var archivedSize = ms.Position - previousPosition;
 
 
+
                     tarredFilePairs.Add((filePair, binaryHash, archivedSize));
 
                     previousPosition = ms.Position;
+
                 }
                 // the else {} branch is not necessary here since we are sure that the file will be uploaded in this run
                 //else { await uploadTask; }
+
 
 
                 if ((ms.Position > 1024 * 1024 ||
@@ -342,20 +311,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     // Add BinaryProperties
                     var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
                     {
-                        Hash         = x.Hash,
-                        ParentHash   = tarHash,
+                        Hash = x.Hash,
+                        ParentHash = tarHash,
                         OriginalSize = x.FilePair.BinaryFile.Length,
                         ArchivedSize = x.ArchivedSize,
-                        StorageTier  = actualTier
+                        StorageTier = actualTier
                     }).ToArray();
                     handlerContext.StateRepo.AddBinaryProperties(bps);
 
                     handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
                     {
-                        Hash         = tarHash,
+                        Hash = tarHash,
                         OriginalSize = originalSize,
                         ArchivedSize = blobStream.Position,
-                        StorageTier  = actualTier
+                        StorageTier = actualTier
                     });
 
                     // Mark as upladed
@@ -369,9 +338,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                         var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
                         pfes.Add(new PointerFileEntryDto
                         {
-                            Hash             = binaryHash22,
-                            RelativeName     = pf.Path.FullName,
-                            CreationTimeUtc  = pf.CreationTime,
+                            Hash = binaryHash22,
+                            RelativeName = pf.Path.FullName,
+                            CreationTimeUtc = pf.CreationTime,
                             LastWriteTimeUtc = pf.LastWriteTime
                         });
                     }
@@ -392,9 +361,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             }
             catch (Exception e)
             {
-                // Signal error and cancel all operations
-                errorCancellationTokenSource?.Cancel();
-                throw new InvalidOperationException($"Failed to process small file in TAR archive: {e.Message}", e);
             }
         }
     }
@@ -443,10 +409,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     private static Channel<T> GetBoundedChannel<T>(int capacity, bool singleWriter, bool singleReader)
         => Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
         {
-            FullMode                      = BoundedChannelFullMode.Wait,
+            FullMode = BoundedChannelFullMode.Wait,
             AllowSynchronousContinuations = false,
-            SingleWriter                  = singleWriter,
-            SingleReader                  = singleReader
+            SingleWriter = singleWriter,
+            SingleReader = singleReader
         });
 
     //private static ParallelOptions GetParallelOptions(int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
@@ -469,7 +435,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             {
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 0));
 
-                var bs      = new BlobStorage(request.AccountName, request.AccountKey);
+                var bs = new BlobStorage(request.AccountName, request.AccountKey);
                 var created = await bs.CreateContainerIfNotExistsAsync(request.ContainerName);
 
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Creating blob container '{request.ContainerName}'...", 100, created ? "Created" : "Already existed"));
@@ -489,15 +455,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 {
                     throw;
                 }
-
+                
                 request.ProgressReporter?.Report(new TaskProgressUpdate($"Initializing state repository...", 100, "Done"));
             }
 
             FilePairFileSystem GetFileSystem()
             {
-                var pfs  = new PhysicalFileSystem();
+                var pfs = new PhysicalFileSystem();
                 var root = pfs.ConvertPathFromInternal(request.LocalRoot.FullName);
-                var sfs  = new SubFileSystem(pfs, root, true);
+                var sfs = new SubFileSystem(pfs, root, true);
                 return new FilePairFileSystem(sfs, true);
             }
         }
