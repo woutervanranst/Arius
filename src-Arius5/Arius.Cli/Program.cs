@@ -2,17 +2,21 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Spectre.Console;
 using System.Collections.Concurrent;
 
 namespace Arius.Cli;
 
 internal class Program
-{
-    static async Task Main(string[] args)
+{    static async Task Main(string[] args)
     {
-        //var       builder = Host.CreateApplicationBuilder(args);
+        var builder = Host.CreateApplicationBuilder(args);
+        builder.Configuration.AddUserSecrets<Program>();
+        builder.Services.AddArius(c => { });
+        var host = builder.Build();
 
         ////builder.Logging.ClearProviders();
         ////builder.Logging.AddConsole();
@@ -53,6 +57,7 @@ internal class Program
             .BuildServiceProvider();
 
         var mediator = services.GetRequiredService<IMediator>();
+        var mediator = host.Services.GetRequiredService<IMediator>();
 
         AnsiConsole.Write(
             new FigletText("Arius")
@@ -76,25 +81,19 @@ internal class Program
                 try
                 {
                     var queue = new ConcurrentQueue<ProgressUpdate>();
-                    var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
-
+                    var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));                    
+                    
                     // 3. Send the MediatR command and wait for completion
                     // The handler will report progress via 'progressUpdates'
                     var c = new ArchiveCommand
                     {
-                        //AccountName   = config.AccountName,
-                        //AccountKey    = config.AccountKey,
-                        //ContainerName = config.ContainerName ?? "atest",
-                        //Passphrase    = config.Passphrase,
-                        AccountName = "ariusci",
-                        ContainerName = "atest",
-                        Passphrase = "woutervr",
-                        RemoveLocal = false,
-                        Tier = StorageTier.Cool,
-                        //LocalRoot = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\"),
-                        LocalRoot = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\metronic_blazor_v8.2.7"),
-                        //LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder"),
-
+                        AccountName      = config["ArchiveSettings:AccountName"] ?? throw new ArgumentException("A"),
+                        AccountKey       = config["ArchiveSettings:AccountKey"] ?? throw new ArgumentException("AccountKey must be configured in user secrets"),
+                        ContainerName    = config["ArchiveSettings:ContainerName"] ?? throw new ArgumentException("C"),
+                        Passphrase       = config["ArchiveSettings:Passphrase"] ?? throw new ArgumentException("Passphrase must be configured in user secrets"),
+                        RemoveLocal      = bool.Parse(config["ArchiveSettings:RemoveLocal"] ?? "false"),
+                        Tier             = Enum.Parse<StorageTier>(config["ArchiveSettings:Tier"] ?? "Cool"),
+                        LocalRoot        = new DirectoryInfo(config["ArchiveSettings:LocalRoot"] ?? throw new ArgumentException("D")),
                         ProgressReporter = pu
                     };
 
