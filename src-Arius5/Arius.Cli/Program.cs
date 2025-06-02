@@ -11,17 +11,20 @@ using System.Collections.Concurrent;
 namespace Arius.Cli;
 
 internal class Program
-{    static async Task Main(string[] args)    {        var builder = Host.CreateApplicationBuilder(args);
+{
+    static async Task Main(string[] args)
+    {
+        var builder = Host.CreateApplicationBuilder(args);
         builder.Configuration.AddUserSecrets<Program>();
         builder.Services.AddArius(c => { });
-        
+
         // Application Insights automatically picks up connection string from appsettings
         builder.Services.AddApplicationInsightsTelemetryWorkerService();
-        
+
         var host = builder.Build();
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var config = host.Services.GetRequiredService<IConfiguration>();
+        var config   = host.Services.GetRequiredService<IConfiguration>();
 
         AnsiConsole.Write(
             new FigletText("Arius")
@@ -45,8 +48,8 @@ internal class Program
                 try
                 {
                     var queue = new ConcurrentQueue<ProgressUpdate>();
-                    var pu = new Progress<ProgressUpdate>(u => queue.Enqueue(u));                    
-                    
+                    var pu    = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
+
                     // 3. Send the MediatR command and wait for completion
                     // The handler will report progress via 'progressUpdates'
                     var c = new ArchiveCommand
@@ -117,7 +120,7 @@ internal class Program
                     Console.WriteLine(e);
                     throw;
                 }
-                
+
             });
     }
 
