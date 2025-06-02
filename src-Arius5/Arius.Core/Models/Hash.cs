@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace Arius.Core.Models;
 
 [DebuggerDisplay("Hash {ToString()}")]
-public readonly struct Hash : IEquatable<Hash>
+public record Hash
 {
     private readonly ImmutableArray<byte> bytes;
 
@@ -84,18 +84,14 @@ public readonly struct Hash : IEquatable<Hash>
         return BitConverter.ToInt32(bytes.AsSpan()); //return HashCode.Combine(Value); <-- this doesnt work for bytes
     }
 
-    public bool Equals(Hash other)
+    public virtual bool Equals(Hash? other)
     {
+        if (other is null)
+            //throw new ArgumentNullException("other value is null. Perhaps you need to cast to Hash first");
+            return false;
+
         return bytes.SequenceEqual(other.bytes);
     }
-
-    public override bool Equals(object? obj)
-    {
-        return obj is Hash other && Equals(other);
-    }
-
-    public static bool operator ==(Hash left, Hash right) => left.Equals(right);
-    public static bool operator !=(Hash left, Hash right) => !left.Equals(right);
 
 
     // -- TOSTRING
