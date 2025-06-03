@@ -91,10 +91,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             // Map tasks to their names for logging
             var taskNames = new Dictionary<Task, string>
             {
-                { indexTask, "IndexTask" },
-                { hashTask, "HashTask" },
-                { uploadLargeFilesTask, "UploadLargeFilesTask" },
-                { uploadSmallFilesTask, "UploadSmallFilesTask" }
+                { indexTask, nameof(indexTask) },
+                { hashTask, nameof(hashTask) },
+                { uploadLargeFilesTask, nameof(uploadLargeFilesTask) },
+                { uploadSmallFilesTask, nameof(uploadSmallFilesTask) }
             };
 
             // Log cancelled tasks (debug level)
