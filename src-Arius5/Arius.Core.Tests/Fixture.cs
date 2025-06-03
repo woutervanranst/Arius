@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using System.Text;
 using Zio;
 using Zio.FileSystems;
-using static Arius.Core.Tests.AzureBlobStorageTests;
 
 namespace Arius.Core.Tests;
 
@@ -20,7 +19,7 @@ public abstract class FixtureBase : IDisposable
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<AzureBlobStorageTests>(optional: true)
+            .AddUserSecrets<FixtureBase>(optional: true)
             .AddEnvironmentVariables()
             .Build();
 

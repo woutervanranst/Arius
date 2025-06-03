@@ -1,31 +1,25 @@
-using Arius.Core.Commands;
-using Arius.Core.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging.Testing;
 using Xunit.Abstractions;
 
 namespace Arius.Core.Tests;
 
-public class AzureBlobStorageTests
+public class Utils
 {
     private readonly ITestOutputHelper output;
     private readonly Fixture           fixture;
 
-    public AzureBlobStorageTests(ITestOutputHelper output)
+    public Utils(ITestOutputHelper output)
     {
         this.output = output;
         fixture = new Fixture();
     }
 
     [Fact]
-    public void DeleteLocalDb()
+    public void CleanupLocalDb()
     {
         var stateDatabaseFile = new FileInfo("state.db");
         stateDatabaseFile.Delete();
-
-        File.Delete(@"C:\Users\WouterVanRanst\Documents\GitHub\Arius 4\src-Arius5\Arius.Core.Tests\bin\Debug\net8.0\state.db");
     }
 
     //[Fact]
@@ -34,8 +28,8 @@ public class AzureBlobStorageTests
     //    var afs = new AggregateFileSystem();
 
     //    var pfs = new PhysicalFileSystem();
-    //    var sfs1 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\Downloads\\New folder"));
-    //    var sfs2 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\OneDrive\\Pictures\\Screenshots"));
+    //    var sfs1 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\Downloads\\New folder"));
+    //    var sfs2 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\OneDrive\\Pictures\\Screenshots"));
 
     //    afs.AddFileSystem(sfs1);
     //    afs.AddFileSystem(sfs2);
@@ -63,29 +57,6 @@ public class AzureBlobStorageTests
             }
         }
     }
-
-    [Fact]
-    public async Task RunArchiveCommand()
-    {
-        var c = new ArchiveCommand
-        {
-            AccountName   = fixture.RepositoryOptions.AccountName,
-            AccountKey    = fixture.RepositoryOptions.AccountKey,
-            ContainerName = fixture.RepositoryOptions.ContainerName ?? "atest",
-            Passphrase    = fixture.RepositoryOptions.Passphrase,
-            RemoveLocal   = false,
-            Tier          = StorageTier.Cool,
-            LocalRoot     = new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)")
-        };
-
-        var logger = new FakeLogger<ArchiveCommandHandler>();
-        var ch     = new ArchiveCommandHandler(logger);
-        await ch.Handle(c, CancellationToken.None);
-
-    }
-
-
-
 }
 
 

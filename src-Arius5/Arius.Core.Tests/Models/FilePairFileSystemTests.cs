@@ -2,7 +2,7 @@ using Arius.Core.Models;
 using FluentAssertions;
 using Zio;
 
-namespace Arius.Core.Tests;
+namespace Arius.Core.Tests.Models;
 
 public class FilePairFileSystemTests : IClassFixture<Fixture>
 {
