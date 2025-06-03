@@ -50,10 +50,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         var handlerContext = await HandlerContext.CreateAsync(request);
 
         using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var errorCancellationToken = errorCancellationTokenSource.Token;
-        
-        var indexTask   = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
-        var hashTask    = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var       errorCancellationToken       = errorCancellationTokenSource.Token;
+
+        var indexTask            = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var hashTask             = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
         var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
@@ -61,27 +61,33 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         {
             await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
 
-
             // 6. Remove PointerFileEntries that do not exist on disk
             handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
         }
-        catch (OperationCanceledException) when (errorCancellationToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (!errorCancellationToken.IsCancellationRequested && cancellationToken.IsCancellationRequested)
         {
-            // One of the tasks failed and triggered error cancellation, wait for all tasks to complete gracefully
+            // User-triggered cancellation - just re-throw
+            throw;
+        }
+        catch (Exception)
+        {
+            // Either a task failed with an exception or error-triggered cancellation occurred
+            // Wait for all tasks to complete gracefully
             var allTasks = new[] { indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask };
             await Task.WhenAll(allTasks.Select(async t =>
             {
                 try { await t; }
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
-            
+
             // Re-throw the original exception from the task that actually failed
             foreach (var task in allTasks.Where(t => t.IsFaulted))
             {
                 throw task.Exception!.GetBaseException();
             }
-            
-            throw; // If no faulted task found, re-throw cancellation
+
+            // If no faulted task found but we got here, re-throw the original exception
+            throw;
         }
 
     }
