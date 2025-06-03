@@ -3,6 +3,7 @@ using Arius.Core.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Testing;
 using Xunit.Abstractions;
 
 namespace FileSystem.Local.Tests;
@@ -32,7 +33,7 @@ public class AzureBlobStorageTests
 
     //    var pfs = new PhysicalFileSystem();
     //    var sfs1 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\Downloads\\New folder"));
-    //    var sfs2 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\OneDrive - Fluvius cvba\\Pictures\\Screenshots"));
+    //    var sfs2 = new SubFileSystem(pfs, pfs.ConvertPathFromInternal("C:\\Users\\RFC430\\OneDrive\\Pictures\\Screenshots"));
 
     //    afs.AddFileSystem(sfs1);
     //    afs.AddFileSystem(sfs2);
@@ -91,7 +92,8 @@ public class AzureBlobStorageTests
             LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder")
         };
 
-        var ch = new ArchiveCommandHandler();
+        var logger = new FakeLogger<ArchiveCommandHandler>();
+        var ch     = new ArchiveCommandHandler(logger);
         await ch.Handle(c, CancellationToken.None);
 
     }
