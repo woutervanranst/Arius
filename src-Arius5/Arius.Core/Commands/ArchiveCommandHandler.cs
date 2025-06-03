@@ -26,7 +26,7 @@ public record ArchiveCommand : IRequest
 
     public int Parallelism { get; init; } = 1;
 
-    public int SmallFileBoundary { get; init; } = (int)2 * 1024 * 1024; // 1.5 MB
+    public int SmallFileBoundary { get; init; } = 2 * 1024 * 1024;
 
     public IProgress<ProgressUpdate>? ProgressReporter { get; init; }
 }
@@ -401,7 +401,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
 
-        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars2\{tarHash}.tar.gzip", ms.ToArray());
+        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ms.ToArray());
 
         ms.Seek(0, SeekOrigin.Begin);
 
