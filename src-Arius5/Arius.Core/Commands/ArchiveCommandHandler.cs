@@ -114,20 +114,15 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     // Single faulted task - log the exception
                     var baseException = faultedTask.Exception!.GetBaseException();
                     logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", taskNames[faultedTask], baseException.Message);
-
-                    throw baseException;
                 }
                 else
                 {
                     // Multiple faulted tasks - log the exceptions
                     var exceptions = faultedTasks.Select(t => t.Exception!.GetBaseException()).ToArray();
                     logger.LogError(new AggregateException("Multiple tasks failed during archive operation", exceptions), "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
-
-                    throw new AggregateException("Multiple tasks failed during archive operation", exceptions);
                 }
             }
 
-            // If no faulted task found but we got here, re-throw the original exception
             throw;
         }
     }
