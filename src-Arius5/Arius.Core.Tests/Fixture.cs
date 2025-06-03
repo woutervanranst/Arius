@@ -13,16 +13,16 @@ public class Fixture : IDisposable
 {
     private const string passphrase = "woutervanranst";
 
-    private readonly DirectoryInfo testRunSourceFolder;
-    public           IFileSystem   FileSystem { get; }
+    public IFileSystem   FileSystem          { get; }
+    public DirectoryInfo TestRunSourceFolder { get; }
 
     public Fixture()
     {
-        testRunSourceFolder = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "Arius.Core.Tests", DateTime.Now.ToString("yyyyMMddHHmmss")));
-        testRunSourceFolder.Create();
+        TestRunSourceFolder = new DirectoryInfo(Path.Combine(Path.GetTempPath(), "Arius.Core.Tests", DateTime.Now.ToString("yyyyMMddHHmmss")));
+        TestRunSourceFolder.Create();
 
         var pfs = new PhysicalFileSystem();
-        var sfs = new SubFileSystem(pfs, pfs.ConvertPathFromInternal(testRunSourceFolder.FullName));
+        var sfs = new SubFileSystem(pfs, pfs.ConvertPathFromInternal(TestRunSourceFolder.FullName));
         FileSystem = new FilePairFileSystem(sfs);
     }
 
