@@ -54,4 +54,9 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
         var e = await act.Should().ThrowAsync<FormatException>();
         e.Which.Message.Should().Contain("No valid combination of account information found.");
     }
+
+    public void Dispose()
+    {
+        fixture?.Dispose();
+    }
 }
