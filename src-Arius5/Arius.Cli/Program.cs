@@ -18,7 +18,6 @@ internal class Program
         builder.Configuration.AddUserSecrets<Program>();
         builder.Services.AddArius(c => { });
 
-        // Application Insights automatically picks up connection string from appsettings
         builder.Services.AddApplicationInsightsTelemetryWorkerService();
 
         var host = builder.Build();
@@ -31,21 +30,21 @@ internal class Program
                 .LeftJustified()
                 .Color(Color.Red));
 
-        await AnsiConsole.Progress()
-            .AutoRefresh(true)
-            .AutoClear(false)
-            .HideCompleted(true)
-            .Columns(
-                new ElapsedTimeColumn(),
-                //new SpinnerColumn(Spinner.Known.Star),
-                new ProgressBarColumn(),
-                new TaskDescriptionColumn() { Alignment = Justify.Right }
-                //new PaddedTaskDescriptionColumn(50),
-                //new TextPathColumn(),
-            )
-            .StartAsync(async ctx =>
-            {
-                try
+        try
+        {
+            await AnsiConsole.Progress()
+                .AutoRefresh(true)
+                .AutoClear(false)
+                .HideCompleted(true)
+                .Columns(
+                    new ElapsedTimeColumn(),
+                    //new SpinnerColumn(Spinner.Known.Star),
+                    new ProgressBarColumn(),
+                    new TaskDescriptionColumn() { Alignment = Justify.Right }
+                    //new PaddedTaskDescriptionColumn(50),
+                    //new TextPathColumn(),
+                )
+                .StartAsync(async ctx =>
                 {
                     var queue = new ConcurrentQueue<ProgressUpdate>();
                     var pu    = new Progress<ProgressUpdate>(u => queue.Enqueue(u));
@@ -65,7 +64,6 @@ internal class Program
                     };
 
                     var t = mediator.Send(c);
-
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
@@ -114,14 +112,14 @@ internal class Program
 
                     // Once the handler completes, all updates should have been reported
                     AnsiConsole.MarkupLine("[green]All files processed![/]");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    throw;
-                }
 
-            });
+
+                });
+        }
+        catch (Exception e)
+        {
+            AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+        }
     }
 
     static string TruncateAndRightJustify(string input, int width)
