@@ -130,7 +130,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             // If no faulted task found but we got here, re-throw the original exception
             throw;
         }
-
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
@@ -191,8 +190,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 }
                 catch (Exception)
                 {
-                    // TODO when the file cannot be accessed ?
-
                     errorCancellationTokenSource.Cancel();
                     throw;
                 }
@@ -346,11 +343,11 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 2. Check if the Binary is already present. If the binary is not present, check if the Binary is already being uploaded
                 var (needsToBeUploaded, uploadTask) = GetUploadStatus(handlerContext, binaryHash);
 
-                handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
-
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
+
                     var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
                     await tarWriter.WriteEntryAsync(fn, binaryHash.ToString(), cancellationToken);
 
@@ -363,19 +360,23 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     tarredFilePairs.Add((filePair, binaryHash, archivedSize));
                     previousPosition = ms.Position;
                 }
+                else
+                {
+                    handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 100, $"Already uploaded"));
+                }
 
                 if ((ms.Position > 1024 * 1024 ||
                      (ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any())
                 {
                     await ProcessTarArchive(handlerContext, ms, gzip, tarWriter, tarredFilePairs, originalSize, cancellationToken);
-                    
+
                     // Reset for next batch
                     ms?.Dispose();
                     tarWriter = null;
-                    ms        = null;
-                    gzip      = null;
+                    ms = null;
+                    gzip = null;
                     tarredFilePairs.Clear();
-                    originalSize     = 0;
+                    originalSize = 0;
                     previousPosition = 0;
                 }
             }
@@ -405,7 +406,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
 
-        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ms.ToArray());
+        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars2\{tarHash}.tar.gzip", ms.ToArray());
 
         ms.Seek(0, SeekOrigin.Begin);
 
@@ -432,20 +433,20 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         // Add BinaryProperties
         var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto
         {
-            Hash = x.Hash,
-            ParentHash = tarHash,
+            Hash         = x.Hash,
+            ParentHash   = tarHash,
             OriginalSize = x.FilePair.BinaryFile.Length,
             ArchivedSize = x.ArchivedSize,
-            StorageTier = actualTier
+            StorageTier  = actualTier
         }).ToArray();
         handlerContext.StateRepo.AddBinaryProperties(bps);
 
         handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
         {
-            Hash = tarHash,
+            Hash         = tarHash,
             OriginalSize = originalSize,
             ArchivedSize = blobStream.Position,
-            StorageTier = actualTier
+            StorageTier  = actualTier
         });
 
         // Mark as uploaded
@@ -459,9 +460,9 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             var pf = filePair22.GetOrCreatePointerFile(binaryHash22);
             pfes.Add(new PointerFileEntryDto
             {
-                Hash = binaryHash22,
-                RelativeName = pf.Path.FullName,
-                CreationTimeUtc = pf.CreationTime,
+                Hash             = binaryHash22,
+                RelativeName     = pf.Path.FullName,
+                CreationTimeUtc  = pf.CreationTime,
                 LastWriteTimeUtc = pf.LastWriteTime
             });
         }
