@@ -7,6 +7,7 @@ using MediatR;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -36,6 +37,13 @@ public record FileProgressUpdate(string FileName, double Percentage, string? Sta
 
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
+    private readonly ILogger<ArchiveCommandHandler> logger;
+
+    public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger)
+    {
+        this.logger = logger;
+    }
+
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();
 
     private readonly Channel<FilePair>         indexedFilesChannel     = GetBoundedChannel<FilePair>(capacity: 20,        singleWriter: true, singleReader: false);
@@ -80,10 +88,43 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 catch { /* Ignore exceptions during graceful shutdown */ }
             }));
 
-            // Re-throw the original exception from the task that actually failed
-            foreach (var task in allTasks.Where(t => t.IsFaulted))
+            // Map tasks to their names for logging
+            var taskNames = new Dictionary<Task, string>
             {
-                throw task.Exception!.GetBaseException();
+                { indexTask, "IndexTask" },
+                { hashTask, "HashTask" },
+                { uploadLargeFilesTask, "UploadLargeFilesTask" },
+                { uploadSmallFilesTask, "UploadSmallFilesTask" }
+            };
+
+            // Log cancelled tasks (debug level)
+            var cancelledTasks = allTasks.Where(t => t.IsCanceled).ToArray();
+            if (cancelledTasks.Any())
+            {
+                var cancelledTaskNames = cancelledTasks.Select(t => taskNames[t]).ToArray();
+                logger.LogDebug("Tasks cancelled during graceful shutdown: {TaskNames}", string.Join(", ", cancelledTaskNames));
+            }
+
+            // Log and handle failed tasks (error level)
+            var faultedTasks = allTasks.Where(t => t.IsFaulted).ToArray();
+            if (faultedTasks.Any())
+            {
+                if (faultedTasks is { Length: 1 } && faultedTasks.Single() is var faultedTask)
+                {
+                    // Single faulted task - log the exception
+                    var baseException = faultedTask.Exception!.GetBaseException();
+                    logger.LogError(baseException, "Task '{TaskName}' failed with exception '{Exception}'", taskNames[faultedTask], baseException.Message);
+
+                    throw baseException;
+                }
+                else
+                {
+                    // Multiple faulted tasks - log the exceptions
+                    var exceptions = faultedTasks.Select(t => t.Exception!.GetBaseException()).ToArray();
+                    logger.LogError(new AggregateException("Multiple tasks failed during archive operation", exceptions), "Tasks failed: {TaskNames}", string.Join(", ", faultedTasks.Select(t => taskNames[t])));
+
+                    throw new AggregateException("Multiple tasks failed during archive operation", exceptions);
+                }
             }
 
             // If no faulted task found but we got here, re-throw the original exception
@@ -331,10 +372,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     // Reset for next batch
                     ms?.Dispose();
                     tarWriter = null;
-                    ms = null;
-                    gzip = null;
+                    ms        = null;
+                    gzip      = null;
                     tarredFilePairs.Clear();
-                    originalSize = 0;
+                    originalSize     = 0;
                     previousPosition = 0;
                 }
             }
@@ -364,7 +405,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 
         var tarHash = await handlerContext.Hasher.GetHashAsync(ms);
 
-        File.WriteAllBytes($@"C:\Users\RFC430\Downloads\New folder\{tarHash}.tar.gzip", ms.ToArray());
+        File.WriteAllBytes($@"C:\Users\WouterVanRanst\Downloads\TempTars\{tarHash}.tar.gzip", ms.ToArray());
 
         ms.Seek(0, SeekOrigin.Begin);
 
