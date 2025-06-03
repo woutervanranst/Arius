@@ -1,9 +1,7 @@
 using Arius.Core.Commands;
 using Arius.Core.Models;
 using FluentAssertions;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
-using NSubstitute;
 
 namespace Arius.Core.Tests.Commands;
 
@@ -24,14 +22,14 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
     {
         return new ArchiveCommand
         {
-            AccountName = "testaccount",
-            AccountKey = "testkey",
-            ContainerName = "testcontainer",
-            Passphrase = "testpassphrase",
-            RemoveLocal = false,
-            Tier = StorageTier.Cool,
-            LocalRoot = fixture.TestRunSourceFolder,
-            Parallelism = 1,
+            AccountName       = fixture.RepositoryOptions.AccountName,
+            AccountKey        = fixture.RepositoryOptions.AccountKey,
+            ContainerName     = $"{fixture.RepositoryOptions.ContainerName}-{DateTime.UtcNow.Ticks}-{Random.Shared.Next()}",
+            Passphrase        = fixture.RepositoryOptions.Passphrase,
+            RemoveLocal       = false,
+            Tier              = StorageTier.Cool,
+            LocalRoot         = fixture.TestRunSourceFolder,
+            Parallelism       = 1,
             SmallFileBoundary = 2 * 1024 * 1024
         };
     }

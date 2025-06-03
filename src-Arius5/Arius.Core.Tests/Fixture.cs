@@ -1,18 +1,49 @@
 using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
+using Microsoft.Extensions.Configuration;
 using System.Text;
 using Zio;
 using Zio.FileSystems;
+using static Arius.Core.Tests.AzureBlobStorageTests;
 
 namespace Arius.Core.Tests;
 
 public record FilePairWithHash(FilePair FilePair, Hash Hash);
 
-public class Fixture : IDisposable
+public abstract class FixtureBase : IDisposable
 {
-    private const string passphrase = "woutervanranst";
+    public TestRemoteRepositoryOptions RepositoryOptions { get; }
 
+    protected FixtureBase()
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddUserSecrets<AzureBlobStorageTests>(optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
+        RepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+    }
+
+    public abstract void Dispose();
+}
+
+public record TestRemoteRepositoryOptions
+{
+    public string AccountName { get; init; }
+
+    public string AccountKey { get; init; }
+
+    //[JsonIgnore]
+    public string ContainerName { get; set; }
+
+    public string Passphrase { get; init; }
+}
+
+public class Fixture : FixtureBase
+{
     public IFileSystem   FileSystem          { get; }
     public DirectoryInfo TestRunSourceFolder { get; }
 
@@ -47,7 +78,7 @@ public class Fixture : IDisposable
             using var binaryStream = FileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write);
             binaryStream.Write(content);
             FileSystem.SetAttributes(binaryFileRelativeName, attributes);
-            binaryFileHash = ComputeSha256String(passphrase, content);
+            binaryFileHash = ComputeSha256String(base.RepositoryOptions.Passphrase , content);
         }
 
         // 2. Create the Pointer File if needed
@@ -89,7 +120,7 @@ public class Fixture : IDisposable
         }
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         FileSystem.Dispose();
     }

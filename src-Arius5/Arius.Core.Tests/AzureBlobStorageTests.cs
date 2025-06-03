@@ -6,15 +6,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Testing;
 using Xunit.Abstractions;
 
-namespace FileSystem.Local.Tests;
+namespace Arius.Core.Tests;
 
 public class AzureBlobStorageTests
 {
-    private readonly ITestOutputHelper _output;
+    private readonly ITestOutputHelper output;
+    private readonly Fixture           fixture;
 
     public AzureBlobStorageTests(ITestOutputHelper output)
     {
-        _output = output;
+        this.output = output;
+        fixture = new Fixture();
     }
 
     [Fact]
@@ -23,7 +25,7 @@ public class AzureBlobStorageTests
         var stateDatabaseFile = new FileInfo("state.db");
         stateDatabaseFile.Delete();
 
-        File.Delete(@"C:\Repos\Arius\src-Arius5\Arius.Cli\bin\Debug\net8.0\state.db");
+        File.Delete(@"C:\Users\WouterVanRanst\Documents\GitHub\Arius 4\src-Arius5\Arius.Core.Tests\bin\Debug\net8.0\state.db");
     }
 
     //[Fact]
@@ -41,24 +43,10 @@ public class AzureBlobStorageTests
     //    var x = afs.EnumerateFileEntries(UPath.Root).ToList();
     //}
 
-    private TestRemoteRepositoryOptions GetTestRemoteRepositoryOptions()
-    {
-        var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddUserSecrets<AzureBlobStorageTests>(optional: true)
-            .AddEnvironmentVariables()
-            .Build();
-
-        return configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
-    }
-
     [Fact]
     public async Task CleanupAzure()
     {
-        var config = GetTestRemoteRepositoryOptions();
-
-        var blobServiceClient = new BlobServiceClient($"DefaultEndpointsProtocol=https;AccountName={config.AccountName};AccountKey={config.AccountKey};EndpointSuffix=core.windows.net");
+        var blobServiceClient = new BlobServiceClient($"DefaultEndpointsProtocol=https;AccountName={fixture.RepositoryOptions.AccountName};AccountKey={fixture.RepositoryOptions.AccountKey};EndpointSuffix=core.windows.net");
 
         // List all containers
         await foreach (var container in blobServiceClient.GetBlobContainersAsync())
@@ -79,17 +67,15 @@ public class AzureBlobStorageTests
     [Fact]
     public async Task RunArchiveCommand()
     {
-        var config = GetTestRemoteRepositoryOptions();
-
         var c = new ArchiveCommand
         {
-            AccountName   = config.AccountName,
-            AccountKey    = config.AccountKey,
-            ContainerName = config.ContainerName ?? "atest",
-            Passphrase    = config.Passphrase,
+            AccountName   = fixture.RepositoryOptions.AccountName,
+            AccountKey    = fixture.RepositoryOptions.AccountKey,
+            ContainerName = fixture.RepositoryOptions.ContainerName ?? "atest",
+            Passphrase    = fixture.RepositoryOptions.Passphrase,
             RemoveLocal   = false,
             Tier          = StorageTier.Cool,
-            LocalRoot     = new DirectoryInfo("C:\\Users\\RFC430\\Downloads\\New folder")
+            LocalRoot     = new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)")
         };
 
         var logger = new FakeLogger<ArchiveCommandHandler>();
@@ -98,17 +84,7 @@ public class AzureBlobStorageTests
 
     }
 
-    public record TestRemoteRepositoryOptions
-    {
-        public string AccountName { get; init; }
 
-        public string AccountKey { get; init; }
-
-        //[JsonIgnore]
-        public string ContainerName { get; set; }
-
-        public string Passphrase { get; init; }
-    }
 
 }
 
