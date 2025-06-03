@@ -60,6 +60,10 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         try
         {
             await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
+
+
+            // 6. Remove PointerFileEntries that do not exist on disk
+            handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
         }
         catch (OperationCanceledException) when (errorCancellationToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
         {
@@ -80,8 +84,6 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             throw; // If no faulted task found, re-throw cancellation
         }
 
-        // 6. Remove PointerFileEntries that do not exist on disk
-        handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
     private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
