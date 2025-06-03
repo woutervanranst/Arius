@@ -49,37 +49,74 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
     {
         var handlerContext = await HandlerContext.CreateAsync(request);
 
+        using var errorCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var errorCancellationToken = errorCancellationTokenSource.Token;
         
-        var indexTask   = CreateIndexTask(handlerContext, cancellationToken);
-        var hashTask    = CreateHashTask(handlerContext, cancellationToken);
-        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, cancellationToken);
-        var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, cancellationToken);
+        var indexTask   = CreateIndexTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var hashTask    = CreateHashTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var uploadLargeFilesTask = CreateUploadLargeFilesTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
+        var uploadSmallFilesTask = CreateUploadSmallFilesTarArchiveTask(handlerContext, errorCancellationToken, errorCancellationTokenSource);
 
-        await Task.WhenAll(uploadLargeFilesTask, uploadSmallFilesTask);
-        //await indexTask;
+        try
+        {
+            await Task.WhenAll(indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask);
+        }
+        catch (OperationCanceledException) when (errorCancellationToken.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // One of the tasks failed and triggered error cancellation, wait for all tasks to complete gracefully
+            var allTasks = new[] { indexTask, hashTask, uploadLargeFilesTask, uploadSmallFilesTask };
+            await Task.WhenAll(allTasks.Select(async t =>
+            {
+                try { await t; }
+                catch { /* Ignore exceptions during graceful shutdown */ }
+            }));
+            
+            // Re-throw the original exception from the task that actually failed
+            foreach (var task in allTasks.Where(t => t.IsFaulted))
+            {
+                throw task.Exception!.GetBaseException();
+            }
+            
+            throw; // If no faulted task found, re-throw cancellation
+        }
 
         // 6. Remove PointerFileEntries that do not exist on disk
         handlerContext.StateRepo.DeletePointerFileEntries(pfe => !handlerContext.FileSystem.FileExists(pfe.RelativeName));
     }
 
-    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
+    private Task CreateIndexTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
         {
-            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
-
-            int fileCount = 0;
-            foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
+            try
             {
-                Interlocked.Increment(ref fileCount);
-                await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 0));
+
+                int fileCount = 0;
+                foreach (var fp in handlerContext.FileSystem.EnumerateFileEntries(UPath.Root, "*", SearchOption.AllDirectories))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    Interlocked.Increment(ref fileCount);
+                    await indexedFilesChannel.Writer.WriteAsync(FilePair.FromBinaryFileFileEntry(fp), cancellationToken);
+                }
+
+                indexedFilesChannel.Writer.Complete();
+
+                handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
             }
-
-            indexedFilesChannel.Writer.Complete();
-
-            handlerContext.Request.ProgressReporter?.Report(new TaskProgressUpdate($"Indexing '{handlerContext.Request.LocalRoot}'...", 100, $"Found {fileCount} files"));
+            catch (OperationCanceledException)
+            {
+                indexedFilesChannel.Writer.Complete();
+                throw;
+            }
+            catch (Exception)
+            {
+                indexedFilesChannel.Writer.Complete();
+                errorCancellationTokenSource.Cancel();
+                throw;
+            }
         }, cancellationToken);
 
-    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken)
+    private Task CreateHashTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource)
     {
         var t = Parallel.ForEachAsync(indexedFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
@@ -99,26 +136,29 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                     else
                         await hashedLargeFilesChannel.Writer.WriteAsync(new(filePair, h), cancellationToken: innerCancellationToken);
                 }
-                catch (IOException e)
+                catch (OperationCanceledException)
                 {
-                    // TODO when the file cannot be accessed
+                    throw;
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                }
+                    // TODO when the file cannot be accessed ?
 
+                    errorCancellationTokenSource.Cancel();
+                    throw;
+                }
             });
 
         t.ContinueWith(_ =>
         {
             hashedSmallFilesChannel.Writer.Complete();
             hashedLargeFilesChannel.Writer.Complete();
-        });
+        }, TaskContinuationOptions.ExecuteSynchronously);
 
         return t;
     }
 
-    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken) =>
+    private Task CreateUploadLargeFilesTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Parallel.ForEachAsync(hashedLargeFilesChannel.Reader.ReadAllAsync(cancellationToken),
             new ParallelOptions { MaxDegreeOfParallelism = handlerContext.Request.Parallelism, CancellationToken = cancellationToken },
             async (filePairWithHash, innerCancellationToken) =>
@@ -127,24 +167,33 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 {
                     await UploadLargeFileAsync(handlerContext, filePairWithHash, cancellationToken: innerCancellationToken);
                 }
-                catch (Exception e)
+                catch (OperationCanceledException)
                 {
+                    throw;
+                }
+                catch (Exception)
+                {
+                    errorCancellationTokenSource.Cancel();
+                    throw;
                 }
             });
 
-    private Task CreateUploadSmallFilesTarArchiveTask(HandlerContext handlerContext, CancellationToken cancellationToken = default) =>
+    private Task CreateUploadSmallFilesTarArchiveTask(HandlerContext handlerContext, CancellationToken cancellationToken, CancellationTokenSource errorCancellationTokenSource) =>
         Task.Run(async () =>
         {
             try
             {
                 await UploadSmallFileAsync(handlerContext, cancellationToken);
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                Console.WriteLine(e);
                 throw;
             }
-            
+            catch (Exception)
+            {
+                errorCancellationTokenSource.Cancel();
+                throw;
+            }
         }, cancellationToken);
 
     private const string ChunkContentType = "application/aes256cbc+gzip";
