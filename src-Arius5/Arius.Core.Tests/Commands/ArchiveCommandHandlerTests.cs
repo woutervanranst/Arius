@@ -14,9 +14,10 @@ public class ArchiveCommandHandlerTests : IDisposable
 
     public ArchiveCommandHandlerTests()
     {
-        logger  = new();
-        handler = new ArchiveCommandHandler(logger);
         fixture = new ();
+
+        logger = new();
+        handler = new ArchiveCommandHandler(logger, fixture.AriusConfiguration);
     }
 
     private ArchiveCommand CreateTestCommand()
@@ -40,12 +41,11 @@ public class ArchiveCommandHandlerTests : IDisposable
     public async Task RunArchiveCommand()
     {
         var logger = new FakeLogger<ArchiveCommandHandler>();
-        var ch     = new ArchiveCommandHandler(logger);
         var c      = CreateTestCommand() with
         {
             LocalRoot = new DirectoryInfo("C:\\Users\\WouterVanRanst\\Downloads\\Photos-001 (1)")
         };
-        await ch.Handle(c, CancellationToken.None);
+        await handler.Handle(c, CancellationToken.None);
 
     }
 

@@ -16,7 +16,10 @@ internal class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
         builder.Configuration.AddUserSecrets<Program>();
-        builder.Services.AddArius(c => { });
+        builder.Services.AddArius(c =>
+        {
+            c.MaxTokens = 5;
+        });
 
         builder.Services.AddApplicationInsightsTelemetryWorkerService();
 

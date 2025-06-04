@@ -4,10 +4,11 @@ using Arius.Core.Repositories;
 using Arius.Core.Services;
 using Humanizer;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Formats.Tar;
 using System.IO.Compression;
 using System.Threading.Channels;
-using Microsoft.Extensions.Logging;
 using WouterVanRanst.Utils.Extensions;
 using Zio;
 using Zio.FileSystems;
@@ -38,10 +39,14 @@ public record FileProgressUpdate(string FileName, double Percentage, string? Sta
 internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
 {
     private readonly ILogger<ArchiveCommandHandler> logger;
+    private readonly IOptions<AriusConfiguration>   config;
 
-    public ArchiveCommandHandler(ILogger<ArchiveCommandHandler> logger)
+    public ArchiveCommandHandler(
+        ILogger<ArchiveCommandHandler> logger,
+        IOptions<AriusConfiguration> config)
     {
         this.logger = logger;
+        this.config = config;
     }
 
     private readonly Dictionary<Hash, TaskCompletionSource> uploadingHashes = new();

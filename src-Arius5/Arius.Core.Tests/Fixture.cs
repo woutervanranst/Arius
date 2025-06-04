@@ -2,6 +2,7 @@ using Arius.Core.Extensions;
 using Arius.Core.Models;
 using Arius.Core.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using System.Text;
 using Zio;
 using Zio.FileSystems;
@@ -12,7 +13,8 @@ public record FilePairWithHash(FilePair FilePair, Hash Hash);
 
 public abstract class FixtureBase : IDisposable
 {
-    public TestRemoteRepositoryOptions RepositoryOptions { get; }
+    public TestRemoteRepositoryOptions  RepositoryOptions  { get; }
+    public IOptions<AriusConfiguration> AriusConfiguration { get; }
 
     protected FixtureBase()
     {
@@ -24,6 +26,10 @@ public abstract class FixtureBase : IDisposable
             .Build();
 
         RepositoryOptions = configuration.GetSection("RepositoryOptions").Get<TestRemoteRepositoryOptions>();
+
+        var ariusConfig = new AriusConfiguration();
+        configuration.Bind(ariusConfig);
+        AriusConfiguration = Options.Create(ariusConfig);
     }
 
     public abstract void Dispose();
@@ -77,7 +83,7 @@ public class Fixture : FixtureBase
             using var binaryStream = FileSystem.OpenFile(binaryFileRelativeName, FileMode.Create, FileAccess.Write);
             binaryStream.Write(content);
             FileSystem.SetAttributes(binaryFileRelativeName, attributes);
-            binaryFileHash = ComputeSha256String(base.RepositoryOptions.Passphrase , content);
+            binaryFileHash = ComputeSha256String(RepositoryOptions.Passphrase , content);
         }
 
         // 2. Create the Pointer File if needed

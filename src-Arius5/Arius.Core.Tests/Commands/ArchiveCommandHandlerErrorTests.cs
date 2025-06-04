@@ -14,8 +14,8 @@ public class ArchiveCommandHandlerErrorTests : IDisposable
     public ArchiveCommandHandlerErrorTests()
     {
         logger  = new();
-        handler = new ArchiveCommandHandler(logger);
         fixture = new ();
+        handler = new ArchiveCommandHandler(logger, fixture.AriusConfiguration);
     }
 
     private ArchiveCommand CreateTestCommand()
