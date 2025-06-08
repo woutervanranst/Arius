@@ -1,12 +1,8 @@
 using Arius.Core.Commands;
-using Arius.Core.Models;
 using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using MediatR;
-using Spectre.Console;
-using System.Collections.Concurrent;
-using System.Threading.Tasks;
 
 namespace Arius.Cli.CliCommands;
 
@@ -61,6 +57,5 @@ public sealed class RestoreCliCommand : ICommand
 
         var cancellationToken = console.RegisterCancellationHandler();
         var commandTask       = _mediator.Send(command, cancellationToken);
-
     }
 }

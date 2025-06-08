@@ -1,7 +1,8 @@
 using Arius.Core.Commands;
+using Arius.Core.Models;
 using MediatR;
 using NSubstitute;
-using Xunit;
+using Shouldly;
 
 namespace Arius.Cli.Tests;
 
@@ -32,16 +33,16 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var (exitCode, output) = await fixture.CallCliAsync(command);
 
         // Assert: Verify the outcome
-        Assert.Equal(0, exitCode);
+        exitCode.ShouldBe(0);
         await fixture.MediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
 
-        Assert.NotNull(capturedCommand);
-        Assert.Equal(tempPath, capturedCommand.LocalRoot.FullName);
-        Assert.Equal("testaccount", capturedCommand.AccountName);
-        Assert.Equal("testkey", capturedCommand.AccountKey);
-        Assert.Equal("testpass", capturedCommand.Passphrase);
-        Assert.Equal("testcontainer", capturedCommand.ContainerName);
-        //Assert.True(capturedCommand.RemoveLocal);
-        //Assert.Equal(StorageTier.Hot, capturedCommand.Tier);
+        capturedCommand.ShouldNotBeNull();
+        capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
+        capturedCommand.AccountName.ShouldBe("testaccount");
+        capturedCommand.AccountKey.ShouldBe("testkey");
+        capturedCommand.Passphrase.ShouldBe("testpass");
+        capturedCommand.ContainerName.ShouldBe("testcontainer");
+        capturedCommand.RemoveLocal.ShouldBeFalse();
+        capturedCommand.Tier.ShouldBe(StorageTier.Archive);
     }
 }

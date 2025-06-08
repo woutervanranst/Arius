@@ -35,7 +35,7 @@ public sealed class ArchiveCliCommand : ICommand
     public required string Passphrase { get; init; }
 
     [CommandOption("tier", Description = "Storage tier for the uploaded blobs.")]
-    public StorageTier Tier { get; init; } = StorageTier.Cool;
+    public StorageTier Tier { get; init; } = StorageTier.Archive;
 
     [CommandOption("remove-local", Description = "Remove local files after a successful upload.")]
     public bool RemoveLocal { get; init; } = false;

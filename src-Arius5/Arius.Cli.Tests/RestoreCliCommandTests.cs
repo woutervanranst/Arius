@@ -1,6 +1,7 @@
 using Arius.Core.Commands;
 using MediatR;
 using NSubstitute;
+using Shouldly;
 
 namespace Arius.Cli.Tests;
 
@@ -31,17 +32,17 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         var (exitCode, output) = await fixture.CallCliAsync(command);
 
         // Assert: Verify the outcome
-        Assert.Equal(0, exitCode);
+        exitCode.ShouldBe(0);
         await fixture.MediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
-        Assert.NotNull(capturedCommand);
-        Assert.Equal(tempPath, capturedCommand.LocalRoot.FullName);
-        Assert.Equal("testaccount", capturedCommand.AccountName);
-        Assert.Equal("testkey", capturedCommand.AccountKey);
-        Assert.Equal("testpass", capturedCommand.Passphrase);
-        Assert.Equal("testcontainer", capturedCommand.ContainerName);
-        Assert.True(capturedCommand.Synchronize);
-        Assert.True(capturedCommand.Download);
-        Assert.True(capturedCommand.KeepPointers);
+        capturedCommand.ShouldNotBeNull();
+        capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
+        capturedCommand.AccountName.ShouldBe("testaccount");
+        capturedCommand.AccountKey.ShouldBe("testkey");
+        capturedCommand.Passphrase.ShouldBe("testpass");
+        capturedCommand.ContainerName.ShouldBe("testcontainer");
+        capturedCommand.Synchronize.ShouldBeTrue();
+        capturedCommand.Download.ShouldBeTrue();
+        capturedCommand.KeepPointers.ShouldBeTrue();
     }
 }
