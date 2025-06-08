@@ -7,17 +7,18 @@ namespace Arius.Cli;
 
 internal static class Program
 {
-    // Main entry point for production
-    public static async Task<int> Main(string[] args) =>
-        await CreateBuilder()
+    public static async Task<int> Main(string[] args)
+    {
+        return await CreateBuilder()
             .UseTypeActivator(CreateServiceProvider().GetService)
             .Build()
             .RunAsync(args);
+    }
 
     public static CliApplicationBuilder CreateBuilder() =>
         new CliApplicationBuilder()
-            .AddCommandsFromThisAssembly()
-            .SetExecutableName("arius");
+            .AddCommandsFromThisAssembly() // Command discovery
+        ;
 
     public static IServiceProvider CreateServiceProvider()
     {
@@ -28,24 +29,21 @@ internal static class Program
 
     public static IServiceCollection ConfigureServices(IServiceCollection services)
     {
-        // Build configuration to be used for service registration
         var configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: true)
             .Build();
 
-        // Register the configuration instance itself
         services.AddSingleton<IConfiguration>(configuration);
 
-        // Register Arius Core services, reading MaxTokens from configuration
+        // Register Arius Core services
         services.AddArius(c =>
         {
             c.MaxTokens = configuration.GetValue<int>("Arius:MaxTokens", 5);
         });
 
-        // Add other production services
         services.AddApplicationInsightsTelemetryWorkerService();
 
-        // Register all CliFx commands in this assembly for DI
+        // Register commands in the DI to allow creation of the commands through the Activator
         foreach (var commandType in typeof(Program).Assembly.GetTypes().Where(t => t.IsAssignableTo(typeof(ICommand)) && !t.IsAbstract))
         {
             services.AddTransient(commandType);

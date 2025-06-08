@@ -1,14 +1,9 @@
-using Arius.Cli; // To access Program.cs
 using Arius.Core.Commands;
-using Arius.Core.Models;
 using CliFx.Infrastructure;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions; // For .RemoveAll()
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
-using System.IO;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace Arius.Cli.Tests;
 
