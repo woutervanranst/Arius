@@ -66,13 +66,13 @@ public sealed class ArchiveCliCommand : ICommand
                     // Create the MediatR command from the CLI arguments
                     var command = new ArchiveCommand
                     {
-                        AccountName = this.AccountName,
-                        AccountKey = this.AccountKey,
-                        ContainerName = this.ContainerName,
-                        Passphrase = this.Passphrase,
-                        RemoveLocal = this.RemoveLocal,
-                        Tier = this.Tier,
-                        LocalRoot = this.LocalRoot,
+                        AccountName      = this.AccountName,
+                        AccountKey       = this.AccountKey,
+                        ContainerName    = this.ContainerName,
+                        Passphrase       = this.Passphrase,
+                        RemoveLocal      = this.RemoveLocal,
+                        Tier             = this.Tier,
+                        LocalRoot        = this.LocalRoot,
                         ProgressReporter = pu
                     };
 
