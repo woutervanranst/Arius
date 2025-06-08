@@ -1,17 +1,16 @@
 using Arius.Core.Commands;
 using MediatR;
 using NSubstitute;
-using Xunit;
 
 namespace Arius.Cli.Tests;
 
 public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixture>
 {
-    private readonly CliCommandTestsFixture _fixture;
+    private readonly CliCommandTestsFixture fixture;
 
     public RestoreCliCommandTests(CliCommandTestsFixture fixture)
     {
-        _fixture = fixture;
+        this.fixture = fixture;
     }
 
     [Fact]
@@ -19,31 +18,21 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange: Capture the command sent to IMediator
         RestoreCommand? capturedCommand = null;
-        _fixture.Mediator
+        fixture.MediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
         // Arrange: Set up the CLI arguments
         var tempPath = Path.GetTempPath();
-        var args = new[]
-        {
-            "restore", tempPath,
-            "--accountname", "testaccount",
-            "--accountkey", "testkey",
-            "--passphrase", "testpass",
-            "--container", "testcontainer",
-            "--synchronize",
-            "--download",
-            "--keep-pointers"
-        };
+        var command = $"restore {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --synchronize --download --keep-pointers";
 
         // Act: Run the application
-        var exitCode = await _fixture.RunAsync(args);
+        var (exitCode, output) = await fixture.CallCliAsync(command);
 
         // Assert: Verify the outcome
         Assert.Equal(0, exitCode);
-        await _fixture.Mediator.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+        await fixture.MediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         Assert.NotNull(capturedCommand);
         Assert.Equal(tempPath, capturedCommand.LocalRoot.FullName);

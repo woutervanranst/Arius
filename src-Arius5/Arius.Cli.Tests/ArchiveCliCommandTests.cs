@@ -7,11 +7,11 @@ namespace Arius.Cli.Tests;
 
 public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixture>
 {
-    private readonly CliCommandTestsFixture _fixture;
+    private readonly CliCommandTestsFixture fixture;
 
     public ArchiveCliCommandTests(CliCommandTestsFixture fixture)
     {
-        _fixture = fixture;
+        this.fixture = fixture;
     }
 
     [Fact]
@@ -19,30 +19,21 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     {
         // Arrange: Capture the command sent to IMediator
         ArchiveCommand? capturedCommand = null;
-        _fixture.Mediator
+        fixture.MediatorMock
             .Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<ArchiveCommand>());
 
         // Arrange: Set up the CLI arguments
         var tempPath = Path.GetTempPath();
-        var args = new[]
-        {
-            "archive", tempPath,
-            "--accountname", "testaccount",
-            "--accountkey", "testkey",
-            "--passphrase", "testpass",
-            "--container", "testcontainer",
-            //"--remove-local",
-            //"--tier", "Hot"
-        };
+        var command = $"archive {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         // Act: Run the application
-        var exitCode = await _fixture.RunAsync(args);
+        var (exitCode, output) = await fixture.CallCliAsync(command);
 
         // Assert: Verify the outcome
         Assert.Equal(0, exitCode);
-        await _fixture.Mediator.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
+        await fixture.MediatorMock.Received(1).Send(Arg.Any<ArchiveCommand>(), Arg.Any<CancellationToken>());
 
         Assert.NotNull(capturedCommand);
         Assert.Equal(tempPath, capturedCommand.LocalRoot.FullName);

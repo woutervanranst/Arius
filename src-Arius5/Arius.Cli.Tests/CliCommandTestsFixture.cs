@@ -1,4 +1,3 @@
-using Arius.Core.Commands;
 using CliFx;
 using CliFx.Infrastructure;
 using MediatR;
@@ -10,27 +9,19 @@ namespace Arius.Cli.Tests;
 
 public class CliCommandTestsFixture
 {
-    public IConsole Console { get; }
-    public IMediator Mediator { get; }
-    private IServiceCollection Services { get; }
+    private FakeInMemoryConsole   Console            { get; }
+    public  IMediator             MediatorMock       { get; }
     private CliApplicationBuilder ApplicationBuilder { get; }
 
     public CliCommandTestsFixture()
     {
-        Console = new FakeInMemoryConsole();
+        Console      = new FakeInMemoryConsole();
+        MediatorMock = Substitute.For<IMediator>();
 
-        // Arrange: Substitute the IMediator
-        Mediator = Substitute.For<IMediator>();
-
-        // Arrange: Start with the REAL service collection from the application
-        Services = Program.ConfigureServices(new ServiceCollection());
-
-        // Arrange: REMOVE the real IMediator and REPLACE it with our substitute
-        Services.RemoveAll<IMediator>();
-        Services.AddSingleton(Mediator);
-
-        // Arrange: Build the service provider for the test
-        var serviceProvider = Services.BuildServiceProvider();
+        var serviceProvider = Program.ConfigureServices(new ServiceCollection())
+            .RemoveAll<IMediator>()
+            .AddSingleton(MediatorMock)
+            .BuildServiceProvider();
 
         // Arrange: Create the app builder, swapping in our modified services and a virtual console
         ApplicationBuilder = Program
@@ -39,9 +30,13 @@ public class CliCommandTestsFixture
             .UseConsole(Console);
     }
 
-    public async Task<int> RunAsync(string[] args)
+    public async Task<(int ExitCode, string Output)> CallCliAsync(string command)
     {
-        var app = ApplicationBuilder.Build();
-        return await app.RunAsync(args);
+        var args = command.Split(' ');
+        var app  = ApplicationBuilder.Build();
+        var r    = await app.RunAsync(args);
+        var s    = Console.ReadOutputString();
+
+        return (r, s);
     }
 }
