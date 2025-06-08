@@ -59,8 +59,8 @@ public sealed class RestoreCliCommand : ICommand
             //ProgressReporter = pu
         };
 
-        // Send the command and start the progress display loop
-        var commandTask = _mediator.Send(command);
+        var cancellationToken = console.RegisterCancellationHandler();
+        var commandTask       = _mediator.Send(command, cancellationToken);
 
     }
 }

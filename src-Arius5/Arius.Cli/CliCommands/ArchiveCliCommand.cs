@@ -78,7 +78,8 @@ public sealed class ArchiveCliCommand : ICommand
                     };
 
                     // Send the command and start the progress display loop
-                    var commandTask = _mediator.Send(command);
+                    var cancellationToken = console.RegisterCancellationHandler();
+                    var commandTask       = _mediator.Send(command, cancellationToken);
 
                     var taskDictionary = new ConcurrentDictionary<string, ProgressTask>();
 
