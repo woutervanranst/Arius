@@ -2,7 +2,7 @@
   "profiles": {
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 --accountname ariusci --container test --passphrase woutervr"
+      "commandLineArgs": "archive C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 -n ariusci -c test -p woutervr --t hot"
     }
   }
 }

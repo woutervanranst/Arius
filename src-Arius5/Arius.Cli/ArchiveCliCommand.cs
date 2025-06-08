@@ -22,23 +22,24 @@ public sealed class ArchiveCliCommand : ICommand
     [CommandParameter(0, Description = "Path to the local root directory to archive.")]
     public required DirectoryInfo LocalRoot { get; init; }
 
-    [CommandOption("accountname", IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
+    [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
 
-    [CommandOption("accountkey", IsRequired = true, Description = "Azure Storage Account key.", EnvironmentVariable = "ARIUS_ACCOUNT_KEY")]
+    [CommandOption("accountkey", 'k', IsRequired = true, Description = "Azure Storage Account key.", EnvironmentVariable = "ARIUS_ACCOUNT_KEY")]
     public required string AccountKey { get; init; }
 
-    [CommandOption("passphrase", IsRequired = true, Description = "Passphrase for encryption.")]
+    [CommandOption("container", 'c', IsRequired = true, Description = "Azure Blob Storage container name.")]
+    public required string ContainerName { get; init; }
+    
+    [CommandOption("passphrase", 'p', IsRequired = true, Description = "Passphrase for encryption.")]
     public required string Passphrase { get; init; }
 
-    [CommandOption("container", IsRequired = true, Description = "Azure Blob Storage container name.")]
-    public required string ContainerName { get; init; }
+    [CommandOption("tier", 't', Description = "Storage tier for the uploaded blobs.")]
+    public StorageTier Tier { get; init; } = StorageTier.Cool;
 
     [CommandOption("remove-local", Description = "Remove local files after a successful upload.")]
     public bool RemoveLocal { get; init; } = false;
 
-    [CommandOption("tier", Description = "Storage tier for the uploaded blobs.")]
-    public StorageTier Tier { get; init; } = StorageTier.Cool;
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
