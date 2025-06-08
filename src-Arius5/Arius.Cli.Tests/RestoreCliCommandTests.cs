@@ -1,37 +1,28 @@
 using Arius.Core.Commands;
-using CliFx.Infrastructure;
 using MediatR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
+using Xunit;
 
 namespace Arius.Cli.Tests;
 
-public sealed class RestoreCliCommandTests
+public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixture>
 {
+    private readonly CliCommandTestsFixture _fixture;
+
+    public RestoreCliCommandTests(CliCommandTestsFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
     {
-        using var console = new FakeInMemoryConsole();
-
-        // Arrange: Substitute the IMediator
-        var mediator = Substitute.For<IMediator>();
+        // Arrange: Capture the command sent to IMediator
         RestoreCommand? capturedCommand = null;
-
-        mediator
+        _fixture.Mediator
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
-
-        // Arrange: Start with the REAL service collection from the application
-        var services = Program.ConfigureServices(new ServiceCollection());
-
-        // Arrange: REMOVE the real IMediator and REPLACE it with our substitute
-        services.RemoveAll<IMediator>();
-        services.AddSingleton(mediator);
-
-        // Arrange: Build the service provider for the test
-        var serviceProvider = services.BuildServiceProvider();
 
         // Arrange: Set up the CLI arguments
         var tempPath = Path.GetTempPath();
@@ -47,19 +38,12 @@ public sealed class RestoreCliCommandTests
             "--keep-pointers"
         };
 
-        // Arrange: Create the app, swapping in our modified services and a virtual console
-        var app = Program
-            .CreateBuilder()
-            .UseTypeActivator(serviceProvider.GetService)
-            .UseConsole(console)
-            .Build();
-
         // Act: Run the application
-        var exitCode = await app.RunAsync(args);
+        var exitCode = await _fixture.RunAsync(args);
 
         // Assert: Verify the outcome
         Assert.Equal(0, exitCode);
-        await mediator.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+        await _fixture.Mediator.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         Assert.NotNull(capturedCommand);
         Assert.Equal(tempPath, capturedCommand.LocalRoot.FullName);
