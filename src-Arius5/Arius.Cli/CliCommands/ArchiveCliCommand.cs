@@ -7,7 +7,7 @@ using MediatR;
 using Spectre.Console;
 using System.Collections.Concurrent;
 
-namespace Arius.Cli;
+namespace Arius.Cli.CliCommands;
 
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
 public sealed class ArchiveCliCommand : ICommand
@@ -34,7 +34,7 @@ public sealed class ArchiveCliCommand : ICommand
     [CommandOption("passphrase", 'p', IsRequired = true, Description = "Passphrase for encryption.")]
     public required string Passphrase { get; init; }
 
-    [CommandOption("tier", 't', Description = "Storage tier for the uploaded blobs.")]
+    [CommandOption("tier", Description = "Storage tier for the uploaded blobs.")]
     public StorageTier Tier { get; init; } = StorageTier.Cool;
 
     [CommandOption("remove-local", Description = "Remove local files after a successful upload.")]
@@ -67,13 +67,13 @@ public sealed class ArchiveCliCommand : ICommand
                     // Create the MediatR command from the CLI arguments
                     var command = new ArchiveCommand
                     {
-                        AccountName      = this.AccountName,
-                        AccountKey       = this.AccountKey,
-                        ContainerName    = this.ContainerName,
-                        Passphrase       = this.Passphrase,
-                        RemoveLocal      = this.RemoveLocal,
-                        Tier             = this.Tier,
-                        LocalRoot        = this.LocalRoot,
+                        AccountName      = AccountName,
+                        AccountKey       = AccountKey,
+                        ContainerName    = ContainerName,
+                        Passphrase       = Passphrase,
+                        RemoveLocal      = RemoveLocal,
+                        Tier             = Tier,
+                        LocalRoot        = LocalRoot,
                         ProgressReporter = pu
                     };
 

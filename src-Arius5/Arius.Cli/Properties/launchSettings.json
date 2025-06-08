@@ -2,7 +2,11 @@
   "profiles": {
     "arius archive": {
       "commandName": "Project",
-      "commandLineArgs": "archive C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 -n ariusci -c test -p woutervr --t hot"
+      "commandLineArgs": "archive C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 -n ariusci -c test -p woutervr --tier hot"
+    },
+    "arius restore": {
+      "commandName": "Project",
+      "commandLineArgs": "restore C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 -n ariusci -c test -p woutervr"
     }
   }
 }
