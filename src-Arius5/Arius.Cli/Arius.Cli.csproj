@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <UserSecretsId>2c53e63e-555d-44f4-a474-29c01fb8c564</UserSecretsId>
+    <AssemblyName>arius</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CliFx" Version="2.3.6" />
