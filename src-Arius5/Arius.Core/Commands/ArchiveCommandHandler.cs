@@ -329,6 +329,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 // 3. Upload the Binary, if needed
                 if (needsToBeUploaded)
                 {
+                    logger.LogInformation($"Adding '{filePair.FullName}' to TAR queue");
                     handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Queued in TAR..."));
 
                     var fn = handlerContext.FileSystem.ConvertPathToInternal(filePair.Path);
@@ -351,6 +352,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
                 if ((ms.Position > 1024 * 1024 ||
                      (ms.Position <= 1024 * 1024 && hashedSmallFilesChannel.Reader.Completion.IsCompleted)) && tarredFilePairs.Any())
                 {
+                    logger.LogInformation($"Uploading TAR");
                     await ProcessTarArchive(handlerContext, ms, gzip, tarWriter, tarredFilePairs, originalSize, cancellationToken);
 
                     // Reset for next batch
@@ -379,8 +381,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         }
     }
 
-    private async Task ProcessTarArchive(HandlerContext handlerContext, MemoryStream ms, GZipStream gzip, TarWriter tarWriter, 
-        List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
+    private async Task ProcessTarArchive(HandlerContext handlerContext, MemoryStream ms, GZipStream gzip, TarWriter tarWriter, List<(FilePair FilePair, Hash Hash, long ArchivedSize)> tarredFilePairs, long originalSize, CancellationToken cancellationToken)
     {
         tarWriter.Dispose();
         gzip.Dispose();
