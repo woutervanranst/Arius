@@ -22,13 +22,13 @@ public sealed class ArchiveCliCommand : ICommand
     [CommandParameter(0, Description = "Path to the local root directory to archive.")]
     public required DirectoryInfo LocalRoot { get; init; }
 
-    [CommandOption("accountname", IsRequired = true, Description = "Azure Storage Account name.")]
+    [CommandOption("accountname", IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
 
-    [CommandOption("accountkey", IsRequired = true, Description = "Azure Storage Account key."/*, Converter = typeof(EnvironmentVariableConverter)*/)]
+    [CommandOption("accountkey", IsRequired = true, Description = "Azure Storage Account key.", EnvironmentVariable = "ARIUS_ACCOUNT_KEY")]
     public required string AccountKey { get; init; }
 
-    [CommandOption("passphrase", IsRequired = true, Description = "Passphrase for encryption."/*, Converter = typeof(EnvironmentVariableConverter)*/)]
+    [CommandOption("passphrase", IsRequired = true, Description = "Passphrase for encryption.")]
     public required string Passphrase { get; init; }
 
     [CommandOption("container", IsRequired = true, Description = "Azure Blob Storage container name.")]
@@ -140,24 +140,3 @@ public sealed class ArchiveCliCommand : ICommand
         return truncated.PadRight(width);
     }
 }
-
-//// Helper to read sensitive values from environment variables
-//public class EnvironmentVariableConverter : IArgumentValueConverter
-//{
-//    public object? ConvertFrom(string? value)
-//    {
-//        if (value is null)
-//            return null;
-
-//        if (value.StartsWith("env:"))
-//        {
-//            var varName = value[4..];
-//            var envVar = Environment.GetEnvironmentVariable(varName);
-//            if (string.IsNullOrEmpty(envVar))
-//                throw new InvalidOperationException($"Environment variable '{varName}' is not set or is empty.");
-//            return envVar;
-//        }
-
-//        return value;
-//    }
-//}

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "arius archive": {
+      "commandName": "Project",
+      "commandLineArgs": "archive C:\\Users\\WouterVanRanst\\Downloads\\metronic_blazor_v8.2.7 --accountname ariusci --container test --passphrase woutervr"
+    }
+  }
+}
