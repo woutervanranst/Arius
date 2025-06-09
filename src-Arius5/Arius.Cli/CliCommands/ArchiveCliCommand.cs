@@ -9,18 +9,16 @@ using System.Collections.Concurrent;
 
 namespace Arius.Cli.CliCommands;
 
-[Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
-public sealed class ArchiveCliCommand : ICommand
+public abstract class ArchiveCliCommandBase : ICommand
 {
     private readonly IMediator _mediator;
 
-    public ArchiveCliCommand(IMediator mediator)
+    public ArchiveCliCommandBase(IMediator mediator)
     {
         _mediator = mediator;
     }
 
-    [CommandParameter(0, Description = "Path to the local root directory to archive.")]
-    public required DirectoryInfo LocalRoot { get; init; }
+    public abstract DirectoryInfo LocalRoot { get; init; }
 
     [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
@@ -140,5 +138,33 @@ public sealed class ArchiveCliCommand : ICommand
         if (width <= 0) return string.Empty;
         string truncated = input.Length > width ? input[..width] : input;
         return truncated.PadRight(width);
+    }
+}
+
+
+[Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Regular]")]
+public class ArchiveCliCommand: ArchiveCliCommandBase
+{
+    public ArchiveCliCommand(IMediator mediator) : base(mediator)
+    {
+    }
+
+    [CommandParameter(0, Description = "Path to the local root directory to archive.")]
+    public override required DirectoryInfo LocalRoot { get; init; }
+}
+
+
+
+[Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Docker]")]
+public class ArchiveDockerCliCommandBase : ArchiveCliCommandBase
+{
+    public ArchiveDockerCliCommandBase(IMediator mediator) : base(mediator)
+    {
+    }
+
+    public override required DirectoryInfo LocalRoot
+    {
+        get => new("/archive");
+        init => throw new InvalidOperationException("LocalRoot cannot be set in Docker");
     }
 }

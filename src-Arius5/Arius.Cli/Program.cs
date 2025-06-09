@@ -1,4 +1,5 @@
-﻿using Arius.Core;
+﻿using Arius.Cli.CliCommands;
+using Arius.Core;
 using CliFx;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,10 +47,28 @@ internal static class Program
         }
     }
 
-    public static CliApplicationBuilder CreateBuilder() =>
-        new CliApplicationBuilder()
-            .AddCommandsFromThisAssembly() // Command discovery
-        ;
+    public static CliApplicationBuilder CreateBuilder()
+    {
+        var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+
+        // Command discovery
+        //return new CliApplicationBuilder().AddCommandsFromThisAssembly();
+
+        if (isRunningInContainer)
+        {
+            return new CliApplicationBuilder()
+                .AddCommands([
+                    typeof(ArchiveDockerCliCommandBase), 
+                    typeof(RestoreCliCommand)]);
+        }
+        else
+        {
+            return new CliApplicationBuilder()
+                .AddCommands([
+                    typeof(ArchiveCliCommand),
+                    typeof(RestoreCliCommand)]);
+        }
+    }
 
     public static IServiceProvider CreateServiceProvider()
     {
