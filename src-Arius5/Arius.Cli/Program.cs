@@ -11,7 +11,9 @@ internal static class Program
     public static async Task<int> Main(string[] args)
     {
         // --- Serilog Configuration ---
-        var logPath = Path.Combine("logs", $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
+        var isRunningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+        var logDirectory         = isRunningInContainer ? "/logs" : "logs";
+        var logPath              = Path.Combine(logDirectory, $"arius-{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
         // Configure the static logger instance
         Log.Logger = new LoggerConfiguration()
