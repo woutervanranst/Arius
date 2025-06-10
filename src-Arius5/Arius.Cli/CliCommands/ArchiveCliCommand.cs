@@ -142,7 +142,7 @@ public abstract class ArchiveCliCommandBase : ICommand
 }
 
 
-[Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Regular]")]
+[Command("archive", Description = "Archives a local directory to Azure Blob Storage.")]
 public class ArchiveCliCommand: ArchiveCliCommandBase
 {
     public ArchiveCliCommand(IMediator mediator) : base(mediator)
@@ -156,9 +156,9 @@ public class ArchiveCliCommand: ArchiveCliCommandBase
 
 
 [Command("archive", Description = "Archives a local directory to Azure Blob Storage. [Docker]")]
-public class ArchiveDockerCliCommandBase : ArchiveCliCommandBase
+public class ArchiveDockerCliCommand : ArchiveCliCommandBase
 {
-    public ArchiveDockerCliCommandBase(IMediator mediator) : base(mediator)
+    public ArchiveDockerCliCommand(IMediator mediator) : base(mediator)
     {
     }
 

@@ -6,6 +6,7 @@ using Shouldly;
 
 namespace Arius.Cli.Tests;
 
+[Collection("CliCommandTests")] // make them run sequentially to avoid environment variable conflicts
 public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixture>
 {
     private readonly CliCommandTestsFixture fixture;
@@ -51,7 +52,6 @@ public sealed class ArchiveCliCommandTests : IClassFixture<CliCommandTestsFixtur
     public async Task ExecuteAsync_NoPath_NotInContainer_FailsWithMissingParameter()
     {
         // Arrange
-        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
         var command = $"archive --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
 
         // Act

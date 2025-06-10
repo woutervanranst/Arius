@@ -5,6 +5,7 @@ using Shouldly;
 
 namespace Arius.Cli.Tests;
 
+[Collection("CliCommandTests")] // make them run sequentially to avoid environment variable conflicts
 public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixture>
 {
     private readonly CliCommandTestsFixture fixture;
@@ -17,23 +18,23 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
     [Fact]
     public async Task ExecuteAsync_WithAllOptions_SendsCorrectMediatRCommand()
     {
-        // Arrange: Capture the command sent to IMediator
+        // Arrange
         RestoreCommand? capturedCommand = null;
-        fixture.MediatorMock
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
             .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(Unit.Value))
             .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
 
-        // Arrange: Set up the CLI arguments
         var tempPath = Path.GetTempPath();
         var command = $"restore {tempPath} --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer --synchronize --download --keep-pointers";
 
-        // Act: Run the application
-        var (exitCode, output) = await fixture.CallCliAsync(command);
+        // Act
+        var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
 
-        // Assert: Verify the outcome
+        // Assert
         exitCode.ShouldBe(0);
-        await fixture.MediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+        await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
 
         capturedCommand.ShouldNotBeNull();
         capturedCommand.LocalRoot.FullName.ShouldBe(tempPath);
@@ -44,5 +45,56 @@ public sealed class RestoreCliCommandTests : IClassFixture<CliCommandTestsFixtur
         capturedCommand.Synchronize.ShouldBeTrue();
         capturedCommand.Download.ShouldBeTrue();
         capturedCommand.KeepPointers.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NoPath_NotInContainer_ThrowsArgumentException()
+    {
+        // Arrange
+        //Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
+        var command = $"restore --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        // Act
+        var (exitCode, output, error) = await fixture.CallCliAsync(command);
+
+        // Assert
+        exitCode.ShouldBe(1);
+        error.ShouldContain("Missing required parameter(s):\n<localroot>");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_NoPath_InContainer_UsesDefaultArchiveRoot()
+    {
+        // Arrange
+        RestoreCommand? capturedCommand = null;
+        var             mediatorMock    = Substitute.For<IMediator>();
+        mediatorMock
+            .Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Unit.Value))
+            .AndDoes(callInfo => capturedCommand = callInfo.Arg<RestoreCommand>());
+
+        Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", "true");
+        var command = $"restore --accountname testaccount --accountkey testkey --passphrase testpass --container testcontainer";
+
+        try
+        {
+            // Act
+            var (exitCode, output, error) = await fixture.CallCliAsync(command, mediatorMock);
+
+            // Assert
+            exitCode.ShouldBe(0);
+            await mediatorMock.Received(1).Send(Arg.Any<RestoreCommand>(), Arg.Any<CancellationToken>());
+
+            capturedCommand.ShouldNotBeNull();
+            capturedCommand.LocalRoot.FullName.ShouldBe(new DirectoryInfo("/archive").FullName);
+            capturedCommand.AccountName.ShouldBe("testaccount");
+            capturedCommand.AccountKey.ShouldBe("testkey");
+            capturedCommand.Passphrase.ShouldBe("testpass");
+            capturedCommand.ContainerName.ShouldBe("testcontainer");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER", null);
+        }
     }
 }

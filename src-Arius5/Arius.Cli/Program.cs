@@ -58,8 +58,8 @@ internal static class Program
         {
             return new CliApplicationBuilder()
                 .AddCommands([
-                    typeof(ArchiveDockerCliCommandBase), 
-                    typeof(RestoreCliCommand)]);
+                    typeof(ArchiveDockerCliCommand), 
+                    typeof(RestoreDockerCliCommand)]);
         }
         else
         {

@@ -6,18 +6,16 @@ using MediatR;
 
 namespace Arius.Cli.CliCommands;
 
-[Command("restore", Description = "Restores a directory from Azure Blob Storage.")]
-public sealed class RestoreCliCommand : ICommand
+public abstract class RestoreCliCommandBase : ICommand
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator mediator;
 
-    public RestoreCliCommand(IMediator mediator)
+    public RestoreCliCommandBase(IMediator mediator)
     {
-        _mediator = mediator;
+        this.mediator = mediator;
     }
 
-    [CommandParameter(0, Description = "Path to the local root directory to restore to.")]
-    public required DirectoryInfo LocalRoot { get; init; }
+    public abstract DirectoryInfo LocalRoot { get; init; }
 
     [CommandOption("accountname", 'n', IsRequired = true, Description = "Azure Storage Account name.", EnvironmentVariable = "ARIUS_ACCOUNT_NAME")]
     public required string AccountName { get; init; }
@@ -56,6 +54,33 @@ public sealed class RestoreCliCommand : ICommand
         };
 
         var cancellationToken = console.RegisterCancellationHandler();
-        var commandTask       = _mediator.Send(command, cancellationToken);
+        var commandTask       = mediator.Send(command, cancellationToken);
+    }
+}
+
+[Command("restore", Description = "Restores a directory from Azure Blob Storage.")]
+public class RestoreCliCommand : RestoreCliCommandBase
+{
+    public RestoreCliCommand(IMediator mediator) : base(mediator)
+    {
+    }
+
+    [CommandParameter(0, Description = "Path to the local root directory to archive.")]
+    public override required DirectoryInfo LocalRoot { get; init; }
+}
+
+
+
+[Command("restore", Description = "Restores a directory from Azure Blob Storage. [Docker]")]
+public class RestoreDockerCliCommand : RestoreCliCommandBase
+{
+    public RestoreDockerCliCommand(IMediator mediator) : base(mediator)
+    {
+    }
+
+    public override required DirectoryInfo LocalRoot
+    {
+        get => new("/archive");
+        init => throw new InvalidOperationException("LocalRoot cannot be set in Docker");
     }
 }

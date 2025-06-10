@@ -13,7 +13,7 @@ public class CliCommandTestsFixture
 
     public async Task<(int ExitCode, string Output, string Error)> CallCliAsync(string command, IMediator? mediatorMock = null)
     {
-        var console = new FakeInMemoryConsole();
+        using var console = new FakeInMemoryConsole();
 
         var serviceProvider = mediatorMock is null
             ? Program.ConfigureServices(new ServiceCollection())
