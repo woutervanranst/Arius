@@ -3,6 +3,7 @@ using CliFx;
 using CliFx.Attributes;
 using CliFx.Infrastructure;
 using MediatR;
+using Spectre.Console;
 
 namespace Arius.Cli.CliCommands;
 
@@ -40,21 +41,28 @@ public abstract class RestoreCliCommandBase : ICommand
 
     public async ValueTask ExecuteAsync(IConsole console)
     {
-        var command = new RestoreCommand
+        try
         {
-            AccountName   = AccountName,
-            AccountKey    = AccountKey,
-            ContainerName = ContainerName,
-            Passphrase    = Passphrase,
-            Synchronize   = Synchronize,
-            Download      = Download,
-            KeepPointers  = KeepPointers,
-            LocalRoot     = LocalRoot,
-            //ProgressReporter = pu
-        };
+            var command = new RestoreCommand
+            {
+                AccountName   = AccountName,
+                AccountKey    = AccountKey,
+                ContainerName = ContainerName,
+                Passphrase    = Passphrase,
+                Synchronize   = Synchronize,
+                Download      = Download,
+                KeepPointers  = KeepPointers,
+                LocalRoot     = LocalRoot,
+                //ProgressReporter = pu
+            };
 
-        var cancellationToken = console.RegisterCancellationHandler();
-        var commandTask       = mediator.Send(command, cancellationToken);
+            var cancellationToken = console.RegisterCancellationHandler();
+            await mediator.Send(command, cancellationToken);
+        }
+        catch (Exception e)
+        {
+            AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+        }
     }
 }
 

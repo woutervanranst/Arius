@@ -15,22 +15,7 @@ internal static class CryptoExtensions
     private const int blockSize = 128;
     private const int saltSize = 8;
 
-    //public static async Task CopyToCompressedEncryptedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
-    //{
-    //    DeriveBytes(passphrase, out var salt, out var key, out var iv);
-    //    using var aes = CreateAes(key, iv);
-    //    using var encryptor = aes.CreateEncryptor(/*aes.Key, aes.IV)*/);
-    //    await using var cs = new CryptoStream(target, encryptor, CryptoStreamMode.Write);
-    //    await using var gzs = new GZipStream(cs, CompressionLevel.Optimal);
-
-    //    await target.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length);
-    //    await target.WriteAsync(salt, 0, salt.Length);
-
-    //    await source.CopyToAsync(gzs, cancellationToken);
-    //}
-
-
-    public static async Task CopyToDecryptedDecompressedAsync(this Stream source, Stream target, string passphrase, CancellationToken cancellationToken = default)
+    public static async Task<Stream> GetDecryptionStreamAsync(this Stream source, string passphrase, CancellationToken cancellationToken = default)
     {
         var salt = new byte[saltSize];
         source.Seek(OPENSSL_SALT_PREFIX_BYTES.Length, SeekOrigin.Begin);
@@ -38,28 +23,28 @@ internal static class CryptoExtensions
 
         DeriveBytes(passphrase, salt, out var key, out var iv);
 
-        using var aes = CreateAes(key, iv);
-        using var decryptor = aes.CreateDecryptor(/*aes.Key, aes.IV*/);
-        await using var cs = new CryptoStream(source, decryptor, CryptoStreamMode.Read);
+        var aes          = CreateAes(key, iv);
+        var decryptor    = aes.CreateDecryptor();
+        var cryptoStream = new CryptoStream(source, decryptor, CryptoStreamMode.Read, leaveOpen: true);
 
-        await using var gzs = new GZipStream(cs, CompressionMode.Decompress);
+        var gzs = new GZipStream(cryptoStream, CompressionMode.Decompress, leaveOpen: true);
 
-        await gzs.CopyToAsync(target, cancellationToken);
+        return new DisposableDecompressionStream(gzs, cryptoStream, aes);
     }
 
-    public static async Task<Stream> GetCryptoStreamAsync(this Stream baseStream, string passphrase, CancellationToken cancellationToken = default)
+    public static async Task<Stream> GetCryptoStreamAsync(this Stream source, string passphrase, CancellationToken cancellationToken = default)
     {
         // Derive key and IV using the passphrase
         DeriveBytes(passphrase, out var salt, out var key, out var iv);
 
         // Write OpenSSL-compatible salt prefix and salt to the base stream
-        await baseStream.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length, cancellationToken);
-        await baseStream.WriteAsync(salt,                      0, salt.Length,                      cancellationToken);
+        await source.WriteAsync(OPENSSL_SALT_PREFIX_BYTES, 0, OPENSSL_SALT_PREFIX_BYTES.Length, cancellationToken);
+        await source.WriteAsync(salt,                      0, salt.Length,                      cancellationToken);
 
         // Create AES encryptor and crypto stream
         var aes          = CreateAes(key, iv);
         var encryptor    = aes.CreateEncryptor();
-        var cryptoStream = new CryptoStream(baseStream, encryptor, CryptoStreamMode.Write, leaveOpen: true);
+        var cryptoStream = new CryptoStream(source, encryptor, CryptoStreamMode.Write, leaveOpen: true);
 
         // Return a stream wrapper that disposes both the crypto stream and AES instance
         return new DisposableCryptoStream(cryptoStream, aes);
@@ -68,7 +53,7 @@ internal static class CryptoExtensions
     private sealed class DisposableCryptoStream : Stream
     {
         private readonly CryptoStream _cryptoStream;
-        private readonly Aes _aes;
+        private readonly Aes          _aes;
 
         public DisposableCryptoStream(CryptoStream cryptoStream, Aes aes)
         {
@@ -79,7 +64,8 @@ internal static class CryptoExtensions
         public override bool CanRead => _cryptoStream.CanRead;
         public override bool CanSeek => _cryptoStream.CanSeek;
         public override bool CanWrite => _cryptoStream.CanWrite;
-        public override long Length => _cryptoStream.Length;
+        public override long Length   => _cryptoStream.Length;
+
         public override long Position
         {
             get => _cryptoStream.Position;
@@ -102,6 +88,54 @@ internal static class CryptoExtensions
                 _cryptoStream.Dispose();
                 _aes.Dispose();
             }
+
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class DisposableDecompressionStream : Stream
+    {
+        private readonly GZipStream   _gzipStream;
+        private readonly CryptoStream _cryptoStream;
+        private readonly Aes          _aes;
+
+        public DisposableDecompressionStream(GZipStream gzipStream, CryptoStream cryptoStream, Aes aes)
+        {
+            _gzipStream   = gzipStream;
+            _cryptoStream = cryptoStream;
+            _aes          = aes;
+        }
+
+        public override bool CanRead  => _gzipStream.CanRead;
+        public override bool CanSeek  => _gzipStream.CanSeek;
+        public override bool CanWrite => _gzipStream.CanWrite;
+        public override long Length   => _gzipStream.Length;
+
+        public override long Position
+        {
+            get => _gzipStream.Position;
+            set => _gzipStream.Position = value;
+        }
+
+        public override void Flush()                                         => _gzipStream.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => _gzipStream.FlushAsync(cancellationToken);
+        public override int  Read(byte[] buffer, int offset, int count)      => _gzipStream.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin)            => _gzipStream.Seek(offset, origin);
+        public override void SetLength(long value)                           => _gzipStream.SetLength(value);
+        public override void Write(byte[] buffer, int offset, int count)     => _gzipStream.Write(buffer, offset, count);
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            _gzipStream.WriteAsync(buffer, offset, count, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _gzipStream.Dispose();
+                _cryptoStream.Dispose();
+                _aes.Dispose();
+            }
+
             base.Dispose(disposing);
         }
     }
