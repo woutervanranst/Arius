@@ -242,7 +242,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(filePair.FullName, 60, $"Uploading {filePair.ExistingBinaryFile?.Length.Bytes().Humanize()}..."));
 
             // Upload
-            await using var blobStream = await handlerContext.BlobStorage.OpenWriteAsync(
+            await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
                 containerName: handlerContext.Request.ContainerName,
                 h: hash,
                 contentType: ChunkContentType,
@@ -261,7 +261,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
             await blobStream.FlushAsync(cancellationToken);
 
             // Update tier
-            var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
+            var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(handlerContext.Request.ContainerName, hash, blobStream.Position, handlerContext.Request.Tier);
 
             // Add to db
             handlerContext.StateRepo.AddBinaryProperties(new BinaryPropertiesDto
@@ -397,7 +397,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         foreach (var (tarredFilePair, _, _) in tarredFilePairs)
             handlerContext.Request.ProgressReporter?.Report(new FileProgressUpdate(tarredFilePair.FullName, 70, $"Uploading TAR..."));
 
-        await using var blobStream = await handlerContext.BlobStorage.OpenWriteAsync(
+        await using var blobStream = await handlerContext.BlobStorage.OpenWriteChunkAsync(
             containerName: handlerContext.Request.ContainerName,
             h: tarHash,
             contentType: TarChunkContentType,
@@ -412,7 +412,7 @@ internal class ArchiveCommandHandler : IRequestHandler<ArchiveCommand>
         await blobStream.FlushAsync(cancellationToken);
 
         // Update tier
-        var actualTier = await handlerContext.BlobStorage.SetStorageTierPerPolicy(handlerContext.Request.ContainerName, tarHash, blobStream.Position, handlerContext.Request.Tier);
+        var actualTier = await handlerContext.BlobStorage.SetChunkStorageTierPerPolicy(handlerContext.Request.ContainerName, tarHash, blobStream.Position, handlerContext.Request.Tier);
 
         // Add BinaryProperties
         var bps = tarredFilePairs.Select(x => new BinaryPropertiesDto

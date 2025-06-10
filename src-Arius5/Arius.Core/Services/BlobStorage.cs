@@ -40,6 +40,9 @@ internal class BlobStorage
     }
 
     public async Task<Stream> OpenWriteAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
+    // --- CHUNKS
+
+    public async Task<Stream> OpenWriteChunkAsync(string containerName, Hash h, string contentType, IDictionary<string, string> metadata = default, IProgress<long> progress = default, CancellationToken cancellationToken = default)
     {
         var bbc = new BlockBlobClient(connectionString, containerName, $"chunks/{h}");
 
@@ -57,7 +60,7 @@ internal class BlobStorage
         return await bbc.OpenWriteAsync(overwrite: true, options: bbowo, cancellationToken: cancellationToken);
     }
 
-    public async Task<StorageTier> SetStorageTierPerPolicy(string containerName, Hash h, long length, StorageTier targetTier)
+    public async Task<StorageTier> SetChunkStorageTierPerPolicy(string containerName, Hash h, long length, StorageTier targetTier)
     {
         var actualTier = GetActualStorageTier(targetTier, length);
         var bbc        = new BlobClient(connectionString, containerName, $"chunks/{h}");
@@ -67,7 +70,7 @@ internal class BlobStorage
         return actualTier;
     }
 
-    private static StorageTier GetActualStorageTier( StorageTier targetTier, long length)
+    private static StorageTier GetActualStorageTier(StorageTier targetTier, long length)
     {
         const long oneMegaByte = 1024 * 1024; // TODO Derive this from the IArchiteCommandOptions?
 
